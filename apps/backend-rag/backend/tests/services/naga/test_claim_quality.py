@@ -14,7 +14,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from backend.services.naga.quality.claim_scorer import (
-    batch_rescore,
     compute_quality_score,
     freshness_decay,
     source_reliability,
@@ -29,7 +28,6 @@ from backend.services.naga.quality.dedup import (
 from backend.services.naga.quality.expiry import (
     expire_stale_claims,
 )
-
 
 # =========================================================================
 # Claim Scoring Model

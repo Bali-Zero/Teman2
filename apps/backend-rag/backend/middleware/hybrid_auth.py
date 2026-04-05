@@ -156,8 +156,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
-            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
-            "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
+            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming endpoint - public for Prime map widget (rate-limited: 10/min)
+            "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous for map intelligence (rate-limited: 10/min)
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
             "/api/cell/metrics",  # BUSINESS: CELL ErrorRateSensor reads this internally — no user data exposed
@@ -181,6 +181,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
+            "/api/prime/v2/resolve",  # BUSINESS: Prime Nexus Layer 1 - public spatial resolution (no auth)
+            "/api/prime/v2/analyze",  # BUSINESS: Prime Nexus Layer 2 - public investment analysis (rate-limited: 10/min)
+            "/api/prime/v2/health",   # BUSINESS: Prime Nexus health check - public status endpoint
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================

@@ -120,6 +120,103 @@ async def run_birthday_notifier(request: Request) -> dict[str, Any]:
     return {"service": "birthday", **result}
 
 
+@router.post("/compliance-forecast")
+async def run_compliance_forecast(request: Request) -> dict[str, Any]:
+    """
+    Run the predictive compliance engine and return forecasts with revenue estimates.
+
+    Kill switch: system_settings.compliance_forecast_enabled must be "true".
+    Optional query param: ?scan_days=365 (default 365).
+    """
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.compliance.predictive_engine import (
+        PredictiveComplianceEngine,
+        is_engine_enabled,
+    )
+    from backend.services.pricing.pricing_service import get_pricing_service
+
+    if not await is_engine_enabled(db_pool):
+        return {
+            "service": "compliance_forecast",
+            "status": "disabled",
+            "reason": "Set compliance_forecast_enabled=true in system_settings to enable",
+        }
+
+    scan_days_raw = request.query_params.get("scan_days", "365")
+    try:
+        scan_days = max(30, min(int(scan_days_raw), 730))
+    except ValueError:
+        scan_days = 365
+
+    try:
+        pricing_service = get_pricing_service()
+        all_prices = pricing_service.get_pricing("all")
+    except Exception:
+        logger.exception("Failed to load pricing data for compliance forecast")
+        return {
+            "service": "compliance_forecast",
+            "status": "error",
+            "reason": "pricing_unavailable",
+        }
+
+    engine = PredictiveComplianceEngine(db_pool, all_prices, scan_window_days=scan_days)
+    result = await engine.scan()
+
+    # Serialize to JSON-safe dict
+    forecasts_out = [
+        {
+            "client_id": f.client_id,
+            "client_name": f.client_name,
+            "assigned_to": f.assigned_to,
+            "document_type": f.document_type,
+            "current_visa_type": f.current_visa_type,
+            "expiry_date": f.expiry_date.isoformat(),
+            "days_until_expiry": f.days_until_expiry,
+            "matched_rule_id": f.matched_rule_id,
+            "processing_days": f.processing_days,
+            "lead_time_start": f.lead_time_start.isoformat(),
+            "recommended_action_by": f.recommended_action_by.isoformat(),
+            "days_until_action": f.days_until_action,
+            "estimated_revenue_idr": f.estimated_revenue_idr,
+            "renewal_pricing_key": f.renewal_pricing_key,
+            "priority_score": f.priority_score,
+            "urgency_level": f.urgency_level,
+            "required_docs": f.required_docs,
+            "passport_expires_before_visa": f.passport_expires_before_visa,
+            "notes": f.notes,
+        }
+        for f in result.forecasts
+    ]
+
+    return {
+        "service": "compliance_forecast",
+        "status": "ok",
+        "scan_window_days": result.scan_window_days,
+        "generated_at": result.generated_at,
+        "summary": {
+            "total_forecasts": result.summary.total_forecasts,
+            "by_urgency": result.summary.by_urgency,
+            "total_estimated_revenue_idr": result.summary.total_estimated_revenue_idr,
+            "clients_with_active_practice_skipped": (
+                result.summary.clients_with_active_practice_skipped
+            ),
+            "top_revenue_forecasts": [
+                {
+                    "client_name": f.client_name,
+                    "document_type": f.document_type,
+                    "expiry_date": f.expiry_date.isoformat(),
+                    "estimated_revenue_idr": f.estimated_revenue_idr,
+                    "urgency_level": f.urgency_level,
+                }
+                for f in result.summary.top_revenue_forecasts
+            ],
+        },
+        "forecasts": forecasts_out,
+    }
+
+
 @router.post("/all")
 async def run_all_notifiers(request: Request) -> dict[str, Any]:
     """Run all three notifiers in sequence. Single cron endpoint."""

@@ -19,7 +19,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 logger = logging.getLogger(__name__)
 
 # In-memory rate limit storage (fallback)
-_rate_limit_storage = {}
+_rate_limit_storage: dict[str, list[int]] = {}
+_MAX_IN_MEMORY_KEYS = 10_000  # cap to prevent unbounded growth
 
 
 class RateLimiter:
@@ -103,6 +104,11 @@ class RateLimiter:
             else:
                 # In-memory fallback
                 if key not in _rate_limit_storage:
+                    # Evict stale keys when approaching cap
+                    if len(_rate_limit_storage) >= _MAX_IN_MEMORY_KEYS:
+                        stale = [k for k, v in _rate_limit_storage.items() if not v or v[-1] < window_start]
+                        for k in stale[:len(stale) // 2 + 1]:
+                            del _rate_limit_storage[k]
                     _rate_limit_storage[key] = []
 
                 # Remove old entries
@@ -185,6 +191,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Visa Oracle (public, consumer-facing)
         "/api/v1/visa-oracle/chat": (15, 60),  # 15 per minute - LLM calls
         "/api/v1/visa-oracle/": (60, 60),  # 60 per minute - quiz/handoff
+        # Agentic RAG (public LLM endpoints - cost protection)
+        "/api/agentic-rag/query": (10, 60),   # 10 per minute - LLM, cost-sensitive
+        "/api/agentic-rag/stream": (10, 60),  # 10 per minute - LLM streaming
+        "/api/agentic-rag/": (20, 60),        # 20 per minute - fallback for other agentic paths
+        # Prime Intelligence (public geospatial + LLM)
+        "/api/prime/v2/analyze": (10, 60),    # 10 per minute per IP - LLM scoring, cost-sensitive
+        "/api/prime/zoning": (30, 60),        # 30 per minute - PostGIS queries
+        "/api/prime/": (20, 60),              # 20 per minute - other prime endpoints
+        # Oracle (public AI chat)
+        "/api/oracle/chat": (10, 60),         # 10 per minute - LLM calls
+        "/api/oracle/": (30, 60),             # 30 per minute - other oracle endpoints
         # Default for all other endpoints
         "*": (200, 60),  # 200 per minute
     }

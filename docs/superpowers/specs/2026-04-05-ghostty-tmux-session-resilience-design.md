@@ -95,6 +95,7 @@ Output (printed to terminal before Claude reads first prompt):
 ```
 
 Detection logic:
+
 - `$TMUX` present → inside tmux
 - `tmux list-sessions | grep balizero` already existed before this attach → resume
 - Uses `~/.claude/live-status.json` for last tool/cwd/branch
@@ -172,13 +173,13 @@ Mac restarts
 
 ## Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| `bz` called but tmux not installed | Prints install instructions, falls back to plain zsh |
-| Session "balizero" exists but window count wrong | `bz reset` tears down and rebuilds |
-| `mem` command fails in briefing | Briefing skips memory section, shows only live-status.json |
-| Ghostty opens but `bz` hangs | Ghostty timeout 5s → falls back to plain shell |
-| tmux-continuum fails to restore | `bz` catches missing session and builds from scratch |
+| Scenario                                         | Behavior                                                   |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `bz` called but tmux not installed               | Prints install instructions, falls back to plain zsh       |
+| Session "balizero" exists but window count wrong | `bz reset` tears down and rebuilds                         |
+| `mem` command fails in briefing                  | Briefing skips memory section, shows only live-status.json |
+| Ghostty opens but `bz` hangs                     | Ghostty timeout 5s → falls back to plain shell             |
+| tmux-continuum fails to restore                  | `bz` catches missing session and builds from scratch       |
 
 ---
 
@@ -194,7 +195,7 @@ Mac restarts
 ## Success Criteria
 
 - [ ] Ghostty crash + reopen in < 3 seconds, Claude Code still running
-- [ ] `bz` from any shell attaches or creates session deterministically  
+- [ ] `bz` from any shell attaches or creates session deterministically
 - [ ] MOS briefing visible at top of each Claude Code resume
 - [ ] `Ctrl+Space c` relaunches dead claude in < 2 seconds
 - [ ] tmux-continuum saves state every 15 min automatically

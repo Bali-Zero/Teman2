@@ -2,14 +2,48 @@
 Standardized error handling utilities for routers.
 
 Provides consistent error handling across all API endpoints.
+
+Error response envelope (all endpoints should use this format):
+    {
+        "detail": "Human-readable message",
+        "code": "machine_readable_code",   # optional, for programmatic handling
+        "field": "field_name"              # optional, for validation errors
+    }
 """
 
 import logging
+from typing import Any
 
 import asyncpg
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+
+def api_error(
+    status_code: int,
+    message: str,
+    code: str | None = None,
+    field: str | None = None,
+) -> HTTPException:
+    """
+    Create a standardized HTTPException with consistent detail envelope.
+
+    Args:
+        status_code: HTTP status code
+        message: Human-readable error message
+        code: Machine-readable error code (e.g. "not_found", "forbidden")
+        field: Field name for validation errors
+
+    Returns:
+        HTTPException with structured detail dict
+    """
+    detail: dict[str, Any] = {"message": message}
+    if code:
+        detail["code"] = code
+    if field:
+        detail["field"] = field
+    return HTTPException(status_code=status_code, detail=detail)
 
 
 def handle_database_error(e: Exception) -> HTTPException:
