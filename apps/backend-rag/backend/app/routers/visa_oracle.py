@@ -155,7 +155,7 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
       > 0.60  → NORMAL   (standard answer via Gemini Flash)
     """
     # Lazy imports — avoid loading heavy ML deps at startup
-    from backend.llm.gemini_client import GeminiClient
+    from backend.llm.genai_client import get_genai_client
     from backend.services.rag.hybrid_search import HybridSearchService
     from backend.services.rag.reranker import CrossEncoderReranker
 
@@ -245,12 +245,17 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         )
 
         # --- Generate answer via Gemini Flash (30s timeout) ---
-        gemini = GeminiClient()
+        gemini = get_genai_client()
         try:
-            answer_text = await asyncio.wait_for(
-                gemini.generate(prompt=prompt),
+            result = await asyncio.wait_for(
+                gemini.generate_content(
+                    contents=prompt,
+                    max_output_tokens=1024,
+                    temperature=0.3,
+                ),
                 timeout=30.0,
             )
+            answer_text = result.get("text", "") if isinstance(result, dict) else str(result)
         except asyncio.TimeoutError:
             logger.warning(
                 "visa-oracle /chat: Gemini timeout (30s) session=%s",
