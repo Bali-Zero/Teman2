@@ -139,7 +139,7 @@ nav {
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 110px;
+  height: 80px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .brand-left {
@@ -150,7 +150,7 @@ nav {
   font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
   font-weight: 900;
   font-style: normal;
-  font-size: 46px;
+  font-size: 32px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #fff;
@@ -214,7 +214,7 @@ nav {
 }
 @media (max-width: 768px) {
   .brand-inner { padding: 0 20px; height: 80px; }
-  .brand-tagline { font-size: 28px; }
+  .brand-tagline { font-size: 22px; }
   .brand-right { display: none; }
 }
 
