@@ -3,7 +3,13 @@
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { emailApi } from '@/lib/api';
 import { logger } from '@/lib/logger';
-import { ZohoConnectBanner, FolderSidebar, EmailList, type ComposeData } from '@/components/email';
+import {
+  ZohoConnectBanner,
+  FolderSidebar,
+  EmailList,
+  ThreadView,
+  type ComposeData,
+} from '@/components/email';
 import type {
   ZohoConnectionStatus,
   EmailFolder,
@@ -634,24 +640,34 @@ ${original}`,
         />
       </div>
 
-      {/* Email Viewer */}
-      <Suspense fallback={<ViewerSkeleton />}>
-        <EmailViewer
-          email={selectedEmail}
-          onClose={() => {
-            setSelectedEmailId(null);
-            setSelectedEmail(null);
-          }}
+      {/* Email Viewer + Thread View */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Suspense fallback={<ViewerSkeleton />}>
+          <EmailViewer
+            email={selectedEmail}
+            onClose={() => {
+              setSelectedEmailId(null);
+              setSelectedEmail(null);
+            }}
+            onReply={handleReply}
+            onReplyAll={handleReplyAll}
+            onForward={handleForward}
+            onToggleFlag={() => selectedEmailId && handleToggleFlag(selectedEmailId)}
+            onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
+            onDownloadAttachment={handleDownloadAttachment}
+            isLoading={isEmailDetailLoading}
+            onAddToCRM={handleAddToCRM}
+          />
+        </Suspense>
+        <ThreadView
+          emails={emails}
+          selectedEmail={selectedEmail}
+          selectedEmailId={selectedEmailId}
+          onSelectEmail={handleSelectEmail}
           onReply={handleReply}
-          onReplyAll={handleReplyAll}
-          onForward={handleForward}
-          onToggleFlag={() => selectedEmailId && handleToggleFlag(selectedEmailId)}
-          onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
           onDownloadAttachment={handleDownloadAttachment}
-          isLoading={isEmailDetailLoading}
-          onAddToCRM={handleAddToCRM}
         />
-      </Suspense>
+      </div>
 
       {/* Compose Modal */}
       {isComposeOpen && (

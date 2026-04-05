@@ -84,7 +84,7 @@ async def get_collection_hit_rates(
 
 @router.get("/volume")
 async def get_query_volume(
-    granularity: str = Query("hour", regex="^(hour|day)$"),
+    granularity: str = Query("hour", pattern="^(hour|day)$"),
     days: int = Query(7, ge=1, le=90),
     repo: QueryAnalyticsRepository = Depends(_get_repo),
     current_user=Depends(_verify_founder_access),

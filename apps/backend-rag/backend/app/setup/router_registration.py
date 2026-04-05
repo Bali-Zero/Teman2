@@ -108,6 +108,7 @@ def include_routers(api: FastAPI) -> None:
         telegram,
         telegram_webhook,
         twitter,
+        visa_oracle,
         voice,
         webhooks,
         websocket,
@@ -334,3 +335,6 @@ def include_routers(api: FastAPI) -> None:
 
     # EventBus monitoring
     api.include_router(event_bus.router)
+
+    # Visa Oracle — public product (no auth required)
+    api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
