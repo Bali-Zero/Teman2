@@ -45,7 +45,7 @@ export function QuizWizard() {
       duration: finalAnswers.duration,
       family: finalAnswers.family,
     });
-    router.push(`/result?${params.toString()}`);
+    router.push(`/visa-oracle/result?${params.toString()}`);
   }
 
   function handleBack() {
