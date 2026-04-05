@@ -56,6 +56,7 @@ def include_routers(api: FastAPI) -> None:
         debug,
         documents_proxy,
         dream,
+        dynamic_pricing,  # [NEW] Dynamic scenario pricing
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
         federation,
@@ -273,6 +274,9 @@ def include_routers(api: FastAPI) -> None:
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
     api.include_router(prime.router)
+
+    # Dynamic scenario pricing
+    api.include_router(dynamic_pricing.router)
 
     # Module routers (Prime Standard)
     api.include_router(dream.router)  # [NEW] Dream Room
