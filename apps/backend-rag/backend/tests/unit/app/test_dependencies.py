@@ -157,7 +157,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid_token"
 
-        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",
@@ -182,7 +182,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid_token"
 
-        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
             from jose import JWTError
 
             mock_decode.side_effect = JWTError("Invalid token")
@@ -198,7 +198,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "token"
 
-        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
             mock_decode.return_value = {}  # No email, no sub
 
             with pytest.raises(HTTPException) as exc_info:
@@ -217,7 +217,7 @@ class TestDependencies:
         """Test getting cache with fallback to singleton"""
         mock_request.app.state.cache_service = None
 
-        with patch("backend.app.dependencies.get_cache_service") as mock_get_cache:
+        with patch("backend.app.deps.services.get_cache_service") as mock_get_cache:
             mock_get_cache.return_value = MagicMock()
 
             cache = get_cache(mock_request)
@@ -238,7 +238,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "invalid_token"
 
-        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
             from jose import JWTError
 
             mock_decode.side_effect = JWTError("Invalid token")
@@ -253,7 +253,7 @@ class TestDependencies:
         mock_credentials = MagicMock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid_token"
 
-        with patch("backend.app.dependencies.jwt.decode") as mock_decode:
+        with patch("backend.app.deps.auth.jwt.decode") as mock_decode:
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",
