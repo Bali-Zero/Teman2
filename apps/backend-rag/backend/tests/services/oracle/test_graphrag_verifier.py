@@ -420,11 +420,13 @@ class TestGoldSet:
         return _load_gold()
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(not _GOLD_FILE.exists(), reason="Gold set file only available on Pro machine")
     async def test_gold_set_loaded(self):
         gold = self._load_gold()
         assert len(gold) == 20, f"Expected 20 gold items, got {len(gold)}"
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(not _GOLD_FILE.exists(), reason="Gold set file only available on Pro machine")
     async def test_gold_set_structure(self):
         gold = self._load_gold()
         for item in gold:
@@ -437,6 +439,7 @@ class TestGoldSet:
             assert item["overall_kg_verification"] in ("HIGH", "MEDIUM", "LOW", "UNKNOWN")
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(not _GOLD_FILE.exists(), reason="Gold set file only available on Pro machine")
     async def test_claim_extraction_on_real_nlm_responses(self):
         """Claims can be extracted from all 20 NLM responses."""
         gold = self._load_gold()
