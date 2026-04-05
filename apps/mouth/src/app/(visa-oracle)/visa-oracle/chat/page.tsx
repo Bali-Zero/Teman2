@@ -2,7 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { VisaChat } from "@/components/visa-oracle/VisaChat";
-import type { QuizAnswers } from "@/lib/visa-oracle/types";
+import { getVisaResults } from "@/lib/visa-oracle/storage";
+import type { QuizAnswers, VisaRecommendation } from "@/lib/visa-oracle/types";
 
 export default function ChatPage() {
   const searchParams = useSearchParams();
@@ -18,5 +19,7 @@ export default function ChatPage() {
       ? { nationality, purpose, duration, family }
       : undefined;
 
-  return <VisaChat quizAnswers={quizAnswers} initialSessionId={sessionId} />;
+  const visas = getVisaResults() as VisaRecommendation[];
+
+  return <VisaChat quizAnswers={quizAnswers} initialSessionId={sessionId} visas={visas} />;
 }

@@ -74,5 +74,26 @@ export function hasQuestionsRemaining(): boolean {
   return getRemainingQuestions() > 0;
 }
 
+const VISA_RESULTS_KEY = "visa_oracle_results";
+
+export function saveVisaResults(visas: unknown[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(VISA_RESULTS_KEY, JSON.stringify(visas));
+  } catch {
+    // sessionStorage unavailable
+  }
+}
+
+export function getVisaResults(): unknown[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(VISA_RESULTS_KEY);
+    return raw ? (JSON.parse(raw) as unknown[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export { STORAGE_KEY, MAX_QUESTIONS };
 export type { SessionData };
