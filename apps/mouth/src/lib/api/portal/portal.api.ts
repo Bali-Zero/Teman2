@@ -108,11 +108,13 @@ export class PortalApi {
       gender: d.gender,
       address: d.address,
       memberSince: d.member_since,
-      assignedTo: d.assigned_to ? {
-        email: d.assigned_to.email,
-        name: d.assigned_to.name,
-        avatarUrl: d.assigned_to.avatar_url,
-      } : undefined,
+      assignedTo: d.assigned_to
+        ? {
+            email: d.assigned_to.email,
+            name: d.assigned_to.name,
+            avatarUrl: d.assigned_to.avatar_url,
+          }
+        : undefined,
     };
   }
 
@@ -142,14 +144,12 @@ export class PortalApi {
             sponsor: visa.sponsor_name ?? "",
           }
         : null,
-      history: (raw.history ?? []).map(
-        (h: Record<string, unknown>) => ({
-          id: String(h.id ?? ""),
-          type: (h.visa_type as string) ?? "",
-          period: `${h.issue_date ?? ""} — ${h.expiry_date ?? ""}`,
-          status: h.status === "active" ? "completed" : "expired",
-        }),
-      ),
+      history: (raw.history ?? []).map((h: Record<string, unknown>) => ({
+        id: String(h.id ?? ""),
+        type: (h.visa_type as string) ?? "",
+        period: `${h.issue_date ?? ""} — ${h.expiry_date ?? ""}`,
+        status: h.status === "active" ? "completed" : "expired",
+      })),
       documents: [],
     };
   }
@@ -378,10 +378,9 @@ export class PortalApi {
   // ============================================================================
 
   async getProcessTimeline(practiceId: number): Promise<ProcessTimeline> {
-    const response = await this.client.request<PortalApiResponse<ProcessTimeline>>(
-      `/api/portal/process/${practiceId}/timeline`,
-      { method: "GET" },
-    );
+    const response = await this.client.request<
+      PortalApiResponse<ProcessTimeline>
+    >(`/api/portal/process/${practiceId}/timeline`, { method: "GET" });
     return response.data!;
   }
 
@@ -390,18 +389,16 @@ export class PortalApi {
   // ============================================================================
 
   async getDriveFiles(): Promise<DriveFilesResponse> {
-    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
-      "/api/portal/drive/files",
-      { method: "GET" },
-    );
+    const response = await this.client.request<
+      PortalApiResponse<DriveFilesResponse>
+    >("/api/portal/drive/files", { method: "GET" });
     return response.data!;
   }
 
   async getDriveSubfolderFiles(folderId: string): Promise<DriveFilesResponse> {
-    const response = await this.client.request<PortalApiResponse<DriveFilesResponse>>(
-      `/api/portal/drive/files/${folderId}/list`,
-      { method: "GET" },
-    );
+    const response = await this.client.request<
+      PortalApiResponse<DriveFilesResponse>
+    >(`/api/portal/drive/files/${folderId}/list`, { method: "GET" });
     return response.data!;
   }
 
@@ -410,18 +407,18 @@ export class PortalApi {
   // ============================================================================
 
   async getBilling(): Promise<BillingResponse> {
-    const response = await this.client.request<PortalApiResponse<BillingResponse>>(
-      "/api/portal/billing",
-      { method: "GET" },
-    );
+    const response = await this.client.request<
+      PortalApiResponse<BillingResponse>
+    >("/api/portal/billing", { method: "GET" });
     return response.data!;
   }
 
-  async getInvoicePdfUrl(invoiceId: number): Promise<{ download_url: string; drive_file_id: string }> {
-    const response = await this.client.request<PortalApiResponse<{ download_url: string; drive_file_id: string }>>(
-      `/api/portal/billing/${invoiceId}/pdf-url`,
-      { method: "GET" },
-    );
+  async getInvoicePdfUrl(
+    invoiceId: number,
+  ): Promise<{ download_url: string; drive_file_id: string }> {
+    const response = await this.client.request<
+      PortalApiResponse<{ download_url: string; drive_file_id: string }>
+    >(`/api/portal/billing/${invoiceId}/pdf-url`, { method: "GET" });
     return response.data!;
   }
 
@@ -430,10 +427,9 @@ export class PortalApi {
   // ============================================================================
 
   async getNotifications(limit = 50): Promise<NotificationsResponse> {
-    const response = await this.client.request<PortalApiResponse<NotificationsResponse>>(
-      `/api/portal/notifications?limit=${limit}`,
-      { method: "GET" },
-    );
+    const response = await this.client.request<
+      PortalApiResponse<NotificationsResponse>
+    >(`/api/portal/notifications?limit=${limit}`, { method: "GET" });
     return response.data!;
   }
 
