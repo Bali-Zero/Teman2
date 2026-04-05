@@ -48,10 +48,14 @@ class Dreamer:
         pool: Any,
         ollama_url: str = "http://localhost:11434",
         ollama_model: str = "qwen3.5:9b",
+        http_client: Any = None,
     ) -> None:
         self._pool = pool
         self._ollama_url = ollama_url
         self._model = ollama_model
+        self._http_client = http_client  # persistent client (Golden Rule #10)
+        self._owns_client = http_client is None  # True if we created it
+        self._client: Any = None
 
     async def _fetch_todays_episodes(self) -> list[dict]:
         """Fetch all episodes from the last 24 hours."""
@@ -83,6 +87,20 @@ class Dreamer:
             })
         return episodes
 
+    def _get_client(self) -> Any:
+        """Return persistent httpx client, creating one if not provided."""
+        if self._http_client is not None:
+            return self._http_client
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=30.0)
+        return self._client
+
+    async def close(self) -> None:
+        """Close the httpx client if we own it."""
+        if self._owns_client and self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
     async def _extract_rules_with_llm(
         self, episodes: list[dict]
     ) -> tuple[list[str], list[str]]:
@@ -94,34 +112,34 @@ class Dreamer:
         user_msg = f"Today's episodes:\n{episode_text}\n\nConsolidate into rules and gaps."
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self._ollama_url}/api/chat",
-                    json={
-                        "model": self._model,
-                        "messages": [
-                            {"role": "system", "content": _DREAMER_SYSTEM},
-                            {"role": "user", "content": user_msg},
-                        ],
-                        "stream": False,
-                        "think": False,
-                        "options": {"temperature": 0.2, "num_predict": 512},
-                    },
-                )
-                response.raise_for_status()
-                text = response.json()["message"]["content"]
+            client = self._get_client()
+            response = await client.post(
+                f"{self._ollama_url}/api/chat",
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {"role": "system", "content": _DREAMER_SYSTEM},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "stream": False,
+                    "think": False,
+                    "options": {"temperature": 0.2, "num_predict": 512},
+                },
+            )
+            response.raise_for_status()
+            text = response.json()["message"]["content"]
 
-                # Parse JSON from response
-                start = text.find("{")
-                end = text.rfind("}") + 1
-                if start == -1 or end == 0:
-                    logger.warning("Dreamer LLM produced no JSON")
-                    return [], []
+            # Parse JSON from response
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start == -1 or end == 0:
+                logger.warning("Dreamer LLM produced no JSON")
+                return [], []
 
-                data = json.loads(text[start:end])
-                rules = data.get("rules", [])
-                gaps = data.get("gaps", [])
-                return rules, gaps
+            data = json.loads(text[start:end])
+            rules = data.get("rules", [])
+            gaps = data.get("gaps", [])
+            return rules, gaps
 
         except Exception as e:
             logger.warning(f"Dreamer LLM extraction failed: {e}")

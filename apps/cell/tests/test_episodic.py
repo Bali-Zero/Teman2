@@ -113,8 +113,14 @@ class TestEpisodicMemory:
         mem = EpisodicMemory(pool=mock_pool, max_episodes=10)
         conn = await mock_pool.acquire().__aenter__()
         conn.fetchval.return_value = 15  # more than max
+        # Provide rows for the activation-based fetch
+        now = time.time()
+        conn.fetch.return_value = [
+            {"id": i, "timestamp": now - i * 3600, "recall_count": i % 3}
+            for i in range(1, 16)
+        ]
         await mem.forget_weak()
-        # Should have called DELETE
+        # Should have called DELETE with the 5 lowest-activation episodes
         assert conn.execute.call_count >= 1
 
     @pytest.mark.asyncio

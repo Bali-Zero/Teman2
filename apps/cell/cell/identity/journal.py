@@ -39,30 +39,48 @@ class Journal:
         pool: Any,
         ollama_url: str = "http://localhost:11434",
         ollama_model: str = "qwen3.5:9b",
+        http_client: Any = None,
     ) -> None:
         self._pool = pool
         self._ollama_url = ollama_url
         self._model = ollama_model
+        self._http_client = http_client  # persistent client (Golden Rule #10)
+        self._owns_client = http_client is None
+        self._client: Any = None
+
+    def _get_client(self) -> Any:
+        """Return persistent httpx client, creating one if not provided."""
+        if self._http_client is not None:
+            return self._http_client
+        if self._client is None:
+            self._client = httpx.AsyncClient(timeout=20.0)
+        return self._client
+
+    async def close(self) -> None:
+        """Close the httpx client if we own it."""
+        if self._owns_client and self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def _summarize_with_llm(self, prompt: str) -> str:
         """Call Qwen 9B to write the journal narrative. Falls back gracefully."""
         try:
-            async with httpx.AsyncClient(timeout=20.0) as client:
-                response = await client.post(
-                    f"{self._ollama_url}/api/chat",
-                    json={
-                        "model": self._model,
-                        "messages": [
-                            {"role": "system", "content": _JOURNAL_SYSTEM},
-                            {"role": "user", "content": prompt},
-                        ],
-                        "stream": False,
-                        "think": False,
-                        "options": {"temperature": 0.4, "num_predict": 200},
-                    },
-                )
-                response.raise_for_status()
-                return response.json()["message"]["content"].strip()
+            client = self._get_client()
+            response = await client.post(
+                f"{self._ollama_url}/api/chat",
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {"role": "system", "content": _JOURNAL_SYSTEM},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "stream": False,
+                    "think": False,
+                    "options": {"temperature": 0.4, "num_predict": 200},
+                },
+            )
+            response.raise_for_status()
+            return response.json()["message"]["content"].strip()
         except Exception as e:
             logger.warning(f"Journal LLM call failed: {e}")
             return ""
