@@ -2,9 +2,9 @@
   "schema_version": 1,
   "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
   "notebook_name": "NB-7: Editorial & Content Strategy",
-  "current_state": "COMPLETE",
+  "current_state": "HALTED",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-04-01T06:31:07.082297+00:00",
+  "last_updated": "2026-04-05T18:35:11.334482+00:00",
   "budget": {
     "daily_queries": 2,
     "weekly_calls": 10,
