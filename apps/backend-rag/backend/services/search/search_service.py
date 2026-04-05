@@ -16,6 +16,7 @@ This service now handles ONLY core search logic with proper delegation.
 import asyncio
 import logging
 import time
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -220,6 +221,12 @@ class SearchService:
         self.query_expander = query_expander or QueryExpander()
         logger.info("✅ QueryExpander initialized for multilingual query expansion")
 
+        # Embedding LRU cache — avoids re-calling OpenAI for identical queries
+        # within the same process lifetime (esp. federated search: same query, 8 collections)
+        # Max 256 entries, no TTL (embeddings are deterministic for a given model)
+        self._embedding_cache: OrderedDict[str, list[float]] = OrderedDict()
+        self._embedding_cache_max = 256
+
         # Conflict resolution tracking (delegated to ConflictResolver)
         # Initialize with all fields for backward compatibility with tests
         self.conflict_stats = {
@@ -390,8 +397,20 @@ class SearchService:
         if expanded_query != query:
             logger.debug(f"Query expanded for embedding: '{query}' → '{expanded_query[:100]}...'")
 
-        # Generate query embedding from expanded query
-        query_embedding = await self.embedder.generate_query_embedding(expanded_query)
+        # Generate query embedding — check process-level LRU cache first
+        # This avoids redundant OpenAI calls for: (a) repeated queries, (b) federated search
+        # where the same query is sent to 8 collections in parallel.
+        cache_key = expanded_query.strip().lower()
+        if cache_key in self._embedding_cache:
+            query_embedding = self._embedding_cache[cache_key]
+            self._embedding_cache.move_to_end(cache_key)
+            logger.debug("⚡ Embedding cache HIT — skipped OpenAI call")
+        else:
+            query_embedding = await self.embedder.generate_query_embedding(expanded_query)
+            # LRU eviction
+            if len(self._embedding_cache) >= self._embedding_cache_max:
+                self._embedding_cache.popitem(last=False)
+            self._embedding_cache[cache_key] = query_embedding
 
         # Validate embedding was generated
         if not query_embedding or len(query_embedding) == 0:
