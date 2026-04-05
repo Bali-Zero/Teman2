@@ -1,24 +1,52 @@
 """
-Dynamic Scenario Pricing API
+Pricing API
 
-Calculates comprehensive investment costs for Indonesian business scenarios
-by aggregating from multiple Oracle collections (KBLI, legal, tax, visa, property).
-
-Example: "PT PMA Restaurant in Seminyak with 2 foreign directors"
-→ Returns: setup cost breakdown + annual recurring costs + timeline
+- GET /api/pricing/all        — Full official price catalog (PricingService SSOT)
+- GET /api/pricing/search     — Search official prices by keyword (?q=...)
+- POST /api/pricing/scenario  — Dynamic scenario pricing (aggregates Oracle collections)
 """
 
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from backend.app.dependencies import get_current_user_optional
+from backend.app.dependencies import get_current_user
+from backend.app.middleware.hybrid_auth import OptionalUser
+from backend.services.pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/pricing", tags=["pricing"])
+
+
+@router.get("/all")
+async def get_all_prices() -> dict[str, Any]:
+    """
+    Return the full official Bali Zero price catalog.
+    Single source of truth — never hardcode or guess prices.
+    """
+    svc = get_pricing_service()
+    result = svc.get_all_prices()
+    if "error" in result:
+        raise HTTPException(status_code=503, detail=result["error"])
+    return result
+
+
+@router.get("/search")
+async def search_pricing(
+    q: str = Query(..., min_length=1, description="Service name or keyword"),
+) -> dict[str, Any]:
+    """
+    Search the official price catalog by keyword.
+    Returns matching services with exact prices.
+    """
+    svc = get_pricing_service()
+    result = svc.search_service(q)
+    if "error" in result:
+        raise HTTPException(status_code=503, detail=result["error"])
+    return result
 
 
 class ScenarioPricingRequest(BaseModel):
@@ -42,7 +70,7 @@ class ScenarioPricingResponse(BaseModel):
 async def calculate_scenario_pricing(
     request: Request,
     body: ScenarioPricingRequest,
-    current_user: dict | None = Depends(get_current_user_optional),
+    current_user: OptionalUser = Depends(get_current_user),
 ) -> ScenarioPricingResponse:
     """
     Calculate comprehensive pricing for a business scenario.

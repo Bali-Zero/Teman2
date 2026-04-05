@@ -2905,6 +2905,11 @@ Questa è una notifica automatica da Bali Zero CRM.
         Sensitive fields (full_name, email, passport_number, nationality, etc.)
         are silently ignored — they require team intervention.
 
+        Side effects when fields are actually changed:
+        - Inserts a notification_alerts record (portal_profile_update) for the CRM bell
+        - Inserts a portal_messages record (client_to_team) so the team sees the change
+        - Cache invalidation handled by the router layer
+
         Returns the updated profile.
         """
         safe_fields = {
@@ -2929,6 +2934,37 @@ Questa è una notifica automatica da Bali Zero CRM.
                 )
 
                 logger.info(f"Portal profile updated for client {client_id}: {list(safe_fields.keys())}")
+
+                # Notify CRM team: insert notification_alerts record (deduped daily)
+                fields_label = ", ".join(k.replace("_", " ") for k in safe_fields)
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO notification_alerts
+                            (client_id, alert_type, status, message, email_subject)
+                        VALUES ($1, 'portal_profile_update', 'sent', $2, $3)
+                        ON CONFLICT ON CONSTRAINT uq_notification_alert_daily DO NOTHING
+                        """,
+                        client_id,
+                        f"Client updated their profile: {fields_label}",
+                        "Portal: profile update",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to insert portal_profile_update alert for client {client_id}: {e}")
+
+                # Insert portal_messages record so CRM team can see the change in thread view
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO portal_messages
+                            (client_id, practice_id, subject, direction, content, sent_by)
+                        VALUES ($1, NULL, 'Profile updated', 'client_to_team', $2, 'portal')
+                        """,
+                        client_id,
+                        f"Client updated their profile via the portal: {fields_label}.",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to insert portal_messages record for client {client_id}: {e}")
 
             return await self._get_profile_data(conn, client_id)
 

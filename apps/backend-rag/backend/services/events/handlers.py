@@ -175,6 +175,11 @@ def register_handlers(
                 _check_client_expiry_on_completion(db_pool, client_id, practice_id),
                 name=f"expiry_check_{client_id}",
             )
+            # Predictive engine: mini-scan for this client on completion
+            asyncio.create_task(
+                _run_predictive_scan_for_client(db_pool, client_id),
+                name=f"predictive_scan_{client_id}",
+            )
 
         # On cancellation: log for analytics
         if new_status == "cancelled":
@@ -364,3 +369,61 @@ async def _send_admin_telegram(title: str, message: str) -> None:
         await svc.send_alert(title=title, message=message, level=AlertLevel.WARNING)
     except Exception as e:
         logger.debug(f"Telegram alert failed: {e}")
+
+
+async def _run_predictive_scan_for_client(
+    db_pool: asyncpg.Pool, client_id: int,
+) -> None:
+    """
+    Run the predictive compliance engine for a single client after their
+    practice completes. Logs any high-priority forecasts for CRM visibility.
+
+    This is a lightweight scan (90-day window, 1 client) triggered by EventBus.
+    It does NOT send notifications — it only logs findings.
+    """
+    try:
+        from backend.services.compliance.predictive_engine import (
+            PredictiveComplianceEngine,
+            is_engine_enabled,
+        )
+        from backend.services.pricing.pricing_service import get_pricing_service
+
+        if not await is_engine_enabled(db_pool):
+            return
+
+        pricing_service = get_pricing_service()
+        all_prices = pricing_service.get_pricing("all")
+
+        # Use a 90-day scan window for post-completion check
+        engine = PredictiveComplianceEngine(db_pool, all_prices, scan_window_days=90)
+        result = await engine.scan()
+
+        # Filter forecasts for this client only
+        client_forecasts = [f for f in result.forecasts if f.client_id == client_id]
+
+        if not client_forecasts:
+            return
+
+        top = client_forecasts[0]
+        summary_parts = [
+            f"{f.document_type}({f.urgency_level}, {f.days_until_expiry}d)"
+            for f in client_forecasts
+        ]
+        await _log_interaction(
+            db_pool,
+            client_id,
+            "compliance",
+            f"Predictive scan: {len(client_forecasts)} upcoming renewal(s) — "
+            f"{', '.join(summary_parts)}. "
+            f"Top priority: {top.matched_rule_id} (score={top.priority_score})",
+            "internal",
+        )
+        logger.info(
+            "Predictive scan for client %d: %d forecast(s), top=%s score=%.1f",
+            client_id,
+            len(client_forecasts),
+            top.matched_rule_id,
+            top.priority_score,
+        )
+    except Exception as e:
+        logger.debug(f"Predictive scan failed for client {client_id}: {e}")

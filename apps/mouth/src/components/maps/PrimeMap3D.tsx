@@ -1,11 +1,12 @@
 'use client';
 // Prime Intelligence 3D Map — Google Maps JS API (v=beta), maps3d library
 // Cache bust: 2026-03-17-1555
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import Script from 'next/script';
 import Image from 'next/image';
 import { PrimeZantaraChat } from './PrimeZantaraChat';
 import { logger } from '@/lib/logger';
+import { PrimeNexusContext } from '@/contexts/PrimeNexusContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -240,6 +241,10 @@ function LayerToggle({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PrimeMap3D() {
+  // Optional: connect to PrimeNexusContext when mounted inside PrimeNexusLayout.
+  // Falls back gracefully to null when no provider is present.
+  const primeNexus = useContext(PrimeNexusContext);
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [map3DElement, setMap3DElement] = useState<any>(null);
@@ -346,6 +351,8 @@ export default function PrimeMap3D() {
           reverseGeocode(pos.lat, pos.lng),
         ]);
         setZoningResult(zoningRes as ZoningInfo);
+        // Bridge to PrimeNexusContext (INVEST mode analysis) — no-op when no provider
+        primeNexus?.analyzePoint(pos.lat, pos.lng);
       } catch (e) {
         logger.error(
           'Zoning fetch failed',
@@ -360,7 +367,7 @@ export default function PrimeMap3D() {
         setIsAnalyzing(false);
       }
     },
-    [reverseGeocode]
+    [reverseGeocode, primeNexus]
   );
 
   // ── Zone colors layer ──────────────────────────────────────────────────────

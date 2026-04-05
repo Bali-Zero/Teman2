@@ -12,19 +12,20 @@
 
 ## File Map
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `~/.config/tmux/tmux.conf` | tmux config: prefix, theme, plugins, keybinds |
-| Create | `~/.local/bin/bz` | Main launcher: attach or create "balizero" session |
-| Create | `~/.claude/scripts/tmux-briefing.sh` | MOS briefing on resume |
-| Modify | `~/.config/ghostty/config` | Add `command = /bin/zsh -lc 'bz'` |
-| Modify | `~/.claude/settings.json` | Add tmux-briefing SessionStart hook |
+| Action | Path                                 | Responsibility                                     |
+| ------ | ------------------------------------ | -------------------------------------------------- |
+| Create | `~/.config/tmux/tmux.conf`           | tmux config: prefix, theme, plugins, keybinds      |
+| Create | `~/.local/bin/bz`                    | Main launcher: attach or create "balizero" session |
+| Create | `~/.claude/scripts/tmux-briefing.sh` | MOS briefing on resume                             |
+| Modify | `~/.config/ghostty/config`           | Add `command = /bin/zsh -lc 'bz'`                  |
+| Modify | `~/.claude/settings.json`            | Add tmux-briefing SessionStart hook                |
 
 ---
 
 ## Task 1: Install TPM and write tmux.conf
 
 **Files:**
+
 - Create: `~/.config/tmux/tmux.conf`
 - Create: `~/.tmux/plugins/tpm/` (via git clone)
 
@@ -169,6 +170,7 @@ git commit -m "feat(ghostty): add tmux session resilience spec + plan"
 ## Task 2: Write `bz` launcher script
 
 **Files:**
+
 - Create: `~/.local/bin/bz`
 - Create: `~/.local/bin/bz-relaunch`
 
@@ -308,6 +310,7 @@ git commit -m "feat(ghostty): add bz launcher and bz-relaunch scripts"
 ## Task 3: Write tmux-briefing.sh
 
 **Files:**
+
 - Create: `~/.claude/scripts/tmux-briefing.sh`
 
 - [ ] **Step 1: Write `~/.claude/scripts/tmux-briefing.sh`**
@@ -404,6 +407,7 @@ git commit -m "feat(ghostty): add tmux-briefing.sh MOS resume script"
 ## Task 4: Wire SessionStart hook in settings.json
 
 **Files:**
+
 - Modify: `~/.claude/settings.json`
 
 - [ ] **Step 1: Read current SessionStart hooks to find insertion point**
@@ -484,6 +488,7 @@ git commit -m "feat(ghostty): wire tmux-briefing hook in Claude Code SessionStar
 ## Task 5: Modify Ghostty config
 
 **Files:**
+
 - Modify: `~/.config/ghostty/config`
 
 - [ ] **Step 1: Backup current Ghostty config**
@@ -605,6 +610,7 @@ Expected: `BALI ZERO RESUME` and `branch:` lines visible
 - [ ] **Step 7: Open Ghostty manually and verify it attaches**
 
 Open Ghostty (Cmd+N or restart app). Verify:
+
 - tmux session opens immediately (no plain zsh prompt)
 - Status bar shows "balizero" session name in orange
 - 3 panes visible in main window
@@ -622,6 +628,7 @@ git commit -m "feat(ghostty): tmux session resilience — all components wired a
 ## Self-Review Notes
 
 **Spec coverage check:**
+
 - ✅ Scenario A (Ghostty crash → tmux survives → reattach): Task 2 `bz` + Task 5 Ghostty config
 - ✅ Scenario B (multiple Claude sessions): Task 2 layout (pane 0 + pane 1 both run claude)
 - ✅ Scenario C (claude process dies → relaunch): Task 2 `bz-relaunch` + `Ctrl+Space c` in Task 1

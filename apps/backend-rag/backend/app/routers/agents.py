@@ -592,10 +592,22 @@ async def cross_oracle_synthesis(
 
 
 class PricingCalculateRequest(BaseModel):
-    service_type: str
-    complexity: str = "standard"
-    urgency: str = "normal"
+    service_type: str = Field(
+        default="all",
+        description="Service category: visa, kitas, business_setup, tax_consulting, legal, all",
+    )
+    complexity: str = Field(
+        default="standard",
+        pattern="^(standard|complex|premium)$",
+        description="Complexity level: standard, complex, premium",
+    )
+    urgency: str = Field(
+        default="normal",
+        pattern="^(normal|urgent|express)$",
+        description="Urgency level: normal, urgent, express",
+    )
     package: str | None = None
+    query: str | None = None  # Optional free-text search query
 
 
 @router.post("/pricing/calculate")
@@ -606,17 +618,30 @@ async def calculate_dynamic_pricing(
     """
     💰 AGENT 6: Dynamic Pricing Service
 
-    Calculate pricing based on service type, complexity, and urgency.
-    Accepts JSON body: {"service_type": "pt_pma", "complexity": "standard", "urgency": "normal"}
+    Returns official prices from PricingService (SSOT).
+    If query is provided, performs keyword search; otherwise returns by service_type.
+    Accepts JSON body: {"service_type": "visa", "query": "KITAS investor"}
     """
+    from backend.services.pricing.pricing_service import get_pricing_service
+
+    svc = get_pricing_service()
+
+    if not svc.loaded:
+        raise HTTPException(status_code=503, detail="Pricing service unavailable — prices not loaded")
+
+    # Search mode: free-text query
+    if body.query:
+        result = svc.search_service(body.query)
+    else:
+        result = svc.get_pricing(body.service_type)
+
     return {
         "success": True,
         "service_type": body.service_type,
         "complexity": body.complexity,
         "urgency": body.urgency,
         "package": body.package,
-        "message": "Dynamic pricing available via /pricing/all endpoint",
-        "note": "Use the unified pricing endpoint for comprehensive pricing",
+        "data": result,
     }
 
 

@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 from backend.services.portal import PortalService
 
 logger = get_logger(__name__)
@@ -731,6 +732,8 @@ async def update_profile(
     try:
         fields = {k: v for k, v in request.model_dump().items() if v is not None}
         result = await portal_service.update_profile(client["client_id"], fields)
+        if fields:
+            await invalidate_cache("zantara:crm_clients_stats:*")
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"Failed to update profile for client {client['client_id']}: {e}")
