@@ -14,8 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from backend.app.dependencies import get_current_user
-from backend.app.middleware.hybrid_auth import OptionalUser
+from backend.app.dependencies import get_current_user_optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class ScenarioPricingResponse(BaseModel):
 async def calculate_scenario_pricing(
     request: Request,
     body: ScenarioPricingRequest,
-    current_user: OptionalUser = Depends(get_current_user),
+    current_user: dict | None = Depends(get_current_user_optional),
 ) -> ScenarioPricingResponse:
     """
     Calculate comprehensive pricing for a business scenario.
