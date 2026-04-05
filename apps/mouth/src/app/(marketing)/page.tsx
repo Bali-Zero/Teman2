@@ -163,9 +163,10 @@ nav {
 .brand-logo-3-img {
   display: inline-block;
   vertical-align: middle;
-  height: 1.2em;
+  height: 1.3em;
   width: auto;
-  margin-top: -0.55em;
+  position: relative;
+  top: -0.15em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
