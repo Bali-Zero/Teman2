@@ -48,6 +48,56 @@ DURATION_THRESHOLDS: dict[str, tuple[int, int]] = {
     "long": (181, 99999),
 }
 
+# Static visa metadata (duration/validity not stored in PricingService data).
+# Keys match exact visa names from the pricing JSON.
+VISA_METADATA: dict[str, dict[str, str]] = {
+    # Single-entry visas
+    "C1 Tourism": {"duration": "30 days", "validity": "Single entry"},
+    "C2 Business": {"duration": "60 days", "validity": "Single entry"},
+    "C7A&B Music/Art": {"duration": "60 days", "validity": "Single entry"},
+    "C18 Work Trial": {"duration": "60 days", "validity": "Single entry"},
+    "C22A&B Internship (60 Days)": {"duration": "60 days", "validity": "Single entry"},
+    "C22A&B Internship (180 Days)": {"duration": "180 days", "validity": "Single entry"},
+    # Multiple-entry visas
+    "D12 Business Investigation (1 Year)": {"duration": "Up to 60 days/stay", "validity": "1 year, multiple entry"},
+    "D12 Business Investigation (2 Years)": {"duration": "Up to 60 days/stay", "validity": "2 years, multiple entry"},
+    # KITAS permits
+    "E33G Remote Worker (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
+    "E33G Remote Worker (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
+    "E33G Remote Worker (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
+    "Freelance E23 (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
+    "Freelance E23 (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
+    "Working KITAS (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
+    "Working KITAS (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
+    "Working KITAS (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
+    "Investor KITAS 2 Years (Altus/Onshore)": {"duration": "2 years", "validity": "KITAS — renewable"},
+    "Investor KITAS 2 Years (Offshore)": {"duration": "2 years", "validity": "KITAS — offshore process"},
+    "Investor KITAS 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS — renewal"},
+    "Retirement (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
+    "Retirement (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
+    "Retirement (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
+    "Spouse 1 Year (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS dependent"},
+    "Spouse 1 Year (Offshore)": {"duration": "1 year", "validity": "KITAS dependent — offshore"},
+    "Spouse 1 Year (Extend)": {"duration": "1 year", "validity": "KITAS dependent — renewal"},
+    "Spouse 2 Years (Altus/Onshore)": {"duration": "2 years", "validity": "KITAS dependent"},
+    "Spouse 2 Years (Offshore)": {"duration": "2 years", "validity": "KITAS dependent — offshore"},
+    "Spouse 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS dependent — renewal"},
+    "Dependent 1 Year (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS dependent"},
+    "Dependent 1 Year (Offshore)": {"duration": "1 year", "validity": "KITAS dependent — offshore"},
+    "Dependent 1 Year (Extend)": {"duration": "1 year", "validity": "KITAS dependent — renewal"},
+    "Dependent 2 Years (Altus/Onshore)": {"duration": "2 years", "validity": "KITAS dependent"},
+    "Dependent 2 Years (Offshore)": {"duration": "2 years", "validity": "KITAS dependent — offshore"},
+    "Dependent 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS dependent — renewal"},
+    # KITAP
+    "Investor KITAP + MERP": {"duration": "5 years", "validity": "KITAP — permanent residence"},
+    "Retirement KITAP + MERP": {"duration": "5 years", "validity": "KITAP — permanent residence"},
+    "Dependent KITAP MERP": {"duration": "5 years", "validity": "KITAP dependent"},
+    "MERP 1 Year": {"duration": "1 year", "validity": "Re-entry permit"},
+    "MERP 2 Year": {"duration": "2 years", "validity": "Re-entry permit"},
+    # Visa extensions
+    "C1 Tourism Extension": {"duration": "30 days", "validity": "Extension only"},
+}
+
 # Score weights
 SCORE_KEYWORD_MATCH = 2.0
 SCORE_DURATION_FIT = 1.5
@@ -114,13 +164,14 @@ class VisaOracleService:
                     duration=duration_lower,
                     family=family,
                 )
+                meta = VISA_METADATA.get(visa_name, {})
                 scored.append(
                     {
                         "visa_name": visa_name,
                         "category": category,
                         "price": details.get("price", ""),
-                        "duration": details.get("duration", ""),
-                        "validity": details.get("validity", ""),
+                        "duration": meta.get("duration", details.get("duration", "")),
+                        "validity": meta.get("validity", details.get("validity", "")),
                         "notes": details.get("notes", ""),
                         "score": score,
                     }
