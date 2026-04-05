@@ -4,7 +4,7 @@ CRM Notifications Endpoints
 GET /api/crm/notifications — returns notification_alerts for the current team member.
 Used by the NotificationBell component in the CRM header.
 
-Surfaces: portal document uploads, and future alert types from notification_alerts.
+Surfaces: portal document uploads, portal profile updates, and future alert types from notification_alerts.
 """
 
 from typing import Any
@@ -55,7 +55,7 @@ async def get_crm_notifications(
                     c.assigned_to
                 FROM notification_alerts na
                 JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-                WHERE na.alert_type = 'portal_document_upload'
+                WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
                   AND ($1 = false OR na.status = 'pending')
                 ORDER BY na.created_at DESC
                 LIMIT $2
@@ -79,7 +79,7 @@ async def get_crm_notifications(
                     c.assigned_to
                 FROM notification_alerts na
                 JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-                WHERE na.alert_type = 'portal_document_upload'
+                WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
                   AND LOWER(c.assigned_to) = $1
                   AND ($2 = false OR na.status = 'pending')
                 ORDER BY na.created_at DESC
@@ -132,7 +132,7 @@ async def get_unread_notifications_count(
     pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, int]:
-    """Return count of unread (pending) portal_document_upload notifications for current user."""
+    """Return count of unread (pending) portal notifications for current user."""
     from backend.app.routers.crm_clients import is_crm_admin
 
     user_email = (current_user.get("email") or "").strip().lower()
@@ -145,7 +145,7 @@ async def get_unread_notifications_count(
                 SELECT COUNT(*)
                 FROM notification_alerts na
                 JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-                WHERE na.alert_type = 'portal_document_upload'
+                WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
                   AND na.status = 'pending'
                 """,
             )
@@ -155,7 +155,7 @@ async def get_unread_notifications_count(
                 SELECT COUNT(*)
                 FROM notification_alerts na
                 JOIN clients c ON c.id = na.client_id AND c.deleted_at IS NULL
-                WHERE na.alert_type = 'portal_document_upload'
+                WHERE na.alert_type IN ('portal_document_upload', 'portal_profile_update')
                   AND na.status = 'pending'
                   AND LOWER(c.assigned_to) = $1
                 """,
