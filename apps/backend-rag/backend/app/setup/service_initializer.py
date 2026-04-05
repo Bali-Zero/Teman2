@@ -82,6 +82,15 @@ async def _init_critical_services(
             query_router=query_router,
         )
 
+        # Add cross-encoder reranking methods to SearchService instance
+        if settings.reranker_backend == "cross-encoder":
+            try:
+                from backend.services.rag.reranker_integration import add_cross_encoder_reranking
+
+                add_cross_encoder_reranking(search_service)
+            except Exception as e:
+                logger.warning(f"⚠️ Cross-encoder reranking setup failed (non-critical): {e}")
+
         # Store services in app state for dependency injection
         app.state.collection_manager = collection_manager
         app.state.conflict_resolver = conflict_resolver
@@ -362,6 +371,17 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             app.state.db_health_check_task = asyncio.create_task(
                 _database_health_check_loop(db_pool),
             )
+
+            # Initialize GraphService (non-critical — KG traversal tool)
+            try:
+                from backend.services.misc.graph_service import GraphService
+
+                graph_service = GraphService(db_pool=db_pool)
+                app.state.graph_service = graph_service
+                logger.info("✅ GraphService initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ GraphService initialization failed (non-critical): {e}")
+                app.state.graph_service = None
 
             service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
             logger.info("✅ Database services initialized successfully")

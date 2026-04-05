@@ -67,3 +67,6 @@ class CoreResult(BaseModel):
 
     # ARCH-7: GraphRAG verification of NLM enrichment claims
     kg_verification: dict[str, Any] | None = None  # status, score, evidence, hallucination_risk
+
+    # Cultural context enrichment from CulturalInsightsService
+    cultural_context: list[dict[str, Any]] = Field(default_factory=list)
