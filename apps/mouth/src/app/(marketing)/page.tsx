@@ -140,14 +140,14 @@ nav {
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 100px;
+  height: 110px;
   display: flex; align-items: center; justify-content: space-between;
   overflow: visible;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-text { display: flex; flex-direction: column; gap: 8px; overflow: visible; }
+.brand-text { display: flex; flex-direction: column; gap: 16px; overflow: visible; }
 .brand-tagline {
   font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
   font-weight: 900;
