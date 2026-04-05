@@ -36,6 +36,16 @@ if [ -f "$SECRETS_FILE" ]; then
     set -a; source "$SECRETS_FILE"; set +a
 fi
 
+# macOS uses gtimeout from coreutils
+if command -v gtimeout &>/dev/null; then
+    TIMEOUT_CMD="gtimeout"
+elif command -v timeout &>/dev/null; then
+    TIMEOUT_CMD="timeout"
+else
+    echo "ERROR: neither timeout nor gtimeout found. Install coreutils." >&2
+    exit 1
+fi
+
 mkdir -p "$LOG_DIR" "$LOCK_DIR"
 
 LOCK_FILE="$LOCK_DIR/$JOB_NAME.lock"
@@ -83,7 +93,7 @@ OUTPUT=""
 while [ $ATTEMPT -le $MAX_RETRIES ]; do
     ATTEMPT=$((ATTEMPT + 1))
 
-    OUTPUT=$(timeout "$TIMEOUT" "${COMMAND[@]}" 2>&1) && EXIT_CODE=0 || EXIT_CODE=$?
+    OUTPUT=$($TIMEOUT_CMD "$TIMEOUT" "${COMMAND[@]}" 2>&1) && EXIT_CODE=0 || EXIT_CODE=$?
 
     if [ $EXIT_CODE -eq 0 ]; then
         break

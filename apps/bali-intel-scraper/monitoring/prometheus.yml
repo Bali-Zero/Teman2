@@ -8,23 +8,59 @@ alerting:
         - targets: []
 
 rule_files:
-  - "/etc/prometheus/alerts.yml"
+  - '/etc/prometheus/alerts.yml'
 
 scrape_configs:
-  - job_name: "prometheus"
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ['localhost:9090']
 
-  - job_name: "bali-intel-api"
+  # Bali Intel API (local Docker)
+  - job_name: 'bali-intel-api'
     static_configs:
-      - targets: ["api:8000"]
-    metrics_path: "/metrics"
+      - targets: ['api:8000']
+    metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: "postgres-exporter"
+  # Nuzantara Backend on Fly.io (via Blackbox Exporter HTTP probe)
+  - job_name: 'nuzantara-backend'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: ['https://nuzantara-rag.fly.dev/health']
+    scrape_interval: 30s
+    scrape_timeout: 15s
     static_configs:
-      - targets: ["postgres-exporter:9187"]
+      - targets: ['blackbox-exporter:9115']
+        labels:
+          environment: 'production'
+          instance: 'nuzantara-rag.fly.dev'
+    relabel_configs:
+      - source_labels: [__param_target]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
 
-  - job_name: "redis-exporter"
+  # PostgreSQL Exporter (bali-intel DB on port 5432 inside Docker)
+  - job_name: 'postgres-exporter'
     static_configs:
-      - targets: ["redis-exporter:9121"]
+      - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter (bali-intel Redis on port 6379 inside Docker)
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # Node Exporter (host machine CPU/RAM/disk)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Cron Metrics Exporter (custom, reads ~/logs/cron/*.jsonl)
+  - job_name: 'cron-exporter'
+    static_configs:
+      - targets: ['cron-exporter:9101']
+    scrape_interval: 60s
