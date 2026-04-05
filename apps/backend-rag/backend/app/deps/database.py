@@ -9,7 +9,7 @@ import logging
 from typing import Any
 
 import asyncpg
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
