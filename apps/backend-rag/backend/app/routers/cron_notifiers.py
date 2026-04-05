@@ -155,7 +155,11 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
         all_prices = pricing_service.get_pricing("all")
     except Exception:
         logger.exception("Failed to load pricing data for compliance forecast")
-        return {"service": "compliance_forecast", "status": "error", "reason": "pricing_unavailable"}
+        return {
+            "service": "compliance_forecast",
+            "status": "error",
+            "reason": "pricing_unavailable",
+        }
 
     engine = PredictiveComplianceEngine(db_pool, all_prices, scan_window_days=scan_days)
     result = await engine.scan()
@@ -195,7 +199,9 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
             "total_forecasts": result.summary.total_forecasts,
             "by_urgency": result.summary.by_urgency,
             "total_estimated_revenue_idr": result.summary.total_estimated_revenue_idr,
-            "clients_with_active_practice_skipped": result.summary.clients_with_active_practice_skipped,
+            "clients_with_active_practice_skipped": (
+                result.summary.clients_with_active_practice_skipped
+            ),
             "top_revenue_forecasts": [
                 {
                     "client_name": f.client_name,
