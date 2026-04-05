@@ -1,43 +1,41 @@
 {
-  "seoTitle": "Labuan Bajo 2026: Danantara & Qatar's Tourism Investment",
-  "seoDescription": "Indonesia's Danantara & Qatar (QIA) partner to transform Labuan Bajo into a 'super tourism destination.' Explore the 2026 development plan.",
+  "seoTitle": "Waspada Haji Ilegal 2026: Bahaya Visa Non-Resmi & Sanksi",
+  "seoDescription": "Pemerintah Indonesia & Arab Saudi mengingatkan risiko berat penggunaan visa non-resmi untuk haji 2026. Hindari deportasi dan denda, kenali aturannya.",
   "keywords": [
-    "labuan bajo investment",
-    "danantara sovereign wealth fund",
-    "qatar investment authority indonesia",
-    "indonesia tourism development",
-    "komodo national park tourism",
-    "east nusa tenggara investment",
-    "super priority destination indonesia"
+    "haji ilegal",
+    "visa haji 2026",
+    "haji tanpa tasreh",
+    "sanksi haji ilegal",
+    "Kementerian Agama",
+    "visa turis untuk haji",
+    "penipuan haji",
+    "haji furoda"
   ],
   "aiOptimization": {
-    "answerSnippet": "Indonesia's sovereign wealth fund, Danantara, has partnered with the Qatar Investment Authority (QIA) in a strategic investment to develop Labuan Bajo into a 'super tourism destination'. The project focuses on the gateway to Komodo National Park, one of Indonesia's five designated 'super-priority' tourism zones.",
-    "primaryQuestion": "What is the Danantara-Qatar investment in Labuan Bajo?",
+    "answerSnippet": "Menggunakan visa non-resmi seperti visa turis untuk ibadah haji adalah pelanggaran berat di Arab Saudi. Jemaah yang terbukti ilegal akan menghadapi sanksi tegas berupa denda, deportasi, dan larangan masuk kembali hingga 10 tahun.",
+    "primaryQuestion": "Apa risiko dan sanksi jika melaksanakan haji dengan visa non-resmi atau ilegal?",
     "entityMentions": [
-      { "name": "Danantara", "type": "Organization" },
-      {
-        "name": "Qatar Investment Authority",
-        "type": "GovernmentOrganization"
-      },
-      { "name": "Labuan Bajo", "type": "Place" },
-      { "name": "Komodo National Park", "type": "Place" },
-      { "name": "Government of Indonesia", "type": "GovernmentOrganization" }
+      {"name": "Ibadah Haji", "type": "Event"},
+      {"name": "Pemerintah Arab Saudi", "type": "GovernmentOrganization"},
+      {"name": "Kementerian Agama Republik Indonesia", "type": "GovernmentOrganization"},
+      {"name": "Visa Haji", "type": "Product"},
+      {"name": "Tasreh", "type": "Regulation"}
     ]
   },
   "faqSchema": [
     {
-      "question": "Who is investing in Labuan Bajo?",
-      "answer": "Indonesia's sovereign wealth fund, Danantara, is partnering with the Qatar Investment Authority (QIA) for a major strategic investment in Labuan Bajo's tourism sector."
+      "question": "Apakah bisa naik haji dengan visa turis di tahun 2026?",
+      "answer": "Tidak. Pemerintah Arab Saudi melarang keras penggunaan visa turis, ziarah, atau jenis visa non-haji lainnya untuk melaksanakan ibadah haji. Hanya visa haji resmi yang diizinkan."
     },
     {
-      "question": "What is a 'super tourism destination' in Indonesia?",
-      "answer": "It refers to a government-designated priority area, like Labuan Bajo, receiving significant investment to create world-class infrastructure and attractions for high-value tourism."
+      "question": "Apa sanksi bagi jemaah haji ilegal tanpa tasreh?",
+      "answer": "Sanksi bagi jemaah haji ilegal mencakup denda sebesar 10.000 riyal Saudi, deportasi dari negara tersebut, dan larangan masuk kembali ke Arab Saudi selama 10 tahun."
     },
     {
-      "question": "How does this investment relate to Komodo National Park?",
-      "answer": "The development is focused on Labuan Bajo, the gateway town, to better manage tourism growth and improve infrastructure supporting the entire region, including the iconic park."
+      "question": "Mengapa daftar tunggu haji resmi di Indonesia sangat lama?",
+      "answer": "Daftar tunggu yang panjang disebabkan oleh kuota haji nasional yang terbatas dari Arab Saudi, sementara jumlah pendaftar di Indonesia, negara dengan populasi Muslim terbesar, sangat tinggi."
     }
   ],
-  "og_title": "Danantara-Qatar Partnership to Create 'Super Tourism Destination' in Labuan Bajo",
-  "og_description": "A major strategic investment from Indonesia's Danantara and the Qatar Investment Authority (QIA) aims to transform Labuan Bajo, gateway to the Komodo dragons, into a world-class tourism hub."
+  "og_title": "Peringatan Pemerintah RI: Waspada Bahaya & Sanksi Berat Haji Ilegal 2026 dengan Visa Non-Resmi",
+  "og_description": "Jangan ambil risiko! Pemerintah mengingatkan jemaah tentang bahaya menggunakan visa turis atau ziarah untuk haji 2026. Sanksi berat seperti denda, deportasi, dan blacklist menanti pelanggar."
 }
