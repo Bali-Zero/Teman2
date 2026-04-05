@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { VisaCard } from "@/components/visa-oracle/VisaCard";
 import { recommendVisas } from "@/lib/visa-oracle/api";
+import { saveVisaResults, MAX_QUESTIONS } from "@/lib/visa-oracle/storage";
 import type { QuizAnswers, VisaRecommendation } from "@/lib/visa-oracle/types";
 
 export default function ResultPage() {
@@ -41,6 +42,7 @@ export default function ResultPage() {
       .then((res) => {
         setVisas(res.visas);
         setSessionId(res.session_id);
+        saveVisaResults(res.visas);
       })
       .catch((err: unknown) => {
         setError(
@@ -111,7 +113,7 @@ export default function ResultPage() {
           our team on WhatsApp — they will help you find the right solution.
         </p>
         <a
-          href="https://wa.me/6281138888879"
+          href="https://wa.me/6281338051876"
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
@@ -139,7 +141,7 @@ export default function ResultPage() {
         </h1>
         <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
           You have{" "}
-          <span style={{ color: "var(--bz-accent)" }}>3 free questions</span> to
+          <span style={{ color: "var(--bz-accent)" }}>{MAX_QUESTIONS} free questions</span> to
           ask about these visa options.
         </p>
       </div>
@@ -172,7 +174,7 @@ export default function ResultPage() {
           </p>
         </div>
         <a
-          href="https://wa.me/6281138888879"
+          href="https://wa.me/6281338051876"
           target="_blank"
           rel="noopener noreferrer"
           className="flex-shrink-0 px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
