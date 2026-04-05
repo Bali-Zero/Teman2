@@ -163,7 +163,7 @@ nav {
   vertical-align: middle;
   height: 1.2em;
   width: auto;
-  margin-top: -0.1em;
+  margin-top: -0.35em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
@@ -179,6 +179,7 @@ nav {
   position: relative;
   flex-shrink: 0;
   vertical-align: middle;
+  margin-top: 0.15em;
 }
 .brand-om-circle::after {
   content: "ॐ";
