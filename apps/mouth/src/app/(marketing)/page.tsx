@@ -135,12 +135,14 @@ nav {
   border-bottom: 1px solid rgba(212,168,83,0.15);
   background: var(--navy);
   position: relative;
+  overflow: visible;
 }
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
   height: 80px;
   display: flex; align-items: center; justify-content: space-between;
+  overflow: visible;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
