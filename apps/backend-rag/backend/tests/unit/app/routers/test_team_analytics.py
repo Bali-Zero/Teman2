@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.routers.team_analytics import get_team_analytics_service, router
 from backend.services.analytics.team_analytics_service import TeamAnalyticsService
 
@@ -45,6 +45,7 @@ def app(mock_db_pool, mock_team_analytics_service):
     app.include_router(router)
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
     app.dependency_overrides[get_team_analytics_service] = lambda: mock_team_analytics_service
+    app.dependency_overrides[get_current_user] = lambda: {"email": "zero@balizero.com", "role": "Founder"}
     return app
 
 
