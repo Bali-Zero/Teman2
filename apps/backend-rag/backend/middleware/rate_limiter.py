@@ -170,6 +170,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/preview/": (60, 60),  # 60 per minute - article previews
         "/preview/upload": (10, 60),  # 10 per minute - prevent storage abuse
         "/api/legal/parent-documents": (20, 60),  # 20 per minute - internal ingestion
+        # Visa Oracle (public, consumer-facing)
+        "/api/v1/visa-oracle/chat": (15, 60),  # 15 per minute - LLM calls
+        "/api/v1/visa-oracle/": (60, 60),  # 60 per minute - quiz/handoff
         # Default for all other endpoints
         "*": (200, 60),  # 200 per minute
     }
