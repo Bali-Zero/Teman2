@@ -693,6 +693,22 @@ async def initialize_intelligent_router(
         logger.error(f"❌ Failed to initialize IntelligentRouter: {e}")
         app.state.intelligent_router = None
 
+    # Initialize SpecializedServiceRouter (wraps the 3 specialized services for OrchestratorCore)
+    try:
+        from backend.services.routing.specialized_service_router import SpecializedServiceRouter
+
+        specialized_router = SpecializedServiceRouter(
+            autonomous_research_service=autonomous_research_service,
+            cross_oracle_synthesis_service=cross_oracle_synthesis_service,
+            client_journey_orchestrator=client_journey_orchestrator,
+        )
+        app.state.specialized_router = specialized_router
+        service_registry.register("specialized_router", ServiceStatus.HEALTHY, critical=False)
+        logger.info("✅ SpecializedServiceRouter initialized (AutonomousResearch + CrossOracle + ClientJourney)")
+    except Exception as e:
+        logger.warning(f"⚠️ SpecializedServiceRouter initialization failed (non-critical): {e}")
+        app.state.specialized_router = None
+
 
 async def _init_background_services(
     app: FastAPI,
@@ -1013,6 +1029,11 @@ async def initialize_services(app: FastAPI) -> None:
         cross_oracle_synthesis_service,
         client_journey_orchestrator,
     ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
+
+    # Store specialized agents in app.state for router access
+    app.state.cross_oracle_synthesis_service = cross_oracle_synthesis_service
+    app.state.autonomous_research_service = autonomous_research_service
+    app.state.client_journey_orchestrator = client_journey_orchestrator
 
     # 5. Database services
     db_pool = await initialize_database_services(app)
