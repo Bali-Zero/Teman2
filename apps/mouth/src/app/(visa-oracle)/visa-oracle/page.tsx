@@ -156,7 +156,7 @@ export default function VisaOracleLandingPage() {
           Free to try. No account required.
         </p>
         <Link
-          href="/quiz"
+          href="/visa-oracle/quiz"
           className="inline-flex items-center justify-center px-10 py-3 rounded-lg font-semibold text-base transition-opacity hover:opacity-90 active:opacity-80"
           style={{
             backgroundColor: "var(--bz-accent)",

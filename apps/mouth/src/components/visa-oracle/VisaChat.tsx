@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { QuizAnswers, ChatMessage } from "@/lib/visa-oracle/types";
+import type { QuizAnswers, ChatMessage, VisaRecommendation } from "@/lib/visa-oracle/types";
 import { sendChatMessage, triggerHandoff } from "@/lib/visa-oracle/api";
 import {
   getSession,
@@ -24,9 +24,10 @@ const INITIAL_SYSTEM_MESSAGE: ChatMessage = {
 interface VisaChatProps {
   quizAnswers?: QuizAnswers;
   initialSessionId?: string;
+  visas?: VisaRecommendation[];
 }
 
-export function VisaChat({ quizAnswers, initialSessionId }: VisaChatProps) {
+export function VisaChat({ quizAnswers, initialSessionId, visas }: VisaChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     INITIAL_SYSTEM_MESSAGE,
   ]);
@@ -52,7 +53,7 @@ export function VisaChat({ quizAnswers, initialSessionId }: VisaChatProps) {
       const response = await triggerHandoff(
         sessionIdRef.current,
         quizAnswers ?? ({} as QuizAnswers),
-        [],
+        visas ?? [],
         currentMessages,
       );
       setWhatsappUrl(response.whatsapp_url ?? FALLBACK_WA_URL);
