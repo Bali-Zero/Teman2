@@ -8,7 +8,15 @@ set -euo pipefail
 REPO_URL="git@github.com:Balizero1987/Teman2.git"
 PROJECT_DIR="$HOME/Desktop/nuzantara"
 OPENCLAW_DIR="$HOME/.openclaw-ruslana"
-RUSLANA_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzNmRlMDI1ZC0xYjM4LTRhMmUtODI5Mi00ZTIwZGM2YmJjNGMiLCJlbWFpbCI6InJ1c2xhbmFAYmFsaXplcm8uY29tIiwicm9sZSI6IkJvYXJkIE1lbWJlciIsImV4cCI6MTgwNjM5MDg2N30.a2uo32DXTfIu7Cs-wCUKkUlMo7jekVmQGIJa9UggX4s"
+
+# Token provided by admin during setup — never hardcode
+if [ -z "${RUSLANA_TOKEN:-}" ]; then
+    echo "Enter Ruslana's API token (provided by Zero):"
+    read -r RUSLANA_TOKEN
+    if [ -z "$RUSLANA_TOKEN" ]; then
+        echo "ERROR: Token is required" >&2; exit 1
+    fi
+fi
 GATEWAY_TOKEN=$(openssl rand -base64 48 | tr -d '\n')
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'

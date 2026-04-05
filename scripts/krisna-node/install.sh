@@ -5,7 +5,15 @@
 set -euo pipefail
 
 PROJECT_DIR="$HOME/Desktop/nuzantara"
-KRISNA_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NjAxMzhjMC1jYWVkLTQ2NGItOGY0ZC0zZjJlMGM3ZTk3YjYiLCJlbWFpbCI6ImtyaXNuYUBiYWxpemVyby5jb20iLCJyb2xlIjoiRXhlY3V0aXZlIENvbnN1bHRhbnQiLCJleHAiOjE4MDYzOTA4Njd9.fZRo1yhqxgd3dqvYv0m6p36xr5xP3u8fghVc4ycdP5g"
+
+# Token provided by admin during setup — never hardcode
+if [ -z "${KRISNA_TOKEN:-}" ]; then
+    echo "Enter Krisna's API token (provided by Zero):"
+    read -r KRISNA_TOKEN
+    if [ -z "$KRISNA_TOKEN" ]; then
+        echo "ERROR: Token is required" >&2; exit 1
+    fi
+fi
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { echo -e "${BLUE}[node-krisna]${NC} $1"; }

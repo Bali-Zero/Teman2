@@ -6,8 +6,8 @@
     <string>com.nuzantara.dlq-autopilot</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
-        <string>/Users/nuzantara/scripts/dlq_autopilot.py</string>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/docs/infra/launchagents/launch_dlq_autopilot.sh</string>
     </array>
     <key>StartInterval</key>
     <integer>1800</integer>
@@ -19,14 +19,8 @@
     <string>/Users/nuzantara/logs/dlq_autopilot.error.log</string>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
         <key>HOME</key>
         <string>/Users/nuzantara</string>
-        <key>TELEGRAM_BOT_TOKEN</key>
-        <string>8295471667:AAHglwz8p8LxFnDgctmXuCs5aZa6lY78QO8</string>
-        <key>TELEGRAM_ADMIN_CHAT_ID</key>
-        <string>413539912</string>
     </dict>
     <key>KeepAlive</key>
     <false/>

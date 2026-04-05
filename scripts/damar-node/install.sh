@@ -5,7 +5,15 @@
 set -euo pipefail
 
 PROJECT_DIR="$HOME/Desktop/nuzantara"
-DAMAR_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZjAyYWQ3YS0wZWVlLTRjZWQtOGRkMi0zNmVlNWE1NzcyODAiLCJlbWFpbCI6ImRhbWFyQGJhbGl6ZXJvLmNvbSIsInJvbGUiOiJKdW5pb3IgQ29uc3VsdGFudCIsImV4cCI6MTgwNjM5MDkyOH0.vFIoKhJRuAa3hTZunNR4DGLj0Zh0OK_rVvw_mLWZiDw"
+
+# Token provided by admin during setup — never hardcode
+if [ -z "${DAMAR_TOKEN:-}" ]; then
+    echo "Enter Damar's API token (provided by Zero):"
+    read -r DAMAR_TOKEN
+    if [ -z "$DAMAR_TOKEN" ]; then
+        echo "ERROR: Token is required" >&2; exit 1
+    fi
+fi
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'
 log()  { echo -e "${BLUE}[node-damar]${NC} $1"; }
