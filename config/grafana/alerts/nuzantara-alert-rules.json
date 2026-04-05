@@ -1,0 +1,275 @@
+[
+  {
+    "id": 1,
+    "uid": "ad3fb1ac-ac8a-4e86-9098-796ce18d1871",
+    "orgID": 1,
+    "folderUID": "nuzantara-alerts",
+    "ruleGroup": "nuzantara-critical",
+    "title": "Backend Down",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 300,
+          "to": 0
+        },
+        "datasourceUid": "PBFA97CFB590B2093",
+        "model": {
+          "expr": "probe_success{job=\"nuzantara-backend\"}",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "A"
+        }
+      },
+      {
+        "refId": "B",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 300,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0],
+                "type": "gt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "reducer": "last",
+          "refId": "B",
+          "type": "reduce"
+        }
+      },
+      {
+        "refId": "C",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 300,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1],
+                "type": "lt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "B",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "C",
+          "type": "threshold"
+        }
+      }
+    ],
+    "updated": "2026-04-05T20:56:51Z",
+    "noDataState": "Alerting",
+    "execErrState": "Alerting",
+    "for": "2m",
+    "annotations": {
+      "description": "The backend at nuzantara-rag.fly.dev has been unreachable for more than 2 minutes. Check Fly.io logs and status.",
+      "summary": "Nuzantara Backend (Fly.io) is DOWN"
+    },
+    "labels": {
+      "service": "backend",
+      "severity": "critical"
+    },
+    "provenance": "api",
+    "isPaused": false
+  },
+  {
+    "id": 2,
+    "uid": "eccbf2fe-9659-4bc6-84e0-fd9b23c02d2f",
+    "orgID": 1,
+    "folderUID": "nuzantara-alerts",
+    "ruleGroup": "nuzantara-critical",
+    "title": "Cron Job Failed",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "PBFA97CFB590B2093",
+        "model": {
+          "expr": "cron_job_last_status",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "A"
+        }
+      },
+      {
+        "refId": "B",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0],
+                "type": "gt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "reducer": "last",
+          "refId": "B",
+          "type": "reduce"
+        }
+      },
+      {
+        "refId": "C",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [1],
+                "type": "lt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "B",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "C",
+          "type": "threshold"
+        }
+      }
+    ],
+    "updated": "2026-04-05T20:57:00Z",
+    "noDataState": "OK",
+    "execErrState": "OK",
+    "for": "0s",
+    "annotations": {
+      "description": "One or more cron jobs reported a failed status. Check ~/logs/cron/ for details.",
+      "summary": "A cron job has failed"
+    },
+    "labels": {
+      "service": "cron",
+      "severity": "warning"
+    },
+    "provenance": "api",
+    "isPaused": false
+  },
+  {
+    "id": 3,
+    "uid": "e6b88011-e438-4204-8708-ed2a1efac45c",
+    "orgID": 1,
+    "folderUID": "nuzantara-alerts",
+    "ruleGroup": "nuzantara-critical",
+    "title": "Disk Usage High",
+    "condition": "C",
+    "data": [
+      {
+        "refId": "A",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "PBFA97CFB590B2093",
+        "model": {
+          "expr": "(1 - (node_filesystem_avail_bytes{mountpoint=\"/host_mnt/Users\",job=\"node-exporter\"} / node_filesystem_size_bytes{mountpoint=\"/host_mnt/Users\",job=\"node-exporter\"})) * 100",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "A"
+        }
+      },
+      {
+        "refId": "B",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [0],
+                "type": "gt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "A",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "reducer": "last",
+          "refId": "B",
+          "type": "reduce"
+        }
+      },
+      {
+        "refId": "C",
+        "queryType": "",
+        "relativeTimeRange": {
+          "from": 600,
+          "to": 0
+        },
+        "datasourceUid": "-100",
+        "model": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [80],
+                "type": "gt"
+              },
+              "type": "query"
+            }
+          ],
+          "expression": "B",
+          "intervalMs": 1000,
+          "maxDataPoints": 43200,
+          "refId": "C",
+          "type": "threshold"
+        }
+      }
+    ],
+    "updated": "2026-04-05T20:57:10Z",
+    "noDataState": "OK",
+    "execErrState": "OK",
+    "for": "5m",
+    "annotations": {
+      "description": "The Air machine disk usage has exceeded 80%. Free up space or investigate large files.",
+      "summary": "Disk usage is above 80%"
+    },
+    "labels": {
+      "service": "machine",
+      "severity": "warning"
+    },
+    "provenance": "api",
+    "isPaused": false
+  }
+]

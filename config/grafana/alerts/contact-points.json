@@ -1,0 +1,24 @@
+[
+  {
+    "uid": "c482b217-7e18-41bc-a336-87aff08ca629",
+    "name": "Telegram Alerts",
+    "type": "telegram",
+    "settings": {
+      "bottoken": "[REDACTED]",
+      "chatid": "413539912",
+      "disable_notification": false,
+      "parse_mode": "HTML"
+    },
+    "disableResolveMessage": false,
+    "provenance": "api"
+  },
+  {
+    "uid": "",
+    "name": "email receiver",
+    "type": "email",
+    "settings": {
+      "addresses": "<example@email.com>"
+    },
+    "disableResolveMessage": false
+  }
+]
