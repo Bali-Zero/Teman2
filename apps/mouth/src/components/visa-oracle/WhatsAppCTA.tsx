@@ -1,5 +1,7 @@
 "use client";
 
+import { MAX_QUESTIONS } from "@/lib/visa-oracle/storage";
+
 interface WhatsAppCTAProps {
   whatsappUrl: string;
   onDismiss?: () => void;
@@ -34,12 +36,12 @@ export function WhatsAppCTA({ whatsappUrl, onDismiss }: WhatsAppCTAProps) {
           className="text-xl font-semibold leading-snug"
           style={{ color: "var(--tx-primary)" }}
         >
-          You&apos;ve used your 3 free questions
+          You&apos;ve used your {MAX_QUESTIONS} free questions
         </h2>
 
         {/* Explanation */}
         <p className="text-sm leading-relaxed" style={{ color: "var(--tx-secondary)" }}>
-          Chat directly with Damar — our Indonesia immigration specialist — for
+          Chat directly with our Indonesia immigration specialist for
           personalised guidance on your specific situation.
         </p>
 
