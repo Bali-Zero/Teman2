@@ -408,7 +408,8 @@ class IntelPipeline:
 
             prompt = (
                 f"Score each article 0-100: relevance for foreign investors/expats in Bali, Indonesia.\n"
-                f"Criteria: Bali importance(0-25), Expat relevance(0-25), Actionability(0-20), Timeliness(0-15), Quality(0-15).\n"
+                f"Criteria: Indonesia/Bali focus(0-30), Expat relevance(0-25), Actionability(0-20), Timeliness(0-15), Quality(0-10).\n"
+                f"IMPORTANT: Articles about OTHER countries (India, Thailand, Malaysia, etc.) that do NOT affect Indonesia MUST score 0-10.\n"
                 f"Reply JSON array only. No explanations.\n"
                 f"{articles_text}\n"
                 f"[{example_items},...]"
@@ -495,6 +496,24 @@ class IntelPipeline:
                     art['qwen_score'] = art.get('quality_score', 50) / 10
                     art['qwen_category'] = art.get('category', 'general')
                     scored.append(art)
+
+        # Hard geo-filter: demote articles about other countries (Qwen sometimes scores them high)
+        _OTHER_COUNTRY_KW = ("india ", "indian ", "thailand ", "thai ", "vietnam ", "philippines ",
+                             "filipino ", "malaysia ", "malaysian ", "singapore ", "japan ", "china ",
+                             "korea ", "cambodia ", "myanmar ", "laos ")
+        _INDONESIA_KW = ("indonesia", "bali", "kitas", "kitap", "pma", "kbli", "imigrasi",
+                         "djp", "pajak", "denpasar", "ngurah rai", "izin tinggal")
+        geo_demoted = 0
+        for art in scored:
+            text = f"{art.get('title', '')} {art.get('summary', '')}".lower()
+            is_other = any(kw in text for kw in _OTHER_COUNTRY_KW)
+            is_indo = any(kw in text for kw in _INDONESIA_KW)
+            if is_other and not is_indo:
+                art['quality_score'] = min(art.get('quality_score', 0), 10)
+                art['qwen_score'] = art['quality_score'] / 10
+                geo_demoted += 1
+        if geo_demoted:
+            self.log(f'  Geo-filter: {geo_demoted} non-Indonesia articles demoted to ≤10')
 
         # Apply threshold
         threshold = self.config.get('min_score', 30)

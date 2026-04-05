@@ -264,7 +264,16 @@ def synthesize_with_deepseek(all_signals: list, api_key: str) -> dict | None:
             start, end = content.find("{"), content.rfind("}") + 1
             content = content[start:end]
 
-        result = json.loads(content)
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError:
+            # DeepSeek sometimes returns single-quoted JSON or JS-style objects
+            import re
+            # Fix single quotes → double quotes (but not inside strings)
+            fixed = content.replace("'", '"')
+            # Remove trailing commas before } or ]
+            fixed = re.sub(r',\s*([}\]])', r'\1', fixed)
+            result = json.loads(fixed)
         print(f"  ✅ DeepSeek synthesis: {result.get('topic', '')[:50]}", file=sys.stderr)
         return result
 
@@ -273,13 +282,47 @@ def synthesize_with_deepseek(all_signals: list, api_key: str) -> dict | None:
         return None
 
 
+def _is_indonesia_relevant(article: dict) -> bool:
+    """Filter out articles not about Indonesia/Bali.
+    Uses title+source only — enrichment body contains generic words like 'visa'.
+    """
+    title_text = f"{article.get('title', '')} {article.get('source', '')}".lower()
+
+    exclude_kw = ("india ", "indian ", "thailand ", "thai ", "vietnam ", "philippines ",
+                  "filipino ", "malaysia ", "malaysian ", "singapore ", "japan ", "china ",
+                  "korea ", "cambodia ", "myanmar ", "laos ")
+    indonesia_kw = ("indonesia", "bali", "kitas", "kitap", "pma", "kbli", "pnbp",
+                    "imigrasi", "djp", "pajak", "oss", "bkpm", "denpasar", "ngurah rai",
+                    "jakarta", "perseroan", "notaris", "izin tinggal", "ahu.go.id",
+                    "kemenkumham", "kemenaker", "tempo.co")
+
+    # Title-only check for excluded countries — if title says "India" it's about India
+    title_only = article.get("title", "").lower()
+    if any(kw in title_only for kw in exclude_kw):
+        # Title explicitly names another country → reject unless title ALSO names Indonesia
+        indonesia_strong = ("indonesia", "bali", "jakarta", "kitas", "kitap", "pma", "kbli")
+        if not any(kw in title_only for kw in indonesia_strong):
+            return False
+
+    has_indonesia = any(kw in title_text for kw in indonesia_kw)
+    if not has_indonesia:
+        return article.get("category", "").lower() in ("immigration", "tax", "property", "company", "kbli")
+    return True
+
+
 def deterministic_fallback(articles: list, topic_hint: str = "") -> dict:
-    """Last-resort: pick best article from intel scraper by score."""
+    """Last-resort: pick best Indonesia/Bali article from intel scraper by score."""
     from collections import Counter
-    cat_counts = Counter(a.get("category") or a.get("qwen_category", "OTHER") for a in articles)
+
+    # Filter to Indonesia-relevant articles only
+    relevant = [a for a in articles if _is_indonesia_relevant(a)]
+    if not relevant:
+        relevant = articles  # fallback to all if filter too aggressive
+
+    cat_counts = Counter(a.get("category") or a.get("qwen_category", "OTHER") for a in relevant)
     dominant_cat = cat_counts.most_common(1)[0][0] if cat_counts else "GENERAL"
 
-    top = sorted(articles, key=lambda a: a.get("qwen_score", 0), reverse=True)
+    top = sorted(relevant, key=lambda a: a.get("qwen_score", 0), reverse=True)
     best = top[0] if top else {}
     topic = topic_hint or best.get("title", "Indonesia Business Intelligence")[:60]
 
@@ -310,8 +353,17 @@ def main():
     if not articles:
         articles = data.get("articles", [])
 
-    articles.sort(key=lambda a: a.get("qwen_score", 0), reverse=True)
-    top_articles = articles[:15]
+    # Hard geo-filter: remove articles about other countries before anything else
+    filtered = [a for a in articles if _is_indonesia_relevant(a)]
+    if not filtered:
+        filtered = articles  # safety net
+    else:
+        removed = len(articles) - len(filtered)
+        if removed:
+            print(f"  🌏 Geo-filter: removed {removed} non-Indonesia articles", file=sys.stderr)
+
+    filtered.sort(key=lambda a: a.get("qwen_score", 0), reverse=True)
+    top_articles = filtered[:15]
     intel_signals = [
         {
             "title": a.get("title", ""),
@@ -360,8 +412,46 @@ def main():
         result = synthesize_with_deepseek(all_signals, deepseek_key)
 
     if not result:
-        print("↩️  Deterministic fallback (no DeepSeek or synthesis failed)", file=sys.stderr)
-        result = deterministic_fallback(top_articles, args.hint)
+        # Fallback: use Gemini via subprocess (same SYNTHESIS_PROMPT, different LLM)
+        print("↩️  DeepSeek failed — trying Gemini synthesis...", file=sys.stderr)
+        try:
+            signals_text = ""
+            for s in all_signals[:20]:
+                signals_text += f"• {s.get('title', '')}: {s.get('brief', '')[:100]}\n"
+            gemini_prompt = SYNTHESIS_PROMPT.replace("{signals}", signals_text.strip())
+            import subprocess as _sp
+            gemini_proc = _sp.run(
+                ["gemini", "--prompt", gemini_prompt, "--model", "gemini-2.5-flash"],
+                capture_output=True, text=True, timeout=30
+            )
+            content = gemini_proc.stdout.strip()
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            elif "{" in content:
+                content = content[content.find("{"):content.rfind("}") + 1]
+            try:
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                import re
+                result = json.loads(re.sub(r',\s*([}\]])', r'\1', content.replace("'", '"')))
+            print(f"  ✅ Gemini synthesis: {result.get('topic', '')[:50]}", file=sys.stderr)
+        except Exception as e2:
+            print(f"  ⚠️  Gemini fallback also failed: {e2}", file=sys.stderr)
+            # Last resort: best Indonesia article by score (no more blind deterministic)
+            indo_articles = [a for a in top_articles if _is_indonesia_relevant(a)]
+            if indo_articles:
+                best = indo_articles[0]
+            else:
+                best = top_articles[0] if top_articles else {"title": "Indonesia Business Update"}
+            result = {
+                "topic": best.get("title", "Indonesia Business Update")[:60],
+                "angle": "Key implications for foreign investors in Bali",
+                "why": "Top Indonesia-relevant story",
+                "trend_signal": "emergency fallback",
+                "sources_used": ["last_resort"],
+            }
 
     # Add metadata
     result["selected_at"] = datetime.now().isoformat()
