@@ -115,28 +115,19 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
     """
     Get tax obligations based on entity type.
 
-    Queries KG for:
-    - PPh (income tax) rates and brackets
-    - PPN (VAT) rates
-    - Withholding taxes (PPh 21, 23, 26)
-    - Filing deadlines
-
-    Args:
-        state: Current TaxState
-        db_pool: PostgreSQL connection pool
-
-    Returns:
-        Updated state with tax obligations
+    Queries KG for tax obligations via HAS_TAX edges. Falls back to
+    hardcoded tax_obligations_db when KG returns no results.
     """
     logger.info("📋 [Tax Subgraph] Getting tax obligations...")
 
     entity_type = state.get("business_entity_type", "unknown")
+    kg_sources = 0
 
-    # Hardcoded knowledge (can be queried from KG)
+    # Hardcoded fallback data (kept as safety net)
     tax_obligations_db = {
         "pt_pma": {
             "pph_corporate": {
-                "rate": 0.22,  # 22% corporate tax
+                "rate": 0.22,
                 "description": "Corporate Income Tax (PPh Badan)",
                 "filing_deadline": "4 months after fiscal year end",
                 "monthly_installment": "PPh 25 (estimated tax)",
@@ -152,24 +143,21 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
                 "filing_deadline": "20th of following month",
             },
             "pph_23": {
-                "rate": 0.02,  # 2% for services
+                "rate": 0.02,
                 "description": "Withholding tax on services/rent",
                 "filing_deadline": "20th of following month",
             },
             "pph_26": {
-                "rate": 0.20,  # 20% for foreign payments
+                "rate": 0.20,
                 "description": "Withholding tax on payments to non-residents",
                 "filing_deadline": "20th of following month",
                 "note": "May be reduced by tax treaty",
             },
             "ppn": {
-                # VERIFIED 2026-02-09: 11% confirmed by Direktorat Jenderal Pajak
-                # 12% applies ONLY to luxury goods (PPnBM), 11% remains standard rate
-                # Source: https://stats.pajak.go.id/index.php/en/node/118104
-                "rate": 0.11,  # 11% VAT (standard rate, verified for 2026)
+                "rate": 0.11,
                 "description": "Value Added Tax",
                 "filing_deadline": "End of following month",
-                "threshold": 4_800_000_000,  # 4.8B IDR
+                "threshold": 4_800_000_000,
             },
         },
         "cv": {
@@ -205,21 +193,59 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
         },
     }
 
-    obligations = tax_obligations_db.get(entity_type, {})
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT n.entity_id, n.name, n.properties
+                FROM kg_edges e
+                JOIN kg_nodes n ON e.target_entity_id = n.entity_id
+                WHERE e.source_entity_id = $1
+                  AND e.relationship_type = 'HAS_TAX'
+                """,
+                f"company:{entity_type}",
+            )
 
-    # Filter VAT if not applicable
-    if not state.get("vat_applicable", False):
-        obligations.pop("ppn", None)
+            if isinstance(rows, list) and len(rows) > 0:
+                obligations = {}
+                for row in rows:
+                    tax_id = row["entity_id"].split(":")[-1]
+                    props = row["properties"] or {}
+                    props["name"] = row["name"]
+                    obligations[tax_id] = props
 
-    state.setdefault("tax_obligations", []).append(
-        {
+                # Filter VAT if not applicable
+                if not state.get("vat_applicable", False):
+                    obligations.pop("ppn", None)
+
+                state.setdefault("tax_obligations", []).append({
+                    "obligation_type": "tax_overview",
+                    "entity_type": entity_type,
+                    "details": obligations,
+                    "source": "knowledge_graph",
+                })
+                kg_sources = len(rows)
+                logger.info(
+                    f"✅ [Tax Subgraph] Got {kg_sources} tax obligations from KG for {entity_type}",
+                )
+    except Exception as e:
+        logger.warning(f"⚠️ [Tax Subgraph] KG tax query failed, using fallback: {e}")
+
+    # Fallback to hardcoded if KG empty
+    if kg_sources == 0:
+        obligations = tax_obligations_db.get(entity_type, {})
+        if not state.get("vat_applicable", False):
+            obligations.pop("ppn", None)
+        state.setdefault("tax_obligations", []).append({
             "obligation_type": "tax_overview",
             "entity_type": entity_type,
             "details": obligations,
-        },
-    )
+            "source": "hardcoded_fallback",
+        })
+        logger.info(f"📌 [Tax Subgraph] Using fallback tax obligations for {entity_type}")
 
-    logger.info(f"✅ [Tax Subgraph] Added {len(obligations)} tax obligations for {entity_type}")
+    state["kg_sources_used"] = state.get("kg_sources_used", 0) + kg_sources
+    logger.info(f"✅ [Tax Subgraph] Added tax obligations for {entity_type} (KG sources: {kg_sources})")
 
     return state
 
@@ -412,11 +438,12 @@ async def synthesize_tax_workflow_node(state: TaxState) -> TaxState:
 
     from backend.services.rag.confidence import calculate_subgraph_confidence
 
+    kg_sources = state.get("kg_sources_used", 0)
     breakdown = calculate_subgraph_confidence(
         workflow_source="tax_subgraph",
         steps_count=len(steps),
-        has_db_validation=False,
-        unique_sources=1,
+        has_db_validation=kg_sources > 0,
+        unique_sources=max(1, kg_sources),
     )
 
     workflow = {
