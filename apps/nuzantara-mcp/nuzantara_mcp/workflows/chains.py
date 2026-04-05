@@ -295,6 +295,47 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         except Exception as e:
             log.append({"step": "kbli_search", "status": "error", "detail": str(e)})
 
+        # Step 2b: Zone check reale (Prime Nexus integration)
+        _BALI_VILLAGES = {
+            "canggu": (-8.648, 115.132), "seminyak": (-8.692, 115.168),
+            "ubud": (-8.519, 115.263), "kuta": (-8.719, 115.167),
+            "sanur": (-8.700, 115.261), "jimbaran": (-8.783, 115.172),
+            "nusa dua": (-8.800, 115.231), "legian": (-8.706, 115.162),
+            "petitenget": (-8.668, 115.157), "umalas": (-8.661, 115.148),
+            "berawa": (-8.645, 115.131), "pererenan": (-8.632, 115.117),
+            "denpasar": (-8.670, 115.212), "bukit": (-8.818, 115.108),
+            "uluwatu": (-8.829, 115.085), "batu belig": (-8.659, 115.145),
+        }
+        try:
+            lat: float | None = None
+            lng: float | None = None
+            desc_lower = business_description.lower()
+            # Pattern: "at lat X lng Y"
+            import re as _re
+            coord_match = _re.search(r"at\s+lat\s+([-\d.]+)\s+lng\s+([-\d.]+)", desc_lower)
+            if coord_match:
+                lat, lng = float(coord_match.group(1)), float(coord_match.group(2))
+            else:
+                # Ricerca villaggio noto nella descrizione
+                for village, (vlat, vlng) in _BALI_VILLAGES.items():
+                    if village in desc_lower:
+                        lat, lng = vlat, vlng
+                        break
+            if lat is not None and lng is not None and result.get("kbli_matches"):
+                top_kbli = result["kbli_matches"][0].get("code", "") if result["kbli_matches"] else ""
+                zone_res = await _call_safe("/api/prime/v2/analyze", method="POST",
+                                           json={"lat": lat, "lng": lng, "kbli_code": top_kbli, "is_pma": True})
+                zone_code = zone_res.get("zone_code") or zone_res.get("zone", {}).get("code", "unknown")
+                verdict = zone_res.get("verdict") or zone_res.get("zone", {}).get("verdict", "UNKNOWN")
+                result["zone_analysis"] = {"zone_code": zone_code, "verdict": verdict, "lat": lat, "lng": lng}
+                log.append({"step": "zone_check", "status": "ok",
+                           "zone_code": zone_code, "verdict": verdict})
+            else:
+                log.append({"step": "zone_check", "status": "skipped",
+                           "detail": "No coordinates or village found in description"})
+        except Exception as e:
+            log.append({"step": "zone_check", "status": "skipped", "detail": str(e)})
+
         # Step 3: Determine visa (intelligent pricing-based recommendation)
         visa_type = "kitas_investor"  # default fallback
         nat_lower = nationality.lower()
@@ -1049,6 +1090,48 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     if not result.get("error"):
                         stats["practices_created"] += 1
             log.append({"step": "auto_practices", "status": "ok", "created": stats["practices_created"]})
+
+        # Step 5: RDTR Zone Drift reale (Prime Nexus)
+        stats.setdefault("zone_drifts", 0)
+        try:
+            geo_clients = await _call_safe("/api/crm/clients", params={"has_geo": "true", "limit": 20})
+            clients_list = geo_clients.get("clients") or geo_clients.get("data") or []
+            checked = 0
+            for client in clients_list:
+                if checked >= 5:
+                    break
+                stored_zone = client.get("rdtr_zone_code")
+                if not stored_zone:
+                    continue
+                geo_point = client.get("geo_point") or {}
+                lat = geo_point.get("lat") if isinstance(geo_point, dict) else None
+                lng = geo_point.get("lng") if isinstance(geo_point, dict) else None
+                if lat is None:
+                    lat = client.get("geo_point_lat")
+                if lng is None:
+                    lng = client.get("geo_point_lng")
+                if lat is None or lng is None:
+                    continue
+                try:
+                    resolve_res = await _call_safe("/api/prime/v2/resolve", method="POST",
+                                                  json={"lat": lat, "lng": lng})
+                    current_zone = resolve_res.get("zone_code") or resolve_res.get("zone", {}).get("code")
+                    checked += 1
+                    if current_zone and current_zone != stored_zone:
+                        stats["zone_drifts"] += 1
+                        log.append({
+                            "step": "rdtr_drift_check",
+                            "status": "drift_detected",
+                            "client_id": client.get("id"),
+                            "stored_zone": stored_zone,
+                            "current_zone": current_zone,
+                        })
+                except Exception:
+                    pass  # skip silenzioso per singolo cliente
+            log.append({"step": "rdtr_drift_check", "status": "ok",
+                       "clients_checked": checked, "drifts_found": stats["zone_drifts"]})
+        except Exception as e:
+            log.append({"step": "rdtr_drift_check", "status": "skipped", "detail": str(e)})
 
         res = {"chain": "compliance_autopilot", "stats": stats, "log": log}
         await _reflect_and_save(_call_safe, "compliance_autopilot",
