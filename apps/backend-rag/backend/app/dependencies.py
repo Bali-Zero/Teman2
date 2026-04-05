@@ -401,10 +401,14 @@ def get_orchestrator(request: Request) -> Any:
         db_pool = getattr(request.app.state, "db_pool", None)
         search_service = getattr(request.app.state, "search_service", None)
         nlm_enrichment_service = getattr(request.app.state, "nlm_enrichment_service", None)
+        graph_service = getattr(request.app.state, "graph_service", None)
+        cultural_insights = getattr(request.app.state, "cultural_insights", None)
         _agentic_rag_orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
             nlm_enrichment_service=nlm_enrichment_service,
+            graph_service=graph_service,
+            cultural_insights_service=cultural_insights,
         )
 
     return _agentic_rag_orchestrator
