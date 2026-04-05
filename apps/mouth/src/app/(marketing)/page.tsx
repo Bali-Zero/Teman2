@@ -166,7 +166,7 @@ nav {
   vertical-align: bottom;
   height: 1.5em;
   width: auto;
-  margin-bottom: -0.12em;
+  margin-bottom: -0.4em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
