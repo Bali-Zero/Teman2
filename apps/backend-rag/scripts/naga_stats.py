@@ -138,6 +138,63 @@ async def fetch_stats(conn: asyncpg.Connection) -> dict:
         SELECT COUNT(DISTINCT url) FROM naga_sources
     """)
 
+    # --- Quality scores (if column exists) ---
+    try:
+        quality = await conn.fetchrow("""
+            SELECT
+                ROUND(AVG(quality_score)::numeric, 3) AS avg_quality,
+                ROUND(MIN(quality_score)::numeric, 3) AS min_quality,
+                ROUND(MAX(quality_score)::numeric, 3) AS max_quality
+            FROM naga_claims
+            WHERE quality_score IS NOT NULL
+        """)
+        stats["quality"] = dict(quality) if quality and quality["avg_quality"] is not None else {}
+    except Exception:
+        stats["quality"] = {}
+
+    # --- Claim status breakdown ---
+    try:
+        statuses = await conn.fetch("""
+            SELECT claim_status, COUNT(*) AS n
+            FROM naga_claims
+            WHERE claim_status IS NOT NULL
+            GROUP BY claim_status
+            ORDER BY n DESC
+        """)
+        stats["claim_statuses"] = {r["claim_status"]: r["n"] for r in statuses}
+    except Exception:
+        stats["claim_statuses"] = {}
+
+    # --- Expiry stats ---
+    try:
+        stats["claims_expiring_7d"] = await conn.fetchval("""
+            SELECT COUNT(*) FROM naga_claims
+            WHERE claim_status = 'active'
+              AND expires_at IS NOT NULL
+              AND expires_at <= CURRENT_DATE + INTERVAL '7 days'
+        """)
+        stats["claims_expired"] = await conn.fetchval("""
+            SELECT COUNT(*) FROM naga_claims
+            WHERE claim_status = 'expired'
+        """)
+    except Exception:
+        stats["claims_expiring_7d"] = 0
+        stats["claims_expired"] = 0
+
+    # --- Cross-reference stats ---
+    try:
+        stats["corroboration_links"] = await conn.fetchval("""
+            SELECT COUNT(*) FROM naga_claim_transitions
+            WHERE transition_type = 'corroborates'
+        """)
+        stats["duplicate_links"] = await conn.fetchval("""
+            SELECT COUNT(*) FROM naga_claim_transitions
+            WHERE transition_type = 'duplicate'
+        """)
+    except Exception:
+        stats["corroboration_links"] = 0
+        stats["duplicate_links"] = 0
+
     return stats
 
 
@@ -223,6 +280,32 @@ def render(stats: dict) -> str:
                 f"  [{s.get('tier','?'):5}] {s.get('claims_extracted',0):>3}cl  "
                 f"conf={float(conf):.2f}  {dur:>4}s  {query}"
             )
+
+    # Quality scores
+    q = stats.get("quality", {})
+    if q:
+        lines.append("\n  QUALITY SCORES")
+        lines.append(f"  {'Average':<28} {q.get('avg_quality', '?'):>8}")
+        lines.append(f"  {'Min / Max':<28} {q.get('min_quality', '?'):>4} / {q.get('max_quality', '?')}")
+
+    # Claim statuses
+    cs = stats.get("claim_statuses", {})
+    if cs:
+        lines.append("\n  CLAIM LIFECYCLE")
+        for status, n in cs.items():
+            lines.append(f"  {status:<28} {n:>6}")
+
+    # Expiry
+    if stats.get("claims_expiring_7d") or stats.get("claims_expired"):
+        lines.append("\n  EXPIRY")
+        lines.append(f"  {'Expiring in 7 days':<28} {stats.get('claims_expiring_7d', 0):>6}")
+        lines.append(f"  {'Already expired':<28} {stats.get('claims_expired', 0):>6}")
+
+    # Cross-references
+    if stats.get("corroboration_links") or stats.get("duplicate_links"):
+        lines.append("\n  CROSS-REFERENCES")
+        lines.append(f"  {'Corroboration links':<28} {stats.get('corroboration_links', 0):>6}")
+        lines.append(f"  {'Duplicate links':<28} {stats.get('duplicate_links', 0):>6}")
 
     lines.append(f"\n{'='*65}\n")
     return "\n".join(lines)
