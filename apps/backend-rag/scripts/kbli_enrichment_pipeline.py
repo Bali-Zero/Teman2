@@ -865,7 +865,7 @@ def upsert_to_qdrant(code_str: str, judul: str, content: dict, dry_run: bool = F
         scroll_payload = json.dumps({
             "filter": {
                 "must": [
-                    {"key": "metadata.kode_kbli", "match": {"value": code_str}}
+                    {"key": "kode_kbli", "match": {"value": code_str}}
                 ]
             },
             "limit": 10,
@@ -1066,6 +1066,20 @@ def run_pipeline(
             # (requires generated content to be saved; simplified: re-generate from state)
             logger.warning("  Phase 4 standalone requires all_entries from phase 3. Re-run without --phase or from phase 3.")
             return
+
+        # If no new entries generated (resume scenario), rebuild from kbli-gold-all.json
+        if not all_entries:
+            logger.info("  No new entries generated — rebuilding all_entries from kbli-gold-all.json for Qdrant upsert...")
+            try:
+                with open(GOLD_JSON) as f:
+                    existing_gold = json.load(f)
+                for kode, content in existing_gold.items():
+                    if kode in {c["kode_kbli_2025"] for c in unenriched}:
+                        all_entries[kode] = content
+                logger.info(f"  Rebuilt {len(all_entries)} entries from JSON for Qdrant upsert")
+            except Exception as e:
+                logger.error(f"  Failed to rebuild entries: {e}")
+                return
 
         if not all_entries:
             logger.info("  No entries to upsert.")
