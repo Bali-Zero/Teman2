@@ -777,6 +777,30 @@ async def create_and_start_scheduler(
     except Exception as e:
         logger.error(f"Failed to register Drive Changes Polling: {e}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # KG INCREMENTAL BUILDER (daily — disabled on Fly.io, run via Air/Pro cron)
+    # ENABLE_KG_INCREMENTAL=true to activate. Uses Gemini Free Tier (15 RPM, 1500/day).
+    # ═══════════════════════════════════════════════════════════════════════════
+    kg_incremental_enabled = os.getenv("ENABLE_KG_INCREMENTAL", "false").lower() in ("true", "1", "yes")
+    if kg_incremental_enabled and db_pool:
+        try:
+            from backend.services.knowledge_graph.incremental_builder import KGIncrementalBuilder
+
+            kg_builder = KGIncrementalBuilder(db_pool=db_pool)
+
+            async def run_kg_incremental() -> None:
+                await kg_builder.run_incremental_update()
+
+            scheduler.register_task(
+                name="kg_incremental_builder",
+                task_func=run_kg_incremental,
+                interval_seconds=86400,  # 24 hours
+                enabled=True,
+            )
+            logger.info("✅ KGIncrementalBuilder registered (24h, Gemini Free Tier)")
+        except Exception as e:
+            logger.error(f"❌ Failed to register KGIncrementalBuilder: {e}")
+
     # Start the scheduler
     await scheduler.start()
 
