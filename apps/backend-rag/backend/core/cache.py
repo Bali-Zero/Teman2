@@ -137,17 +137,26 @@ class CacheService:
 
     Uses dependency injection instead of global state.
     Each instance has its own in-memory cache (instance-level, not module-level).
+
+    Supports lazy Redis connection: if instantiated before RedisManager.initialize()
+    (e.g. at module import time), it will connect on first cache operation.
     """
 
     def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
         self.stats = {"hits": 0, "misses": 0, "errors": 0}
+        self._redis_checked = False
 
         # Instance-level in-memory cache
         self._memory_cache = LRUCache()
 
-        # Get Redis client from centralized RedisManager
+    def _try_connect_redis(self) -> None:
+        """Lazily connect to Redis via RedisManager. Called once on first cache operation."""
+        if self._redis_checked:
+            return
+        self._redis_checked = True
+
         from backend.core.redis_manager import RedisManager
 
         manager = RedisManager.get_instance()
@@ -205,6 +214,7 @@ class CacheService:
 
     async def get(self, key: str) -> Any | None:
         """Get value from cache"""
+        self._try_connect_redis()
         try:
             if self.redis_available and self.redis_client:
                 value = await self.redis_client.get(key)
@@ -226,6 +236,7 @@ class CacheService:
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """Set value in cache with TTL (seconds). Uses RedisManager TTL strategy if ttl not provided."""
+        self._try_connect_redis()
         if ttl is None:
             # Extract prefix from key format "zantara:{prefix}:{hash}"
             from backend.core.redis_manager import get_ttl
@@ -246,6 +257,7 @@ class CacheService:
 
     async def delete(self, key: str) -> bool:
         """Delete key from cache"""
+        self._try_connect_redis()
         try:
             if self.redis_available and self.redis_client:
                 await self.redis_client.delete(key)
@@ -257,6 +269,7 @@ class CacheService:
 
     async def clear_pattern(self, pattern: str) -> int:
         """Clear all keys matching pattern"""
+        self._try_connect_redis()
         try:
             if self.redis_available and self.redis_client:
                 keys = await self.redis_client.keys(pattern)
@@ -270,6 +283,7 @@ class CacheService:
 
     def get_stats(self) -> dict:
         """Get cache statistics"""
+        self._try_connect_redis()
         total = self.stats["hits"] + self.stats["misses"]
         hit_rate = (self.stats["hits"] / total * 100) if total > 0 else 0
 

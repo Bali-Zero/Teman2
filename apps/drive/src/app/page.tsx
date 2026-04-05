@@ -17,6 +17,7 @@ import {
   FileModal,
   CreateMenu,
   ContextMenu,
+  FilePreview,
   MoveDialog,
   DropZone,
   UploadProgress,
@@ -90,6 +91,7 @@ export default function DrivePage() {
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [quickPreviewFile, setQuickPreviewFile] = useState<FileItem | null>(null);
 
   // UI State
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -123,7 +125,7 @@ export default function DrivePage() {
     setSearchQuery('');
   };
 
-  // Single click = select, Double click = open (Google Drive behavior)
+  // Single click = select (+ quick preview for files), Double click = open (Google Drive behavior)
   const handleFileClick = (file: FileItem, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (e.metaKey || e.ctrlKey) {
@@ -149,6 +151,11 @@ export default function DrivePage() {
       setSelectedFiles(new Set([file.id]));
       setLastSelectedIndex(index);
       driveLogger.logFileSelected(file.id, file.name, false);
+      // Open quick preview dialog for non-folder files on single click
+      if (!file.is_folder) {
+        setQuickPreviewFile(file);
+        driveLogger.logFilePreviewed(file.id, file.name, file.mime_type);
+      }
     }
   };
 
@@ -624,6 +631,20 @@ export default function DrivePage() {
         uploads={uploads}
         onCancel={handleCancelUpload}
         onDismiss={handleDismissUpload}
+      />
+
+      <FilePreview
+        file={quickPreviewFile}
+        isOpen={!!quickPreviewFile}
+        onClose={() => setQuickPreviewFile(null)}
+        onDownload={async (file) => {
+          try {
+            await api.drive.downloadFile(file.id, file.name);
+          } catch (err) {
+            logger.error('Download failed', { component: 'DrivePage', action: 'quickPreviewDownload', metadata: { fileId: file.id } }, err instanceof Error ? err : new Error(String(err)));
+            window.open(api.drive.getDownloadUrl(file.id), '_blank');
+          }
+        }}
       />
 
       <FileViewer

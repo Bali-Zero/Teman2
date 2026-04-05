@@ -82,6 +82,7 @@ class OrchestratorCore:
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
         nlm_enrichment_service: Any = None,  # NLMEnrichmentService
+        cultural_insights_service: Any = None,  # CulturalInsightsService
     ) -> None:
         """
         Inizializza OrchestratorCore.
@@ -100,6 +101,7 @@ class OrchestratorCore:
             db_pool: Optional database pool
             kg_langgraph_orchestrator: Optional KGLangGraphOrchestrator (Phase 3)
             nlm_enrichment_service: Optional NLMEnrichmentService for CAUTIOUS-zone enrichment
+            cultural_insights_service: Optional CulturalInsightsService for cultural context
         """
         self.llm_gateway = llm_gateway
         self.reasoning_engine = reasoning_engine
@@ -111,6 +113,7 @@ class OrchestratorCore:
         self.faq_cache = faq_cache  # FAQ cache (exact match, < 1ms)
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
         self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
+        self.cultural_insights_service = cultural_insights_service  # Cultural context enrichment
         self.db_pool = db_pool  # Store for later use
 
         # Initialize specialized managers
@@ -972,6 +975,28 @@ class OrchestratorCore:
                     query=query,
                 ),
             )
+
+        # 15. Cultural Insights enrichment (non-blocking metadata)
+        if self.cultural_insights_service:
+            try:
+                cultural = await self.cultural_insights_service.query_insights(
+                    query=query, limit=2,
+                )
+                if cultural:
+                    result.cultural_context = [
+                        {
+                            "content": item.get("content", ""),
+                            "metadata": item.get("metadata", {}),
+                            "score": item.get("score", 0.0),
+                        }
+                        for item in cultural
+                    ]
+                    logger.debug(
+                        "Cultural insights enrichment: %d items for query",
+                        len(cultural),
+                    )
+            except Exception as e:
+                logger.warning("Cultural insights enrichment skipped: %s", e)
 
         return result
 
