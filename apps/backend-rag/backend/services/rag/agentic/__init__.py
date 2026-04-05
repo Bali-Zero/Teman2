@@ -115,6 +115,8 @@ def create_agentic_rag(
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
     nlm_enrichment_service: Any = None,
+    graph_service: Any = None,
+    cultural_insights_service: Any = None,
 ) -> AgenticRAGOrchestrator:
     """
     Factory function to create a fully configured AgenticRAGOrchestrator.
@@ -167,6 +169,12 @@ def create_agentic_rag(
         WebSearchTool(),  # EIGHTH: Web search for out-of-KB queries (Brave)
         TimeSheetTool(),  # NINTH: Timesheet Management
     ]
+
+    # TENTH: Graph Traversal Tool (PostgreSQL KG traversal — optional)
+    if graph_service is not None:
+        GraphTraversalTool = _get_graph_traversal_tool()
+        tools.append(GraphTraversalTool(graph_service))
+        logger.info("✅ GraphTraversalTool added to tools list")
     logger.debug("create_agentic_rag: Tools list created")
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
@@ -177,6 +185,7 @@ def create_agentic_rag(
         retriever=retriever,
         clarification_service=clarification_service,
         nlm_enrichment_service=nlm_enrichment_service,
+        cultural_insights_service=cultural_insights_service,
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")
     return orchestrator

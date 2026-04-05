@@ -198,6 +198,11 @@ class Settings(BaseSettings):
     # ========================================
     # RERANKER CONFIGURATION
     # ========================================
+    reranker_backend: str = Field(
+        default="cross-encoder",
+        description="Reranker backend: 'cross-encoder' (local, free) or 'zerank2' (external API). "
+        "Set via RERANKER_BACKEND env var. Default: cross-encoder (MiniLM-L-6-v2, ~75MB).",
+    )
     enable_reranker: bool = False  # DISABLED: Saves ~5GB Docker image size
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     reranker_top_k: int = 5

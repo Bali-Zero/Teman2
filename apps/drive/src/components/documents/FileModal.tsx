@@ -125,7 +125,7 @@ export function FileModal({
       />
 
       {/* Modal */}
-      <div role="dialog" aria-modal="true" aria-label={MODE_CONFIG[mode].title} className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+      <div role="dialog" aria-modal="true" aria-label={modeConfig[mode].title} className="relative z-10 w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
         {/* Header */}
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
