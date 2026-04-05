@@ -160,11 +160,11 @@ nav {
 }
 .brand-logo-3-img {
   display: inline-block;
-  vertical-align: baseline;
-  height: 1.35em;
+  vertical-align: middle;
+  height: 1.2em;
   width: auto;
-  margin-bottom: -0.15em;
-  margin-right: -0.03em;
+  margin-top: -0.1em;
+  margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
@@ -178,8 +178,7 @@ nav {
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
-  vertical-align: baseline;
-  margin-bottom: -0.05em;
+  vertical-align: middle;
 }
 .brand-om-circle::after {
   content: "ॐ";
