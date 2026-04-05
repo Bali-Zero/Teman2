@@ -82,7 +82,7 @@ class WaitingDocumentsService:
                         f"Waiting docs notification sent to team leader {team_leader_email}",
                     )
                 except Exception as e:
-                    logger.error(f"Failed to notify team leader: {e}")
+                    logger.error(f"Failed to notify team leader: {e}", exc_info=True)
             else:
                 logger.warning(f"No team leader assigned for practice {practice_id}")
 
@@ -97,7 +97,7 @@ class WaitingDocumentsService:
                     results["client_notified"] = True
                     logger.info(f"Document request email sent to client {client_data['email']}")
                 except Exception as e:
-                    logger.error(f"Failed to send document request to client: {e}")
+                    logger.error(f"Failed to send document request to client: {e}", exc_info=True)
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 

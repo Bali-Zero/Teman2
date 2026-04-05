@@ -84,7 +84,7 @@ class EnhancedCRMService:
             logger.info("✅ EnhancedCRMService initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize CRM service: {sanitize_error_message(e)}")
+            logger.error(f"Failed to initialize CRM service: {sanitize_error_message(e)}", exc_info=True)
             raise
 
     # ==================== CLIENT OPERATIONS ====================
@@ -158,7 +158,7 @@ class EnhancedCRMService:
         except ValidationError:
             raise
         except Exception as e:
-            logger.error(f"Failed to create client: {sanitize_error_message(e)}")
+            logger.error(f"Failed to create client: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Failed to create client", operation="insert")
 
     async def update_client(
@@ -232,7 +232,7 @@ class EnhancedCRMService:
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            logger.error(f"Failed to update client: {sanitize_error_message(e)}")
+            logger.error(f"Failed to update client: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Failed to update client", operation="update")
 
     async def get_client(
@@ -265,7 +265,7 @@ class EnhancedCRMService:
             return result
 
         except Exception as e:
-            logger.error(f"Failed to get client: {sanitize_error_message(e)}")
+            logger.error(f"Failed to get client: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Failed to retrieve client", operation="select")
 
     async def search_clients(
@@ -330,7 +330,7 @@ class EnhancedCRMService:
             return result
 
         except Exception as e:
-            logger.error(f"Failed to create practice: {sanitize_error_message(e)}")
+            logger.error(f"Failed to create practice: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Failed to create practice", operation="insert")
 
     async def update_practice_status(
@@ -389,7 +389,7 @@ class EnhancedCRMService:
         except ResourceNotFoundError:
             raise
         except Exception as e:
-            logger.error(f"Failed to update practice status: {sanitize_error_message(e)}")
+            logger.error(f"Failed to update practice status: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Failed to update practice status", operation="update")
 
     # ==================== BATCH OPERATIONS ====================
@@ -412,7 +412,7 @@ class EnhancedCRMService:
             return ids
 
         except Exception as e:
-            logger.error(f"Batch create failed: {sanitize_error_message(e)}")
+            logger.error(f"Batch create failed: {sanitize_error_message(e)}", exc_info=True)
             raise DatabaseError("Batch creation failed", operation="batch_insert")
 
     # ==================== HR BONUS HOOK ====================
