@@ -59,7 +59,7 @@ class ProcessAutomationService:
             # Fetch practice and client data
             practice_data = await self._fetch_practice_data(practice_id)
             if not practice_data:
-                logger.error(f"Practice {practice_id} not found")
+                logger.error(f"Practice {practice_id} not found", exc_info=True)
                 return {"success": False, "error": "Practice not found"}
 
             client_data = await self._fetch_client_data(practice_data["client_id"])
@@ -89,7 +89,7 @@ class ProcessAutomationService:
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
                 except Exception as e:
-                    logger.error(f"Failed to send process start email to client: {e}")
+                    logger.error(f"Failed to send process start email to client: {e}", exc_info=True)
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 
@@ -106,7 +106,7 @@ class ProcessAutomationService:
                         f"Process start notification sent to team leader {team_leader_email}",
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send notification to team leader: {e}")
+                    logger.error(f"Failed to send notification to team leader: {e}", exc_info=True)
 
             # Log activity
             await self._log_activity(

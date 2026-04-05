@@ -59,7 +59,7 @@ class DriveCircuitBreaker:
         self._last_failure_time = time.time()
         if self._failures >= self.failure_threshold:
             if self._state != "open":
-                logger.error(f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi")
+                logger.error(f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi", exc_info=True)
             self._state = "open"
 
     async def call(
@@ -395,7 +395,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 )
                 processed += 1
             except Exception as e:
-                logger.error(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
+                logger.error(f"Drive poll: OCR dispatch failed for {file_name}: {e}", exc_info=True)
 
         # 5. Save new page token
         async with db_pool.acquire() as conn:

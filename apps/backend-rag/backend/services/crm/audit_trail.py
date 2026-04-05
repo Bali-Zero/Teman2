@@ -108,7 +108,7 @@ class CRMAuditor:
                 await self._flush_buffer()
 
         except Exception as e:
-            logger.error(f"Failed to log audit entry: {sanitize_error_message(e)}")
+            logger.error(f"Failed to log audit entry: {sanitize_error_message(e)}", exc_info=True)
 
     async def log_client_created(
         self,
@@ -285,7 +285,7 @@ class CRMAuditor:
             self._buffer.clear()
 
         except Exception as e:
-            logger.error(f"Failed to flush audit buffer: {sanitize_error_message(e)}")
+            logger.error(f"Failed to flush audit buffer: {sanitize_error_message(e)}", exc_info=True)
 
     def _calculate_changes(
         self, old_values: dict[str, Any], new_values: dict[str, Any],

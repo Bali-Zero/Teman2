@@ -58,7 +58,7 @@ class AICRMExtractor:
                 f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}",
             )
         except Exception as e:
-            logger.error(f"❌ Failed to initialize ZANTARA AI: {e}")
+            logger.error(f"❌ Failed to initialize ZANTARA AI: {e}", exc_info=True)
             raise
 
     async def extract_from_conversation(
@@ -159,13 +159,13 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
             return extracted_data
 
         except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse extraction JSON: {e}")
-            logger.error(f"Raw response: {content}")
+            logger.error(f"❌ Failed to parse extraction JSON: {e}", exc_info=True)
+            logger.error(f"Raw response: {content}", exc_info=True)
             # Return minimal structure
             return self._get_empty_extraction()
 
         except Exception as e:
-            logger.error(f"❌ Extraction failed: {e}")
+            logger.error(f"❌ Extraction failed: {e}", exc_info=True)
             return self._get_empty_extraction()
 
     def _get_empty_extraction(self) -> dict:
