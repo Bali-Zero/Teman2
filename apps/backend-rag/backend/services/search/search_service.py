@@ -453,7 +453,6 @@ class SearchService:
 
         return query_embedding, collection_name, vector_db, chroma_filter, tier_values
 
-    @cached(ttl=300, prefix="rag_search")
     async def search(
         self,
         query: str,
