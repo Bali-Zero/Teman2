@@ -44,12 +44,14 @@ async def lifespan_light(app: FastAPI):
 
     yield
 
-    # Shutdown: close DB pool
+    # Shutdown: close DB pool and proxy client
     logger.info("🛑 [API PROCESS] Shutting down...")
     db_pool = getattr(app.state, "db_pool", None)
     if db_pool:
         await db_pool.close()
         logger.info("✅ DB pool closed")
+    from backend.app.rag_proxy import close_proxy_client
+    await close_proxy_client()
 
 
 def create_api_app() -> FastAPI:
@@ -83,6 +85,15 @@ def create_api_app() -> FastAPI:
 
     register_middleware(api)
     include_light_routers(api)
+
+    # Proxy router: catches heavy routes and forwards to rag process
+    # Must be added LAST (after all light routers)
+    from backend.app.rag_proxy import create_proxy_router, is_proxy_enabled
+    if is_proxy_enabled():
+        api.include_router(create_proxy_router())
+        logger.info("✅ RAG proxy router registered (forwarding to rag process)")
+    else:
+        logger.info("ℹ️ RAG proxy disabled (RAG_PROXY_ENABLED=false)")
 
     return api
 
