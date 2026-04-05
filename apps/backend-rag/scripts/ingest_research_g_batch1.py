@@ -58,9 +58,10 @@ ENRICHED_DATA = {
 
 
 async def fuse_intelligence():
-    # FORZATURA CREDENZIALI PRODUZIONE (Pragmatic Fix)
-    qdr_url = "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333"
-    qdr_api_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.2GbFS6QDLq-6pbM9yrvhndsWwtEiCY0iueNvPNKjj1k"
+    qdr_url = os.environ.get("QDRANT_URL", "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333")
+    qdr_api_key = os.environ.get("QDRANT_API_KEY")
+    if not qdr_api_key:
+        raise ValueError("Missing QDRANT_API_KEY in environment")
 
     logger.info("Connecting to production Qdrant Cloud...")
     qdrant = QdrantClient(url=qdr_url, api_key=qdr_api_key)
