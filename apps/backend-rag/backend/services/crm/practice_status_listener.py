@@ -23,7 +23,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
-from backend.services.crm.process_automation_service import ProcessAutomationService
+from backend.services.crm.automation import ProcessAutomationService
 
 logger = get_logger(__name__)
 
