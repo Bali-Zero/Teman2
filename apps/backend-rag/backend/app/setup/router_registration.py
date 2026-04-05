@@ -340,3 +340,359 @@ def include_routers(api: FastAPI) -> None:
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
+
+
+def include_light_routers(api: FastAPI) -> None:
+    """
+    Include only LIGHT routers (DB + auth only, no RAG/ML dependencies).
+
+    Used by the light process split — starts fast, no torch/sentence-transformers.
+    All imports are lazy (inside function body) matching the existing pattern.
+
+    Args:
+        api: FastAPI application instance
+    """
+    from backend.app.routers import (
+        admin_conversation_cleanup,
+        admin_drive_auth,
+        admin_drive_health,
+        admin_drive_refresh,
+        admin_drive_setup,
+        admin_logs,
+        admin_team_activity,
+        admin_zoho_auth,
+        analytics,
+        article_composer,
+        auth,
+        autonomous_execution,
+        cell_status,
+        crm_analytics,
+        crm_clients_documents,
+        crm_company,
+        crm_enhanced_alerts,
+        crm_enhanced_documents,
+        crm_interactions,
+        crm_notifications,
+        crm_portal_integration,
+        crm_shared_memory,
+        dashboard_featured_articles,
+        debug,
+        documents_proxy,
+        event_bus,
+        federation,
+        feedback,
+        google_drive,
+        handlers,
+        health,
+        hr,
+        image_generation,
+        instagram_chat,
+        knowledge_activity,
+        lkpm,
+        media,
+        messaging_identity,
+        monitoring_rag,
+        newsletter,
+        nusantara_health,
+        performance,
+        portal,
+        portal_billing,
+        portal_drive,
+        portal_invite,
+        portal_notifications,
+        portal_process_timeline,
+        portal_taxes,
+        portal_visa,
+        prime,
+        prime_v2,
+        query_analytics,
+        session,
+        sheets,
+        team,
+        team_activity,
+        team_analytics,
+        team_drive,
+        team_members,
+        telegram,
+        telegram_webhook,
+        twitter,
+        webhooks,
+        websocket,
+        whatsapp_conversations,
+        workflow_analytics,
+        workflow_queue,
+        x_monitor,
+        zoho_email,
+    )
+
+    # Core routers
+    api.include_router(auth.router)
+    api.include_router(health.router)
+    api.include_router(nusantara_health.router)
+    api.include_router(handlers.router)
+
+    # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
+    from backend.app.core.config import settings
+
+    if settings.environment.lower() != "production" or settings.admin_api_key:
+        api.include_router(debug.router)
+        api.include_router(debug.v1_router)
+
+    # Autonomous execution
+    api.include_router(autonomous_execution.router)
+
+    # Conversation & Memory (light subset)
+    api.include_router(session.router)
+    api.include_router(federation.router)
+    api.include_router(feedback.router)
+
+    # CRM routers (light — DB + auth only)
+    api.include_router(crm_clients_documents.router)
+    api.include_router(crm_company.router)
+    api.include_router(crm_enhanced_documents.router)
+    api.include_router(crm_enhanced_alerts.router)
+    api.include_router(crm_interactions.router)
+    api.include_router(crm_notifications.router)
+    api.include_router(crm_shared_memory.router)
+    api.include_router(crm_analytics.router)
+    api.include_router(crm_portal_integration.router)
+
+    # HR/Payroll router
+    api.include_router(hr.router)
+
+    # Notifications module router
+    from backend.app.modules.notifications.router import router as notifications_router
+
+    api.include_router(notifications_router)
+
+    # Cron notifiers (visa expiry, unpaid invoices, stale practices)
+    from backend.app.routers.cron_notifiers import router as cron_notifiers_router
+
+    api.include_router(cron_notifiers_router)
+
+    # Portal routers (Client-facing)
+    api.include_router(portal.router)
+    api.include_router(portal_billing.router)
+    api.include_router(portal_drive.router)
+    api.include_router(portal_invite.router)
+    api.include_router(portal_notifications.router)
+    api.include_router(portal_process_timeline.router)
+    api.include_router(portal_taxes.router)
+    api.include_router(portal_visa.router)
+
+    # Compliance routers
+    api.include_router(lkpm.router)
+
+    # Analytics routers
+    api.include_router(analytics.router)
+
+    # Preview router (for Telegram article previews)
+    from backend.app.routers import preview
+
+    api.include_router(preview.router)
+
+    # Communication routers
+    api.include_router(websocket.router)
+    api.include_router(telegram.router)
+    api.include_router(telegram_webhook.router)
+    api.include_router(twitter.router)
+    api.include_router(twitter.webhook_router)
+    api.include_router(x_monitor.router)
+    api.include_router(whatsapp_conversations.router)
+    api.include_router(instagram_chat.router)
+    api.include_router(instagram_chat.webhook_router)
+    api.include_router(webhooks.router)
+    api.include_router(messaging_identity.router)
+
+    # Integrations routers
+    api.include_router(zoho_email.router)
+    api.include_router(google_drive.router)
+    api.include_router(documents_proxy.router)
+    api.include_router(team_drive.router)
+    api.include_router(sheets.router)
+
+    # Admin Drive Auth
+    api.include_router(admin_drive_auth.router)
+    api.include_router(admin_drive_health.router)
+    api.include_router(admin_drive_refresh.router)
+    api.include_router(admin_drive_setup.router)
+    api.include_router(admin_zoho_auth.router)
+
+    # Blog routers (light)
+    api.include_router(newsletter.router)
+    api.include_router(article_composer.router)
+
+    # Performance router
+    api.include_router(performance.router)
+    api.include_router(prime.router)
+    api.include_router(prime_v2.router)
+
+    # Team routers
+    api.include_router(team.router)
+    api.include_router(team_activity.router)
+    api.include_router(team_analytics.router)
+    api.include_router(team_members.router)
+
+    # Media router
+    api.include_router(media.router)
+
+    # Image generation router
+    api.include_router(image_generation.router)
+
+    # Query Analytics router
+    api.include_router(query_analytics.router)
+
+    # Workflow Analytics router
+    api.include_router(workflow_analytics.router)
+
+    # Workflow Queue router
+    api.include_router(workflow_queue.router)
+
+    # RAG Monitoring router
+    api.include_router(monitoring_rag.router)
+
+    # Admin Conversation Cleanup router
+    api.include_router(admin_conversation_cleanup.router)
+
+    # Admin Logs router
+    api.include_router(admin_logs.router)
+
+    # Admin Team Activity router
+    api.include_router(admin_team_activity.router)
+
+    # Dashboard (light)
+    api.include_router(dashboard_featured_articles.router)
+
+    # CELL organism dashboard
+    api.include_router(cell_status.router)
+
+    # EventBus monitoring
+    api.include_router(event_bus.router)
+
+    # Knowledge Activity Tracking
+    api.include_router(knowledge_activity.router)
+
+
+def include_heavy_routers(api: FastAPI) -> None:
+    """
+    Include HEAVY routers (RAG/KG/AI — require SearchService + ZantaraAIClient).
+
+    Also includes health + handlers so /health works on the RAG process for Fly.io checks.
+    All imports are lazy (inside function body) matching the existing pattern.
+
+    Args:
+        api: FastAPI application instance
+    """
+    from backend.app.modules.identity.router import router as identity_router
+    from backend.app.modules.knowledge.router import router as knowledge_router
+    from backend.app.routers import (
+        agent,
+        agentic_rag,
+        agents,
+        autonomous_agents,
+        blog_ask,
+        collective_memory,
+        conversations,
+        crm_clients,
+        crm_enhanced,
+        crm_practices,
+        dashboard,
+        dashboard_summary,
+        dream,
+        dynamic_pricing,
+        episodic_memory,
+        handlers,
+        health,
+        ingest,
+        intel,
+        intel_analytics,
+        intel_scraper,
+        kbli_notebook,
+        kbli_notebook_chat,
+        kg_agentic,
+        knowledge_visa,
+        lam_memory,
+        legal_ingest,
+        naga,
+        news,
+        oracle_ingest,
+        oracle_universal,
+        visa_oracle,
+        voice,
+        whatsapp_chat,
+    )
+
+    # Health endpoints (required for Fly.io process health checks)
+    api.include_router(health.router)
+    api.include_router(handlers.router)
+
+    # Agent routers
+    api.include_router(agent.router)
+    api.include_router(lam_memory.router)
+    api.include_router(agents.router)
+    api.include_router(autonomous_agents.router)
+    api.include_router(agentic_rag.router)
+    api.include_router(kg_agentic.router)
+
+    # Conversation & Memory routers
+    api.include_router(conversations.router)
+    api.include_router(collective_memory.router)
+    api.include_router(episodic_memory.router)
+
+    # CRM routers (RAG-heavy)
+    api.include_router(crm_clients.router)
+    api.include_router(crm_enhanced.router)
+    api.include_router(crm_practices.router)
+
+    # Ingestion routers
+    api.include_router(ingest.router)
+    api.include_router(legal_ingest.router)
+    api.include_router(oracle_ingest.router)
+
+    # Naga deep research engine
+    api.include_router(naga.router)
+
+    # Intelligence & Oracle routers
+    api.include_router(intel.router)
+    api.include_router(intel_scraper.router)
+    api.include_router(intel_analytics.router)
+    api.include_router(oracle_universal.router)
+
+    from backend.app.core.config import settings
+
+    api.include_router(
+        kbli_notebook.router, prefix=settings.API_V1_STR,
+    )
+    api.include_router(
+        kbli_notebook_chat.router, prefix=settings.API_V1_STR,
+    )
+
+    # Blog routers (RAG-heavy)
+    api.include_router(blog_ask.router)
+
+    # News/Intel Feed routers
+    api.include_router(news.router)
+
+    # Dynamic scenario pricing
+    api.include_router(dynamic_pricing.router)
+
+    # Module routers (Prime Standard)
+    api.include_router(dream.router)
+    api.include_router(identity_router, prefix="/api/auth")
+    api.include_router(knowledge_router)
+
+    # Knowledge Base - Visa Types
+    api.include_router(knowledge_visa.router)
+
+    # Voice endpoint
+    api.include_router(voice.router)
+
+    # WhatsApp Chat (RAG-backed intelligent triage)
+    api.include_router(whatsapp_chat.router)
+
+    # Dashboard aggregation routers (RAG-heavy)
+    api.include_router(dashboard.router)
+    api.include_router(dashboard_summary.router)
+
+    # Visa Oracle — public product (no auth required)
+    api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
