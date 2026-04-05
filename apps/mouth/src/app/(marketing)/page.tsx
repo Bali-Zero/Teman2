@@ -161,10 +161,10 @@ nav {
 .brand-logo-3-img {
   display: inline-block;
   vertical-align: baseline;
-  height: 1.4em;
+  height: 1.35em;
   width: auto;
-  margin-bottom: -0.18em;
-  margin-right: -0.04em;
+  margin-bottom: -0.15em;
+  margin-right: -0.03em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
