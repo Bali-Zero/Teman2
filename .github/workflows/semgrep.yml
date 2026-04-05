@@ -27,11 +27,12 @@ jobs:
       - name: Run Bandit SAST
         run: |
           bandit -r apps/backend-rag/backend/ \
+            -c apps/backend-rag/pyproject.toml \
             -f json \
             -o bandit-sast-results.json \
             -l \
             --exit-zero
-        # -l = medium+ severity. Remove --exit-zero to block on findings.
+        # -l = medium+ severity, -c pyproject.toml (skips B324 cache-key MD5)
 
       - name: Check for HIGH/CRITICAL findings (blocks PR)
         run: |

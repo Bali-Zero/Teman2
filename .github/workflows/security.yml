@@ -143,6 +143,7 @@ jobs:
       - name: Run Bandit
         run: |
           bandit -r apps/backend-rag/backend/ \
+            -c apps/backend-rag/pyproject.toml \
             -f json \
             -o bandit-report.json \
             -ll \
