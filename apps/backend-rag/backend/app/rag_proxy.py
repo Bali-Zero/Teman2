@@ -9,6 +9,7 @@ Env vars:
   RAG_PROXY_ENABLED: Set to 'false' to disable proxy (direct routing, monolith mode)
 """
 
+import asyncio
 import logging
 import os
 from typing import Optional
@@ -54,6 +55,16 @@ HEAVY_PREFIXES = (
 )
 
 _proxy_client: Optional[httpx.AsyncClient] = None
+_proxy_client_lock = asyncio.Lock()
+
+_HOP_BY_HOP_RESPONSE = frozenset({
+    "connection", "keep-alive", "transfer-encoding",
+    "te", "trailers", "upgrade", "proxy-authenticate", "proxy-authorization",
+})
+
+
+def _filter_response_headers(headers) -> dict:
+    return {k: v for k, v in headers.items() if k.lower() not in _HOP_BY_HOP_RESPONSE}
 
 
 def get_rag_worker_url() -> str:
@@ -71,11 +82,13 @@ def is_heavy_route(path: str) -> bool:
 async def get_proxy_client() -> httpx.AsyncClient:
     global _proxy_client
     if _proxy_client is None or _proxy_client.is_closed:
-        _proxy_client = httpx.AsyncClient(
-            base_url=get_rag_worker_url(),
-            timeout=httpx.Timeout(120.0, connect=5.0),
-            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
-        )
+        async with _proxy_client_lock:
+            if _proxy_client is None or _proxy_client.is_closed:
+                _proxy_client = httpx.AsyncClient(
+                    base_url=get_rag_worker_url(),
+                    timeout=httpx.Timeout(120.0, connect=5.0),
+                    limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+                )
     return _proxy_client
 
 
@@ -104,7 +117,9 @@ async def proxy_request(request: Request) -> Response:
         k: v for k, v in request.headers.items()
         if k.lower() not in hop_by_hop
     }
-    headers["x-forwarded-for"] = request.client.host if request.client else "unknown"
+    client_host = request.client.host if request.client else "unknown"
+    existing_xff = request.headers.get("x-forwarded-for")
+    headers["x-forwarded-for"] = f"{existing_xff}, {client_host}" if existing_xff else client_host
     headers["x-forwarded-proto"] = "https"
 
     body = await request.body()
@@ -138,14 +153,14 @@ async def proxy_request(request: Request) -> Response:
         return StreamingResponse(
             resp.aiter_bytes(),
             status_code=resp.status_code,
-            headers=dict(resp.headers),
+            headers=_filter_response_headers(resp.headers),
             media_type="text/event-stream",
         )
 
     return Response(
         content=resp.content,
         status_code=resp.status_code,
-        headers=dict(resp.headers),
+        headers=_filter_response_headers(resp.headers),
         media_type=content_type or None,
     )
 
