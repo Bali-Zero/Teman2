@@ -111,6 +111,9 @@ from nuzantara_mcp.tools.legal import register as register_legal
 # --- Federation ---
 from nuzantara_mcp.tools.federation import register as register_federation
 
+# --- Prime Nexus ---
+from nuzantara_mcp.tools.prime import register as register_prime
+
 # --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
 from nuzantara_mcp.resources.config import register as register_resources
@@ -149,6 +152,9 @@ register_legal(mcp, _call, _call_safe)
 
 # Federation inter-node bus
 register_federation(mcp, _call, _call_safe)
+
+# Prime Nexus geospatial intelligence
+register_prime(mcp, _call, _call_safe)
 
 # Prompts, resources, chains
 register_prompts(mcp)

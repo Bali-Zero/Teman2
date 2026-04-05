@@ -23,7 +23,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
-from backend.services.crm.process_automation_service import ProcessAutomationService
+from backend.services.crm.automation import ProcessAutomationService
 
 logger = get_logger(__name__)
 
@@ -90,7 +90,7 @@ class PracticeStatusListener:
             except asyncio.CancelledError:
                 break
             except Exception as exc:
-                logger.error(f"PracticeStatusListener error, reconnecting in {_RECONNECT_DELAY_S}s: {exc}")
+                logger.error(f"PracticeStatusListener error, reconnecting in {_RECONNECT_DELAY_S}s: {exc}", exc_info=True)
                 await self._close_conn()
                 if self._running:
                     await asyncio.sleep(_RECONNECT_DELAY_S)
@@ -185,7 +185,7 @@ class PracticeStatusListener:
         """Fetch practice + client data, send payment confirmation emails."""
         practice_data = await self._process_svc._fetch_practice_data(practice_id)
         if not practice_data:
-            logger.error(f"M4: practice {practice_id} not found")
+            logger.error(f"M4: practice {practice_id} not found", exc_info=True)
             return
 
         client_data = await self._process_svc._fetch_client_data(practice_data["client_id"])
@@ -224,7 +224,7 @@ Questions? Reply to this email or reach us on WhatsApp.
                 await self._send_via_internal_api(client_email, subject, body)
                 logger.info(f"M4: payment confirmation sent to client {client_email}")
             except Exception as exc:
-                logger.error(f"M4: failed to email client {client_email}: {exc}")
+                logger.error(f"M4: failed to email client {client_email}: {exc}", exc_info=True)
 
         # ── Email 2: Team member — with Asya in CC ───────────────────────
         if team_member_email:
@@ -259,7 +259,7 @@ Zantara CRM 🤖
                 )
                 logger.info(f"M4: team notification sent to {team_member_email} (CC: asya)")
             except Exception as exc:
-                logger.error(f"M4: failed to email team member {team_member_email}: {exc}")
+                logger.error(f"M4: failed to email team member {team_member_email}: {exc}", exc_info=True)
 
     # ── M5 handler ────────────────────────────────────────────────────────
 
@@ -312,7 +312,7 @@ Zantara CRM 🤖
             await self._send_via_internal_api(client_email, subject, body)
             logger.info(f"M5: milestone '{status}' email sent to {client_email} (practice {practice_id})")
         except Exception as exc:
-            logger.error(f"M5: milestone email failed for {client_email}: {exc}")
+            logger.error(f"M5: milestone email failed for {client_email}: {exc}", exc_info=True)
 
     async def _send_via_internal_api(
         self,

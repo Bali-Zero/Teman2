@@ -207,8 +207,8 @@ async def save_session(
 def _collect_credibility_scores(
     source_ids: list[str],
     search_results: list[dict],
-    source_id_map: dict[str, str],
-    conn: Any,
+    _source_id_map: dict[str, str],
+    _conn: Any,
 ) -> list[float]:
     """Extract credibility scores for a claim's source references.
 

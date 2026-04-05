@@ -50,6 +50,7 @@ PG_CHANNEL_MAP: dict[str, str] = {
 
 _RECONNECT_DELAY_S = 5
 _PING_INTERVAL_S = 30
+_HANDLER_TIMEOUT_S = 10  # max seconds per handler before it is cancelled
 
 
 @dataclass
@@ -136,7 +137,12 @@ class EventBus:
 
         for handler in handlers:
             try:
-                await handler(payload)
+                await asyncio.wait_for(handler(payload), timeout=_HANDLER_TIMEOUT_S)
+            except asyncio.TimeoutError:
+                err_msg = f"{handler.__qualname__}: timed out after {_HANDLER_TIMEOUT_S}s"
+                errors.append(err_msg)
+                self._error_counts[event_type] += 1
+                logger.error(f"EventBus handler timeout on '{event_type}': {err_msg}")
             except Exception as e:
                 err_msg = f"{handler.__qualname__}: {e}"
                 errors.append(err_msg)

@@ -54,6 +54,7 @@ SETUP_TEAM = [
     "surya@balizero.com",       # Team Leader
     "krisna@balizero.com",      # Executive Consultant
     "dea@balizero.com",         # Executive Consultant
+    "sahira@balizero.com",      # Consultant
     "adit@balizero.com",        # Supervisor
     "vino@balizero.com",        # Junior Consultant
     "damar@balizero.com",       # Junior Consultant
@@ -209,7 +210,7 @@ async def main(
         if dry_run:
             if round_robin:
                 suggestions = suggest_round_robin(unassigned, workload)
-                print(f"\n💡 Suggerimento round-robin (se eseguissi --round-robin --confirm):")
+                print("\n💡 Suggerimento round-robin (se eseguissi --round-robin --confirm):")
                 for client, assignee in suggestions:
                     print(f"   Client #{client['id']} {client['full_name']:<28} → {assignee}")
             elif assign_to:
