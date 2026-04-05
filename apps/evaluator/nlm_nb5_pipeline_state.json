@@ -2,9 +2,9 @@
   "schema_version": 1,
   "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
   "notebook_name": "NB-5: Property & Real Estate Indonesia",
-  "current_state": "COMPLETE",
+  "current_state": "HALTED",
   "degradation_level": "NOMINAL",
-  "last_updated": "2026-04-01T06:30:56.411196+00:00",
+  "last_updated": "2026-04-05T18:25:01.244732+00:00",
   "budget": {
     "daily_queries": 2,
     "weekly_calls": 10,

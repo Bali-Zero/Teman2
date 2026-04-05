@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 LOG_FILE="$PROJECT_ROOT/apps/evaluator/nlm_deep_research/logs/nb2_pipeline_$(date +%Y%m%d).log"
 PID_FILE="/tmp/nz_nb2_pipeline.pid"
 
