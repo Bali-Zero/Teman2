@@ -158,13 +158,15 @@ nav {
   margin: 0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
 }
-.brand-logo-3-svg {
+.brand-logo-3-img {
   display: inline-block;
   vertical-align: bottom;
-  width: 0.95em;
-  height: 1.25em;
-  margin-bottom: -0.18em;
-  overflow: visible;
+  height: 1.6em;
+  width: auto;
+  margin-bottom: -0.15em;
+  margin-right: -0.05em;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
 .brand-om-circle {
   display: inline-flex;
@@ -740,7 +742,7 @@ body::after {
   <div class="brand-inner">
     <div class="brand-left">
       <div class="brand-text">
-        <h2 class="brand-tagline">Your <svg class="brand-logo-3-svg" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg" aria-label="B"><defs><linearGradient id="g3-body" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e83030"/><stop offset="50%" stop-color="#c01010"/><stop offset="100%" stop-color="#7a0000"/></linearGradient><linearGradient id="g3-shine" x1="0%" y1="0%" x2="40%" y2="100%"><stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></linearGradient><filter id="f3-shadow"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.6)"/></filter></defs><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-body)" filter="url(#f3-shadow)">3</text><text x="5" y="72" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="76" fill="url(#g3-shine)">3</text></svg>ali, from Zer<span class="brand-om-circle"></span></h2>
+        <h2 class="brand-tagline">Your <img class="brand-logo-3-img" src="/assets/logo/balizero-3-red.png" alt="B" width="600" height="660"/>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
