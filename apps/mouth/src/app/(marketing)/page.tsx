@@ -69,7 +69,7 @@ nav {
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .logo-wrap { display: flex; align-items: center; text-decoration: none; }
-.logo-img { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.logo-img { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex-shrink: 0; margin-top: 12px; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-dropdown { position: relative; }
 .nav-drop-trigger {
@@ -163,7 +163,7 @@ nav {
   vertical-align: middle;
   height: 1.2em;
   width: auto;
-  margin-top: -0.35em;
+  margin-top: -0.55em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
@@ -179,7 +179,7 @@ nav {
   position: relative;
   flex-shrink: 0;
   vertical-align: middle;
-  margin-top: 0.15em;
+  margin-top: -0.1em;
 }
 .brand-om-circle::after {
   content: "ॐ";
