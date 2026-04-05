@@ -1273,7 +1273,10 @@ IMPORTANT:
         self.log(f'Images generated: {images_count}/{len(published)}')
 
         # Upload cover images sugli articoli già pubblicati
-        import asyncio as _asyncio2, httpx as _httpx2, base64 as _b64, os as _os2
+        import asyncio as _asyncio2
+        import httpx as _httpx2
+        import base64 as _b64
+        import os as _os2
         BACKEND_URL2 = _os2.environ.get('BACKEND_URL', 'https://nuzantara-rag.fly.dev')
         API_KEY2     = _os2.environ.get('SCRAPER_API_KEY', '')
 
@@ -1407,7 +1410,7 @@ IMPORTANT:
         # Save all enriched articles to a single review file
         review_file = self.data_dir / f'review_{self.run_id}.txt'
         review_lines = [
-            f"INTEL PIPELINE — REVIEW FILE",
+            "INTEL PIPELINE — REVIEW FILE",
             f"Run: {self.run_id}",
             f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             f"Articles: {len(enriched)}",
@@ -1500,7 +1503,8 @@ IMPORTANT:
         self.log(f'Review file saved: {review_file.name} ({len(enriched)} articles)')
 
         # Send Telegram notifications to all recipients (bilingual)
-        import urllib.request as _ur, urllib.parse as _up
+        import urllib.request as _ur
+        import urllib.parse as _up
         import json as _json
         BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
         TG_RECIPIENTS = os.environ.get('TELEGRAM_APPROVAL_CHAT_ID', os.environ.get('TELEGRAM_GROUP_ID', ''))
@@ -1663,7 +1667,9 @@ IMPORTANT:
             return True
         
         # Pubblica articoli arricchiti via backend API
-        import asyncio as _asyncio, httpx as _httpx, os as _os
+        import asyncio as _asyncio
+        import httpx as _httpx
+        import os as _os
 
         BACKEND_URL = _os.environ.get('BACKEND_URL', 'https://nuzantara-rag.fly.dev')
         API_KEY     = _os.environ.get('SCRAPER_API_KEY', '')
@@ -1759,7 +1765,8 @@ IMPORTANT:
         self.log(f'✅ Inviati {published}/{len(enriched)} articoli alla News Room per approvazione')
 
         # Notifica Telegram a tutti i destinatari (bilingue)
-        import urllib.request as _ur2, urllib.parse as _up2
+        import urllib.request as _ur2
+        import urllib.parse as _up2
         _timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
         for chat_id in TG_RECIPIENTS.split(','):
             chat_id = chat_id.strip()

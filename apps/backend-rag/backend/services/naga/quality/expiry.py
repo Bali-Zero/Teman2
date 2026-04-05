@@ -14,8 +14,7 @@ Provides two batch operations:
 from __future__ import annotations
 
 import logging
-import uuid
-from datetime import date, datetime, timezone
+from datetime import date
 from typing import Any
 
 from backend.services.naga.quality.dedup import trigram_similarity

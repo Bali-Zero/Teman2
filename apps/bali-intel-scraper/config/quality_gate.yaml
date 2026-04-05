@@ -11,8 +11,8 @@ weights:
 
 # Routing thresholds (composite score 0.0–1.0)
 thresholds:
-  auto_publish: 0.70   # ≥ 0.70 → auto-publish + alert team
-  review: 0.40          # 0.40–0.69 → queue for manual review
+  auto_publish: 0.70 # ≥ 0.70 → auto-publish + alert team
+  review: 0.40 # 0.40–0.69 → queue for manual review
   # below 0.40 → archive (kept, not discarded)
 
 # ─── Dimension 1: Relevance ─────────────────────────────────────────────
@@ -155,7 +155,7 @@ relevance:
 # ─── Dimension 2: Urgency ───────────────────────────────────────────────
 
 urgency:
-  freshness_half_life_hours: 48  # articles lose 50% urgency score after 48h
+  freshness_half_life_hours: 48 # articles lose 50% urgency score after 48h
 
   # Keywords that signal breaking/urgent news
   keywords:

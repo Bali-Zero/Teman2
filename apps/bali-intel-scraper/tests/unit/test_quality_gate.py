@@ -1,6 +1,5 @@
 """Tests for Intel Quality Gate — 4-dimension scoring."""
 
-import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 

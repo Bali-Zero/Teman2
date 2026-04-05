@@ -1,8 +1,9 @@
 """
 Analytics API Router
-Exposes historical analytics endpoints for dashboard consumption.
+Exposes historical analytics endpoints and unified dashboard for founder consumption.
 
 Endpoints:
+- GET /api/analytics/dashboard               - Unified analytics dashboard (cached)
 - GET /api/analytics/completion-rates
 - GET /api/analytics/response-times
 - GET /api/analytics/sla-compliance
@@ -10,7 +11,10 @@ Endpoints:
 - GET /api/analytics/monthly-report/{year}/{month}
 """
 
-from datetime import date
+import json
+import logging
+import time
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,6 +28,8 @@ from backend.services.analytics.historical_analytics import (
     generate_monthly_report,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
@@ -36,6 +42,181 @@ def verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
             status_code=403, detail="Access denied. This dashboard is for founders only.",
         )
     return current_user
+
+
+@router.get("/dashboard")
+async def get_analytics_dashboard(
+    period: int = Query(7, ge=1, le=90, description="Lookback period in days"),
+    db_pool=Depends(get_database_pool),
+    current_user=Depends(verify_founder_access),
+) -> dict[str, Any]:
+    """
+    Unified analytics dashboard combining RAG, CRM, team, and system metrics.
+
+    Returns cached data (Redis TTL 5min) for fast loading.
+    """
+    from backend.app.core.config import settings
+
+    cache_key = f"zantara:analytics_dashboard:{period}d"
+
+    # Try Redis cache first
+    try:
+        from redis.asyncio import Redis
+
+        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                data = json.loads(cached)
+                data["_cached"] = True
+                return data
+        finally:
+            await redis.aclose()
+    except Exception as e:
+        logger.debug(f"Dashboard cache miss or Redis unavailable: {e}")
+
+    start_time = time.time()
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=period)
+    dashboard: dict[str, Any] = {"period_days": period}
+
+    try:
+        async with db_pool.acquire() as conn:
+            # --- RAG metrics ---
+            rag_row = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) as total_queries,
+                    COUNT(*) FILTER (WHERE chunks_retrieved_count = 0) as failed_queries,
+                    ROUND(AVG(execution_time_ms)::numeric, 0) as avg_latency_ms,
+                    COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+                    COUNT(*) FILTER (WHERE user_feedback = 'thumbs_up') as thumbs_up,
+                    COUNT(*) FILTER (WHERE user_feedback = 'thumbs_down') as thumbs_down,
+                    COUNT(*) FILTER (WHERE user_feedback IS NOT NULL) as total_feedback
+                FROM query_analytics
+                WHERE created_at >= $1
+                """,
+                cutoff,
+            )
+            total_fb = rag_row["total_feedback"] or 0
+            dashboard["rag"] = {
+                "total_queries": rag_row["total_queries"] or 0,
+                "failed_queries": rag_row["failed_queries"] or 0,
+                "avg_latency_ms": int(rag_row["avg_latency_ms"] or 0),
+                "total_cost_usd": round(float(rag_row["total_cost_usd"] or 0), 4),
+                "satisfaction_percent": (
+                    round((rag_row["thumbs_up"] or 0) / total_fb * 100, 1)
+                    if total_fb > 0 else None
+                ),
+            }
+
+            # Cache hit rate from Prometheus
+            try:
+                from backend.app.metrics import cache_hits, cache_misses
+
+                hits = cache_hits._value.get()
+                misses = cache_misses._value.get()
+                total = hits + misses
+                dashboard["rag"]["cache_hit_rate"] = round(hits / total, 3) if total > 0 else 0.0
+            except Exception:
+                dashboard["rag"]["cache_hit_rate"] = None
+
+            # --- CRM metrics ---
+            crm_row = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) as total_clients,
+                    COUNT(*) FILTER (WHERE created_at >= $1) as new_clients,
+                    COUNT(*) FILTER (WHERE status = 'active') as active_clients
+                FROM clients
+                """,
+                cutoff,
+            )
+            rev_row = await conn.fetchrow(
+                """
+                SELECT
+                    COALESCE(SUM(quoted_price), 0) as quoted,
+                    COALESCE(SUM(actual_price), 0) as actual,
+                    COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN actual_price ELSE 0 END), 0) as paid,
+                    COUNT(*) as total_practices,
+                    COUNT(*) FILTER (WHERE status = 'completed') as completed,
+                    COUNT(*) FILTER (WHERE status NOT IN ('completed', 'cancelled')) as active
+                FROM practices
+                """,
+            )
+            dashboard["crm"] = {
+                "total_clients": crm_row["total_clients"] or 0,
+                "new_clients_period": crm_row["new_clients"] or 0,
+                "active_clients": crm_row["active_clients"] or 0,
+                "practices_total": rev_row["total_practices"] or 0,
+                "practices_active": rev_row["active"] or 0,
+                "practices_completed": rev_row["completed"] or 0,
+                "revenue_quoted": float(rev_row["quoted"] or 0),
+                "revenue_paid": float(rev_row["paid"] or 0),
+                "revenue_outstanding": float((rev_row["actual"] or 0) - (rev_row["paid"] or 0)),
+            }
+
+            # --- Conversations per channel ---
+            channel_rows = await conn.fetch(
+                """
+                SELECT
+                    channel,
+                    COUNT(*) as count,
+                    COUNT(DISTINCT user_id) as unique_users
+                FROM conversations
+                WHERE created_at >= $1
+                GROUP BY channel
+                ORDER BY count DESC
+                """,
+                cutoff,
+            )
+            dashboard["channels"] = [
+                {
+                    "channel": r["channel"] or "unknown",
+                    "conversations": r["count"],
+                    "unique_users": r["unique_users"],
+                }
+                for r in channel_rows
+            ]
+
+            # --- Query volume trend (daily) ---
+            volume_rows = await conn.fetch(
+                """
+                SELECT
+                    date_trunc('day', created_at) as day,
+                    COUNT(*) as queries
+                FROM query_analytics
+                WHERE created_at >= $1
+                GROUP BY day
+                ORDER BY day
+                """,
+                cutoff,
+            )
+            dashboard["query_volume_daily"] = [
+                {"date": r["day"].isoformat(), "queries": r["queries"]}
+                for r in volume_rows
+            ]
+
+    except Exception as e:
+        logger.error(f"Dashboard query error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}") from e
+
+    dashboard["generated_at"] = datetime.now(tz=timezone.utc).isoformat()
+    dashboard["query_time_ms"] = int((time.time() - start_time) * 1000)
+    dashboard["_cached"] = False
+
+    # Cache in Redis (TTL 5min)
+    try:
+        from redis.asyncio import Redis
+
+        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            await redis.set(cache_key, json.dumps(dashboard, default=str), ex=300)
+        finally:
+            await redis.aclose()
+    except Exception as e:
+        logger.debug(f"Failed to cache dashboard: {e}")
+
+    return dashboard
 
 
 @router.get("/completion-rates")

@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.analytics.team_analytics_service import TeamAnalyticsService
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,15 @@ router = APIRouter(prefix="/api/team-analytics", tags=["team-analytics"])
 
 # Global service instance
 _team_analytics_service: TeamAnalyticsService | None = None
+
+
+def _verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
+    """Verify that the user has founder or admin level access."""
+    if current_user.get("role") not in ["Founder", "admin"]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Team analytics is for founders/admins only.",
+        )
+    return current_user
 
 
 def get_team_analytics_service(db_pool: Any = Depends(get_database_pool)) -> TeamAnalyticsService:
@@ -32,6 +41,7 @@ async def get_work_patterns(
     user_email: str | None = Query(None, description="Filter by user email"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Analyze work hour patterns and habits"""
     try:
@@ -46,6 +56,7 @@ async def get_work_patterns(
 async def get_productivity_scores(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Calculate productivity scores for team members"""
     try:
@@ -60,6 +71,7 @@ async def get_productivity_scores(
 async def get_burnout_signals(
     user_email: str | None = Query(None, description="Filter by user email"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Detect early warning signs of burnout"""
     try:
@@ -75,6 +87,7 @@ async def get_performance_trends(
     user_email: str,
     weeks: int = Query(4, ge=1, le=52, description="Number of weeks to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Analyze performance trends over time"""
     try:
@@ -89,6 +102,7 @@ async def get_performance_trends(
 async def get_workload_balance(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Analyze workload distribution across team"""
     try:
@@ -104,6 +118,7 @@ async def get_optimal_hours(
     user_email: str | None = Query(None, description="Filter by user email"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Identify most productive time windows"""
     try:
@@ -118,6 +133,7 @@ async def get_optimal_hours(
 async def get_team_insights(
     days: int = Query(7, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
+    current_user: Any = Depends(_verify_founder_access),
 ) -> dict[str, Any]:
     """Generate comprehensive team collaboration insights"""
     try:
