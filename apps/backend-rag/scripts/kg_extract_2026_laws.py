@@ -32,14 +32,10 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("kg_2026")
 
-QDRANT_URL = os.environ.get(
-    "QDRANT_URL",
-    "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333",
-)
-QDRANT_KEY = os.environ.get(
-    "QDRANT_API_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.2GbFS6QDLq-6pbM9yrvhndsWwtEiCY0iueNvPNKjj1k",
-)
+QDRANT_URL = os.environ.get("QDRANT_URL")
+QDRANT_KEY = os.environ.get("QDRANT_API_KEY")
+if not QDRANT_URL or not QDRANT_KEY:
+    raise ValueError("Missing QDRANT_URL and/or QDRANT_API_KEY in environment")
 COLLECTION = "legal_unified_2026"
 
 EXTRACTION_PROMPT = """You are an Indonesian legal document analyst. Extract structured entities and relationships from this legal text.

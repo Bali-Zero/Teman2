@@ -18,12 +18,16 @@ RESULTS_DIR = "/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/results"
 PDF_DIR = os.path.join(RESULTS_DIR, "pdfs")
 OUTPUT_FILE = os.path.join(RESULTS_DIR, "batch_0_results.json")
 
-# Service Account provided by user
+# Service Account — private key loaded from environment
+_sa_private_key = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")
+if not _sa_private_key:
+    raise ValueError("Missing GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY in environment")
+
 SA_JSON = {
   "type": "service_account",
   "project_id": "nuzantara",
-  "private_key_id": "28e6087e450988b12db1efa74404b5177676569a",
-  "private_key": os.environ.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC/5o8b3UHrNDCk\n2UGEq0Q6ikLRigxaolTq9qaajCjZosNex2JpFnTmQGP+BIBcKrroOfxQscAwKBdB\nNol3ui2bSKjUtyRX19nR3PUfudrn8P0gKG1IslLUjXfh/8WwPTavg96+Q7zgb4Ti\ndjlvN/DXH21nxIWVDSgu1LNgrNYgj0hDKOB/1ZABHrvkzD7JC0k9VR3k4GBUokKa\ndwzHfXIuRTU4kyhhrFLrKzB8FpWUsQfnBAGltBKdIZx8h7u6O4HDdHZNwxE5gAGP\nVw9NHU0zYN0p9t7hWBqRmffvPhBfy4Pvga6p8uNIyLaSCLSCTXIRJT+VEdczKgdQ\nOP4hQZSTAgMBAAECggEACy15ddIJc5MdUjzQCCjsVyHpNR3+t44aYXqZxwlq8mJR\n/ESjgs4quPlUhF3sFseWY3hyg0YXP7bWGUJSojACAA2CEqx9ksWhNmF8awCps4uM\nnZbn5q1xuFe/0ot8uatByC9nhgWZYX6dauN1V6PBL4abxMjkTwOZLOvOwaQk73h5\n0PbRvRDsERRo7ilonfB2pVFrk8r6sUpLfxDylItJHVjVJ7GNtCSODqj8KmonFHU6\n7oGcw/QCKxGKG/QktWC+AXjaFSmsNw5hY/yPtVmRFd7Bz4fq9LKPmWO/sQ3KhmAe\nl+CGxSKoqj2lXmjdl3Ipt+82oNMx0TKhNlAL2vU/wQKBgQDyvHRofsT+NVUKExHs\nD6d7TnigoMawAYNv5Z4kdQ104i9tO19uVDch0Nlygp5jzZpYAEhdACLyWPy6Zw2R\nU8A5+osHQkLiZIdIu5GfDKrJ1IoRqSsGIPI4QLpG15ioUxYYrNIioyKE+Brv//1F\nFga6lfMDglHUjSWVBL6SVLK0OQKBgQDKYvwttOHRanh1eCd+UFeawbOQ2zjRZAsZ\nQRzA99KYH98/gP/cXT6tzWVQTOssapxn8EOa+WNKtiuCqmI/OMghdJQ/4GsT3l12\n8n010upvvI7s4YTFwQL4Iwv4TbuzDx/ZbA4msgpeWB/O4ew6jooPDvCFNqmoZpdJ\nMHq5CE3HKwKBgEdpvFG14hzr8d3p6F7r6Bk15/VR98J2X4X/JvyQ12mo1c0sJ5Jd\nAm9Xc3HmDdVM+vii9Kcv0Bg+p/PrN6mm2ynzlQ2IqAbVDpwOWvRRFLoWZpx1iave\n64QzPtpyuX3kG98ckSIRnqlCGSK8zHWT2lzwmrNQluSSthjWcX65nm25AoGBAMJX\nkvkA/OdvagTDQIlW9QiygI/VMxY/DzlNASN71komMOZ2JTuifpG+7k7RzfJ03YQh\nf4nNeL9Bdz6eBoHXMLaPj9xWz/vgR7f02q9Yva5WTpjBZhHPad6FKPVjD56+I0NR\nM7WMudAmp0SuRX1lasVS/zusZfZDrXqmhvIvOyDJAoGBAMOqNcUiKKTpms287HFi\n7Y+5PllroA8iZwo/VO9O7jX1UPDQ7B53An3hsmhHWeqrMu/urJRA7VCeZWebZVCw\nb0eeV5XoxYI4GWH6N6nq8mFtBsA9bHsB8QFvYLbH/qAbrT4swNmF5JbEr1T2LSKg\nLgsJ9cx3DEgrE4M6iJ+7T4i7\n-----END PRIVATE KEY-----\n"),
+  "private_key_id": os.environ.get("GOOGLE_SA_PRIVATE_KEY_ID", ""),
+  "private_key": _sa_private_key,
   "client_email": "nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com",
   "client_id": "107304438107245099867",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
