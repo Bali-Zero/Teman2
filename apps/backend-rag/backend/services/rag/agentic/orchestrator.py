@@ -103,6 +103,7 @@ class AgenticRAGOrchestrator:
         entity_extractor: EntityExtractionService = None,
         llm_gateway: LLMGateway = None,
         nlm_enrichment_service: Any = None,
+        cultural_insights_service: Any = None,
     ) -> None:
         """Initialize the AgenticRAGOrchestrator.
 
@@ -135,6 +136,7 @@ class AgenticRAGOrchestrator:
         self.retriever = retriever
         self.clarification_service = clarification_service
         self.nlm_enrichment_service = nlm_enrichment_service
+        self.cultural_insights_service = cultural_insights_service
         self.llm_gateway = llm_gateway or LLMGateway()  # Initialize LLMGateway here
 
         # Convert tools to Gemini function declarations for native calling
@@ -273,6 +275,7 @@ class AgenticRAGOrchestrator:
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
             nlm_enrichment_service=self.nlm_enrichment_service,
+            cultural_insights_service=self.cultural_insights_service,
         )
 
         # Initialize streaming components

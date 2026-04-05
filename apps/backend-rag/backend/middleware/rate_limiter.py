@@ -24,14 +24,24 @@ _rate_limit_storage = {}
 
 class RateLimiter:
     """
-    Rate limiter with sliding window algorithm
+    Rate limiter with sliding window algorithm.
+
+    Uses lazy Redis connection: if instantiated before RedisManager.initialize()
+    (e.g. at module import time during middleware registration), it will attempt
+    to connect on first use rather than failing permanently.
     """
 
     def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
+        self._redis_checked = False
 
-        # Get sync Redis client from centralized RedisManager
+    def _try_connect_redis(self) -> None:
+        """Lazily connect to Redis via RedisManager. Called once on first use."""
+        if self._redis_checked:
+            return
+        self._redis_checked = True
+
         from backend.core.redis_manager import RedisManager
 
         manager = RedisManager.get_instance()
@@ -40,10 +50,10 @@ class RateLimiter:
             self.redis_client = client
             self.redis_available = True
             manager.register_component("rate_limiter", "active")
-            logger.info("Rate limiter using Redis via RedisManager")
+            logger.info("Rate limiter connected to Redis via RedisManager")
         else:
             manager.register_component("rate_limiter", "fallback_memory")
-            logger.info("Rate limiter using in-memory storage")
+            logger.info("Rate limiter using in-memory storage (Redis unavailable)")
 
     def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
         """
@@ -57,6 +67,8 @@ class RateLimiter:
         Returns:
             (allowed, info_dict)
         """
+        # Lazy Redis connection (handles import-time instantiation before RedisManager.initialize)
+        self._try_connect_redis()
         current_time = int(time.time())
         window_start = current_time - window
 
@@ -241,6 +253,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 def get_rate_limit_stats() -> dict:
     """Get rate limiting statistics"""
+    rate_limiter._try_connect_redis()
     return {
         "backend": "redis" if rate_limiter.redis_available else "memory",
         "connected": rate_limiter.redis_available,
