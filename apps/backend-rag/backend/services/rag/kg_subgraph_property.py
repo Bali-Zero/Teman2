@@ -45,7 +45,7 @@ def _get_client(timeout: float = 10.0, verify: bool = True) -> httpx.AsyncClient
     if _client_unverified is None or _client_unverified.is_closed:
         _client_unverified = httpx.AsyncClient(
             timeout=timeout,
-            verify=False,  # noqa: S501 — Badung DPUPR uses self-signed cert
+            verify=False,  # nosec B501 — noqa: S501 — Badung DPUPR uses self-signed cert
             limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
         )
     return _client_unverified
