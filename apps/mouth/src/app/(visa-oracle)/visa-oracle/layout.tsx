@@ -30,7 +30,7 @@ export default function VisaOracleLayout({
       >
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
-            href="/"
+            href="/visa-oracle"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
             <span
@@ -75,14 +75,14 @@ export default function VisaOracleLayout({
           </p>
           <div className="flex items-center gap-4 text-xs">
             <Link
-              href="/privacy"
+              href="/visa-oracle/privacy"
               className="hover:opacity-80 transition-opacity"
               style={{ color: "var(--tx-secondary)" }}
             >
               Privacy
             </Link>
             <Link
-              href="/terms"
+              href="/visa-oracle/terms"
               className="hover:opacity-80 transition-opacity"
               style={{ color: "var(--tx-secondary)" }}
             >

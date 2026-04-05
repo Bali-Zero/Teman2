@@ -43,7 +43,7 @@ export function ConsentBanner() {
           We use session data to provide visa guidance. By continuing, you agree
           to our{" "}
           <Link
-            href="/privacy"
+            href="/visa-oracle/privacy"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
@@ -51,7 +51,7 @@ export function ConsentBanner() {
           </Link>{" "}
           and{" "}
           <Link
-            href="/terms"
+            href="/visa-oracle/terms"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
