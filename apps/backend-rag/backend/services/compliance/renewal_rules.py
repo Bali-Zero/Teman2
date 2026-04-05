@@ -14,7 +14,7 @@ All thresholds are configurable constants — never hardcoded in business logic.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
