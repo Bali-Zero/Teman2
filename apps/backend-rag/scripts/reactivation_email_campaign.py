@@ -80,7 +80,7 @@ QUERY_SILENT_CLIENTS: str = """
 """
 
 QUERY_ACTIVE_PRACTICES: str = """
-    SELECT client_id, practice_type, status, assigned_to
+    SELECT client_id, practice_type_code AS practice_type, status, assigned_to
     FROM practices
     WHERE status = 'in_progress'
 """

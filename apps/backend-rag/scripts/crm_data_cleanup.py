@@ -85,8 +85,8 @@ async def _safe_append_tag(
 
     if not dry_run:
         await conn.execute(
-            "UPDATE clients SET tags = $1::jsonb, updated_at = NOW() WHERE id = $2",
-            json.dumps(current_tags),
+            "UPDATE clients SET tags = $1::text[], updated_at = NOW() WHERE id = $2",
+            current_tags,
             client_id,
         )
     return current_tags
@@ -218,31 +218,51 @@ async def task_fix_assigned_to(
     fixed = 0
     anomalies = 0
 
-    # --- company_extract_import → NULL ---
-    cei_rows = await conn.fetch(
-        "SELECT id, full_name FROM clients WHERE assigned_to = 'company_extract_import'"
-    )
-    if cei_rows:
-        prefix = "[DRY-RUN] " if dry_run else ""
-        for r in cei_rows:
-            logger.info(
-                "%s[FIX-ASSIGN] Client %d '%s': assigned_to='company_extract_import' → NULL",
-                prefix,
-                r["id"],
-                r["full_name"],
-            )
-        if not dry_run:
-            await conn.execute(
-                "UPDATE clients SET assigned_to = NULL, updated_at = NOW() WHERE assigned_to = 'company_extract_import'"
-            )
-        fixed = len(cei_rows)
-        logger.info(
-            "%d clients %s (company_extract_import → NULL)",
-            fixed,
-            "would be fixed" if dry_run else "fixed",
+    # --- Known bad values → auto-fix ---
+    AUTO_FIXES: list[tuple[str, str | None, str]] = [
+        ("company_extract_import", None, "company_extract_import → NULL"),
+        ("unassigned", None, "'unassigned' string → NULL"),
+        ("ari@balizero.com", "ari.firda@balizero.com", "ari@balizero.com → ari.firda@balizero.com"),
+    ]
+
+    for bad_value, good_value, description in AUTO_FIXES:
+        rows = await conn.fetch(
+            "SELECT id, full_name FROM clients WHERE assigned_to = $1",
+            bad_value,
         )
-    else:
-        logger.info("No clients with assigned_to='company_extract_import' found")
+        if rows:
+            prefix = "[DRY-RUN] " if dry_run else ""
+            for r in rows[:5]:  # Log first 5 to avoid spam
+                logger.info(
+                    "%s[FIX-ASSIGN] Client %d '%s': %s",
+                    prefix,
+                    r["id"],
+                    r["full_name"],
+                    description,
+                )
+            if len(rows) > 5:
+                logger.info("%s  ... and %d more", prefix, len(rows) - 5)
+            if not dry_run:
+                if good_value is None:
+                    await conn.execute(
+                        "UPDATE clients SET assigned_to = NULL, updated_at = NOW() WHERE assigned_to = $1",
+                        bad_value,
+                    )
+                else:
+                    await conn.execute(
+                        "UPDATE clients SET assigned_to = $1, updated_at = NOW() WHERE assigned_to = $2",
+                        good_value,
+                        bad_value,
+                    )
+            fixed += len(rows)
+            logger.info(
+                "%d clients %s (%s)",
+                len(rows),
+                "would be fixed" if dry_run else "fixed",
+                description,
+            )
+        else:
+            logger.info("No clients with assigned_to='%s' found", bad_value)
 
     # --- Report unknown assigned_to values ---
     # Build a parameterized query with the valid emails
