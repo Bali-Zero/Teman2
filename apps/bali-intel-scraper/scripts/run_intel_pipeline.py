@@ -47,9 +47,10 @@ NEWS_ROOM_URL = "https://kita.balizero.com/intelligence/news-room"
 PIPELINE_STEPS = [
     '1_scraping',
     '2_validation',
-    '2.5_qwen_filter',   # LLM scoring — gemma3:12b, threshold quality_score >= 45
+    '2.5_qwen_filter',   # LLM scoring — gemma3:12b, threshold quality_score >= 30 (configurable)
     '2.7_verification',  # Cross-check T1 sources + KB for regulatory articles
     '2.8_clustering',    # Semantic clustering — group articles by theme into dossiers
+    '2.9_nlm_context',   # NLM legal context — query NB core + deep research temp NB
     '3_enrichment',      # Claude deep enrichment — 1400-2000 word articles per dossier
     '5_seo',             # Gemini SEO optimization
     '6_approval',        # Telegram notification + review file
@@ -123,6 +124,8 @@ class IntelPipeline:
                 return self.step_verification()
             elif step == '2.8_clustering':
                 return self.step_clustering()
+            elif step == '2.9_nlm_context':
+                return self.step_nlm_context()
             elif step == '3_enrichment':
                 return self.step_enrichment()
             elif step == '8_images':
@@ -515,6 +518,9 @@ class IntelPipeline:
     def _qwen_filter_fallback(self, articles: List[Dict]) -> bool:
         """Fallback when Ollama is unavailable: pass all with default scores."""
         for a in articles:
+            # Ensure quality_score is always set (downstream steps depend on it)
+            if 'quality_score' not in a:
+                a['quality_score'] = 50
             a['qwen_score'] = a.get('quality_score', 50) / 10
             a['qwen_category'] = a.get('category', 'general')
         self.state['articles'] = articles
@@ -859,6 +865,54 @@ class IntelPipeline:
         return True
 
     # ------------------------------------------------------------------
+    # Step 2.9 — NLM Legal Context
+    # ------------------------------------------------------------------
+
+    def step_nlm_context(self) -> bool:
+        """Step 2.9: Query NotebookLM for legal context on top regulatory dossiers.
+
+        Phase A: Read-only query on NB core (NB-2/3/4/5/6) for existing legal basis.
+        Phase B: If insufficient, Deep Research in temporary NB for web findings.
+
+        NB core notebooks are NEVER modified. Web findings go to temp NBs only.
+        Pending sources saved to data/pending_sources/ for human approval.
+        """
+        articles = self.state.get('articles', [])
+        if not articles:
+            self.update_step_status('2.9_nlm_context', 'skipped', {'reason': 'no_articles'})
+            return True
+
+        if self.config.get('dry_run'):
+            self.log('Dry run — skipping NLM legal context')
+            self.update_step_status('2.9_nlm_context', 'skipped', {'reason': 'dry_run'})
+            return True
+
+        try:
+            sys.path.insert(0, str(self.script_dir))
+            from nlm_research_step import run_nlm_legal_context
+
+            self.state['articles'] = run_nlm_legal_context(articles, log_fn=self.log)
+
+            # Count results
+            with_context = sum(1 for a in self.state['articles']
+                               if a.get('nlm_context', {}).get('phase_a_status') == 'ok')
+            with_web = sum(1 for a in self.state['articles']
+                           if a.get('nlm_context', {}).get('phase_b_status') == 'ok')
+
+            self.update_step_status('2.9_nlm_context', 'completed', {
+                'total_articles': len(articles),
+                'enriched_with_legal': with_context,
+                'enriched_with_web': with_web,
+            })
+            return True
+
+        except Exception as e:
+            self.log(f'NLM context step failed (non-fatal): {e}', 'WARN')
+            self.update_step_status('2.9_nlm_context', 'failed', {'error': str(e)})
+            # Graceful degradation — continue pipeline without NLM context
+            return True
+
+    # ------------------------------------------------------------------
     # Article selection for enrichment
     # ------------------------------------------------------------------
 
@@ -885,7 +939,7 @@ class IntelPipeline:
 
         # Pass 1: one per category (best by tier+score)
         for article in ranked:
-            cat = article.get('category', 'general')
+            cat = article.get('qwen_category', article.get('category', 'general'))
             aid = article.get('id', article.get('url', ''))
             if cat not in categories_seen and aid not in selected_ids:
                 selected.append(article)
