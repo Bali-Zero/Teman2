@@ -439,6 +439,12 @@ class PricingTool(BaseTool):
 
     async def execute(self, service_type: str = "all", query: str = None, **kwargs) -> str:
         try:
+            if not self.pricing_service.loaded:
+                return str({
+                    "error": True,
+                    "message": "Pricing service unavailable — prices not loaded",
+                    "action": "Redirect client to support: info@balizero.com",
+                })
             if query:
                 result = self.pricing_service.search_service(query)
             else:
@@ -446,7 +452,11 @@ class PricingTool(BaseTool):
             return str(result)
         except Exception as e:
             logger.error(f"Pricing lookup failed: {e}")
-            return f"Pricing lookup error: {e}"
+            return str({
+                "error": True,
+                "message": f"Pricing lookup failed: {e}",
+                "action": "DO NOT guess prices — redirect to support",
+            })
 
 
 class TeamKnowledgeTool(BaseTool):
