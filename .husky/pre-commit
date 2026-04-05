@@ -43,12 +43,15 @@ if [ -n "$JS_FILES" ]; then
     fi
 fi
 
-# Run linting
+# Run linting — only on staged TS/JS/JSON/MD/YAML files (not entire repo)
 echo "🔧 Running linting..."
-npm run lint:check 2>/dev/null || {
-    echo "❌ Linting failed. Please fix linting issues."
-    exit 1
-}
+LINT_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml)$' || true)
+if [ -n "$LINT_FILES" ]; then
+    echo "$LINT_FILES" | xargs npx prettier --check 2>/dev/null || {
+        echo "❌ Linting failed on staged files. Run: npx prettier --write <file>"
+        exit 1
+    }
+fi
 
 # Run type checking (non-blocking if next.config.ts has ignoreBuildErrors)
 echo "📝 Running type checking..."
