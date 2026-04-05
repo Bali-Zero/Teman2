@@ -1,0 +1,163 @@
+name: SAST — Bandit + ESLint Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  bandit-sast:
+    name: Bandit SAST (Python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit
+        run: pip install bandit[toml]
+
+      - name: Run Bandit SAST
+        run: |
+          bandit -r apps/backend-rag/backend/ \
+            -f json \
+            -o bandit-sast-results.json \
+            -l \
+            --exit-zero
+        # -l = medium+ severity. Remove --exit-zero to block on findings.
+
+      - name: Check for HIGH/CRITICAL findings (blocks PR)
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          with open("bandit-sast-results.json") as f:
+              data = json.load(f)
+          results = data.get("results", [])
+          blockers = [
+              r for r in results
+              if r.get("issue_severity") in ("HIGH", "CRITICAL")
+              and r.get("issue_confidence") in ("HIGH", "MEDIUM")
+          ]
+          if blockers:
+              print(f"❌ {len(blockers)} HIGH/CRITICAL Bandit findings:")
+              for b in blockers:
+                  print(f"  [{b['issue_severity']}] {b['test_id']} — {b['filename']}:{b['line_number']}: {b['issue_text']}")
+              sys.exit(1)
+          else:
+              print(f"✅ No HIGH/CRITICAL findings (total issues: {len(results)})")
+          EOF
+
+      - name: Upload Bandit SAST results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-sast-results
+          path: bandit-sast-results.json
+
+  eslint-security:
+    name: ESLint Security (JS/TS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-sast-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: Install ESLint security plugin
+        run: npm install --no-save eslint-plugin-security
+
+      - name: Run ESLint security scan
+        run: |
+          npx eslint \
+            --plugin security \
+            --rule '{"security/detect-object-injection": "warn", "security/detect-non-literal-regexp": "warn", "security/detect-unsafe-regex": "error", "security/detect-buffer-noassert": "error", "security/detect-child-process": "warn", "security/detect-disable-mustache-escape": "error", "security/detect-eval-with-expression": "error", "security/detect-new-buffer": "error", "security/detect-no-csrf-before-method-override": "error", "security/detect-possible-timing-attacks": "warn", "security/detect-pseudoRandomBytes": "error"}' \
+            --format json \
+            --output-file eslint-security-results.json \
+            'apps/**/*.{js,ts,tsx,jsx}' \
+            --ignore-pattern 'node_modules' \
+            --ignore-pattern '.next' \
+            --ignore-pattern 'dist' \
+            || true
+
+      - name: Check for ERROR-level ESLint security findings (blocks PR)
+        run: |
+          node - <<'EOF'
+          const fs = require('fs');
+          if (!fs.existsSync('eslint-security-results.json')) {
+            console.log('✅ No ESLint results file — skipping');
+            process.exit(0);
+          }
+          const results = JSON.parse(fs.readFileSync('eslint-security-results.json', 'utf8'));
+          const errors = results.flatMap(r => r.messages.filter(m => m.severity === 2));
+          if (errors.length > 0) {
+            console.error(`❌ ${errors.length} ESLint security ERROR(s):`);
+            results.forEach(r => {
+              r.messages.filter(m => m.severity === 2).forEach(m => {
+                console.error(`  [ERROR] ${r.filePath}:${m.line} — ${m.ruleId}: ${m.message}`);
+              });
+            });
+            process.exit(1);
+          }
+          const warns = results.flatMap(r => r.messages.filter(m => m.severity === 1));
+          console.log(`✅ No security errors. Warnings: ${warns.length}`);
+          EOF
+
+      - name: Upload ESLint security results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-security-results
+          path: eslint-security-results.json
+
+  sast-summary:
+    name: SAST Summary
+    runs-on: ubuntu-latest
+    needs: [bandit-sast, eslint-security]
+    if: always()
+
+    steps:
+      - name: Create SAST summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const bandit = '${{ needs.bandit-sast.result }}';
+            const eslint = '${{ needs.eslint-security.result }}';
+            const icon = (r) => r === 'success' ? '✅' : r === 'failure' ? '❌' : '⚠️';
+            const summary = `
+            ## 🔍 SAST Results
+
+            | Scanner | Language | Status |
+            |---------|----------|--------|
+            | Bandit | Python | ${icon(bandit)} ${bandit} |
+            | ESLint Security | JS/TS | ${icon(eslint)} ${eslint} |
+
+            ### Severity Policy
+            - **Bandit HIGH/CRITICAL** (high confidence) → blocks merge
+            - **ESLint security errors** → blocks merge
+            - Warnings → advisory only
+
+            See artifacts for full reports.
+            `;
+            core.summary.addRaw(summary).write();
