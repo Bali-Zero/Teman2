@@ -236,15 +236,17 @@ class AnalyticsAggregator:
                         {"query": q["query_text"][:100], "count": q["count"]} for q in top_queries
                     ]
 
-            # Get Prometheus metrics if available
+            # Get cache hit rate from Prometheus counters
             try:
-                from backend.app.metrics import MetricsCollector
+                from backend.app.metrics import cache_hits, cache_misses
 
-                MetricsCollector()
-                # These would come from actual Prometheus metrics
-                stats.cache_hit_rate = 0.65  # Placeholder
+                hits = cache_hits._value.get()
+                misses = cache_misses._value.get()
+                total = hits + misses
+                stats.cache_hit_rate = round(hits / total, 3) if total > 0 else 0.0
             except Exception as e:
-                logger.debug(f"Analytics aggregation item skipped: {e}")
+                logger.debug(f"Cache hit rate calculation skipped: {e}")
+                stats.cache_hit_rate = 0.0
 
         except Exception as e:
             logger.error(f"Error fetching RAG stats: {e}")
