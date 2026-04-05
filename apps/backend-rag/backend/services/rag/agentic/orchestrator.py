@@ -273,6 +273,7 @@ class AgenticRAGOrchestrator:
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
             nlm_enrichment_service=self.nlm_enrichment_service,
+            retriever=retriever,  # QW2: needed for embedding-based semantic cache lookup
         )
 
         # Initialize streaming components
