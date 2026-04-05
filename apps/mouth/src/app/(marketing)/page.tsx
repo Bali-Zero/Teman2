@@ -1,24 +1,24 @@
-import type { Metadata } from "next";
-import Script from "next/script";
-import { ZantaraWidget } from "@/components/ZantaraWidget";
-import { KbliSearchBox } from "./KbliSearchBox";
-import { LatestIntelligence } from "./LatestIntelligence";
-import { HomepageStaticContent } from "./HomepageStaticContent";
+import type { Metadata } from 'next';
+import Script from 'next/script';
+import { ZantaraWidget } from '@/components/ZantaraWidget';
+import { KbliSearchBox } from './KbliSearchBox';
+import { LatestIntelligence } from './LatestIntelligence';
+import { HomepageStaticContent } from './HomepageStaticContent';
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+    absolute: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
   },
   description:
     "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients since 2020.",
   alternates: {
-    canonical: "https://balizero.com",
+    canonical: 'https://balizero.com',
   },
   openGraph: {
-    title: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+    title: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
     description:
       "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients.",
-    url: "https://balizero.com",
+    url: 'https://balizero.com',
   },
 };
 
@@ -27,10 +27,7 @@ export const revalidate = 3600;
 export default function HomePage() {
   return (
     <>
-      <link
-        rel="preconnect"
-        href="https://fonts.googleapis.com"
-      />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet"
@@ -72,7 +69,7 @@ nav {
   border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 .logo-wrap { display: flex; align-items: center; text-decoration: none; }
-.logo-img { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.logo-img { width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex-shrink: 0; margin-top: 12px; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-dropdown { position: relative; }
 .nav-drop-trigger {
@@ -138,68 +135,72 @@ nav {
   border-bottom: 1px solid rgba(212,168,83,0.15);
   background: var(--navy);
   position: relative;
+  overflow: visible;
 }
 .brand-inner {
   max-width: 1400px; margin: 0 auto;
   padding: 0 60px;
-  height: 90px;
+  height: 80px;
   display: flex; align-items: center; justify-content: space-between;
+  overflow: visible;
 }
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-logo {
-  width: 72px; height: 72px;
-  border-radius: 50%; object-fit: cover;
-  flex-shrink: 0;
+.brand-text { display: flex; flex-direction: column; gap: 5px; }
+.brand-tagline {
+  font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+  font-size: 32px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  line-height: 1.4;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  overflow: visible;
 }
-.brand-divider {
-  width: 1px; height: 32px;
-  background: rgba(255,255,255,0.1);
-  margin: 0 12px; flex-shrink: 0;
-}
-.brand-text { display: flex; flex-direction: column; gap: 2px; }
-.brand-logo-text {
-  display: flex; flex-direction: column; gap: 0;
-  line-height: 1; margin: 0;
-}
-.brand-logo-row {
-  font-family: 'Arial Black', 'Impact', 'Franklin Gothic Heavy', sans-serif;
-  font-weight: 900; font-style: normal;
-  font-size: 20px; letter-spacing: 0.04em;
-  color: #fff; line-height: 1; display: flex; align-items: baseline; gap: 1px;
-}
-.brand-logo-3 {
-  color: #cc1a1a;
-  font-size: 1.4em;
-  line-height: 0.85;
+.brand-logo-3-img {
   display: inline-block;
-  transform: translateY(2px);
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  vertical-align: bottom;
+  height: 1.5em;
+  width: auto;
+  margin-bottom: -0.4em;
+  margin-right: -0.02em;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
 .brand-om-circle {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 1.05em; height: 1.05em;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  position: relative;
-  vertical-align: middle;
-  margin-bottom: 1px;
-}
-.brand-om-circle::after {
-  content: 'ॐ';
-  font-size: 0.58em;
-  font-family: serif;
-  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85em;
+  height: 0.85em;
   background: #fff;
   border-radius: 50%;
-  width: 100%; height: 100%;
-  display: flex; align-items: center; justify-content: center;
-  position: absolute; top: 0; left: 0;
+  position: relative;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-top: -0.1em;
+}
+.brand-om-circle::after {
+  content: "ॐ";
+  font-size: 0.55em;
+  font-family: serif;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 .brand-sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px; letter-spacing: 0.12em;
+  font-size: 10px; letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--w35); margin: 0;
 }
@@ -216,8 +217,8 @@ nav {
   font-size: 8px; color: rgba(212,168,83,0.4);
 }
 @media (max-width: 768px) {
-  .brand-inner { padding: 0 20px; height: 68px; }
-  .brand-tagline { font-size: 18px; }
+  .brand-inner { padding: 0 20px; height: 80px; }
+  .brand-tagline { font-size: 22px; }
   .brand-right { display: none; }
 }
 
@@ -705,7 +706,8 @@ body::after {
 `,
         }}
       />
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
 <!-- ════════ NAVBAR ════════ -->
 <nav>
   <a class="logo-wrap" href="/">
@@ -743,13 +745,8 @@ body::after {
 <div class="brand-entrance">
   <div class="brand-inner">
     <div class="brand-left">
-      <img class="brand-logo" src="/static/homepage/bali-zero-logo.png" alt="Bali Zero">
-      <div class="brand-divider"></div>
       <div class="brand-text">
-        <div class="brand-logo-text">
-          <div class="brand-logo-row"><span class="brand-logo-3">3</span>ALI</div>
-          <div class="brand-logo-row">ZER<span class="brand-om-circle"></span></div>
-        </div>
+        <h2 class="brand-tagline">Your <img class="brand-logo-3-img" src="/assets/logo/balizero-3-red.png?v=2" alt="B" width="600" height="660"/>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
@@ -1071,7 +1068,8 @@ body::after {
     <a href="/news?category=visas&q=work+permit" class="topic-pill">Work Permits</a>
   </div>
 
-`} />
+`}
+      />
 
       {/* ── Latest Intelligence (client-side, always fresh) ── */}
       <LatestIntelligence />
@@ -1080,22 +1078,32 @@ body::after {
       <div className="kbli-section">
         <div className="kbli-left">
           <span className="kbli-badge">Featured Intelligence Tool</span>
-          <h2 className="kbli-title">KBLI 2025<br />Navigator</h2>
-          <p className="kbli-desc">Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance.</p>
+          <h2 className="kbli-title">
+            KBLI 2025
+            <br />
+            Navigator
+          </h2>
+          <p className="kbli-desc">
+            Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk
+            assessment, PMA status tracking, and AI-powered guidance.
+          </p>
           <div className="kbli-features">
             <span className="kbli-feat">Smart bilingual search</span>
             <span className="kbli-feat">4-level risk system</span>
             <span className="kbli-feat">PMA status tracking</span>
             <span className="kbli-feat">AI assistant</span>
           </div>
-          <a href="/kbli" className="kbli-btn">▶ Explore Navigator</a>
+          <a href="/kbli" className="kbli-btn">
+            ▶ Explore Navigator
+          </a>
         </div>
         <div className="kbli-right">
           <KbliSearchBox />
         </div>
       </div>
 
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
   <!-- Services -->
   <div class="services-section">
     <div class="services-top">
@@ -1182,7 +1190,8 @@ body::after {
   </footer>
 </div>
 
-`} />
+`}
+      />
       <ZantaraWidget />
       <Script id="balizero-homepage-js" strategy="afterInteractive">{`
 // ════════ CAROUSEL ENGINE ════════
