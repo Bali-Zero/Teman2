@@ -59,6 +59,11 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio pytest-mock
 
+      - name: pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --strict --requirement apps/backend-rag/requirements.txt
+
       - name: Import chain gate
         run: |
           cd apps/backend-rag
@@ -134,7 +139,11 @@ jobs:
           key: ${{ runner.os }}-node-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-fund
+
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: false
 
       - name: Run tests
         run: |
