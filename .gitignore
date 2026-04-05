@@ -590,3 +590,4 @@ scripts/verify_batch*.py
 scripts/inspect_schema.py
 apps/mouth/public/temp_*.png
 .worktrees/
+apps/backend-rag/scripts/output/
