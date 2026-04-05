@@ -1196,3 +1196,55 @@ async def initialize_services(app: FastAPI) -> None:
     app.state.services_initialized = True
     logger.info("✅ ZANTARA Services Initialization Complete.")
     logger.info(f"📊 Service Status: {service_registry.get_status()['overall']}")
+
+
+async def initialize_services_light(app: FastAPI) -> None:
+    """
+    Light initialization for the 'api' process group.
+
+    Initializes only DB pool + Redis cache — skips SearchService (Qdrant)
+    and ZantaraAIClient (LLM warmup). Starts in <5s vs ~30s for full init.
+
+    Args:
+        app: FastAPI application instance
+    """
+    logger.info("🚀 [API PROCESS] Light init: DB + Redis only (skipping RAG services)")
+
+    # 1. Database pool (CRITICAL)
+    try:
+        import asyncpg as _asyncpg
+        db_pool = await _asyncpg.create_pool(
+            dsn=settings.database_url,
+            min_size=2,
+            max_size=10,
+            command_timeout=60,
+        )
+        app.state.db_pool = db_pool
+        service_registry.register("database", ServiceStatus.HEALTHY)
+        logger.info("✅ DB pool initialized (light)")
+    except Exception as e:
+        logger.error(f"❌ DB pool failed in light init: {e}")
+        service_registry.register("database", ServiceStatus.UNAVAILABLE, error=str(e))
+        raise RuntimeError(f"DB pool failed in light init: {e}") from e
+
+    # 2. Redis cache (non-critical)
+    try:
+        from backend.services.caching.cache_service import CacheService
+        cache = CacheService()
+        app.state.cache = cache
+        service_registry.register("cache", ServiceStatus.HEALTHY, critical=False)
+        logger.info("✅ Redis cache initialized (light)")
+    except Exception as e:
+        logger.warning(f"⚠️ Redis cache failed (non-critical): {e}")
+        app.state.cache = None
+
+    # 3. Mark RAG services as intentionally not-initialized (light mode)
+    app.state.search_service = None
+    app.state.ai_client = None
+    app.state.retriever = None
+    app.state.orchestrator = None
+    app.state.intelligent_router = None
+    app.state.memory_service = None
+    app.state.channel_router = None
+
+    logger.info("✅ Light init complete — RAG services intentionally skipped")
