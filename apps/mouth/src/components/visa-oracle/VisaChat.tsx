@@ -250,7 +250,7 @@ export function VisaChat({ quizAnswers, initialSessionId, visas }: VisaChatProps
                   className="w-2 h-2 rounded-full inline-block"
                   style={{
                     backgroundColor: "var(--tx-secondary)",
-                    animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                    animation: `vo-bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
                   }}
                 />
               ))}
@@ -298,12 +298,12 @@ export function VisaChat({ quizAnswers, initialSessionId, visas }: VisaChatProps
       </div>
 
       {/* Bouncing dots keyframes */}
-      <style>{`
-        @keyframes bounce {
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes vo-bounce {
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-6px); }
         }
-      `}</style>
+      ` }} />
 
       {/* WhatsApp CTA overlay */}
       {showCTA && whatsappUrl && (
