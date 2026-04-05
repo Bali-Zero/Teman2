@@ -157,7 +157,6 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
     # Lazy imports — avoid loading heavy ML deps at startup
     from backend.llm.genai_client import get_genai_client
     from backend.services.rag.hybrid_search import HybridSearchService
-    from backend.services.rag.reranker import CrossEncoderReranker
 
     try:
         # Build an enriched query that includes quiz context
@@ -197,20 +196,24 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
                 session_id=body.session_id,
             )
 
-        # --- Cross-encoder reranking ---
-        reranker = CrossEncoderReranker()
-        reranked = await reranker.rerank(
-            query=enriched_query,
-            documents=search_results,
-        )
+        # --- Use vector similarity scores directly (cross-encoder not available on Fly) ---
+        # Vector scores from Qdrant hybrid search are typically 0.3-0.9 for good matches.
+        # Thresholds adjusted accordingly: <0.30 ABSTAIN, 0.30-0.55 CAUTIOUS, >0.55 NORMAL.
+        top_docs = search_results[:5]
+        scores = [r.get("score", r.get("vector_score", 0.0)) for r in top_docs]
+        top_score = max(scores, default=0.0)
 
-        scores = [r.get("score", 0.0) for r in reranked]
-        confidence = _compute_confidence(scores)
+        if top_score < 0.30:
+            confidence = CONFIDENCE_ABSTAIN
+        elif top_score <= 0.55:
+            confidence = CONFIDENCE_CAUTIOUS
+        else:
+            confidence = CONFIDENCE_NORMAL
 
         if confidence == CONFIDENCE_ABSTAIN:
             logger.info(
                 "visa-oracle /chat: ABSTAIN (top_score=%.3f) session=%s",
-                max(scores, default=0.0),
+                top_score,
                 body.session_id[:12],
             )
             return ChatResponse(
@@ -225,11 +228,11 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             )
 
         # --- Build context for LLM ---
-        context_chunks = [r.get("content", r.get("text", "")) for r in reranked[:3]]
+        context_chunks = [r.get("content", r.get("text", "")) for r in top_docs[:3]]
         context_str = "\n\n---\n\n".join(filter(None, context_chunks))
         sources = [
             r.get("source", r.get("metadata", {}).get("source", ""))
-            for r in reranked[:3]
+            for r in top_docs[:3]
             if r.get("source") or r.get("metadata", {}).get("source")
         ]
 
