@@ -40,7 +40,7 @@ async def test_get_orchestrator_lazy_initialization(mock_request):
     mock_orchestrator = MagicMock()
 
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
-        with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
+        with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
             result = get_orchestrator(mock_request)
             assert result == mock_orchestrator
 
@@ -54,7 +54,7 @@ async def test_get_orchestrator_instance_reuse(mock_request):
     mock_orchestrator = MagicMock()
 
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
-        with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
+        with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
             # First call
             result1 = get_orchestrator(mock_request)
             # Second call
@@ -74,7 +74,7 @@ async def test_get_orchestrator_initialization_error(mock_request):
     with patch(
         "backend.services.rag.agentic.create_agentic_rag", side_effect=Exception("Init error")
     ):
-        with patch("backend.app.dependencies._agentic_rag_orchestrator", None):
+        with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
             with pytest.raises(Exception, match="Init error"):
                 get_orchestrator(mock_request)
 
