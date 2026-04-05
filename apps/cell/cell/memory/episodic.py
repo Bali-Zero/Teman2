@@ -158,8 +158,8 @@ class EpisodicMemory:
     async def forget_weak(self) -> int:
         """Remove episodes when over capacity.
 
-        Uses recall_count ASC, timestamp ASC as a proxy for low activation —
-        oldest episodes with lowest recall count are dropped first.
+        Fetches all episodes, computes ACT-R activation dynamically (recency + frequency),
+        and drops the lowest-activation ones first.
         Returns number of episodes deleted.
         """
         async with self._pool.acquire() as conn:
@@ -170,16 +170,34 @@ class EpisodicMemory:
 
         to_delete = total - self._max_episodes
 
-        # Delete oldest with lowest recall_count (proxy for low activation)
+        # Fetch all and compute activation in Python (ACT-R with current timestamp)
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, timestamp, recall_count FROM cell_episodes"
+            )
+
+        if not rows:
+            return 0
+
+        scored = [
+            (
+                row["id"],
+                Episode(
+                    situation={}, emotion="calm", action_taken="", outcome="success",
+                    lesson="", id=row["id"],
+                    timestamp=float(row["timestamp"]),
+                    recall_count=row["recall_count"],
+                ).activation,
+            )
+            for row in rows
+        ]
+        scored.sort(key=lambda x: x[1])  # lowest activation first
+        ids_to_delete = [s[0] for s in scored[:to_delete]]
+
         async with self._pool.acquire() as conn:
             await conn.execute(
-                """DELETE FROM cell_episodes
-                   WHERE id IN (
-                       SELECT id FROM cell_episodes
-                       ORDER BY recall_count ASC, timestamp ASC
-                       LIMIT $1
-                   )""",
-                to_delete,
+                "DELETE FROM cell_episodes WHERE id = ANY($1::int[])",
+                ids_to_delete,
             )
 
         logger.info(f"Episodic forgetting: deleted {to_delete} weak episodes (was {total}, max {self._max_episodes})")

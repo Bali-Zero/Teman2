@@ -158,12 +158,13 @@ async def main() -> None:
         ep_count = await episodic.count()
         logger.info(f"EpisodicMemory initialized ({ep_count} episodes)")
 
-        # Dreamer — nocturnal consolidation
-        dreamer = Dreamer(pool=_db_pool_ep, ollama_url="http://localhost:11434")
+        # Dreamer — nocturnal consolidation (shares http_client for Golden Rule #10)
+        ollama_client = httpx.AsyncClient(timeout=30.0)
+        dreamer = Dreamer(pool=_db_pool_ep, ollama_url="http://localhost:11434", http_client=ollama_client)
         logger.info("Dreamer initialized")
 
-        # Journal — daily narrative
-        journal = Journal(pool=_db_pool_ep, ollama_url="http://localhost:11434")
+        # Journal — daily narrative (shares same http_client)
+        journal = Journal(pool=_db_pool_ep, ollama_url="http://localhost:11434", http_client=ollama_client)
         logger.info("Journal initialized")
 
         # Attention Allocator — scarce cognitive budget
@@ -256,6 +257,8 @@ async def main() -> None:
     self_model.save()
     logger.info(f"Self-model saved: pulses={self_model.model.total_pulses}")
 
+    # Close shared Ollama httpx client (Dreamer + Journal)
+    await ollama_client.aclose()
     await redis_client.aclose()
     from cell.core.db import close_pool
     await close_pool()
