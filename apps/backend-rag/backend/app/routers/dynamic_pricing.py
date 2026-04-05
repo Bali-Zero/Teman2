@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user
-from backend.app.middleware.hybrid_auth import OptionalUser
+OptionalUser = dict | None  # User dict from get_current_user, or None if unauthenticated
 from backend.services.pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)
