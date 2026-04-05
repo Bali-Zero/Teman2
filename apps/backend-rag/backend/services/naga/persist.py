@@ -9,12 +9,13 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import asyncpg
 
 from backend.core.claims.models import ClaimRecord
+from backend.services.naga.quality.claim_scorer import compute_quality_score
 
 logger = logging.getLogger(__name__)
 
@@ -113,13 +114,33 @@ async def save_session(
                         content_hash,
                     )
 
-                # 3. Insert claims
+                # 3. Insert claims with quality scoring
                 claims_data: list[ClaimRecord] = state.get("_claims", [])
+                domain_str = state.get("domain", "general")
+                today = date.today()
+
                 for claim in claims_data:
                     claim_id = str(uuid.uuid4())
                     claim_key = hashlib.sha256(
                         claim.claim_text[:200].lower().strip().encode()
                     ).hexdigest()[:32]
+
+                    # Compute quality score at insertion time
+                    cross_ref = len(claim.source_ids)
+                    cred_scores = _collect_credibility_scores(
+                        claim.source_ids, search_results, source_id_map, conn,
+                    )
+                    quality = compute_quality_score(
+                        valid_as_of=today,
+                        domain=domain_str,
+                        cross_ref_count=cross_ref,
+                        verification_level=claim.confidence_class,
+                        credibility_scores=cred_scores,
+                    )
+
+                    # Set expiry: 30 days for visa/immigration, 90 days otherwise
+                    expiry_days = 30 if domain_str in ("visa", "immigration") else 90
+                    expires_at = today + timedelta(days=expiry_days)
 
                     await conn.execute(
                         """
@@ -127,19 +148,23 @@ async def save_session(
                             id, session_id, claim_text, claim_key,
                             domain, verification_level, confidence,
                             cross_ref_count, review_status,
-                            valid_as_of
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            valid_as_of, expires_at,
+                            quality_score, claim_status
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                         """,
                         uuid.UUID(claim_id),
                         uuid.UUID(session_id),
                         claim.claim_text[:2000],
                         claim_key,
-                        state.get("domain", "general"),
+                        domain_str,
                         claim.confidence_class,
                         claim.confidence_score,
-                        len(claim.source_ids),
+                        cross_ref,
                         "auto_extracted",  # Human review gate
-                        date.today(),
+                        today,
+                        expires_at,
+                        quality,
+                        "active",
                     )
 
                     # 4. Link claim to sources via naga_claim_evidence
@@ -177,3 +202,27 @@ async def save_session(
     except Exception as e:
         logger.error("Naga persist failed: %s", e, exc_info=True)
         return None
+
+
+def _collect_credibility_scores(
+    source_ids: list[str],
+    search_results: list[dict],
+    _source_id_map: dict[str, str],
+    _conn: Any,
+) -> list[float]:
+    """Extract credibility scores for a claim's source references.
+
+    Source IDs are "s0", "s1" etc — indexes into search_results.
+    We pull relevance_score as a proxy for credibility since the actual
+    naga_sources.credibility_score is the same value (set during insert).
+    """
+    scores: list[float] = []
+    for src_ref in source_ids:
+        try:
+            idx = int(src_ref.replace("s", ""))
+            if idx < len(search_results):
+                score = search_results[idx].get("relevance_score", 0.5)
+                scores.append(float(score))
+        except (ValueError, IndexError):
+            pass
+    return scores
