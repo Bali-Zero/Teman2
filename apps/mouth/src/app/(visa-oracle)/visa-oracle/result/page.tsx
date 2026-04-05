@@ -26,7 +26,7 @@ export default function ResultPage() {
 
   useEffect(() => {
     if (!answersValid) {
-      router.replace("/quiz");
+      router.replace("/visa-oracle/quiz");
       return;
     }
 
@@ -63,7 +63,7 @@ export default function ResultPage() {
       family: family ?? "",
       session_id: sessionId,
     });
-    router.push(`/chat?${params.toString()}`);
+    router.push(`/visa-oracle/chat?${params.toString()}`);
   }
 
   if (loading) {
@@ -89,7 +89,7 @@ export default function ResultPage() {
           {error}
         </p>
         <button
-          onClick={() => router.replace("/quiz")}
+          onClick={() => router.replace("/visa-oracle/quiz")}
           className="px-6 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ backgroundColor: "var(--bz-accent)", color: "#fff" }}
         >
@@ -120,7 +120,7 @@ export default function ResultPage() {
           Contact us on WhatsApp
         </a>
         <button
-          onClick={() => router.replace("/quiz")}
+          onClick={() => router.replace("/visa-oracle/quiz")}
           className="text-sm underline transition-opacity hover:opacity-70"
           style={{ color: "var(--tx-secondary)" }}
         >
