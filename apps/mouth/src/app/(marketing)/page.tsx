@@ -160,11 +160,11 @@ nav {
 }
 .brand-logo-3-img {
   display: inline-block;
-  vertical-align: bottom;
-  height: 1.6em;
+  vertical-align: baseline;
+  height: 1.5em;
   width: auto;
-  margin-bottom: -0.15em;
-  margin-right: -0.05em;
+  margin-bottom: -0.2em;
+  margin-right: -0.04em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
 }
@@ -172,13 +172,14 @@ nav {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0.8em;
-  height: 0.8em;
+  width: 0.85em;
+  height: 0.85em;
   background: #fff;
   border-radius: 50%;
   position: relative;
   flex-shrink: 0;
-  vertical-align: middle;
+  vertical-align: baseline;
+  margin-bottom: -0.05em;
 }
 .brand-om-circle::after {
   content: "ॐ";
