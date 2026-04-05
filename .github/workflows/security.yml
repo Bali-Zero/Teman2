@@ -142,7 +142,8 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -r apps/backend-rag/src/ \
+          bandit -r apps/backend-rag/backend/ \
+            -c apps/backend-rag/pyproject.toml \
             -f json \
             -o bandit-report.json \
             -ll \
@@ -191,10 +192,33 @@ jobs:
           name: safety-report
           path: safety-report.json
 
+  detect-secrets:
+    name: Detect Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install detect-secrets
+        run: pip install detect-secrets
+
+      - name: Run detect-secrets scan
+        run: |
+          detect-secrets scan \
+            --baseline .secrets.baseline \
+            --exclude-files 'node_modules/.*' \
+            --exclude-files '\.venv/.*' \
+            --exclude-files 'venv/.*' \
+            --exclude-files '\.git/.*'
+
+      - name: Audit baseline (fail on new secrets)
+        run: detect-secrets audit .secrets.baseline --report --fail-on-unaudited
+
   security-summary:
     name: Security Summary
     runs-on: ubuntu-latest
-    needs: [snyk-python, snyk-node, snyk-docker, codeql, bandit, safety]
+    needs: [snyk-python, snyk-node, snyk-docker, codeql, bandit, safety, detect-secrets]
     if: always()
 
     steps:
