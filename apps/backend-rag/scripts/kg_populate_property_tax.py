@@ -1,16 +1,16 @@
 """
-KG Phase 1: Property + Tax Node/Edge Population
-=================================================
+KG Property + Tax Population Script
+====================================
 
-Converts hardcoded data from kg_subgraph_property.py and kg_subgraph_tax.py
-into kg_nodes / kg_edges database entries so the subgraphs can query the KG
-instead of returning static dictionaries.
+Phase 1: Convert hardcoded data from subgraph files into kg_nodes/kg_edges.
+Phase 2: LLM extraction from Qdrant collections for cross-domain relationships.
 
 Usage:
     cd apps/backend-rag && source .venv/bin/activate
-    PYTHONPATH=. python scripts/kg_populate_property_tax.py --phase property --dry-run
-    PYTHONPATH=. python scripts/kg_populate_property_tax.py --phase tax --dry-run
-    PYTHONPATH=. python scripts/kg_populate_property_tax.py --phase all
+    PYTHONPATH=. python scripts/kg_populate_property_tax.py --phase all                    # Phase 1
+    PYTHONPATH=. python scripts/kg_populate_property_tax.py --phase all --dry-run           # Phase 1 dry-run
+    PYTHONPATH=. python scripts/kg_populate_property_tax.py --enrich --limit 10             # Phase 2 (10 chunks)
+    PYTHONPATH=. python scripts/kg_populate_property_tax.py --enrich --limit 10 --dry-run   # Phase 2 dry-run
 
 Author: Nuzantara Team
 Date: 2026-04-05
@@ -589,6 +589,404 @@ async def run_phase1(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 2 — QDRANT LLM ENRICHMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+
+# Entity types we want the LLM to extract
+PROPERTY_ENTITY_TYPES = """
+- property_type: Types of land/property ownership (e.g., Hak Pakai, HGB, Hak Milik, rental)
+- ownership_right: Certificate types (SHM, HGB certificate, Girik)
+- government_fee: Official government fees (BPHTB, PNBP, notary fees)
+- concept: Requirements, processes, or conditions (e.g., BPN check, notary deed)
+"""
+
+TAX_ENTITY_TYPES = """
+- tax_type: Types of tax (PPh Badan, PPh 21, PPh 23, PPh 26, PPN)
+- tax_obligation: Filing/registration obligations (NPWP, PKP, SPT, monthly filing)
+- government_fee: Official tax fees or penalties
+- concept: Deadlines, thresholds, or conditions
+"""
+
+PROPERTY_RELATIONSHIP_TYPES = """
+- ALLOWS_OWNERSHIP: Who can own this property type (source=property_type, target=concept)
+- HAS_REQUIREMENT: What documents/conditions needed (source=property_type, target=concept)
+- REQUIRES_ENTITY: What company type needed (source=property_type, target=company type)
+- HAS_FEE: What government fees apply (source=property_type, target=government_fee)
+- REQUIRES: Sequential prerequisite (source=step, target=next_step)
+- REFERENCES: Legal reference between regulations
+"""
+
+TAX_RELATIONSHIP_TYPES = """
+- HAS_TAX: What taxes apply to entity type (source=company type, target=tax_type)
+- HAS_DEADLINE: Filing deadlines (source=tax_type, target=concept)
+- HAS_FEE: Penalty or fee amounts (source=tax_obligation, target=government_fee)
+- REQUIRES: Sequential prerequisite (source=obligation, target=next_obligation)
+- REFERENCES: Legal reference between regulations
+"""
+
+EXTRACTION_PROMPT_TEMPLATE = """You are a knowledge graph extraction system. Extract entities and relationships from the text below.
+
+ENTITY TYPES:
+{entity_types}
+
+RELATIONSHIP TYPES:
+{relationship_types}
+
+RULES:
+1. entity_id MUST use format "type:canonical_name" (example: "tax_type:pph_21", "property_type:hak_pakai")
+2. entity_type MUST be one of the types listed above (tax_type, tax_obligation, property_type, ownership_right, government_fee, concept)
+3. name is the human-readable label
+4. strength: 1.0 for explicit statements, 0.7-0.9 for implied
+5. evidence: quote the text that supports each relationship
+
+EXAMPLE OUTPUT:
+{{"entities": [{{"entity_id": "tax_type:pph_21", "entity_type": "tax_type", "name": "PPh 21 Employee Withholding", "properties": {{"rate": 0.05}}}}], "relationships": [{{"source": "company:pt_pma", "target": "tax_type:pph_21", "type": "HAS_TAX", "strength": 1.0, "evidence": "PT PMA must withhold PPh 21"}}]}}
+
+TEXT:
+{text}
+"""
+
+EXTRACTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "entities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "entity_id": {"type": "string"},
+                    "entity_type": {"type": "string"},
+                    "name": {"type": "string"},
+                    "properties": {"type": "object"},
+                },
+                "required": ["entity_id", "entity_type", "name"],
+            },
+        },
+        "relationships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "type": {"type": "string"},
+                    "strength": {"type": "number"},
+                    "evidence": {"type": "string"},
+                },
+                "required": ["source", "target", "type"],
+            },
+        },
+    },
+    "required": ["entities", "relationships"],
+}
+
+
+async def _query_qdrant_chunks(
+    collection: str,
+    keywords: list[str],
+    limit: int = 10,
+) -> list[dict[str, Any]]:
+    """Scroll Qdrant collection and filter chunks locally by keyword relevance.
+
+    No full-text index required — scrolls through points and picks those
+    containing at least one keyword in their text.
+    """
+    import httpx
+
+    chunks: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    offset: str | None = None
+    batch_size = 50  # Scroll batch size
+    max_scrolls = 20  # Safety limit: 20 * 50 = 1000 points max
+
+    keywords_lower = [k.lower() for k in keywords]
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        for _ in range(max_scrolls):
+            if len(chunks) >= limit:
+                break
+
+            body: dict[str, Any] = {"limit": batch_size, "with_payload": True}
+            if offset:
+                body["offset"] = offset
+
+            resp = await client.post(
+                f"{QDRANT_URL}/collections/{collection}/points/scroll",
+                json=body,
+            )
+            if resp.status_code != 200:
+                logger.warning("Qdrant scroll failed for %s: %s", collection, resp.status_code)
+                break
+
+            result = resp.json().get("result", {})
+            points = result.get("points", [])
+            next_offset = result.get("next_page_offset")
+
+            for point in points:
+                if len(chunks) >= limit:
+                    break
+
+                pid = str(point["id"])
+                if pid in seen_ids:
+                    continue
+                seen_ids.add(pid)
+
+                text = point.get("payload", {}).get("text", "")
+                metadata = point.get("payload", {}).get("metadata", {})
+
+                # Skip short chunks
+                if len(text) < 100:
+                    continue
+
+                # Check keyword relevance
+                text_lower = text.lower()
+                if any(kw in text_lower for kw in keywords_lower):
+                    chunks.append({
+                        "id": pid,
+                        "text": text[:3000],
+                        "source": metadata.get("source", "unknown"),
+                        "category": metadata.get("category", ""),
+                    })
+
+            if not next_offset or not points:
+                break
+            offset = next_offset
+
+    logger.info("Fetched %d keyword-matched chunks from %s (scanned %d points)", len(chunks), collection, len(seen_ids))
+    return chunks
+
+
+async def _extract_with_ollama(
+    text: str,
+    domain: str,
+    entity_types: str,
+    relationship_types: str,
+) -> dict[str, list] | None:
+    """Extract entities and relationships from text using Ollama qwen3.5:27b."""
+    try:
+        from backend.llm.ollama_client import ollama_chat_kg
+    except ImportError:
+        logger.warning("ollama_client not importable — skipping LLM extraction")
+        return None
+
+    prompt = EXTRACTION_PROMPT_TEMPLATE.format(
+        domain=domain,
+        entity_types=entity_types,
+        relationship_types=relationship_types,
+        text=text,
+    )
+
+    # Use 27b model with extended timeout — 9b returns empty, 27b needs ~30-90s
+    result = await ollama_chat_kg(prompt, EXTRACTION_SCHEMA, model="qwen3.5:27b", timeout=120.0)
+    if not result:
+        return None
+
+    # Strip markdown code fences if present
+    cleaned = result.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        # Remove first line (```json) and last line (```)
+        lines = [l for l in lines if not l.strip().startswith("```")]
+        cleaned = "\n".join(lines)
+
+    try:
+        parsed = json.loads(cleaned)
+        # Handle various LLM output formats
+        if isinstance(parsed, list):
+            # LLM wrapped output in array — take first element if it's a dict
+            parsed = parsed[0] if parsed and isinstance(parsed[0], dict) else {"entities": [], "relationships": []}
+        if not isinstance(parsed, dict):
+            logger.warning("LLM returned unexpected type: %s", type(parsed).__name__)
+            return None
+        entities = parsed.get("entities", [])
+        relationships = parsed.get("relationships", [])
+        if not isinstance(entities, list):
+            entities = []
+        if not isinstance(relationships, list):
+            relationships = []
+        return {"entities": entities, "relationships": relationships}
+    except (json.JSONDecodeError, IndexError, KeyError) as e:
+        logger.warning("LLM returned invalid JSON: %s", e)
+        return None
+
+
+async def _safe_upsert_extraction(
+    conn: asyncpg.Connection,
+    entities: list[dict],
+    relationships: list[dict],
+    chunk_id: str,
+    dry_run: bool,
+) -> tuple[int, int]:
+    """Upsert extracted entities and edges with savepoint isolation.
+
+    Each insert uses a savepoint so FK violations (from LLM-generated
+    entity_ids that don't match existing nodes) don't abort the connection.
+
+    Returns (nodes_inserted, edges_inserted).
+    """
+    if dry_run:
+        return len(entities), len(relationships)
+
+    nodes_ok = 0
+    edges_ok = 0
+
+    # Insert nodes first (edges reference them)
+    for ent in entities:
+        eid = ent.get("entity_id", "")
+        etype = ent.get("entity_type", "")
+        ename = ent.get("name", "")
+        if not (eid and etype and ename):
+            logger.debug("  Skipping entity with missing fields: %s", ent)
+            continue
+        try:
+            async with conn.transaction():
+                props = {**(ent.get("properties") or {}), "source_chunk": chunk_id}
+                await _upsert_node(conn, eid, etype, ename, props)
+                nodes_ok += 1
+                logger.debug("  ✓ Node: %s (%s)", eid, ename)
+        except Exception as e:
+            logger.warning("  ⚠️ Node insert failed (%s): %s", eid, e)
+
+    # Then insert edges
+    for rel in relationships:
+        src = rel.get("source", "")
+        tgt = rel.get("target", "")
+        rtype = rel.get("type", "")
+        if not (src and tgt and rtype):
+            continue
+        try:
+            async with conn.transaction():
+                evidence = {"evidence": [rel.get("evidence", "")]}
+                await _upsert_edge(
+                    conn, src, tgt, rtype,
+                    properties=evidence,
+                    confidence=rel.get("strength", 0.8),
+                    source_chunk_ids=[chunk_id],
+                )
+                edges_ok += 1
+        except Exception as e:
+            logger.warning("  ⚠️ Edge insert failed (%s→%s): %s", src, tgt, e)
+
+    return nodes_ok, edges_ok
+
+
+async def run_phase2(
+    conn: asyncpg.Connection,
+    limit: int = 10,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Phase 2: Extract entities/relationships from Qdrant chunks via LLM.
+
+    Args:
+        conn: asyncpg connection (caller manages transaction)
+        limit: max chunks per domain to process
+        dry_run: if True, extract but don't write to DB
+
+    Returns:
+        Stats dict with counts per domain
+    """
+    results: dict[str, Any] = {"dry_run": dry_run}
+
+    # Property domain — query legal collection for property-related chunks
+    property_keywords = [
+        "hak pakai", "hak guna bangunan", "hak milik", "HGB",
+        "BPHTB", "BPN", "property", "tanah", "bangunan",
+        "sertifikat", "notaris", "PPJB", "pelepasan hak",
+    ]
+    property_chunks = await _query_qdrant_chunks(
+        "legal_unified_hybrid_hybrid",
+        property_keywords,
+        limit=limit,
+    )
+
+    # Tax domain — query tax collection
+    tax_keywords = [
+        "PPh", "PPN", "NPWP", "pajak", "withholding",
+        "SPT", "PKP", "tax", "corporate", "badan",
+        "filing", "deadline", "penalty", "denda",
+    ]
+    tax_chunks = await _query_qdrant_chunks(
+        "tax_genius_hybrid",
+        tax_keywords,
+        limit=limit,
+    )
+
+    total_nodes = 0
+    total_edges = 0
+
+    # Process property chunks
+    for i, chunk in enumerate(property_chunks):
+        logger.info(
+            "🏠 Property chunk %d/%d (source=%s, %d chars)",
+            i + 1, len(property_chunks), chunk["source"], len(chunk["text"]),
+        )
+        extraction = await _extract_with_ollama(
+            chunk["text"], "property",
+            PROPERTY_ENTITY_TYPES, PROPERTY_RELATIONSHIP_TYPES,
+        )
+        if not extraction:
+            logger.warning("  ⚠️ No extraction result — skipping")
+            continue
+
+        entities = extraction.get("entities", [])
+        relationships = extraction.get("relationships", [])
+        logger.info("  → Extracted %d entities, %d relationships", len(entities), len(relationships))
+
+        n, e = await _safe_upsert_extraction(conn, entities, relationships, chunk["id"], dry_run)
+        total_nodes += n
+        total_edges += e
+
+    results["property"] = {
+        "chunks_processed": len(property_chunks),
+        "nodes": total_nodes,
+        "edges": total_edges,
+    }
+
+    # Reset counters for tax
+    tax_nodes = 0
+    tax_edges = 0
+
+    for i, chunk in enumerate(tax_chunks):
+        logger.info(
+            "🧾 Tax chunk %d/%d (source=%s, %d chars)",
+            i + 1, len(tax_chunks), chunk["source"], len(chunk["text"]),
+        )
+        extraction = await _extract_with_ollama(
+            chunk["text"], "tax",
+            TAX_ENTITY_TYPES, TAX_RELATIONSHIP_TYPES,
+        )
+        if not extraction:
+            logger.warning("  ⚠️ No extraction result — skipping")
+            continue
+
+        entities = extraction.get("entities", [])
+        relationships = extraction.get("relationships", [])
+        logger.info("  → Extracted %d entities, %d relationships", len(entities), len(relationships))
+
+        n, e = await _safe_upsert_extraction(conn, entities, relationships, chunk["id"], dry_run)
+        tax_nodes += n
+        tax_edges += e
+
+    results["tax"] = {
+        "chunks_processed": len(tax_chunks),
+        "nodes": tax_nodes,
+        "edges": tax_edges,
+    }
+
+    prefix = "[DRY-RUN] Would insert" if dry_run else "Inserted"
+    logger.info(
+        "📊 Phase 2 %s: Property(%d nodes, %d edges from %d chunks), Tax(%d nodes, %d edges from %d chunks)",
+        prefix,
+        results["property"]["nodes"], results["property"]["edges"], results["property"]["chunks_processed"],
+        results["tax"]["nodes"], results["tax"]["edges"], results["tax"]["chunks_processed"],
+    )
+
+    return results
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CLI ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -605,22 +1003,37 @@ async def _main(args: argparse.Namespace) -> None:
 
     try:
         async with pool.acquire() as conn:
-            results = await run_phase1(conn, dry_run=args.dry_run, phase=args.phase)
-            logger.info("Phase 1 results: %s", results)
+            if args.enrich:
+                # Phase 2: no outer transaction — each upsert is independent
+                # (FK violations on LLM-generated entity_ids are expected and skipped)
+                results = await run_phase2(
+                    conn, limit=args.limit or 10, dry_run=args.dry_run,
+                )
+                logger.info("Phase 2 results: %s", results)
+            else:
+                # Phase 1: single transaction — all hardcoded data or nothing
+                async with conn.transaction():
+                    results = await run_phase1(conn, dry_run=args.dry_run, phase=args.phase)
+                    logger.info("Phase 1 results: %s", results)
     finally:
         await pool.close()
 
 
 def main() -> None:
-    """CLI entry point with --phase, --dry-run, --limit args."""
+    """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="KG Phase 1: Populate property + tax nodes/edges",
+        description="KG Population: Property + Tax nodes/edges",
     )
     parser.add_argument(
         "--phase",
         choices=["property", "tax", "all"],
         default="all",
-        help="Which domain to populate (default: all)",
+        help="Phase 1: which domain to populate (default: all)",
+    )
+    parser.add_argument(
+        "--enrich",
+        action="store_true",
+        help="Run Phase 2: LLM extraction from Qdrant collections",
     )
     parser.add_argument(
         "--dry-run",
@@ -630,8 +1043,8 @@ def main() -> None:
     parser.add_argument(
         "--limit",
         type=int,
-        default=0,
-        help="Max items to process (0 = unlimited, reserved for future batching)",
+        default=10,
+        help="Phase 2: max chunks per domain to process (default: 10)",
     )
 
     args = parser.parse_args()
@@ -641,12 +1054,10 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    logger.info(
-        "Starting KG Phase 1 — phase=%s dry_run=%s limit=%d",
-        args.phase,
-        args.dry_run,
-        args.limit,
-    )
+    if args.enrich:
+        logger.info("Starting KG Phase 2 — enrich from Qdrant, limit=%d, dry_run=%s", args.limit, args.dry_run)
+    else:
+        logger.info("Starting KG Phase 1 — phase=%s dry_run=%s", args.phase, args.dry_run)
 
     asyncio.run(_main(args))
 

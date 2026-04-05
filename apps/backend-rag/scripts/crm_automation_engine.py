@@ -525,7 +525,18 @@ def build_digest(
 async def main(*, dry_run: bool = False, module: str | None = None) -> None:
     logger.info(f"CRM Automation Engine started (dry_run={dry_run}, module={module})")
 
-    pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+    # Retry pool creation — Fly.io PG cold start can cause ConnectionResetError
+    pool = None
+    for attempt in range(1, 4):
+        try:
+            pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
+            break
+        except (ConnectionResetError, OSError, asyncpg.PostgresError) as exc:
+            logger.warning(f"DB connect attempt {attempt}/3 failed: {exc}")
+            if attempt < 3:
+                await asyncio.sleep(10 * attempt)
+            else:
+                raise
     try:
         modules_to_run = [module] if module else ["quality", "docs", "renewals", "stale"]
 
