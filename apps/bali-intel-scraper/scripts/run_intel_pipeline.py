@@ -48,6 +48,7 @@ PIPELINE_STEPS = [
     '1_scraping',
     '2_validation',
     '2.5_qwen_filter',   # LLM scoring — gemma3:12b, threshold quality_score >= 30 (configurable)
+    '2.6_quality_gate',  # 4-dimension quality gate: relevance, urgency, reliability, business impact
     '2.7_verification',  # Cross-check T1 sources + KB for regulatory articles
     '2.8_clustering',    # Semantic clustering — group articles by theme into dossiers
     '2.9_nlm_context',   # NLM legal context — query NB core + deep research temp NB
@@ -120,6 +121,8 @@ class IntelPipeline:
                 return self.step_validation()
             elif step == '2.5_qwen_filter':
                 return self.step_qwen_filter()
+            elif step == '2.6_quality_gate':
+                return self.step_quality_gate()
             elif step == '2.7_verification':
                 return self.step_verification()
             elif step == '2.8_clustering':
@@ -527,6 +530,92 @@ class IntelPipeline:
         self.log(f'Keyword fallback: all {len(articles)} articles passed')
         self.update_step_status('2.5_qwen_filter', 'completed', {
             'passed': len(articles), 'filtered': 0, 'method': 'fallback'
+        })
+        return True
+
+    # ------------------------------------------------------------------
+    # Step 2.6 — Quality Gate (4-dimension scoring)
+    # ------------------------------------------------------------------
+
+    def step_quality_gate(self) -> bool:
+        """Step 2.6: 4-dimension quality gate — relevance, urgency, reliability, business impact.
+
+        Evaluates each article through the quality gate and routes:
+          - composite ≥ 0.70 → auto_publish (fast-tracked, tagged)
+          - 0.40 ≤ composite < 0.70 → review (default path, continues pipeline)
+          - composite < 0.40 → archive (removed from pipeline, saved to state)
+
+        Articles tagged with quality_gate_* fields for downstream steps.
+        """
+        articles = self.state.get('articles', [])
+        if not articles:
+            self.update_step_status('2.6_quality_gate', 'skipped', {'reason': 'no_articles'})
+            return True
+
+        self.log(f'Quality Gate: evaluating {len(articles)} articles...')
+
+        try:
+            sys.path.insert(0, str(self.script_dir))
+            from quality_gate import QualityGateConfig, evaluate_batch, GateDecision
+        except ImportError:
+            self.log('quality_gate module not found — passing all articles through', 'WARN')
+            self.update_step_status('2.6_quality_gate', 'skipped', {'reason': 'module_not_found'})
+            return True
+
+        config = QualityGateConfig.load()
+        results = evaluate_batch(articles, config)
+
+        auto_publish = []
+        review = []
+        archived = []
+
+        for art, result in results:
+            art['quality_gate'] = result.to_dict()
+            art['quality_gate_composite'] = result.composite
+            art['quality_gate_decision'] = result.decision.value
+
+            if result.decision == GateDecision.AUTO_PUBLISH:
+                art['featured'] = True
+                auto_publish.append(art)
+            elif result.decision == GateDecision.REVIEW:
+                review.append(art)
+            else:
+                archived.append(art)
+
+        # Log per-article scores
+        for art, result in results:
+            decision = result.decision.value.upper()
+            self.log(
+                f'  {result.composite:.2f} [{decision:12s}] '
+                f'R={result.relevance:.2f} U={result.urgency:.2f} '
+                f'L={result.reliability:.2f} B={result.business_impact:.2f} '
+                f'| {art.get("title", "")[:55]}'
+            )
+
+        # Pipeline continues with auto_publish + review articles
+        # Archived articles are saved in state but removed from active pipeline
+        self.state['articles'] = auto_publish + review
+        self.state['archived_articles'] = self.state.get('archived_articles', []) + archived
+
+        self.log(
+            f'Quality Gate: {len(auto_publish)} auto-publish, '
+            f'{len(review)} review, {len(archived)} archived '
+            f'(thresholds: publish≥{config.threshold_auto_publish}, '
+            f'review≥{config.threshold_review})'
+        )
+
+        self.update_step_status('2.6_quality_gate', 'completed', {
+            'evaluated': len(articles),
+            'auto_publish': len(auto_publish),
+            'review': len(review),
+            'archived': len(archived),
+            'avg_composite': round(
+                sum(r.composite for _, r in results) / max(len(results), 1), 3
+            ),
+            'thresholds': {
+                'auto_publish': config.threshold_auto_publish,
+                'review': config.threshold_review,
+            },
         })
         return True
 
