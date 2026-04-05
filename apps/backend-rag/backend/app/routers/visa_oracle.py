@@ -176,11 +176,13 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
 
         # --- Hybrid search ---
         search_service = HybridSearchService()
-        search_results = await search_service.search(
+        raw = await search_service.search_hybrid(
             query=enriched_query,
             collection="visa_oracle",
             limit=5,
+            alpha=0.5,
         )
+        search_results: list[dict[str, Any]] = raw.get("results", [])
 
         if not search_results:
             logger.info("visa-oracle /chat: no results for session=%s", body.session_id[:12])
