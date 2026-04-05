@@ -387,7 +387,7 @@ class BirthdayNotifierService:
             return stats
 
         except Exception as e:
-            logger.error(f"Birthday notification run failed: {e}")
+            logger.error(f"Birthday notification run failed: {e}", exc_info=True)
             stats["error"] = str(e)
             return stats
 

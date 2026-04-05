@@ -105,13 +105,13 @@ class BirthplaceEnrichmentService:
             if response.status_code == 200:
                 data = response.json()
                 return data.get("response", "")
-            logger.error(f"Ollama returned status {response.status_code}")
+            logger.error(f"Ollama returned status {response.status_code}", exc_info=True)
             return None
         except httpx.TimeoutException:
-            logger.error("Ollama request timed out")
+            logger.error("Ollama request timed out", exc_info=True)
             return None
         except Exception as e:
-            logger.error(f"Ollama request failed: {e}")
+            logger.error(f"Ollama request failed: {e}", exc_info=True)
             return None
 
     def build_enrichment_prompt(self, birthplace: str, nationality: str | None) -> str:
@@ -228,7 +228,7 @@ Return ONLY the JSON object, no additional text."""
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to update client {client_id}: {e}")
+            logger.error(f"Failed to update client {client_id}: {e}", exc_info=True)
             return False
 
     async def run_batch_enrichment(self) -> dict[str, Any]:
@@ -250,7 +250,7 @@ Return ONLY the JSON object, no additional text."""
             client = self._get_client(timeout=5.0)
             response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
             if response.status_code != 200:
-                logger.error("Ollama is not available")
+                logger.error("Ollama is not available", exc_info=True)
                 stats["error"] = "Ollama not available"
                 return stats
         except Exception as e:

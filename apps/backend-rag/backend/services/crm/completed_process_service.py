@@ -83,7 +83,7 @@ class CompletedProcessService:
                     )
                     client_notified = True
                 except Exception as e:
-                    logger.error(f"Failed to send completion email to client: {e}")
+                    logger.error(f"Failed to send completion email to client: {e}", exc_info=True)
 
             # Send notification to team leader
             team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
@@ -97,7 +97,7 @@ class CompletedProcessService:
                     )
                     team_notified = True
                 except Exception as e:
-                    logger.error(f"Failed to notify team leader: {e}")
+                    logger.error(f"Failed to notify team leader: {e}", exc_info=True)
 
             # Log activity
             await self._log_activity(
