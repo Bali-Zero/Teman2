@@ -166,6 +166,7 @@ nav {
   vertical-align: bottom;
   height: 1.5em;
   width: auto;
+  margin-bottom: -0.12em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
@@ -745,7 +746,7 @@ body::after {
   <div class="brand-inner">
     <div class="brand-left">
       <div class="brand-text">
-        <h2 class="brand-tagline">Your <img class="brand-logo-3-img" src="/assets/logo/balizero-3-red.png" alt="B" width="600" height="660"/>ali, from Zer<span class="brand-om-circle"></span></h2>
+        <h2 class="brand-tagline">Your <img class="brand-logo-3-img" src="/assets/logo/balizero-3-red.png?v=2" alt="B" width="600" height="660"/>ali, from Zer<span class="brand-om-circle"></span></h2>
         <p class="brand-sub">Visa · Company · Tax · Property · Intelligence</p>
       </div>
     </div>
