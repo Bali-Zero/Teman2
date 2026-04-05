@@ -82,6 +82,7 @@ class OrchestratorCore:
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
         nlm_enrichment_service: Any = None,  # NLMEnrichmentService
+        retriever: Any = None,  # SearchService — used for embedding-based semantic cache
     ) -> None:
         """
         Inizializza OrchestratorCore.
@@ -112,6 +113,7 @@ class OrchestratorCore:
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
         self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
         self.db_pool = db_pool  # Store for later use
+        self.retriever = retriever  # SearchService — for embedding-based semantic cache lookup
 
         # Initialize specialized managers
         self.context_manager = OrchestratorContextManager(
@@ -230,6 +232,11 @@ class OrchestratorCore:
         """
         Check semantic cache per query.
 
+        QW2: Now passes query embedding to enable similarity-based cache lookup
+        in addition to exact-match. Embedding is computed via retriever.embedder
+        (uses the SearchService LRU embedding cache — no extra OpenAI call if
+        the same query was already expanded during this request).
+
         Args:
             query: Query string
             extracted_entities: Entities estratte
@@ -243,7 +250,18 @@ class OrchestratorCore:
 
         with trace_span("cache.semantic_check", {"cache_enabled": True}):
             try:
-                cached = await self.semantic_cache.get_cached_result(query)
+                # Compute embedding for similarity-based lookup (uses LRU cache in SearchService)
+                query_embedding = None
+                if self.retriever and hasattr(self.retriever, "embedder"):
+                    try:
+                        import numpy as np
+                        raw = await self.retriever.embedder.generate_query_embedding(query)
+                        if raw:
+                            query_embedding = np.array(raw, dtype=np.float32)
+                    except Exception as emb_err:
+                        logger.debug(f"Embedding for semantic cache skipped: {emb_err}")
+
+                cached = await self.semantic_cache.get_cached_result(query, query_embedding)
                 if cached:
                     logger.info("✅ [Cache Hit] Returning cached result for query")
                     set_span_attribute("cache_hit", "true")
