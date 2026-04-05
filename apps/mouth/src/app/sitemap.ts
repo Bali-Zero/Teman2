@@ -211,7 +211,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  // 6. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
+  // 6. Visa Oracle pages (visa.balizero.com)
+  const visaOracleBase = "https://visa.balizero.com";
+  const visaOraclePages = [
+    {
+      url: visaOracleBase,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${visaOracleBase}/quiz`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    },
+    {
+      url: `${visaOracleBase}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    },
+    {
+      url: `${visaOracleBase}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    },
+  ];
+  routes.push(...visaOraclePages);
+
+  // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
   try {
     routes.push({
       url: `${baseUrl}/kbli/sectors`,
