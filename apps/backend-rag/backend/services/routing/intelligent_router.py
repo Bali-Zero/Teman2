@@ -60,27 +60,12 @@ class IntelligentRouter:
 
         semantic_cache = SemanticCache(redis_client) if redis_client is not None else None
 
-        # Retrieve optional services for enrichment
-        graph_service_inst = None
-        cultural_insights_inst = None
-        try:
-            from backend.services.misc.graph_service import GraphService
-
-            if db_pool is not None:
-                graph_service_inst = GraphService(db_pool=db_pool)
-        except Exception:
-            pass  # GraphService not available
-        if search_service is not None:
-            cultural_insights_inst = getattr(search_service, "cultural_insights", None)
-
         self.orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
-            _web_search_client=None,  # FUTURE: Inject WebSearchTool when Tavily/Brave keys are configured
+            _web_search_client=None,
             clarification_service=self.clarification_service,
             semantic_cache=semantic_cache,
-            graph_service=graph_service_inst,
-            cultural_insights_service=cultural_insights_inst,
         )
 
         logger.info("🎯 [IntelligentRouter] Initialized (NEXT-GEN AGENTIC RAG MODE)")
