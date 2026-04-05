@@ -51,13 +51,16 @@ def mock_conn() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_db(mock_conn: AsyncMock) -> tuple[AsyncMock, AsyncMock]:
+def mock_db(mock_conn: AsyncMock) -> tuple[MagicMock, AsyncMock]:
     """
     Returns (pool, conn) where pool.acquire() yields conn.
 
+    pool.acquire is a regular MagicMock (not async) so that
+    ``async with pool.acquire() as conn:`` works correctly.
+
     Usage in tests: pool, conn = mock_db
     """
-    pool = AsyncMock()
+    pool = MagicMock()
     # Make pool.acquire() work as an async context manager
     ctx = AsyncMock()
     ctx.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -275,3 +278,162 @@ async def test_run_phase1_tax_only(mock_conn: AsyncMock) -> None:
     assert "property_nodes" not in results
     assert "property_edges" not in results
     assert mock_conn.execute.call_count == 12 + 14  # nodes + edges
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROPERTY SUBGRAPH KG-FIRST REWIRE TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_property_requirements_from_kg(mock_db: tuple[AsyncMock, AsyncMock]) -> None:
+    """get_property_requirements_node queries KG when db_pool provided."""
+    from backend.services.rag.kg_subgraph_property import get_property_requirements_node
+
+    pool, conn = mock_db
+    conn.fetch = AsyncMock(return_value=[
+        {
+            "entity_id": "concept:kitas_or_kitap",
+            "name": "KITAS or KITAP Holder",
+            "properties": {},
+            "relationship_type": "HAS_REQUIREMENT",
+        },
+        {
+            "entity_id": "concept:notary_deed",
+            "name": "Notary Deed Execution",
+            "properties": {},
+            "relationship_type": "HAS_REQUIREMENT",
+        },
+        {
+            "entity_id": "government_fee:bphtb_5pct",
+            "name": "BPHTB Tax (5%)",
+            "properties": {"rate": "5%"},
+            "relationship_type": "HAS_FEE",
+        },
+    ])
+
+    state = {"property_type": "hak_pakai", "query": "buy hak pakai", "user_context": {}}
+    result = await get_property_requirements_node(state, pool)
+
+    assert result["kg_sources_used"] == 3
+    assert len(result["property_requirements"]) == 3
+    assert result["property_requirements"][0]["type"] == "HAS_REQUIREMENT"
+
+
+@pytest.mark.asyncio
+async def test_property_requirements_fallback(mock_db: tuple[AsyncMock, AsyncMock]) -> None:
+    """get_property_requirements_node falls back to hardcoded when KG is empty."""
+    from backend.services.rag.kg_subgraph_property import get_property_requirements_node
+
+    pool, conn = mock_db
+    conn.fetch = AsyncMock(return_value=[])
+
+    state = {"property_type": "hak_pakai", "query": "buy hak pakai", "user_context": {}}
+    result = await get_property_requirements_node(state, pool)
+
+    assert result["kg_sources_used"] == 0
+    assert len(result["property_requirements"]) == 1
+    assert result["property_requirements"][0]["requirement_type"] == "ownership"
+
+
+@pytest.mark.asyncio
+async def test_property_workflow_confidence_with_kg() -> None:
+    """synthesize_property_workflow_node uses kg_sources_used for confidence."""
+    from backend.services.rag.kg_subgraph_property import synthesize_property_workflow_node
+
+    state: dict[str, Any] = {"property_type": "hak_pakai", "kg_sources_used": 3}
+    result = await synthesize_property_workflow_node(state)
+
+    # With kg_sources_used > 0, has_db_validation=True -> entity_confidence_avg=0.8
+    breakdown = result["workflow"]["confidence_breakdown"]
+    assert breakdown["entity_confidence_avg"] == 0.8
+    # unique_sources=max(1, 3)=3 -> multi_source_bonus=0.15
+    assert breakdown["unique_source_count"] == 3
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAX SUBGRAPH KG-FIRST TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_tax_obligations_from_kg(mock_db):
+    """get_tax_obligations_node queries KG when data is available."""
+    from backend.services.rag.kg_subgraph_tax import get_tax_obligations_node
+
+    pool, conn = mock_db
+    conn.fetch = AsyncMock(return_value=[
+        {
+            "entity_id": "tax_type:pph_badan",
+            "name": "PPh Badan (Corporate Income Tax)",
+            "properties": {"rate": 0.22, "description": "Corporate Income Tax"},
+        },
+        {
+            "entity_id": "tax_type:pph_21",
+            "name": "PPh 21 (Employee Withholding)",
+            "properties": {"description": "Withholding tax on employee salaries"},
+        },
+    ])
+
+    state: dict = {
+        "query": "tax obligations for PT PMA",
+        "user_context": {},
+        "business_entity_type": "pt_pma",
+        "npwp_required": True,
+        "vat_applicable": False,
+        "tax_obligations": [],
+    }
+
+    result = await get_tax_obligations_node(state, pool)
+
+    assert result["kg_sources_used"] == 2
+    tax_overview = result["tax_obligations"][0]
+    assert tax_overview["source"] == "knowledge_graph"
+    assert "pph_badan" in tax_overview["details"]
+
+
+@pytest.mark.asyncio
+async def test_tax_obligations_fallback(mock_db):
+    """get_tax_obligations_node falls back to hardcoded when KG is empty."""
+    from backend.services.rag.kg_subgraph_tax import get_tax_obligations_node
+
+    pool, conn = mock_db
+    conn.fetch = AsyncMock(return_value=[])
+
+    state: dict = {
+        "query": "tax obligations",
+        "user_context": {},
+        "business_entity_type": "pt_pma",
+        "npwp_required": True,
+        "vat_applicable": True,
+        "tax_obligations": [],
+    }
+
+    result = await get_tax_obligations_node(state, pool)
+
+    assert result.get("kg_sources_used", 0) == 0
+    tax_overview = result["tax_obligations"][0]
+    assert tax_overview["source"] == "hardcoded_fallback"
+    assert "pph_corporate" in tax_overview["details"]
+
+
+@pytest.mark.asyncio
+async def test_tax_workflow_confidence_with_kg():
+    """synthesize_tax_workflow_node uses kg_sources_used for confidence."""
+    from backend.services.rag.kg_subgraph_tax import synthesize_tax_workflow_node
+
+    state: dict = {
+        "query": "tax",
+        "user_context": {},
+        "business_entity_type": "pt_pma",
+        "vat_applicable": False,
+        "tax_obligations": [],
+        "kg_sources_used": 4,
+    }
+
+    result = await synthesize_tax_workflow_node(state)
+
+    # When kg_sources_used > 0, has_db_validation=True → entity_confidence_avg=0.8
+    assert result["workflow"]["confidence_breakdown"]["entity_confidence_avg"] == 0.8
+    # With 4 unique sources (>=3), multi_source_bonus should be 0.15
+    assert result["workflow"]["confidence_breakdown"]["multi_source_bonus"] == 0.15
