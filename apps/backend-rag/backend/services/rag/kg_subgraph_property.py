@@ -485,16 +485,53 @@ async def identify_property_type_node(state: Any, llm: Any = None) -> dict:
 async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dict:
     """Legacy node: return ownership requirements for the property type in state.
 
-    Accepts the OLD positional signature ``(state, db_pool)`` used by the test
-    suite.  Returns legacy field ``property_requirements``.
+    Queries KG for requirements via kg_nodes/kg_edges. Falls back to
+    hardcoded _LEGACY_REQUIREMENTS_DB when KG returns no results.
     """
     prop_type: str = state.get("property_type", "unknown")
-    reqs = _LEGACY_REQUIREMENTS_DB.get(prop_type, {})
-    logger.info(f"[Property/legacy] Requirements for type={prop_type}")
+    requirements: list[dict] = []
+    kg_sources = 0
+
+    if db_pool:
+        try:
+            async with db_pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT n.entity_id, n.name, n.properties, e.relationship_type
+                    FROM kg_edges e
+                    JOIN kg_nodes n ON e.target_entity_id = n.entity_id
+                    WHERE e.source_entity_id = $1
+                      AND e.relationship_type IN (
+                          'HAS_REQUIREMENT', 'REQUIRES_ENTITY',
+                          'ALLOWS_OWNERSHIP', 'HAS_FEE'
+                      )
+                    """,
+                    f"property_type:{prop_type}",
+                )
+
+                if rows:
+                    for row in rows:
+                        requirements.append({
+                            "type": row["relationship_type"],
+                            "name": row["name"],
+                            "details": row["properties"] or {},
+                        })
+                    kg_sources = len(rows)
+                    logger.info(
+                        f"[Property/legacy] Got {kg_sources} requirements from KG for {prop_type}",
+                    )
+        except Exception as e:
+            logger.warning(f"[Property/legacy] KG query failed, using fallback: {e}")
+
+    # Fallback to hardcoded if KG empty
+    if not requirements:
+        reqs = _LEGACY_REQUIREMENTS_DB.get(prop_type, {})
+        requirements = [{"requirement_type": "ownership", "details": reqs}]
+        logger.info(f"[Property/legacy] Using fallback requirements for {prop_type}")
+
     return {
-        "property_requirements": [
-            {"requirement_type": "ownership", "details": reqs},
-        ],
+        "property_requirements": requirements,
+        "kg_sources_used": kg_sources,
     }
 
 
@@ -528,11 +565,12 @@ async def synthesize_property_workflow_node(state: Any) -> dict:
         {"step": 7, "action": "Register at Land Office (BPN)", "entity_id": "bpn_registration"},
     ]
 
+    kg_sources = state.get("kg_sources_used", 0)
     breakdown = calculate_subgraph_confidence(
         workflow_source="property_subgraph",
         steps_count=len(steps),
-        has_db_validation=False,
-        unique_sources=1,
+        has_db_validation=kg_sources > 0,
+        unique_sources=max(1, kg_sources),
     )
 
     workflow = {
