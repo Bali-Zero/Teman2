@@ -7,6 +7,7 @@ contextual chat, and WhatsApp/Telegram handoff.
 No authentication required (public product).
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -243,9 +244,28 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             f"=== QUESTION ===\n{body.message}"
         )
 
-        # --- Generate answer via Gemini Flash ---
+        # --- Generate answer via Gemini Flash (30s timeout) ---
         gemini = GeminiClient()
-        answer_text = await gemini.generate(prompt=prompt)
+        try:
+            answer_text = await asyncio.wait_for(
+                gemini.generate(prompt=prompt),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "visa-oracle /chat: Gemini timeout (30s) session=%s",
+                body.session_id[:12],
+            )
+            return ChatResponse(
+                success=True,
+                answer=(
+                    "Our AI is taking longer than usual to respond. "
+                    "Please try again or contact us on WhatsApp for immediate assistance."
+                ),
+                confidence=CONFIDENCE_CAUTIOUS,
+                sources=sources,
+                session_id=body.session_id,
+            )
 
         if confidence == CONFIDENCE_CAUTIOUS:
             answer_text = HEDGING_PREFIX + answer_text
