@@ -156,17 +156,16 @@ nav {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #fff;
-  line-height: 1;
+  line-height: 1.4;
   margin: 0;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  overflow: visible;
 }
 .brand-logo-3-img {
   display: inline-block;
-  vertical-align: middle;
+  vertical-align: text-bottom;
   height: 1.3em;
   width: auto;
-  position: relative;
-  top: -0.15em;
   margin-right: -0.02em;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.5));
