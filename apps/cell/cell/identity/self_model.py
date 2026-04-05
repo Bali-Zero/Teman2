@@ -90,12 +90,14 @@ class SelfModelManager:
             logger.warning(f"Failed to load self-model: {e}")
 
     def save(self) -> None:
-        """Persist self-model to JSON file."""
+        """Persist self-model to JSON file (atomic write — crash-safe)."""
         if str(self._path) == "/dev/null":
             return
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(json.dumps(self.model.to_dict(), indent=2))
+            tmp = self._path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(self.model.to_dict(), indent=2))
+            tmp.replace(self._path)  # atomic on POSIX
         except Exception as e:
             logger.warning(f"Failed to save self-model: {e}")
 
