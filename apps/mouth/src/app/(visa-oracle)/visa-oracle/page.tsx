@@ -67,7 +67,7 @@ export default function VisaOracleLandingPage() {
         {/* Dual CTA */}
         <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
           <Link
-            href="/quiz"
+            href="/visa-oracle/quiz"
             className="inline-flex items-center justify-center px-8 py-3 rounded-lg font-semibold text-base transition-opacity hover:opacity-90 active:opacity-80"
             style={{
               backgroundColor: "var(--bz-accent)",
@@ -77,7 +77,7 @@ export default function VisaOracleLandingPage() {
             Start Quiz
           </Link>
           <Link
-            href="/chat"
+            href="/visa-oracle/chat"
             className="inline-flex items-center justify-center px-8 py-3 rounded-lg font-semibold text-base transition-opacity hover:opacity-80 active:opacity-70 border"
             style={{
               borderColor: "var(--bz-accent)",

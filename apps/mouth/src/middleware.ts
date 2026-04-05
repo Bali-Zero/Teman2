@@ -214,10 +214,19 @@ export function middleware(request: NextRequest) {
   }
 
   // === VISA DOMAIN (visa.balizero.com) ===
-  // Dedicated Visa Oracle webapp — serves (visa-oracle) route group directly.
+  // Dedicated Visa Oracle webapp — rewrites all paths to /visa-oracle/* prefix.
+  // The route group (visa-oracle) lives at /visa-oracle/* to avoid conflicts
+  // with existing routes (/chat, /privacy, /terms etc).
   if (isVisaDomain) {
-    // visa.balizero.com serves (visa-oracle) route group directly
-    return response;
+    const rewriteUrl = request.nextUrl.clone();
+    if (pathname === "/" || pathname === "") {
+      rewriteUrl.pathname = "/visa-oracle";
+    } else if (!pathname.startsWith("/visa-oracle")) {
+      rewriteUrl.pathname = `/visa-oracle${pathname}`;
+    }
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    rewriteResponse.headers.set("x-pathname", pathname);
+    return rewriteResponse;
   }
 
   // === ZANTARA DOMAIN (zantara.balizero.com) ===
