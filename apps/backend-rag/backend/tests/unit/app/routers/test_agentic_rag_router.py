@@ -86,15 +86,15 @@ class TestAgenticRagRouter:
     async def test_get_orchestrator_reuses_existing(self, mock_request):
         """Test orchestrator reuse"""
         existing = MagicMock()
-        import backend.app.dependencies as deps
+        import backend.app.deps.orchestrator as orch_mod
 
-        original = deps._agentic_rag_orchestrator
-        deps._agentic_rag_orchestrator = existing
+        original = orch_mod._agentic_rag_orchestrator
+        orch_mod._agentic_rag_orchestrator = existing
         try:
             orchestrator = get_orchestrator(mock_request)
             assert orchestrator == existing
         finally:
-            deps._agentic_rag_orchestrator = original
+            orch_mod._agentic_rag_orchestrator = original
 
     def test_clean_image_generation_response_no_pollinations(self):
         """Test cleaning response without pollinations"""
@@ -690,7 +690,7 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.dependencies.get_database_pool",
+            "backend.app.deps.database.get_database_pool",
             side_effect=HTTPException(status_code=503),
         ):
             from backend.app.dependencies import get_optional_database_pool
@@ -705,7 +705,7 @@ class TestAgenticQueryResponse:
         mock_request = MagicMock()
 
         with patch(
-            "backend.app.dependencies.get_database_pool",
+            "backend.app.deps.database.get_database_pool",
             side_effect=HTTPException(status_code=500),
         ):
             from backend.app.dependencies import get_optional_database_pool
