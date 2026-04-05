@@ -45,6 +45,12 @@ INSERT INTO kg_nodes (
 VALUES ($1, $2, $3, $4::jsonb, 1.0, $5, NOW(), NOW())
 ON CONFLICT (entity_id) DO UPDATE SET
     properties = kg_nodes.properties || EXCLUDED.properties,
+    source_chunk_ids = (
+        SELECT array_agg(DISTINCT elem)
+        FROM unnest(
+            COALESCE(kg_nodes.source_chunk_ids, ARRAY[]::text[]) || $5
+        ) elem
+    ),
     updated_at = NOW()
 """
 
@@ -121,6 +127,12 @@ PROPERTY_TYPE_NODES: list[dict[str, Any]] = [
         "properties": {
             "allowed_for_foreigners": True,
             "max_duration": "30 years (renewable 20+30 years)",
+            "requirements": [
+                "KITAS/KITAP holder",
+                "Notary deed",
+                "Land certificate check (BPN)",
+                "Pay BPHTB (5% tax)",
+            ],
             "notes": "Most common for foreign property ownership",
             "source": "kg_subgraph_property._LEGACY_REQUIREMENTS_DB",
         },
@@ -132,6 +144,7 @@ PROPERTY_TYPE_NODES: list[dict[str, Any]] = [
         "properties": {
             "allowed_for_foreigners": False,
             "max_duration": "30 years (renewable)",
+            "requirements": ["Indonesian citizen or Indonesian legal entity only"],
             "notes": "Foreigners can acquire via PT PMA",
             "source": "kg_subgraph_property._LEGACY_REQUIREMENTS_DB",
         },
@@ -143,6 +156,7 @@ PROPERTY_TYPE_NODES: list[dict[str, Any]] = [
         "properties": {
             "allowed_for_foreigners": False,
             "max_duration": "Permanent",
+            "requirements": ["Indonesian citizen only"],
             "notes": "Full ownership, not available to foreigners",
             "source": "kg_subgraph_property._LEGACY_REQUIREMENTS_DB",
         },
@@ -154,6 +168,11 @@ PROPERTY_TYPE_NODES: list[dict[str, Any]] = [
         "properties": {
             "allowed_for_foreigners": True,
             "max_duration": "Varies (typically 1-5 years)",
+            "requirements": [
+                "Rental agreement",
+                "Passport copy",
+                "Deposit (usually 2-3 months rent)",
+            ],
             "notes": "Simplest option for short-term stay",
             "source": "kg_subgraph_property._LEGACY_REQUIREMENTS_DB",
         },
