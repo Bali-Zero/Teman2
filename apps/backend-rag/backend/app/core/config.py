@@ -392,7 +392,9 @@ class Settings(BaseSettings):
         ),
     )
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_hours: int = 24
+    jwt_access_token_expire_hours: int = 1  # S03: reduced from 24h to 1h
+    jwt_enforce_expiry: bool = False  # S03: Phase 1 audit mode, flip to True for Phase 2
+    jwt_grace_period_days: int = 7  # S03: grace period when enabling expiry enforcement
 
     @field_validator("jwt_secret_key", mode="before")
     @classmethod
