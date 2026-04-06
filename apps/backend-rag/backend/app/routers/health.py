@@ -97,31 +97,81 @@ router = APIRouter(prefix="/health", tags=["health"])
 @router.get(
     "/", response_model=HealthResponse, include_in_schema=False,
 )  # /health/ with trailing slash
+def _check_resource_thresholds(process_mode: str | None) -> tuple[str | None, str | None]:
+    """
+    Check memory and disk thresholds for Fly.io health-based auto-restart.
+
+    Returns (status_override, message) if thresholds exceeded, else (None, None).
+    Only triggers unhealthy (→ auto-restart) on the rag process to avoid
+    restarting the light api process for legitimate ML model memory usage.
+    """
+    try:
+        import psutil as _psutil
+
+        # Memory check — RAG process only (ML models legitimately use ~70-80%)
+        if process_mode == "rag":
+            vm = _psutil.virtual_memory()
+            mem_pct = vm.percent
+            if mem_pct >= 90:
+                logger.warning(f"Memory critical: {mem_pct:.1f}% used — triggering unhealthy")
+                return "unhealthy", f"Memory {mem_pct:.1f}% >= 90% threshold"
+            if mem_pct >= 85:
+                logger.warning(f"Memory high: {mem_pct:.1f}% used")
+                # degraded but not unhealthy — still serves traffic
+
+        # Disk check — /data volume (Fly.io persistent storage)
+        try:
+            disk = _psutil.disk_usage("/data")
+            disk_pct = disk.percent
+            if disk_pct >= 90:
+                logger.warning(f"Disk /data critical: {disk_pct:.1f}% — triggering unhealthy")
+                return "unhealthy", f"Disk /data {disk_pct:.1f}% >= 90% threshold"
+            if disk_pct >= 80:
+                logger.warning(f"Disk /data high: {disk_pct:.1f}%")
+                return "degraded", f"Disk /data {disk_pct:.1f}% >= 80% threshold"
+        except (FileNotFoundError, PermissionError):
+            pass  # /data not mounted on this process — normal for api process
+
+    except ImportError:
+        pass  # psutil not available — skip resource checks
+
+    return None, None
+
+
 async def health_check(request: Request) -> HealthResponse:
     """
     System health check - Non-blocking during startup.
 
     Returns "initializing" immediately if service not ready.
     Prevents container crashes during warmup by not creating heavy objects.
+
+    Resource thresholds (Fly.io auto-restart via unhealthy status):
+    - Memory >90% (rag process only): unhealthy
+    - Disk /data >90%: unhealthy
+    - Disk /data >80%: degraded
     """
     try:
+        process_mode = getattr(request.app.state, "process_mode", None)
+
         # Get search service from backend.app.state
         search_service = getattr(request.app.state, "search_service", None)
 
         # Light process (api) has search_service=None by design — report healthy
         # Heavy process (rag) without search_service is still warming up
         if not search_service:
-            is_light_process = getattr(request.app.state, "process_mode", None) == "light"
+            is_light_process = process_mode == "light"
             if is_light_process:
+                # Still check resources even for light process (disk is shared)
+                status_override, override_msg = _check_resource_thresholds(process_mode)
                 return HealthResponse(
-                    status="healthy",
+                    status=status_override or "healthy",
                     version="v100-qdrant",
                     database={"status": "connected", "type": "postgresql"},
                     embeddings={
                         "status": "operational",
                         "model": "text-embedding-3-small",
                         "dimensions": 1536,
-                        "note": "RAG handled by rag process group",
+                        "note": override_msg or "RAG handled by rag process group",
                     },
                 )
             logger.info("Health check: Service initializing (warmup in progress)")
@@ -134,6 +184,19 @@ async def health_check(request: Request) -> HealthResponse:
 
         # Service is ready - perform lightweight check (no new instantiations)
         try:
+            # Check resource thresholds (memory + disk) — may trigger Fly.io auto-restart
+            status_override, override_msg = _check_resource_thresholds(process_mode)
+
+            # Update DB pool Prometheus gauges
+            db_pool = getattr(request.app.state, "db_pool", None)
+            if db_pool:
+                try:
+                    from backend.app.metrics import db_pool_idle, db_pool_size
+                    db_pool_size.labels(service="rag").set(db_pool.get_size())
+                    db_pool_idle.labels(service="rag").set(db_pool.get_idle_size())
+                except Exception:
+                    pass
+
             # Get model info without triggering heavy operations
             model_info = getattr(search_service.embedder, "model", "unknown")
             dimensions = getattr(search_service.embedder, "dimensions", 0)
@@ -142,13 +205,14 @@ async def health_check(request: Request) -> HealthResponse:
             qdrant_stats = await get_qdrant_stats()
 
             return HealthResponse(
-                status="healthy",
+                status=status_override or "healthy",
                 version="v100-qdrant",
                 database={
                     "status": "connected",
                     "type": "qdrant",
                     "collections": qdrant_stats.get("collections", 0),
                     "total_documents": qdrant_stats.get("total_documents", 0),
+                    **({"resource_warning": override_msg} if override_msg else {}),
                 },
                 embeddings={
                     "status": "operational",

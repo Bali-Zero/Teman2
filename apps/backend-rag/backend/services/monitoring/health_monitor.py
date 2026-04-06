@@ -230,11 +230,81 @@ class HealthMonitor:
             # DB pool saturation
             await self._check_db_pool_saturation()
 
+            # PostgreSQL dead tuples + WAL accumulation (#13)
+            await self._check_pg_health()
+
             # Update Prometheus gauges
             self._update_resource_metrics(rss_mb, mem_percent, cpu_percent)
 
         except Exception as e:
             logger.debug(f"Resource check failed (non-critical): {e}")
+
+    async def _check_pg_health(self) -> None:
+        """
+        Check PostgreSQL dead tuples and WAL accumulation.
+
+        Dead tuples predict vacuum lag; WAL accumulation predicts I/O saturation.
+        Source: NB-1 doc 2026-03-14, §5.5 — "two metrics that predict every PostgreSQL outage".
+
+        Auto-triggers VACUUM ANALYZE if dead_tuples > 10000, only during off-peak hours
+        (02:00–06:00 WITA) or if count is critical.
+        """
+        if not self.app_state:
+            return
+        db_pool = getattr(self.app_state, "db_pool", None)
+        if not db_pool:
+            return
+
+        try:
+            async with db_pool.acquire() as conn:
+                # Dead tuple count
+                dead_tup = await conn.fetchval(
+                    "SELECT COALESCE(sum(n_dead_tup), 0) FROM pg_stat_user_tables"
+                )
+
+                # WAL size — pg_ls_waldir() requires superuser or pg_monitor role
+                try:
+                    wal_bytes = await conn.fetchval(
+                        "SELECT COALESCE(sum(size), 0) FROM pg_ls_waldir()"
+                    )
+                    wal_mb = (wal_bytes or 0) / (1024 * 1024)
+                except Exception:
+                    wal_mb = -1  # Insufficient privilege — skip WAL check
+
+                # Alert thresholds
+                if dead_tup > 10000:
+                    await self._send_resource_alert_throttled(
+                        "pg_dead_tuples",
+                        float(dead_tup),
+                        10000.0,
+                        unit=f" dead tuples (auto-VACUUM triggered)",
+                    )
+                    # Auto-trigger VACUUM ANALYZE off-peak or critical
+                    now_hour_wita = (__import__("datetime").datetime.utcnow().hour + 8) % 24
+                    if 2 <= now_hour_wita < 6 or dead_tup > 50000:
+                        logger.info(f"Auto-triggering VACUUM ANALYZE ({dead_tup} dead tuples)")
+                        try:
+                            await conn.execute("VACUUM ANALYZE")
+                        except Exception as ve:
+                            logger.warning(f"VACUUM ANALYZE failed: {ve}")
+                elif dead_tup > 5000:
+                    await self._send_resource_alert_throttled(
+                        "pg_dead_tuples_warn",
+                        float(dead_tup),
+                        5000.0,
+                        unit=f" dead tuples (VACUUM recommended)",
+                    )
+
+                if wal_mb > 500:
+                    await self._send_resource_alert_throttled(
+                        "pg_wal_size",
+                        wal_mb,
+                        500.0,
+                        unit=f"MB WAL (I/O saturation risk)",
+                    )
+
+        except Exception as e:
+            logger.debug(f"PG health check failed (non-critical): {e}")
 
     async def _check_db_pool_saturation(self) -> None:
         """Alert if DB connection pool is near exhaustion."""
