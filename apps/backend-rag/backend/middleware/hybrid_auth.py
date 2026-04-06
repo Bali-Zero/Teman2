@@ -182,7 +182,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
             "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)
-            "/api/prime/v2/analyze",  # PRIME NEXUS: Layer 2 investment analysis (public base, auth for KG)
+            "/api/prime/v2/analyze",  # PRIME NEXUS: Layer 2 investment analysis (public, rate-limited)
+            "/api/prime/v2/density",  # PRIME NEXUS: Competitor density per zone (public)
+            "/api/prime/v2/predict",  # PRIME NEXUS: Zone trend prediction (public)
+            "/api/prime/v2/temporal",  # PRIME NEXUS: Temporal activity (public — zone-level only)
+            "/api/prime/v2/regulations",  # PRIME NEXUS: Regulation feed per zone (public)
+            "/api/prime/v2/proposal/",  # PRIME NEXUS: Public proposal view (token-based)
             "/api/prime/v2/health",  # PRIME NEXUS: Health check
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
