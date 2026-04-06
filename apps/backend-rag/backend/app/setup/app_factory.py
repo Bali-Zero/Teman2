@@ -28,11 +28,13 @@ from backend.app.setup.middleware_config import register_middleware
 from backend.app.setup.observability import setup_observability
 
 # Configure structured logging FIRST (before any logger is used)
-configure_logging()
+if not getattr(configure_logging, "_done", False):
+    configure_logging()
+    configure_logging._done = True
 
 logger = logging.getLogger("zantara.backend")
 
-SHUTDOWN_TIMEOUT = 5.0  # seconds per service stop()
+SHUTDOWN_TIMEOUT = 2.0  # seconds per service stop()
 
 
 async def _safe_stop(name: str, coro) -> None:
@@ -88,7 +90,13 @@ async def lifespan(app: FastAPI):
 
         from backend.app.setup.service_initializer import initialize_services
 
-        await initialize_services(app)
+        try:
+            await initialize_services(app)
+        except RuntimeError as e:
+            logger.critical(f"❌ CRITICAL: Service initialization failed: {e}")
+            app.state.startup_failed = True
+            app.state.startup_error = str(e)
+            return  # Stop background init, health check will report 503
 
         from backend.app.setup.plugin_initializer import initialize_plugins
 
