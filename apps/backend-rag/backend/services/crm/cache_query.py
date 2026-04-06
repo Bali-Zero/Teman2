@@ -217,22 +217,20 @@ class CRMQueryOptimizer:
         self.db_pool = db_pool
 
     async def batch_insert_clients(self, clients: list[dict[str, Any]]) -> list[int]:
-        """Inserimento batch clienti in transazione ACID."""
+        """Inserimento batch clienti in transazione ACID (single multi-row INSERT)."""
         if not clients:
             return []
 
-        query = """
-            INSERT INTO clients (
-                full_name, email, phone, whatsapp, nationality,
-                passport_number, status, client_type, assigned_to,
-                custom_fields, created_at, updated_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
-            )
-            RETURNING id
-        """
-        params = [
-            (
+        import json as _json
+
+        # Build multi-row VALUES clause: ($1,$2,...,$10), ($11,$12,...,$20), ...
+        value_rows = []
+        all_params: list[Any] = []
+        for i, c in enumerate(clients):
+            base = i * 10
+            placeholders = ", ".join(f"${base + j}" for j in range(1, 11))
+            value_rows.append(f"({placeholders}, NOW(), NOW())")
+            all_params.extend([
                 c.get("full_name"),
                 c.get("email"),
                 c.get("phone"),
@@ -242,17 +240,20 @@ class CRMQueryOptimizer:
                 c.get("status", "active"),
                 c.get("client_type", "individual"),
                 c.get("assigned_to"),
-                c.get("custom_fields", {}),
-            )
-            for c in clients
-        ]
+                _json.dumps(c.get("custom_fields", {})),
+            ])
+
+        query = f"""
+            INSERT INTO clients (
+                full_name, email, phone, whatsapp, nationality,
+                passport_number, status, client_type, assigned_to,
+                custom_fields, created_at, updated_at
+            ) VALUES {", ".join(value_rows)}
+            RETURNING id
+        """
         async with self.db_pool.acquire() as conn, conn.transaction():
-            ids = []
-            for p in params:
-                row = await conn.fetchrow(query, *p)
-                if row:
-                    ids.append(row["id"])
-            return ids
+            rows = await conn.fetch(query, *all_params)
+            return [row["id"] for row in rows]
 
     # Allowed columns for dynamic UPDATE to prevent SQL injection
     ALLOWED_PRACTICE_COLUMNS = frozenset(
@@ -275,7 +276,12 @@ class CRMQueryOptimizer:
     )
 
     async def batch_update_practices(self, updates: list[dict[str, Any]]) -> int:
-        """Aggiornamento batch pratiche."""
+        """Aggiornamento batch pratiche.
+
+        Note: loop is intentional — each update may target different columns,
+        so executemany/multi-row UPDATE is not feasible. All runs in one
+        transaction to minimize round-trip overhead.
+        """
         if not updates:
             return 0
 

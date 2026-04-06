@@ -316,6 +316,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     decoder=json.loads,
                     schema="pg_catalog",
                 )
+                # Prevent runaway queries (30s covers RAG KG traversal ~5-10s)
+                await conn.execute("SET statement_timeout = '30s'")
                 # Validate connection
                 await conn.execute("SELECT 1")
 
@@ -323,8 +325,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             pool_kwargs = {
                 "dsn": dsn,
                 "min_size": getattr(settings, "db_pool_min_size", None) or 2,
-                "max_size": getattr(settings, "db_pool_max_size", None) or 20,
-                "command_timeout": getattr(settings, "db_command_timeout", None) or 60,
+                "max_size": getattr(settings, "db_pool_max_size", None) or 10,
+                "command_timeout": getattr(settings, "db_command_timeout", None) or 30,
                 # 30s ensures stale connections are dropped before the first request hits
                 # after a Fly.io cold start (~35s). Previously 300s caused
                 # "connection was closed in the middle of operation" on POST /api/crm/clients.
@@ -985,6 +987,17 @@ async def initialize_channel_router(
             logger.info("✅ TwitterChannelAdapter registered")
         else:
             logger.warning("⚠️ Twitter credentials not configured, adapter disabled")
+
+        # Initialize channel optimizations (rate limiter, Redis dedup, DLQ, metrics)
+        from backend.channels.optimizations import delivery_manager, initialize_optimizations
+
+        initialize_optimizations(db_pool=db_pool)
+
+        # Start DLQ retry loop if delivery_manager has DB access
+        if delivery_manager and db_pool:
+            delivery_manager._db_pool = db_pool
+            await delivery_manager.start_retry_loop(channel_router.adapters)
+            logger.info("✅ DLQ retry loop started")
 
         # Register service in health monitoring
         service_registry.register("channel_router", ServiceStatus.HEALTHY, critical=False)

@@ -168,7 +168,7 @@ class TestMigrationManager:
 
         try:
             # Check a migration that likely doesn't exist
-            result = await migration_manager.is_applied(99999)
+            result = await migration_manager.is_applied("migration_99999_nonexistent")
             assert isinstance(result, bool)
         except Exception as e:
             pytest.skip(f"Cannot connect to database: {e}")
