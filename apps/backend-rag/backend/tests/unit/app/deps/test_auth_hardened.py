@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from jose import jwt as jose_jwt
 
 
@@ -65,3 +66,85 @@ class TestTokenCreation:
         )
         payload = jose_jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
         assert "iat" in payload
+
+
+class TestJWTExpiryValidation:
+    """Test JWT expiry enforcement in get_current_user."""
+
+    def _make_token(self, exp_delta: timedelta, secret: str | None = None) -> str:
+        """Helper: create a JWT with specific expiry."""
+        if secret is None:
+            from backend.app.core.config import settings
+            secret = settings.jwt_secret_key
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": "user-1",
+            "email": "test@balizero.com",
+            "role": "admin",
+            "exp": now + exp_delta,
+            "iat": now,
+            "jti": "test-jti-001",
+            "type": "access",
+        }
+        return jose_jwt.encode(payload, secret, algorithm="HS256")
+
+    def _make_request(self) -> MagicMock:
+        """Helper: create mock request without user in state."""
+        request = MagicMock()
+        request.state = MagicMock(spec=[])  # no 'user' attribute
+        return request
+
+    def _make_credentials(self, token: str) -> MagicMock:
+        """Helper: create mock HTTPAuthorizationCredentials."""
+        creds = MagicMock()
+        creds.credentials = token
+        return creds
+
+    def _get_secret(self) -> str:
+        from backend.app.core.config import settings
+        return settings.jwt_secret_key
+
+    def test_valid_token_passes(self):
+        """A non-expired token should pass validation."""
+        from backend.app.deps.auth import get_current_user
+
+        token = self._make_token(exp_delta=timedelta(hours=1))
+        request = self._make_request()
+        creds = self._make_credentials(token)
+
+        user = get_current_user(request, creds)
+        assert user["email"] == "test@balizero.com"
+
+    def test_expired_token_audit_mode_logs_warning(self):
+        """When jwt_enforce_expiry=False, expired tokens pass but flag _warn_expired."""
+        from backend.app.deps.auth import get_current_user
+
+        token = self._make_token(exp_delta=timedelta(hours=-1))
+        request = self._make_request()
+        creds = self._make_credentials(token)
+        real_secret = self._get_secret()
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.jwt_secret_key = real_secret
+            mock_settings.jwt_enforce_expiry = False
+
+            user = get_current_user(request, creds)
+            assert user["email"] == "test@balizero.com"
+            assert user.get("_warn_expired") is True
+
+    def test_expired_token_enforce_mode_raises_401(self):
+        """When jwt_enforce_expiry=True, expired tokens raise 401."""
+        from backend.app.deps.auth import get_current_user
+
+        token = self._make_token(exp_delta=timedelta(hours=-1))
+        request = self._make_request()
+        creds = self._make_credentials(token)
+        real_secret = self._get_secret()
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.jwt_secret_key = real_secret
+            mock_settings.jwt_enforce_expiry = True
+
+            with pytest.raises(HTTPException) as exc_info:
+                get_current_user(request, creds)
+            assert exc_info.value.status_code == 401

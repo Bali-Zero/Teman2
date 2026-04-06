@@ -69,18 +69,43 @@ def get_current_user(
         from backend.app.core.config import settings
 
         token = credentials.credentials
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+
+        # S03: Two-phase JWT expiry enforcement
+        if settings.jwt_enforce_expiry:
+            payload = jwt.decode(
+                token, settings.jwt_secret_key, algorithms=["HS256"],
+                options={"verify_exp": True},
+            )
+        else:
+            payload = jwt.decode(
+                token, settings.jwt_secret_key, algorithms=["HS256"],
+                options={"verify_exp": False},
+            )
 
         user_email = payload.get("email") or payload.get("sub")
         if not user_email:
             raise HTTPException(status_code=401, detail="Invalid token: missing user identifier")
 
-        return {
+        user_ctx = {
             "email": user_email,
             "user_id": payload.get("user_id", user_email),
             "role": payload.get("role", "user"),
             "permissions": payload.get("permissions", []),
         }
+
+        # S03: Audit mode — flag expired tokens without rejecting
+        if not settings.jwt_enforce_expiry:
+            exp = payload.get("exp")
+            if exp:
+                from datetime import datetime, timezone
+                if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+                    logger.warning(
+                        f"S03_AUDIT: Expired token used by {user_email} "
+                        f"(jti={payload.get('jti', 'none')})"
+                    )
+                    user_ctx["_warn_expired"] = True
+
+        return user_ctx
     except JWTError as e:
         logger.warning(f"JWT validation failed: {e}")
         raise HTTPException(
@@ -88,6 +113,8 @@ def get_current_user(
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Authentication error: {e}", exc_info=True)
         raise HTTPException(status_code=401, detail="Authentication failed") from e
