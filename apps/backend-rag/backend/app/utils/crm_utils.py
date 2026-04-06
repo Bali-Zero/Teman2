@@ -35,30 +35,16 @@ logger = logging.getLogger(__name__)
 
 
 def is_crm_admin(user: dict) -> bool:
-    """
-    Check if a user has administrative access to the CRM.
-
-    Admins can see all clients, all practices, and perform bulk actions.
-
-    Args:
-        user: User dictionary from authentication (get_current_user)
-
-    Returns:
-        bool: True if user is admin
-    """
+    """Check if user is a CRM admin (email in admin list or admin-level role)."""
     if not user:
         return False
-
-    email = user.get("email", "").lower()
-    role = user.get("role", "").lower()
-
-    # All team members have full CRM access (only portal "client" users are excluded)
-    result = role != "client"
-
-    if result:
-        logger.debug(f"RBAC: User {email} granted CRM access (role={role})")
-
-    return result
+    email = (user.get("email") or "").lower().strip()
+    if email in CRM_ADMIN_EMAILS:
+        return True
+    if email in PRACTICES_FULL_VIEW_EMAILS:
+        return True
+    role = (user.get("role") or "").lower().strip()
+    return role in ("admin", "board member", "ceo", "founder")
 
 
 def can_view_all_practices(user: dict) -> bool:
@@ -83,6 +69,17 @@ def can_view_all_practices(user: dict) -> bool:
         return True
 
     return False
+
+
+def can_view_all_clients(user: dict) -> bool:
+    """Check if user can see ALL clients. Same logic as practices full view."""
+    if not user:
+        return False
+    email = (user.get("email") or "").lower().strip()
+    if email in PRACTICES_FULL_VIEW_EMAILS:
+        return True
+    role = (user.get("role") or "").lower().strip()
+    return role in ("admin", "board member", "ceo", "founder")
 
 
 def is_super_admin(user: dict) -> bool:
