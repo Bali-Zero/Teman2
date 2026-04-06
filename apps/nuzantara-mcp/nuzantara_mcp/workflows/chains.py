@@ -118,6 +118,20 @@ async def _reflect_and_save(
 
 
 def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
+    # --- Resilient write helper for chains ---
+    # Chains are pre-approved automation (cron H24). confirm=False always.
+    # Retry on transient 5xx errors. 4xx fail fast.
+    from nuzantara_mcp.utils.resilience import call_with_retry
+
+    async def _write_safe(
+        endpoint: str, method: str = "POST", json: Any = None, timeout: int = 30,
+    ) -> dict[str, Any]:
+        """Resilient write for chains: retry on 5xx, no confirmation prompt."""
+        return await call_with_retry(
+            _call_safe, endpoint, method=method, json=json,
+            timeout=timeout, max_retries=2, base_delay=1.0, confirm=False,
+        )
+
     # =========================================================================
     # CHAIN 1: Daily Ops Autopilot
     # =========================================================================
@@ -158,7 +172,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 if phone:
                     msg = f"Reminder: Your {alert.get('document_type', 'document')} expires in {alert.get('days_remaining')} days. Please contact Bali Zero for renewal."
                     if _should_notify(client_id or phone, "whatsapp", msg):
-                        await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": msg})
+                        await _write_safe("/api/whatsapp/send", json={"phone": phone, "message": msg})
                         reminders_sent += 1
                 if client_id:
                     await _call_safe("/api/crm/interactions", method="POST", json={
@@ -248,7 +262,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             ]
             if nlm_context:
                 summary_lines.extend(["", "## Operational Insights (NLM)", nlm_context])
-            await _call_safe("/api/zoho/emails", method="POST", json={
+            await _write_safe("/api/zoho/emails", json={
                 "to": send_report_to,
                 "subject": f"[Nuzantara] Daily Ops Report {report['date'][:10]}",
                 "body": "\n".join(summary_lines),
@@ -441,7 +455,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         welcome_msg = f"Welcome to Bali Zero, {name}! Your onboarding is complete. Check your portal for next steps."
         try:
             if _should_notify(client_id, "portal", welcome_msg):
-                await _call_safe("/api/portal/messages", method="POST", json={
+                await _write_safe("/api/portal/messages", json={
                     "client_id": client_id, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
                 })
             log.append({"step": "portal_message", "status": "ok"})
@@ -450,7 +464,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         try:
             if _should_notify(client_id, "email", welcome_msg):
-                await _call_safe("/api/zoho/emails", method="POST", json={
+                await _write_safe("/api/zoho/emails", json={
                     "to": email, "subject": "Welcome to Bali Zero!", "body": welcome_msg,
                 })
             log.append({"step": "welcome_email", "status": "ok"})
@@ -460,7 +474,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         if phone:
             try:
                 if _should_notify(client_id, "whatsapp", welcome_msg):
-                    await _call_safe("/api/whatsapp/send", method="POST", json={"phone": phone, "message": welcome_msg})
+                    await _write_safe("/api/whatsapp/send", json={"phone": phone, "message": welcome_msg})
                 log.append({"step": "whatsapp", "status": "ok"})
             except Exception as e:
                 log.append({"step": "whatsapp", "status": "error", "detail": str(e)})
@@ -579,7 +593,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     if client_id:
                         renewal_msg = f"Your {p_type} expires in {days_to_expiry} days. Please prepare documents for renewal."
                         if _should_notify(client_id, "portal", renewal_msg):
-                            await _call_safe("/api/portal/messages", method="POST", json={
+                            await _write_safe("/api/portal/messages", json={
                                 "client_id": client_id,
                                 "subject": "Visa Renewal Notice",
                                 "body": renewal_msg,
@@ -607,7 +621,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     try:
                         doc_msg = f"Hi! We're still waiting for documents for your {p_type} practice. Could you please send them at your earliest convenience?"
                         if _should_notify(client_id or phone, "whatsapp", doc_msg):
-                            await _call_safe("/api/whatsapp/send", method="POST", json={
+                            await _write_safe("/api/whatsapp/send", json={
                                 "phone": phone,
                                 "message": doc_msg,
                             })
@@ -621,7 +635,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 team_lead = p.get("assigned_to")
                 if team_lead:
                     try:
-                        await _call_safe("/api/zoho/emails", method="POST", json={
+                        await _write_safe("/api/zoho/emails", json={
                             "to": team_lead,
                             "subject": f"[ESCALATION] Practice #{p_id} submitted {days_in_status} days ago — no update",
                             "body": (
@@ -870,7 +884,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
         # Send email
         try:
-            await _call_safe("/api/zoho/emails", method="POST", json={
+            await _write_safe("/api/zoho/emails", json={
                 "to": send_to,
                 "subject": f"[Nuzantara] Weekly Report — {report['week_of']}",
                 "body": "\n".join(summary_lines),
@@ -934,7 +948,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     try:
                         reengage_msg = f"Hi {name.split()[0] if name else 'there'}! It's been a while since we last connected. Is there anything we can help you with? — Bali Zero Team"
                         if _should_notify(client.get("id", phone), "whatsapp", reengage_msg):
-                            await _call_safe("/api/whatsapp/send", method="POST", json={
+                            await _write_safe("/api/whatsapp/send", json={
                                 "phone": phone,
                                 "message": reengage_msg,
                             })
@@ -947,7 +961,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     try:
                         bday_msg = f"Dear {name},\n\nWishing you a wonderful birthday! As a valued client of Bali Zero, we appreciate your trust in us.\n\nBest regards,\nThe Bali Zero Team"
                         if _should_notify(client.get("id", email), "email", bday_msg):
-                            await _call_safe("/api/zoho/emails", method="POST", json={
+                            await _write_safe("/api/zoho/emails", json={
                                 "to": email,
                                 "subject": f"Happy Birthday, {name.split()[0] if name else ''}!",
                                 "body": bday_msg,
@@ -971,7 +985,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                 if c_id:
                     stalled_msg = f"Your {p.get('type', 'practice')} seems to need attention. Please check your portal or contact us for assistance."
                     if _should_notify(c_id, "portal", stalled_msg):
-                        await _call_safe("/api/portal/messages", method="POST", json={
+                        await _write_safe("/api/portal/messages", json={
                             "client_id": c_id,
                             "subject": "Update on your practice",
                             "body": stalled_msg,
@@ -1062,14 +1076,14 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     phone = client_data.get("phone") if isinstance(client_data, dict) else None
                     wa_msg = f"URGENT: {title} expires in {days} days. Please contact us immediately."
                     if phone and _should_notify(c_id, "whatsapp", wa_msg):
-                        await _call_safe("/api/whatsapp/send", method="POST", json={
+                        await _write_safe("/api/whatsapp/send", json={
                             "phone": phone, "message": wa_msg,
                         })
                     # Email
                     client_email = client_data.get("email") if isinstance(client_data, dict) else None
                     email_msg = f"Your {title} deadline is in {days} days. Please contact our team to ensure timely renewal."
                     if client_email and _should_notify(c_id, "email", email_msg):
-                        await _call_safe("/api/zoho/emails", method="POST", json={
+                        await _write_safe("/api/zoho/emails", json={
                             "to": client_email,
                             "subject": f"URGENT: {title} - Action Required",
                             "body": email_msg,
@@ -1077,7 +1091,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     # Portal
                     portal_msg = f"Your {title} is due in {days} days. Please check your portal for details."
                     if _should_notify(c_id, "portal", portal_msg):
-                        await _call_safe("/api/portal/messages", method="POST", json={
+                        await _write_safe("/api/portal/messages", json={
                             "client_id": c_id,
                             "subject": f"Action Required: {title}",
                             "body": portal_msg,
@@ -1102,7 +1116,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
             if c_id:
                 reminder_msg = f"Friendly reminder: {title} is due in {days} days."
                 if _should_notify(c_id, "portal", reminder_msg):
-                    await _call_safe("/api/portal/messages", method="POST", json={
+                    await _write_safe("/api/portal/messages", json={
                         "client_id": c_id,
                         "subject": f"Reminder: {title}",
                         "body": reminder_msg,
@@ -1253,14 +1267,14 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         # Step 5: Welcome messages (dedup)
         welcome = f"Welcome! Your {journey_type.replace('_', ' ')} journey has been created. Track progress in your portal."
         if _should_notify(client_id, "portal", welcome):
-            await _call_safe("/api/portal/messages", method="POST", json={
+            await _write_safe("/api/portal/messages", json={
                 "client_id": client_id,
                 "subject": f"Journey Started: {journey_type.replace('_', ' ').title()}",
                 "body": welcome,
             })
         client_phone = client.get("phone") if isinstance(client, dict) else None
         if client_phone and _should_notify(client_id, "whatsapp", welcome):
-            await _call_safe("/api/whatsapp/send", method="POST", json={
+            await _write_safe("/api/whatsapp/send", json={
                 "phone": client_phone,
                 "message": welcome,
             })
