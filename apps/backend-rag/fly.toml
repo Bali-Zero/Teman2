@@ -15,6 +15,10 @@ primary_region = 'sin'
   # release_command = "sh -c 'python -m backend.db.migrate apply-all'"
   # Temporarily disabled to bypass migration bug and deploy omnichannel fixes
 
+[processes]
+  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"
+  rag = "uvicorn backend.app.main_rag:app --host 0.0.0.0 --port 8080 --workers 1"
+
 [env]
   ENVIRONMENT = 'production'
   EMBEDDING_PROVIDER = 'openai'
@@ -22,11 +26,13 @@ primary_region = 'sin'
   PORT = '8080'
   # QDRANT_URL set via fly secrets (Qdrant Cloud)
   PYTHONUNBUFFERED = '1'
+  RAG_WORKER_URL = 'http://rag.nuzantara-rag.internal:8080'
   ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://mail.balizero.com,https://calendar.balizero.com,https://drive.balizero.com,https://knowledge.balizero.com,https://nuzantara-mouth.vercel.app'
 
 [[mounts]]
   source = 'nuzantara_rag_data'
   destination = '/data'
+  processes = ['rag']
 
 [http_service]
   internal_port = 8080
@@ -35,6 +41,7 @@ primary_region = 'sin'
   auto_start_machines = true
   min_machines_running = 1
   kill_timeout = 30
+  processes = ['api']
 
   [http_service.concurrency]
     type = 'requests'
@@ -49,6 +56,13 @@ primary_region = 'sin'
     path = '/health'
 
 [[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  processes = ['api']
+
+[[vm]]
   memory = '2gb'
   cpu_kind = 'shared'
   cpus = 2
+  processes = ['rag']
