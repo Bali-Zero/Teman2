@@ -64,7 +64,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_OPENAI_DIMENSIONS = 1536
 DEFAULT_SENTENCE_TRANSFORMERS_DIMENSIONS = 384
 MAX_RETRIES = 3
-RETRY_BASE_DELAY = 1.0  # seconds
+# Backoff: 0.2s → 0.4s → 0.8s = 1.4s max wait (fits within 3s total timeout budget)
+# NB-1 correction: original 1s-2s-4s=7s minimum would exceed 3s request timeout
+RETRY_BASE_DELAY = 0.2  # seconds
 
 
 class QdrantErrorType(Enum):
@@ -177,11 +179,13 @@ async def _retry_with_backoff(
             last_exception = e
             if attempt < max_retries:
                 delay = base_delay * (2**attempt)
+                _qdrant_metrics["retry_count"] += 1
                 logger.warning(
-                    f"Retry attempt {attempt + 1}/{max_retries} after {delay}s: {str(e)[:100]}",
+                    f"Qdrant retry {attempt + 1}/{max_retries} after {delay:.1f}s: {str(e)[:100]}",
                 )
                 await asyncio.sleep(delay)
             else:
+                _qdrant_metrics["errors"] += 1
                 raise last_exception from e
 
 
