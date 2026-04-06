@@ -243,9 +243,15 @@ def run_scan(dry_run: bool = False) -> dict[str, Any]:
             time.sleep(5)
             continue
 
-        # Check if change detected
-        if "NO_CHANGE" in response.upper():
-            logger.info("  No regulatory changes detected for %s", name)
+        # Check if change detected — filter out error noise
+        _noise_markers = ("MCP issues detected", "error", "failed to", "I am searching", "I will search")
+        is_noise = any(marker.lower() in response[:200].lower() for marker in _noise_markers)
+        if "NO_CHANGE" in response.upper() or is_noise:
+            if is_noise:
+                logger.warning("  Noise response for %s (filtered): %s", name, response[:80])
+                result["errors"].append(f"{name}: noisy response filtered")
+            else:
+                logger.info("  No regulatory changes detected for %s", name)
             state["changes_detected"][nb_domain] = {
                 "last_checked": _now_iso(),
                 "change_detected": False,
@@ -277,14 +283,22 @@ def run_scan(dry_run: bool = False) -> dict[str, Any]:
         state["scan_count"] = state.get("scan_count", 0) + 1
         _save_state(state)
 
-    # Telegram alert if changes found
+    # Telegram alert if changes found — clean, concise format
     if result["changes_detected"] > 0 and not dry_run:
         msg_lines = [f"🔔 <b>Regulatory Monitor — {result['changes_detected']} cambiamenti rilevati</b>\n"]
         for domain, change_summary in result["changes"].items():
-            msg_lines.append(f"<b>{domain.title()}</b>: {change_summary[:200]}")
+            # Extract first meaningful sentence, strip markdown/preamble
+            clean = change_summary.replace("**", "").replace("*", "").strip()
+            # Take first line that looks like actual content (skip "I will search..." preamble)
+            for line in clean.split("\n"):
+                line = line.strip().lstrip("- •")
+                if len(line) > 20 and not line.lower().startswith(("i will", "i am", "searching")):
+                    clean = line[:180]
+                    break
+            msg_lines.append(f"<b>{domain.title()}</b>: {clean}")
             msg_lines.append("")
         if result["research_triggered"] > 0:
-            msg_lines.append(f"✅ {result['research_triggered']} ricerche NLM avviate automaticamente")
+            msg_lines.append(f"✅ {result['research_triggered']} ricerche NLM avviate")
         _send_telegram("\n".join(msg_lines))
 
     if result["errors"]:
