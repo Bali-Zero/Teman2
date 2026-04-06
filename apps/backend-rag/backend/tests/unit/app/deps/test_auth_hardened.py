@@ -272,3 +272,14 @@ class TestFullAuthFlowS03:
         result = auth.validate_api_key("test_api_key_1")
         assert result is not None
         assert result["auth_method"] == "api_key"
+
+
+class TestSprint2Config:
+    """Test Sprint 2 config fields."""
+
+    def test_enable_token_revocation_defaults_to_false(self):
+        """Token revocation should be off by default for safe rollout."""
+        from backend.app.core.config import settings
+
+        assert hasattr(settings, "enable_token_revocation")
+        assert settings.enable_token_revocation is False
