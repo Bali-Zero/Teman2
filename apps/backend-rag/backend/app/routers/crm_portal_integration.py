@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.services.portal import InviteService, PortalService
 
@@ -432,6 +432,9 @@ async def send_message_to_client(
     """
     try:
         async with db_pool.acquire() as conn:
+            # S03-S3: BOLA fix — verify caller has access to this client
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+
             message = await conn.fetchrow(
                 """
                 INSERT INTO portal_messages
