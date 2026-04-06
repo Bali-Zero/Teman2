@@ -17,8 +17,8 @@ DUMP_TIMEOUT=180  # seconds per attempt — pg_dump takes ~60s, tunnel setup ~30
 # Tigris credentials (set by fly storage create)
 TIGRIS_ENDPOINT="https://fly.storage.tigris.dev"
 TIGRIS_BUCKET="nuzantara-backups"
-TIGRIS_KEY="${AWS_ACCESS_KEY_ID:-tid_sZQYyrgouAXAdQDuvsfPlLIIUMMvEDNhfMWmzCdeouELsPMn_U}"
-TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:-tsec_5knItu7FoHkkv2P5qaEMSRdHxXDNb6ZD0+mgDfLsLF-lLntRwDUgrH4qmzhJX+3OI4XYTc}"
+TIGRIS_KEY="${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID not set — set in ~/.zshrc.secrets}"
+TIGRIS_SECRET="${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY not set — set in ~/.zshrc.secrets}"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -45,7 +45,7 @@ for attempt in $(seq 1 $MAX_RETRIES); do
 
     # Use timeout to prevent indefinite hang on tunnel issues
     timeout "$DUMP_TIMEOUT" fly ssh console --app "$FLY_APP" \
-        -C "sh -c \"PGPASSWORD=2zEjit43IF6gNUV pg_dump -h 127.0.0.1 -p 5432 -U backend_rag_v2 -d nuzantara_rag\"" \
+        -C "sh -c \"PGPASSWORD=${FLY_PG_PASSWORD:?FLY_PG_PASSWORD not set} pg_dump -h 127.0.0.1 -p 5432 -U backend_rag_v2 -d nuzantara_rag\"" \
         > "$DUMP_TMP" 2>/dev/null || true
 
     # Find where the actual SQL starts (skip fly ssh banner lines before --)

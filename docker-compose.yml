@@ -28,7 +28,7 @@ services:
     volumes:
       - ./apps/backend-rag:/app
       - /app/.venv
-    command: uvicorn app.main_cloud:app --host 0.0.0.0 --port 8080 --reload
+    command: uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port 8080 --reload
 
   postgres:
     image: postgres:15-alpine
