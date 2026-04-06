@@ -129,7 +129,7 @@ async def proxy_request(request: Request) -> Response:
             url=url,
             headers=headers,
             content=body,
-            follow_redirects=False,
+            follow_redirects=True,
         )
     except httpx.ConnectError as e:
         logger.error(f"RAG proxy connect error for {request.method} {url}: {e}")
