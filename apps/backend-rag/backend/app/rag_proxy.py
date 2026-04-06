@@ -176,7 +176,7 @@ def create_proxy_router() -> APIRouter:
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         include_in_schema=False,
     )
-    async def rag_proxy_endpoint(request: Request, _full_path: str) -> Response:
+    async def rag_proxy_endpoint(request: Request, **_: str) -> Response:
         path = request.url.path
         if is_heavy_route(path):
             return await proxy_request(request)
