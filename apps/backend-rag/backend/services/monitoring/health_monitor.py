@@ -262,14 +262,24 @@ class HealthMonitor:
                     "SELECT COALESCE(sum(n_dead_tup), 0) FROM pg_stat_user_tables"
                 )
 
-                # WAL size — pg_ls_waldir() requires superuser or pg_monitor role
+                # WAL size — pg_ls_waldir() requires superuser or pg_monitor role.
+                # backend_rag_v2 does NOT have pg_monitor granted in any migration,
+                # so this will silently degrade to wal_mb=-1 on production Fly.io.
+                # To enable: GRANT pg_monitor TO backend_rag_v2;  (run once in psql)
                 try:
                     wal_bytes = await conn.fetchval(
                         "SELECT COALESCE(sum(size), 0) FROM pg_ls_waldir()"
                     )
                     wal_mb = (wal_bytes or 0) / (1024 * 1024)
-                except Exception:
+                except Exception as wal_err:
                     wal_mb = -1  # Insufficient privilege — skip WAL check
+                    if not getattr(self, "_wal_privilege_warned", False):
+                        self._wal_privilege_warned = True
+                        logger.info(
+                            "WAL monitoring disabled: pg_ls_waldir() requires pg_monitor role. "
+                            "Run: GRANT pg_monitor TO backend_rag_v2; to enable. "
+                            f"Error: {wal_err}"
+                        )
 
                 # Alert thresholds
                 if dead_tup > 10000:
@@ -280,7 +290,8 @@ class HealthMonitor:
                         unit=f" dead tuples (auto-VACUUM triggered)",
                     )
                     # Auto-trigger VACUUM ANALYZE off-peak or critical
-                    now_hour_wita = (__import__("datetime").datetime.utcnow().hour + 8) % 24
+                    # Use timezone-aware UTC time (utcnow() is deprecated in Python 3.12+)
+                    now_hour_wita = (datetime.now(timezone.utc).hour + 8) % 24
                     if 2 <= now_hour_wita < 6 or dead_tup > 50000:
                         logger.info(f"Auto-triggering VACUUM ANALYZE ({dead_tup} dead tuples)")
                         try:
