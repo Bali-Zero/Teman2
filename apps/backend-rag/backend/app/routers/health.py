@@ -45,6 +45,16 @@ async def close_qdrant_health_client() -> None:
         _qdrant_client = None
 
 
+def _check_startup_failed(app) -> dict[str, Any] | None:
+    """Return error dict if startup failed, None otherwise."""
+    if getattr(app.state, "startup_failed", False):
+        return {
+            "status": "startup_failed",
+            "error": getattr(app.state, "startup_error", "Unknown"),
+        }
+    return None
+
+
 async def get_qdrant_stats() -> dict[str, Any]:
     """
     Get real stats from Qdrant - collections count and total documents.
@@ -67,12 +77,12 @@ async def get_qdrant_stats() -> dict[str, Any]:
                     points = coll_response.json().get("result", {}).get("points_count", 0)
                     total_documents += points
                 except Exception as coll_err:
-                        logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
+                    logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
 
-            return {
-                "collections": len(collections_data),
-                "total_documents": total_documents,
-            }
+        return {
+            "collections": len(collections_data),
+            "total_documents": total_documents,
+        }
     except Exception as e:
         logger.warning(f"Failed to get Qdrant stats: {e}")
         return {"collections": 0, "total_documents": 0, "error": str(e)}

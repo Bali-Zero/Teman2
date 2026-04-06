@@ -114,10 +114,10 @@ async def _init_critical_services(
             logger.info("✅ SearchService initialized (Qdrant verified)")
         except Exception as qdrant_err:
             service_registry.register(
-                "search", ServiceStatus.DEGRADED,
-                error=f"SearchService OK but Qdrant unreachable: {qdrant_err}",
+                "search", ServiceStatus.UNAVAILABLE,
+                error=f"SearchService created but Qdrant unreachable: {qdrant_err}",
             )
-            logger.warning(f"⚠️ SearchService initialized but Qdrant unreachable: {qdrant_err}")
+            logger.error(f"❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: {qdrant_err}")
     except (ValueError, ConnectionError, RuntimeError) as e:
         error_msg = str(e)
         service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
@@ -1234,6 +1234,27 @@ async def initialize_services(app: FastAPI) -> None:
     logger.info(f"📊 Service Status: {service_registry.get_status()['overall']}")
 
 
+
+def _clean_database_dsn(dsn: str) -> tuple[str, bool | None]:
+    """
+    Clean DATABASE_URL for asyncpg compatibility.
+
+    Strips sslmode= param (asyncpg doesn't support it in DSN).
+    Returns (cleaned_dsn, ssl_context) where ssl_context is False
+    if sslmode=disable, None otherwise.
+    """
+    from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
+    parsed = urlparse(dsn)
+    params = parse_qs(parsed.query)
+    sslmode = params.pop("sslmode", [None])[0]
+    ssl_context: bool | None = None
+    if sslmode == "disable":
+        ssl_context = False
+    clean_query = urlencode(params, doseq=True)
+    cleaned_dsn = urlunparse(parsed._replace(query=clean_query))
+    return cleaned_dsn, ssl_context
+
 async def initialize_services_light(app: FastAPI) -> None:
     """
     Light initialization for the 'api' process group.
@@ -1248,12 +1269,16 @@ async def initialize_services_light(app: FastAPI) -> None:
 
     # 1. Database pool (CRITICAL)
     try:
-        db_pool = await asyncpg.create_pool(
-            dsn=settings.database_url,
-            min_size=2,
-            max_size=10,
-            command_timeout=60,
-        )
+        dsn, ssl_ctx = _clean_database_dsn(settings.database_url)
+        pool_kwargs: dict = {
+            "dsn": dsn,
+            "min_size": 2,
+            "max_size": 10,
+            "command_timeout": 60,
+        }
+        if ssl_ctx is not None:
+            pool_kwargs["ssl"] = ssl_ctx
+        db_pool = await asyncpg.create_pool(**pool_kwargs)
         app.state.db_pool = db_pool
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
