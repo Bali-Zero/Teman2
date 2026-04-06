@@ -277,6 +277,7 @@ class KGPipeline:
         pool = await self._get_db()
 
         async with pool.acquire() as conn:
+          async with conn.transaction():
             # Collect all unique entities and relations
             all_entities: dict[str, tuple[ExtractedEntity, list[str]]] = {}
             all_relations: list[tuple[ExtractedRelation, str]] = []
