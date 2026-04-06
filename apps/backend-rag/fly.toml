@@ -32,6 +32,7 @@ primary_region = 'sin'
 [[mounts]]
   source = 'nuzantara_rag_data'
   destination = '/data'
+  processes = ['rag']
 
 [http_service]
   internal_port = 8080

@@ -55,10 +55,10 @@ from backend.services.rag.agentic.chat_session import ChatSession, MockChatSessi
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash
 TIER_LITE = 1  # Alias for FLASH
 TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
-TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash-lite
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.5-flash
 
 
 class LLMGateway:
@@ -113,18 +113,17 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Updated 2026-02-21
-        # Gemini 3 Flash Preview via Google AI Studio API Key
-        # - MMLU: 87%+, SWE-bench: 78% (best coding)
+        # Model name constants - Updated 2026-04-06
+        # Gemini 3 Flash GA (Dec 2025)
+        # - GPQA Diamond: 90.4%, 3x faster than 2.5 Flash
         # - Cost: $0.50/1M input, $3/1M output
         # - Available via AI Studio API (no allowlist needed)
-        # - Vertex AI ID: gemini-3-flash-preview
-        self.model_name_pro = "gemini-3-flash-preview"  # Primary: latest
-        self.model_name_flash = "gemini-3-flash-preview"
+        self.model_name_pro = "gemini-3-flash"  # Primary: GA release
+        self.model_name_flash = "gemini-3-flash"
         self.model_name_fallback = "gemini-2.5-flash"  # Fallback: previous gen stable
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
+            "✅ LLMGateway: Model configuration ready (gemini-3-flash primary, "
             "gemini-2.5-flash fallback)",
         )
 
