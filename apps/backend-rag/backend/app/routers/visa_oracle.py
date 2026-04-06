@@ -354,10 +354,10 @@ async def handoff(request: Request, body: HandoffRequest) -> HandoffResponse:
                     parse_mode="Markdown",
                 )
                 telegram_sent = True
-            logger.info(
-                "visa-oracle /handoff: Telegram notification sent, session=%s",
-                body.session_id[:12],
-            )
+                logger.info(
+                    "visa-oracle /handoff: Telegram notification sent, session=%s",
+                    body.session_id[:12],
+                )
         except Exception as tg_exc:
             # Non-fatal — still return WhatsApp URL
             logger.warning(
