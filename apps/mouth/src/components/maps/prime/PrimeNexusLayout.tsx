@@ -7,6 +7,9 @@ import { InvestmentAnalysisPanel } from './InvestmentAnalysisPanel';
 import { ClientMarkerLayer } from './ClientMarkerLayer';
 import { CRMPanel } from './CRMPanel';
 import { ComplianceOverlay } from './ComplianceOverlay';
+import { TemporalPanel } from './TemporalPanel';
+import { RegulationPanel } from './RegulationPanel';
+import { PortfolioPanel } from './PortfolioPanel';
 
 /**
  * PrimeNexusLayout — Progressive enhancement wrapper around PrimeMap3D.
@@ -18,7 +21,7 @@ import { ComplianceOverlay } from './ComplianceOverlay';
  * Sprint 4 will add CRM/INTEL mode panels here.
  */
 function PrimeNexusInner() {
-  const { mode } = usePrimeNexus();
+  const { mode, analysis } = usePrimeNexus();
 
   return (
     <div className="h-screen bg-black overflow-hidden relative">
@@ -47,10 +50,27 @@ function PrimeNexusInner() {
         </div>
       )}
 
-      {/* Intel Mode — Sprint 4 */}
+      {/* Intel Mode — Regulation feed + Compliance overlay */}
       {mode === 'intel' && (
-        <div className="absolute bottom-4 left-4 z-30">
+        <div className="absolute bottom-4 left-4 z-30 flex gap-3">
+          <RegulationPanel />
           <ComplianceOverlay />
+        </div>
+      )}
+
+      {/* Temporal Mode */}
+      {mode === 'temporal' && (
+        <div className="absolute bottom-4 left-4 z-30">
+          <TemporalPanel
+            zoneCode={analysis?.zone?.zone_code ? String(analysis.zone.zone_code) : null}
+          />
+        </div>
+      )}
+
+      {/* Portfolio Mode */}
+      {mode === 'portfolio' && (
+        <div className="absolute bottom-4 left-4 z-30">
+          <PortfolioPanel clientId={null} />
         </div>
       )}
     </div>

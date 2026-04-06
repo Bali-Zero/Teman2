@@ -18,6 +18,7 @@ from backend.services.prime.prime_nexus_service import (
     classify_activity,
     encode_geohash,
     is_investor_relevant,
+    parse_tb_to_meters,
 )
 
 # ── Geohash Tests ────────────────────────────────────────────────────
@@ -328,6 +329,32 @@ class TestAnalyze:
 # ── Building Codes Tests ─────────────────────────────────────────────
 
 
+class TestParseTbToMeters:
+    def test_standard_format(self) -> None:
+        assert parse_tb_to_meters("15 Meter") == 15.0
+
+    def test_four_meter(self) -> None:
+        assert parse_tb_to_meters("4 Meter") == 4.0
+
+    def test_twelve_meter(self) -> None:
+        assert parse_tb_to_meters("12 Meter") == 12.0
+
+    def test_lowercase(self) -> None:
+        assert parse_tb_to_meters("8 meter") == 8.0
+
+    def test_na_returns_none(self) -> None:
+        assert parse_tb_to_meters("N/A") is None
+
+    def test_none_returns_none(self) -> None:
+        assert parse_tb_to_meters(None) is None
+
+    def test_empty_returns_none(self) -> None:
+        assert parse_tb_to_meters("") is None
+
+    def test_garbage_returns_none(self) -> None:
+        assert parse_tb_to_meters("no data") is None
+
+
 class TestBuildingCodes:
     def test_known_zone(self) -> None:
         result = calculate_building_yield("K-1")
@@ -337,6 +364,17 @@ class TestBuildingCodes:
 
     def test_unknown_zone_returns_none(self) -> None:
         assert calculate_building_yield("UNKNOWN-99") is None
+
+    def test_max_height_meters_present(self) -> None:
+        result = calculate_building_yield("K-1")
+        if result:
+            assert "max_height_meters" in result
+            assert result["max_height_meters"] == 15.0
+
+    def test_max_height_spiritual_zone(self) -> None:
+        result = calculate_building_yield("LS")
+        if result:
+            assert result["max_height_meters"] == 4.0
 
 
 # ── Layer 3 Intelligence Overlay Tests ───────────────────────────────
@@ -400,6 +438,492 @@ class TestIntelligenceOverlay:
         feat = result["features"][0]
         assert feat["type"] == "Feature"
         assert feat["geometry"]["type"] == "Point"
+
+# ── Layer 4 Density Tests ──────────────────────────────────────────
+
+
+class TestDensity:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_density_no_pool_returns_empty(self, service: PrimeNexusService) -> None:
+        result = await service.density("K-3")
+        assert result["zone_code"] == "K-3"
+        assert result["total_companies"] == 0
+        assert result["saturation_label"] == "LOW"
+
+    @pytest.mark.asyncio
+    async def test_density_with_companies(self, service: PrimeNexusService) -> None:
+        mock_rows = [
+            {"sector": "55", "cnt": 12},
+            {"sector": "56", "cnt": 8},
+        ]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.density("K-3")
+        assert result["total_companies"] == 20
+        assert result["by_kbli"]["55"] == 12
+        assert result["by_kbli"]["56"] == 8
+        assert "Accommodation" in result["by_kbli_labels"]["55"]
+
+    @pytest.mark.asyncio
+    async def test_saturation_index_caps_at_one(self, service: PrimeNexusService) -> None:
+        mock_rows = [{"sector": "55", "cnt": 200}]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.density("K-1")  # K threshold=100
+        assert result["saturation_index"] == 1.0
+        assert result["saturation_label"] == "HIGH"
+
+
+# ── Layer 5 Predict Tests ──────────────────────────────────────────
+
+
+class TestPredictZone:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_predict_no_pool_returns_stable(self, service: PrimeNexusService) -> None:
+        result = await service.predict_zone("K-3")
+        assert result["trend"] == "stable"
+        assert result["trend_score"] == 0
+
+    @pytest.mark.asyncio
+    async def test_predict_declining_zone(self, service: PrimeNexusService) -> None:
+        mock_conn = AsyncMock()
+        # Signal 1: many recent rejections
+        mock_conn.fetch = AsyncMock(side_effect=[
+            [{"recent": 10, "prior": 1}],  # rejections: worse
+            [{"cnt": 8}],  # expiry: worse (>5)
+            [{"recent": 1, "prior": 10}],  # companies: worse
+        ])
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.predict_zone("K-3")
+        assert result["trend"] == "declining"
+        assert result["trend_score"] < 0
+
+    @pytest.mark.asyncio
+    async def test_predict_improving_zone(self, service: PrimeNexusService) -> None:
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(side_effect=[
+            [{"recent": 0, "prior": 5}],  # rejections: better
+            [{"cnt": 1}],  # expiry: stable
+            [{"recent": 15, "prior": 3}],  # companies: better
+        ])
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.predict_zone("K-3")
+        assert result["trend"] == "improving"
+        assert result["trend_score"] > 0
+
+
+# ── Layer 6 Temporal Tests ─────────────────────────────────────────
+
+
+class TestTemporal:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_temporal_no_pool_returns_empty(self, service: PrimeNexusService) -> None:
+        result = await service.temporal("K-3")
+        assert result["zone_code"] == "K-3"
+        assert result["buckets"] == []
+        assert result["trend"] == "stable"
+
+    @pytest.mark.asyncio
+    async def test_temporal_with_data(self, service: PrimeNexusService) -> None:
+        from datetime import datetime
+
+        mock_rows = [
+            {"bucket": datetime(2026, 1, 6), "practices": 3, "companies": 1},
+            {"bucket": datetime(2026, 1, 13), "practices": 5, "companies": 2},
+        ]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.temporal("K-3", period="3m")
+        assert len(result["buckets"]) == 2
+        assert result["buckets"][0]["activity_score"] == 4
+        assert result["buckets"][1]["activity_score"] == 7
+        assert result["total_activity"] == 11
+
+    @pytest.mark.asyncio
+    async def test_temporal_increasing_trend(self, service: PrimeNexusService) -> None:
+        from datetime import datetime
+
+        mock_rows = [
+            {"bucket": datetime(2026, 1, 1), "practices": 1, "companies": 0},
+            {"bucket": datetime(2026, 2, 1), "practices": 1, "companies": 0},
+            {"bucket": datetime(2026, 3, 1), "practices": 5, "companies": 3},
+            {"bucket": datetime(2026, 4, 1), "practices": 8, "companies": 5},
+        ]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.temporal("K-3", period="6m")
+        assert result["trend"] == "increasing"
+
+
+# ── Layer 7 Regulation Tests ───────────────────────────────────────
+
+
+class TestRegulations:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_regulations_no_pool_returns_empty(self, service: PrimeNexusService) -> None:
+        # Mock _search_intel to also return empty
+        service._search_intel = AsyncMock(return_value=[])
+        result = await service.regulations("K-3")
+        assert result["zone_code"] == "K-3"
+        assert result["regulations"] == []
+        assert result["total_found"] == 0
+
+    @pytest.mark.asyncio
+    async def test_regulations_with_news(self, service: PrimeNexusService) -> None:
+        from datetime import datetime
+
+        mock_rows = [
+            {
+                "id": 1, "title": "New zoning rules for K-3", "summary": "Details here",
+                "category": "property", "ai_sentiment": "neutral",
+                "published_at": datetime(2026, 4, 1), "source_url": "https://example.com/1",
+            },
+        ]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+        service._search_intel = AsyncMock(return_value=[])
+
+        result = await service.regulations("K-3")
+        assert result["total_found"] == 1
+        assert result["regulations"][0]["title"] == "New zoning rules for K-3"
+        assert result["regulations"][0]["category"] == "property"
+
+    @pytest.mark.asyncio
+    async def test_regulations_deduplicates(self, service: PrimeNexusService) -> None:
+        from datetime import datetime
+
+        mock_rows = [
+            {
+                "id": 1, "title": "Same Article", "summary": "test",
+                "category": "business", "ai_sentiment": "positive",
+                "published_at": datetime(2026, 4, 1), "source_url": "https://example.com/1",
+            },
+        ]
+        mock_conn = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=mock_rows)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        # Qdrant returns same article
+        service._search_intel = AsyncMock(return_value=[
+            {"title": "Same Article", "source_url": "https://example.com/1",
+             "category": "business", "published_at": "2026-04-01"},
+        ])
+
+        result = await service.regulations("K-3")
+        assert result["total_found"] == 1  # Deduplicated
+
+
+# ── Layer 8 Proposal Tests ─────────────────────────────────────────
+
+
+class TestProposals:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_create_proposal_no_pool(self, service: PrimeNexusService) -> None:
+        result = await service.create_proposal(lat=-8.648, lng=115.132, zone_code="K-3")
+        assert result["error"] == "Database unavailable"
+        assert result["token"] is None
+
+    @pytest.mark.asyncio
+    async def test_create_proposal_success(self, service: PrimeNexusService) -> None:
+        from datetime import datetime
+
+        mock_row = {
+            "id": 1, "token": "test_token_123",
+            "created_at": datetime(2026, 4, 6, 10, 0),
+            "expires_at": datetime(2026, 4, 13, 10, 0),
+        }
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=mock_row)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.create_proposal(
+            lat=-8.648, lng=115.132, zone_code="K-3",
+            verdict_label="GREEN", verdict_score=72,
+        )
+        assert result["token"] == "test_token_123"
+        assert result["status"] == "draft"
+
+    @pytest.mark.asyncio
+    async def test_get_proposal_not_found(self, service: PrimeNexusService) -> None:
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=None)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.get_proposal("nonexistent_token")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_proposal_expired(self, service: PrimeNexusService) -> None:
+        from datetime import datetime, timezone
+
+        mock_row = {
+            "id": 1, "token": "expired_token", "lat": -8.648, "lng": 115.132,
+            "zone_code": "K-3", "zone_name": "Commercial", "kbli_code": "55110",
+            "verdict_label": "GREEN", "verdict_score": 72,
+            "analysis_snapshot": "{}", "pricing_snapshot": None,
+            "investor_name": None, "investor_email": None, "investor_nationality": None,
+            "status": "draft",
+            "created_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            "expires_at": datetime(2026, 3, 8, tzinfo=timezone.utc),  # expired
+            "viewed_at": None,
+        }
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=mock_row)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.get_proposal("expired_token")
+        assert result is not None
+        assert result.get("error") == "expired"
+
+
+# ── Layer 9 Portfolio Tests ──────────────────────────────────���──────
+
+
+class TestPortfolio:
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_portfolio_no_pool(self, service: PrimeNexusService) -> None:
+        result = await service.portfolio(123)
+        assert result["client_id"] == 123
+        assert result["entities"] == []
+        assert result["overall_health"] == 0.0
+
+    @pytest.mark.asyncio
+    async def test_portfolio_with_entities(self, service: PrimeNexusService) -> None:
+        from datetime import date
+
+        company_rows = [
+            {"id": 1, "company_name": "Test PT", "kbli_code": "55110",
+             "rdtr_zone_code": "K-3", "lat": -8.648, "lng": 115.132, "status": "active"},
+        ]
+        practice_rows = [
+            {"id": 10, "practice_type_code": "kitas_investor", "status": "active",
+             "expiry_date": date(2026, 5, 1), "notes": ""},
+        ]
+        call_count = 0
+
+        mock_conn = AsyncMock()
+
+        async def _fetch(query, *args):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return company_rows
+            return practice_rows
+
+        mock_conn.fetch = _fetch
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.portfolio(123)
+        assert len(result["entities"]) == 2
+        assert result["entities"][0]["type"] == "company"
+        assert result["entities"][1]["type"] == "practice"
+        assert result["overall_health"] > 0
+
+    @pytest.mark.asyncio
+    async def test_portfolio_risk_concentration(self, service: PrimeNexusService) -> None:
+        company_rows = [
+            {"id": i, "company_name": f"Co {i}", "kbli_code": "55110",
+             "rdtr_zone_code": "K-3", "lat": -8.648, "lng": 115.132, "status": "active"}
+            for i in range(1, 6)
+        ]
+        call_count = 0
+
+        mock_conn = AsyncMock()
+
+        async def _fetch(query, *args):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return company_rows
+            return []
+
+        mock_conn.fetch = _fetch
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        result = await service.portfolio(123)
+        assert result["risk_concentration"]["by_zone"]["K-3"] == 1.0
+        assert len(result["risk_concentration"]["warnings"]) > 0
+
+
+class TestIntelligencePoolError:
+    """Pool error test for Layer 3 intelligence (separate class for isolation)."""
+
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
 
     @pytest.mark.asyncio
     async def test_intelligence_pool_error_returns_empty(self, service: PrimeNexusService) -> None:

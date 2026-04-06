@@ -31,6 +31,7 @@ interface BuildingCodes {
   kdh_pct: number;
   ktb_pct: number;
   height_limit: string;
+  max_height_meters: number | null;
   setback: string;
   notes: string;
 }
@@ -991,6 +992,39 @@ export default function PrimeMap3D() {
                               </div>
                             ))}
                           </div>
+                          {/* Height comparison bar */}
+                          {zoningResult.building_codes.max_height_meters != null && (
+                            <div className="space-y-1">
+                              <div className="flex items-end gap-1.5 h-12">
+                                {[4, 8, 12, 15].map((h) => (
+                                  <div
+                                    key={h}
+                                    className="flex-1 flex flex-col items-center justify-end h-full"
+                                  >
+                                    <div
+                                      className={`w-full rounded-t transition-all ${
+                                        h <= (zoningResult.building_codes?.max_height_meters ?? 0)
+                                          ? 'bg-[#d4845a]/60'
+                                          : 'bg-white/5'
+                                      }`}
+                                      style={{ height: `${(h / 15) * 100}%` }}
+                                    />
+                                    <span className="text-[8px] text-slate-600 mt-0.5">{h}m</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="text-[10px] text-center text-slate-500">
+                                Zone max:{' '}
+                                <span className="text-[#d4845a] font-semibold">
+                                  {zoningResult.building_codes.max_height_meters}m
+                                </span>{' '}
+                                | KLB:{' '}
+                                <span className="text-white/80 font-medium">
+                                  {zoningResult.building_codes.klb_ratio}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                           {zoningResult.building_codes.notes && (
                             <div className="text-[10px] text-slate-600 leading-relaxed">
                               {zoningResult.building_codes.notes}
