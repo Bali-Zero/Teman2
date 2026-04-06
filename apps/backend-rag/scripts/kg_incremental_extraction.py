@@ -543,7 +543,7 @@ class KGIncrementalExtractor:
             return {"entities": [], "relationships": []}
 
     async def extract_with_openai(self, text: str) -> dict:
-        """Extract entities using OpenAI gpt-4o-mini or local Ollama (qwen3.5:27b via 2-step fix)."""
+        """Extract entities using OpenAI gpt-4o-mini or local Ollama (gemma4:26b)."""
         if not self.openai:
             return {"entities": [], "relationships": []}
 
@@ -583,7 +583,7 @@ class KGIncrementalExtractor:
                 },
                 "required": ["entities", "relationships"],
             }
-            model_name = os.environ.get("OPENAI_MODEL", "qwen3.5:27b")
+            model_name = os.environ.get("OPENAI_MODEL", "gemma4:26b")
             try:
                 raw = await ollama_chat_kg(prompt, _kg_schema, model=model_name, timeout=120.0)
                 if not raw:

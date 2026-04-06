@@ -32,8 +32,8 @@ class OllamaModel:
 
     FAST = "qwen3.5:9b"
     HEAVY = "deepseek-r1:32b"
-    KG = "qwen3.5:27b"
-    JSON = "gemma3:12b"
+    KG = "gemma4:26b"
+    JSON = "gemma4:26b"
     VISION = "qwen2.5vl:7b"
 
 

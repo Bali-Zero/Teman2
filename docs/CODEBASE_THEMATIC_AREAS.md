@@ -121,7 +121,7 @@ The Nuzantara codebase is organized as a monorepo serving the Bali Zero business
 **Models in use:**
 
 - Claude Opus 4.6 (critical), Sonnet 4.6 (RAG), Haiku 4.5 (routing)
-- Ollama local: qwen3.5:27b/9b, gemma3:12b, qwen2.5vl:7b (vision)
+- Ollama local: gemma4:26b (MoE), qwen3.5:9b, deepseek-r1:32b, qwen2.5vl:7b (vision)
 - Gemini (search, redteam, fallback)
 
 ---

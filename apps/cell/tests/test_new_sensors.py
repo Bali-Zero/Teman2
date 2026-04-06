@@ -16,7 +16,7 @@ async def test_ollama_sensor_green():
     sensor = OllamaSensor(required_models=["qwen3.5:9b"])
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
-    mock_response.json.return_value = {"models": [{"name": "qwen3.5:9b"}, {"name": "qwen3.5:27b"}]}
+    mock_response.json.return_value = {"models": [{"name": "qwen3.5:9b"}, {"name": "gemma4:26b"}]}
 
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
@@ -35,7 +35,7 @@ async def test_ollama_sensor_green():
 @pytest.mark.asyncio
 async def test_ollama_sensor_yellow_missing_model():
     from cell.sensors.ollama_sensor import OllamaSensor
-    sensor = OllamaSensor(required_models=["qwen3.5:9b", "qwen3.5:27b"])
+    sensor = OllamaSensor(required_models=["qwen3.5:9b", "gemma4:26b"])
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
     mock_response.json.return_value = {"models": [{"name": "qwen3.5:9b"}]}
@@ -50,7 +50,7 @@ async def test_ollama_sensor_yellow_missing_model():
         reading = await sensor.read()
 
     assert reading.status == "yellow"
-    assert "qwen3.5:27b" in reading.missing_models
+    assert "gemma4:26b" in reading.missing_models
 
 
 @pytest.mark.asyncio

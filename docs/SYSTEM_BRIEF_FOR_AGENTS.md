@@ -49,7 +49,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 - `services/rag/confidence.py` (323 righe) — 6-factor evidence scoring
 - `services/classification/intent_classifier.py` — classifica query in categorie
 
-**Stack**: LangGraph (state machine), Gemini 2.5 Flash (LLM primario su Fly.io), Ollama (locale qwen3.5:27b)
+**Stack**: LangGraph (state machine), Gemini 2.5 Flash (LLM primario su Fly.io), Ollama (locale gemma4:26b)
 
 **Pipeline**: Query → Intent Classification → Search (Qdrant hybrid) → Grade (LLM) → Generate (LLM) → Confidence Check → Response
 
@@ -229,7 +229,7 @@ intelligence platform per servizi business indonesiani (visa, company setup, tax
 | Qdrant      | Fly.io             | 2GB RAM, v1.17.0                  |
 | Redis       | Upstash/Fly        | Cache                             |
 | Frontend    | Vercel             | CDN + Edge                        |
-| Ollama      | Pro locale         | qwen3.5:27b, gemma3:12b           |
+| Ollama      | Pro locale         | gemma4:26b, qwen3.5:9b            |
 | OpenClaw    | Pro/Air            | Agent runtime                     |
 
 **Limitazioni note**:
