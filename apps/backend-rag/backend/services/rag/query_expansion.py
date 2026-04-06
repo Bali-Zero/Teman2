@@ -105,7 +105,6 @@ FILTER_KEYWORDS: list[str] = [
     "must be",
     "has to be",
     "hanya",
-    "hanya",
     "khusus",
     "eksklusif",
     "harus",
@@ -550,7 +549,6 @@ Return ONLY a JSON object with language codes as keys:
             return query
 
         relaxed = query
-        query.lower()
 
         # Remove filter keywords
         for keyword in FILTER_KEYWORDS:

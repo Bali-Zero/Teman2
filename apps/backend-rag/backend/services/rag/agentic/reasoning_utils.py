@@ -429,12 +429,12 @@ def calculate_evidence_score(
         query_has_visa = any(kw in visa_keywords for kw in query_keywords)
         query_has_kbli = any(kw in kbli_keywords for kw in query_keywords)
         query_has_tax = any(kw in tax_keywords for kw in query_keywords)
-        any(kw in company_keywords for kw in query_keywords)
+        query_has_company = any(kw in company_keywords for kw in query_keywords)
 
         context_has_visa = any(kw in context_text for kw in visa_keywords)
         context_has_kbli = any(kw in context_text for kw in kbli_keywords)
         context_has_tax = any(kw in context_text for kw in tax_keywords)
-        any(kw in context_text for kw in company_keywords)
+        context_has_company = any(kw in context_text for kw in company_keywords)
 
         # Detect mismatch: query about X but context about Y (where X != Y)
         # Only flag if context clearly belongs to a different category
@@ -443,6 +443,8 @@ def calculate_evidence_score(
         if query_has_kbli and (context_has_visa or context_has_tax) and not context_has_kbli:
             entity_type_mismatch = True
         if query_has_tax and (context_has_visa or context_has_kbli) and not context_has_tax:
+            entity_type_mismatch = True
+        if query_has_company and (context_has_visa or context_has_tax) and not context_has_company:
             entity_type_mismatch = True
 
         # If mismatch detected, force very low semantic relevance
