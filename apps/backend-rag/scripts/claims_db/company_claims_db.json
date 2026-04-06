@@ -400,7 +400,7 @@
     "category": "procedure"
   },
   {
-    "claim": "Le aziende regionali devono essere costituite tramite regolamenti regionali in conformità alla legge.",
+    "claim": "Le aziende regionali devono essere costituite tramite regolamenti regionali in conformità con la legge.",
     "verbatim": "Perusahaan Daerah didirikan dengan Peraturan Daerah atas kuasa Undang -undang ini.",
     "pasal_ref": "Pasal 4 Ayat 1",
     "instrument_id": "UU-40-2007",
@@ -432,7 +432,7 @@
     "claim_id": "COM-054"
   },
   {
-    "claim": "Il capitale delle aziende regionali deve provenire da beni separati della regione.",
+    "claim": "Il capitale delle aziende regionali deve essere costituito da beni separati della regione.",
     "verbatim": "Modal Perusahaan Daerah terdiri untuk seluruhnya atau untuk sebagian dari kekayaan Daerah yang dipisahkan.",
     "pasal_ref": "Pasal 7 Ayat 1",
     "instrument_id": "UU-40-2007",
@@ -440,28 +440,12 @@
     "claim_id": "COM-055"
   },
   {
-    "claim": "Le azioni delle aziende regionali possono essere di tipo prioritario e ordinario.",
-    "verbatim": "Saham -saham Perusahaan Daerah terdiri atas saham -saham prioritet dan saham -saham biasa.",
-    "pasal_ref": "Pasal 8 Ayat 1",
-    "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-056"
-  },
-  {
-    "claim": "Le azioni prioritarie possono essere possedute solo dalle regioni.",
-    "verbatim": "Saham -saham prioritet hanya dapat dimiliki oleh Daerah.",
-    "pasal_ref": "Pasal 8 Ayat 2",
-    "instrument_id": "UU-40-2007",
-    "category": "prohibition",
-    "claim_id": "COM-057"
-  },
-  {
-    "claim": "Le azioni possono essere trasferite, ma le azioni prioritarie solo alle regioni.",
-    "verbatim": "saham -saham prioritet hanya dapat dipindah -tangankan kepada Daerah.",
+    "claim": "Le azioni delle aziende regionali possono essere trasferite solo secondo specifiche condizioni.",
+    "verbatim": "Saham -saham dapat dipindah -tangankan dengan ketentuan, bahwa saham -saham prioritet hanya dapat dipindah -tangankan kepada Daerah.",
     "pasal_ref": "Pasal 9 Ayat 2",
     "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-058"
+    "category": "procedure",
+    "claim_id": "COM-056"
   },
   {
     "claim": "Ogni azione ha diritto a un voto.",
@@ -469,7 +453,7 @@
     "pasal_ref": "Pasal 10",
     "instrument_id": "UU-40-2007",
     "category": "right",
-    "claim_id": "COM-059"
+    "claim_id": "COM-057"
   },
   {
     "claim": "Le aziende regionali devono essere guidate da un consiglio di amministrazione nominato dal capo della regione.",
@@ -477,47 +461,47 @@
     "pasal_ref": "Pasal 11 Ayat 1",
     "instrument_id": "UU-40-2007",
     "category": "rule",
-    "claim_id": "COM-060"
+    "claim_id": "COM-058"
   },
   {
-    "claim": "L'angolo di Direksi può essere rinnovato per un massimo di 4 anni.",
+    "claim": "L'angolo di un membro del Direksi può essere rinnovato per un massimo di 4 anni.",
     "verbatim": "Pengangkatan termaksud pada ayat (2) dilakukan untuk waktu selama -lamanya 4 tahun.",
     "pasal_ref": "Pasal 12 Ayat 3",
     "instrument_id": "UU-40-2007",
     "category": "duration",
-    "claim_id": "COM-061"
+    "claim_id": "COM-059"
   },
   {
-    "claim": "Il Direksi può essere rimosso per richiesta personale o per scadenza del mandato.",
+    "claim": "Un membro del Direksi può essere rimosso per richiesta personale o per scadenza del mandato.",
     "verbatim": "Anggota Direksi berhenti karena meninggal dunia, atau dapat diberhentikan oleh Kepala Daerah yang mengangkatnya, karena : a.permintaannya sendiri; b.berakhirnya masa sebagai anggota Direksi termaksud dalam pasal 11 ayat (3);",
     "pasal_ref": "Pasal 12 Ayat 1",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-062"
+    "claim_id": "COM-060"
   },
   {
-    "claim": "Il Direksi deve avere l'opportunità di difendersi prima della rimozione.",
+    "claim": "Un membro del Direksi deve avere l'opportunità di difendersi prima della rimozione.",
     "verbatim": "Sebelum pemberhentian karna alasan tersebut pada ayat (1) huruf c dan huruf d dilakukan anggota Direksi yang bersangkutan diberi kesempatan untuk membela diri.",
     "pasal_ref": "Pasal 12 Ayat 3",
     "instrument_id": "UU-40-2007",
     "category": "right",
-    "claim_id": "COM-063"
+    "claim_id": "COM-061"
   },
   {
-    "claim": "Il Direksi può essere sospeso temporaneamente fino a una decisione finale.",
+    "claim": "La rimozione temporanea di un membro del Direksi è possibile fino a una decisione finale.",
     "verbatim": "Kepala Daerah termaksud pada ayat (1) pasal ini dapat memperhentikan untuk sementara waktu anggota Direksi yang bersangkutan.",
     "pasal_ref": "Pasal 12 Ayat 4",
     "instrument_id": "UU-40-2007",
     "category": "procedure",
-    "claim_id": "COM-064"
+    "claim_id": "COM-062"
   },
   {
-    "claim": "Se non viene presa una decisione entro due mesi, la sospensione diventa nulla.",
+    "claim": "Se non c'è decisione entro due mesi dalla sospensione, il membro del Direksi può riprendere il suo incarico.",
     "verbatim": "Jika dalam waktu dua bulan setelah pemberhentian sementara dijatuhkan belum ada keputusan mengenai pemberhentian anggota Direksi berdasarkan ayat (2), maka pemberhentian sementara itu menjadi batal.",
     "pasal_ref": "Pasal 12 Ayat 4",
     "instrument_id": "UU-40-2007",
     "category": "duration",
-    "claim_id": "COM-065"
+    "claim_id": "COM-063"
   },
   {
     "claim": "Non ci possono essere relazioni familiari tra i membri del Direksi fino al terzo grado.",
@@ -525,119 +509,119 @@
     "pasal_ref": "Pasal 13 Ayat 1",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-066"
+    "claim_id": "COM-064"
   },
   {
-    "claim": "Il Direksi non può avere interessi personali in altre aziende a scopo di lucro.",
+    "claim": "I membri del Direksi non possono avere interessi personali in altre aziende a scopo di lucro.",
     "verbatim": "Anggota Direksi tidak boleh mempunyai kepentingan pribadi langsung atau tidak langsung pada perkumpulan/perusahaan lain yang berusaha dalam lapangan yang bertujuan mencari laba.",
     "pasal_ref": "Pasal 13 Ayat 2",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-067"
+    "claim_id": "COM-065"
   },
   {
-    "claim": "Il Direksi non può ricoprire altre cariche senza autorizzazione.",
+    "claim": "I membri del Direksi non possono ricoprire altre cariche senza autorizzazione.",
     "verbatim": "Anggota Direksi tidak boleh merangkap jabatan lain, kecuali dengan izin Kepala Daerah/pemegang saham/saham prioritet.",
     "pasal_ref": "Pasal 13 Ayat 3",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-068"
+    "claim_id": "COM-066"
   },
   {
-    "claim": "Il Direksi rappresenta l'azienda sia in tribunale che al di fuori.",
+    "claim": "Il Direksi rappresenta l'azienda sia in sede legale che extragiudiziale.",
     "verbatim": "Direksi mewakili Perusahaan Daerah didalam dan di luar pengadilan.",
     "pasal_ref": "Pasal 14 Ayat 1",
     "instrument_id": "UU-40-2007",
     "category": "right",
-    "claim_id": "COM-069"
+    "claim_id": "COM-067"
   },
   {
-    "claim": "Il Direksi deve inviare il bilancio per approvazione entro tre mesi prima dell'inizio dell'anno fiscale.",
+    "claim": "Il Direksi deve inviare il bilancio per approvazione tre mesi prima dell'inizio dell'anno fiscale.",
     "verbatim": "Selambat-lambatnya tiga bulan sebelum tahun buku baru mulai berlaku, maka oleh Direksi dikirimkan anggaran Perusahaan untuk dimintakan persetujuan.",
     "pasal_ref": "Pasal 22 Ayat 1",
     "instrument_id": "UU-40-2007",
     "category": "procedure",
-    "claim_id": "COM-070"
+    "claim_id": "COM-068"
   },
   {
     "claim": "Se non ci sono obiezioni, il bilancio è valido.",
     "verbatim": "Kecuali apabila Kepala Daerah/pemegang saham/saham prioritet mengemukakan keberatan atau menolak proyek yang dimuat didalam anggaran Perusahaan itu sebelum menginjak tahun buku baru, maka anggaran tersebut berlaku sepenuhnya.",
     "pasal_ref": "Pasal 22 Ayat 2",
     "instrument_id": "UU-40-2007",
-    "category": "rule",
+    "category": "prohibition",
+    "claim_id": "COM-069"
+  },
+  {
+    "claim": "Laporan perhitungan hasil usaha berkala harus dikirimkan oleh Direksi kepada Kepala Daerah.",
+    "verbatim": "Laporan perhitungan hasil usaha berkala dan kegiatan Perusahaan dikirimkan oleh Direksi kepada Kepala Daerah.",
+    "pasal_ref": "Pasal 23",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure",
+    "claim_id": "COM-070"
+  },
+  {
+    "claim": "Perhitungan tahunan harus dikirimkan oleh Direksi kepada Kepala Daerah setiap tahun buku.",
+    "verbatim": "Untuk tiap tahun buku oleh Direksi dikirimkan perhitungan tahunan terdiri dari neraca dan perhitungan laba-rugi kepada Kepala Daerah.",
+    "pasal_ref": "Pasal 24 Ayat 1",
+    "instrument_id": "UU-40-2007",
+    "category": "procedure",
     "claim_id": "COM-071"
   },
   {
-    "claim": "Il tahun buku deve ottenere l'approvazione del Capo della Regione o degli azionisti.",
-    "verbatim": "tahun buku yang bersangkutan harus mendapat persetujuan lebih dahulu dari Kepala Daerah/pemegang saham/saham prioritet",
-    "pasal_ref": "Pasal 23",
+    "claim": "Perhitungan tahunan dianggap disahkan jika tidak ada keberatan tertulis dalam waktu yang ditentukan.",
+    "verbatim": "Jika dalam waktu yang ditentukan dalam peraturan pendirian Perusahaan Daerah perhitungan tahunan oleh Kepala Daerah/pemegang saham/saham prioritet tidak diajukan keberatan tertulis, maka perhitungan tahunan itu dianggap telah disahkan.",
+    "pasal_ref": "Pasal 24 Ayat 3",
     "instrument_id": "UU-40-2007",
-    "category": "obligation",
+    "category": "rule",
     "claim_id": "COM-072"
   },
   {
-    "claim": "Il rapporto annuale deve essere inviato al Capo della Regione secondo modalità e tempi stabiliti.",
-    "verbatim": "Laporan perhitungan hasil usaha berkala dan kegiatan Perusahaan dikirimkan oleh Direksi kepada Kepala Daerah/pemegang saham/saham prioritet menurut cara dan waktu yang ditentukan dalam peraturan pendirian Perusahaan Daerah.",
-    "pasal_ref": "Pasal 23",
+    "claim": "Cadangan diam dan/atau rahasia tidak boleh diadakan dalam perusahaan daerah.",
+    "verbatim": "Cadangan diam dan/atau rahasia tidak boleh diadakan.",
+    "pasal_ref": "Pasal 25 Ayat 1",
     "instrument_id": "UU-40-2007",
-    "category": "procedure",
+    "category": "prohibition",
     "claim_id": "COM-073"
   },
   {
-    "claim": "Il rapporto annuale deve essere inviato entro i termini stabiliti dalla normativa di fondazione.",
-    "verbatim": "perhitungan tahunan oleh Direksi dikirimkan perhitungan tahunan terdiri dari neraca dan perhitungan laba-rugi kepada Kepala Daerah/pemegang saham/saham prioritet menurut cara dan waktu yang ditentukan dalam peraturan pendirian Perusahaan Daerah.",
-    "pasal_ref": "Pasal 24",
+    "claim": "Penggunaan laba bersih harus ditetapkan sesuai dengan ketentuan yang berlaku.",
+    "verbatim": "Penggunaan laba bersih, setelah terlebih dahulu dikurangi dengan penyusutan, cadangan tujuan dan pengurangan lain yang wajar dalam perusahaan, ditetapkan sebagai berikut.",
+    "pasal_ref": "Pasal 25 Ayat 2",
     "instrument_id": "UU-40-2007",
-    "category": "duration",
+    "category": "rule",
     "claim_id": "COM-074"
   },
   {
-    "claim": "Se non ci sono obiezioni scritte entro il termine stabilito, il rapporto annuale è considerato approvato.",
-    "verbatim": "Jika dalam waktu yang ditentukan dalam peraturan pendirian Perusahaan Daerah perhitungan tahunan oleh Kepala Daerah/pemegang saham/saham prioritet tidak diajukan keberatan tertulis, maka perhitungan tahunan itu dianggap telah disahkan.",
-    "pasal_ref": "Pasal 24",
+    "claim": "Direksi harus mengatur kedudukan hukum, gaji, dan pensiun pegawai sesuai peraturan daerah.",
+    "verbatim": "Kedudukan hukum, gaji, pensiun dan sokongan serta penghasilan lain dari Direksi dan pegawai/pekerja Perusahaan Daerah diatur dengan Peraturan Daerah.",
+    "pasal_ref": "Pasal 26 Ayat 1",
     "instrument_id": "UU-40-2007",
-    "category": "sanction",
+    "category": "rule",
     "claim_id": "COM-075"
   },
   {
-    "claim": "Non possono essere create riserve segrete.",
-    "verbatim": "Cadangan diam dan/atau rahasia tidak boleh diadakan.",
-    "pasal_ref": "Pasal 25",
+    "claim": "Pemerintah Daerah dapat menyerahkan Perusahaan Daerah kepada Daerah tingkat bawahannya dengan semufakat pemegang saham.",
+    "verbatim": "Pemerintah Daerah tingkat atasan dengan semufakat pemegang saham dapat menyerahkan Perusahaan Daerah kepada Daerah tingkat bawahannya.",
+    "pasal_ref": "Pasal 28 Ayat 1",
     "instrument_id": "UU-40-2007",
-    "category": "prohibition",
+    "category": "procedure",
     "claim_id": "COM-076"
   },
   {
-    "claim": "L'uso dell'utile netto deve essere stabilito secondo le percentuali specificate.",
-    "verbatim": "Penggunaan laba bersih, setelah terlebih dahulu dikurangi dengan penyusutan, cadangan tujuan dan pengurangan lain yang wajar dalam perusahaan, ditetapkan sebagai berikut:",
-    "pasal_ref": "Pasal 25",
+    "claim": "Pembubaran Perusahaan Daerah harus ditetapkan dengan Peraturan Daerah dan mendapat pengesahan instansi atasan.",
+    "verbatim": "Pembubaran Perusahaan Daerah dan penunjukan likwidaturnya ditetapkan dengan Peraturan Daerah dari Daerah yang mendirikan Perusahaan Daerah dan yang berlaku setelah mendapat pengesahan instansi atasan.",
+    "pasal_ref": "Pasal 29 Ayat 1",
     "instrument_id": "UU-40-2007",
-    "category": "requirement",
+    "category": "procedure",
     "claim_id": "COM-077"
   },
   {
-    "claim": "Il governo locale può trasferire l'azienda pubblica a un'associazione cooperativa.",
-    "verbatim": "Pemerintah Daerah dengan semufakat pemegang saham dapat memindahkan Perusahaan Daerah tertentu ke tangan perkumpulan koperasi di daerahnya.",
-    "pasal_ref": "Pasal 28",
-    "instrument_id": "UU-40-2007",
-    "category": "right",
-    "claim_id": "COM-078"
-  },
-  {
-    "claim": "La liquidazione dell'azienda pubblica deve essere stabilita da una normativa locale.",
-    "verbatim": "Pembubaran Perusahaan Daerah dan penunjukan likwidaturnya ditetapkan dengan Peraturan Daerah dari Daerah yang mendirikan Perusahaan Daerah.",
-    "pasal_ref": "Pasal 29",
-    "instrument_id": "UU-40-2007",
-    "category": "procedure",
-    "claim_id": "COM-079"
-  },
-  {
-    "claim": "Le aziende devono continuare a svolgere i loro compiti fino a un anno dopo l'entrata in vigore della legge.",
-    "verbatim": "dalam waktu selambat-lambatnya satu tahun setelah berlakunya Undang-undang ini, perusahaan-perusahaan termaksud harus didirikan berdasarkan Undang-undang ini.",
+    "claim": "Perusahaan yang modalnya merupakan kekayaan Daerah harus didirikan berdasarkan Undang-undang ini dalam waktu satu tahun.",
+    "verbatim": "Dalam waktu selambat-lambatnya satu tahun setelah berlakunya Undang-undang ini, perusahaan-perusahaan termaksud harus didirikan berdasarkan Undang-undang ini.",
     "pasal_ref": "Pasal 30",
     "instrument_id": "UU-40-2007",
     "category": "duration",
-    "claim_id": "COM-080"
+    "claim_id": "COM-078"
   },
   {
     "claim": "La legge entra in vigore il giorno della sua pubblicazione.",
@@ -645,127 +629,119 @@
     "pasal_ref": "Pasal 32",
     "instrument_id": "UU-40-2007",
     "category": "duration",
-    "claim_id": "COM-081"
+    "claim_id": "COM-079"
   },
   {
-    "claim": "Ogni persona deve essere informata della legge attraverso la sua pubblicazione nella Gazzetta Ufficiale.",
+    "claim": "Ogni persona deve essere informata della legge attraverso la pubblicazione nella Gazzetta Ufficiale.",
     "verbatim": "memerintahkan pengundangan Undang -undang ini dengan penempatan dalam Lembaran - Negara Republik Indonesia.",
     "pasal_ref": "Pasal 32",
     "instrument_id": "UU-40-2007",
     "category": "procedure",
-    "claim_id": "COM-082"
+    "claim_id": "COM-080"
   },
   {
     "claim": "Le aziende regionali devono essere costituite con capitale separato delle risorse locali.",
     "verbatim": "modalnya untuk seluruhnya terdiri dari kekayaan Daerah yang dipisahkan.",
-    "pasal_ref": "Pasal 2",
+    "pasal_ref": "Penjelasan Umum",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
+    "claim_id": "COM-081"
+  },
+  {
+    "claim": "Le aziende regionali devono essere gestite per il beneficio sociale e non solo per il profitto.",
+    "verbatim": "perusahaan yang tidak mengutamakan mencari keuntungan semata -mata melainkan khususnya ditujukan kepada terwujudnya fungsi sosialnya.",
+    "pasal_ref": "Penjelasan Umum",
+    "instrument_id": "UU-40-2007",
+    "category": "requirement",
+    "claim_id": "COM-082"
+  },
+  {
+    "claim": "Una parte dei profitti delle aziende regionali deve essere destinata allo sviluppo della regione.",
+    "verbatim": "sebagian dari laba yang diperoleh Perusahaan Daerah harus disediakan bagi dana pembangunan daerah.",
+    "pasal_ref": "Penjelasan Umum",
+    "instrument_id": "UU-40-2007",
+    "category": "obligation",
     "claim_id": "COM-083"
   },
   {
-    "claim": "Le aziende regionali devono essere gestite in conformità con le normative locali.",
-    "verbatim": "Perusahaan Daerah bergerak dalam lapangan yang sesuai dengan urusan rumah - tangganya menurut peraturan perundangan.",
-    "pasal_ref": "Pasal 3",
+    "claim": "Le aziende regionali devono essere riviste e regolate secondo questa legge.",
+    "verbatim": "Perusahaan Daerah yang telah ada didirikan berdasarkan peraturan perundangan yang lama perlu ditinjau dan diatur kembali berdasarkan Undang -undang ini.",
+    "pasal_ref": "Penjelasan Umum",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
     "claim_id": "COM-084"
   },
   {
-    "claim": "Una parte dei profitti delle aziende regionali deve essere destinata allo sviluppo locale.",
-    "verbatim": "sebagian dari laba yang diperoleh Perusahaan Daerah harus disediakan bagi dana pembangunan daerah.",
-    "pasal_ref": "Pasal 4",
-    "instrument_id": "UU-40-2007",
-    "category": "obligation",
-    "claim_id": "COM-085"
-  },
-  {
-    "claim": "Le aziende regionali devono essere costituite come entità giuridiche secondo la legge.",
+    "claim": "Le aziende regionali devono essere costituite come entità legali secondo questa legge.",
     "verbatim": "Perusahaan Daerah itu adalah suatu badan hukum berdasarkan Undang -undang ini.",
-    "pasal_ref": "Pasal 5",
+    "pasal_ref": "Penjelasan Umum",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-086"
-  },
-  {
-    "claim": "Le aziende regionali devono essere riesaminate e ristrutturate secondo la nuova legge.",
-    "verbatim": "Perusahaan Daerah yang telah ada didirikan berdasarkan peraturan perundangan yang lama perlu ditinjau dan diatur kembali.",
-    "pasal_ref": "Pasal 6",
-    "instrument_id": "UU-40-2007",
-    "category": "obligation",
-    "claim_id": "COM-087"
+    "claim_id": "COM-085"
   },
   {
     "claim": "La fondazione di un'azienda deve essere regolata da normative locali e non deve deviare dalle disposizioni di legge.",
     "verbatim": "harus diatur dalam pendirian perusahaan tersebut dengan tidak boleh menyimpang dari ketentuan -ketentuan pokok yang tercantum dalam Undang -undang ini.",
-    "pasal_ref": "UU 40/2007 Pasal 1",
+    "pasal_ref": "UU-40-2007 Pasal 1",
     "instrument_id": "UU-40-2007",
     "category": "rule",
-    "claim_id": "COM-088"
+    "claim_id": "COM-086"
   },
   {
     "claim": "Il capitale di un'azienda regionale può essere interamente o parzialmente costituito da beni regionali separati dal bilancio regionale.",
-    "verbatim": "modal perusahaan terdiri untuk seluruhnya atau untuk sebagian atas kekayaan Daerah yang dipisahkan dari Anggaran Belanja Daerah.",
-    "pasal_ref": "UU 40/2007 Pasal 2",
+    "verbatim": "modal perusahaan terdiri untuk seluruhnya atau untuk sebagian atas kekayaan Daerah yang dipisahkan dari Anggaran Belanja Daerah",
+    "pasal_ref": "UU-40-2007 Pasal 2",
     "instrument_id": "UU-40-2007",
     "category": "rule",
+    "claim_id": "COM-087"
+  },
+  {
+    "claim": "Le azioni prioritarie possono essere possedute solo da enti regionali di primo e secondo livello.",
+    "verbatim": "Saham -saham prioritet hanya dapat dimiliki oleh Daerah, baik Daerah tingkat I dan atau Daerah tingkat II.",
+    "pasal_ref": "UU-40-2007 Pasal 3",
+    "instrument_id": "UU-40-2007",
+    "category": "prohibition",
+    "claim_id": "COM-088"
+  },
+  {
+    "claim": "Il capo della regione ha il potere di gestire e supervisionare le aziende regionali.",
+    "verbatim": "segala kegiatan, penguasaan dan pengurusan Perusahaan Daerah pada hakekatnya berada dibawah pimpinan dan pengawasan Kepala Daerah",
+    "pasal_ref": "UU-40-2007 Pasal 4",
+    "instrument_id": "UU-40-2007",
+    "category": "right",
     "claim_id": "COM-089"
   },
   {
-    "claim": "Le azioni prioritarie possono essere possedute solo dalle autorità locali.",
-    "verbatim": "Saham -saham prioritet hanya dapat dimiliki oleh Daerah, baik Daerah tingkat I dan atau Daerah tingkat II.",
-    "pasal_ref": "UU 40/2007 Pasal 3",
+    "claim": "Le aziende regionali devono essere conformi alla politica economica nazionale.",
+    "verbatim": "segala kegiatan dari Perusahaan Daerah itu disesuaikan dengan politik ekonomi Negara",
+    "pasal_ref": "UU-40-2007 Pasal 5",
     "instrument_id": "UU-40-2007",
-    "category": "prohibition",
+    "category": "rule",
     "claim_id": "COM-090"
   },
   {
-    "claim": "Le autorità locali hanno il diritto di gestire e controllare le aziende regionali.",
-    "verbatim": "segala kegiatan, penguasaan dan pengurusan Perusahaan Daerah pada hakekatnya berada dibawah pimpinan dan pengawasan Kepala Daerah.",
-    "pasal_ref": "UU 40/2007 Pasal 4",
+    "claim": "Il capo della regione deve rendere conto al consiglio regionale riguardo alla gestione delle aziende regionali.",
+    "verbatim": "memberi pertanggungan -jawab kepada Dewan Perwakilan Rakyat Daerah mengenai segala sesuatu yang berhubungan dengan Perusahaan Daerah.",
+    "pasal_ref": "UU-40-2007 Pasal 6",
     "instrument_id": "UU-40-2007",
-    "category": "right",
+    "category": "obligation",
     "claim_id": "COM-091"
   },
   {
-    "claim": "Le aziende regionali devono essere conformi alla politica economica nazionale.",
-    "verbatim": "segala kegiatan dari Perusahaan Daerah itu disesuaikan dengan politik ekonomi Negara.",
-    "pasal_ref": "UU 40/2007 Pasal 5",
+    "claim": "Le aziende regionali devono continuare a svolgere i loro compiti fino a quando non siano costituite secondo la legge.",
+    "verbatim": "semua Perusahaan Daerah tetap melakukan tugas kewajibannya, dengan kedudukan dan bentuk hukum yang dimilikinya secara sah.",
+    "pasal_ref": "UU-40-2007 Pasal 7",
     "instrument_id": "UU-40-2007",
-    "category": "rule",
+    "category": "obligation",
     "claim_id": "COM-092"
   },
   {
-    "claim": "Le aziende regionali devono essere istituite entro un anno dall'entrata in vigore della legge.",
-    "verbatim": "dalam waktu selambat -lambatnya satu tahun setelah berlakunya Undang -undang ini semua Perusahaan yang telah ada ... harus didirikan berdasarkan Undang -undang ini.",
-    "pasal_ref": "UU 40/2007 Pasal 6",
+    "claim": "Tutte le aziende esistenti devono essere costituite secondo questa legge entro un anno dall'entrata in vigore della legge.",
+    "verbatim": "dalam waktu selambat -lambatnya satu tahun setelah berlakunya Undang -undang ini semua Perusahaan yang telah ada",
+    "pasal_ref": "UU-40-2007 Pasal 8",
     "instrument_id": "UU-40-2007",
     "category": "duration",
     "claim_id": "COM-093"
-  },
-  {
-    "claim": "Le aziende regionali devono continuare a svolgere i loro compiti fino a quando non siano costituite secondo la nuova legge.",
-    "verbatim": "semua Perusahaan Daerah tetap melakukan tugas kewajibannya, dengan kedudukan dan bentuk hukum yang dimilikinya secara sah.",
-    "pasal_ref": "UU 40/2007 Pasal 7",
-    "instrument_id": "UU-40-2007",
-    "category": "obligation",
-    "claim_id": "COM-094"
-  },
-  {
-    "claim": "Le autorità locali devono rendere conto al Consiglio Regionale riguardo alle aziende regionali.",
-    "verbatim": "Kepala Daerah ... memberi pertanggungan -jawab kepada Dewan Perwakilan Rakyat Daerah mengenai segala sesuatu yang berhubungan dengan Perusahaan Daerah.",
-    "pasal_ref": "UU 40/2007 Pasal 8",
-    "instrument_id": "UU-40-2007",
-    "category": "obligation",
-    "claim_id": "COM-095"
-  },
-  {
-    "claim": "Il controllo sulle aziende regionali è di competenza dell'ufficio del contabile nazionale.",
-    "verbatim": "Jawatan Akuntan Negara berwenang untuk melakukan kontrol atas pekerjaan menguasai dan mengurus Perusahaan Daerah.",
-    "pasal_ref": "UU 40/2007 Pasal 9",
-    "instrument_id": "UU-40-2007",
-    "category": "right",
-    "claim_id": "COM-096"
   },
   {
     "claim": "Le aziende regionali devono prestare attenzione all'efficienza e contribuire allo sviluppo economico nazionale.",
@@ -773,7 +749,7 @@
     "pasal_ref": "Pasal 6",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-097"
+    "claim_id": "COM-094"
   },
   {
     "claim": "Le aziende regionali devono operare in settori che corrispondono alle loro competenze.",
@@ -781,39 +757,39 @@
     "pasal_ref": "Pasal 6",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-098"
+    "claim_id": "COM-095"
   },
   {
-    "claim": "Le cooperative devono essere prioritarie rispetto alle aziende private nel settore economico.",
+    "claim": "Le cooperative devono essere prioritarie rispetto alle aziende private nella gestione delle aziende regionali.",
     "verbatim": "Unit ekonomi yang diutamakan sesudah Perusahaan Negara/Daerah ialah Koperasi.",
     "pasal_ref": "Pasal 6",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-099"
+    "claim_id": "COM-096"
   },
   {
     "claim": "Le cooperative devono ricevere un trattamento speciale in base ai loro interessi.",
     "verbatim": "Koperasi sewajarnya mendapat perlakuan yang khusus sesuai dengan kepentingannya.",
     "pasal_ref": "Pasal 6",
     "instrument_id": "UU-40-2007",
-    "category": "requirement",
-    "claim_id": "COM-100"
+    "category": "right",
+    "claim_id": "COM-097"
   },
   {
-    "claim": "Le aziende regionali devono avere un patrimonio separato dal patrimonio generale della regione.",
+    "claim": "Il capitale delle aziende regionali deve essere separato dal patrimonio pubblico.",
     "verbatim": "Modal Perusahaan Daerah untuk seluruhnya atau untuk sebagian merupakan kekayaan Daerah yang dipisahkan.",
     "pasal_ref": "Pasal 7",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-101"
+    "claim_id": "COM-098"
   },
   {
-    "claim": "I soci devono avere il diritto di esprimere opinioni riguardo alla gestione dell'azienda.",
+    "claim": "I soci devono avere il diritto di esprimere opinioni sulle questioni aziendali.",
     "verbatim": "kepada pemegang saham diberikan hak mengeluarkan pendapat/suara tentang segala sesuatu yang mengenai perusahaan.",
     "pasal_ref": "Pasal 10",
     "instrument_id": "UU-40-2007",
     "category": "right",
-    "claim_id": "COM-102"
+    "claim_id": "COM-099"
   },
   {
     "claim": "Non devono esserci relazioni familiari tra i membri del consiglio di amministrazione e altri funzionari.",
@@ -821,23 +797,23 @@
     "pasal_ref": "Pasal 13",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-103"
+    "claim_id": "COM-100"
   },
   {
-    "claim": "Le aziende regionali devono stabilire i limiti di potere del consiglio di amministrazione.",
-    "verbatim": "batas kekuasaan tersebut diatas ditetapkan dalam peraturan pendirian perusahaan yang bersangkutan.",
-    "pasal_ref": "Pasal 16",
+    "claim": "Le aziende regionali devono avere un consiglio di amministrazione.",
+    "verbatim": "tiap -tiap Perusahaan Daerah dibentuk Dewan Perusahaan Daerah.",
+    "pasal_ref": "Pasal 17",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-104"
+    "claim_id": "COM-101"
   },
   {
-    "claim": "Le aziende regionali devono essere sottoposte a supervisione per garantire il rispetto delle politiche stabilite.",
+    "claim": "Le aziende regionali devono essere sottoposte a supervisione per garantire il rispetto delle politiche aziendali.",
     "verbatim": "pengawasan (umum) termaksud diatas dilakukan oleh Kepala Daerah/pemegang saham.",
     "pasal_ref": "Pasal 19",
     "instrument_id": "UU-40-2007",
     "category": "requirement",
-    "claim_id": "COM-105"
+    "claim_id": "COM-102"
   },
   {
     "claim": "I dipendenti delle aziende regionali sono responsabili per i danni causati dalla loro negligenza.",
@@ -845,7 +821,7 @@
     "pasal_ref": "Pasal 20",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-106"
+    "claim_id": "COM-103"
   },
   {
     "claim": "Il bendaharawan è obbligato a fornire rendiconti riguardo ai beni e ai fondi dell'azienda.",
@@ -853,7 +829,7 @@
     "pasal_ref": "Pasal 21",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-107"
+    "claim_id": "COM-104"
   },
   {
     "claim": "Le aziende regionali sono obbligate a redigere un bilancio aziendale.",
@@ -861,23 +837,23 @@
     "pasal_ref": "Pasal 22",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-108"
+    "claim_id": "COM-105"
   },
   {
     "claim": "Se non ci sono obiezioni da parte degli azionisti prioritari, i progetti possono continuare.",
-    "verbatim": "tidak menjadi rintangan untuk melanjutkan pelaksanaan proyek",
+    "verbatim": "maka hal itu tidak menjadi rintangan untuk melanjutkan pelaksanaan proyek",
     "pasal_ref": "Pasal 22",
     "instrument_id": "UU-40-2007",
     "category": "rule",
-    "claim_id": "COM-109"
+    "claim_id": "COM-106"
   },
   {
-    "claim": "I rapporti periodici devono essere forniti per monitorare la gestione dell'azienda.",
+    "claim": "I rapporti periodici devono essere forniti per monitorare la gestione aziendale.",
     "verbatim": "laporan berkala mengenai pelaksanaan pekerjaan menguasai dan mengurus perusahaan",
     "pasal_ref": "Pasal 23",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-110"
+    "claim_id": "COM-107"
   },
   {
     "claim": "Il calcolo annuale è utilizzato come base per l'approvazione delle azioni di gestione.",
@@ -885,103 +861,111 @@
     "pasal_ref": "Pasal 24",
     "instrument_id": "UU-40-2007",
     "category": "rule",
-    "claim_id": "COM-111"
+    "claim_id": "COM-108"
   },
   {
     "claim": "Le aziende non possono formare riserve segrete o silenziose.",
-    "verbatim": "larangan untuk membentuk cadangan diam dan rahasia",
+    "verbatim": "perlu diadakannya larangan untuk membentuk cadangan diam dan rahasia",
     "pasal_ref": "Pasal 25",
     "instrument_id": "UU-40-2007",
     "category": "prohibition",
-    "claim_id": "COM-112"
+    "claim_id": "COM-109"
   },
   {
-    "claim": "Le aziende devono contribuire al fondo per lo sviluppo regionale.",
-    "verbatim": "kewajiban sumbangan kepada Daerah untuk keperluan pembangunan",
+    "claim": "Le riserve devono essere costituite per scopi specifici come il rinnovo o l'espansione.",
+    "verbatim": "cadangan yang dibentuk untuk mencapai tujuan tertentu",
     "pasal_ref": "Pasal 25",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-113"
+    "claim_id": "COM-110"
   },
   {
-    "claim": "Il governo locale deve seguire le linee guida del Ministro degli Affari Religiosi riguardo alla zakat.",
+    "claim": "Le aziende devono contribuire al fondo per lo sviluppo regionale.",
+    "verbatim": "kewajiban sumbangan kepada Daerah untuk keperluan pembangunan Daerah",
+    "pasal_ref": "Pasal 25",
+    "instrument_id": "UU-40-2007",
+    "category": "obligation",
+    "claim_id": "COM-111"
+  },
+  {
+    "claim": "Il governo regionale deve seguire le linee guida del Ministro degli Affari Religiosi riguardo alla zakat.",
     "verbatim": "Pemerintah Daerah mengatur supaya dalam hal ini diikuti petunjuk dari Menteri Agama.",
     "pasal_ref": "Pasal 25",
     "instrument_id": "UU-40-2007",
     "category": "obligation",
-    "claim_id": "COM-114"
+    "claim_id": "COM-112"
   },
   {
-    "claim": "Le aziende possono ricevere un compenso per i servizi produttivi.",
+    "claim": "Le aziende possono ricevere un compenso per i servizi prestati dai dipendenti.",
     "verbatim": "Pemerintah Daerah dapat memberikan jasa produksi.",
     "pasal_ref": "Pasal 25",
     "instrument_id": "UU-40-2007",
     "category": "right",
+    "claim_id": "COM-113"
+  },
+  {
+    "claim": "Le aziende devono considerare i premi pensionistici come parte del costo dei beni prodotti.",
+    "verbatim": "Premi untuk pensiun biasa merupakan bagian dari harga pokok barang -barang yang diproduksikan",
+    "pasal_ref": "Pasal 25",
+    "instrument_id": "UU-40-2007",
+    "category": "rule",
+    "claim_id": "COM-114"
+  },
+  {
+    "claim": "È necessario che le aziende locali abbiano regolamenti di personale uniformi approvati dalle autorità competenti.",
+    "verbatim": "perlu adanya peraturan pokok kepegawaian Perusahaan Daerah yang ditetapkan dengan Peraturan Daerah",
+    "pasal_ref": "Pasal 27",
+    "instrument_id": "UU-40-2007",
+    "category": "rule",
     "claim_id": "COM-115"
   },
   {
-    "claim": "Le aziende devono considerare i dipendenti come parte integrante dell'azienda.",
-    "verbatim": "Dalam Perusahaan Daerah tidak ada pengertian buruh dan majikan",
-    "pasal_ref": "Pasal 26",
+    "claim": "La cessazione dei dipendenti deve seguire le normative vigenti.",
+    "verbatim": "hendaklah diperhatikan penyaluran mereka menurut peraturan perundangan yang berlaku",
+    "pasal_ref": "Pasal 27",
     "instrument_id": "UU-40-2007",
-    "category": "rule",
+    "category": "obligation",
     "claim_id": "COM-116"
   },
   {
-    "claim": "Le aziende devono seguire le disposizioni uniformi stabilite da regolamenti locali dopo l'approvazione delle autorità superiori.",
-    "verbatim": "berlaku ket entuan -ketentuan yang seragam diperlukan adanya peraturan pokok kepegawaian Perusahaan Daerah yang ditetapkan dengan Peraturan Daerah yang berlaku setelah mendapat pengesahan instansi atasan.",
-    "pasal_ref": "Pasal 27",
-    "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-117"
-  },
-  {
-    "claim": "La cessazione dei dipendenti deve seguire le normative vigenti.",
-    "verbatim": "Mengenai pemberhentian pegawai/pekerja -pekerja Perusahaan Daerah hendaklah diperhatikan penyaluran mereka menurut peraturan perundangan yang berlaku mengenai masalah ini.",
-    "pasal_ref": "Pasal 27",
-    "instrument_id": "UU-40-2007",
-    "category": "procedure",
-    "claim_id": "COM-118"
-  },
-  {
-    "claim": "Le aziende possono essere trasferite tra le autorità locali previa approvazione degli azionisti.",
-    "verbatim": "dapat menyerahkan Perusahaan Daerah termaksud kepada Daerah tingkat bawahannya, demikian pula penyerahan sebaliknya.",
-    "pasal_ref": "Pasal 28",
-    "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-119"
-  },
-  {
-    "claim": "Il governo locale può trasferire un'azienda a una cooperativa se non è più necessaria come azienda locale.",
-    "verbatim": "maka Pemerintah Daerah dapat memindahkan perusahaan tersebut ketangan perkumpulan koperasi didaerahnya.",
-    "pasal_ref": "Pasal 28",
-    "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-120"
-  },
-  {
-    "claim": "I dirigenti delle cooperative possono essere nominati dai capi locali per dirigere aziende locali.",
-    "verbatim": "pimpinan/pengurus pegawai perkumpulan koperasi/perusahaan swasta, yang betul -betul mempunyai bakat leadership, dapat diangkat oleh kepala Daerah/pemegang saham/saham prioritet untuk dijadikan pimpinan perusahaan daerah tertentu.",
+    "claim": "Le aziende locali possono essere trasferite a livelli inferiori di governo con l'accordo degli azionisti.",
+    "verbatim": "dapat menyerahkan Perusahaan Daerah termaksud kepada Daerah tingkat bawahannya",
     "pasal_ref": "Pasal 28",
     "instrument_id": "UU-40-2007",
     "category": "right",
-    "claim_id": "COM-121"
+    "claim_id": "COM-117"
   },
   {
-    "claim": "La chiusura di un'azienda locale deve essere stabilita da un regolamento locale dopo l'approvazione delle autorità superiori.",
-    "verbatim": "pembubaran Perusahaan Daerah ditetapkan dengan Peraturan Daerah yang berlaku setelah mendapat pengesahan instansi atasan.",
+    "claim": "Il governo locale può trasferire un'azienda locale a un'associazione cooperativa se non è più necessaria.",
+    "verbatim": "Pemerintah Daerah dapat memindahkan perusahaan tersebut ketangan perkumpulan koperasi",
+    "pasal_ref": "Pasal 28",
+    "instrument_id": "UU-40-2007",
+    "category": "right",
+    "claim_id": "COM-118"
+  },
+  {
+    "claim": "I dirigenti delle cooperative possono essere nominati dai capi locali per dirigere aziende locali.",
+    "verbatim": "dapat diangkat oleh kepala Daerah/pemegang saham/saham prioritet untuk dijadikan pimpinan perusahaan daerah tertentu",
+    "pasal_ref": "Pasal 28",
+    "instrument_id": "UU-40-2007",
+    "category": "right",
+    "claim_id": "COM-119"
+  },
+  {
+    "claim": "La chiusura di un'azienda locale deve essere stabilita da un regolamento locale approvato.",
+    "verbatim": "pembubaran Perusahaan Daerah ditetapkan dengan Peraturan Daerah yang berlaku setelah mendapat pengesahan instansi atasan",
     "pasal_ref": "Pasal 29",
     "instrument_id": "UU-40-2007",
-    "category": "rule",
-    "claim_id": "COM-122"
+    "category": "procedure",
+    "claim_id": "COM-120"
   },
   {
-    "claim": "La liquidazione deve essere eseguita entro un termine stabilito nel regolamento di chiusura dell'azienda.",
-    "verbatim": "Penyelenggaraan likwidasi dilakukan dalam batas waktu yang akan ditetapkan dalam peraturan pembubaran perusahaan termaksud diatas.",
+    "claim": "La liquidazione deve essere eseguita entro un periodo stabilito nel regolamento di chiusura.",
+    "verbatim": "Penyelenggaraan likwidasi dilakukan dalam batas waktu yang akan ditetapkan dalam peraturan pembubaran",
     "pasal_ref": "Pasal 29",
     "instrument_id": "UU-40-2007",
     "category": "duration",
-    "claim_id": "COM-123"
+    "claim_id": "COM-121"
   },
   {
     "claim": "Il 'Perjanjian Karya' tra Pertamina e Pan American Oil Company è approvato secondo le disposizioni della legge.",
@@ -989,63 +973,103 @@
     "pasal_ref": "UU 25/2007 Pasal 1",
     "instrument_id": "UU-25-2007",
     "category": "right",
-    "claim_id": "COM-124"
+    "claim_id": "COM-122"
   },
   {
-    "claim": "Questa legge entra in vigore il giorno della pubblicazione e ha effetto retroattivo fino al 18 giugno 1962.",
+    "claim": "Questa legge entra in vigore il giorno della sua pubblicazione e ha effetto retroattivo fino al 18 giugno 1962.",
     "verbatim": "Undang -undang ini mulai berlaku pada hari diundangkan dan mempunyai daya surut hingga tanggal 18 Juni 1962.",
     "pasal_ref": "UU 25/2007 Pasal 2",
     "instrument_id": "UU-25-2007",
     "category": "duration",
-    "claim_id": "COM-125"
+    "claim_id": "COM-123"
   },
   {
-    "claim": "Ogni persona deve essere informata della pubblicazione di questa legge.",
-    "verbatim": "Agar supaya setiap orang dapat mengetahu inya memerintahkan pengundangan Undang -undang lni dengan penempatan dalam Lembaran -Negara Republik Indonesia.",
+    "claim": "Ogni persona deve essere informata della promulgazione di questa legge attraverso la pubblicazione nella Gazzetta Ufficiale.",
+    "verbatim": "memerintahkan pengundangan Undang -undang lni dengan penempatan dalam Lembaran -Negara Republik Indonesia.",
     "pasal_ref": "UU 25/2007 Pasal 2",
     "instrument_id": "UU-25-2007",
     "category": "obligation",
+    "claim_id": "COM-124"
+  },
+  {
+    "claim": "Il governo ha il potere di terminare i diritti minerari assoluti secondo la nuova legge.",
+    "verbatim": "Pemerintah dengan Undang -undang No. 44 Prp tahun 1960 secara unilateral dan melalui undang -undang tersebut mengakhiri hak -hak pertambangan yang absolut.",
+    "pasal_ref": "UU 25/2007",
+    "instrument_id": "UU-25-2007",
+    "category": "sanction",
+    "claim_id": "COM-125"
+  },
+  {
+    "claim": "Le operazioni di estrazione di petrolio e gas possono essere svolte solo da aziende statali, salvo eccezioni.",
+    "verbatim": "usaha pertambangan minyak dan gas bumi hanya dapat dilaksanakan oleh Perusahaan Negara.",
+    "pasal_ref": "UU 25/2007",
+    "instrument_id": "UU-25-2007",
+    "category": "prohibition",
     "claim_id": "COM-126"
+  },
+  {
+    "claim": "Le aziende statali possono designare aziende straniere come appaltatori solo se non possono svolgere il lavoro da sole.",
+    "verbatim": "dapat ditunjuk maatschappij asing sebagai kontraktor Perusahaan Negara.",
+    "pasal_ref": "UU 25/2007",
+    "instrument_id": "UU-25-2007",
+    "category": "right",
+    "claim_id": "COM-127"
+  },
+  {
+    "claim": "Il governo deve garantire il controllo efficiente delle operazioni di estrazione da parte delle aziende statali e dei contrattisti.",
+    "verbatim": "dapat dilakukan kontrole yang effisien dalam rangka pengusahaan.",
+    "pasal_ref": "UU 25/2007",
+    "instrument_id": "UU-25-2007",
+    "category": "obligation",
+    "claim_id": "COM-128"
   },
   {
     "claim": "Le aziende devono raggiungere un accordo entro il periodo di transizione stabilito.",
     "verbatim": "mencapai persetujuan dalam waktu peralihan yang ditentukan;",
-    "pasal_ref": "PP 18/1963 Pasal 1",
-    "instrument_id": "UU-25-2007",
-    "category": "obligation",
-    "claim_id": "COM-127"
-  },
-  {
-    "claim": "Le aziende possono essere costrette a chiudere.",
-    "verbatim": "gulung tikar;",
-    "pasal_ref": "PP 18/1963 Pasal 2",
-    "instrument_id": "UU-25-2007",
-    "category": "prohibition",
-    "claim_id": "COM-128"
-  },
-  {
-    "claim": "Le aziende devono continuare a operare secondo la nuova legge sull'industria petrolifera.",
-    "verbatim": "bekerja terus berdasarkan undang -undang pengusahaan minyak yang baru",
-    "pasal_ref": "PP 18/1963 Pasal 3",
+    "pasal_ref": "PP 18/1963",
     "instrument_id": "UU-25-2007",
     "category": "obligation",
     "claim_id": "COM-129"
   },
   {
-    "claim": "Le aziende devono completare gli accordi e le formulazioni tecniche finanziarie entro un periodo specifico.",
-    "verbatim": "perjanjian ka rya dan perumusan -perumusan teknis finansiil yang kemudian diselesaikan",
-    "pasal_ref": "PP 18/1963 Pasal 4",
+    "claim": "Le aziende possono essere costrette a chiudere.",
+    "verbatim": "gulung tikar;",
+    "pasal_ref": "PP 18/1963",
     "instrument_id": "UU-25-2007",
-    "category": "obligation",
+    "category": "prohibition",
     "claim_id": "COM-130"
   },
   {
-    "claim": "Le aziende devono iniziare a realizzare i risultati degli accordi in un tempo breve.",
-    "verbatim": "dalam waktu yang sesingkat -singkatnya menguasai dan melaksanakan usaha -usaha pertambangan minyak bumi.",
-    "pasal_ref": "PP 18/1963 Pasal 5",
+    "claim": "Le aziende devono continuare a operare secondo la nuova legge sull'industria petrolifera.",
+    "verbatim": "bekerja terus berdasarkan undang -undang pengusahaan minyak yang baru",
+    "pasal_ref": "PP 18/1963",
     "instrument_id": "UU-25-2007",
     "category": "obligation",
     "claim_id": "COM-131"
+  },
+  {
+    "claim": "Le aziende devono completare gli accordi e le formulazioni tecniche finanziarie entro il 26 settembre 1963.",
+    "verbatim": "diselesaikan di Jakarta pada tanggal 26 September 1963",
+    "pasal_ref": "PP 18/1963",
+    "instrument_id": "UU-25-2007",
+    "category": "duration",
+    "claim_id": "COM-132"
+  },
+  {
+    "claim": "Le aziende devono rispettare le disposizioni del 'Perjanjian Karya' per il successo del governo.",
+    "verbatim": "Perjanjian Karya yang merupakan hasil maksimal bagi Pemerintah",
+    "pasal_ref": "PP 18/1963",
+    "instrument_id": "UU-25-2007",
+    "category": "obligation",
+    "claim_id": "COM-133"
+  },
+  {
+    "claim": "Le aziende devono iniziare a operare nel settore minerario nel minor tempo possibile.",
+    "verbatim": "dalam waktu yang sesingkat -singkatnya menguasai dan melaksanakan usaha -usaha pertambangan minyak bumi.",
+    "pasal_ref": "PP 18/1963",
+    "instrument_id": "UU-25-2007",
+    "category": "obligation",
+    "claim_id": "COM-134"
   },
   {
     "claim": "Il Governo di Aceh deve fornire assistenza sociale sotto forma di borse di studio per orfani e bambini privi di entrambi i genitori.",
@@ -1053,23 +1077,31 @@
     "pasal_ref": "PP 8/2021 Pasal 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-132"
+    "claim_id": "COM-135"
   },
   {
-    "claim": "Le borse di studio sono destinate a studenti di vari livelli educativi, inclusi scuole elementari e istituti religiosi.",
+    "claim": "Le borse di studio sono destinate a studenti di vari livelli educativi, inclusi scuole primarie e secondarie.",
     "verbatim": "Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu adalah pemberian berupa uang yang diberikan kepada siswa/ santri yang berada pada Sekolah Dasar / Madrasah Ibtidaiyah, Sekolah Menengah Pertama/ Madrasah Tsanawiyah, Sekolah Menengah Atas/ Sekolah Menengah Kejuruan/ Madrasah Aliyah, Sekolah Luar Biasa dan/ a tau sederajat termasuk Dayah/Pesantren bertujuan untuk keberlangsungan Pendidikan.",
     "pasal_ref": "PP 8/2021 Pasal 1",
     "instrument_id": "PP-8-2021",
     "category": "right",
-    "claim_id": "COM-133"
+    "claim_id": "COM-136"
   },
   {
-    "claim": "Il Gubernatore di Aceh ha l'autorità di stabilire regolamenti riguardanti l'assistenza sociale per gli orfani.",
-    "verbatim": "Perlu menetapkan Peraturan Gubernur tentang Pemberian Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu dalam Wilayah Aceh;",
+    "claim": "Il Gubernatore di Aceh è responsabile della gestione delle borse di studio per orfani.",
+    "verbatim": "Gubernur adalah kepala Pemerintah Aceh.",
     "pasal_ref": "PP 8/2021 Pasal 1",
     "instrument_id": "PP-8-2021",
     "category": "rule",
-    "claim_id": "COM-134"
+    "claim_id": "COM-137"
+  },
+  {
+    "claim": "Le borse di studio devono essere erogate in conformità con le normative vigenti.",
+    "verbatim": "sesuai dengan Peraturan Perundang-undangan dalam sistem dan prinsip Negara Kesatuan Republik Indonesia",
+    "pasal_ref": "PP 8/2021 Pasal 1",
+    "instrument_id": "PP-8-2021",
+    "category": "procedure",
+    "claim_id": "COM-138"
   },
   {
     "claim": "L'assistenza sociale sotto forma di borse di studio è destinata ai bambini orfani e abbandonati per soddisfare le loro esigenze educative.",
@@ -1077,55 +1109,71 @@
     "pasal_ref": "PP 8/2021 Pasal 2",
     "instrument_id": "PP-8-2021",
     "category": "rule",
-    "claim_id": "COM-135"
+    "claim_id": "COM-139"
   },
   {
-    "claim": "Le borse di studio sono concesse a bambini orfani e abbandonati che frequentano vari livelli di istruzione.",
-    "verbatim": "Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu diberikan kepada Anak Yatim, Piatu, dan/atau Yatim Piatu yang: mengikuti Pendidikan Sekolah Dasar / Madrasah lbtidaiyah dan/ a tau sederajat.",
-    "pasal_ref": "PP 8/2021 Pasal 4",
-    "instrument_id": "PP-8-2021",
-    "category": "rule",
-    "claim_id": "COM-136"
-  },
-  {
-    "claim": "L'importo della borsa di studio è di Rp2.400.000,00 per persona all'anno, suddiviso in quattro pagamenti trimestrali.",
-    "verbatim": "Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/ atau Yatim Piatu sebagaimana dimaksud dalam Pasal 4 diberikan sebesar Rp2.400.000,00 per orang per tahun dibagi dalam 4 tahap pembayaran sebesar Rp600.000,00 per triwulan.",
+    "claim": "Le borse di studio ammontano a Rp2.400.000,00 per persona all'anno, suddivise in quattro pagamenti trimestrali.",
+    "verbatim": "Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu sebagaimana dimaksud dalam Pasal 4 diberikan sebesar Rp2.400.000,00 per orang per tahun dibagi dalam 4 tahap pembayaran sebesar Rp600.000,00 per triwulan.",
     "pasal_ref": "PP 8/2021 Pasal 5 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "fee",
-    "claim_id": "COM-137"
+    "claim_id": "COM-140"
   },
   {
-    "claim": "Per gli studenti di classe XII, l'importo della borsa di studio è di Rp1.200.000,00, suddiviso in due pagamenti semestrali.",
+    "claim": "Gli studenti di classe XII ricevono un importo ridotto di Rp1.200.000,00, suddiviso in due pagamenti semestrali.",
     "verbatim": "Pemberian sebagaimana dimaksud pada ayat (1) dikecualikan untuk siswa Kelas XII yang akan diberikan sebesar Rp1.200.000,00 dibagi dalam 2 tahap pembayaran sebesar Rp600.000,00 per semisteran.",
     "pasal_ref": "PP 8/2021 Pasal 5 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "fee",
-    "claim_id": "COM-138"
+    "claim_id": "COM-141"
   },
   {
-    "claim": "I dirigenti scolastici devono registrare e firmare i dati degli studenti orfani e abbandonati.",
-    "verbatim": "Kepala Sekolah, Kepala Madrasah dan Pimpinan Dayah/Pesantren dalam melakukan pendataan wajib mengisi dan menandatangani data Anak Yatim, Piatu, dan/atau Yatim Piatu.",
-    "pasal_ref": "PP 8/2021 Pasal 11",
+    "claim": "Le borse di studio non sono concesse a chi riceve già borse di studio da altre fonti, tranne per gli studenti meritevoli.",
+    "verbatim": "Besaran Pemberian Bantuan Sosial sebagaimana dimaksud pada ayat (1) dan ayat (2) tidak diberikan kepada Anak Yatim, Piatu, dan/atau Yatim Piatu yang menerima beasiswa dari sumber lain, kecuali bagi anak yang menerima beasiswa berprestasi.",
+    "pasal_ref": "PP 8/2021 Pasal 5 Ayat 3",
+    "instrument_id": "PP-8-2021",
+    "category": "prohibition",
+    "claim_id": "COM-142"
+  },
+  {
+    "claim": "La registrazione degli studenti orfani deve essere effettuata dai dirigenti scolastici.",
+    "verbatim": "Pendataan Anak Yatim, Piatu, dan/atau Yatim Piatu yang mengikuti pendidikan Sekolah Dasar/Madrasah lbtidaiyah dilakukan oleh masing-masing Kepala Sekolah.",
+    "pasal_ref": "PP 8/2021 Pasal 6 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-139"
+    "claim_id": "COM-143"
   },
   {
-    "claim": "È necessario formare un team di gestione per gestire le borse di studio.",
+    "claim": "I dirigenti delle madrasah devono registrare gli studenti orfani e inviare i dati per la verifica.",
+    "verbatim": "Kepala Madrasah lbtidaiyah, Madrasah Tsanawiyah dan Madrasah Aliyah menyampaikan nama dan daftar siswa Yatim, Piatu, dan/atau Yatim Piatu sebagai penerima Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu kepada Kantor Kemenag untuk dilakukan verifikasi dan validasi data siswa.",
+    "pasal_ref": "PP 8/2021 Pasal 8 Ayat 1",
+    "instrument_id": "PP-8-2021",
+    "category": "obligation",
+    "claim_id": "COM-144"
+  },
+  {
+    "claim": "I dirigenti delle scuole superiori devono inviare i dati degli studenti orfani per la verifica.",
+    "verbatim": "Kepala Sekolah Menengah Atas, Sekolah Menengah Kejuruan dan Sekolah Luar Biasa menyampaikan nama dan daftar siswa Yatim, Piatu, dan/atau Yatim Piatu sebagai penerima Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu kepada Cabdin untuk dilakukan verifikasi dan validasi data siswa.",
+    "pasal_ref": "PP 8/2021 Pasal 9 Ayat 1",
+    "instrument_id": "PP-8-2021",
+    "category": "obligation",
+    "claim_id": "COM-145"
+  },
+  {
+    "claim": "Il governo provinciale deve stabilire un team di gestione per le borse di studio.",
     "verbatim": "Untuk mengelola Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu dibentuk Tim Pengelolaan.",
     "pasal_ref": "PP 8/2021 Pasal 12 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "rule",
-    "claim_id": "COM-140"
+    "claim_id": "COM-146"
   },
   {
-    "claim": "I dati raccolti devono essere utilizzati come base per il budget delle borse di studio.",
+    "claim": "I dati raccolti devono essere utilizzati per la pianificazione del budget per le borse di studio.",
     "verbatim": "Data hasil pemilahan Tim Pengelolaan sebagaimana dimaksud dalam Pasal 7 sampai dengan Pasal 10 merupakan dasar penganggaran oleh Dinas Pendidikan Aceh.",
     "pasal_ref": "PP 8/2021 Pasal 13 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "procedure",
-    "claim_id": "COM-141"
+    "claim_id": "COM-147"
   },
   {
     "claim": "I destinatari delle borse di studio devono essere designati tramite una decisione del governatore.",
@@ -1133,7 +1181,7 @@
     "pasal_ref": "PP 8/2021 Pasal 14 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "procedure",
-    "claim_id": "COM-142"
+    "claim_id": "COM-148"
   },
   {
     "claim": "Il Capo del Dipartimento dell'Istruzione di Aceh deve erogare il Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati sulla base dei dati forniti dal Team di Gestione.",
@@ -1141,7 +1189,7 @@
     "pasal_ref": "PP 8/2021 Pasal 2 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-143"
+    "claim_id": "COM-149"
   },
   {
     "claim": "La Banca Aceh Syariah deve redigere una dichiarazione di impegno per erogare il Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati.",
@@ -1149,63 +1197,63 @@
     "pasal_ref": "PP 8/2021 Pasal 3 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-144"
+    "claim_id": "COM-150"
   },
   {
-    "claim": "Il Sostegno Sociale per le Borse di Studio deve essere erogato dalla Cassa Generale di Aceh al conto della Banca Aceh Syariah come ente erogatore.",
+    "claim": "Il Sostegno Sociale per le Borse di Studio deve essere erogato dalla Cassa Pubblica di Aceh al conto della Banca Aceh Syariah come ente erogatore.",
     "verbatim": "Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu disalurkan dari Kas Umum Aceh kepada rekening Bank Aceh Syariah sebagai penyalur.",
     "pasal_ref": "PP 8/2021 Pasal 4 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "procedure",
-    "claim_id": "COM-145"
+    "claim_id": "COM-151"
   },
   {
-    "claim": "La Banca Aceh Syariah deve trasferire il Sostegno Sociale per le Borse di Studio ai beneficiari entro un massimo di 7 giorni lavorativi dopo aver ricevuto i fondi dalla Cassa Generale di Aceh.",
+    "claim": "La Banca Aceh Syariah deve trasferire il Sostegno Sociale per le Borse di Studio ai beneficiari entro 7 giorni lavorativi dalla ricezione dei fondi.",
     "verbatim": "Bank Aceh Syariah sebagai bank penyalur mentransfer Bantuan Sosial Beasiswa ke rekening penerima paling lambat 7 (tujuh) hari kerja setelah dana tersebut diterima dari Kas Umum Aceh.",
     "pasal_ref": "PP 8/2021 Pasal 5 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "duration",
-    "claim_id": "COM-146"
+    "claim_id": "COM-152"
   },
   {
-    "claim": "La Banca Aceh Syariah deve trasferire il Sostegno Sociale per le Borse di Studio ai beneficiari secondo l'importo stabilito nella Decisione del Governatore.",
+    "claim": "La Banca Aceh Syariah deve trasferire il Sostegno Sociale per le Borse di Studio secondo l'importo stabilito nella Decisione del Governatore.",
     "verbatim": "Bank Aceh Syariah sebagai bank penyalur mentransfer Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu ke rekening penerima sesuai dengan besaran yang telah ditetapkan dalam Keputusan Gubernur.",
     "pasal_ref": "PP 8/2021 Pasal 6 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-147"
+    "claim_id": "COM-153"
   },
   {
-    "claim": "Se ci sono fondi non erogati del Sostegno Sociale per le Borse di Studio, la Banca Aceh Syariah è obbligata a versare immediatamente il residuo al conto del Tesoriere Generale di Aceh entro 1 mese dopo l'erogazione.",
+    "claim": "Se ci sono fondi non erogati, la Banca Aceh Syariah è obbligata a versare il residuo al conto del Tesoriere Pubblico di Aceh entro un mese dall'erogazione.",
     "verbatim": "Bank Aceh Syariah berkewajiban untuk segera menyetorkan sisa tersebut kepada rekening Bendahara Umum Aceh (BUA) dengan masa waktu 1 (satu) bulan setelah penyaluran.",
     "pasal_ref": "PP 8/2021 Pasal 7 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-148"
+    "claim_id": "COM-154"
   },
   {
-    "claim": "Il Dipartimento dell'Istruzione di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che sono ancora iscritti a scuola.",
+    "claim": "Il Dipartimento dell'Istruzione di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che frequentano la scuola.",
     "verbatim": "Dinas Pendidikan Aceh melakukan monitoring dan evaluasi terhadap penyaluran Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu yang masih mengikuti Pendidikan di sekolah.",
     "pasal_ref": "PP 8/2021 Pasal 15 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-149"
+    "claim_id": "COM-155"
   },
   {
-    "claim": "L'Ufficio del Ministero degli Affari Religiosi della Provincia di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che sono ancora iscritti nelle Madrasah.",
+    "claim": "L'Ufficio del Ministero degli Affari Religiosi della Provincia di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che frequentano le scuole religiose.",
     "verbatim": "Kantor Kementerian Agama Provinsi Aceh melakukan monitoring dan evaluasi terhadap penyaluran Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/ atau Yatim Piatu yang masih mengikuti pendidikan dalam Madrasah Ibtidaiyah, Madrasah Tsanawiyah dan Madrasah Aliyah.",
     "pasal_ref": "PP 8/2021 Pasal 15 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-150"
+    "claim_id": "COM-156"
   },
   {
-    "claim": "Il Dipartimento dell'Istruzione Dayah di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che sono ancora iscritti nei Dayah/Pesantren.",
+    "claim": "Il Dipartimento dell'Istruzione Dayah di Aceh deve effettuare monitoraggio e valutazione dell'erogazione del Sostegno Sociale per le Borse di Studio ai Bambini Orfani e/o Abbandonati che frequentano i Dayah/Pesantren.",
     "verbatim": "Dinas Pendidikan Dayah Aceh melakukan monitoring dan evaluasi terhadap penyaluran Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu, dan/atau Yatim Piatu yang masih mengikuti pendidikan di Dayah/Pesantren.",
     "pasal_ref": "PP 8/2021 Pasal 15 Ayat 3",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-151"
+    "claim_id": "COM-157"
   },
   {
     "claim": "I risultati del monitoraggio e della valutazione devono essere comunicati al Governatore.",
@@ -1213,15 +1261,15 @@
     "pasal_ref": "PP 8/2021 Pasal 15 Ayat 4",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-152"
+    "claim_id": "COM-158"
   },
   {
-    "claim": "La Banca Erogatrice è obbligata a fornire prova del trasferimento al conto del beneficiario al Governatore tramite il Dipartimento dell'Istruzione di Aceh.",
+    "claim": "La Banca Erogatrice è obbligata a fornire prova del trasferimento al beneficiario al Governatore tramite il Dipartimento dell'Istruzione di Aceh.",
     "verbatim": "Bank Penyalur berkewajiban menyampaikan bukti transfer ke rekening penerima kepada Gubernur melalui Dinas Pendidikan Aceh.",
     "pasal_ref": "PP 8/2021 Pasal 16 Ayat 1",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-153"
+    "claim_id": "COM-159"
   },
   {
     "claim": "La presentazione della prova di trasferimento è un documento di responsabilità per l'uso dei fondi del Sostegno Sociale per le Borse di Studio.",
@@ -1229,46 +1277,38 @@
     "pasal_ref": "PP 8/2021 Pasal 16 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "document",
-    "claim_id": "COM-154"
+    "claim_id": "COM-160"
   },
   {
-    "claim": "La presente normativa abroga e dichiara non valida la normativa precedente riguardante l'erogazione del Sostegno Sociale per le Borse di Studio.",
+    "claim": "La normativa precedente riguardante il Sostegno Sociale per le Borse di Studio è abrogata e non è più valida.",
     "verbatim": "Peraturan Gubernur Aceh Nomor 08 Tahun 2019 tentang Pemberian Bantuan Sosial Beasiswa kepada Anak Yatim, Piatu dan Yatim Piatu dalam Wilayah Aceh dicabut dan dinyatakan tidak berlaku.",
     "pasal_ref": "PP 8/2021 Pasal 17",
     "instrument_id": "PP-8-2021",
     "category": "prohibition",
-    "claim_id": "COM-155"
+    "claim_id": "COM-161"
   },
   {
-    "claim": "La presente normativa entra in vigore dalla data della sua pubblicazione.",
+    "claim": "Questa normativa entra in vigore dalla data della pubblicazione.",
     "verbatim": "Peraturan Gubernur ini mulai berlaku pada tanggal diundangkan.",
     "pasal_ref": "PP 8/2021 Pasal 18",
     "instrument_id": "PP-8-2021",
     "category": "duration",
-    "claim_id": "COM-156"
+    "claim_id": "COM-162"
   },
   {
-    "claim": "È obbligatorio compilare il numero KTP secondo i dati reali.",
-    "verbatim": "Nomor KTP Diisi Sesuai dengan Aslinya",
+    "claim": "È obbligatorio compilare il numero KTP in base ai dati reali.",
+    "verbatim": "• Nomor KTP Diisi Sesuai dengan Aslinya",
     "pasal_ref": "PP 8/2021 Pasal 5 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-157"
+    "claim_id": "COM-163"
   },
   {
-    "claim": "È obbligatorio compilare il numero di conto secondo il libro di risparmio della banca.",
-    "verbatim": "Nomor Rekening Diisi Sesuai Dengan Buku Tabungan Bank",
+    "claim": "È obbligatorio compilare il numero di conto in base al libro di risparmio della banca.",
+    "verbatim": "• Nomor Rekening Diisi Sesuai Dengan Buku Tabungan Bank",
     "pasal_ref": "PP 8/2021 Pasal 5 Ayat 2",
     "instrument_id": "PP-8-2021",
     "category": "obligation",
-    "claim_id": "COM-158"
-  },
-  {
-    "claim": "È necessario fornire una firma in uno dei riquadri.",
-    "verbatim": "Beri Tanda v pada salah satu kotak.",
-    "pasal_ref": "PP 8/2021 Pasal 5 Ayat 2",
-    "instrument_id": "PP-8-2021",
-    "category": "obligation",
-    "claim_id": "COM-159"
+    "claim_id": "COM-164"
   }
 ]

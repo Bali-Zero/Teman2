@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 import sys
 import time
@@ -201,9 +200,11 @@ def extract_from_chunk(
     """Extract claims from a single text chunk via OpenAI gpt-4o-mini."""
     prompt = build_prompt(chunk, instrument_id, domain)
     try:
+        import os as _os
+
         from openai import OpenAI
 
-        api_key = os.environ.get("OPENAI_API_KEY")
+        api_key = _os.environ.get("OPENAI_API_KEY")
         if not api_key:
             logger.error("OPENAI_API_KEY not set")
             return []
