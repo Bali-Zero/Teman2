@@ -33,6 +33,19 @@ configure_logging()
 
 logger = logging.getLogger("zantara.backend")
 
+SHUTDOWN_TIMEOUT = 5.0  # seconds per service stop()
+
+
+async def _safe_stop(name: str, coro) -> None:
+    """Stop a service with timeout. Logs warning if it hangs."""
+    try:
+        await asyncio.wait_for(coro, timeout=SHUTDOWN_TIMEOUT)
+        logger.info(f"✅ {name} stopped")
+    except asyncio.TimeoutError:
+        logger.warning(f"⚠️ {name} stop() timed out after {SHUTDOWN_TIMEOUT}s — skipping")
+    except Exception as e:
+        logger.warning(f"⚠️ {name} stop() error: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -239,26 +252,21 @@ async def lifespan(app: FastAPI):
     # Shutdown Health Monitor
     health_monitor = getattr(app.state, "health_monitor", None)
     if health_monitor:
-        await health_monitor.stop()
+        await _safe_stop("Health Monitor", health_monitor.stop())
         if hasattr(health_monitor, "close"):
-            await health_monitor.close()
-        logger.info("✅ Health Monitor stopped")
+            await _safe_stop("Health Monitor close", health_monitor.close())
 
     # Shutdown Compliance Monitor
     compliance_monitor = getattr(app.state, "compliance_monitor", None)
     if compliance_monitor:
-        await compliance_monitor.stop()
-        logger.info("✅ Compliance Monitor stopped")
+        await _safe_stop("Compliance Monitor", compliance_monitor.stop())
 
     # Shutdown Autonomous Scheduler (all agents)
     autonomous_scheduler = getattr(app.state, "autonomous_scheduler", None)
     if autonomous_scheduler:
-        await autonomous_scheduler.stop()
-        # Autonomous scheduler might have its own internal client close logic
-        # but we'll try to close it if exposed
+        await _safe_stop("Autonomous Scheduler", autonomous_scheduler.stop())
         if hasattr(autonomous_scheduler, "close"):
-            await autonomous_scheduler.close()
-        logger.info("✅ Autonomous Scheduler stopped (all agents terminated)")
+            await _safe_stop("Autonomous Scheduler close", autonomous_scheduler.close())
 
     # Shutdown Metrics Pusher
     metrics_pusher_task = getattr(app.state, "metrics_pusher_task", None)
@@ -271,44 +279,37 @@ async def lifespan(app: FastAPI):
     # Shutdown Notification Scheduler
     notification_scheduler = getattr(app.state, "notification_scheduler", None)
     if notification_scheduler:
-        await notification_scheduler.stop()
-        logger.info("✅ Notification Scheduler stopped")
+        await _safe_stop("Notification Scheduler", notification_scheduler.stop())
 
     # Shutdown Daily Check-in Notifier
     daily_notifier = getattr(app.state, "daily_notifier", None)
     if daily_notifier:
-        await daily_notifier.stop()
-        logger.info("✅ Daily Check-in Notifier stopped")
+        await _safe_stop("Daily Check-in Notifier", daily_notifier.stop())
 
     # Shutdown Weekly Email Reporter
     weekly_reporter = getattr(app.state, "weekly_reporter", None)
     if weekly_reporter:
-        await weekly_reporter.stop()
-        logger.info("✅ Weekly Email Reporter stopped")
+        await _safe_stop("Weekly Email Reporter", weekly_reporter.stop())
 
     # Shutdown Team Timesheet Service (auto-logout monitor)
     ts_service = getattr(app.state, "ts_service", None)
     if ts_service:
-        await ts_service.stop_auto_logout_monitor()
-        logger.info("✅ Team Timesheet Service stopped")
+        await _safe_stop("Timesheet Service", ts_service.stop_auto_logout_monitor())
 
     # Shutdown Practice Status Listener (M4 + M5)
     practice_listener = getattr(app.state, "practice_status_listener", None)
     if practice_listener:
-        await practice_listener.stop()
-        logger.info("✅ Practice Status Listener stopped")
+        await _safe_stop("Practice Status Listener", practice_listener.stop())
 
     # Shutdown EventBus
     event_bus = getattr(app.state, "event_bus", None)
     if event_bus:
-        await event_bus.stop()
-        logger.info("✅ EventBus stopped")
+        await _safe_stop("EventBus", event_bus.stop())
 
     # Shutdown X Monitor
     x_monitor = getattr(app.state, "x_monitor_service", None)
     if x_monitor:
-        await x_monitor.stop()
-        logger.info("✅ X Monitor stopped")
+        await _safe_stop("X Monitor", x_monitor.stop())
 
     # Shutdown Database Health Check Loop
     db_health_check_task = getattr(app.state, "db_health_check_task", None)
@@ -381,6 +382,24 @@ async def lifespan(app: FastAPI):
                     logger.info(f"✅ Channel adapter '{name}' closed")
                 except Exception as e:
                     logger.debug(f"Could not close adapter '{name}': {e}")
+
+    # Close persistent Qdrant health check client
+    try:
+        from backend.app.routers.health import close_qdrant_health_client
+
+        await close_qdrant_health_client()
+        logger.info("✅ Qdrant health check client closed")
+    except Exception as e:
+        logger.debug(f"Qdrant health client close: {e}")
+
+    # Close asyncpg database pool (not in services_to_close because it uses .close() differently)
+    db_pool = getattr(app.state, "db_pool", None)
+    if db_pool:
+        try:
+            await db_pool.close()
+            logger.info("✅ Database pool closed")
+        except Exception as e:
+            logger.warning(f"⚠️ Error closing database pool: {e}")
 
     # Module-level client cleanups (Addressing global clients in specific services)
     try:

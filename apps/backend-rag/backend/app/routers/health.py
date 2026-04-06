@@ -19,35 +19,54 @@ from backend.app.models import HealthResponse
 logger = logging.getLogger(__name__)
 
 
+_qdrant_client: httpx.AsyncClient | None = None
+
+
+def _get_qdrant_client() -> httpx.AsyncClient:
+    """Persistent httpx client for Qdrant health checks."""
+    global _qdrant_client
+    if _qdrant_client is None or _qdrant_client.is_closed:
+        headers = {}
+        if settings.qdrant_api_key:
+            headers["api-key"] = settings.qdrant_api_key
+        _qdrant_client = httpx.AsyncClient(
+            base_url=settings.qdrant_url,
+            headers=headers,
+            timeout=5.0,
+        )
+    return _qdrant_client
+
+
+async def close_qdrant_health_client() -> None:
+    """Close the persistent Qdrant health check client."""
+    global _qdrant_client
+    if _qdrant_client and not _qdrant_client.is_closed:
+        await _qdrant_client.aclose()
+        _qdrant_client = None
+
+
 async def get_qdrant_stats() -> dict[str, Any]:
     """
     Get real stats from Qdrant - collections count and total documents.
     """
     try:
-        headers = {}
-        if settings.qdrant_api_key:
-            headers["api-key"] = settings.qdrant_api_key
+        client = _get_qdrant_client()
 
-        async with httpx.AsyncClient(
-            base_url=settings.qdrant_url,
-            headers=headers,
-            timeout=5.0,
-        ) as client:
-            # Get all collections
-            response = await client.get("/collections")
-            response.raise_for_status()
-            collections_data = response.json().get("result", {}).get("collections", [])
+        # Get all collections
+        response = await client.get("/collections")
+        response.raise_for_status()
+        collections_data = response.json().get("result", {}).get("collections", [])
 
-            total_documents = 0
-            for coll in collections_data:
-                coll_name = coll.get("name")
-                if coll_name:
-                    try:
-                        coll_response = await client.get(f"/collections/{coll_name}")
-                        coll_response.raise_for_status()
-                        points = coll_response.json().get("result", {}).get("points_count", 0)
-                        total_documents += points
-                    except Exception as coll_err:
+        total_documents = 0
+        for coll in collections_data:
+            coll_name = coll.get("name")
+            if coll_name:
+                try:
+                    coll_response = await client.get(f"/collections/{coll_name}")
+                    coll_response.raise_for_status()
+                    points = coll_response.json().get("result", {}).get("points_count", 0)
+                    total_documents += points
+                except Exception as coll_err:
                         logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
 
             return {
@@ -411,7 +430,24 @@ async def readiness_check(request: Request) -> dict[str, Any]:
     Returns:
         dict: Readiness status with critical service check
     """
-    # Check critical services
+    # Light process (api): ready when db_pool is available
+    is_light = getattr(request.app.state, "process_mode", None) == "light"
+    if is_light:
+        db_ready = getattr(request.app.state, "db_pool", None) is not None
+        if not db_ready:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=503,
+                detail={"ready": False, "process": "light", "db_pool": False},
+            )
+        return {
+            "ready": True,
+            "process": "light",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    # Heavy process (rag): ready when critical services are initialized
     search_ready = getattr(request.app.state, "search_service", None) is not None
     ai_ready = getattr(request.app.state, "ai_client", None) is not None
     services_initialized = getattr(request.app.state, "services_initialized", False)
@@ -425,6 +461,7 @@ async def readiness_check(request: Request) -> dict[str, Any]:
             status_code=503,
             detail={
                 "ready": False,
+                "process": "rag",
                 "search_service": search_ready,
                 "ai_client": ai_ready,
                 "services_initialized": services_initialized,
@@ -433,6 +470,7 @@ async def readiness_check(request: Request) -> dict[str, Any]:
 
     return {
         "ready": True,
+        "process": "rag",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
