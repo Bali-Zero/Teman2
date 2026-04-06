@@ -12,11 +12,10 @@ primary_region = 'sin'
 
 [deploy]
   strategy = 'rolling'
-  # release_command = "sh -c 'python -m backend.db.migrate apply-all'"
-  # DISABLED since 2026-04-06: migration bug during omnichannel deploy (commit 1253542d4)
-  # Migration system: custom Python (backend/db/migrate.py), NOT Alembic
-  # Re-enable after: 1) identify bug, 2) test locally, 3) dry-run on staging
-  # Monitor drift via pre-deploy-gate "Check migration status" step
+  release_command = "sh -c 'python -m backend.db.migrate apply-all'"
+  # RE-ENABLED 2026-04-06: migration_manager hardened with advisory lock + orphan tolerance
+  # Previously disabled for omnichannel deploy bug (commit 1253542d4) — root cause: orphan migration files
+  # Safety: migrations_v2/ currently empty, advisory lock prevents concurrent runs during rolling deploy
 
 [processes]
   api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"

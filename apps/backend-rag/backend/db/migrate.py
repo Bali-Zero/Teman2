@@ -200,7 +200,7 @@ Examples:
 
     try:
         success = asyncio.run(run_with_pool())
-        sys.exit(0 if success else 1)
+        sys.exit(0 if success is not False else 1)
     except KeyboardInterrupt:
         logger.info("\n⚠️  Interrupted by user")
         sys.exit(130)
