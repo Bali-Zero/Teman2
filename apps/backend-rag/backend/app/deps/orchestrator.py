@@ -5,6 +5,7 @@ Lazy singleton — created on first request using services from app.state.
 Exposed as module-level variable for health.py backward compatibility.
 """
 
+import asyncio
 import logging
 from typing import Any
 
@@ -19,21 +20,30 @@ __all__ = [
 
 # Global orchestrator instance (lazy-loaded on first request)
 _agentic_rag_orchestrator = None
+_orchestrator_lock = asyncio.Lock()
 
 
-def get_orchestrator(request: Request) -> Any:
+async def get_orchestrator(request: Request) -> Any:
     """
     Dependency injection for AgenticRAGOrchestrator.
 
     Lazy initialization: created on first call using services from app.state.
-    Subsequent calls return the same singleton.
+    Subsequent calls return the same singleton. Lock prevents race condition
+    where two concurrent requests both create an instance.
 
     Returns:
         AgenticRAGOrchestrator: Singleton orchestrator instance
     """
     global _agentic_rag_orchestrator
 
-    if _agentic_rag_orchestrator is None:
+    if _agentic_rag_orchestrator is not None:
+        return _agentic_rag_orchestrator
+
+    async with _orchestrator_lock:
+        # Double-check after acquiring lock
+        if _agentic_rag_orchestrator is not None:
+            return _agentic_rag_orchestrator
+
         from backend.services.rag.agentic import create_agentic_rag
 
         db_pool = getattr(request.app.state, "db_pool", None)

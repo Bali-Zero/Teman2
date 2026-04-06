@@ -32,7 +32,10 @@ from backend.services.memory.memory_service_postgres import MemoryServicePostgre
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.followup_service import FollowupService
 from backend.services.misc.golden_answer_service import GoldenAnswerService
-from backend.services.misc.personality_service import PersonalityService
+try:
+    from backend.services.misc.personality_service import PersonalityService
+except ImportError:
+    PersonalityService = None  # type: ignore[assignment,misc]
 
 # Import directly from submodules to avoid circular import with __init__.py
 from backend.services.oracle.analytics import OracleAnalyticsService
@@ -172,7 +175,7 @@ class OracleService:
         self._followup_service: FollowupService | None = None
         self._citation_service: CitationService | None = None
         self._clarification_service: ClarificationService | None = None
-        self._personality_service: PersonalityService | None = None
+        self._personality_service: Any = None
         self._golden_answer_service: GoldenAnswerService | None = None
         self._memory_service: MemoryServicePostgres | None = None
         self._fact_extractor: MemoryFactExtractor | None = None

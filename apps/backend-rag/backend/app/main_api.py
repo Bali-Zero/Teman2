@@ -32,7 +32,12 @@ async def lifespan_light(app: FastAPI):
 
     async def _background_light_init():
         from backend.app.setup.service_initializer import initialize_services_light
-        await initialize_services_light(app)
+        try:
+            await initialize_services_light(app)
+        except Exception as e:
+            logger.error(f"❌ [API PROCESS] DB init failed (degraded mode): {e}")
+            app.state.db_pool = None
+            return
 
         try:
             from backend.app.modules.notifications.scheduler import init_scheduler
@@ -41,7 +46,8 @@ async def lifespan_light(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ Notification Scheduler failed: {e}")
 
-    asyncio.create_task(_background_light_init())
+    init_task = asyncio.create_task(_background_light_init())
+    app.state._init_task = init_task
 
     yield
 
