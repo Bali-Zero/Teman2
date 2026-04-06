@@ -25,6 +25,7 @@ from backend.app.routers.crm_enhanced import (
 )
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
@@ -188,6 +189,7 @@ async def create_document(
         except Exception as e:
             logger.error(f"Portal notification for doc upload failed: {e}")
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {
             "id": doc_id,
             "success": True,
@@ -325,6 +327,7 @@ async def create_documents_bulk(
             f"OCR queued: {ocr_count}, Failed: {failed_count}",
         )
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {
             "success": True,
             "inserted": len(inserted_ids),
@@ -388,6 +391,7 @@ async def update_document(
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 
@@ -420,6 +424,7 @@ async def archive_document(
         if result in ("DELETE 0", "UPDATE 0"):
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "action": action}
 
 
@@ -757,6 +762,7 @@ async def upload_document_base64(
                 doc_id,
             )
 
+            await invalidate_cache("zantara:crm_clients_stats:*")
             return {
                 "success": True,
                 "document_id": doc_id,
@@ -797,4 +803,5 @@ async def delete_document(
         if result == "DELETE 0" or result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "action": "deleted" if permanent else "archived"}
