@@ -63,11 +63,6 @@ primary_region = 'sin'
   protocol = 'tcp'
   processes = ['rag']
 
-  [[services.tcp_checks]]
-    interval = '30s'
-    timeout = '5s'
-    grace_period = '60s'
-
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
