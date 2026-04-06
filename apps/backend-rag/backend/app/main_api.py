@@ -28,6 +28,7 @@ async def lifespan_light(app: FastAPI):
     Background init so Fly.io health checks pass within grace period.
     """
     logger.info("🚀 [API PROCESS] Starting light init (DB + Redis)...")
+    app.state.process_mode = "light"
 
     async def _background_light_init():
         from backend.app.setup.service_initializer import initialize_services_light
