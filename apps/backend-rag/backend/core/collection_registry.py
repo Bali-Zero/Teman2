@@ -26,7 +26,7 @@ LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
     "legal_unified_hybrid": "legal_unified_hybrid_hybrid",
     "training_conversations_hybrid": "training_conversations_hybrid",
     "immigration_circulars": "immigration_circulars",
-    "balizero_news": "intel_authoritative_sources",
+    "balizero_news": "balizero_news",
     "tax_updates": "tax_genius_hybrid",
     "tax_knowledge": "tax_genius_hybrid",
     "legal_updates": "legal_unified_hybrid_hybrid",
