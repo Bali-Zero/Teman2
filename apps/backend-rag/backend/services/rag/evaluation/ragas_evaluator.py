@@ -16,18 +16,16 @@ import hashlib
 import json
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
+from typing import Any as UnifiedLLMClient  # type: ignore[assignment]
 
 from backend.app.core.logging_config import get_performance_logger
 from backend.llm.base import LLMMessage
 
-try:
-    from backend.llm.client import UnifiedLLMClient, create_default_client
-    _LLM_AVAILABLE = True
-except ImportError:
-    UnifiedLLMClient = None  # type: ignore[assignment,misc]
-    create_default_client = None  # type: ignore[assignment]
-    _LLM_AVAILABLE = False
+
+def create_default_client() -> Any:  # type: ignore[misc]
+    """Placeholder — backend.llm.client was removed."""
+    raise NotImplementedError("UnifiedLLMClient not available; pass llm_client explicitly")
 
 logger = logging.getLogger(__name__)
 
@@ -202,13 +200,13 @@ class RAGASEvaluator:
         ...     answer="KITAS is a stay permit for foreigners...",
         ...     ground_truth="KITAS (Kartu Izin Tinggal Terbatas)..."
         ... )
-        >>> print(result.metrics)
+        >>> result.metrics  # noqa: T201
         {'faithfulness': 0.95, 'answer_relevance': 0.90, ...}
     """
 
     def __init__(
         self,
-        llm_client: "Optional[Any]" = None,
+        llm_client: UnifiedLLMClient | None = None,
         enable_cache: bool = True,
         cache_ttl: int = 86400,  # 24 hours
     ) -> None:
@@ -220,7 +218,7 @@ class RAGASEvaluator:
             enable_cache: Whether to cache evaluation results
             cache_ttl: Cache time-to-live in seconds
         """
-        self.llm_client = llm_client or (create_default_client() if _LLM_AVAILABLE and create_default_client else None)
+        self.llm_client = llm_client or create_default_client()
         self.enable_cache = enable_cache
         self.cache_ttl = cache_ttl
         self._cache: dict[str, dict[str, Any]] = {}
@@ -602,7 +600,7 @@ _ragas_evaluator: RAGASEvaluator | None = None
 
 
 def get_ragas_evaluator(
-    llm_client: "Optional[Any]" = None,
+    llm_client: UnifiedLLMClient | None = None,
     enable_cache: bool = True,
 ) -> RAGASEvaluator:
     """

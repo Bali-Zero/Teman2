@@ -20,8 +20,9 @@ from pydantic import BaseModel
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import extract_json_from_llm_response
+from backend.app.utils.crm_utils import extract_json_from_llm_response, verify_client_access
 from backend.app.utils.json_utils import to_jsonb
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = logging.getLogger(__name__)
@@ -853,9 +854,9 @@ async def get_client_profile(
 ) -> dict[str, Any]:
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
-    RBAC REMOVED: All authenticated users can view all client profiles.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         # Get client with extended fields
         client = await conn.fetchrow(
             """
@@ -1047,8 +1048,9 @@ async def update_client_profile(
 ) -> dict[str, Any]:
     """
     Update client profile fields (avatar, Google Drive folder, etc.)
-    RBAC REMOVED: All authenticated users can update client profiles.
     """
+    async with pool.acquire() as _conn:
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
     update_fields = []
     values = []
     param_num = 1
@@ -1093,6 +1095,7 @@ async def update_client_profile(
             *values,
         )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "message": "Client profile updated"}
 
 
@@ -1105,10 +1108,11 @@ async def update_client_profile(
 async def get_client_companies(
     client_id: int,
     pool: Any = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """Get all companies linked to a client."""
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         rows = await conn.fetch(
             """
             SELECT
@@ -1139,7 +1143,7 @@ async def get_company_documents(
     company_id: int,
     doc_type: str | None = Query(None),
     pool: Any = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """Get all documents for a company."""
     async with pool.acquire() as conn:
@@ -1192,9 +1196,9 @@ async def get_family_members(
 ) -> list[Any]:
     """
     Get all family members for a client.
-    RBAC REMOVED: All authenticated users can view family members.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         members = await conn.fetch(
             """
             SELECT
@@ -1238,13 +1242,9 @@ async def create_family_member(
 ) -> dict[str, Any]:
     """
     Add a family member to a client.
-    RBAC REMOVED: All authenticated users can create family members.
     """
     async with pool.acquire() as conn:
-        # Verify client exists (exclude soft-deleted)
-        client = await conn.fetchrow("SELECT id FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
-        if not client:
-            raise HTTPException(status_code=404, detail="Client not found")
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
         # Sanitize date fields - convert strings to date objects for asyncpg
         date_of_birth = None
@@ -1291,6 +1291,7 @@ async def create_family_member(
             data.notes,
         )
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {"id": member_id, "success": True}
 
 
@@ -1304,8 +1305,9 @@ async def update_family_member(
 ) -> dict[str, Any]:
     """
     Update a family member.
-    RBAC REMOVED: All authenticated users can update family members.
     """
+    async with pool.acquire() as _conn:
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
     # Date fields that need string → date object conversion for asyncpg
     date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
 
@@ -1347,6 +1349,7 @@ async def update_family_member(
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Family member not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 
@@ -1359,9 +1362,9 @@ async def delete_family_member(
 ) -> dict[str, Any]:
     """
     Delete a family member.
-    RBAC REMOVED: All authenticated users can delete family members.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         result = await conn.execute(
             "DELETE FROM client_family_members WHERE id = $1 AND client_id = $2",
             member_id,
@@ -1370,6 +1373,7 @@ async def delete_family_member(
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Family member not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 

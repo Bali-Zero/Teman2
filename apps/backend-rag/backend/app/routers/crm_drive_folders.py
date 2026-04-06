@@ -11,6 +11,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import verify_client_access
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.google_drive_service import GoogleDriveService
 
 router = APIRouter()
@@ -74,8 +76,9 @@ async def create_client_drive_folder(
     """
     logger.info(f"[CRM] Creating Drive folder structure for client {client_id}")
 
-    # 1. Get client information
+    # 1. Get client information + RBAC check
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, full_name, client_type, google_drive_folder_id
@@ -192,6 +195,7 @@ async def create_client_drive_folder(
         f"Root folder: {root_folder['id']}",
     )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {
         "success": True,
         "client_id": client_id,
@@ -226,6 +230,7 @@ async def get_client_drive_folder(
         }
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, full_name, google_drive_folder_id
@@ -291,6 +296,7 @@ async def unlink_client_drive_folder(
         {"success": true, "message": "..."}
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             "SELECT id, google_drive_folder_id FROM clients WHERE id = $1",
             client_id,
@@ -316,6 +322,7 @@ async def unlink_client_drive_folder(
         f"[CRM] Unlinked Drive folder {client['google_drive_folder_id']} from client {client_id}",
     )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {
         "success": True,
         "message": f"Unlinked folder {client['google_drive_folder_id']} from client {client_id}",
@@ -350,6 +357,7 @@ async def get_client_drive_folder_structure(
         }
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, google_drive_folder_id
@@ -414,6 +422,7 @@ async def list_folder_files(
         }
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, google_drive_folder_id
@@ -505,6 +514,7 @@ async def upload_file_to_folder(
         }
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, google_drive_folder_id
@@ -614,6 +624,7 @@ async def get_client_drive_folder_stats(
         }
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         client = await conn.fetchrow(
             """
             SELECT id, google_drive_folder_id

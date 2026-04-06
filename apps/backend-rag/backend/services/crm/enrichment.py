@@ -93,7 +93,17 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
                     content = content[4:]
                 content = content.strip()
             extracted_data = json.loads(content)
-            logger.info(f"✅ Extracted CRM data with {extracted_data['client']['confidence']:.2f} client confidence")
+            client_confidence = extracted_data.get("client", {}).get("confidence", 0.0)
+            logger.info(f"✅ Extracted CRM data with {client_confidence:.2f} client confidence")
+
+            # Threshold: low-confidence extractions should not auto-populate CRM
+            if client_confidence < 0.7:
+                logger.warning(
+                    f"⚠️ Low confidence extraction ({client_confidence:.2f} < 0.70) — "
+                    f"marking as low_confidence to prevent auto-assignment"
+                )
+                extracted_data["_low_confidence"] = True
+
             return extracted_data
         except json.JSONDecodeError as e:
             logger.error(f"❌ Failed to parse extraction JSON: {e}", exc_info=True)

@@ -23,7 +23,9 @@ from backend.app.routers.crm_enhanced import (
     _auto_ocr_visa,
     _dispatch_ocr_by_folder,
 )
+from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
@@ -59,9 +61,9 @@ async def get_client_documents(
 ) -> list[Any]:
     """
     Get all documents for a client, optionally filtered by category.
-    RBAC REMOVED: All authenticated users can view documents.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         query = """
             SELECT
                 d.id, d.document_type, d.document_category,
@@ -107,9 +109,9 @@ async def create_document(
 ) -> dict[str, Any]:
     """
     Add a document to a client. Auto-triggers OCR for passport documents.
-    RBAC REMOVED: All authenticated users can create documents.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         # Sanitize date field - convert string to date object for asyncpg
         expiry_date = None
         if data.expiry_date:
@@ -187,6 +189,7 @@ async def create_document(
         except Exception as e:
             logger.error(f"Portal notification for doc upload failed: {e}")
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {
             "id": doc_id,
             "success": True,
@@ -204,7 +207,6 @@ async def create_documents_bulk(
 ) -> dict[str, Any]:
     """
     Bulk insert documents for a client - optimized for migration.
-    RBAC REMOVED: All authenticated users can bulk create documents.
 
     This endpoint allows inserting multiple documents in a single transaction,
     significantly improving performance during large data migrations.
@@ -242,10 +244,7 @@ async def create_documents_bulk(
         raise HTTPException(status_code=400, detail="No documents provided")
 
     async with pool.acquire() as conn:
-        # Check client exists
-        check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail=f"Client {client_id} not found")
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
         inserted_ids = []
         ocr_count = 0
@@ -328,6 +327,7 @@ async def create_documents_bulk(
             f"OCR queued: {ocr_count}, Failed: {failed_count}",
         )
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {
             "success": True,
             "inserted": len(inserted_ids),
@@ -348,7 +348,6 @@ async def update_document(
 ) -> dict[str, Any]:
     """
     Update a document.
-    RBAC REMOVED: All authenticated users can update documents.
     """
     # Date field that needs string → date object conversion for asyncpg
     date_fields = {"expiry_date"}
@@ -379,6 +378,7 @@ async def update_document(
     values.extend([doc_id, client_id])
 
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         result = await conn.execute(
             f"""
             UPDATE documents
@@ -391,6 +391,7 @@ async def update_document(
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 
@@ -404,9 +405,9 @@ async def archive_document(
 ) -> dict[str, Any]:
     """
     Archive or delete a document.
-    RBAC REMOVED: All authenticated users can archive/delete documents.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         if permanent:
             result = await conn.execute(
                 "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id,
@@ -423,6 +424,7 @@ async def archive_document(
         if result in ("DELETE 0", "UPDATE 0"):
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "action": action}
 
 
@@ -432,7 +434,10 @@ async def archive_document(
 
 
 @router.get("/document-categories")
-async def get_document_categories(pool: Any = Depends(get_database_pool)) -> list[Any]:
+async def get_document_categories(
+    pool: Any = Depends(get_database_pool),
+    _current_user: dict = Depends(get_current_user),
+) -> list[Any]:
     """Get all document categories for dropdowns."""
     async with pool.acquire() as conn:
         categories = await conn.fetch(
@@ -462,6 +467,7 @@ async def get_client_ocr_status(
     Frontend polls this to know when OCR completes.
     """
     async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         docs = await conn.fetch(
             """
             SELECT id, document_type, file_name, ocr_status, ocr_completed_at,
@@ -491,7 +497,7 @@ async def extract_visa_data(
     client_id: int,
     body: dict = Body(...),
     pool: Any = Depends(get_database_pool),
-    _current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ) -> dict:
     """
     Extract visa/KITAS data from a document using Gemini Vision OCR.
@@ -499,6 +505,8 @@ async def extract_visa_data(
 
     Body: {"file_id": "...", "doc_id": 123}
     """
+    async with pool.acquire() as conn:
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
     file_id = body.get("file_id")
     doc_id = body.get("doc_id")
     if not file_id:
@@ -540,6 +548,10 @@ async def upload_document_base64(
     Upload a document via Base64 (for frontend integration).
     Handles Google Drive upload and document creation.
     """
+    # RBAC check before processing upload
+    async with pool.acquire() as _conn:
+        await verify_client_access(client_id, current_user, _conn, allow_assigned=True)
+
     try:
         # Decode Base64
         try:
@@ -750,6 +762,7 @@ async def upload_document_base64(
                 doc_id,
             )
 
+            await invalidate_cache("zantara:crm_clients_stats:*")
             return {
                 "success": True,
                 "document_id": doc_id,
@@ -775,6 +788,10 @@ async def delete_document(
     Delete a document (Soft delete by default).
     """
     async with pool.acquire() as conn:
+        # Lookup client_id from document for RBAC check
+        doc_row = await conn.fetchrow("SELECT client_id FROM documents WHERE id = $1", doc_id)
+        if doc_row:
+            await verify_client_access(doc_row["client_id"], current_user, conn, allow_assigned=True)
         if permanent:
             result = await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
         else:
@@ -786,4 +803,5 @@ async def delete_document(
         if result == "DELETE 0" or result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Document not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "action": "deleted" if permanent else "archived"}
