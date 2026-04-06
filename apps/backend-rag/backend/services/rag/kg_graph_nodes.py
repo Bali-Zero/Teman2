@@ -13,6 +13,7 @@ Date: 2026-02-09
 Reference: memory/langgraph-kg-evolution-plan.md
 """
 
+import asyncio
 import logging
 import time
 from typing import Any
@@ -144,13 +145,26 @@ Return ONLY a JSON object:
 
     user_prompt = f"Query: {state['query']}"
 
-    # Call LLM
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_prompt),
-        ],
-    )
+    # Call LLM with timeout to prevent hanging on provider outages
+    try:
+        response = await asyncio.wait_for(
+            llm.ainvoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_prompt),
+                ],
+            ),
+            timeout=30.0,
+        )
+    except (asyncio.TimeoutError, Exception) as e:
+        logger.warning(
+            f"⚠️ [Understand Query] LLM call failed ({type(e).__name__}), "
+            f"using fast-path domain detection",
+        )
+        state["intent"] = domain_hints.get("intent", "general")
+        state["domain"] = domain_hints.get("domain", "general")
+        state["extracted_entities"] = domain_hints.get("entities", [])
+        return state
 
     # Parse response (assume LLM returns JSON)
     try:

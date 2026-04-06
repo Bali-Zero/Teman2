@@ -400,7 +400,7 @@ Namespaces: `zantara:crm_clients_stats:*`, `zantara:crm_practices:*`
 
 ### KG Subgraph Status
 
-Company ✅ · Visa ✅ · Property ❓ · Tax ❓
+Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 
 ### Cron Air
 
