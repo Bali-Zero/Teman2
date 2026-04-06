@@ -3,15 +3,16 @@ User Context Service
 Responsibility: Manage user profile, memory, and personality context
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from backend.services.memory.memory_service_postgres import MemoryServicePostgres
-try:
-    from backend.services.misc.personality_service import PersonalityService
-except ImportError:
-    PersonalityService = None  # type: ignore[assignment,misc]
 from backend.services.oracle.oracle_database import db_manager
+
+if TYPE_CHECKING:
+    from backend.services.misc.personality_service import PersonalityService
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class UserContextService:
 
     def __init__(
         self,
-        personality_service: Optional[Any] = None,
+        personality_service: PersonalityService | None = None,
         memory_service: MemoryServicePostgres | None = None,
     ) -> None:
         """

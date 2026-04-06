@@ -12,10 +12,12 @@ REFACTORED: Uses sub-services following Single Responsibility Principle
 - OracleAnalyticsService: Analytics tracking
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 import httpx
@@ -32,10 +34,6 @@ from backend.services.memory.memory_service_postgres import MemoryServicePostgre
 from backend.services.misc.clarification_service import ClarificationService
 from backend.services.misc.followup_service import FollowupService
 from backend.services.misc.golden_answer_service import GoldenAnswerService
-try:
-    from backend.services.misc.personality_service import PersonalityService
-except ImportError:
-    PersonalityService = None  # type: ignore[assignment,misc]
 
 # Import directly from submodules to avoid circular import with __init__.py
 from backend.services.oracle.analytics import OracleAnalyticsService
@@ -51,6 +49,9 @@ from backend.services.response.validator import ZantaraResponseValidator
 # Services
 from backend.services.search.citation_service import CitationService
 from backend.services.search.search_service import SearchService
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -230,10 +231,15 @@ class OracleService:
         return self._clarification_service
 
     @property
-    def personality_service(self) -> PersonalityService:
-        """Personality service."""
+    def personality_service(self):
+        """Personality service (optional — may not be available)."""
         if not self._personality_service:
-            self._personality_service = PersonalityService()
+            try:
+                from backend.services.misc.personality_service import PersonalityService
+
+                self._personality_service = PersonalityService()
+            except ImportError:
+                pass
         return self._personality_service
 
     @property
