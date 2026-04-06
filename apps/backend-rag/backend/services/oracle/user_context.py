@@ -4,10 +4,13 @@ Responsibility: Manage user profile, memory, and personality context
 """
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from backend.services.memory.memory_service_postgres import MemoryServicePostgres
-from backend.services.misc.personality_service import PersonalityService
+try:
+    from backend.services.misc.personality_service import PersonalityService
+except ImportError:
+    PersonalityService = None  # type: ignore[assignment,misc]
 from backend.services.oracle.oracle_database import db_manager
 
 logger = logging.getLogger(__name__)
@@ -22,7 +25,7 @@ class UserContextService:
 
     def __init__(
         self,
-        personality_service: PersonalityService | None = None,
+        personality_service: Optional[Any] = None,
         memory_service: MemoryServicePostgres | None = None,
     ) -> None:
         """

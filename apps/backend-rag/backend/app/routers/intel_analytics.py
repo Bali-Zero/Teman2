@@ -20,7 +20,7 @@ from backend.app.routers.intel import (
     IntelSearchRequest,
     IntelStoreRequest,
     analytics_service,
-    embedder,
+    get_embedder,
     staging_service,
 )
 from backend.app.utils.logging_utils import get_logger
@@ -175,7 +175,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
     """Search intel news with semantic search"""
     try:
         # Generate query embedding
-        query_embedding = embedder.generate_single_embedding(request.query)
+        query_embedding = get_embedder().generate_single_embedding(request.query)
 
         # Determine collections to search
         if request.category:
