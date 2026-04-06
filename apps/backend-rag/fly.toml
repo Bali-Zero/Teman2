@@ -13,7 +13,10 @@ primary_region = 'sin'
 [deploy]
   strategy = 'rolling'
   # release_command = "sh -c 'python -m backend.db.migrate apply-all'"
-  # Temporarily disabled to bypass migration bug and deploy omnichannel fixes
+  # DISABLED since 2026-04-06: migration bug during omnichannel deploy (commit 1253542d4)
+  # Migration system: custom Python (backend/db/migrate.py), NOT Alembic
+  # Re-enable after: 1) identify bug, 2) test locally, 3) dry-run on staging
+  # Monitor drift via pre-deploy-gate "Check migration status" step
 
 [processes]
   api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"
