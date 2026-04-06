@@ -452,6 +452,54 @@ async def refresh_token(
         raise HTTPException(status_code=500, detail="Token refresh failed") from e
 
 
+@router.post("/revoke-all")
+async def revoke_all_sessions(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Revoke all active sessions for the current user (S03-S2).
+
+    Sets a user-level revocation key in Redis. All tokens for this
+    user will be rejected until the key expires (24h).
+    """
+    from backend.app.core.config import settings
+
+    user_email = current_user.get("email", "")
+    client_ip = request.client.host if request.client else None
+
+    if settings.enable_token_revocation:
+        try:
+            from backend.core.redis_manager import RedisManager
+            from backend.services.security.token_revocation import TokenRevocationService
+
+            redis_client = RedisManager.get_instance().get_async_client()
+            revocation_svc = TokenRevocationService(redis_client=redis_client)
+            await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
+        except Exception as e:
+            logger.warning(f"S03-S2: Revoke-all failed for {user_email}: {e}")
+
+    # Audit log
+    try:
+        async with db_pool.acquire() as conn:
+            from backend.services.security.audit_service import SecurityAuditService
+
+            audit = SecurityAuditService()
+            await audit.log_event(
+                conn=conn,
+                action="revoke_all",
+                user_email=user_email,
+                ip_address=client_ip,
+                success=True,
+                details={"reason": "user_requested"},
+            )
+    except Exception as e:
+        logger.warning(f"S03-S2: Audit log failed for revoke-all: {e}")
+
+    return {"success": True, "message": "All sessions revoked"}
+
+
 # ============================================================================
 # JWT Only Authentication - No Mock Endpoints
 # ============================================================================
