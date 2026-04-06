@@ -27,8 +27,9 @@ export PYTHONPATH="$PROJECT_DIR/apps/backend-rag/backend:${PYTHONPATH:-}"
 "$PYTHON_EXEC" judgement_day.py >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-7849498029:AAEjuP_uPt6KqD23Y8tVXVKnygJX8_TzW2g}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+# Load secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID)
+[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
+TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-1125336968}}"
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$DATE] ✅ Evaluation completed." >> "$LOG_FILE"
