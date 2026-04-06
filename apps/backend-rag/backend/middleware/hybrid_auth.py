@@ -181,6 +181,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
+            "/api/prime/zones-geojson",  # BUSINESS: Zone polygon GeoJSON for 3D map rendering (public)
             "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)
             "/api/prime/v2/analyze",  # PRIME NEXUS: Layer 2 investment analysis (public, rate-limited)
             "/api/prime/v2/density",  # PRIME NEXUS: Competitor density per zone (public)
