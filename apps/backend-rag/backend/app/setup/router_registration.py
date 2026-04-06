@@ -25,6 +25,7 @@ def include_routers(api: FastAPI) -> None:
     from backend.app.routers import (
         admin_conversation_cleanup,
         admin_logs,
+        admin_practice_auto_create,
         admin_team_activity,
         agent,  # [NEW] LangGraph agentic layer
         agentic_rag,
@@ -322,6 +323,9 @@ def include_routers(api: FastAPI) -> None:
     # Admin Conversation Cleanup router
     api.include_router(admin_conversation_cleanup.router)
 
+    # Admin Auto Practice Creator (visa renewal at T-60)
+    api.include_router(admin_practice_auto_create.router)
+
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)
 
@@ -360,6 +364,7 @@ def include_light_routers(api: FastAPI) -> None:
         admin_drive_refresh,
         admin_drive_setup,
         admin_logs,
+        admin_practice_auto_create,
         admin_team_activity,
         admin_zoho_auth,
         analytics,
@@ -546,6 +551,9 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Admin Conversation Cleanup router
     api.include_router(admin_conversation_cleanup.router)
+
+    # Admin Auto Practice Creator (visa renewal at T-60)
+    api.include_router(admin_practice_auto_create.router)
 
     # Admin Logs router
     api.include_router(admin_logs.router)

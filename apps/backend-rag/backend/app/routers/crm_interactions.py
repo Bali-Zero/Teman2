@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
@@ -153,9 +153,10 @@ async def create_interaction(
     """
     current_user.get("email", "").lower()
 
-    # RBAC REMOVED: All authenticated users can create interactions for any client
     try:
         async with db_pool.acquire() as conn:
+            if interaction.client_id:
+                await verify_client_access(interaction.client_id, current_user, conn, allow_assigned=True)
             # Insert interaction
             # Note: 'type' and 'content' are legacy NOT NULL columns that must be populated
             content_value = interaction.summary or interaction.subject or "Interaction"
@@ -372,14 +373,10 @@ async def get_client_timeline(
 ) -> dict[str, Any]:
     """
     Get complete interaction timeline for a client.
-    RBAC REMOVED: All authenticated users can view all client timelines.
     """
     try:
         async with db_pool.acquire() as conn:
-            # Check client exists
-            check = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
-            if not check:
-                raise HTTPException(status_code=404, detail="Client not found")
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             # Get total count for accurate pagination info
             count_row = await conn.fetchrow(
@@ -424,14 +421,14 @@ async def get_practice_history(
 ) -> dict[str, Any]:
     """
     Get all interactions related to a specific practice.
-    RBAC REMOVED: All authenticated users can view all practice histories.
     """
     try:
         async with db_pool.acquire() as conn:
-            # Check practice exists
-            check = await conn.fetchrow("SELECT id FROM practices WHERE id = $1", practice_id)
+            # Check practice exists and RBAC via its client_id
+            check = await conn.fetchrow("SELECT id, client_id FROM practices WHERE id = $1", practice_id)
             if not check:
                 raise HTTPException(status_code=404, detail="Practice not found")
+            await verify_client_access(check["client_id"], current_user, conn, allow_assigned=True)
 
             rows = await conn.fetch(
                 """
