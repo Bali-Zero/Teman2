@@ -87,6 +87,12 @@ jobs:
           echo "✅ No critical vulnerabilities"
         continue-on-error: true
 
+      - name: Check migration status (informational)
+        run: |
+          echo "Checking for pending migrations..."
+          flyctl ssh console --app nuzantara-rag -C "cd /app && python -m backend.db.migrate status" || echo "⚠️ Migration check skipped (non-blocking)"
+        continue-on-error: true
+
       - name: Upload gate test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -111,11 +117,11 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Run alembic migrations via flyctl console
+      - name: Run DB migrations via flyctl console
         run: |
           flyctl ssh console \
             --app nuzantara-rag \
-            --command "cd /app && python -m alembic -c backend/alembic.ini upgrade head" \
+            --command "cd /app && python -m backend.db.migrate apply-all" \
             --timeout 120
           echo "✅ Migrations OK"
         env:
