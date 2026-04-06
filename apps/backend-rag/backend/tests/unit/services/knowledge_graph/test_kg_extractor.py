@@ -1,142 +1,43 @@
 """
-Unit tests for Knowledge Graph Extractor
-Target: 100% coverage
-Composer: 1
+Unit tests for Knowledge Graph data models (S05: KGExtractor class removed)
 """
 
-import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,
     ExtractedRelation,
     ExtractionResult,
-    KGExtractor,
 )
+from backend.services.knowledge_graph.ontology import EntityType, RelationType
 
 
-@pytest.fixture
-def kg_extractor():
-    """Create KG extractor instance"""
-    with patch("backend.services.knowledge_graph.extractor.anthropic.Anthropic"):
-        return KGExtractor(model="claude-sonnet-4", api_key="test-key")
-
-
-class TestKGExtractor:
-    """Tests for KGExtractor"""
-
-    def test_init(self):
-        """Test initialization"""
-        with patch("backend.services.knowledge_graph.extractor.anthropic.Anthropic"):
-            extractor = KGExtractor(model="claude-sonnet-4", api_key="test-key")
-            assert extractor.model == "claude-sonnet-4"
-
-    @pytest.mark.asyncio
-    async def test_extract_entities(self, kg_extractor):
-        """Test entity extraction"""
-        text = "PT PMA is a company type that requires minimum investment of 10 billion IDR"
-
-        with patch.object(kg_extractor.client, "messages") as mock_messages:
-            mock_create = AsyncMock()
-            mock_create.create.return_value = MagicMock(
-                content=[
-                    MagicMock(text='{"entities": [{"name": "PT PMA", "type": "Organization"}]}'),
-                ],
-            )
-            mock_messages.create = mock_create
-
-            result = await kg_extractor.extract(text)
-            assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_extract_relationships(self, kg_extractor):
-        """Test relationship extraction"""
-        text = "PT PMA requires minimum investment"
-
-        with patch.object(kg_extractor.client, "messages") as mock_messages:
-            mock_create = AsyncMock()
-            mock_create.create.return_value = MagicMock(
-                content=[
-                    MagicMock(
-                        text='{"relations": [{"source": "PT PMA", "target": "Investment", "type": "REQUIRES"}]}',
-                    ),
-                ],
-            )
-            mock_messages.create = mock_create
-
-            result = await kg_extractor.extract(text)
-            assert result is not None
-
-    @pytest.mark.asyncio
-    async def test_extract_error_handling(self, kg_extractor):
-        """Test error handling"""
-        text = "test"
-
-        with patch.object(kg_extractor.client, "messages") as mock_messages:
-            mock_messages.create.side_effect = Exception("API error")
-
-            result = await kg_extractor.extract(text)
-            # Should handle error gracefully
-            assert result is not None
-
-
-class TestExtractedEntity:
-    """Tests for ExtractedEntity"""
-
-    def test_entity_creation(self):
-        """Test entity creation"""
-        from backend.services.knowledge_graph.ontology import EntityType
-
+class TestDataModels:
+    def test_extracted_entity(self):
         entity = ExtractedEntity(
-            id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA", confidence=0.9,
+            id="e1", type=EntityType.UNDANG_UNDANG, name="UU No. 6 Tahun 2023",
+            mention="UU No 6/2023", attributes={"number": 6, "year": 2023}, confidence=0.95,
         )
-        assert entity.name == "PT PMA"
-        assert entity.type == EntityType.ORGANIZATION
-        assert entity.confidence == 0.9
+        assert entity.id == "e1"
+        assert entity.type == EntityType.UNDANG_UNDANG
+        assert entity.confidence == 0.95
 
+    def test_extracted_entity_defaults(self):
+        entity = ExtractedEntity(id="e1", type=EntityType.NIB, name="NIB", mention="NIB")
+        assert entity.confidence == 0.8
+        assert entity.attributes == {}
+        assert entity.start_pos is None
 
-class TestExtractedRelation:
-    """Tests for ExtractedRelation"""
-
-    def test_relation_creation(self):
-        """Test relation creation"""
-        from backend.services.knowledge_graph.ontology import RelationType
-
-        relation = ExtractedRelation(
-            source_id="e1",
-            target_id="e2",
-            type=RelationType.REQUIRES,
-            evidence="requires",
-            confidence=0.8,
+    def test_extracted_relation(self):
+        rel = ExtractedRelation(
+            source_id="e1", target_id="e2", type=RelationType.REQUIRES,
+            evidence="PT PMA wajib memiliki NIB", confidence=0.9,
         )
-        assert relation.source_id == "e1"
-        assert relation.target_id == "e2"
-        assert relation.type == RelationType.REQUIRES
+        assert rel.source_id == "e1"
+        assert rel.type == RelationType.REQUIRES
 
-
-class TestExtractionResult:
-    """Tests for ExtractionResult"""
-
-    def test_result_creation(self):
-        """Test result creation"""
-        from backend.services.knowledge_graph.ontology import EntityType, RelationType
-
-        entities = [
-            ExtractedEntity(id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA"),
-        ]
-        relations = [
-            ExtractedRelation(
-                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires",
-            ),
-        ]
-
-        result = ExtractionResult(chunk_id="chunk1", entities=entities, relations=relations)
-        assert len(result.entities) == 1
-        assert len(result.relations) == 1
+    def test_extraction_result(self):
+        result = ExtractionResult(chunk_id="chunk1", raw_text="test")
+        assert result.entities == []
+        assert result.relations == []
+        assert result.metadata == {}

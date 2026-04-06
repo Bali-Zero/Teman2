@@ -3,30 +3,22 @@ Knowledge Graph Services
 LLM-powered entity and relation extraction for Indonesian legal documents
 """
 
-from typing import Any
-
 from .coreference import CoreferenceResolver
-from .extractor import KGExtractor
+from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
+from .extractor_gemini import GeminiKGExtractor
 from .ontology import ENTITY_SCHEMAS, RELATION_SCHEMAS, EntityType, RelationType
 from .pipeline import KGPipeline, PipelineConfig
 from .quality_filter import KGQualityFilter, apply_quality_filter_to_batch
-
-
-# Lazy import for Gemini (requires vertexai SDK)
-def get_gemini_extractor() -> Any:
-    """Get GeminiKGExtractor (lazy import)"""
-    from .extractor_gemini import GeminiKGExtractor
-
-    return GeminiKGExtractor
-
 
 __all__ = [
     "EntityType",
     "RelationType",
     "ENTITY_SCHEMAS",
     "RELATION_SCHEMAS",
-    "KGExtractor",
-    "get_gemini_extractor",
+    "ExtractedEntity",
+    "ExtractedRelation",
+    "ExtractionResult",
+    "GeminiKGExtractor",
     "CoreferenceResolver",
     "KGPipeline",
     "PipelineConfig",
