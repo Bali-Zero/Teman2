@@ -422,6 +422,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing OpenRouter client: {e}")
 
+    try:
+        from backend.llm.ollama_client import close_ollama_client
+
+        await close_ollama_client()
+        logger.info("✅ Ollama module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing Ollama client: {e}")
+
     logger.info("✅ ZANTARA shutdown complete")
 
 
