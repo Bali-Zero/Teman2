@@ -158,3 +158,6 @@ litellm>=1.82.1  # Updated 2026-03-14: Gemini 2.5 + new provider fixes
 
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=78.1.1
+
+# Structured logging
+structlog>=24.1.0

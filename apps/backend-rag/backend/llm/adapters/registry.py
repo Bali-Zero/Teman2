@@ -20,7 +20,7 @@ ADAPTER_REGISTRY = {
 def get_adapter(model_name: str) -> ModelAdapter:
     """
     Get the appropriate adapter for the given model name.
-    Handles partial matches (e.g. "gemini-2.0-flash" matches ModelType.GEMINI_FLASH)
+    Handles partial matches (e.g. "gemini-3-flash" matches ModelType.GEMINI_FLASH)
     """
     # Try exact match first
     try:

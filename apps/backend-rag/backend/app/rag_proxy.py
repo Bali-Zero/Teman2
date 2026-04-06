@@ -42,7 +42,6 @@ HEAVY_PREFIXES = (
     "/api/intel",
     "/api/intel-scraper",
     "/api/intel-analytics",
-    "/api/news",
     "/api/pricing",
     "/api/voice",
     "/api/whatsapp/chat",
