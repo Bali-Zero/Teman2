@@ -121,22 +121,16 @@ class LLMGateway:
         # - Vertex AI ID: gemini-3-flash-preview
         self.model_name_pro = "gemini-3-flash-preview"  # Primary: latest
         self.model_name_flash = "gemini-3-flash-preview"
-        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable
+        self.model_name_fallback = "gemini-2.5-flash"  # Fallback: previous gen stable
 
         logger.info(
             "✅ LLMGateway: Model configuration ready (gemini-3-flash-preview primary, "
-            "gemini-2.0-flash fallback)",
+            "gemini-2.5-flash fallback)",
         )
-        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: older but stable
 
         # Future 3-tier models (when implemented)
         # Tier 2: claude-3-5-haiku (Anthropic) - complex reasoning
         # Tier 3: gpt-4o-mini (OpenAI) - reliable fallback
-
-        logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-2.5-flash primary, "
-            "gemini-2.0-flash fallback)",
-        )
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
