@@ -642,7 +642,8 @@ def classify_tiers(codes: list[dict], state: dict, dry_run: bool = False) -> dic
 
 def generate_content_gold(codes: list[dict], batch_size: int = 5) -> dict[str, dict]:
     """
-    Generate 3 narrative fields for gold-tier codes using gemini-3.1-pro-preview (CLI).
+    Generate 3 narrative fields for gold-tier codes.
+    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Gold: PMA-eligible, high-traffic — 800-1000 words guide.
     Fallback: qwen3.5:27b via Ollama.
     """
@@ -748,7 +749,8 @@ def generate_content_silver(codes: list[dict], batch_size: int = 8) -> dict[str,
 
 def generate_content_bronze(codes: list[dict], batch_size: int = 10) -> dict[str, dict]:
     """
-    Generate minimal content (whatItMeans only) for bronze-tier codes using gemini-3.1-pro-preview.
+    Generate minimal content (whatItMeans only) for bronze-tier codes.
+    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Bronze: 100-200 word basic description.
     Fallback: gemma3:12b via Ollama.
     """

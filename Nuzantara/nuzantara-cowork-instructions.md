@@ -191,7 +191,7 @@ Each is a focused Next.js app on its own subdomain:
 
 - **Gemini** (Google) — Primary for Zantara chat (Flash), web search (grounded), exploration (2M context)
 - **Claude** (Anthropic) — Orchestration (Claude Code), KBLI chat (Haiku), critical reasoning (Opus)
-- **Ollama** (Local) — qwen3.5:27b (KG extraction), qwen3.5:9b (fast routing), gemma3:12b (JSON), qwen2.5vl:7b (vision OCR)
+- **Ollama** (Local) — gemma4:26b (KG extraction, JSON), qwen3.5:9b (fast routing), deepseek-r1:32b (reasoning), qwen2.5vl:7b (vision OCR)
 - **DeepSeek** — War Room preprocessor, deep reasoning tasks
 - **OpenRouter** — Multi-model aggregator for API calls
 - **Vertex AI** — GCP managed inference (fallback)
@@ -203,7 +203,7 @@ Each is a focused Next.js app on its own subdomain:
 - **Node types:** KBLI (20%), Biaya/Fees (17.5%), Pasal/Articles (11.4%), Dokumen (10.6%), UU/Laws (8.1%)
 - **Edge types:** REQUIRES (26.8%), PART_OF (24.8%), REFERENCES (15%), HAS_FEE (4.9%)
 - **Subgraphs:** Company ✅, Visa ✅, Property (partial), Tax (partial)
-- Extraction via qwen3.5:27b with 2-step fix for output reliability
+- Extraction via gemma4:26b (MoE) for output reliability
 
 ### RAG Pipeline
 
