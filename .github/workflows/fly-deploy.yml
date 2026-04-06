@@ -184,6 +184,30 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
+      - name: RAG smoke test (informational)
+        if: success()
+        run: |
+          echo "Running RAG smoke test..."
+          RESPONSE=$(curl -sf --max-time 30 \
+            -X POST "https://nuzantara-rag.fly.dev/api/chat/query" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.SMOKE_TEST_API_KEY }}" \
+            -d '{"query": "what is a PT PMA?", "channel": "smoke-test"}' \
+            2>/dev/null || echo '{"error": "timeout"}')
+
+          if echo "$RESPONSE" | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d.get('answer') or d.get('response') or d.get('message'), 'No answer field'
+          print('Response received:', str(d)[:200])
+          " 2>/dev/null; then
+            echo "✅ RAG smoke test passed"
+          else
+            echo "⚠️ RAG smoke test inconclusive (non-blocking)"
+            echo "Response: $(echo "$RESPONSE" | head -c 500)"
+          fi
+        continue-on-error: true
+
       - name: Notifica Telegram — deploy fallito + rollback
         if: failure()
         run: |
