@@ -49,28 +49,26 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
     """
     Validate JWT tokens locally using the shared secret.
 
-    This is the primary JWT validation method used throughout the application.
-    Validates JWT tokens locally (TypeScript backend removed).
-
-    Args:
-        token: JWT token string to validate
-
-    Returns:
-        User context dict if valid, None otherwise
+    S03: Two-phase expiry enforcement via jwt_enforce_expiry flag.
     """
     if not token:
         return None
 
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        # S03: Two-phase JWT expiry enforcement
+        verify_exp = getattr(settings, "jwt_enforce_expiry", False)
+        payload = jwt.decode(
+            token, settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+            options={"verify_exp": verify_exp},
+        )
 
-        # Validate required fields
         user_id = payload.get("sub") or payload.get("userId")
         email = payload.get("email")
 
         if user_id and email:
             logger.info(f"✅ Local JWT validation successful for {email}")
-            return {
+            user_ctx: dict[str, Any] = {
                 "id": user_id,
                 "email": email,
                 "role": payload.get("role", "member"),
@@ -78,6 +76,20 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
                 "auth_method": "jwt_local",
                 "status": "active",
             }
+
+            # S03: Audit mode — flag expired tokens without rejecting
+            if not verify_exp:
+                exp = payload.get("exp")
+                if exp:
+                    from datetime import datetime, timezone
+                    if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+                        logger.warning(
+                            f"S03_AUDIT: Expired token in validation for {email} "
+                            f"(jti={payload.get('jti', 'none')})"
+                        )
+                        user_ctx["_warn_expired"] = True
+
+            return user_ctx
 
     except JWTError as e:
         logger.debug(f"Local JWT validation failed: {e}")
