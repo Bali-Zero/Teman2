@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import can_view_all_practices
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -31,10 +32,13 @@ async def get_all_expiry_alerts(
 ) -> list[Any]:
     """
     Get all expiry alerts across all clients (for team dashboard).
-    RBAC REMOVED: All authenticated users can view all expiry alerts.
-    Optional filtering by assigned_to is available as a query parameter.
+    Non-admin users see only alerts for their assigned clients.
     """
     async with pool.acquire() as conn:
+        # RBAC: non-admin users only see their own assigned alerts
+        if not can_view_all_practices(current_user) and not assigned_to:
+            assigned_to = current_user.get("email", "")
+
         query = """
             SELECT
                 entity_type, entity_id, entity_name, client_id, client_name,

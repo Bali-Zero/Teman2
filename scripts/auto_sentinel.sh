@@ -16,8 +16,9 @@ cd "$PROJECT_DIR"
 ./sentinel >> "$LOG_FILE" 2>&1
 EXIT_CODE=$?
 
-TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-7849498029:AAEjuP_uPt6KqD23Y8tVXVKnygJX8_TzW2g}"
-TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-1125336968}"
+# Load secrets (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID)
+[ -f "$HOME/.nuzantara-secrets.env" ] && set -a && source "$HOME/.nuzantara-secrets.env" && set +a
+TELEGRAM_CHAT_ID="${TELEGRAM_ADMIN_CHAT_ID:-${TELEGRAM_CHAT_ID:-1125336968}}"
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "[$DATE] ✅ Sentinel PASSED." >> "$LOG_FILE"

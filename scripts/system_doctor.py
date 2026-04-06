@@ -17,6 +17,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -1105,47 +1106,47 @@ def main() -> None:
     log("Starting System Doctor...")
     now = datetime.now(WITA)
 
-    # Collect from all sources
+    # Collect from all sources — run collectors in parallel to avoid serial timeout cascade.
+    # Previous sequential execution took ~300s worst case (13 collectors × SSH/HTTP timeouts).
+    # Parallel execution completes in ~30s (bounded by slowest single collector).
+    GLOBAL_TIMEOUT = 120  # seconds — hard ceiling for all collectors combined
+
+    collectors = [
+        ("Pro crons", collect_pro_crons),
+        ("Air crons", collect_air_crons),
+        ("OpenClaw jobs", collect_openclaw_jobs),
+        ("Backend health", collect_backend_health),
+        ("Core Guardian", collect_core_guardian),
+        ("Frontend health", collect_frontend_health),
+        ("SSL certs", collect_ssl_certs),
+        ("Fly resources", collect_fly_resources),
+        ("LLM API health", collect_llm_api_health),
+        ("LLM cost", collect_llm_cost),
+        ("Dependabot", collect_dependabot),
+        ("Error patterns", collect_error_patterns),
+        ("Import chain", collect_import_chain),
+    ]
+
     all_checks: list[SystemCheck] = []
 
-    log("Collecting Pro cron status...")
-    all_checks.extend(collect_pro_crons())
-
-    log("Collecting Air cron status...")
-    all_checks.extend(collect_air_crons())
-
-    log("Collecting OpenClaw job status...")
-    all_checks.extend(collect_openclaw_jobs())
-
-    log("Checking backend health...")
-    all_checks.extend(collect_backend_health())
-
-    log("Checking Core Guardian...")
-    all_checks.extend(collect_core_guardian())
-
-    log("Checking frontend health (8 subdomains)...")
-    all_checks.extend(collect_frontend_health())
-
-    log("Checking SSL certificates...")
-    all_checks.extend(collect_ssl_certs())
-
-    log("Checking Fly.io resources...")
-    all_checks.extend(collect_fly_resources())
-
-    log("Checking LLM API health...")
-    all_checks.extend(collect_llm_api_health())
-
-    log("Checking LLM cost...")
-    all_checks.extend(collect_llm_cost())
-
-    log("Checking Dependabot alerts...")
-    all_checks.extend(collect_dependabot())
-
-    log("Analyzing error patterns...")
-    all_checks.extend(collect_error_patterns())
-
-    log("Testing import chain...")
-    all_checks.extend(collect_import_chain())
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        future_to_name = {
+            pool.submit(fn): name for name, fn in collectors
+        }
+        for future in as_completed(future_to_name, timeout=GLOBAL_TIMEOUT):
+            name = future_to_name[future]
+            try:
+                result = future.result(timeout=5)
+                log(f"Collected {name}: {len(result)} checks")
+                all_checks.extend(result)
+            except Exception as e:
+                log(f"Collector {name} failed: {e}")
+                all_checks.append(SystemCheck(
+                    id=f"collector-{name.lower().replace(' ', '-')}",
+                    name=name, group="doctor",
+                    status="warning",
+                    message=f"Collector failed: {type(e).__name__}: {str(e)[:80]}",
+                ))
 
     # Apply auto-fixes
     log("Applying auto-fixes...")
