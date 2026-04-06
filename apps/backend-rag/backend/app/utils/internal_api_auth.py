@@ -33,7 +33,7 @@ async def verify_internal_api_key(x_api_key: str | None = Header(None, alias="X-
 
     user_context = api_key_auth.validate_api_key(x_api_key)
     if not user_context:
-        logger.warning(f"Invalid API key provided for internal endpoint: {x_api_key[:10]}...")
+        logger.warning(f"Invalid API key provided for internal endpoint: {x_api_key[:4]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",

@@ -157,8 +157,8 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
-            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
-            "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
+            # "/api/agentic-rag/stream"  # REMOVED: F-7 security fix — requires auth,  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
+            # "/api/agentic-rag/query"  # REMOVED: F-7 security fix — requires auth,  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
             "/api/cell/metrics",  # BUSINESS: CELL ErrorRateSensor reads this internally — no user data exposed
