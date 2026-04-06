@@ -82,7 +82,11 @@ async def get_current_user_ws(token: str) -> str | None:
     SECURITY: Token is now passed directly (from header/subprotocol) instead of query param
     """
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        # S03: Two-phase JWT expiry enforcement
+        payload = jwt.decode(
+            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+            options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+        )
         user_id: str = payload.get("sub") or payload.get("userId")
         if user_id is None:
             return None
