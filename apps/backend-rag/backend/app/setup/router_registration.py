@@ -97,7 +97,7 @@ def include_routers(api: FastAPI) -> None:
         portal_taxes,
         portal_visa,
         prime,
-        prime_v2,
+        prime_v2,  # [PRIME NEXUS] Layered geospatial intelligence API
         query_analytics,
         session,
         sheets,
@@ -105,10 +105,10 @@ def include_routers(api: FastAPI) -> None:
         team_activity,
         team_analytics,
         team_drive,
-        team_members,
+        # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
         telegram,
         telegram_webhook,
-        twitter,
+        # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
         visa_oracle,
         voice,
         webhooks,
@@ -117,7 +117,7 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
-        x_monitor,
+        # x_monitor,  # DISABLED: CRC broken (audit 2026-04-03)
         zoho_email,
     )
 
@@ -226,9 +226,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(
         telegram_webhook.router,
     )  # [NEW] Telegram webhook (multi-channel architecture)
-    api.include_router(twitter.router)  # Twitter/X omnichannel API
-    api.include_router(twitter.webhook_router)  # X/Twitter Account Activity webhook
-    api.include_router(x_monitor.router)  # X/Twitter social listening monitor
+    # DISABLED: Twitter/X broken (CRC fail, OAuth incomplete) — audit 2026-04-03
+    # api.include_router(twitter.router)
+    # api.include_router(twitter.webhook_router)
+    # api.include_router(x_monitor.router)
     api.include_router(
         whatsapp_chat.router,
     )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
@@ -276,7 +277,7 @@ def include_routers(api: FastAPI) -> None:
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
     api.include_router(prime.router)
-    api.include_router(prime_v2.router)  # Prime Nexus v2 — layered geospatial API
+    api.include_router(prime_v2.router)  # [PRIME NEXUS] v2 layered API
 
     # Dynamic scenario pricing
     api.include_router(dynamic_pricing.router)
@@ -296,7 +297,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
-    api.include_router(team_members.router)  # [NEW] Team members list for CRM dropdowns
+    # api.include_router(team_members.router)  # DISABLED: duplicates team.py (audit 2026-04-03)
     api.include_router(media.router)
     # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI

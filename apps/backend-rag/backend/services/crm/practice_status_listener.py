@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
-_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 # Status transitions that warrant a client-facing email.
 # Maps new_status → human label used in logs (actual email copy lives in ProcessAutomationService).
