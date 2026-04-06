@@ -87,6 +87,17 @@ except Exception as _e:
     logger.warning("⚠️ [PrimeNexus] Could not load building codes: %s", _e)
 
 
+def parse_tb_to_meters(tb_str: str | None) -> float | None:
+    """Parse TB height strings like '15 Meter', '4 Meter', '8m' → float meters."""
+    if not tb_str or tb_str.strip().upper() == "N/A":
+        return None
+    import re
+    m = re.match(r"(\d+(?:[.,]\d+)?)", tb_str.strip())
+    if m:
+        return float(m.group(1).replace(",", "."))
+    return None
+
+
 def calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
     """Return building limit summary for a zone code."""
     data = _BUILDING_CODES.get(zone_code)
@@ -104,6 +115,7 @@ def calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
             "kdh_pct": _parse_pct(data.get("KDH", "0")),
             "ktb_pct": _parse_pct(data.get("KTB", "0")),
             "height_limit": data.get("TB", "—"),
+            "max_height_meters": parse_tb_to_meters(data.get("TB")),
             "setback": data.get("GSB", "—"),
             "notes": data.get("note", ""),
         }
@@ -1348,6 +1360,597 @@ class PrimeNexusService:
             stats["clients"] = len(rows)
 
         return {"type": "FeatureCollection", "features": features[:max_features], "stats": stats}
+
+    # ── Layer 4: Competitor Density ─────────────────────────────────
+
+    # Saturation thresholds per zone-type prefix
+    _SATURATION_THRESHOLDS: dict[str, int] = {
+        "K": 100, "W": 50, "C": 80, "R": 20, "SPU": 60, "KT": 50,
+    }
+
+    # 2-digit KBLI sector labels
+    _KBLI_2DIGIT_LABELS: dict[str, str] = {
+        "10": "Food Manufacturing", "11": "Beverages", "41": "Construction",
+        "46": "Wholesale Trade", "47": "Retail Trade", "49": "Transport",
+        "55": "Accommodation", "56": "F&B Services", "58": "Publishing",
+        "62": "Software/IT", "63": "Information Services", "68": "Real Estate",
+        "70": "Management Consulting", "71": "Architecture/Engineering",
+        "72": "Scientific R&D", "73": "Advertising/Marketing",
+        "74": "Professional Services", "79": "Travel Agencies",
+        "82": "Business Support", "85": "Education", "86": "Health Services",
+        "90": "Creative/Arts", "93": "Sports/Recreation", "96": "Personal Services",
+    }
+
+    async def density(self, zone_code: str) -> dict[str, Any]:
+        """Layer 4: Business density and competitor saturation for a zone."""
+        cache_key = f"prime:density:{zone_code}"
+        if self._cache:
+            cached = await self._cache.get(cache_key)
+            if cached:
+                return {**json.loads(cached), "cache_hit": True}
+
+        by_kbli: dict[str, int] = {}
+        total = 0
+
+        if self._db_pool:
+            try:
+                async with self._db_pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT LEFT(kbli_code, 2) AS sector, COUNT(*) AS cnt
+                        FROM companies
+                        WHERE rdtr_zone_code = $1
+                          AND kbli_code IS NOT NULL
+                          AND kbli_code != ''
+                        GROUP BY LEFT(kbli_code, 2)
+                        ORDER BY cnt DESC
+                        """,
+                        zone_code,
+                    )
+                    for row in rows:
+                        sector = row["sector"]
+                        cnt = row["cnt"]
+                        by_kbli[sector] = cnt
+                        total += cnt
+            except Exception as exc:
+                logger.warning("[PrimeNexus] Density query failed: %s", exc)
+
+        # Compute saturation index
+        prefix = zone_code.split("-")[0] if "-" in zone_code else zone_code
+        threshold = self._SATURATION_THRESHOLDS.get(prefix, 40)
+        saturation = min(1.0, total / threshold) if threshold > 0 else 0.0
+        saturation_label = "HIGH" if saturation > 0.7 else "MEDIUM" if saturation > 0.3 else "LOW"
+
+        by_kbli_labels = {k: self._KBLI_2DIGIT_LABELS.get(k, f"Sector {k}") for k in by_kbli}
+
+        result = {
+            "zone_code": zone_code,
+            "total_companies": total,
+            "by_kbli": by_kbli,
+            "by_kbli_labels": by_kbli_labels,
+            "saturation_index": round(saturation, 2),
+            "saturation_label": saturation_label,
+            "cache_hit": False,
+        }
+
+        if self._cache:
+            await self._cache.set(cache_key, json.dumps(result, default=str), ttl=21600)
+
+        return result
+
+    # ── Layer 5: Predictive Zone Score ─────────────────────────────
+
+    async def predict_zone(self, zone_code: str) -> dict[str, Any]:
+        """Layer 5: 3-signal trend analysis for a zone."""
+        cache_key = f"prime:predict:{zone_code}"
+        if self._cache:
+            cached = await self._cache.get(cache_key)
+            if cached:
+                return {**json.loads(cached), "cache_hit": True}
+
+        factors: list[dict[str, Any]] = []
+        trend_score = 0
+
+        if self._db_pool:
+            try:
+                async with self._db_pool.acquire() as conn:
+                    # Signal 1: Rejection trend (6m vs prior 6m)
+                    rej_rows = await conn.fetch(
+                        """
+                        SELECT
+                            COUNT(*) FILTER (WHERE p.created_at >= NOW() - INTERVAL '6 months') AS recent,
+                            COUNT(*) FILTER (WHERE p.created_at >= NOW() - INTERVAL '12 months'
+                                             AND p.created_at < NOW() - INTERVAL '6 months') AS prior
+                        FROM practices p
+                        JOIN clients cl ON cl.id = p.client_id
+                        WHERE cl.rdtr_zone_code = $1
+                          AND p.status IN ('rejected', 'cancelled')
+                        """,
+                        zone_code,
+                    )
+                    if rej_rows:
+                        recent_rej = rej_rows[0]["recent"] or 0
+                        prior_rej = rej_rows[0]["prior"] or 0
+                        if recent_rej > prior_rej + 2:
+                            trend_score -= 1
+                            factors.append({"signal": "rejections", "direction": "worse",
+                                           "detail": f"{recent_rej} vs {prior_rej} prior period"})
+                        elif recent_rej < prior_rej:
+                            trend_score += 1
+                            factors.append({"signal": "rejections", "direction": "better",
+                                           "detail": f"{recent_rej} vs {prior_rej} prior period"})
+                        else:
+                            factors.append({"signal": "rejections", "direction": "stable",
+                                           "detail": f"{recent_rej} recent, {prior_rej} prior"})
+
+                    # Signal 2: Expiry density (practices expiring within 90 days)
+                    exp_rows = await conn.fetch(
+                        """
+                        SELECT COUNT(*) AS cnt
+                        FROM practices p
+                        JOIN clients cl ON cl.id = p.client_id
+                        WHERE cl.rdtr_zone_code = $1
+                          AND p.expiry_date IS NOT NULL
+                          AND p.expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days'
+                          AND p.status NOT IN ('completed', 'archived')
+                        """,
+                        zone_code,
+                    )
+                    expiring = exp_rows[0]["cnt"] if exp_rows else 0
+                    if expiring > 5:
+                        trend_score -= 1
+                        factors.append({"signal": "expiring_practices", "direction": "worse",
+                                       "detail": f"{expiring} expiring within 90 days"})
+                    else:
+                        factors.append({"signal": "expiring_practices", "direction": "stable",
+                                       "detail": f"{expiring} expiring within 90 days"})
+
+                    # Signal 3: Activity momentum (new companies 3m vs prior 3m)
+                    act_rows = await conn.fetch(
+                        """
+                        SELECT
+                            COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '3 months') AS recent,
+                            COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '6 months'
+                                             AND created_at < NOW() - INTERVAL '3 months') AS prior
+                        FROM companies
+                        WHERE rdtr_zone_code = $1
+                        """,
+                        zone_code,
+                    )
+                    if act_rows:
+                        recent_act = act_rows[0]["recent"] or 0
+                        prior_act = act_rows[0]["prior"] or 0
+                        if recent_act > prior_act + 2:
+                            trend_score += 1
+                            factors.append({"signal": "new_companies", "direction": "better",
+                                           "detail": f"{recent_act} vs {prior_act} prior period"})
+                        elif recent_act < prior_act - 2:
+                            trend_score -= 1
+                            factors.append({"signal": "new_companies", "direction": "worse",
+                                           "detail": f"{recent_act} vs {prior_act} prior period"})
+                        else:
+                            factors.append({"signal": "new_companies", "direction": "stable",
+                                           "detail": f"{recent_act} recent, {prior_act} prior"})
+            except Exception as exc:
+                logger.warning("[PrimeNexus] Predict query failed: %s", exc)
+
+        trend = "improving" if trend_score >= 1 else "declining" if trend_score <= -1 else "stable"
+
+        # Predict label shift
+        current_label = "GREEN"  # default assumption
+        predicted_label = current_label
+        if trend == "declining":
+            predicted_label = "YELLOW" if current_label == "GREEN" else "RED"
+        elif trend == "improving":
+            predicted_label = "GREEN" if current_label == "YELLOW" else current_label
+
+        result = {
+            "zone_code": zone_code,
+            "trend": trend,
+            "trend_score": trend_score,
+            "predicted_label": predicted_label,
+            "factors": factors,
+            "cache_hit": False,
+        }
+
+        if self._cache:
+            await self._cache.set(cache_key, json.dumps(result, default=str), ttl=43200)
+
+        return result
+
+    # ── Layer 6: Temporal Intelligence ──────────────────────────────
+
+    _PERIOD_MAP: dict[str, str] = {
+        "1m": "1 month", "3m": "3 months", "6m": "6 months", "12m": "12 months",
+    }
+    _GRANULARITY_MAP: dict[str, str] = {
+        "daily": "day", "weekly": "week", "monthly": "month",
+    }
+
+    async def temporal(
+        self, zone_code: str, period: str = "6m", granularity: str = "weekly",
+    ) -> dict[str, Any]:
+        """Layer 6: Temporal activity analysis for a zone."""
+        cache_key = f"prime:temporal:{zone_code}:{period}:{granularity}"
+        if self._cache:
+            cached = await self._cache.get(cache_key)
+            if cached:
+                return {**json.loads(cached), "cache_hit": True}
+
+        interval = self._PERIOD_MAP.get(period, "6 months")
+        trunc = self._GRANULARITY_MAP.get(granularity, "week")
+        buckets: list[dict[str, Any]] = []
+
+        if self._db_pool:
+            try:
+                async with self._db_pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        f"""
+                        WITH practice_buckets AS (
+                            SELECT date_trunc('{trunc}', p.created_at) AS bucket,
+                                   COUNT(*) AS practices
+                            FROM practices p
+                            JOIN clients cl ON cl.id = p.client_id
+                            WHERE cl.rdtr_zone_code = $1
+                              AND p.created_at >= NOW() - INTERVAL '{interval}'
+                            GROUP BY bucket
+                        ),
+                        company_buckets AS (
+                            SELECT date_trunc('{trunc}', created_at) AS bucket,
+                                   COUNT(*) AS companies
+                            FROM companies
+                            WHERE rdtr_zone_code = $1
+                              AND created_at >= NOW() - INTERVAL '{interval}'
+                            GROUP BY bucket
+                        )
+                        SELECT COALESCE(p.bucket, c.bucket) AS bucket,
+                               COALESCE(p.practices, 0) AS practices,
+                               COALESCE(c.companies, 0) AS companies
+                        FROM practice_buckets p
+                        FULL OUTER JOIN company_buckets c ON p.bucket = c.bucket
+                        ORDER BY bucket
+                        """,
+                        zone_code,
+                    )
+                    for row in rows:
+                        practices = row["practices"]
+                        companies = row["companies"]
+                        buckets.append({
+                            "date": row["bucket"].isoformat()[:10] if row["bucket"] else None,
+                            "practices": practices,
+                            "companies": companies,
+                            "activity_score": practices + companies,
+                        })
+            except Exception as exc:
+                logger.warning("[PrimeNexus] Temporal query failed: %s", exc)
+
+        trend = "stable"
+        if len(buckets) >= 2:
+            mid = len(buckets) // 2
+            first_half = sum(b["activity_score"] for b in buckets[:mid])
+            second_half = sum(b["activity_score"] for b in buckets[mid:])
+            if second_half > first_half * 1.3:
+                trend = "increasing"
+            elif second_half < first_half * 0.7:
+                trend = "decreasing"
+
+        result = {
+            "zone_code": zone_code,
+            "period": period,
+            "granularity": granularity,
+            "buckets": buckets,
+            "trend": trend,
+            "total_activity": sum(b["activity_score"] for b in buckets),
+            "cache_hit": False,
+        }
+
+        if self._cache:
+            await self._cache.set(cache_key, json.dumps(result, default=str), ttl=3600)
+
+        return result
+
+    # ── Layer 7: Live Regulation Feed ────────────────────────────────
+
+    async def regulations(self, zone_code: str, limit: int = 10) -> dict[str, Any]:
+        """Layer 7: Regulation feed for a zone from news_items + Qdrant."""
+        regulations: list[dict[str, Any]] = []
+        seen_titles: set[str] = set()
+
+        zone_label = ZONE_LABELS.get(zone_code, {}).get("label_en", zone_code)
+
+        # Source 1: SQL news_items
+        if self._db_pool:
+            try:
+                async with self._db_pool.acquire() as conn:
+                    rows = await conn.fetch(
+                        """
+                        SELECT id, title, summary, category, ai_sentiment, published_at, source_url
+                        FROM news_items
+                        WHERE status = 'approved'
+                          AND category IN ('immigration', 'business', 'tax', 'property', 'legal')
+                          AND (
+                            title ILIKE '%' || $1 || '%'
+                            OR summary ILIKE '%' || $1 || '%'
+                            OR title ILIKE '%' || $2 || '%'
+                            OR summary ILIKE '%' || $2 || '%'
+                          )
+                        ORDER BY published_at DESC NULLS LAST
+                        LIMIT $3
+                        """,
+                        zone_code, zone_label, limit,
+                    )
+                    for row in rows:
+                        title = row["title"] or ""
+                        norm = title.lower().strip()
+                        if norm in seen_titles:
+                            continue
+                        seen_titles.add(norm)
+                        regulations.append({
+                            "title": title,
+                            "summary": (row["summary"] or "")[:200],
+                            "category": row["category"] or "",
+                            "sentiment": row["ai_sentiment"] or "neutral",
+                            "published_at": row["published_at"].isoformat() if row["published_at"] else "",
+                            "source_url": row["source_url"] or "",
+                            "source": "database",
+                        })
+            except Exception as exc:
+                logger.warning("[PrimeNexus] Regulations SQL query failed: %s", exc)
+
+        # Source 2: Qdrant semantic search (reuse _search_intel)
+        try:
+            qdrant_articles = await self._search_intel(zone_code, zone_label, limit=limit)
+            for art in qdrant_articles:
+                norm = art.get("title", "").lower().strip()
+                if norm in seen_titles:
+                    continue
+                seen_titles.add(norm)
+                regulations.append({
+                    "title": art.get("title", ""),
+                    "summary": "",
+                    "category": art.get("category", ""),
+                    "sentiment": "neutral",
+                    "published_at": art.get("published_at", ""),
+                    "source_url": art.get("source_url", ""),
+                    "source": "qdrant",
+                })
+        except Exception as exc:
+            logger.debug("[PrimeNexus] Regulations Qdrant failed: %s", exc)
+
+        # Sort by published_at desc, cap at limit
+        regulations.sort(key=lambda r: r.get("published_at", ""), reverse=True)
+        regulations = regulations[:limit]
+
+        return {
+            "zone_code": zone_code,
+            "regulations": regulations,
+            "total_found": len(regulations),
+        }
+
+    # ── Layer 8: Proposals (Deal Flow) ─────────────────────────────
+
+    async def create_proposal(
+        self,
+        lat: float,
+        lng: float,
+        zone_code: str,
+        zone_name: str | None = None,
+        kbli_code: str | None = None,
+        verdict_label: str | None = None,
+        verdict_score: int | None = None,
+        analysis_snapshot: dict[str, Any] | None = None,
+        investor_name: str | None = None,
+        investor_email: str | None = None,
+        investor_nationality: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a shareable investment proposal."""
+        import secrets
+        token = secrets.token_urlsafe(32)
+
+        if not self._db_pool:
+            return {"error": "Database unavailable", "token": None}
+
+        try:
+            async with self._db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO prime_proposals (
+                        token, lat, lng, zone_code, zone_name, kbli_code,
+                        verdict_label, verdict_score, analysis_snapshot,
+                        investor_name, investor_email, investor_nationality
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                    RETURNING id, token, created_at, expires_at
+                    """,
+                    token, lat, lng, zone_code, zone_name, kbli_code,
+                    verdict_label, verdict_score,
+                    json.dumps(analysis_snapshot or {}, default=str),
+                    investor_name, investor_email, investor_nationality,
+                )
+                return {
+                    "id": row["id"],
+                    "token": row["token"],
+                    "created_at": row["created_at"].isoformat(),
+                    "expires_at": row["expires_at"].isoformat(),
+                    "status": "draft",
+                }
+        except Exception as exc:
+            logger.error("[PrimeNexus] Create proposal failed: %s", exc)
+            return {"error": str(exc), "token": None}
+
+    async def get_proposal(self, token: str) -> dict[str, Any] | None:
+        """Retrieve a proposal by token (public access)."""
+        if not self._db_pool:
+            return None
+
+        try:
+            async with self._db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT id, token, lat, lng, zone_code, zone_name, kbli_code,
+                           verdict_label, verdict_score, analysis_snapshot, pricing_snapshot,
+                           investor_name, investor_email, investor_nationality,
+                           status, created_at, expires_at, viewed_at
+                    FROM prime_proposals
+                    WHERE token = $1
+                    """,
+                    token,
+                )
+                if not row:
+                    return None
+
+                # Check expiry
+                from datetime import datetime, timezone
+                if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
+                    return {"error": "expired", "expired_at": row["expires_at"].isoformat()}
+
+                # Mark as viewed on first access
+                if not row["viewed_at"]:
+                    await conn.execute(
+                        "UPDATE prime_proposals SET viewed_at = NOW(), status = 'viewed' WHERE id = $1",
+                        row["id"],
+                    )
+
+                analysis = row["analysis_snapshot"]
+                if isinstance(analysis, str):
+                    analysis = json.loads(analysis)
+
+                return {
+                    "id": row["id"],
+                    "token": row["token"],
+                    "lat": row["lat"],
+                    "lng": row["lng"],
+                    "zone_code": row["zone_code"],
+                    "zone_name": row["zone_name"],
+                    "kbli_code": row["kbli_code"],
+                    "verdict_label": row["verdict_label"],
+                    "verdict_score": row["verdict_score"],
+                    "analysis": analysis,
+                    "investor_name": row["investor_name"],
+                    "status": row["status"],
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                    "expires_at": row["expires_at"].isoformat() if row["expires_at"] else None,
+                }
+        except Exception as exc:
+            logger.error("[PrimeNexus] Get proposal failed: %s", exc)
+            return None
+
+    # ── Layer 9: Portfolio Advisor ──────────────────────────────────
+
+    async def portfolio(self, client_id: int) -> dict[str, Any]:
+        """Layer 9: Aggregate portfolio view with health scoring and risk concentration."""
+        entities: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        suggestions: list[str] = []
+
+        if not self._db_pool:
+            return {"client_id": client_id, "entities": [], "risk_concentration": {},
+                    "suggestions": [], "overall_health": 0.0}
+
+        try:
+            async with self._db_pool.acquire() as conn:
+                # Get companies for this client
+                companies = await conn.fetch(
+                    """
+                    SELECT c.id, c.company_name, c.kbli_code, c.rdtr_zone_code,
+                           ST_Y(c.geo_point::geometry) AS lat, ST_X(c.geo_point::geometry) AS lng,
+                           c.status
+                    FROM companies c
+                    WHERE c.client_id = $1 AND c.geo_point IS NOT NULL
+                    """,
+                    client_id,
+                )
+                for comp in companies:
+                    health = 1.0
+                    issues: list[str] = []
+                    zone = comp["rdtr_zone_code"]
+                    if zone and zone in RESTRICTED_ZONES:
+                        health -= 0.3
+                        issues.append(f"Zone {zone} is restricted")
+                    entities.append({
+                        "type": "company", "id": comp["id"],
+                        "name": comp["company_name"] or f"Company #{comp['id']}",
+                        "zone_code": zone, "kbli_code": comp["kbli_code"],
+                        "lat": comp["lat"], "lng": comp["lng"],
+                        "status": comp["status"],
+                        "health_score": round(max(0, health), 2),
+                        "issues": issues,
+                    })
+
+                # Get practices with expiry
+                practices = await conn.fetch(
+                    """
+                    SELECT p.id, p.practice_type_code, p.status, p.expiry_date,
+                           p.notes
+                    FROM practices p
+                    WHERE p.client_id = $1 AND p.status NOT IN ('archived', 'completed')
+                    ORDER BY p.expiry_date ASC NULLS LAST
+                    LIMIT 20
+                    """,
+                    client_id,
+                )
+                for prac in practices:
+                    days_until_expiry = None
+                    health = 1.0
+                    issues_p: list[str] = []
+                    if prac["expiry_date"]:
+                        from datetime import date
+                        delta = prac["expiry_date"] - date.today()
+                        days_until_expiry = delta.days
+                        if days_until_expiry < 0:
+                            health -= 0.5
+                            issues_p.append("Expired")
+                        elif days_until_expiry < 30:
+                            health -= 0.3
+                            issues_p.append(f"Expires in {days_until_expiry} days")
+                            suggestions.append(f"Renew {prac['practice_type_code']} (expires in {days_until_expiry}d)")
+                        elif days_until_expiry < 90:
+                            health -= 0.1
+                            issues_p.append(f"Expires in {days_until_expiry} days")
+                    entities.append({
+                        "type": "practice", "id": prac["id"],
+                        "name": prac["practice_type_code"] or f"Practice #{prac['id']}",
+                        "status": prac["status"],
+                        "expiry_date": prac["expiry_date"].isoformat() if prac["expiry_date"] else None,
+                        "days_until_expiry": days_until_expiry,
+                        "health_score": round(max(0, health), 2),
+                        "issues": issues_p,
+                    })
+
+        except Exception as exc:
+            logger.warning("[PrimeNexus] Portfolio query failed: %s", exc)
+
+        # Risk concentration
+        from collections import Counter
+        zone_counts = Counter(e.get("zone_code") for e in entities if e.get("zone_code"))
+        kbli_counts = Counter(
+            (e.get("kbli_code") or "")[:2] for e in entities
+            if e.get("kbli_code") and e["type"] == "company"
+        )
+
+        zone_total = sum(zone_counts.values()) or 1
+        zone_concentration = {z: round(c / zone_total, 2) for z, c in zone_counts.most_common(5)}
+        kbli_total = sum(kbli_counts.values()) or 1
+        kbli_concentration = {k: round(c / kbli_total, 2) for k, c in kbli_counts.most_common(5)}
+
+        for zone, pct in zone_concentration.items():
+            if pct > 0.8:
+                warnings.append(f"{int(pct * 100)}% of companies in zone {zone} — consider diversifying")
+
+        # Overall health
+        health_scores = [e.get("health_score", 0.5) for e in entities]
+        overall = round(sum(health_scores) / len(health_scores), 2) if health_scores else 0.0
+
+        return {
+            "client_id": client_id,
+            "entities": entities,
+            "risk_concentration": {
+                "by_zone": zone_concentration,
+                "by_kbli": kbli_concentration,
+                "warnings": warnings,
+            },
+            "suggestions": suggestions,
+            "overall_health": overall,
+        }
 
     # ── Cache write ──────────────────────────────────────────────────
     async def _cache_zone(self, key: str, data: dict[str, Any]) -> None:

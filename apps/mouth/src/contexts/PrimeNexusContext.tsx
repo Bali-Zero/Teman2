@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useRef } from 
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-export type PrimeMode = 'invest' | 'crm' | 'intel';
+export type PrimeMode = 'invest' | 'crm' | 'intel' | 'temporal' | 'portfolio';
 
 export interface Coordinate {
   lat: number;

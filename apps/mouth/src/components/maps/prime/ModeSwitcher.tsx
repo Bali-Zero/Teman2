@@ -6,6 +6,8 @@ const MODES: { key: PrimeMode; label: string; icon: string; requiresAuth: boolea
   { key: 'invest', label: 'Invest', icon: '💰', requiresAuth: false },
   { key: 'crm', label: 'CRM', icon: '👥', requiresAuth: true },
   { key: 'intel', label: 'Intel', icon: '📊', requiresAuth: true },
+  { key: 'temporal', label: 'Tempo', icon: '📈', requiresAuth: true },
+  { key: 'portfolio', label: 'Folio', icon: '💼', requiresAuth: true },
 ];
 
 export function ModeSwitcher() {
