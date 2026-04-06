@@ -58,7 +58,7 @@ class SlowReasoner:
         self,
         ollama_url: str = "http://localhost:11434",
         ollama_model_fast: str = "qwen3.5:9b",
-        ollama_model_heavy: str = "qwen3.5:27b",
+        ollama_model_heavy: str = "gemma4:26b",
     ) -> None:
         self._ollama_url = ollama_url
         self._model_fast = ollama_model_fast

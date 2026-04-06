@@ -4,11 +4,11 @@ Ollama Local LLM Client
 Async client for local Ollama models with persistent HTTP connection.
   - MODEL_FAST  = qwen3.5:9b       (<0.5s, classification/titles)
   - MODEL_HEAVY = deepseek-r1:32b  (~30s, reasoning tasks — war-room, CELL)
-  - MODEL_KG    = qwen3.5:27b      (~5-8s, KG extraction — uses 2-step think fix)
-  - MODEL_JSON  = gemma3:12b       (reliable JSON output, scoring)
+  - MODEL_KG    = gemma4:26b       (~5-8s, KG extraction — MoE, agentic)
+  - MODEL_JSON  = gemma4:26b       (reliable JSON output, scoring)
 
 NOTE: DeepSeek-R1:32b NOT suitable for KG batch (106s/chunk = 0.6 chunks/min).
-      qwen3.5:27b with 2-step stop-at-</think> fix = ~8 chunks/min.
+      gemma4:26b MoE = efficient KG extraction.
 Used for cost-free tasks. Graceful fallback: if Ollama is unavailable, caller handles API fallback.
 
 S04 Solidification: persistent httpx.AsyncClient (was transient per-call).
@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 # Default models by task complexity
 MODEL_FAST = "qwen3.5:9b"   # <0.5s, classification/titles/short tasks
 MODEL_HEAVY = "deepseek-r1:32b"  # ~30s, reasoning tasks (war-room preprocessor, CELL reasoner)
-MODEL_KG = "qwen3.5:27b"    # ~5-8s, KG extraction (2-step fix required, see kg_incremental_extraction.py)
-MODEL_JSON = "gemma3:12b"   # Reliable JSON output, scoring
+MODEL_KG = "gemma4:26b"    # KG extraction — MoE (26B, ~4B active), replaces qwen3.5:27b
+MODEL_JSON = "gemma4:26b"   # Reliable JSON output, scoring — replaces gemma3:12b
 
 OLLAMA_BASE_URL = settings.ollama_url  # default: http://localhost:11434
 
@@ -160,7 +160,7 @@ async def ollama_chat_kg(
     timeout: float = 30.0,
 ) -> str | None:
     """
-    KG extraction via qwen3.5:27b using native Ollama API with think:false.
+    KG extraction via gemma4:26b using native Ollama API.
 
     NOTE: think:false works ONLY on native Ollama /api/chat endpoint (not OpenAI-compat).
     This function uses the native endpoint directly, bypassing the vLLM issue #37414.

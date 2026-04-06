@@ -6,10 +6,10 @@ Integrato con Google Drive per scaricare i file on-demand.
 Primary: Local Ollama qwen2.5vl:7b (free, ~30s per page, confirmed working)
 Fallback: Google Gemini 2.0 Flash Vision (API)
 
-NOTE: qwen3.5:27b/9b Q4_K_M quantization does NOT work for vision despite
+NOTE: qwen3.5 Q4_K_M quantization does NOT work for vision despite
       reporting "vision" capability. Use qwen2.5vl:7b instead.
-UPDATED 2026-03-09:
-- Switched from qwen3.5:27b to qwen2.5vl:7b (confirmed passport OCR working)
+UPDATED 2026-03-09: Switched to qwen2.5vl:7b (confirmed passport OCR working)
+UPDATED 2026-04-06: Local fleet now gemma4:26b + qwen3.5:9b + deepseek-r1:32b + qwen2.5vl:7b
 """
 
 import base64
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class PDFVisionService:
     """
     Servizio per analisi multimodale di PDF.
-    Ollama-first (qwen3.5:27b vision) con Gemini Flash fallback.
+    Ollama-first (qwen2.5vl:7b vision) con Gemini Flash fallback.
     Supporta download da Google Drive.
     """
 
@@ -139,7 +139,7 @@ class PDFVisionService:
             return f"Error analyzing page: {str(e)}"
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
-        """Analyze image using local Ollama qwen3.5:27b vision."""
+        """Analyze image using local Ollama qwen2.5vl:7b vision."""
         try:
             if not await is_ollama_available(self.ollama_model):
                 return None

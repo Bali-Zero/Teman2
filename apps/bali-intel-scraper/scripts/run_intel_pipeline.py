@@ -47,7 +47,7 @@ NEWS_ROOM_URL = "https://kita.balizero.com/intelligence/news-room"
 PIPELINE_STEPS = [
     '1_scraping',
     '2_validation',
-    '2.5_qwen_filter',   # LLM scoring — gemma3:12b, threshold quality_score >= 30 (configurable)
+    '2.5_qwen_filter',   # LLM scoring — gemma4:26b, threshold quality_score >= 30 (configurable)
     '2.6_quality_gate',  # 4-dimension quality gate: relevance, urgency, reliability, business impact
     '2.7_verification',  # Cross-check T1 sources + KB for regulatory articles
     '2.8_clustering',    # Semantic clustering — group articles by theme into dossiers
@@ -349,7 +349,7 @@ class IntelPipeline:
         return True
     
     def step_qwen_filter(self) -> bool:
-        """Step 2.5: LLM content quality scoring via Ollama (gemma3:12b or qwen3.5:27b).
+        """Step 2.5: LLM content quality scoring via Ollama (gemma4:26b).
 
         Evaluates each article for relevance to our audience (expats/investors
         in Indonesia) and assigns a quality score 0-100. Threshold: >= 30.
@@ -362,15 +362,15 @@ class IntelPipeline:
 
         self.log(f'Qwen filter: scoring {len(articles)} articles via Ollama...')
 
-        # Check Ollama availability — prefer gemma3:12b (reliable JSON output)
+        # Check Ollama availability — prefer gemma4:26b (MoE, reliable JSON output)
         import httpx as _httpx
         ollama_url = 'http://localhost:11434'
         ollama_model = None
         try:
             r = _httpx.get(f'{ollama_url}/api/tags', timeout=5)
             models = [m['name'] for m in r.json().get('models', [])]
-            # Prefer gemma3 (reliable JSON), fallback to qwen3
-            for candidate in ['gemma3:12b', 'qwen3.5:27b']:
+            # Prefer gemma4 (reliable JSON), fallback to qwen3.5:9b
+            for candidate in ['gemma4:26b', 'qwen3.5:9b']:
                 if any(candidate in m for m in models):
                     ollama_model = candidate
                     break

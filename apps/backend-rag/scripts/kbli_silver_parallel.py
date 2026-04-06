@@ -5,7 +5,7 @@ KBLI Silver Tier — Parallel 3-Worker Generator
 Splits 830 silver codes into 3 slices, runs Gemini 3.1 Pro Preview CLI
 in parallel (3 subprocesses), merges results into kbli-gold-all.json.
 
-Fallback chain per batch: Gemini CLI → Ollama qwen3.5:27b
+Fallback chain per batch: Gemini CLI → Ollama gemma4:26b
 
 Usage:
   python scripts/kbli_silver_parallel.py                    # full run
@@ -46,7 +46,7 @@ SILVER_OUTPUT_DIR = SCRIPT_DIR / "output" / "silver_workers"
 OUTPUT_DIR = SCRIPT_DIR / "output"
 
 OLLAMA_URL = "http://localhost:11434"
-MODEL_FALLBACK = "qwen3.5:27b"
+MODEL_FALLBACK = "gemma4:26b"
 
 GEMINI_CLI = "gemini"
 GEMINI_MODEL = "gemini-3.1-pro-preview"
@@ -411,7 +411,7 @@ def worker_generate(
 ) -> dict[str, dict]:
     """
     Generate silver content for a slice of codes.
-    Gemini CLI primary → Ollama qwen3.5:27b fallback.
+    Gemini CLI primary → Ollama gemma4:26b fallback.
     Returns {code: {whatItMeans, baliContext, zantaraOpener, ...full entry}}.
     """
     results: dict[str, dict] = {}

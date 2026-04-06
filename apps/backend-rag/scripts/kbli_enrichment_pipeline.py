@@ -60,9 +60,9 @@ QDRANT_COLLECTION = "kbli_2025_final_hybrid"
 OLLAMA_URL = "http://localhost:11434"
 
 MODEL_CLASSIFY = "qwen3.5:9b"
-MODEL_GOLD = "qwen3.5:27b"
+MODEL_GOLD = "gemma4:26b"
 MODEL_SILVER = "qwen3.5:9b"
-MODEL_BRONZE = "gemma3:12b"
+MODEL_BRONZE = "gemma4:26b"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -668,7 +668,7 @@ def _generate_with_gemini_or_ollama(
 def generate_content_gold(codes: list[dict], batch_size: int = 5) -> dict[str, dict]:
     """
     Generate 3 narrative fields for gold-tier codes.
-    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: qwen3.5:27b Ollama.
+    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Gold: PMA-eligible, high-traffic — 800-1000 words guide.
     """
     results: dict[str, dict] = {}
@@ -740,7 +740,7 @@ def generate_content_silver(codes: list[dict], batch_size: int = 8) -> dict[str,
 def generate_content_bronze(codes: list[dict], batch_size: int = 10) -> dict[str, dict]:
     """
     Generate minimal content (whatItMeans only) for bronze-tier codes.
-    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma3:12b Ollama.
+    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Bronze: 100-200 word basic description.
     """
     results: dict[str, dict] = {}
