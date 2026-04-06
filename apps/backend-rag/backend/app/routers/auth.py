@@ -109,7 +109,11 @@ async def get_current_user(
     )
 
     try:
-        payload = jwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        # S03: Two-phase JWT expiry enforcement
+        payload = jwt.decode(
+            credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM],
+            options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
+        )
         user_id: str = payload.get("sub")
         email: str = payload.get("email")
         if user_id is None or email is None:
