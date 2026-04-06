@@ -62,6 +62,7 @@ class HybridSearchService:
         self,
         collection_manager: CollectionManager | None = None,
         bm25_vectorizer: BM25Vectorizer | None = None,
+        embedder: Any | None = None,
     ) -> None:
         """
         Initialize HybridSearchService.
@@ -69,8 +70,17 @@ class HybridSearchService:
         Args:
             collection_manager: CollectionManager instance (auto-created if None)
             bm25_vectorizer: BM25Vectorizer instance (auto-created if None)
+            embedder: EmbeddingsGenerator instance (auto-created if None).
+                      Reused across searches to avoid creating new HTTP clients per request.
         """
         logger.info("Initializing HybridSearchService...")
+
+        # Initialize embedder (reuse across all search calls)
+        if embedder is not None:
+            self._embedder = embedder
+        else:
+            from backend.core.embeddings import create_embeddings_generator
+            self._embedder = create_embeddings_generator()
 
         # Initialize collection manager
         qdrant_url = settings.qdrant_url
@@ -328,11 +338,8 @@ class HybridSearchService:
             if has_native_hybrid and query_sparse and query_sparse.get("indices"):
                 # Use Qdrant's native hybrid search with RRF
                 try:
-                    # Generate dense embedding
-                    from backend.core.embeddings import create_embeddings_generator
-
-                    embedder = create_embeddings_generator()
-                    query_embedding = await embedder.generate_query_embedding(query)
+                    # Generate dense embedding (reuse init-time embedder)
+                    query_embedding = await self._embedder.generate_query_embedding(query)
 
                     raw_results = await vector_db.hybrid_search(
                         query_embedding=query_embedding,
@@ -426,10 +433,7 @@ class HybridSearchService:
         Returns:
             Tuple of (search_type, results, bm25_used)
         """
-        from backend.core.embeddings import create_embeddings_generator
-
-        embedder = create_embeddings_generator()
-        query_embedding = await embedder.generate_query_embedding(query)
+        query_embedding = await self._embedder.generate_query_embedding(query)
 
         # Determine vector name for collections with named vectors
         from backend.services.search.search_service import _uses_named_vectors
@@ -536,11 +540,8 @@ class HybridSearchService:
         start_time = time.time()
 
         try:
-            # Get embedder
-            from backend.core.embeddings import create_embeddings_generator
-
-            embedder = create_embeddings_generator()
-            query_embedding = await embedder.generate_query_embedding(query)
+            # Get embedding (reuse init-time embedder)
+            query_embedding = await self._embedder.generate_query_embedding(query)
 
             # Get collection
             vector_db = self.collection_manager.get_collection(collection)

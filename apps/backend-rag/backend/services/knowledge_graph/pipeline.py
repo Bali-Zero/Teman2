@@ -38,7 +38,7 @@ class PipelineConfig:
     api_key: str | None = None
 
     # Extractor type: "claude" or "gemini"
-    extractor_type: str = "claude"
+    extractor_type: str = "gemini"
 
     # Extraction settings
     two_stage_extraction: bool = False  # Faster single-stage by default
@@ -371,7 +371,7 @@ class KGPipeline:
                     )
                     self.stats.relations_persisted += 1
                 except Exception as e:
-                    logger.debug(f"Failed to persist relation {rel_id}: {e}")
+                    logger.warning(f"Failed to persist relation {rel_id}: {e}")
 
     async def process_batch(
         self,

@@ -83,7 +83,7 @@ async def _resolve_desa_code_from_latlng(lat: float, lng: float, gmaps_api_key: 
     }
     try:
         client = _get_client(verify=True)
-        resp = await client.get(_GMAPS_GEOCODE_URL, params=params, timeout=10.0)
+        resp = await client.get(_GMAPS_GEOCODE_URL, params=params, timeout=5.0)
         resp.raise_for_status()
         data = resp.json()
 
@@ -116,7 +116,7 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
     url = _BADUNG_TERRITORIAL_URL.format(code=desa_code)
     try:
         client = _get_client(verify=False)
-        resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30.0)
+        resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5.0)
         if resp.status_code != 200:
             logger.warning(f"⚠️ [Zoning] Badung API error for {desa_code}: {resp.status_code}")
             return 0

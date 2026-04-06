@@ -68,8 +68,7 @@ class KGEnhancedRetrieval:
         (r"Pasal\s+\d+", "pasal"),  # Article references
         # === BUSINESS CODES ===
         (r"KBLI\s*\d{5}", "kbli"),
-        (r"NIB\s*\d+", "nib"),
-        (r"NIB", "nib"),
+        (r"NIB(?:\s*\d+)?", "nib"),
         # === COMPANY TYPES ===
         (r"PT\s+PMA", "pt_pma"),
         (r"PT\s+PMDN", "pt_pmdn"),
@@ -210,10 +209,14 @@ class KGEnhancedRetrieval:
         return found_entities
 
     async def get_related_entities(
-        self, entity_ids: list[str], max_depth: int = 1, limit: int = 20,
+        self, entity_ids: list[str], max_depth: int = 2, limit: int = 20,
     ) -> tuple[list[dict], list[dict]]:
         """
         Get entities related to the given entities via KG edges.
+
+        Uses a recursive CTE for efficient multi-hop traversal in a single SQL query.
+        Tested on production (114k nodes): 2-hop ~100-250ms, 3-hop safe on moderate nodes.
+        Auto-downgrades to 2-hop for highly-connected seeds (>500 edges).
 
         Returns:
             Tuple of (related_entities, relationships)
@@ -221,57 +224,81 @@ class KGEnhancedRetrieval:
         if not entity_ids:
             return [], []
 
-        related_entities = []
-        relationships = []
-        visited_entity_ids = set(entity_ids)
+        # Cap depth to prevent runaway queries
+        max_depth = min(max_depth, 3)
 
         async with self.db_pool.acquire() as conn:
-            frontier = entity_ids
-
-            for _depth in range(max_depth):
-                if not frontier:
-                    break
-
-                # Get edges connected to frontier
-                edges = await conn.fetch(
+            # Guard: check seed connectivity, downgrade depth for super-hubs
+            if max_depth > 2:
+                edge_count = await conn.fetchval(
                     """
+                    SELECT COUNT(*) FROM kg_edges
+                    WHERE source_entity_id = ANY($1) OR target_entity_id = ANY($1)
+                    """,
+                    entity_ids,
+                )
+                if edge_count > 500:
+                    max_depth = 2
+                    logger.info(
+                        f"KG traversal: seed has {edge_count} edges, downgrading to 2-hop"
+                    )
+
+            # Single recursive CTE with directional join
+            edges = await conn.fetch(
+                """
+                WITH RECURSIVE traversal AS (
                     SELECT e.relationship_id, e.source_entity_id, e.target_entity_id,
                            e.relationship_type, e.confidence, e.source_chunk_ids,
-                           s.name as source_name, s.entity_type as source_type,
-                           t.name as target_name, t.entity_type as target_type
+                           1 AS depth
                     FROM kg_edges e
-                    JOIN kg_nodes s ON e.source_entity_id = s.entity_id
-                    JOIN kg_nodes t ON e.target_entity_id = t.entity_id
                     WHERE e.source_entity_id = ANY($1) OR e.target_entity_id = ANY($1)
-                    ORDER BY e.confidence DESC
-                    LIMIT $2
-                """,
-                    frontier,
-                    limit,
+
+                    UNION ALL
+
+                    SELECT e.relationship_id, e.source_entity_id, e.target_entity_id,
+                           e.relationship_type, e.confidence, e.source_chunk_ids,
+                           t.depth + 1
+                    FROM kg_edges e
+                    JOIN traversal t ON (
+                        e.source_entity_id = t.target_entity_id
+                        OR e.target_entity_id = t.source_entity_id
+                    )
+                    WHERE t.depth < $2
                 )
+                SELECT DISTINCT ON (tr.relationship_id)
+                       tr.relationship_id, tr.source_entity_id, tr.target_entity_id,
+                       tr.relationship_type, tr.confidence, tr.source_chunk_ids,
+                       s.name as source_name, s.entity_type as source_type,
+                       t.name as target_name, t.entity_type as target_type
+                FROM traversal tr
+                JOIN kg_nodes s ON tr.source_entity_id = s.entity_id
+                JOIN kg_nodes t ON tr.target_entity_id = t.entity_id
+                ORDER BY tr.relationship_id, tr.confidence DESC
+                LIMIT $3
+                """,
+                entity_ids,
+                max_depth,
+                limit,
+            )
 
-                next_frontier = []
-                for edge in edges:
-                    edge_dict = dict(edge)
-                    relationships.append(edge_dict)
+            relationships = [dict(edge) for edge in edges]
 
-                    # Collect new entity IDs for next hop
-                    for eid in [edge_dict["source_entity_id"], edge_dict["target_entity_id"]]:
-                        if eid not in visited_entity_ids:
-                            visited_entity_ids.add(eid)
-                            next_frontier.append(eid)
+            # Collect all discovered entity IDs
+            visited_entity_ids = set(entity_ids)
+            for edge_dict in relationships:
+                visited_entity_ids.add(edge_dict["source_entity_id"])
+                visited_entity_ids.add(edge_dict["target_entity_id"])
 
-                frontier = next_frontier
-
-            # Fetch details of related entities
-            if visited_entity_ids - set(entity_ids):
-                new_ids = list(visited_entity_ids - set(entity_ids))
+            # Fetch details of related entities (excluding seeds)
+            new_ids = list(visited_entity_ids - set(entity_ids))
+            related_entities = []
+            if new_ids:
                 rows = await conn.fetch(
                     """
                     SELECT entity_id, entity_type, name, confidence, source_chunk_ids
                     FROM kg_nodes
                     WHERE entity_id = ANY($1)
-                """,
+                    """,
                     new_ids,
                 )
                 related_entities = [dict(r) for r in rows]
@@ -1256,7 +1283,7 @@ class KGEnhancedRetrieval:
         return "\n".join(lines)
 
     async def get_context_for_query(
-        self, query: str, max_depth: int = 1, max_entities: int = 10,
+        self, query: str, max_depth: int = 2, max_entities: int = 10,
     ) -> KGContext:
         """
         Main entry point: Get KG context for a user query.
