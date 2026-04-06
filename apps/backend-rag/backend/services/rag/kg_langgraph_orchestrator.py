@@ -32,7 +32,22 @@ from backend.services.rag.kg_subgraph_property import build_property_subgraph
 from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
 from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
 
+from prometheus_client import Counter, Histogram
+
 logger = logging.getLogger(__name__)
+
+kg_subgraph_duration_seconds = Histogram(
+    "kg_subgraph_duration_seconds",
+    "Domain subgraph execution duration",
+    ["domain"],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+kg_subgraph_requests_total = Counter(
+    "kg_subgraph_requests_total",
+    "Domain subgraph invocations",
+    ["domain", "status"],  # status: success, cache_hit, error
+)
 
 try:
     from langgraph.checkpoint.postgres import PostgresSaver
@@ -323,13 +338,23 @@ async def invoke_subgraph(
     if cached_workflow is not None:
         state["workflow"] = cached_workflow
         workflow_name = cached_workflow.get("name", "cached")
+        kg_subgraph_requests_total.labels(domain=domain_lower, status="cache_hit").inc()
         logger.info(f"⚡ [{domain_name}Subgraph] Cache hit: {workflow_name}")
         return state
 
     logger.info(f"{domain_emoji} [{domain_name}Subgraph] Invoking {domain_name} Subgraph...")
+    import time as _time
+    _subgraph_start = _time.time()
 
-    subgraph_result = await compiled_subgraph.ainvoke(state)
-    state["workflow"] = subgraph_result.get("workflow")
+    try:
+        subgraph_result = await compiled_subgraph.ainvoke(state)
+        state["workflow"] = subgraph_result.get("workflow")
+        kg_subgraph_requests_total.labels(domain=domain_lower, status="success").inc()
+    except Exception:
+        kg_subgraph_requests_total.labels(domain=domain_lower, status="error").inc()
+        raise
+    finally:
+        kg_subgraph_duration_seconds.labels(domain=domain_lower).observe(_time.time() - _subgraph_start)
 
     workflow_name = state["workflow"]["name"] if state.get("workflow") else "None"
     logger.info(f"✅ [{domain_name}Subgraph] Workflow synthesized: {workflow_name}")

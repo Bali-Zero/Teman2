@@ -27,7 +27,22 @@ from langgraph.graph import END, START, StateGraph
 from backend.services.pricing.pricing_service import PricingService, get_pricing_service
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 
+from prometheus_client import Counter, Histogram
+
 logger = logging.getLogger(__name__)
+
+multi_agent_duration_seconds = Histogram(
+    "multi_agent_duration_seconds",
+    "Multi-agent individual agent execution duration",
+    ["agent"],
+    buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 20.0],
+)
+
+multi_agent_requests_total = Counter(
+    "multi_agent_requests_total",
+    "Multi-agent coordinator invocations",
+    ["status"],  # success, error
+)
 
 # Lazy imports for LLM providers (matching kg_langgraph_orchestrator.py pattern)
 try:

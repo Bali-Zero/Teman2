@@ -62,6 +62,12 @@ kg_checkpoint_operations_total = Counter(
     ["operation"],  # save, load, resume
 )
 
+kg_entity_resolution_total = Counter(
+    "kg_entity_resolution_total",
+    "Entity resolution outcomes",
+    ["outcome"],  # cache_hit, exact_match, fuzzy_match, miss
+)
+
 
 # ============================================================================
 # Node 1: Query Understanding
@@ -436,6 +442,7 @@ async def resolve_entities_node(
         if cached is not None:
             entity_ids.append(cached["entity_id"])
             confidence_scores[cached["entity_id"]] = cached["confidence"]
+            kg_entity_resolution_total.labels(outcome="cache_hit").inc()
             logger.info(f"⚡ [Resolve] Cache hit: {entity_str} → {cached['entity_id']}")
             continue
 
@@ -475,6 +482,7 @@ async def resolve_entities_node(
                     await cache.set_resolved_entity(
                         entity_str, {"entity_id": eid, "confidence": conf},
                     )
+                    kg_entity_resolution_total.labels(outcome="exact_match").inc()
                     logger.info(f"✅ [Resolve] Exact match: {entity_str} → {eid}")
                 else:
                     fuzzy_needed.append(entity_str)
@@ -519,6 +527,7 @@ async def resolve_entities_node(
                     await cache.set_resolved_entity(
                         entity_str, {"entity_id": eid, "confidence": conf},
                     )
+                    kg_entity_resolution_total.labels(outcome="fuzzy_match").inc()
                     logger.info(
                         f"🔍 [Resolve] Fuzzy match: {entity_str} → {eid} "
                         f"(sim: {best['sim_score']:.2f}, type: {best['entity_type']})",
@@ -526,6 +535,7 @@ async def resolve_entities_node(
                 else:
                     # Cache the miss too (avoids repeated DB lookups for unknown entities)
                     await cache.set_resolved_entity(entity_str, {"entity_id": "", "confidence": 0})
+                    kg_entity_resolution_total.labels(outcome="miss").inc()
                     logger.warning(f"⚠️ [Resolve] No match found for: {entity_str}")
 
     state["current_entities"] = entity_ids

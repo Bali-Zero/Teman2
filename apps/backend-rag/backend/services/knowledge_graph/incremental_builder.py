@@ -247,6 +247,8 @@ class KGIncrementalBuilder:
                         f"{stats.get('relationships_extracted', 0)} relationships "
                         f"(remaining: {max_chunks_remaining} chunks)",
                     )
+                    # Rate limit: wait between collections to respect MAX_RPM
+                    await asyncio.sleep(60.0 / self.MAX_RPM)
                     break  # Success, move to next collection
 
                 except Exception as e:
