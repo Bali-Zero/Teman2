@@ -213,12 +213,13 @@ async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[
     headers = {"Content-Type": "application/json"}
     if settings.qdrant_api_key:
         headers["api-key"] = settings.qdrant_api_key
-    url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/search"
-    payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
+    url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/query"
+    payload = {"query": query_embedding, "using": "dense", "limit": limit, "with_payload": True}
     client = _get_kbli_client()
     resp = await client.post(url, json=payload, headers=headers)
     resp.raise_for_status()
-    return resp.json().get("result", [])
+    data = resp.json()
+    return data.get("result", {}).get("points", data.get("result", []))
 
 
 def get_kbli_ttl(code: str) -> int:
