@@ -2,13 +2,14 @@ from enum import Enum
 
 from backend.llm.adapters.base import ModelAdapter
 from backend.llm.adapters.gemini import GeminiAdapter
+from backend.llm.config import ModelName
 
 
 class ModelType(Enum):
-    """Active models only - updated 2026-04-06 (Gemini 3 Flash GA)"""
+    """Active models — values from centralized ModelName config."""
 
-    GEMINI_FLASH = "gemini-3-flash"  # Primary tier (GA Dec 2025)
-    GEMINI_FLASH_FALLBACK = "gemini-2.5-flash"  # Fallback tier
+    GEMINI_FLASH = ModelName.PRIMARY
+    GEMINI_FLASH_FALLBACK = ModelName.FALLBACK
 
 
 ADAPTER_REGISTRY = {
