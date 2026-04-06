@@ -223,3 +223,52 @@ class TestDevSecretsRemoved:
 
         source = inspect.getsource(Settings.validate_api_keys)
         assert "dev_api_key_for_testing_only" not in source
+
+
+class TestFullAuthFlowS03:
+    """Integration: verify entire auth flow with S03 hardening."""
+
+    def test_new_token_has_all_s03_claims(self):
+        """Tokens created after S03 have exp, iat, jti, type claims."""
+        from backend.app.routers.auth import create_access_token
+        from backend.app.core.config import settings
+
+        token = create_access_token(
+            data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
+        )
+        payload = jose_jwt.decode(
+            token, settings.jwt_secret_key, algorithms=["HS256"],
+        )
+
+        assert "exp" in payload
+        assert "iat" in payload
+        assert "jti" in payload
+        assert payload["type"] == "access"
+
+    def test_new_token_accepted_by_deps_auth(self):
+        """Token from create_access_token passes get_current_user."""
+        from backend.app.routers.auth import create_access_token
+        from backend.app.deps.auth import get_current_user
+
+        token = create_access_token(
+            data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
+        )
+
+        request = MagicMock()
+        request.state = MagicMock(spec=[])
+        creds = MagicMock()
+        creds.credentials = token
+
+        user = get_current_user(request, creds)
+        assert user["email"] == "zero@balizero.com"
+        assert user["role"] == "admin"
+        assert user.get("_warn_expired") is None  # not expired
+
+    def test_api_key_legacy_still_works(self):
+        """Legacy API key validation unchanged by S03."""
+        from backend.app.services.api_key_auth import APIKeyAuth
+
+        auth = APIKeyAuth()
+        result = auth.validate_api_key("test_api_key_1")
+        assert result is not None
+        assert result["auth_method"] == "api_key"
