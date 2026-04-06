@@ -200,10 +200,13 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
                 SELECT n.entity_id, n.name, n.properties
                 FROM kg_edges e
                 JOIN kg_nodes n ON e.target_entity_id = n.entity_id
-                WHERE e.source_entity_id = $1
-                  AND e.relationship_type = 'HAS_TAX'
+                WHERE e.source_entity_id IN (
+                    SELECT entity_id FROM kg_nodes
+                    WHERE entity_type = $1
+                )
+                AND e.relationship_type IN ('TAX_OBLIGATION', 'HAS_TAX')
                 """,
-                f"company:{entity_type}",
+                entity_type,
             )
 
             if isinstance(rows, list) and len(rows) > 0:

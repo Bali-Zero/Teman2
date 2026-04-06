@@ -122,8 +122,8 @@ ENTITY_TYPE_CORRECTIONS = {
     "imb": EntityType.IZIN_USAHA,
     "imta": EntityType.IZIN_USAHA,
     "rptka": EntityType.IZIN_USAHA,
-    "kitas": EntityType.VISA,
-    "kitap": EntityType.VISA,
+    "kitas": EntityType.KITAS,
+    "kitap": EntityType.KITAP,
     "visa": EntityType.VISA,
 }
 

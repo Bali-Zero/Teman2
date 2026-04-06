@@ -500,13 +500,17 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                     SELECT n.entity_id, n.name, n.properties, e.relationship_type
                     FROM kg_edges e
                     JOIN kg_nodes n ON e.target_entity_id = n.entity_id
-                    WHERE e.source_entity_id = $1
-                      AND e.relationship_type IN (
-                          'HAS_REQUIREMENT', 'REQUIRES_ENTITY',
-                          'ALLOWS_OWNERSHIP', 'HAS_FEE'
-                      )
+                    WHERE e.source_entity_id IN (
+                        SELECT entity_id FROM kg_nodes
+                        WHERE LOWER(name) LIKE $1
+                          AND entity_type IN ('izin_usaha', 'hak_pakai', 'hgb', 'property')
+                    )
+                    AND e.relationship_type IN (
+                        'HAS_REQUIREMENT', 'REQUIRES', 'REQUIRES_ENTITY',
+                        'ALLOWS_OWNERSHIP', 'HAS_FEE'
+                    )
                     """,
-                    f"property_type:{prop_type}",
+                    f"%{prop_type.replace('_', ' ')}%",
                 )
 
                 if rows:
