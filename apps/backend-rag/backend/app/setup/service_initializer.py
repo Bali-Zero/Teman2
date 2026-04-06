@@ -97,8 +97,27 @@ async def _init_critical_services(
         app.state.cultural_insights = cultural_insights
         app.state.query_router = query_router
         app.state.search_service = search_service
-        service_registry.register("search", ServiceStatus.HEALTHY)
-        logger.info("✅ SearchService initialized")
+
+        # Verify Qdrant is actually reachable before registering as HEALTHY
+        try:
+            import httpx as _httpx
+
+            _headers = {}
+            if settings.qdrant_api_key:
+                _headers["api-key"] = settings.qdrant_api_key
+            async with _httpx.AsyncClient(
+                base_url=settings.qdrant_url, headers=_headers, timeout=5.0,
+            ) as _qdrant_check:
+                _resp = await _qdrant_check.get("/collections")
+                _resp.raise_for_status()
+            service_registry.register("search", ServiceStatus.HEALTHY)
+            logger.info("✅ SearchService initialized (Qdrant verified)")
+        except Exception as qdrant_err:
+            service_registry.register(
+                "search", ServiceStatus.DEGRADED,
+                error=f"SearchService OK but Qdrant unreachable: {qdrant_err}",
+            )
+            logger.warning(f"⚠️ SearchService initialized but Qdrant unreachable: {qdrant_err}")
     except (ValueError, ConnectionError, RuntimeError) as e:
         error_msg = str(e)
         service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
@@ -293,14 +312,18 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             dsn = settings.database_url
             ssl_context = None
 
-            # Handle sslmode=disable manually for asyncpg
-            if "sslmode=disable" in dsn:
-                dsn = dsn.replace("?sslmode=disable", "").replace("&sslmode=disable", "")
+            # Handle sslmode= manually for asyncpg (which doesn't support sslmode in DSN)
+            from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
+            parsed = urlparse(dsn)
+            params = parse_qs(parsed.query)
+            sslmode = params.pop("sslmode", [None])[0]
+            if sslmode == "disable":
                 ssl_context = False
                 logger.info("DEBUG: Detected sslmode=disable, setting ssl=False explicitly")
-            elif "sslmode=require" in dsn:
-                # let asyncpg handle default SSL or configure context if needed
-                pass
+            # Rebuild DSN without sslmode
+            clean_query = urlencode(params, doseq=True)
+            dsn = urlunparse(parsed._replace(query=clean_query))
 
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn: asyncpg.Connection) -> None:
@@ -1225,8 +1248,7 @@ async def initialize_services_light(app: FastAPI) -> None:
 
     # 1. Database pool (CRITICAL)
     try:
-        import asyncpg as _asyncpg
-        db_pool = await _asyncpg.create_pool(
+        db_pool = await asyncpg.create_pool(
             dsn=settings.database_url,
             min_size=2,
             max_size=10,

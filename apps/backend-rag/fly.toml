@@ -53,7 +53,7 @@ primary_region = 'sin'
     timeout = '10s'
     grace_period = '60s'
     method = 'GET'
-    path = '/health'
+    path = '/health/ready'
 
 [[services]]
   internal_port = 8080

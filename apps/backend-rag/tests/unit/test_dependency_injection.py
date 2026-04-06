@@ -41,7 +41,7 @@ async def test_get_orchestrator_lazy_initialization(mock_request):
 
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
         with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
-            result = get_orchestrator(mock_request)
+            result = await get_orchestrator(mock_request)
             assert result == mock_orchestrator
 
 
@@ -56,9 +56,9 @@ async def test_get_orchestrator_instance_reuse(mock_request):
     with patch("backend.services.rag.agentic.create_agentic_rag", return_value=mock_orchestrator):
         with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
             # First call
-            result1 = get_orchestrator(mock_request)
+            result1 = await get_orchestrator(mock_request)
             # Second call
-            result2 = get_orchestrator(mock_request)
+            result2 = await get_orchestrator(mock_request)
 
             assert result1 == mock_orchestrator
             assert result2 == mock_orchestrator
@@ -76,7 +76,7 @@ async def test_get_orchestrator_initialization_error(mock_request):
     ):
         with patch("backend.app.deps.orchestrator._agentic_rag_orchestrator", None):
             with pytest.raises(Exception, match="Init error"):
-                get_orchestrator(mock_request)
+                await get_orchestrator(mock_request)
 
 
 # ============================================================================
