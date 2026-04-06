@@ -923,7 +923,7 @@ async def get_practice(
                     JOIN clients c ON p.client_id = c.id
                     JOIN practice_types pt ON p.practice_type_id = pt.id
                     WHERE p.id = $1
-                      AND (c.assigned_to = $2 OR p.created_by = $2)
+                      AND (p.assigned_to = $2 OR c.assigned_to = $2 OR p.created_by = $2)
                     """,
                     practice_id,
                     user_email,
@@ -1169,7 +1169,12 @@ async def update_practice(
                     )
 
                     notif_service = PortalNotificationService(db_pool)
-                    practice_type = updated_practice.get("practice_type", "Practice")
+                    # RETURNING * only has practice_type_id (FK), not the code/name
+                    pt_row = await conn.fetchrow(
+                        "SELECT code FROM practice_types WHERE id = $1",
+                        updated_practice.get("practice_type_id"),
+                    )
+                    practice_type = (pt_row["code"] if pt_row else None) or "Practice"
                     asyncio.create_task(
                         notif_service.notify_practice_status_changed(
                             client_id=practice_client_id,
@@ -1224,7 +1229,7 @@ async def update_practice(
                 )
 
             # 🚀 Waiting Documents Automation: Trigger when status changes to 'waiting_documents'
-            if updates.status == "waiting_documents":
+            if updates.status == "waiting_documents" and old_status != "waiting_documents":
                 from backend.services.crm.waiting_documents_service import WaitingDocumentsService
 
                 waiting_docs_service = WaitingDocumentsService(db_pool)
@@ -1237,7 +1242,7 @@ async def update_practice(
                 logger.info(f"🚀 Waiting documents automation triggered for practice {practice_id}")
 
             # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
-            if updates.status == "sending_invoice":
+            if updates.status == "sending_invoice" and old_status != "sending_invoice":
                 invoice_service = InvoiceAutomationService(db_pool)
                 # Run in background to not block the response
                 asyncio.create_task(
@@ -1249,7 +1254,7 @@ async def update_practice(
                 logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
 
             # 🚀 Process Start Automation: Trigger when status changes to 'on_process'
-            if updates.status == "on_process":
+            if updates.status == "on_process" and old_status != "on_process":
                 from backend.services.crm.process_automation_service import ProcessAutomationService
 
                 process_service = ProcessAutomationService(db_pool)
@@ -1262,7 +1267,7 @@ async def update_practice(
                 logger.info(f"🚀 Process start automation triggered for practice {practice_id}")
 
             # 🚀 Process Completion Automation: Trigger when status changes to 'completed'
-            if updates.status == "completed":
+            if updates.status == "completed" and old_status != "completed":
                 from backend.services.crm.completed_process_service import CompletedProcessService
 
                 completion_service = CompletedProcessService(db_pool)
