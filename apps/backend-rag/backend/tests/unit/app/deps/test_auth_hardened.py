@@ -148,3 +148,58 @@ class TestJWTExpiryValidation:
             with pytest.raises(HTTPException) as exc_info:
                 get_current_user(request, creds)
             assert exc_info.value.status_code == 401
+
+
+class TestValidationModuleExpiry:
+    """Test JWT expiry in auth/validation.py (used by HybridAuthMiddleware)."""
+
+    def _make_token(self, exp_delta: timedelta) -> str:
+        from backend.app.core.config import settings
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": "user-1",
+            "email": "test@balizero.com",
+            "role": "admin",
+            "exp": now + exp_delta,
+            "iat": now,
+            "jti": "test-jti-002",
+            "type": "access",
+        }
+        return jose_jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+
+    def _get_secret(self) -> str:
+        from backend.app.core.config import settings
+        return settings.jwt_secret_key
+
+    @pytest.mark.asyncio
+    async def test_valid_token_returns_user(self):
+        from backend.app.auth.validation import validate_auth_token
+        token = self._make_token(exp_delta=timedelta(hours=1))
+        result = await validate_auth_token(token)
+        assert result is not None
+        assert result["email"] == "test@balizero.com"
+
+    @pytest.mark.asyncio
+    async def test_expired_token_audit_mode_returns_user_with_flag(self):
+        from backend.app.auth.validation import validate_auth_token
+        token = self._make_token(exp_delta=timedelta(hours=-1))
+        real_secret = self._get_secret()
+        with patch("backend.app.auth.validation.settings") as mock_settings:
+            mock_settings.jwt_secret_key = real_secret
+            mock_settings.jwt_algorithm = "HS256"
+            mock_settings.jwt_enforce_expiry = False
+            result = await validate_auth_token(token)
+            assert result is not None
+            assert result.get("_warn_expired") is True
+
+    @pytest.mark.asyncio
+    async def test_expired_token_enforce_mode_returns_none(self):
+        from backend.app.auth.validation import validate_auth_token
+        token = self._make_token(exp_delta=timedelta(hours=-1))
+        real_secret = self._get_secret()
+        with patch("backend.app.auth.validation.settings") as mock_settings:
+            mock_settings.jwt_secret_key = real_secret
+            mock_settings.jwt_algorithm = "HS256"
+            mock_settings.jwt_enforce_expiry = True
+            result = await validate_auth_token(token)
+            assert result is None
