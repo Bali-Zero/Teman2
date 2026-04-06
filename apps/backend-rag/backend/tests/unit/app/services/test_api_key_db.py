@@ -86,3 +86,65 @@ class TestAPIKeyDBResolution:
         call_args = mock_conn.execute.call_args
         assert "INSERT INTO api_key_records" in call_args[0][0]
         assert call_args[0][2] == "migrated_test_api"  # first 8 chars of key as name
+
+    @pytest.mark.asyncio
+    async def test_enhanced_validation_uses_db_first(self):
+        """Enhanced validation should try DB before legacy fallback."""
+        from backend.app.services.api_key_auth import APIKeyAuth
+
+        auth = APIKeyAuth()
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value={
+            "role": "readonly",
+            "permissions": ["read"],
+            "is_active": True,
+        })
+        mock_conn.execute = AsyncMock()
+
+        result = await auth.validate_api_key_enhanced("test_api_key_1", mock_conn)
+        assert result is not None
+        assert result["role"] == "readonly"  # DB role, not legacy name-based
+
+    @pytest.mark.asyncio
+    async def test_enhanced_validation_falls_back_to_legacy(self):
+        """Enhanced validation falls back to legacy when DB returns nothing."""
+        from backend.app.services.api_key_auth import APIKeyAuth
+
+        auth = APIKeyAuth()
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=None)
+        mock_conn.execute = AsyncMock()
+
+        result = await auth.validate_api_key_enhanced("test_api_key_1", mock_conn)
+        assert result is not None
+        assert result["role"] == "user"  # legacy name-based role
+
+    @pytest.mark.asyncio
+    async def test_enhanced_validation_auto_migrates_on_fallback(self):
+        """Enhanced validation triggers auto-migration when falling back to legacy."""
+        from backend.app.services.api_key_auth import APIKeyAuth
+
+        auth = APIKeyAuth()
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value=None)
+        mock_conn.execute = AsyncMock()
+
+        await auth.validate_api_key_enhanced("test_api_key_1", mock_conn)
+
+        # auto_migrate_key should have been called
+        assert mock_conn.execute.call_count >= 1
+        call_sql = mock_conn.execute.call_args[0][0]
+        assert "INSERT INTO api_key_records" in call_sql
+
+    @pytest.mark.asyncio
+    async def test_enhanced_validation_works_without_conn(self):
+        """Enhanced validation works without DB connection (pure legacy)."""
+        from backend.app.services.api_key_auth import APIKeyAuth
+
+        auth = APIKeyAuth()
+        result = await auth.validate_api_key_enhanced("test_api_key_1", conn=None)
+        assert result is not None
+        assert result["role"] == "user"  # legacy path
