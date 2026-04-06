@@ -212,8 +212,9 @@ class BM25Vectorizer:
         Returns:
             Integer index in [0, vocab_size)
         """
-        # Use built-in hash, make it positive, and mod by vocab size
-        return abs(hash(token)) % self.vocab_size
+        # Deterministic hash (Python hash() is randomized per-process)
+        import hashlib
+        return int(hashlib.md5(token.encode()).hexdigest(), 16) % self.vocab_size
 
     def _calculate_tf(self, token_count: int, doc_length: int) -> float:
         """
