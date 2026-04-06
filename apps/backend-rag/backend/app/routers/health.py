@@ -79,9 +79,17 @@ async def health_check(request: Request) -> HealthResponse:
         # Get search service from backend.app.state
         search_service = getattr(request.app.state, "search_service", None)
 
-        # CRITICAL: Return "initializing" immediately if service not ready
-        # This prevents Fly.io from killing container during model loading
+        # Light process (api) has search_service=None by design — report healthy
+        # Heavy process (rag) without search_service is still warming up
         if not search_service:
+            is_light_process = getattr(request.app.state, "process_mode", None) == "light"
+            if is_light_process:
+                return HealthResponse(
+                    status="healthy",
+                    version="v100-qdrant",
+                    database={"status": "connected", "type": "postgresql"},
+                    embeddings={"status": "n/a", "note": "RAG handled by rag process group"},
+                )
             logger.info("Health check: Service initializing (warmup in progress)")
             return HealthResponse(
                 status="initializing",
