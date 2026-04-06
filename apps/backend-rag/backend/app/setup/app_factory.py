@@ -371,6 +371,17 @@ async def lifespan(app: FastAPI):
                 except Exception as close_err:
                     logger.debug(f"Could not close '{attr_name}': {close_err}")
 
+    # Close channel adapter HTTP clients (security audit 2026-04-03)
+    channel_router = getattr(app.state, "channel_router", None)
+    if channel_router and hasattr(channel_router, "_adapters"):
+        for name, adapter in channel_router._adapters.items():
+            if hasattr(adapter, "close"):
+                try:
+                    await adapter.close()
+                    logger.info(f"✅ Channel adapter '{name}' closed")
+                except Exception as e:
+                    logger.debug(f"Could not close adapter '{name}': {e}")
+
     # Module-level client cleanups (Addressing global clients in specific services)
     try:
         from backend.services.rag.kg_subgraph_property import close_property_subgraph_client

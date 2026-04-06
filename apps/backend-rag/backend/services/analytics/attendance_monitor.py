@@ -55,7 +55,7 @@ _EMAIL_API_URL: str = os.getenv(
     "INTERNAL_EMAIL_API_URL",
     "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
-_EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+_EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "")
 
 # Number of consecutive working days without clock-in before triggering an alert
 ABSENT_THRESHOLD_DAYS: int = 2

@@ -390,7 +390,7 @@ P.S. This is an automated email, but the appreciation for your hard work is 100%
             "INTERNAL_EMAIL_API_URL",
             "https://nuzantara-rag.fly.dev/api/notifications/send-email",
         )
-        api_key = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+        api_key = os.getenv("NUZANTARA_API_KEY", "")
         html_body = body.replace("\n", "<br>")
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(

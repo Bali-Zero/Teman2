@@ -21,13 +21,60 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 
 ---
 
-## 1. Project Essentials (non-inferable only)
+## 1. Project Overview
 
-**Bali Zero** = client-facing brand. **Zantara** = AI assistant persona. **OpenClaw** = agent runtime (gateway `loopback:18789`). **mcporter** = MCP-to-OpenClaw bridge (`~/.local/bin/`).
+**Name:** Nuzantara (Zantara) · **Version:** 5.2.0
+**Type:** Production AI-powered business intelligence platform for Bali Zero
+**Business:** Indonesian business services (visa, company setup, tax, property) in Bali — 5000+ clients
+**URL:** https://kita.balizero.com
 
-- **Embedding:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE** (invalidates 93K+ vectors)
-- **bali-intel-scraper**: runs LOCALLY on Pro via OpenClaw, NOT on Fly.io
-- **URL:** https://kita.balizero.com
+### Architecture — Monorepo (20 apps)
+
+- `apps/mouth/` - Next.js frontend (Vercel) — kita/my/prime.balizero.com
+- `apps/backend-rag/` - Python FastAPI RAG backend (Fly.io)
+- `apps/nuzantara-mcp/` - MCP server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics, 14 tools)
+- `apps/nuzantara-mcp-browser/` - Browser automation MCP
+- `apps/bali-intel-scraper/` - Intel pipeline (runs LOCALLY on Pro via OpenClaw, NOT Fly)
+- `apps/evaluator/` - Quality assurance + Core Guardian V3
+- `apps/war-room/` - Operations dashboard + Canva automation
+- `apps/graph-engine/` - Graph processing engine
+- `apps/kbli-voice/` · `apps/zantara-media/` · `apps/admin-dashboard/` · `apps/webapp/`
+- `apps/kbli-navigator/` - KBLI 2025 Navigator
+- `apps/calendar/` · `apps/drive/` · `apps/knowledge/` · `apps/mail/` · `apps/web/` - Subdomain satellites
+- `packages/core/` - Core libraries + BZ design tokens + BZLogo
+- `packages/kb/` - Knowledge base
+
+### Tech Stack
+
+<!-- DOCSYNC:BACKEND_STATS_START -->
+
+- **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
+<!-- DOCSYNC:BACKEND_STATS_END -->
+- **Frontend:** Next.js, TypeScript, Tailwind CSS
+- **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
+- **Infrastructure:** Fly.io (backend), Vercel (frontend)
+- **Knowledge Graph:** 108,068 nodes, 242,827 edges
+<!-- DOCSYNC:VECTOR_STATS_START -->
+- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
+<!-- DOCSYNC:VECTOR_STATS_END -->
+- **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE** (would invalidate 93,283 vectors)
+- **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking
+
+### Key Terms
+
+- **OpenClaw**: Agent runtime (macOS). Cron, Telegram, background tasks. Gateway `loopback:18789`.
+- **mcporter**: MCP-to-OpenClaw bridge. Wrappers in `~/.local/bin/`.
+- **Bali Zero**: Client-facing brand. Indonesian business services in Bali.
+- **Zantara**: AI assistant persona for all client-facing channels.
+
+### Verify Setup (first session only)
+
+```bash
+cd apps/backend-rag && source .venv/bin/activate
+python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no 2>/dev/null && echo "✅ Tests OK"
+```
 
 ---
 
@@ -131,13 +178,35 @@ File changes tracciati automaticamente — non serve salvarli.
 11. **Flat Qdrant Payloads** — Never nested. Use `kode_kbli`, `judul`, `content`, `pma_status` etc.
 12. **PricingTool Only** — All prices from `PricingTool`. Never hardcode/guess.
 
-## 5. Critical Paths (non-obvious only)
+## 5. Critical Paths
 
-- **Routers:** `backend/app/routers/` NOT `backend/routers/`
-- **Services:** in BOTH `backend/services/` AND `backend/app/services/`
-- **Prompts SSOT:** Edit ONLY `backend/prompts/zantara_core.py`
-- **dependencies.py:** Imported by ALL routers — test before deploy
-- **.venv on Pro, venv on Air** — verify with `ls apps/backend-rag/ | grep venv`
+### Backend Structure
+
+```
+apps/backend-rag/
+├── backend/
+│   ├── app/                # FastAPI app
+│   │   ├── routers/        # API endpoints (88 routers)
+│   │   ├── services/       # App-level services (CRM, auth, metrics)
+│   │   ├── setup/          # app_factory, router_registration, service_initializer
+│   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
+│   │   └── main.py         # Entrypoint (alias for main_cloud.py)
+│   ├── services/           # Core business logic (244 services)
+│   ├── channels/           # 7 channels (whatsapp, telegram, instagram, twitter, web, gchat, slack)
+│   ├── core/               # Config, security, logging
+│   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
+│   ├── prompts/            # ⭐ Prompt SSOT (zantara_core.py)
+│   └── migrations/         # Alembic (up to 060)
+├── tests/                  # 385 test files
+├── .venv/                  # ⚠️ ALWAYS .venv, not venv
+└── fly.toml
+```
+
+**IMPORTANT:** Routers in `backend/app/routers/`, NOT `backend/routers/`. Services in both `backend/services/` and `backend/app/services/`.
+
+### Prompt Architecture
+
+Edit ONLY `backend/prompts/zantara_core.py`. All consumers import from it.
 Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` · `KNOWLEDGE_GOVERNANCE` · `LANGUAGE_PROTOCOL` · `GREETING_RULES` · `CITATION_RULES` · `INTERNAL_MONOLOGUE` · `ESCALATION_PROTOCOL` · `CRASH_PROTOCOL` · `CLOSING_PHRASES` · `CREATOR_PERSONA` · `TEAM_PERSONA` · `ZANTARA_MASTER_TEMPLATE`
 
 ## 6. Domain-Specific Knowledge
@@ -154,13 +223,35 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 
-## 7. Deployment (non-standard only)
+## 7. MCP Servers
 
-- **Backend deploy:** `cd apps/backend-rag && fly deploy --strategy rolling`
-- **Frontend:** Vercel auto-deploys on `git push origin main`
+- **Primary:** `apps/nuzantara-mcp/` (v2.1, 131 tools, 10 prompts, 5 resources, 8 chains)
+- **Advanced:** `apps/nuzantara-mcp-advanced/` (Fly.io ops, 14 tools)
+- **Browser:** `apps/nuzantara-mcp-browser/`
 - **GA4:** property 505466833 (G-S3H2M6VXWT)
+- **GSC:** 19 SEO tools, SA auth, site owner balizero.com
+- **OCR:** tesseract with Indonesian support
+- **Bridge (OpenClaw):** 129 tools via mcporter wrappers
+
+## 8. Deployment Architecture
+
+### Fly.io — 3 APP ONLY
+
+| App                  | CPU       | RAM | Auto-stop  | Note                    |
+| -------------------- | --------- | --- | ---------- | ----------------------- |
+| `nuzantara-rag`      | shared-2x | 2GB | off, min=1 | Always-on, EventBus     |
+| `nuzantara-postgres` | shared-1x | 2GB | no         | v0.1.0, backup → Tigris |
+| `nuzantara-qdrant`   | shared-1x | 2GB | no         | v1.17.0                 |
+
+- **Frontend:** Vercel (auto-deploy on `git push origin main`)
+- **Backend deploy:** `cd apps/backend-rag && fly deploy --strategy rolling`
+- **bali-intel-scraper**: ONLY local on Pro via OpenClaw (03:00 WITA)
 - **Backup:** `~/scripts/fly-pg-backup.sh` daily → Tigris
 - **Health:** `~/scripts/fly-health-check.sh` every 5min → Telegram alert
+
+### Env Vars Required
+
+`OPENAI_API_KEY` · `DATABASE_URL` · `QDRANT_URL` · `QDRANT_API_KEY` · `REDIS_URL` · `JWT_SECRET` · `FLY_API_TOKEN`
 
 ## 9. Language Protocol
 
@@ -172,11 +263,26 @@ The user writes in **colloquial Italian**. Translate intent into precise technic
 
 **Owner:** Zero (codename). Real name PRIVATE. Italian with owner, client's language otherwise.
 
-## 10. Local AI & Channels (non-obvious only)
+## 10. Resources & Routes
 
-- **SSO:** `nz_access_token` httpOnly cookie on `.balizero.com` domain
-- **X/Twitter:** CRC broken, not operational
-- **Telegram:** runs on Pro OpenClaw (Opus 4.6 + SOUL.md), NOT Fly.io
+- **API Docs:** `http://localhost:8000/docs`
+- **Pricing:** `PRICING_REFERENCE.md` · **Visa:** `VISA_TYPES_REFERENCE.md`
+- **KBLI:** `/kbli` (homepage), `/kbli/[code]` (1,563 SSG pages), `/kbli-navigator` → 301 → `/kbli`
+
+### Channels (7)
+
+| Channel             | Status        | Ownership                         |
+| ------------------- | ------------- | --------------------------------- |
+| WhatsApp            | ✅ Live       | Fly.io (Gemini 3 Flash + RAG)     |
+| Telegram            | ✅ Live       | Pro OpenClaw (Opus 4.6 + SOUL.md) |
+| Instagram           | ✅ Live       | Fly.io                            |
+| X/Twitter           | ❌ CRC broken | Fly.io                            |
+| Web Chat            | ✅ Live       | Fly.io                            |
+| Google Chat · Slack | 🔧 Scaffold   | —                                 |
+
+### Subdomains (8)
+
+`kita.balizero.com` (workspace) · `my.balizero.com` (portal) · `prime.balizero.com` (3D maps) · `mail` · `calendar` · `drive` · `knowledge` · `zantara` (AI chat). SSO via `nz_access_token` httpOnly cookie on `.balizero.com`.
 
 ### Local AI (Ollama-First)
 
@@ -213,21 +319,49 @@ fly deploy --strategy rolling  # 4. Deploy
 
 Core Guardian V3 runs every 3h fixing lint issues in worktree. Do NOT interfere.
 
-## 12. AI Dispatch & Security
+## 12. AI Dispatch System
 
-- AI Dispatch: `./scripts/ai-dispatch.sh help` · Details: `docs/AI_DISPATCH_REFERENCE.md`
+> `./scripts/ai-dispatch.sh help` for full commands. Details: `docs/AI_DISPATCH_REFERENCE.md`
+
+**Agents:** Claude Code (orchestrator) · Gemini Pro CLI (explore/search/redteam) · Codex CLI (sandbox) · Claude CLI (review) · DeepSeek R1 (reasoning) · Aider (multi-model coding)
+**Services:** NotebookLM · GWS CLI · OCR · Websearch · Canva · GitKraken
+**Pipelines:** Core Guardian (3h) · Intel Scraper (03:00) · War Room · SEO Guardian · NLM Refresh (04:30)
+
+### GitKraken MCP — prefer over raw git/gh when richer context available
+
+`gitlens_commit_composer` · `gitlens_launchpad` · `gitlens_start_work` · `gitlens_start_review` · `pull_request_create`
+
+### Security
+
 - Gemini: `--sandbox --approval-mode plan` → read-only
 - Codex: `--sandbox read-only` or `workspace-write`. NEVER `--dangerously-bypass`
 - Off-limits: `zantara_core.py`, `fly.toml`, `.env*`, `alembic/env.py`
+
+### Federation Protocol
+
 - Escalation: Air → `shared/escalations.json` → Pro reads at session start
-- Git sync: Pro→origin (GitHub). Air→Pro push. CLAUDE.md: IDENTICAL on both.
-- Core Guardian V3 runs every 3h fixing lint in worktree. Do NOT interfere.
+- Git sync: post-commit hook. Pro→Air auto-pull. Air→Pro push. GitHub: only Pro→origin.
+- CLAUDE.md: IDENTICAL on both — git-tracked
 
-## 13. Anthropic API
+## 13. Anthropic API — Quick Reference
 
-- Adaptive thinking: `thinking={"type": "adaptive"}, output_config={"effort": "medium"}` (NOT `budget_tokens`)
-- Prompt caching: `cache_control: {"type": "ephemeral"}` on large system prompts
-- Models: Sonnet 4.6 (RAG), Haiku 4.5 (routing), Opus 4.6 (critical)
+> Full patterns: `docs/ANTHROPIC_API_REFERENCE.md`
+
+### Adaptive Thinking (REQUIRED on 4.6)
+
+```python
+thinking={"type": "adaptive"}, output_config={"effort": "medium"}  # NOT budget_tokens
+```
+
+### Models for Nuzantara
+
+| Use                     | Model                       |
+| ----------------------- | --------------------------- |
+| RAG, reasoning          | `claude-sonnet-4-6`         |
+| Routing, classification | `claude-haiku-4-5-20251001` |
+| Critical tasks          | `claude-opus-4-6`           |
+
+### Prompt Caching — use `cache_control: {"type": "ephemeral"}` on large system prompts / KBLI KB
 
 ## 14. CRITICAL OPERATIONAL RULES
 

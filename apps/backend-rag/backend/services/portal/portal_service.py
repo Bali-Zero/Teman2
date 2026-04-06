@@ -2075,7 +2075,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                         "INTERNAL_EMAIL_API_URL",
                         "https://nuzantara-rag.fly.dev/api/notifications/send-email",
                     )
-                    _api_key = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+                    _api_key = os.getenv("NUZANTARA_API_KEY", "")
                     html_body = body.replace("\n", "<br>")
                     async with httpx.AsyncClient(timeout=30.0) as http_client:
                         resp = await http_client.post(

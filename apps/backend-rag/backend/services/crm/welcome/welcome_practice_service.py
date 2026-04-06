@@ -53,7 +53,7 @@ _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL",
     "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
-_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 # ─── BROCHURE PATH ───────────────────────────────────────
 _BROCHURE_PATH = (

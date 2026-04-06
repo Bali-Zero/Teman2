@@ -25,6 +25,20 @@ from backend.app.dependencies import (
 )
 from backend.core.collection_registry import resolve_collection_name
 
+# Persistent KBLI HTTP client (Golden Rule 10: never create AsyncClient per-request)
+_kbli_http_client: httpx.AsyncClient | None = None
+
+
+def _get_kbli_client() -> httpx.AsyncClient:
+    """Get or create persistent HTTP client for KBLI Qdrant queries."""
+    global _kbli_http_client
+    if _kbli_http_client is None or _kbli_http_client.is_closed:
+        _kbli_http_client = httpx.AsyncClient(
+            timeout=15.0,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _kbli_http_client
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
@@ -171,8 +185,8 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
         headers["api-key"] = settings.qdrant_api_key
     url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/scroll"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for filter_key in (
+        client = _get_kbli_client()
+        for filter_key in (
                 "kode_kbli",
                 "kode",
                 "metadata.kode",
@@ -201,10 +215,10 @@ async def _search_kbli_qdrant(query_embedding: list[float], limit: int) -> list[
         headers["api-key"] = settings.qdrant_api_key
     url = f"{settings.qdrant_url}/collections/{KBLI_COLLECTION}/points/search"
     payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(url, json=payload, headers=headers)
-        resp.raise_for_status()
-        return resp.json().get("result", [])
+    client = _get_kbli_client()
+    resp = await client.post(url, json=payload, headers=headers)
+    resp.raise_for_status()
+    return resp.json().get("result", [])
 
 
 def get_kbli_ttl(code: str) -> int:

@@ -11,7 +11,7 @@ Designed to be called from Air cron or OpenClaw scheduler.
 
 Usage:
     curl -X POST https://nuzantara-rag.fly.dev/api/cron/notifiers/all \
-         -H "X-API-Key: zantara-secret-2024"
+         -H "X-API-Key: $NUZANTARA_API_KEY"
 """
 
 import os
@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/cron/notifiers", tags=["cron-notifiers"])
 
-_API_KEY = os.getenv("NUZANTARA_API_KEY", "zantara-secret-2024")
+_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 
 def _verify_api_key(request: Request) -> None:
