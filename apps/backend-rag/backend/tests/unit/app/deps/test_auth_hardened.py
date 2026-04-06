@@ -322,3 +322,14 @@ class TestTokenRevocationInAuth:
 
         user = get_current_user(request, creds)
         assert user["email"] == "test@balizero.com"
+
+
+class TestLogoutRevocation:
+    """Test that revoke-all endpoint exists."""
+
+    def test_revoke_all_endpoint_exists(self):
+        """The /api/auth/revoke-all endpoint should exist."""
+        from backend.app.routers.auth import router
+
+        paths = [route.path for route in router.routes]
+        assert "/api/auth/revoke-all" in paths
