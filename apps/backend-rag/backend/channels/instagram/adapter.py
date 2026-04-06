@@ -30,13 +30,29 @@ class InstagramChannelAdapter(BaseChannel):
         if self.client and not self.client.is_closed:
             await self.client.aclose()
 
-    async def receive_message(self, raw_event: dict) -> ChannelMessage:
-        """Parse Instagram webhook."""
+    async def receive_message(self, raw_event: dict) -> ChannelMessage | None:
+        """
+        Parse Instagram webhook.
+
+        Returns None for echo messages (our own outbound messages echoed back
+        by Meta's webhook) to avoid infinite processing loops.
+        """
         try:
             entry = raw_event.get("entry", [{}])[0]
             messaging = entry.get("messaging", [{}])[0]
             sender_id = messaging.get("sender", {}).get("id", "unknown")
             message_data = messaging.get("message", {})
+
+            # Primary echo check: Meta's native is_echo flag
+            if message_data.get("is_echo", False):
+                logger.debug(f"Skipping echo message from {sender_id} (is_echo=True)")
+                return None
+
+            # Secondary fallback: sender matches our own account ID
+            if sender_id == self.instagram_config.instagram_account_id:
+                logger.debug(f"Skipping echo message from {sender_id} (sender == account_id)")
+                return None
+
             message_text = message_data.get("text", "")
             message_mid = message_data.get("mid", "")
 
