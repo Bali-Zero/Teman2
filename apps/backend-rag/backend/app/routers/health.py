@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 from backend.app.core.config import settings
 from backend.app.models import HealthResponse
@@ -91,12 +91,6 @@ async def get_qdrant_stats() -> dict[str, Any]:
 router = APIRouter(prefix="/health", tags=["health"])
 
 
-@router.get(
-    "", response_model=HealthResponse,
-)  # /health without trailing slash (for Fly.io health checks)
-@router.get(
-    "/", response_model=HealthResponse, include_in_schema=False,
-)  # /health/ with trailing slash
 def _check_resource_thresholds(process_mode: str | None) -> tuple[str | None, str | None]:
     """
     Check memory and disk thresholds for Fly.io health-based auto-restart.
@@ -138,17 +132,27 @@ def _check_resource_thresholds(process_mode: str | None) -> tuple[str | None, st
     return None, None
 
 
-async def health_check(request: Request) -> HealthResponse:
+@router.get(
+    "", response_model=HealthResponse,
+)  # /health without trailing slash (for Fly.io health checks)
+@router.get(
+    "/", response_model=HealthResponse, include_in_schema=False,
+)  # /health/ with trailing slash
+async def health_check(request: Request, response: Response) -> HealthResponse:
     """
     System health check - Non-blocking during startup.
 
     Returns "initializing" immediately if service not ready.
     Prevents container crashes during warmup by not creating heavy objects.
 
-    Resource thresholds (Fly.io auto-restart via unhealthy status):
-    - Memory >90% (rag process only): unhealthy
-    - Disk /data >90%: unhealthy
-    - Disk /data >80%: degraded
+    Resource thresholds (Fly.io auto-restart via HTTP 503 + unhealthy status):
+    - Memory >90% (rag process only): HTTP 503, status="unhealthy"
+    - Disk /data >90%: HTTP 503, status="unhealthy"
+    - Disk /data >80%: HTTP 200, status="degraded"
+
+    NOTE: Fly.io [[services.http_checks]] only restarts on non-2xx responses.
+    Returning JSON {"status":"unhealthy"} with HTTP 200 does NOT trigger restart.
+    We must return HTTP 503 to make Fly.io act.
     """
     try:
         process_mode = getattr(request.app.state, "process_mode", None)
@@ -163,6 +167,8 @@ async def health_check(request: Request) -> HealthResponse:
             if is_light_process:
                 # Still check resources even for light process (disk is shared)
                 status_override, override_msg = _check_resource_thresholds(process_mode)
+                if status_override == "unhealthy":
+                    response.status_code = 503
                 return HealthResponse(
                     status=status_override or "healthy",
                     version="v100-qdrant",
@@ -186,6 +192,11 @@ async def health_check(request: Request) -> HealthResponse:
         try:
             # Check resource thresholds (memory + disk) — may trigger Fly.io auto-restart
             status_override, override_msg = _check_resource_thresholds(process_mode)
+
+            # Set HTTP 503 for "unhealthy" so Fly.io [[services.http_checks]] triggers restart.
+            # Fly.io only restarts on non-2xx — a JSON field alone does nothing.
+            if status_override == "unhealthy":
+                response.status_code = 503
 
             # Update DB pool Prometheus gauges
             db_pool = getattr(request.app.state, "db_pool", None)

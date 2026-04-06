@@ -163,9 +163,13 @@ class RedisManager:
         """
         Perform Redis health check.
 
+        Also ensures any deferred reconnect loop (started from a sync context)
+        is activated now that we are inside an async context.
+
         Returns:
             Dict with connection status, latency, key count, and component registry.
         """
+        self._ensure_reconnect_loop()
         result: dict[str, Any] = {
             "connected": False,
             "latency_ms": -1,
@@ -211,19 +215,55 @@ class RedisManager:
         }
 
     def _start_reconnect_loop(self) -> None:
-        """Start background reconnect loop if not already running."""
+        """
+        Start background reconnect loop if not already running.
+
+        If called from a synchronous context with no running event loop (e.g.,
+        tests or CLI), the task cannot be created immediately.  In that case
+        ``_reconnect_pending`` is set to True so that the first async caller
+        (e.g., ``health_check`` or ``close``) can call
+        ``_ensure_reconnect_loop()`` to start it lazily.
+        """
         if self._reconnect_task is not None and not self._reconnect_task.done():
             return
         try:
             loop = asyncio.get_running_loop()
             self._reconnect_task = loop.create_task(self._reconnect_loop())
         except RuntimeError:
-            pass  # No running event loop — reconnect loop will be started later
+            # No running event loop — mark as pending so an async caller can
+            # start it later via _ensure_reconnect_loop().
+            self._reconnect_pending = True
+            logger.debug("Redis reconnect loop deferred — no running event loop at initialize()")
+
+    def _ensure_reconnect_loop(self) -> None:
+        """
+        Start the reconnect loop now if it was deferred during initialize().
+
+        Must be called from an async context (event loop is running).
+        """
+        if not getattr(self, "_reconnect_pending", False):
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        if self._available:
+            self._reconnect_pending = False
+            return
+        try:
+            loop = asyncio.get_running_loop()
+            self._reconnect_task = loop.create_task(self._reconnect_loop())
+            self._reconnect_pending = False
+            logger.info("Redis reconnect loop started (deferred from sync context)")
+        except RuntimeError:
+            pass  # Still no loop — will retry next time
 
     async def _reconnect_loop(self) -> None:
         """
         Background task: retry Redis connection with exponential backoff.
         30s → 60s → 120s → 300s (max). Stops when connection restored.
+
+        Restores BOTH async and sync clients so that all consumers
+        (including the rate-limiter middleware that requires a sync client)
+        become fully operational again after a Redis outage.
         """
         delays = [30, 60, 120, 300]
         idx = 0
@@ -238,9 +278,11 @@ class RedisManager:
                 break  # Already restored by another path
 
             try:
+                import redis as sync_redis
                 import redis.asyncio as aioredis
 
-                client = aioredis.from_url(
+                # Restore async client first (ping proves connectivity)
+                async_client = aioredis.from_url(
                     self._redis_url,
                     decode_responses=True,
                     socket_connect_timeout=5,
@@ -248,10 +290,29 @@ class RedisManager:
                     retry_on_timeout=True,
                     max_connections=10,
                 )
-                await client.ping()
-                self._async_client = client
-                self._available = True
+                await async_client.ping()
+                self._async_client = async_client
                 self._stats["connections_created"] += 1
+
+                # Restore sync client so rate-limiter becomes distributed again
+                try:
+                    sync_client = sync_redis.from_url(
+                        self._redis_url,
+                        decode_responses=True,
+                        socket_connect_timeout=5,
+                        socket_timeout=5,
+                        retry_on_timeout=True,
+                        max_connections=5,
+                    )
+                    sync_client.ping()
+                    self._sync_client = sync_client
+                    self._stats["connections_created"] += 1
+                    logger.info("Redis sync client restored — rate limiting is now distributed")
+                except Exception as sync_err:
+                    logger.warning(f"Redis sync client restore failed (async-only mode): {sync_err}")
+                    self._sync_client = None
+
+                self._available = True
                 logger.info("Redis reconnected successfully — distributed rate limiting restored")
                 return
             except Exception as e:

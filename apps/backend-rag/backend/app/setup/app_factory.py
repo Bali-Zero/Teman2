@@ -77,6 +77,9 @@ async def lifespan(app: FastAPI):
     # Fly.io health checks require HTTP 200 on /health within 60s grace period.
     # The /health endpoint returns "initializing" when services aren't ready yet.
     logger.info("🚀 Starting ZANTARA backend - deferring heavy service init to background...")
+    # Mark this as the heavy RAG process so health.py resource thresholds work correctly.
+    # main_api.py sets "light"; without this the memory check silently never fires on the rag VM.
+    app.state.process_mode = "rag"
 
     async def _background_init():
         """Initialize all services in background after server starts listening."""

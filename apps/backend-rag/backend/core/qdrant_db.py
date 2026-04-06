@@ -185,7 +185,9 @@ async def _retry_with_backoff(
                 )
                 await asyncio.sleep(delay)
             else:
-                _qdrant_metrics["errors"] += 1
+                # NOTE: do NOT increment _qdrant_metrics["errors"] here.
+                # The outer except block in search() already increments it after
+                # _retry_with_backoff raises. Incrementing here too causes double-counting.
                 raise last_exception from e
 
 
