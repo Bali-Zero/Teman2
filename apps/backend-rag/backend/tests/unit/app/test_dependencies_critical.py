@@ -40,7 +40,6 @@ class TestImportChain:
             get_memory_service,
             get_optional_database_pool,
             get_orchestrator,
-            get_retriever,
             get_search_service,
             require_team_member,
         )
@@ -59,7 +58,6 @@ class TestImportChain:
             get_cache,
             get_orchestrator,
             get_optional_database_pool,
-            get_retriever,
             get_current_portal_client,
             get_channel_router,
         ]:
@@ -68,15 +66,19 @@ class TestImportChain:
     def test_typing_imports_present(self):
         """Critical: typing imports (Any, Annotated, etc.) must be present.
 
-        The 2026-02-16 outage was caused by a missing 'Any' import.
+        The 2026-02-16 outage was caused by a missing 'Any' import in deps sub-modules.
+        dependencies.py re-exports from deps/ sub-modules — verify typing in those.
         """
         import inspect
 
-        from backend.app import dependencies
+        from backend.app.deps import services, orchestrator
 
-        source = inspect.getsource(dependencies)
-        assert "from typing import" in source or "from typing_extensions import" in source
-        assert "Any" in source
+        svc_source = inspect.getsource(services)
+        assert "from typing import" in svc_source, "deps/services.py missing typing import"
+        assert "Any" in svc_source, "deps/services.py missing Any"
+
+        orch_source = inspect.getsource(orchestrator)
+        assert "Any" in orch_source, "deps/orchestrator.py missing Any"
 
 
 # --- DI Function Behavior Tests ---

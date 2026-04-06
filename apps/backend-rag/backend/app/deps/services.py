@@ -21,7 +21,6 @@ __all__ = [
     "get_intelligent_router",
     "get_memory_service",
     "get_cache",
-    "get_retriever",
     "get_channel_router",
 ]
 
@@ -152,31 +151,6 @@ def get_cache(request: Request) -> Any:
     # Fallback to singleton (for backward compatibility)
     return get_cache_service()
 
-
-def get_retriever(request: Request) -> Any:
-    """
-    Dependency injection for Qdrant retriever client.
-
-    Raises:
-        HTTPException 503: If Qdrant not available
-    """
-    retriever = getattr(request.app.state, "retriever", None)
-    if retriever is None:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "error": "Vector database unavailable",
-                "message": "Qdrant retriever not initialized.",
-                "retry_after": 30,
-                "service": "qdrant",
-                "troubleshooting": [
-                    "Verify QDRANT_URL is configured",
-                    "Check Qdrant server is running",
-                    "Review application startup logs",
-                ],
-            },
-        )
-    return retriever
 
 
 def get_channel_router(request: Request) -> Any:
