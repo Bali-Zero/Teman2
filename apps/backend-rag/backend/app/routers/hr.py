@@ -195,7 +195,10 @@ async def approve_bonus(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     try:
-        result = await service.approve_bonus(bonus_id, current_user.get("id", ""))
+        approver_id = current_user.get("id") or None
+        if not approver_id:
+            raise HTTPException(status_code=400, detail="User ID missing from auth token")
+        result = await service.approve_bonus(bonus_id, approver_id)
         return {"success": True, "bonus": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -279,7 +282,10 @@ async def approve_payroll(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     try:
-        result = await service.approve_payroll(period_id, current_user.get("id", ""))
+        approver_id = current_user.get("id") or None
+        if not approver_id:
+            raise HTTPException(status_code=400, detail="User ID missing from auth token")
+        result = await service.approve_payroll(period_id, approver_id)
         return {"success": True, "period": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
