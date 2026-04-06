@@ -311,9 +311,12 @@ def collect_backend_health() -> list[SystemCheck]:
         docs = data.get("database", {}).get("total_documents", 0)
 
         if status == "healthy" and embed_model == "text-embedding-3-small":
+            msg = "healthy"
+            if collections > 0:
+                msg += f", {collections} collections, {docs:,} docs"
             return [SystemCheck(
                 id="backend", name="Backend Fly.io", group="infra",
-                status="ok", message=f"healthy, {collections} collections, {docs:,} docs",
+                status="ok", message=msg,
             )]
         elif status == "degraded":
             return [SystemCheck(

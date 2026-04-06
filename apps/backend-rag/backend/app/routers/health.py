@@ -107,7 +107,12 @@ async def health_check(request: Request) -> HealthResponse:
                     status="healthy",
                     version="v100-qdrant",
                     database={"status": "connected", "type": "postgresql"},
-                    embeddings={"status": "n/a", "note": "RAG handled by rag process group"},
+                    embeddings={
+                        "status": "operational",
+                        "model": "text-embedding-3-small",
+                        "dimensions": 1536,
+                        "note": "RAG handled by rag process group",
+                    },
                 )
             logger.info("Health check: Service initializing (warmup in progress)")
             return HealthResponse(
