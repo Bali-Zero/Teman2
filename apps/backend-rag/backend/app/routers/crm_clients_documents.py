@@ -116,13 +116,13 @@ async def extract_passport_data(
         async with db_pool.acquire() as conn:
             await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
-        from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+        from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
         if not GENAI_AVAILABLE:
             return PassportExtractResponse(success=False, message="Vision service not available")
 
-        # Initialize Gemini client
-        genai_client = GenAIClient()
+        # Get singleton Gemini client
+        genai_client = get_genai_client()
         if not genai_client.is_available:
             return PassportExtractResponse(success=False, message="Gemini Vision not configured")
 
@@ -297,14 +297,14 @@ async def extract_passport_enhanced(
     import json
     from difflib import SequenceMatcher
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
     from backend.services.integrations.google_drive_service import GoogleDriveService
 
     try:
         if not GENAI_AVAILABLE:
             return PassportEnhancedResponse(success=False, message="Vision service not available")
 
-        genai_client = GenAIClient()
+        genai_client = get_genai_client()
         if not genai_client.is_available:
             return PassportEnhancedResponse(success=False, message="Gemini Vision not configured")
 
@@ -621,7 +621,7 @@ async def extract_npwp(
     import base64
     import re
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
     try:
         # RBAC check: verify caller has access to this client
@@ -631,7 +631,7 @@ async def extract_npwp(
         if not GENAI_AVAILABLE:
             return NpwpExtractResponse(success=False, message="Vision service not available")
 
-        genai_client = GenAIClient()
+        genai_client = get_genai_client()
         if not genai_client.is_available:
             return NpwpExtractResponse(success=False, message="Gemini Vision not configured")
 
@@ -775,7 +775,7 @@ async def extract_nib(
     import base64
     import re
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
     try:
         # RBAC check: verify caller has access to this client
@@ -785,7 +785,7 @@ async def extract_nib(
         if not GENAI_AVAILABLE:
             return NibExtractResponse(success=False, message="Vision service not available")
 
-        genai_client = GenAIClient()
+        genai_client = get_genai_client()
         if not genai_client.is_available:
             return NibExtractResponse(success=False, message="Gemini Vision not configured")
 
