@@ -203,3 +203,23 @@ class TestValidationModuleExpiry:
             mock_settings.jwt_enforce_expiry = True
             result = await validate_auth_token(token)
             assert result is None
+
+
+class TestDevSecretsRemoved:
+    """Verify hardcoded dev secrets are not in production validators."""
+
+    def test_jwt_validator_no_hardcoded_default(self):
+        """JWT validator should not contain the old dev secret string."""
+        import inspect
+        from backend.app.core.config import Settings
+
+        source = inspect.getsource(Settings.validate_jwt_secret)
+        assert "zantara_dev_secret_key_change_in_production" not in source
+
+    def test_api_keys_validator_no_hardcoded_default(self):
+        """API keys validator should not contain the old dev key string."""
+        import inspect
+        from backend.app.core.config import Settings
+
+        source = inspect.getsource(Settings.validate_api_keys)
+        assert "dev_api_key_for_testing_only" not in source
