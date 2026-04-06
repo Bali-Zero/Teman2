@@ -387,7 +387,7 @@ function ClientsListContent() {
   );
 
   // Filtering
-  const visibleClients = profileLoaded && isMounted ? clients : [];
+  const visibleClients = isMounted ? clients : [];
   // Use API assignees list (all team members, not just those in the loaded page)
   const uniqueAssignees: string[] = assigneesData
     ? assigneesData
