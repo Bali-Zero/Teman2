@@ -64,6 +64,10 @@ EXCLUDED = [
     "approve_staging_item",
     "list_staging_items",
     "delete_episode",
+    # Naga (3) — deep research, run from Claude Code
+    "naga_research",
+    "naga_claims_search",
+    "naga_session_status",
     # Sheets (4) — Google Sheets, rarely needed
     "find_sheet_row",
     "read_sheet",

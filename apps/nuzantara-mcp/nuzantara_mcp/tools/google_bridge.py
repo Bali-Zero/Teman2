@@ -3,7 +3,6 @@ import json
 import os
 import httpx
 from typing import Any, Optional
-from playwright.async_api import async_playwright
 
 logger = logging.getLogger("nuzantara-mcp.google_bridge")
 
@@ -22,6 +21,7 @@ async def upload_to_notebooklm(file_path: str, title: Optional[str] = None) -> d
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
         
+    from playwright.async_api import async_playwright
     async with async_playwright() as p:
         try:
             # We must use a context to load the existing profile
