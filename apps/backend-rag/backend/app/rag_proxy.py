@@ -12,7 +12,6 @@ Env vars:
 import asyncio
 import logging
 import os
-from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Request, Response
@@ -52,13 +51,14 @@ HEAVY_PREFIXES = (
     # NOTE: /webhook/whatsapp stays on api process (Meta sends webhooks to public HTTP service)
 )
 
-_proxy_client: Optional[httpx.AsyncClient] = None
+_proxy_client: httpx.AsyncClient | None = None
 _proxy_client_lock = asyncio.Lock()
 
 _HOP_BY_HOP_RESPONSE = frozenset({
     "connection", "keep-alive", "transfer-encoding",
     "te", "trailers", "upgrade", "proxy-authenticate", "proxy-authorization",
-    "content-length",  # Let Starlette recalculate — middleware may modify body
+    "content-length",     # Let Starlette recalculate — middleware may modify body
+    "content-encoding",   # httpx auto-decompresses; forwarding gzip header with plain body breaks clients
 })
 
 
@@ -176,7 +176,7 @@ def create_proxy_router() -> APIRouter:
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
         include_in_schema=False,
     )
-    async def rag_proxy_endpoint(request: Request, full_path: str) -> Response:
+    async def rag_proxy_endpoint(request: Request, _full_path: str) -> Response:
         path = request.url.path
         if is_heavy_route(path):
             return await proxy_request(request)
