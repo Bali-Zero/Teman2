@@ -54,7 +54,6 @@ from backend.app.deps.services import (
     get_channel_router,
     get_intelligent_router,
     get_memory_service,
-    get_retriever,
     get_search_service,
 )
 
@@ -95,7 +94,6 @@ __all__ = [
     "get_intelligent_router",
     "get_memory_service",
     "get_cache",
-    "get_retriever",
     "get_channel_router",
     # orchestrator
     "get_orchestrator",

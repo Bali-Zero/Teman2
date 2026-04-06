@@ -11,7 +11,6 @@ Modern Architecture (2026-02-11):
 """
 
 import asyncio
-import inspect
 import logging
 from contextlib import asynccontextmanager, suppress
 
@@ -237,17 +236,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.debug(f"Checkpointer close skipped: {e}")
 
-    # Shutdown WebSocket Redis Listener
-    redis_task = getattr(app.state, "redis_listener_task", None)
-    if redis_task:
-        cancel = getattr(redis_task, "cancel", None)
-        if callable(cancel):
-            cancel()
-
-        if inspect.isawaitable(redis_task):
-            with suppress(asyncio.CancelledError):
-                await redis_task
-        logger.info("✅ WebSocket Redis Listener stopped")
+    # NOTE: WebSocket Redis Listener, Compliance Monitor, and Autonomous Scheduler
+    # shutdown removed — _init_background_services() is disabled (omnichannel stabilization).
+    # Re-add shutdown code when _init_background_services() is re-enabled.
 
     # Shutdown Health Monitor
     health_monitor = getattr(app.state, "health_monitor", None)
@@ -255,18 +246,6 @@ async def lifespan(app: FastAPI):
         await _safe_stop("Health Monitor", health_monitor.stop())
         if hasattr(health_monitor, "close"):
             await _safe_stop("Health Monitor close", health_monitor.close())
-
-    # Shutdown Compliance Monitor
-    compliance_monitor = getattr(app.state, "compliance_monitor", None)
-    if compliance_monitor:
-        await _safe_stop("Compliance Monitor", compliance_monitor.stop())
-
-    # Shutdown Autonomous Scheduler (all agents)
-    autonomous_scheduler = getattr(app.state, "autonomous_scheduler", None)
-    if autonomous_scheduler:
-        await _safe_stop("Autonomous Scheduler", autonomous_scheduler.stop())
-        if hasattr(autonomous_scheduler, "close"):
-            await _safe_stop("Autonomous Scheduler close", autonomous_scheduler.close())
 
     # Shutdown Metrics Pusher
     metrics_pusher_task = getattr(app.state, "metrics_pusher_task", None)

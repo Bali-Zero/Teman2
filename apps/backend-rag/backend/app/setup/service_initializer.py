@@ -889,11 +889,11 @@ async def initialize_channel_router(
         from backend.channels.web.adapter import WebChannelAdapter
         from backend.conversation.engine import ConversationEngine
 
-        # Get orchestrator from app.state (initialized earlier)
+        # Create orchestrator for channel router (request-scoped orchestrator in deps/orchestrator.py
+        # is separate — this one is for channel adapters which don't go through FastAPI Depends)
         orchestrator = getattr(app.state, "orchestrator", None)
         if not orchestrator:
-            logger.warning("⚠️ Orchestrator not initialized, creating minimal fallback orchestrator")
-            # Create a minimal orchestrator for channel router
+            # Create a dedicated orchestrator for channel router
             # Uses tools from tool_executor if available, otherwise empty list
             from backend.services.rag.agentic import AgenticRAGOrchestrator
             from backend.services.rag.agentic.tools import create_default_tools
@@ -1287,7 +1287,6 @@ async def initialize_services_light(app: FastAPI) -> None:
     # 4. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
     app.state.ai_client = None
-    app.state.retriever = None
     app.state.orchestrator = None
     app.state.intelligent_router = None
     app.state.memory_service = None
