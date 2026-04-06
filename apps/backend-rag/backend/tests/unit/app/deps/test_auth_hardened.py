@@ -333,3 +333,73 @@ class TestLogoutRevocation:
 
         paths = [route.path for route in router.routes]
         assert "/api/auth/revoke-all" in paths
+
+
+class TestSprint3QuickFixes:
+    """S03-S3: Quick fixes from code review."""
+
+    def test_grace_period_removed(self):
+        """jwt_grace_period_days should no longer exist in config."""
+        from backend.app.core.config import settings
+        assert not hasattr(settings, "jwt_grace_period_days")
+
+    def test_scraper_key_no_hardcoded_default(self):
+        """intel_scraper_api_key should not default to dev_scraper_key."""
+        import inspect
+        from backend.app.core.config import Settings
+        source = inspect.getsource(Settings)
+        assert 'default="dev_scraper_key"' not in source
+
+    def test_identity_service_no_residual_secret(self):
+        """identity/service.py should not contain known weak secret strings."""
+        import inspect
+        from backend.app.modules.identity.service import IdentityService
+        source = inspect.getsource(IdentityService.__init__)
+        assert "zantara_default_secret_key_2025" not in source
+
+    def test_type_claim_validated_for_new_tokens(self):
+        """Tokens with type=access should pass."""
+        from backend.app.deps.auth import get_current_user
+        from backend.app.core.config import settings
+        now = datetime.now(timezone.utc)
+        token = jose_jwt.encode(
+            {"sub": "u1", "email": "t@b.com", "role": "admin",
+             "exp": now + timedelta(hours=1), "type": "access"},
+            settings.jwt_secret_key, algorithm="HS256",
+        )
+        request = MagicMock(); request.state = MagicMock(spec=[])
+        creds = MagicMock(); creds.credentials = token
+        user = get_current_user(request, creds)
+        assert user["email"] == "t@b.com"
+
+    def test_type_claim_rejects_refresh_tokens(self):
+        """Tokens with type=refresh should be rejected."""
+        from backend.app.deps.auth import get_current_user
+        from backend.app.core.config import settings
+        from fastapi import HTTPException
+        now = datetime.now(timezone.utc)
+        token = jose_jwt.encode(
+            {"sub": "u1", "email": "t@b.com", "role": "admin",
+             "exp": now + timedelta(hours=1), "type": "refresh"},
+            settings.jwt_secret_key, algorithm="HS256",
+        )
+        request = MagicMock(); request.state = MagicMock(spec=[])
+        creds = MagicMock(); creds.credentials = token
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(request, creds)
+        assert exc_info.value.status_code == 401
+
+    def test_type_claim_absent_passes_backward_compat(self):
+        """Pre-S03 tokens without type claim should still pass."""
+        from backend.app.deps.auth import get_current_user
+        from backend.app.core.config import settings
+        now = datetime.now(timezone.utc)
+        token = jose_jwt.encode(
+            {"sub": "u1", "email": "t@b.com", "role": "admin",
+             "exp": now + timedelta(hours=1)},
+            settings.jwt_secret_key, algorithm="HS256",
+        )
+        request = MagicMock(); request.state = MagicMock(spec=[])
+        creds = MagicMock(); creds.credentials = token
+        user = get_current_user(request, creds)
+        assert user["email"] == "t@b.com"

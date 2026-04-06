@@ -82,6 +82,12 @@ def get_current_user(
                 options={"verify_exp": False},
             )
 
+        # S03-S3: Reject non-access tokens (e.g. refresh tokens)
+        # Skip check if type claim absent (backward compat with pre-S03 tokens)
+        token_type = payload.get("type")
+        if token_type is not None and token_type != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+
         user_email = payload.get("email") or payload.get("sub")
         if not user_email:
             raise HTTPException(status_code=401, detail="Invalid token: missing user identifier")
