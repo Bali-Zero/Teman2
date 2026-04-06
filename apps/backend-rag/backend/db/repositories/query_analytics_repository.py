@@ -218,7 +218,9 @@ class QueryAnalyticsRepository(BaseRepository):
             granularity: 'hour' or 'day'
             days: lookback window
         """
-        trunc = "hour" if granularity == "hour" else "day"
+        if granularity not in ("hour", "day"):
+            raise ValueError(f"Invalid granularity: {granularity!r}")
+        trunc = granularity
         try:
             cutoff = datetime.now(tz=timezone.utc) - timedelta(days=days)
             async with self.db_pool.acquire() as conn:
