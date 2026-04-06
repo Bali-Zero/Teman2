@@ -1,7 +1,7 @@
 """
 Ollama Local LLM Client
 
-Async client for local Ollama models.
+Async client for local Ollama models with persistent HTTP connection.
   - MODEL_FAST  = qwen3.5:9b       (<0.5s, classification/titles)
   - MODEL_HEAVY = deepseek-r1:32b  (~30s, reasoning tasks — war-room, CELL)
   - MODEL_KG    = qwen3.5:27b      (~5-8s, KG extraction — uses 2-step think fix)
@@ -10,6 +10,8 @@ Async client for local Ollama models.
 NOTE: DeepSeek-R1:32b NOT suitable for KG batch (106s/chunk = 0.6 chunks/min).
       qwen3.5:27b with 2-step stop-at-</think> fix = ~8 chunks/min.
 Used for cost-free tasks. Graceful fallback: if Ollama is unavailable, caller handles API fallback.
+
+S04 Solidification: persistent httpx.AsyncClient (was transient per-call).
 """
 
 import logging
@@ -29,6 +31,34 @@ MODEL_JSON = "gemma3:12b"   # Reliable JSON output, scoring
 
 OLLAMA_BASE_URL = settings.ollama_url  # default: http://localhost:11434
 
+# ── Persistent HTTP client (S04) ─────────────────────────────
+# Long timeout for heavy models (deepseek-r1:32b can take 30s+),
+# short connect timeout since it's always localhost.
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    """Get or create persistent async client for Ollama (localhost)."""
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            timeout=httpx.Timeout(60.0, connect=5.0),
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _client
+
+
+async def close_ollama_client() -> None:
+    """Close the persistent Ollama HTTP client. Called from FastAPI lifespan."""
+    global _client
+    if _client and not _client.is_closed:
+        await _client.aclose()
+        _client = None
+    logger.info("Ollama HTTP client closed.")
+
+
+# ── API Functions ─────────────────────────────────────────────
+
 
 async def ollama_generate(
     prompt: str,
@@ -42,17 +72,6 @@ async def ollama_generate(
     Generate text from local Ollama model.
 
     Returns None if Ollama is unavailable (caller handles fallback).
-
-    Args:
-        prompt: User prompt
-        model: Ollama model name
-        temperature: Sampling temperature (low = deterministic)
-        max_tokens: Max output tokens
-        timeout: Request timeout in seconds
-        system: Optional system prompt
-
-    Returns:
-        Generated text, or None if unavailable
     """
     payload: dict[str, Any] = {
         "model": model,
@@ -68,14 +87,15 @@ async def ollama_generate(
         payload["system"] = system
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{OLLAMA_BASE_URL}/api/generate",
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data.get("response", "").strip()
+        client = _get_client()
+        response = await client.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json=payload,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get("response", "").strip()
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -112,14 +132,15 @@ async def ollama_chat(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{OLLAMA_BASE_URL}/api/chat",
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data.get("message", {}).get("content", "").strip()
+        client = _get_client()
+        response = await client.post(
+            f"{OLLAMA_BASE_URL}/api/chat",
+            json=payload,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data.get("message", {}).get("content", "").strip()
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -147,20 +168,21 @@ async def ollama_chat_kg(
     Returns raw JSON string, or None if unavailable/failed.
     """
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{OLLAMA_BASE_URL}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "stream": False,
-                    "think": False,
-                    "format": json_schema,
-                    "options": {"temperature": 0},
-                },
-            )
-            resp.raise_for_status()
-            return resp.json().get("message", {}).get("content", "").strip() or None
+        client = _get_client()
+        resp = await client.post(
+            f"{OLLAMA_BASE_URL}/api/chat",
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "think": False,
+                "format": json_schema,
+                "options": {"temperature": 0},
+            },
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        return resp.json().get("message", {}).get("content", "").strip() or None
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -176,13 +198,13 @@ async def ollama_chat_kg(
 async def is_ollama_available(model: str | None = None) -> bool:
     """Check if Ollama is running and optionally if a specific model is loaded."""
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
-            if response.status_code != 200:
-                return False
-            if model:
-                models = [m["name"] for m in response.json().get("models", [])]
-                return any(model in m for m in models)
-            return True
+        client = _get_client()
+        response = await client.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3.0)
+        if response.status_code != 200:
+            return False
+        if model:
+            models = [m["name"] for m in response.json().get("models", [])]
+            return any(model in m for m in models)
+        return True
     except Exception:
         return False

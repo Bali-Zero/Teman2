@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiJakselService:
-    def __init__(self, model_name: str = "gemini-2.0-flash-lite") -> None:
+    def __init__(self, model_name: str = "gemini-3-flash") -> None:
         """
         Initialize Gemini Service with Jaksel Persona and OpenRouter fallback.
 
         Args:
-            model_name: "gemini-2.0-flash-lite" (Fast/Medium thinking) or "gemini-2.0-pro-exp" (High thinking)
+            model_name: "gemini-3-flash" (primary) or fallback model
 
         Note:
             - Primary: 3 Flash Preview (fast, cost-effective)
@@ -53,6 +53,16 @@ class GeminiJakselService:
 
         # OpenRouter client for fallback (lazy loaded)
         self._openrouter_client = None
+
+        # Circuit breaker: skip Gemini after 5 consecutive failures for 60s (S04)
+        from backend.app.core.circuit_breaker import CircuitBreaker
+
+        self._gemini_circuit = CircuitBreaker(
+            failure_threshold=5,
+            success_threshold=2,
+            timeout=60.0,
+            name="gemini-jaksel",
+        )
 
     def _get_genai_client(self) -> Any:
         """Lazy load GenAI client to ensure process safety (gRPC fork safety)."""
@@ -180,56 +190,51 @@ class GeminiJakselService:
         if history is None:
             history = []
 
-        # Try Gemini first (if available)
-        # Try Gemini first (if available)
-        client = self._get_genai_client()
-        if client and client.is_available:
-            try:
-                # Combine few-shot history with actual conversation history
-                chat_history = self.few_shot_history.copy()
+        # Circuit breaker: skip Gemini entirely if circuit is open (S04)
+        if self._gemini_circuit.is_open():
+            logger.warning("Gemini circuit OPEN, going straight to OpenRouter fallback")
+        else:
+            # Try Gemini first (if available)
+            client = self._get_genai_client()
+            if client and client.is_available:
+                try:
+                    chat_history = self.few_shot_history.copy()
+                    for msg in history:
+                        content = msg.get("content", "")
+                        if content:
+                            chat_history.append(
+                                {"role": msg.get("role", "user"), "content": content},
+                            )
 
-                # Convert app history format
-                for msg in history:
-                    content = msg.get("content", "")
-                    if content:
-                        chat_history.append(
-                            {
-                                "role": msg.get("role", "user"),
-                                "content": content,
-                            },
-                        )
+                    if context and context.strip():
+                        final_message = f"CONTEXT (Use this data):\n{context}\n\nUSER QUERY:\n{message}"
+                    else:
+                        final_message = message
 
-                # Build final message
-                if context and context.strip():
-                    final_message = f"CONTEXT (Use this data):\n{context}\n\nUSER QUERY:\n{message}"
-                else:
-                    final_message = message
+                    chat = client.create_chat(
+                        model=self.model_name,
+                        system_instruction=self.system_instruction,
+                        history=chat_history,
+                    )
 
-                # Create chat session with new SDK wrapper
-                chat = client.create_chat(
-                    model=self.model_name,
-                    system_instruction=self.system_instruction,
-                    history=chat_history,
-                )
+                    async for chunk in chat.send_message_stream(final_message):
+                        yield chunk
 
-                # Stream response
-                async for chunk in chat.send_message_stream(final_message):
-                    yield chunk
+                    self._gemini_circuit.record_success()
+                    return
 
-                return  # Success, exit generator
+                except (ResourceExhausted, ServiceUnavailable) as e:
+                    self._gemini_circuit.record_failure()
+                    logger.warning(f"Gemini quota exceeded, falling back to OpenRouter: {e}")
 
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(f"Gemini quota exceeded, falling back to OpenRouter: {e}")
-                # Fall through to OpenRouter fallback
-
-            except Exception as e:
-                error_str = str(e).lower()
-                if "429" in error_str or "quota" in error_str or "rate" in error_str:
-                    logger.warning(f"Gemini rate limited, falling back to OpenRouter: {e}")
-                    # Fall through to OpenRouter fallback
-                else:
-                    logger.error(f"Unexpected Gemini error: {e}")
-                    raise
+                except Exception as e:
+                    error_str = str(e).lower()
+                    if "429" in error_str or "quota" in error_str or "rate" in error_str:
+                        self._gemini_circuit.record_failure()
+                        logger.warning(f"Gemini rate limited, falling back to OpenRouter: {e}")
+                    else:
+                        logger.error(f"Unexpected Gemini error: {e}")
+                        raise
 
         # Fallback to OpenRouter
         logger.info("Using OpenRouter fallback for streaming")
@@ -242,34 +247,14 @@ class GeminiJakselService:
         """
         Generate full response (non-streaming) with automatic fallback.
         """
-        # Initialize history if None
         if history is None:
             history = []
 
-        # Try Gemini first (if available)
-        # Try Gemini first (if available)
-        client = self._get_genai_client()
-        if client and client.is_available:
-            try:
-                # Use streaming internally to collect full response
-                full_response = ""
-                async for chunk in self.generate_response_stream(message, history, context):
-                    full_response += chunk
-                return full_response
-
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(f"Gemini quota exceeded: {e}")
-                # Fall through to OpenRouter
-
-            except Exception as e:
-                error_str = str(e).lower()
-                if "429" in error_str or "quota" in error_str:
-                    logger.warning(f"Gemini rate limited: {e}")
-                else:
-                    raise
-
-        # Fallback to OpenRouter
-        return await self._fallback_to_openrouter(message, history, context)
+        # Delegates to streaming path which has circuit breaker + fallback (S04)
+        full_response = ""
+        async for chunk in self.generate_response_stream(message, history, context):
+            full_response += chunk
+        return full_response
 
 
 # Singleton instance
