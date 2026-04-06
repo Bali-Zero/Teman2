@@ -400,37 +400,24 @@ class Settings(BaseSettings):
     @classmethod
     def validate_jwt_secret(cls, v: Any) -> Any:
         """
-        Validate JWT secret key - fail in production if not set
+        Validate JWT secret key.
 
-        SECURITY: Default dev key is only provided in development mode.
-        Production requires explicit JWT_SECRET_KEY environment variable.
+        S03: Removed hardcoded dev default. All environments must set
+        JWT_SECRET_KEY explicitly. Tests use conftest.py env setup.
         """
-        env = os.getenv("ENVIRONMENT", "development")
-        is_production = env.lower() == "production"
-
         if not v:
-            if is_production:
+            env = os.getenv("ENVIRONMENT", "development")
+            if env.lower() in ("test", "testing"):
                 raise ValueError(
-                    "SECURITY ERROR: JWT_SECRET_KEY must be set in production environment. "
-                    "Set ENVIRONMENT=production and provide JWT_SECRET_KEY secret.",
+                    "JWT_SECRET_KEY not set. Ensure conftest.py sets it before import."
                 )
-            # SECURITY: Only allow default dev key in development/testing
-            # This prevents accidental use of weak keys in production
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "⚠️ Using default JWT secret key for development. "
-                "Set JWT_SECRET_KEY env var for production.",
+            raise ValueError(
+                "JWT_SECRET_KEY must be set. "
+                "Export JWT_SECRET_KEY with a secure random string (min 32 chars)."
             )
-            return "zantara_dev_secret_key_change_in_production_min_32_chars"
 
         if len(v) < 32:
             raise ValueError("JWT_SECRET_KEY must be at least 32 characters")
-
-        if is_production and v == "zantara_dev_secret_key_change_in_production_min_32_chars":
-            raise ValueError(
-                "SECURITY ERROR: Cannot use default JWT secret key in production. "
-                "Set JWT_SECRET_KEY to a secure random string (min 32 chars).",
-            )
 
         return v
 
@@ -454,31 +441,20 @@ class Settings(BaseSettings):
     @classmethod
     def validate_api_keys(cls, v: Any) -> Any:
         """
-        Validate API keys - fail in production if using default
+        Validate API keys.
 
-        SECURITY: Default dev key is only provided in development mode.
-        Production requires explicit API_KEYS environment variable.
+        S03: Removed hardcoded dev default. All environments must set
+        API_KEYS explicitly. Tests use conftest.py env setup.
         """
-        env = os.getenv("ENVIRONMENT", "development")
-        is_production = env.lower() == "production"
-
         if not v:
-            if is_production:
+            env = os.getenv("ENVIRONMENT", "development")
+            if env.lower() in ("test", "testing"):
                 raise ValueError(
-                    "SECURITY ERROR: API_KEYS must be set in production environment. "
-                    "Provide comma-separated list of secure API keys.",
+                    "API_KEYS not set. Ensure conftest.py sets it before import."
                 )
-            # SECURITY: Only allow default dev key in development/testing
-            logger = logging.getLogger(__name__)
-            logger.warning(
-                "⚠️ Using default API key for development. Set API_KEYS env var for production.",
-            )
-            return "dev_api_key_for_testing_only"
-
-        if is_production and v == "dev_api_key_for_testing_only":
             raise ValueError(
-                "SECURITY ERROR: Cannot use default API key in production. "
-                "Set API_KEYS to secure comma-separated keys.",
+                "API_KEYS must be set. "
+                "Export API_KEYS as a comma-separated list of secure keys."
             )
 
         return v
