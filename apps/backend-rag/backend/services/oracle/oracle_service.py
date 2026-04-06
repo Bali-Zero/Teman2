@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import asyncpg
 import httpx
@@ -49,9 +49,6 @@ from backend.services.response.validator import ZantaraResponseValidator
 # Services
 from backend.services.search.citation_service import CitationService
 from backend.services.search.search_service import SearchService
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 
