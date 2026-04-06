@@ -287,7 +287,7 @@ The user writes in **colloquial Italian**. Translate intent into precise technic
 ### Local AI (Ollama-First)
 
 - `backend/llm/ollama_client.py` — **CRITICAL:** `think: false` for Qwen 3.5
-- Models: qwen3.5:27b, qwen3.5:9b, gemma3:12b, deepseek-r1:1.5b
+- Models: gemma4:26b (MoE, KG/JSON), qwen3.5:9b (fast), deepseek-r1:32b (reasoning), qwen2.5vl:7b (vision)
 - Vision: **qwen2.5vl:7b ONLY** (qwen3.5 Q4_K_M strips vision weights). API: `"images": [base64]`
 - Pattern: Ollama local → fallback Gemini. On Fly.io: Gemini always.
 

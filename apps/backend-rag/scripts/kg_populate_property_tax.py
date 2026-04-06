@@ -764,7 +764,7 @@ async def _extract_with_ollama(
     entity_types: str,
     relationship_types: str,
 ) -> dict[str, list] | None:
-    """Extract entities and relationships from text using Ollama qwen3.5:27b."""
+    """Extract entities and relationships from text using Ollama gemma4:26b."""
     try:
         from backend.llm.ollama_client import ollama_chat_kg
     except ImportError:
@@ -778,8 +778,8 @@ async def _extract_with_ollama(
         text=text,
     )
 
-    # Use 27b model with extended timeout — 9b returns empty, 27b needs ~30-90s
-    result = await ollama_chat_kg(prompt, EXTRACTION_SCHEMA, model="qwen3.5:27b", timeout=120.0)
+    # Use gemma4:26b MoE with extended timeout for quality extraction
+    result = await ollama_chat_kg(prompt, EXTRACTION_SCHEMA, model="gemma4:26b", timeout=120.0)
     if not result:
         return None
 

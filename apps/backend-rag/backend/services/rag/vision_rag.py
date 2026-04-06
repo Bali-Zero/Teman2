@@ -3,7 +3,7 @@ Vision RAG Service
 RAG multi-modale per documenti con immagini, tabelle, grafici.
 
 UPDATED 2026-03-08:
-- Ollama-first (qwen3.5:27b vision) with Gemini fallback
+- Ollama-first (qwen2.5vl:7b vision) with Gemini fallback
 - Added _analyze_visual_via_ollama for local vision analysis
 """
 
@@ -200,7 +200,7 @@ Output JSON:
 
     async def _vision_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama vision model (qwen2.5vl:7b)."""
-        # NOTE: MODEL_HEAVY (qwen3.5:27b Q4_K_M) strips vision weights — cannot do vision.
+        # NOTE: qwen3.5 Q4_K_M strips vision weights — cannot do vision.
         # qwen2.5vl:7b is the ONLY Ollama model with working vision support.
         vision_model = "qwen2.5vl:7b"
         try:
