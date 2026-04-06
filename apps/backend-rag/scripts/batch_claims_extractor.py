@@ -18,8 +18,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -51,15 +51,36 @@ TIER1_BY_DOMAIN: dict[str, list[dict[str, str]]] = {
         {"filename": "PP_18_2021_HakPakai_HGB.pdf", "instrument_id": "PP-18-2021"},
         {"filename": "PP_103_2015_Properti_Asing.pdf", "instrument_id": "PP-103-2015"},
         {"filename": "PermenATR_BPN_18_2021_Pendaftaran.pdf", "instrument_id": "PermenATR-18-2021"},
+        {"filename": "UU_5_1960_Agraria.pdf", "instrument_id": "UU-5-1960"},
+        {"filename": "PP_18_2021_HakPengelolaan.pdf", "instrument_id": "PP-18-2021-HakPengelolaan"},
+        {"filename": "PP_103_2015_PropertiAsing.pdf", "instrument_id": "PP-103-2015-JDIH"},
     ],
     "immigration": [
         {"filename": "PP_31_2013_Imigrasi.pdf", "instrument_id": "PP-31-2013"},
         {"filename": "Permenkumham_27_2021_Visa.pdf", "instrument_id": "Permenkumham-27-2021"},
         {"filename": "Permenkumham_29_2021_KITAS.pdf", "instrument_id": "Permenkumham-29-2021"},
         {"filename": "Permenkumham_11_2024_Visa_IzinTinggal.pdf", "instrument_id": "Permenkumham-11-2024"},
+        {"filename": "UU_6_2011_Keimigrasian.pdf", "instrument_id": "UU-6-2011"},
+    ],
+    "company": [
+        {"filename": "UU_40_2007_PT_Perseroan.pdf", "instrument_id": "UU-40-2007"},
+        {"filename": "UU_25_2007_PenanamanModal.pdf", "instrument_id": "UU-25-2007"},
+        {"filename": "PP_8_2021_ModalDasar.pdf", "instrument_id": "PP-8-2021"},
     ],
     "tax": [
         {"filename": "UU_6_1983_KUP_PajakUmum.pdf", "instrument_id": "UU-6-1983"},
+        {"filename": "UU_36_2008_PPh.pdf", "instrument_id": "UU-36-2008"},
+        {"filename": "UU_28_2007_KUP.pdf", "instrument_id": "UU-28-2007"},
+        {"filename": "UU_42_2009_PPN.pdf", "instrument_id": "UU-42-2009"},
+        {"filename": "PP_55_2022_Implementasi_HPP.pdf", "instrument_id": "PP-55-2022"},
+        {"filename": "PP_58_2023_TER_PPh21.pdf", "instrument_id": "PP-58-2023"},
+        {"filename": "PP_44_2024_PPN_12persen.pdf", "instrument_id": "PP-44-2024"},
+        {"filename": "PMK_68_2022.pdf", "instrument_id": "PMK-68-2022"},
+        {"filename": "PMK_66_2023.pdf", "instrument_id": "PMK-66-2023"},
+        {"filename": "PMK_2026_PPN_001.pdf", "instrument_id": "PMK-PPN-2026"},
+        {"filename": "UU_Akses_Info_Keuangan_Perpajakan.pdf", "instrument_id": "UU-AksesInfoKeu"},
+        {"filename": "Perppu_Akses_Info_Keuangan_Perpajakan.pdf", "instrument_id": "Perppu-AksesInfoKeu"},
+        {"filename": "UU_7_2021_HPP_Harmonisasi_Perpajakan.pdf", "instrument_id": "UU-7-2021"},
     ],
 }
 
@@ -177,14 +198,23 @@ def extract_from_chunk(
     chunk_idx: int,
     total_chunks: int,
 ) -> list[dict[str, Any]]:
-    """Extract claims from a single text chunk via claude CLI (Max subscription)."""
+    """Extract claims from a single text chunk via OpenAI gpt-4o-mini."""
     prompt = build_prompt(chunk, instrument_id, domain)
     try:
-        result = subprocess.run(
-            ["claude", "--print", "--dangerously-skip-permissions"],
-            input=prompt, capture_output=True, text=True, timeout=120,
+        from openai import OpenAI
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            logger.error("OPENAI_API_KEY not set")
+            return []
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=8192,
         )
-        raw = result.stdout if result.returncode == 0 else ""
+        raw = response.choices[0].message.content or ""
         claims = parse_claims_response(raw)
         logger.info("  Chunk %d/%d → %d claims", chunk_idx, total_chunks, len(claims))
         return claims

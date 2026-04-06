@@ -3243,5 +3243,1477 @@
     "pasal_ref": "PP 34/2021 Pasal 7",
     "instrument_id": "PP-34-2021",
     "category": "tka_normativa"
+  },
+  {
+    "claim": "Il Laporan Kinerja deve essere redatto in conformità con le normative vigenti.",
+    "verbatim": "Laporan Kinerja Direktorat Jenderal Imigrasi Tahun 2024 merupakan implementasi dari Peraturan Presiden Nomor 29 Tahun 2014.",
+    "pasal_ref": "PP 29/2014",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-404"
+  },
+  {
+    "claim": "Le istituzioni devono seguire le linee guida per la redazione del Laporan Kinerja.",
+    "verbatim": "Penyusunannya berpedoman kepada Peraturan Menteri Pendayagunaan Aparatur Negara dan Reformasi Birokrasi Nomor 53 Tahun 2014.",
+    "pasal_ref": "Permenpan RB 53/2014",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-405"
+  },
+  {
+    "claim": "Il Laporan Kinerja deve essere presentato entro una scadenza specifica.",
+    "verbatim": "Laporan Kinerja Direktorat Jenderal Imigrasi Tahun 2024 dapat diselesaikan tepat waktu.",
+    "pasal_ref": "N/A",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-406"
+  },
+  {
+    "claim": "Le istituzioni devono garantire la soddisfazione del pubblico nei servizi di immigrazione.",
+    "verbatim": "Meningkatnya Kepuasan Masyarakat atas Layanan Keimigrasian.",
+    "pasal_ref": "N/A",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-407"
+  },
+  {
+    "claim": "Le istituzioni devono utilizzare il Laporan Kinerja come strumento di valutazione.",
+    "verbatim": "dapat dimanfaatkan sebagai media evaluasi dalam pengelolaan kinerja.",
+    "pasal_ref": "N/A",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-408"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve avere personale competente e impegnato a lavorare in modo orientato al servizio.",
+    "verbatim": "Direktorat Jenderal Imigrasi dituntut untuk memiliki aparatur yang kompeten dan bertekad bekerja secara Berorientasi Pelayanan.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-409"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve redigere un rapporto sulle prestazioni annuali dal 1 gennaio al 31 dicembre.",
+    "verbatim": "Laporan Kinerja Direktorat Jenderal Imigrasi atas pelaksanaan tugas dan fungsi selama 1 Januari 2024 sampai dengan 31 Desember 2024.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-410"
+  },
+  {
+    "claim": "Il rapporto sulle prestazioni deve essere formulato come strumento di controllo e miglioramento delle prestazioni.",
+    "verbatim": "Laporan Kinerja juga diformulasikan sebagai instrumen pengendalian dan pendorong perbaikan kinerja.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-411"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve garantire la trasparenza e l'accountability nell'uso del budget.",
+    "verbatim": "perwujudan transparansi dan akuntabilitas Direktorat Jenderal Imigrasi dalam melaksanakan tugas dan fungsi.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-412"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve seguire le normative e le leggi in vigore.",
+    "verbatim": "sesuai dengan ketentuan peraturan perundang-undangan.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-413"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve fornire un rapporto utile per le parti interessate.",
+    "verbatim": "Diharapkan laporan ini dapat bermanfaat bagi pihak-pihak terkait.",
+    "pasal_ref": "PP 28/2023 Pasal 207",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-414"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi deve formulare politiche nel campo dei documenti di viaggio e dei visti.",
+    "verbatim": "Direktorat Lalu Lintas Keimigrasian dengan kegiatan Perumusan Kebijakan di Bidang Dokumen Perjalanan, Visa...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-415"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi ha l'obbligo di fornire supporto tecnico e supervisione.",
+    "verbatim": "pemberian bimbingan teknis dan supervisi di bidang pelayanan dan fasilitas keimigrasian...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-416"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi deve monitorare, valutare e riportare le politiche nel campo dell'immigrazione.",
+    "verbatim": "pelaksanaan pemantauan, evaluasi, dan pelaporan kebijakan di bidang pelayanan dan fasilitas keimigrasian...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-417"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi deve attuare politiche di cooperazione in materia di immigrazione.",
+    "verbatim": "kerja sama keimigrasian...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-418"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi deve garantire la sicurezza e l'applicazione della legge in materia di immigrazione.",
+    "verbatim": "penegakan hukum dan keamanan keimigrasian...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-419"
+  },
+  {
+    "claim": "Il Direktorat Jenderal Imigrasi deve fornire supporto alla gestione delle attività organizzative.",
+    "verbatim": "melaksanakan pemberian dukungan manajemen terhadap pelaksanaan tugas satuan organisasi...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-420"
+  },
+  {
+    "claim": "Il Direktorat Visa e Documenti di Viaggio deve attuare politiche e standardizzazioni relative ai visti.",
+    "verbatim": "melaksanakan penyiapan perumusan dan pelaksanaan kebijakan, pemberian bimbingan teknis dan supervisi...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-421"
+  },
+  {
+    "claim": "Il Direktorat Intelijen Keimigrasian deve attuare politiche di intelligence in materia di immigrazione.",
+    "verbatim": "melaksanakan perumusan dan pelaksanaan kebijakan, pemberian bimbingan teknis dan supervisi...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-422"
+  },
+  {
+    "claim": "Il Direktorat Kepatuhan Internal deve attuare politiche di conformità interna.",
+    "verbatim": "melaksanakan penyiapan perumusan dan pelaksanaan kebijakan, standardisasi pencegahan...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-423"
+  },
+  {
+    "claim": "Il Direktorat Tempat Pemeriksaan Imigrasi deve gestire e supervisionare i punti di controllo dell'immigrazione.",
+    "verbatim": "melaksanakan perumusan dan pelaksanaan kebijakan, pemberian bimbingan teknis...",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-424"
+  },
+  {
+    "claim": "La Laporan Kinerja deve essere redatta in modo trasparente e responsabile.",
+    "verbatim": "Penyusunan Laporan Kinerja harus dilakukan dengan transparan dan akuntabel",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-425"
+  },
+  {
+    "claim": "Direktorat Jenderal Imigrasi deve fornire servizi di immigrazione di alta qualità.",
+    "verbatim": "Imigrasi dituntut untuk memberi pelayanan prima di bidang keimigrasian",
+    "pasal_ref": "PP 18/2021 Pasal 1 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-426"
+  },
+  {
+    "claim": "I documenti di immigrazione devono essere forniti a WNA.",
+    "verbatim": "Pemberian dokumen keimigrasian (DOKIM) berupa: kartu izin tinggal terbatas (KITAS)",
+    "pasal_ref": "PP 18/2021 Pasal 2 Ayat 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-427"
+  },
+  {
+    "claim": "Le violazioni delle norme di immigrazione saranno perseguite.",
+    "verbatim": "Penegakan hukum keimigrasian itu ditegakkan kepada setiap orang",
+    "pasal_ref": "PP 18/2021 Pasal 2 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-428"
+  },
+  {
+    "claim": "Le richieste di visto devono essere esaminate per garantire la sicurezza nazionale.",
+    "verbatim": "melakukan seleksi terhadap setiap maksud kedatangan orang asing",
+    "pasal_ref": "PP 18/2021 Pasal 3 Ayat 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-429"
+  },
+  {
+    "claim": "Le restrizioni sull'uscita dal territorio indonesiano possono essere imposte.",
+    "verbatim": "larangan bagi seseorang untuk meninggalkan wilayah Indonesia dalam jangka waktu tertentu",
+    "pasal_ref": "PP 18/2021 Pasal 3 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-430"
+  },
+  {
+    "claim": "Le procedure di immigrazione devono facilitare gli investimenti stranieri.",
+    "verbatim": "peran Imigrasi dilihat dari aspek Tri Fungsi Imigrasi",
+    "pasal_ref": "PP 18/2021 Pasal 4 Ayat 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-431"
+  },
+  {
+    "claim": "Le autorizzazioni di soggiorno devono essere fornite in modo efficiente.",
+    "verbatim": "memberikan pelayanan prima terhadap calon investor asing",
+    "pasal_ref": "PP 18/2021 Pasal 4 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-432"
+  },
+  {
+    "claim": "Le politiche di immigrazione devono supportare la diversificazione economica.",
+    "verbatim": "kebijakan imigrasi juga dapat menghasilkan diversifikasi ekonomi",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-433"
+  },
+  {
+    "claim": "È obbligatorio implementare il 100% dei passaporti elettronici in tutti gli uffici immigrazione.",
+    "verbatim": "Implementasi 100% Paspor Elektronik dan Perluasan Penerbitan Paspor Elektronik di Seluruh Kantor Imigrasi",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-434"
+  },
+  {
+    "claim": "Le tariffe per i passaporti devono essere adeguate.",
+    "verbatim": "Penyesuaian Tarif Paspor",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "fee",
+    "claim_id": "IMM-435"
+  },
+  {
+    "claim": "È previsto il lancio di un nuovo design per il passaporto indonesiano.",
+    "verbatim": "Launching Desain Baru Paspor Indonesia ‘Merah Putih’",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-436"
+  },
+  {
+    "claim": "È possibile richiedere un Golden Visa.",
+    "verbatim": "Golden Visa",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-437"
+  },
+  {
+    "claim": "Le domande di estensione del visto e del permesso di soggiorno devono essere effettuate online.",
+    "verbatim": "Perpanjangan Visa dan Izin Tinggal Secara Online",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-438"
+  },
+  {
+    "claim": "Le indici dei visti devono essere adeguati.",
+    "verbatim": "Penyesuaian Indeks Visa",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-439"
+  },
+  {
+    "claim": "È possibile richiedere un Bridging Visa o un permesso di soggiorno temporaneo.",
+    "verbatim": "Bridging Visa /Izin Tinggal Peralihan",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-440"
+  },
+  {
+    "claim": "È obbligatorio segnalare i cambiamenti nei dati degli stranieri.",
+    "verbatim": "Fitur Pelaporan Perubahan Data Orang Asing",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-441"
+  },
+  {
+    "claim": "È previsto un potenziamento delle classi e la creazione di uffici immigrazione.",
+    "verbatim": "Peningkatan Kelas dan Pembentukan Kantor Imigrasi",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-442"
+  },
+  {
+    "claim": "Devono essere effettuate operazioni di sorveglianza sugli stranieri.",
+    "verbatim": "Operasi Pengawasan Orang Asing Serentak",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-443"
+  },
+  {
+    "claim": "Devono essere utilizzate applicazioni per l'applicazione della legge e la sorveglianza degli stranieri.",
+    "verbatim": "Aplikasi Penegakan Hukum (APGAKUM), Aplikasi Subject of Interest (SOI), dan Aplikasi Pengawasan Orang Asing (APOA)",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-444"
+  },
+  {
+    "claim": "È previsto un servizio di pattugliamento da parte dell'immigrazione.",
+    "verbatim": "Patroli Imigrasi",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-445"
+  },
+  {
+    "claim": "L'obiettivo è il rafforzamento della consapevolezza legale e dei diritti umani nella società.",
+    "verbatim": "1. SS1: Terwujudnya Kesadaran Hukum dan HAM Masyarakat;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "goal",
+    "claim_id": "IMM-446"
+  },
+  {
+    "claim": "È obbligatorio per i dipendenti pubblici rispettare i valori fondamentali 'BerAKHLAK' e 'PASTI'.",
+    "verbatim": "Tata nilai tersebut diharapkan menjadi tuntunan perilaku bagi sumber daya manusia...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-447"
+  },
+  {
+    "claim": "I dipendenti devono essere responsabili e trasparenti nella gestione delle risorse pubbliche.",
+    "verbatim": "Akuntabel: dapat dipertanggungjawabkan sesuai dengan peraturan perundang-undangan...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-448"
+  },
+  {
+    "claim": "I dipendenti devono migliorare continuamente le loro competenze per affrontare le sfide.",
+    "verbatim": "Kompeten: Meningkatkan kompetensi diri untuk menjawab tantangan yang selalu berubah...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-449"
+  },
+  {
+    "claim": "I dipendenti devono mantenere la riservatezza riguardo alle informazioni sensibili.",
+    "verbatim": "Menjaga rahasia jabatan dan negara",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-450"
+  },
+  {
+    "claim": "È necessario garantire l'accesso alle informazioni sulla governance.",
+    "verbatim": "Kementerian Hukum dan HAM menjamin akses atau kebebasan bagi setiap orang untuk memperoleh informasi...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-451"
+  },
+  {
+    "claim": "I dipendenti devono collaborare e lavorare in sinergia per raggiungere obiettivi comuni.",
+    "verbatim": "Sinergi: proses interaksi yang seimbang dan harmonis antar bagian/institusi...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-452"
+  },
+  {
+    "claim": "I dipendenti devono essere innovativi e proattivi nel loro lavoro.",
+    "verbatim": "Seluruh ASN Kementerian Hukum dan HAM dituntut inovatif dan berinisiatif...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-453"
+  },
+  {
+    "claim": "La Direktorat Jenderal Imigrasi deve seguire le politiche e strategie stabilite dal Ministero della Giustizia e dei Diritti Umani.",
+    "verbatim": "Arah Kebijakan dan Strategi tersebut tentunya selaras dengan Arah Kebijakan dan Strategi Kementerian Hukum dan HAM...",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-454"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve redigere un documento di prestazione annuale.",
+    "verbatim": "Perjanjian Kinerja merupakan dokumen yang memuat instruksi dari pimpinan instansi...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "document",
+    "claim_id": "IMM-455"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve raggiungere determinati obiettivi di prestazione.",
+    "verbatim": "Perjanjian Kinerja ini dapat dianggap sebagai janji atau komitmen kinerja...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-456"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve fornire un rapporto annuale sui risultati raggiunti.",
+    "verbatim": "Pengukuran capaian kinerja adalah suatu proses yang dilakukan setahun penuh...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-457"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve utilizzare indicatori di prestazione per misurare il successo.",
+    "verbatim": "Indikator Kinerja Utama (IKU) yang menjadi alat ukur keberhasilan...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-458"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve ottimizzare il supporto gestionale in otto aree di riforma.",
+    "verbatim": "Optimalisasi dukungan manajemen dalam pelaksanaan fungsi keimigrasian melalui 8 (delapan) area perubahan...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-459"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve rispettare le scadenze stabilite per la realizzazione degli obiettivi.",
+    "verbatim": "Perubahan tersebut menimbulkan beberapa indikator baru yang menyebabkan tidak dapat dilakukan perbandingan...",
+    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-460"
+  },
+  {
+    "claim": "Ogni straniero in Indonesia deve rispettare le normative sui visti e i permessi di soggiorno.",
+    "verbatim": "Setiap orang asing yang berada di Indonesia harus mematuhi ketentuan yang mengatur visa, izin tinggal yang diberikan, serta batasan-batasan aktivitas yang boleh dilakukan.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-461"
+  },
+  {
+    "claim": "Le violazioni delle normative sull'immigrazione possono avere conseguenze negative sulla sicurezza e sull'economia.",
+    "verbatim": "Pelanggaran aturan seperti penyalahgunaan visa wisata untuk bekerja, tidak memperbarui izin tinggal, atau memasuki wilayah Indonesia secara ilegal, dapat membawa dampak buruk bagi stabilitas dan keamanan nasional.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-462"
+  },
+  {
+    "claim": "È necessario un monitoraggio rigoroso delle attività degli stranieri per mantenere la sovranità nazionale.",
+    "verbatim": "Oleh karena itu, pengawasan keimigrasian yang ketat terhadap keberadaan dan kegiatan orang asing sangat diperlukan untuk menjaga tegaknya kedaulatan negara.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-463"
+  },
+  {
+    "claim": "Le autorità devono utilizzare la tecnologia per monitorare in tempo reale lo stato dei permessi di soggiorno degli stranieri.",
+    "verbatim": "Optimalisasi ini dapat dilakukan melalui beberapa langkah, seperti penggunaan teknologi untuk memantau status izin tinggal orang asing secara real-time.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-464"
+  },
+  {
+    "claim": "Le autorità devono aumentare il numero e la capacità degli agenti di immigrazione.",
+    "verbatim": "peningkatan jumlah dan kapasitas petugas imigrasi",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-465"
+  },
+  {
+    "claim": "È obbligatorio educare e informare gli stranieri sulle normative vigenti per prevenire violazioni.",
+    "verbatim": "edukasi dan sosialisasi kepada orang asing tentang aturan yang berlaku juga merupakan untuk mencegah pelanggaran.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-466"
+  },
+  {
+    "claim": "Le autorità devono garantire che l'Indonesia rimanga un paese sicuro e aperto per gli stranieri con motivi legittimi.",
+    "verbatim": "menjaga kepentingan negara, serta tetap menjadi tujuan yang aman dan terbuka bagi orang asing yang datang dengan tujuan yang sah dan legal.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-467"
+  },
+  {
+    "claim": "Le autorità di immigrazione possono imporre sanzioni amministrative agli stranieri.",
+    "verbatim": "Tindakan Administratif Keimigrasian (TAK) adalah sanksi administratif yang ditetapkan Pejabat Imigrasi.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-468"
+  },
+  {
+    "claim": "Le autorità di immigrazione possono limitare o revocare i permessi di soggiorno.",
+    "verbatim": "pembatasan, perubahan, atau pembatalan Izin Tinggal;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-469"
+  },
+  {
+    "claim": "È vietato trovarsi in determinati luoghi in Indonesia.",
+    "verbatim": "larangan untuk berada di satu atau beberapa tempat tertentu di Wilayah Indonesia;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-470"
+  },
+  {
+    "claim": "Gli stranieri devono risiedere in luoghi specifici in Indonesia.",
+    "verbatim": "keharusan untuk bertempat tinggal di suatu tempat tertentu di Wilayah Indonesia;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-471"
+  },
+  {
+    "claim": "Possono essere imposti costi agli stranieri.",
+    "verbatim": "pengenaan biaya beban;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "fee",
+    "claim_id": "IMM-472"
+  },
+  {
+    "claim": "Gli stranieri possono essere espulsi dall'Indonesia.",
+    "verbatim": "Deportasi dari Wilayah Indonesia.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-473"
+  },
+  {
+    "claim": "Le violazioni gravi delle leggi sull'immigrazione devono essere perseguite legalmente.",
+    "verbatim": "Pro Yustisia diberlakukan ketika pelanggaran serius terjadi.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-474"
+  },
+  {
+    "claim": "Le autorità devono seguire procedure legali per perseguire le violazioni.",
+    "verbatim": "dapat diproses secara hukum sesuai dengan prosedur yang berlaku.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-475"
+  },
+  {
+    "claim": "Le autorità devono collaborare con altre agenzie per l'applicazione delle leggi sull'immigrazione.",
+    "verbatim": "kerja sama lintas instansi, baik dengan kepolisian, kejaksaan, maupun Aparat Penegak Hukum.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-476"
+  },
+  {
+    "claim": "Direktorat Jenderal Imigrasi harus melakukan pengukuran Indeks Penegakan Hukum Keimigrasian.",
+    "verbatim": "Direktorat Je nderal Imigrasi merupakan satu -satunya instansi yang melakukan pengukuran Indeks Penegakan Hukum Keimigrasian.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-477"
+  },
+  {
+    "claim": "Standar nasional untuk Indeks Penegakan Hukum Keimigrasian ditetapkan sebesar 3,14 pada tahun 2024.",
+    "verbatim": "standar sebesar 3,14 pada tahun 2024 yang ditetapkan oleh Direktorat Jenderal Imigrasi merupakan standar nasional.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-478"
+  },
+  {
+    "claim": "Operasi Pengawasan Orang Asing harus dilakukan untuk memastikan kepatuhan terhadap peraturan keimigrasian.",
+    "verbatim": "Operasi penegakan hukum keimigrasian yang dilakukan secara serentak untuk memastikan kepatuhan Orang Asing terhadap peraturan keimigrasian.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-479"
+  },
+  {
+    "claim": "Direktorat Jenderal Imigrasi harus melaksanakan operasi pengawasan untuk mencegah pelanggaran.",
+    "verbatim": "mencegah terjadinya pelanggaran -pelanggaran, dan sebagai efek jera bagi orang asing agar selalu mematuhi peraturan yang berlaku.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-480"
+  },
+  {
+    "claim": "Aplikasi Penegakan Hukum (APGAKUM) harus digunakan untuk mencatat proses penegakan hukum.",
+    "verbatim": "Aplikasi Penegakan Hukum (APGAKUM) , untuk mencatat proses penegakan hukum sejak identifikasi, pengawasan administrasi.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-481"
+  },
+  {
+    "claim": "Warga negara asing yang melakukan kejahatan di Indonesia dapat ditangkal masuk hingga 10 tahun atau seumur hidup.",
+    "verbatim": "Warga negara asing yang melakukan kejahatan di Indonesia dapat ditangkal masuk hingga 10 tahun atau seumur hidup.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "sanction",
+    "claim_id": "IMM-482"
+  },
+  {
+    "claim": "Masa berlaku Izin Masuk Kembali (IMK) disesuaikan dengan Izin Tinggal Terbatas atau Tetap (ITAS/ITAP).",
+    "verbatim": "Masa berlaku Izin Masuk Kembali (IMK) kini disesuaikan dengan Izin Tinggal Terbatas atau Tetap (ITAS/ITAP).",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-483"
+  },
+  {
+    "claim": "Seseorang yang telah masuk tahap tuntutan jaksa dapat dicegah keluar Indonesia sesuai aturan baru.",
+    "verbatim": "Seseorang yang telah masuk tahap tuntutan jaksa dapat dicegah keluar Indonesia sesuai aturan baru.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-484"
+  },
+  {
+    "claim": "Pengukuran Indeks Kepuasan Masyarakat terhadap Pelayanan Keimigrasian harus dilaksanakan melalui aplikasi survei.",
+    "verbatim": "Pengukuran Indeks Kepuasan Masyarakat terhadap Pelayanan Keimigrasian dilaksanakan melalui aplikasi survei secara real time.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-485"
+  },
+  {
+    "claim": "Il servizio di immigrazione deve condurre un'indagine sulla soddisfazione del pubblico periodicamente.",
+    "verbatim": "Survei dilakukan secara periodik",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-486"
+  },
+  {
+    "claim": "I risultati dell'indagine sulla soddisfazione del pubblico devono essere comunicati.",
+    "verbatim": "Hasil dari pengukuran survei tersebut disampaikan dalam lampiran dokumen ini.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-487"
+  },
+  {
+    "claim": "Il target dell'Indice di Soddisfazione del Pubblico (IKM) per il 2024 è fissato a 3,30.",
+    "verbatim": "Target Indeks Kepuasan Masyarakat terhadap layanan keimigrasian jangka menengah yang terdapat dalam Rencana Strategis Direktorat Jenderal Imigrasi Tahun 2020 -2024 adalah sebesar 3,30.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-488"
+  },
+  {
+    "claim": "Il valore dell'IKM per il 2024 deve essere calcolato e confrontato con il target.",
+    "verbatim": "Artinya capaian ini telah melampaui dan lebih tinggi 19,39% dari target di tahun RPJMN.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-489"
+  },
+  {
+    "claim": "Le unità di servizio devono superare il valore standard nazionale dell'IKM fissato a 3,30.",
+    "verbatim": "Standar nasional Indeks Kepuasan Masyarakat (IKM) Terhadap Layanan Keimigrasian pada tahun 2024 adalah 3,30.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-490"
+  },
+  {
+    "claim": "I risultati dell'IKM devono essere analizzati per valutare il successo del servizio di immigrazione.",
+    "verbatim": "Analisis keberhasilan pencapaian target Indeks Kepuasan Masyarakat (IKM) Terhadap Layanan Keimigrasian.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-491"
+  },
+  {
+    "claim": "Il servizio di passaporto è programmato al di fuori dei giorni lavorativi.",
+    "verbatim": "Program Paspor Simpatik, yaitu pelayanan paspor terjadwal di luar hari kerja;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-492"
+  },
+  {
+    "claim": "Il passaporto elettronico ha una validità di 10 anni.",
+    "verbatim": "Implementasi Paspor 10 tahun;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-493"
+  },
+  {
+    "claim": "Le entità specifiche possono ricevere un permesso di soggiorno gratuito.",
+    "verbatim": "Pemberian layanan izin tinggal 0 (nol) rupiah bagi entitas tertentu;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "fee",
+    "claim_id": "IMM-494"
+  },
+  {
+    "claim": "I cittadini stranieri possono utilizzare l'autogate a partire dai 6 anni.",
+    "verbatim": "autogate telah dapat digunakan oleh anak mulai usia 6 tahun.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-495"
+  },
+  {
+    "claim": "I cittadini stranieri possono utilizzare l'autogate con passaporto elettronico.",
+    "verbatim": "WNA dengan paspor elektronik dan pemegang ITAS/ITAP juga dapat menggunakan autogate ini.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-496"
+  },
+  {
+    "claim": "Le tariffe per il passaporto sono state aggiornate e sono in vigore dal 17 dicembre 2024.",
+    "verbatim": "Pemberlakuan tarif baru ini telah dilaksanakan pada tanggal 17 Desember 2024;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "fee",
+    "claim_id": "IMM-497"
+  },
+  {
+    "claim": "Il passaporto 'Merah Putih' sarà introdotto ad agosto 2025.",
+    "verbatim": "Pemberlakuan paspor merah putih akan dilaksanakan pada Agustus 2025.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-498"
+  },
+  {
+    "claim": "Le domande di estensione del visto possono essere presentate online.",
+    "verbatim": "Peningkatan layanan juga dilaksanakan terhadap Orang Asing yang tinggal dan menetap di Indonesia secara online;",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-499"
+  },
+  {
+    "claim": "I titolari di visti possono ottenere un nuovo permesso di soggiorno senza uscire dall'Indonesia.",
+    "verbatim": "Pemegang Izin Tinggal Kunjungan, Izin Tinggal Terbatas, dan Izin Tinggal Tetap yang sudah tidak bisa lagi diperpanjang dapat memperoleh izin tinggal baru tanpa harus keluar wilayah Indonesia.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "right",
+    "claim_id": "IMM-500"
+  },
+  {
+    "claim": "Il sito E-Visa offre una funzione per segnalare cambiamenti nei dati degli stranieri.",
+    "verbatim": "Website E-Visa kini menyediakan fitur pelaporan perubahan data orang asing.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-501"
+  },
+  {
+    "claim": "È necessario migliorare la qualità dei servizi di immigrazione.",
+    "verbatim": "Meningkatnya kualitas layanan Keimigrasian.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-502"
+  },
+  {
+    "claim": "Le specifiche tecniche dei documenti di viaggio devono essere aggiornate.",
+    "verbatim": "Perlu Ditingkatkan Spesifikasi Teknis Blangko Dokumen Perjalanan RI.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-503"
+  },
+  {
+    "claim": "Le autorità locali devono monitorare gli stranieri con permessi di soggiorno scaduti.",
+    "verbatim": "Meminta bantuan UPT Keimgrasian setempat untuk memonitor.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-504"
+  },
+  {
+    "claim": "Le unità di lavoro devono riportare i risultati delle performance nel sistema SMART.",
+    "verbatim": "wajib melaporkan capaian kinerja kedalam aplikasi SMART.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-505"
+  },
+  {
+    "claim": "Il sistema SMART deve essere utilizzato per misurare e analizzare le performance di bilancio.",
+    "verbatim": "Aplikasi SMART berfungsi untuk mengukur, menilai dan menganalisis.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-506"
+  },
+  {
+    "claim": "Le autorità devono analizzare le licenze aziendali per gli investitori stranieri.",
+    "verbatim": "meminta bantuan BKPM untuk melakukan analisis terhadap izin usaha PT.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-507"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve misurare la qualità delle prestazioni di bilancio attraverso indicatori specifici.",
+    "verbatim": "Indikator Kinerja Pelaksanaan Anggaran (IKPA).",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-508"
+  },
+  {
+    "claim": "Il valore di revisione DIPA deve essere del 10%.",
+    "verbatim": "Revisi DIPA: 10 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-509"
+  },
+  {
+    "claim": "La deviazione della pagina III DIPA deve essere del 10%.",
+    "verbatim": "Deviasi Halaman III DIPA: 10 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-510"
+  },
+  {
+    "claim": "L'assorbimento del bilancio deve essere del 20%.",
+    "verbatim": "Penyerapan Anggaran: 20 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-511"
+  },
+  {
+    "claim": "La spesa contrattuale deve essere del 10%.",
+    "verbatim": "Belanja Kontraktual: 10 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-512"
+  },
+  {
+    "claim": "La risoluzione delle fatture deve essere del 10%.",
+    "verbatim": "Penyelesaian Tagihan: 10 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-513"
+  },
+  {
+    "claim": "La gestione di UP e TUP deve essere del 10%.",
+    "verbatim": "Pengelolaan UP dan TUP: 10 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-514"
+  },
+  {
+    "claim": "La dispensazione SPM deve essere del 5%.",
+    "verbatim": "Dispensasi SPM: 5 persen;",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-515"
+  },
+  {
+    "claim": "Il raggiungimento dell'output deve essere del 25%.",
+    "verbatim": "Capaian Output: 25 persen.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-516"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve utilizzare l'applicazione E-Performance per monitorare le prestazioni.",
+    "verbatim": "E-Performance Kementerian Hukum dan HAM adalah aplikasi system akuntabilitas kinerja.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 3",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-517"
+  },
+  {
+    "claim": "I risultati delle prestazioni devono essere riportati trimestralmente.",
+    "verbatim": "Capaian yang diisi dalam aplikasi ini adalah capaian setiap indikator kinerja per triwulan.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 4",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-518"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve migliorare le specifiche tecniche dei documenti di viaggio.",
+    "verbatim": "Perlu ditingkatkan spesifikasi teknis Blangko Dokumen Perjalanan RI.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 5",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-519"
+  },
+  {
+    "claim": "È necessario che tutte le procedure relative ai visti siano digitalizzate entro il 2024.",
+    "verbatim": "pada tahun 2024 seluruh layanan seputar visa sudah dapat dilakukan secara online",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "rule",
+    "claim_id": "IMM-520"
+  },
+  {
+    "claim": "Le autorità devono fornire report di monitoraggio e valutazione sull'implementazione delle domande di visto digitali.",
+    "verbatim": "Laporan hasil Monitoring dan Evaluasi Implementasi pengajuan visa secara digital",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-521"
+  },
+  {
+    "claim": "Le autorità devono aggiornare il profilo del personale per la segnalazione dei dati sui funzionari dell'immigrazione.",
+    "verbatim": "Belum adanya update profilling pegawai dalam rangka pelaporan personil keimigrasian",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-522"
+  },
+  {
+    "claim": "Le autorità devono segnalare gli stranieri che investono in modo non conforme alle normative.",
+    "verbatim": "Adanya temuan WNA yang melakukan investasi tidak sesuai dengan ketentuan yang berlaku",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-523"
+  },
+  {
+    "claim": "Le autorità devono implementare un'applicazione per supportare l'applicazione della legge sull'immigrazione.",
+    "verbatim": "Belum terdapatnya aplikasi yang mendukung kegiatan penegakan hukum keimigrasian",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-524"
+  },
+  {
+    "claim": "I detenuti non possono rimanere nei centri di detenzione oltre il limite di tempo stabilito dalla legge.",
+    "verbatim": "deteni yang sudah tinggal di rumah detensi imigrasi melebihi batas waktu yang ditentukan",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-525"
+  },
+  {
+    "claim": "Le autorità devono sviluppare procedure operative standard per le normative sull'immigrazione.",
+    "verbatim": "Peraturan keimigrasian terbaru belum memiliki Standar Operasional Prosedur",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-526"
+  },
+  {
+    "claim": "Le autorità devono informare il pubblico riguardo al Golden Visa per aumentare l'interesse.",
+    "verbatim": "Kebijakan Izin Tinggal yang berasal dari Golden Visa masih belum diketahui oleh masyarakat luas",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-527"
+  },
+  {
+    "claim": "Le autorità devono monitorare e valutare le cooperazioni nazionali per lo sviluppo economico e la lotta contro il crimine transnazionale.",
+    "verbatim": "Laporan hasil monitoring dan evaluasi pelaksanaan perjanjian kerja sama keimigrasian",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-528"
+  },
+  {
+    "claim": "È necessario implementare un piano d'azione per migliorare la cooperazione in materia di immigrazione.",
+    "verbatim": "Perlu dibentuk rencana aksi yang mendukung pelaksanaan tugas Direktorat Jenderal Imigrasi.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-529"
+  },
+  {
+    "claim": "Il processo di implementazione del sistema SIMKIM deve essere completato entro dicembre 2024.",
+    "verbatim": "Proses pelaksanaannya sudah mulai berjalan dari Januari 2024 dan berprogress setiap bulannya hingga Desember 2024.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-530"
+  },
+  {
+    "claim": "È obbligatorio partecipare ai test di accettazione dell'utente (UAT) per il sistema SIMKIM integrato.",
+    "verbatim": "Terbentuknya User Acceptance Test (UAT) SIMKIM Terintegrasi.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-531"
+  },
+  {
+    "claim": "Le istituzioni devono utilizzare l'applicazione E-Monev per la segnalazione dei dati di monitoraggio.",
+    "verbatim": "Aplikasi e-Monev digunakan untuk pelaporan data realisasi hasil pemantauan.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-532"
+  },
+  {
+    "claim": "È necessario completare la documentazione dei test di penetrazione e di stress per il sistema SIMKIM.",
+    "verbatim": "Dokumentasi Penetration dan Stressed Test Sistem Big Data Keimigrasian Tahap 3.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-533"
+  },
+  {
+    "claim": "Le istituzioni devono presentare un rapporto sui risultati della valutazione dell'implementazione.",
+    "verbatim": "Laporan hasil Evaluasi Implementasi Pengembangan Aplikasi SIMKIM Terintegrasi.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-534"
+  },
+  {
+    "claim": "È vietato non seguire le procedure di monitoraggio e valutazione stabilite.",
+    "verbatim": "Kegiatan pemantauan pelaksanaan Renja-K/L dilakukan melalui aplikasi E-Monev Bappenas.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "prohibition",
+    "claim_id": "IMM-535"
+  },
+  {
+    "claim": "L'entrata dei dati deve essere effettuata ogni mese con valori parziali.",
+    "verbatim": "Data dientrikan setiap bulannya dengan nilai parsial sesuai dengan nilai dan satuan dari target.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 1",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-536"
+  },
+  {
+    "claim": "L'entrata dei dati per gli indicatori di performance deve essere effettuata almeno una volta.",
+    "verbatim": "Khusus untuk indikator kinerja, entri data dilakukan minimal satu kali sesuai waktu ketercapaian.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 2",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-537"
+  },
+  {
+    "claim": "L'entrata dei dati sui problemi è obbligatoria ogni mese per la segnalazione delle interazioni.",
+    "verbatim": "Entri data Permasalahan adalah mandatory di setiap bulannya untuk pelaporan intervensi.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 3",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-538"
+  },
+  {
+    "claim": "Il Ministero della Giustizia e dei Diritti Umani deve seguire le istruzioni presidenziali per la prevenzione e la lotta contro la droga.",
+    "verbatim": "Kementerian Hukum dan Hak Asasi Manusia Republik Indonesia cq. Direktorat Jenderal Imigrasi selaku pengampu kebijakan bidang keimigrasian, ikut serta dalam mendukung pelaksanaan Pencegahan dan Pemberantasan Penyalahgunaan dan Peredaran Gelap dan Prekusor Narkotika.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 4",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-539"
+  },
+  {
+    "claim": "Le relazioni devono essere presentate ogni sei mesi.",
+    "verbatim": "Badan Narkotika Nasional dalam hal ini diamanatkan untuk melakukan koordinasi, pemantauan dan evaluasi dan pelaporan pada setiap 6 (enam) bulan.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 5",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "duration",
+    "claim_id": "IMM-540"
+  },
+  {
+    "claim": "I dati devono essere presentati in percentuale in base allo stato di attuazione scelto.",
+    "verbatim": "Entri data dalam persentase mengikuti status pelaksanaan yang dipilih.",
+    "pasal_ref": "Permenkumham-27-2021 Pasal 6",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "procedure",
+    "claim_id": "IMM-541"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve attuare le funzioni di immigrazione in modo ottimale.",
+    "verbatim": "Direktorat Jenderal Imigrasi secara umum telah melaksanakan tugas dan fungsi Keimigrasian secara optimal",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-542"
+  },
+  {
+    "claim": "Il target di performance per l'indice di enforcement della legge sull'immigrazione è fissato al 3,14.",
+    "verbatim": "Indeks Penegakan Hukum Keimigrasian 3,14 Indeks",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-543"
+  },
+  {
+    "claim": "Il target di performance per l'indice di soddisfazione del servizio di immigrazione è fissato al 3,3.",
+    "verbatim": "Indeks Kepuasan Masyarakat Layanan Keimigrasian 3,3 Indeks",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "requirement",
+    "claim_id": "IMM-544"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve implementare il sistema di passaporto elettronico al 100%.",
+    "verbatim": "Implementasi 100% Paspor Elektronik",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-545"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve fornire servizi di immigrazione basati su piattaforme digitali.",
+    "verbatim": "Penguatan Layanan Keimigrasian Berbasis Digital",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-546"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve aumentare il numero di PPNS (Penyidik Pegawai Negeri Sipil) in ambito immigrazione.",
+    "verbatim": "Peningkatan pembinaan dan Jumlah PPNS Keimigrasian",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-547"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve effettuare pattugliamenti di immigrazione.",
+    "verbatim": "Pelaksanaan Patroli Imigrasi oleh seluruh satuan kerja imigrasi",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-548"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve sviluppare il sistema Autogate.",
+    "verbatim": "Pengembangan Autogate",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-549"
+  },
+  {
+    "claim": "Il Direktorato Generale dell'Immigrazione deve migliorare la qualità dei servizi attraverso l'applicazione di standard di servizio.",
+    "verbatim": "Peningkatan kualitas layanan dengan penerapan standar layanan secara menyeluruh.",
+    "pasal_ref": "Permenkumham-27-2021",
+    "instrument_id": "Permenkumham-27-2021",
+    "category": "obligation",
+    "claim_id": "IMM-550"
+  },
+  {
+    "claim": "Il PPNS deve svolgere indagini sulle violazioni delle normative locali.",
+    "verbatim": "PPNS mempunyai tugas melakukan penyidikan terhadap pelanggaran peraturan perundang -undangan daerah.",
+    "pasal_ref": "Pasal 3 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-551"
+  },
+  {
+    "claim": "Il PPNS deve essere dotato di un Ordine di Indagine per svolgere le indagini.",
+    "verbatim": "PPNS dalam melaksanakan tugas penyidikan harus dilengkapi dengan Surat Perintah Penyidikan.",
+    "pasal_ref": "Pasal 3 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-552"
+  },
+  {
+    "claim": "L'Ordine di Indagine deve essere firmato dal superiore del PPNS.",
+    "verbatim": "Surat Perintah Penyidikan sebagaimana dimaksud pada ayat (2), ditandatangani oleh atasan PPNS.",
+    "pasal_ref": "Pasal 3 Ayat 3",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-553"
+  },
+  {
+    "claim": "Il PPNS può coordinarsi con gli investigatori della POLRI durante le indagini.",
+    "verbatim": "Dalam melaksanakan tugas PPNS dapat berkoordinasi dengan Penyidik POLRI.",
+    "pasal_ref": "Pasal 3 Ayat 4",
+    "instrument_id": "UU-6-2011",
+    "category": "right",
+    "claim_id": "IMM-554"
+  },
+  {
+    "claim": "Il sistema e la procedura per l'esecuzione dei compiti del PPNS saranno ulteriormente regolati da un regolamento del sindaco.",
+    "verbatim": "Sistem dan prosedur pelaksanaan tugas PPNS akan diatur lebih lanjut dengan Peraturan Bupati.",
+    "pasal_ref": "Pasal 3",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-555"
+  },
+  {
+    "claim": "Il PPNS ha il diritto di ricevere segnalazioni o denunce riguardo a reati contro le normative locali.",
+    "verbatim": "PPNS mempunyai wewenang : a. menerima laporan atau pengaduan dari seseorang mengenai adanya tindak pidana atas pelanggaran peraturan peundang-undangan daerah;",
+    "pasal_ref": "Pasal 4 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "right",
+    "claim_id": "IMM-556"
+  },
+  {
+    "claim": "Il PPNS ha l'obbligo di condurre indagini e ricevere segnalazioni riguardo a violazioni delle normative locali.",
+    "verbatim": "PPNS sesuai dengan bidang tugasnya mempunyai kewajiban : a. melakukan penyidikan, menerima laporan dan/atau pengaduan mengenai terjadinya pelanggaran atas perundang-undangan daerah;",
+    "pasal_ref": "Pasal 6 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-557"
+  },
+  {
+    "claim": "Il PPNS deve redigere un verbale per ogni azione intrapresa durante le indagini.",
+    "verbatim": "c. membuat Berita Acara setiap tindakan dalam hal : 1) pemeriksaan tersangka;",
+    "pasal_ref": "Pasal 6 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-558"
+  },
+  {
+    "claim": "Per essere nominato PPNS, è necessario avere almeno 2 anni di servizio come dipendente pubblico.",
+    "verbatim": "masa kerja sebagai Pegawai Negeri Sipil paling singkat 2 (dua) tahun;",
+    "pasal_ref": "Pasal 7 Ayat 2 huruf a",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-559"
+  },
+  {
+    "claim": "Il PPNS deve essere in possesso di un diploma di almeno livello D3.",
+    "verbatim": "pendidikan serendah-rendahnya Sarjana Muda (D3);",
+    "pasal_ref": "Pasal 7 Ayat 2 huruf c",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-560"
+  },
+  {
+    "claim": "Il PPNS deve presentare un certificato di idoneità fisica e mentale rilasciato da un medico di un ospedale pubblico.",
+    "verbatim": "sehat jasmani dan rohani yang dibuktikan dengan surat keterangan dokter pada rumah sakit pemerintah;",
+    "pasal_ref": "Pasal 7 Ayat 2 huruf e",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-561"
+  },
+  {
+    "claim": "Il Ministro della Giustizia deve comunicare il nome del candidato PPNS al sindaco entro 30 giorni dalla ricezione della documentazione.",
+    "verbatim": "Menteri Hukum dan Hak Asasi Manusia memberitahukan nama calon pejabat PPNS kepada Bupati paling lama 30 (tiga puluh) hari setelah berkas diterima.",
+    "pasal_ref": "Pasal 8 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-562"
+  },
+  {
+    "claim": "Il sindaco deve presentare il nome del candidato che ha soddisfatto i requisiti al Capo della Polizia per la formazione.",
+    "verbatim": "Bupati mengajukan nama calon yang telah memenuhi persyaratan sebagaimana dimaksud pada ayat (1) kepada Kepala Kepolisian Negara Republik Indonesia untuk mengikuti pendidikan dan pelatihan dibidang penyidikan.",
+    "pasal_ref": "Pasal 8 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-563"
+  },
+  {
+    "claim": "Il sindaco deve richiedere il parere del Capo della Polizia e del Procuratore Generale per la nomina del PPNS.",
+    "verbatim": "calon pejabat PPNS harus mendapat pertimbangan dari Kepala Kepolisian Negara Republik Indonesia dan Jaksa Agung Republik Indonesia.",
+    "pasal_ref": "Pasal 9 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-564"
+  },
+  {
+    "claim": "Il parere deve essere fornito entro 30 giorni dalla richiesta.",
+    "verbatim": "Pertimbangan Kepala Kepolisian Negara Republik Indonesia dan Jaksa Agung Republik Indonesia sebagaimana dimaksud pada ayat (1) harus diberikan masing-masing dalam waktu paling lama 30 (tiga puluh) hari sejak permohonan pertimbangan diajukan.",
+    "pasal_ref": "Pasal 9 Ayat 3",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-565"
+  },
+  {
+    "claim": "Se il parere non viene fornito entro 30 giorni, si considera che sia stato approvato.",
+    "verbatim": "Apabila dalam waktu 30 (tiga puluh) hari pertimbangan sebagaimana dimaksud pada ayat (1) tidak diberikan, Kepala Kepolisian Negara Republik Indonesia dan Jaksa Agung Republik Indonesia dianggap menyetujui.",
+    "pasal_ref": "Pasal 9 Ayat 4",
+    "instrument_id": "UU-6-2011",
+    "category": "sanction",
+    "claim_id": "IMM-566"
+  },
+  {
+    "claim": "Il sindaco deve presentare la lettera di raccomandazione e il certificato di completamento della formazione al Ministro della Giustizia.",
+    "verbatim": "Bupati menyampaikan surat pertimbangan beserta surat tanda tamat pendidikan dan pelatihan di bidang penyidikan kepada Menteri Hukum dan Hak Asasi Manusia.",
+    "pasal_ref": "Pasal 9 Ayat 5",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-567"
+  },
+  {
+    "claim": "Il candidato PPNS deve essere nominato e prestare giuramento prima di assumere l'incarico.",
+    "verbatim": "calon pejabat PPNS wajib dilantik dan mengucapkan sumpah atau menyatakan janji menurut agamanya di hadapan Menteri atau kepada Dirjen Administrasi Hukum Umum sebagai pejabat yang ditunjuk.",
+    "pasal_ref": "Pasal 12 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-568"
+  },
+  {
+    "claim": "La pelantikan e l'assunzione di giuramento per i funzionari PPNS devono essere effettuate entro 30 giorni dalla ricezione della decisione del Ministro della Giustizia e dei Diritti Umani.",
+    "verbatim": "dilaksanakan dalam waktu paling lama 30 (tiga puluh) hari terhitung sejak tanggal Keputusan Menteri Hukum dan Hak Asasi Manusia",
+    "pasal_ref": "UU-6-2011 Pasal 2 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-569"
+  },
+  {
+    "claim": "La cerimonia di pelantikan e giuramento deve essere condotta dal Capo dell'Ufficio Regionale del Ministero della Giustizia e dei Diritti Umani o da un funzionario designato.",
+    "verbatim": "dilakukan oleh Kepala Kantor Wilayah Kementerian Hukum dan Hak Asasi Manusia",
+    "pasal_ref": "UU-6-2011 Pasal 2 Ayat 3",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-570"
+  },
+  {
+    "claim": "Il giuramento dei funzionari PPNS deve seguire un testo specifico che include l'impegno a rispettare la legge e a servire con responsabilità.",
+    "verbatim": "Lafal sumpah atau janji pejabat PPNS berbunyi sebagai berikut",
+    "pasal_ref": "UU-6-2011 Pasal 2 Ayat 4",
+    "instrument_id": "UU-6-2011",
+    "category": "obligation",
+    "claim_id": "IMM-571"
+  },
+  {
+    "claim": "Il verbale della cerimonia di pelantikan e giuramento deve essere riportato al Ministro della Giustizia e dei Diritti Umani entro 30 giorni.",
+    "verbatim": "wajib dilaporkan kepada Menteri Hukum dan Hak Asasi Manusia dalam waktu paling lama 30 (tiga puluh) hari",
+    "pasal_ref": "UU-6-2011 Pasal 2 Ayat 5",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-572"
+  },
+  {
+    "claim": "I funzionari pubblici che sono stati nominati come PPNS devono ricevere un tesserino identificativo rilasciato dal Ministro o dal Direttore Generale.",
+    "verbatim": "diberi kartu tanda pengenal yang dikeluarkan oleh Menteri atau kepada Direktur Jenderal Administrasi Hukum Umum",
+    "pasal_ref": "UU-6-2011 Pasal 13 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "document",
+    "claim_id": "IMM-573"
+  },
+  {
+    "claim": "Il tesserino identificativo dei funzionari PPNS è la prova della loro autorità nell'esercizio delle loro funzioni.",
+    "verbatim": "Kartu tanda pengenal pejabat PPNS merupakan keabsahan wewenang",
+    "pasal_ref": "UU-6-2011 Pasal 13 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "right",
+    "claim_id": "IMM-574"
+  },
+  {
+    "claim": "Il Bupati ha l'autorità di supervisionare e formare i PPNS.",
+    "verbatim": "Bupati berwenang melakukan pembinaan dan pengawasan terhadap PPNS",
+    "pasal_ref": "UU-6-2011 Pasal 14 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "right",
+    "claim_id": "IMM-575"
+  },
+  {
+    "claim": "Il Bupati può delegare l'attuazione della supervisione e formazione operativa dei PPNS a un Team di Formazione PPNS.",
+    "verbatim": "melimpahkan dan menetapkan pelaksanaan pembinaan dan pengawasan operasional PPNS kepada Tim Pembina PPNS",
+    "pasal_ref": "UU-6-2011 Pasal 14 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-576"
+  },
+  {
+    "claim": "La formazione e l'addestramento dei PPNS devono includere corsi di formazione per i candidati PPNS e corsi di aggiornamento.",
+    "verbatim": "Pendidikan dan Pelatihan PPNS terdiri dari : Diklat calon PPNS; Diklat peningkatan kemampuan PPNS.",
+    "pasal_ref": "UU-6-2011 Pasal 15",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-577"
+  },
+  {
+    "claim": "Il corso di formazione per i candidati PPNS è un requisito obbligatorio per essere nominati PPNS.",
+    "verbatim": "merupakan persyaratan wajib yang harus ditempuh oleh seorang Pegawai Negeri Sipil untuk diangkat menjadi PPNS",
+    "pasal_ref": "UU-6-2011 Pasal 16 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-578"
+  },
+  {
+    "claim": "Il corso di aggiornamento per i PPNS è un'attività di formazione tecnica per migliorare le competenze nel campo delle indagini.",
+    "verbatim": "merupakan bimbingan teknis yang diselenggarakan untuk meningkatkan keterampilan dan penguasaan pengetahuan PPNS di bidang penyidikan",
+    "pasal_ref": "UU-6-2011 Pasal 16 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-579"
+  },
+  {
+    "claim": "I PPNS possono essere rimossi dal loro incarico per vari motivi, tra cui la cessazione del servizio come funzionario pubblico o la violazione della disciplina.",
+    "verbatim": "PPNS Daerah diber hentikan dari jabatannya karena : berhenti sebagai Pegawai Negeri Sipil; atas permintaan sendiri; melanggar disiplin kepegawaian",
+    "pasal_ref": "UU-6-2011 Pasal 17 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "prohibition",
+    "claim_id": "IMM-580"
+  },
+  {
+    "claim": "La proposta di rimozione dei PPNS deve essere presentata dal Bupati al Ministro della Giustizia e dei Diritti Umani con motivazione.",
+    "verbatim": "Pemberhentian pejabat PPNS diusulkan oleh Bupati yang membawahi pejabat PPNS kepada Menteri Hukum dan Hak Asasi Manusia",
+    "pasal_ref": "UU-6-2011 Pasal 17 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-581"
+  },
+  {
+    "claim": "La proposta di rimozione deve includere documenti specifici come la fotocopia della decisione di nomina e la fotocopia della decisione di promozione.",
+    "verbatim": "Usul pemberhentian pejabat PPNS harus dilampiri dengan : fotokopi keputusan tentang pengangkatan pejabat PPNS; fotokopi keputusan tentang kenaikan pangkat pegawai negeri sipil terakhir yang dilegalisir",
+    "pasal_ref": "UU-6-2011 Pasal 17 Ayat 3",
+    "instrument_id": "UU-6-2011",
+    "category": "requirement",
+    "claim_id": "IMM-582"
+  },
+  {
+    "claim": "Il Ministro della Giustizia e dei Diritti Umani deve emettere una decisione di rimozione entro 30 giorni dalla ricezione della proposta.",
+    "verbatim": "mengeluarkan surat keputusan pemberhentian pejabat PPNS dalam waktu paling lama 30 (tiga puluh) hari",
+    "pasal_ref": "UU-6-2011 Pasal 17 Ayat 4",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-583"
+  },
+  {
+    "claim": "Il Direttore Generale dell'Amministrazione Giuridica Generale è responsabile per l'emissione della decisione di rimozione.",
+    "verbatim": "Kewenangan mengeluarkan surat keputusan pemberhentian pejabat PPNS dilaksanakan oleh Direktur Jenderal Administrasi Hukum Umum",
+    "pasal_ref": "UU-6-2011 Pasal 17 Ayat 5",
+    "instrument_id": "UU-6-2011",
+    "category": "right",
+    "claim_id": "IMM-584"
+  },
+  {
+    "claim": "La normativa precedente riguardante i PPNS è abrogata e non è più valida.",
+    "verbatim": "Peraturan Daerah Kabupaten Sumenep Nomor 21 Tahun 1988 tentang Penyidik Pegawai Negeri Sipil di Lingkungan Pemerintah Kabupaten Daerah Tingkat II Sumenep dicabut dan dinyatakan tidak berlaku",
+    "pasal_ref": "UU-6-2011 Pasal 18 Ayat 1",
+    "instrument_id": "UU-6-2011",
+    "category": "prohibition",
+    "claim_id": "IMM-585"
+  },
+  {
+    "claim": "Le disposizioni non regolate in questa normativa saranno ulteriormente disciplinate in un regolamento del Bupati.",
+    "verbatim": "Hal-hal yang belum diatur dalam Peraturan Daerah ini, sepanjang mengenai teknis pelaksanaannya diatur lebih lanjut dalam Peraturan Bupati",
+    "pasal_ref": "UU-6-2011 Pasal 18 Ayat 2",
+    "instrument_id": "UU-6-2011",
+    "category": "procedure",
+    "claim_id": "IMM-586"
+  },
+  {
+    "claim": "Questa normativa entra in vigore dalla data della sua pubblicazione.",
+    "verbatim": "Peraturan Daerah ini mulai berlaku pada tanggal diundangkan",
+    "pasal_ref": "UU-6-2011 Pasal 19",
+    "instrument_id": "UU-6-2011",
+    "category": "duration",
+    "claim_id": "IMM-587"
   }
 ]
