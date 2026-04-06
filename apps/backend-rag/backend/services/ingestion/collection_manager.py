@@ -37,10 +37,8 @@ class CollectionManager:
         # Race condition protection: read-write locks per collection
         # Write locks: exclusive access during ingestion
         # Read semaphores: allow concurrent searches
-        self._collection_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self._collection_read_semaphores: dict[str, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(20),  # Allow 20 concurrent reads per collection
-        )
+        self._collection_locks: dict[str, asyncio.Lock] = {}
+        self._collection_read_semaphores: dict[str, asyncio.Semaphore] = {}
         self._lock_timeout = 30.0  # seconds (longer for ingestion operations)
 
         # Collection definitions (lazy initialization)
