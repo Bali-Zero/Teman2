@@ -1768,92 +1768,100 @@
     "claim_id": "PRO-221"
   },
   {
-    "claim": "La formazione del Distretto di Tanah Kampung è obbligatoria per il governo locale.",
+    "claim": "È necessario formare il distretto di Tanah Kampung nella regione di Kerinci.",
     "verbatim": "Membentuk Kecamatan Tanah Kampung di Wilayah Kabupaten Kerinci",
     "pasal_ref": "Pasal 2 Ayat (1)",
     "instrument_id": "UU-5-1960",
-    "category": "obligation",
+    "category": "rule",
     "claim_id": "PRO-222"
   },
   {
-    "claim": "Il confine del Distretto di Tanah Kampung deve essere definito e documentato in una mappa.",
-    "verbatim": "Batas Wilayah sebagaimana dimaksud ayat (1) Pasal ini berupa peta",
-    "pasal_ref": "Pasal 4 Ayat (2)",
+    "claim": "Il distretto di Tanah Kampung include specifici villaggi.",
+    "verbatim": "yang meliputi Desa: a. Desa Sembilan b. Desa Tanjung Karang ...",
+    "pasal_ref": "Pasal 2 Ayat (1)",
     "instrument_id": "UU-5-1960",
-    "category": "procedure",
+    "category": "rule",
     "claim_id": "PRO-223"
   },
   {
-    "claim": "Il Distretto di Tanah Kampung ha una superficie di 11,00 Km2.",
-    "verbatim": "Luas Wilayah Kecamatan Tanah Kampung seluas 11,00 Km2.",
-    "pasal_ref": "Pasal 4 Ayat (3)",
+    "claim": "Il confine del distretto di Tanah Kampung è definito da specifiche aree geografiche.",
+    "verbatim": "Batas Wilayah Kecamatan Tanah Kampung sebagaimana dalam Pasal 2 Ayat (1)",
+    "pasal_ref": "Pasal 4 Ayat (1)",
     "instrument_id": "UU-5-1960",
-    "category": "document",
+    "category": "rule",
     "claim_id": "PRO-224"
   },
   {
-    "claim": "La regolamentazione della gestione del Distretto sarà ulteriormente definita da un regolamento del Capo del Distretto.",
-    "verbatim": "Hal-hal yang belum diatur dalam Peraturan Daerah ini, mengenai pelaksanaannya akan diatur lebih lanjut dengan Peraturan Kepala Daerah.",
-    "pasal_ref": "Pasal 5",
+    "claim": "Il distretto di Tanah Kampung ha una superficie di 11,00 Km2.",
+    "verbatim": "Luas Wilayah Kecamatan Tanah Kampung seluas 11,00 Km2.",
+    "pasal_ref": "Pasal 4 Ayat (3)",
     "instrument_id": "UU-5-1960",
-    "category": "procedure",
+    "category": "rule",
     "claim_id": "PRO-225"
   },
   {
-    "claim": "La legge entra in vigore dalla data della sua pubblicazione.",
+    "claim": "Le disposizioni non regolate saranno ulteriormente definite da un regolamento del capo distretto.",
+    "verbatim": "Hal-hal yang belum diatur dalam Peraturan Daerah ini, mengenai pelaksanaannya akan diatur lebih lanjut dengan Peraturan Kepala Daerah.",
+    "pasal_ref": "Pasal 5",
+    "instrument_id": "UU-5-1960",
+    "category": "rule",
+    "claim_id": "PRO-226"
+  },
+  {
+    "claim": "Il regolamento entra in vigore dalla data di pubblicazione.",
     "verbatim": "Peraturan Daerah ini mulai berlaku pada tanggal diundangkan.",
     "pasal_ref": "Pasal 6",
     "instrument_id": "UU-5-1960",
     "category": "duration",
-    "claim_id": "PRO-226"
-  },
-  {
-    "claim": "Le istituzioni di comunità a livello di kelurahan devono svolgere attività di empowerment della comunità.",
-    "verbatim": "Lembaga Kemasyarakat di Kelurahan bertugas: a. melakukan pemberdayaan masyarakat;",
-    "pasal_ref": "PP 18/2021 Pasal 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
     "claim_id": "PRO-227"
   },
   {
-    "claim": "Le istituzioni di comunità devono partecipare alla pianificazione e all'attuazione dello sviluppo.",
-    "verbatim": "b. ikut serta dalam perencanaan dan pelaksanaan pembangunan;",
+    "claim": "Le istituzioni di comunità a Kelurahan devono svolgere attività di empowerment della comunità.",
+    "verbatim": "Lembaga Kemasyarakat di Kelurahan bertugas: a. melakukan pemberdayaan masyarakat;",
     "pasal_ref": "PP 18/2021 Pasal 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
     "claim_id": "PRO-228"
   },
   {
-    "claim": "Le istituzioni di comunità devono migliorare i servizi alla comunità.",
-    "verbatim": "c. meningkatkan pelayanan masyarakat.",
+    "claim": "Le istituzioni di comunità a Kelurahan devono partecipare alla pianificazione e attuazione dello sviluppo.",
+    "verbatim": "b. ikut serta dalam perencanaan dan pelaksanaan pembangunan;",
     "pasal_ref": "PP 18/2021 Pasal 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
     "claim_id": "PRO-229"
   },
   {
-    "claim": "Le istituzioni di comunità devono raccogliere e canalizzare le aspirazioni della comunità.",
-    "verbatim": "a. menampung dan menyalurkan aspirasi masyarakat;",
-    "pasal_ref": "PP 18/2021 Pasal 3",
+    "claim": "Le istituzioni di comunità a Kelurahan devono migliorare i servizi alla comunità.",
+    "verbatim": "c. meningkatkan pelayanan masyarakat.",
+    "pasal_ref": "PP 18/2021 Pasal 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
     "claim_id": "PRO-230"
   },
   {
-    "claim": "Le istituzioni di comunità devono promuovere l'unità e la coesione della comunità.",
-    "verbatim": "b. menanamkan dan memupuk rasa persatuan dan kesatuan masyarakat dalam rangka memperkokoh Negara Kesatuan Republik Indonesia;",
+    "claim": "Le istituzioni di comunità a Kelurahan devono raccogliere e canalizzare le aspirazioni della comunità.",
+    "verbatim": "a. menampung dan menyalurkan aspirasi masyarakat;",
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
     "claim_id": "PRO-231"
   },
   {
-    "claim": "Le istituzioni di comunità devono migliorare la qualità e accelerare i servizi del governo locale.",
-    "verbatim": "c. membantu meningkatkan kualitas dan mempercepat pelayanan Pemerintah Kelurahan kepada masyarakat;",
+    "claim": "Le istituzioni di comunità devono promuovere l'unità della comunità per rafforzare lo Stato.",
+    "verbatim": "b. menanamkan dan memupuk rasa persatuan dan kesatuan masyarakat dalam rangka memperkokoh Negara Kesatuan Republik Indonesia;",
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
     "claim_id": "PRO-232"
+  },
+  {
+    "claim": "Le istituzioni di comunità devono migliorare la qualità e velocizzare i servizi del governo locale.",
+    "verbatim": "c. membantu meningkatkan kualitas dan mempercepat pelayanan Pemerintah Kelurahan kepada masyarakat;",
+    "pasal_ref": "PP 18/2021 Pasal 3",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "obligation",
+    "claim_id": "PRO-233"
   },
   {
     "claim": "Le istituzioni di comunità devono pianificare, controllare e sviluppare i risultati dello sviluppo in modo partecipativo.",
@@ -1861,7 +1869,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-233"
+    "claim_id": "PRO-234"
   },
   {
     "claim": "Le istituzioni di comunità devono promuovere l'iniziativa, la partecipazione e la cooperazione della comunità.",
@@ -1869,7 +1877,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-234"
+    "claim_id": "PRO-235"
   },
   {
     "claim": "Le istituzioni di comunità devono contribuire a migliorare il benessere delle famiglie.",
@@ -1877,7 +1885,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-235"
+    "claim_id": "PRO-236"
   },
   {
     "claim": "Le istituzioni di comunità devono contribuire a migliorare la qualità delle risorse umane.",
@@ -1885,175 +1893,111 @@
     "pasal_ref": "PP 18/2021 Pasal 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-236"
-  },
-  {
-    "claim": "Le istituzioni della comunità di villaggio devono essere formate dalla società in base alle necessità.",
-    "verbatim": "Lembaga Kemasyarakatan Kelurahan dibentuk oleh masyarakat sesuai dengan kebutuhan.",
-    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
     "claim_id": "PRO-237"
   },
   {
-    "claim": "Le istituzioni della comunità di villaggio devono essere partner del Lurah nella gestione del governo locale.",
-    "verbatim": "merupakan mitra Lurah yang membantu pelaksanaan tugas dalam penyelenggaraan pemerintahan Kelurahan.",
+    "claim": "Le istituzioni di comunità devono essere formate dalla società in base alle necessità e sono partner del Lurah.",
+    "verbatim": "Lembaga Kemasyarakatan Kelurahan dibentuk oleh masyarakat sesuai dengan kebutuhan dan merupakan mitra Lurah.",
     "pasal_ref": "PP 18/2021 Pasal 5 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "rule",
     "claim_id": "PRO-238"
   },
   {
-    "claim": "La formazione delle istituzioni della comunità deve rispettare i requisiti stabiliti.",
-    "verbatim": "Pembentukan Lembaga Kemasyarakatan Kelurahan sebagaimana dimaksud pada ayat (1) dengan memenuhi persyaratan.",
+    "claim": "La formazione delle istituzioni di comunità deve soddisfare determinati requisiti.",
+    "verbatim": "Pembentukan Lembaga Kemasyarakatan Kelurahan sebagaimana dimaksud pada ayat (1) dengan memenuhi persyaratan:",
     "pasal_ref": "PP 18/2021 Pasal 5 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "requirement",
     "claim_id": "PRO-239"
   },
   {
-    "claim": "Le istituzioni devono avere una segreteria permanente.",
+    "claim": "Le istituzioni di comunità devono avere una segreteria permanente.",
     "verbatim": "memiliki Sekretariat yang bersifat tetap;",
     "pasal_ref": "PP 18/2021 Pasal 5 Ayat 3 e",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "requirement",
     "claim_id": "PRO-240"
   },
   {
-    "claim": "La decisione di nomina dei dirigenti delle istituzioni deve essere presa dal Lurah.",
+    "claim": "La decisione di formare un'istituzione di comunità deve essere presa dal Lurah.",
     "verbatim": "Penetapan Pengurus Lembaga Kemasyarakatan Kelurahan ditetapkan dengan Keputusan Lurah.",
     "pasal_ref": "PP 18/2021 Pasal 5 Ayat 4",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "procedure",
     "claim_id": "PRO-241"
   },
   {
-    "claim": "La formazione delle istituzioni deve essere discussa in un incontro di villaggio.",
-    "verbatim": "Pembentukan Lembaga kemasyarakatan Kelurahan dibahas dalam musyawarah Kelurahan.",
-    "pasal_ref": "PP 18/2021 Pasal 6 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
-    "claim_id": "PRO-242"
-  },
-  {
-    "claim": "Il risultato dell'incontro di villaggio deve essere redatto in un verbale.",
-    "verbatim": "Hasil musyawarah Kelurahan sebagaimana dimaksud pada ayat (2) dituangkan dalam Berita Acara.",
-    "pasal_ref": "PP 18/2021 Pasal 6 Ayat 3",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "document",
-    "claim_id": "PRO-243"
-  },
-  {
-    "claim": "Ogni Rukun Tetangga deve essere composto da almeno 20 famiglie.",
+    "claim": "La formazione di un Rukun Tetangga (RT) richiede almeno 20 famiglie.",
     "verbatim": "R T sebagaimana dimaksud dalam Pasal 5 ayat (2) huruf a dibentuk dengan ketentuan paling sedikit 20 (dua puluh) kepala keluarga.",
     "pasal_ref": "PP 18/2021 Pasal 7 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-244"
+    "category": "requirement",
+    "claim_id": "PRO-242"
   },
   {
-    "claim": "Il Lurah o un suo rappresentante deve essere presente alla formazione del Rukun Tetangga.",
+    "claim": "Il Lurah o un suo delegato deve essere presente durante la formazione del Rukun Tetangga.",
     "verbatim": "Pembentukan R T dilakukan oleh warga setempat yang dihadiri oleh Lurah atau pejabat yang ditunjuk.",
     "pasal_ref": "PP 18/2021 Pasal 7 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-245"
+    "claim_id": "PRO-243"
   },
   {
-    "claim": "Il Lurah deve annunciare alla comunità locale la formazione e/o l'elezione del Rukun Tetangga.",
+    "claim": "Il Lurah deve annunciare alla comunità il piano di formazione e/o elezione del Rukun Tetangga.",
     "verbatim": "Lurah mengumumkan kepada masyarakat setempat mengenai rencana pembentukan dan/atau pemilihan pengurus R T.",
     "pasal_ref": "PP 18/2021 Pasal 8 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-246"
+    "claim_id": "PRO-244"
   },
   {
-    "claim": "I dirigenti del Rukun Tetangga devono essere scelti tra i capifamiglia della comunità.",
-    "verbatim": "Pengurus R T dipilih dari warga R T setempat yang telah berstatus sebagai kepala keluarga.",
+    "claim": "I membri del Rukun Tetangga devono soddisfare determinati requisiti per essere eletti come dirigenti.",
+    "verbatim": "Pengurus R T dipilih dari warga R T setempat yang telah berstatus sebagai kepala keluarga, dengan syarat-syarat sebagai berikut:",
     "pasal_ref": "PP 18/2021 Pasal 9 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-247"
+    "category": "requirement",
+    "claim_id": "PRO-245"
   },
   {
-    "claim": "I dirigenti del Rukun Tetangga devono avere almeno 20 anni e essere sposati.",
-    "verbatim": "berumur sekurang-kurangnya 20 (dua puluh) tahun dan sudah menikah;",
-    "pasal_ref": "PP 18/2021 Pasal 9 Ayat 1 c",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-248"
-  },
-  {
-    "claim": "I dirigenti del Rukun Tetangga devono essere residenti nel territorio da almeno 6 mesi.",
-    "verbatim": "penduduk yang telah bertempat tinggal tetap sekurang-kurangnya 6 (enam) bulan.",
-    "pasal_ref": "PP 18/2021 Pasal 9 Ayat 1 d",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-249"
-  },
-  {
-    "claim": "I dirigenti del Rukun Tetangga devono essere in buona salute fisica e mentale.",
-    "verbatim": "sehat jasmani dan rohani;",
-    "pasal_ref": "PP 18/2021 Pasal 9 Ayat 1 e",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-250"
-  },
-  {
-    "claim": "I dirigenti del Rukun Tetangga devono non essere membri di partiti politici.",
-    "verbatim": "tidak berafiliasi kepada partai politik.",
-    "pasal_ref": "PP 18/2021 Pasal 5 Ayat 3 f",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-251"
-  },
-  {
-    "claim": "I dirigenti del Rukun Tetangga devono svolgere compiti di servizio alla comunità.",
-    "verbatim": "Pengurus R T mempunyai tugas membantu menjalankan tugas pelayanan kepada masyarakat.",
+    "claim": "Il Rukun Tetangga deve aiutare a fornire servizi alla comunità.",
+    "verbatim": "Pengurus R T mempunyai tugas membantu menjalankan tugas pelayanan kepada masyarakat dalam hal:",
     "pasal_ref": "PP 18/2021 Pasal 10",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-252"
+    "claim_id": "PRO-246"
   },
   {
-    "claim": "Ogni Rukun Warga deve essere composto da almeno 2 Rukun Tetangga.",
+    "claim": "Ogni Rukun Warga (RW) deve consistere di almeno 2 Rukun Tetangga.",
     "verbatim": "Setiap R W terdiri sekurang-kurangnya 2 (dua) R T.",
     "pasal_ref": "PP 18/2021 Pasal 11 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-253"
+    "category": "requirement",
+    "claim_id": "PRO-247"
   },
   {
-    "claim": "La formazione del Rukun Warga deve avvenire tramite un incontro di Rukun Tetangga.",
-    "verbatim": "Pembentukan R W dilakukan melalui musyawarah dilaksanakan oleh pengurus R T setempat.",
+    "claim": "La formazione del Rukun Warga deve avvenire tramite una consultazione.",
+    "verbatim": "Pembentukan R W dilakukan melalui musyawarah dilaksanakan oleh pengurus R T setempat yang dihadiri oleh Lurah atau pejabat yang ditunjuk.",
     "pasal_ref": "PP 18/2021 Pasal 11 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-254"
+    "claim_id": "PRO-248"
   },
   {
-    "claim": "I dirigenti del Rukun Warga devono essere scelti tra i capifamiglia della comunità.",
-    "verbatim": "Pengurus R W adalah warga R W setempat yang berstatus sebagai kepala keluarga.",
-    "pasal_ref": "PP 18/2021 Pasal 13 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-255"
-  },
-  {
-    "claim": "I dirigenti del Rukun Warga devono svolgere compiti di servizio alla comunità.",
-    "verbatim": "Pengurus R W bertugas dan berkewajiban untuk melaksanakan :",
-    "pasal_ref": "PP 18/2021 Pasal 14 Ayat 1",
+    "claim": "I dirigenti del Rukun Warga devono riferire le attività organizzative almeno ogni 6 mesi.",
+    "verbatim": "menyampaikan mengenai laporan kegiatan organisasi paling sedikit 6 (enam) bulan sekali kepada anggota melalui musyawarah anggota;",
+    "pasal_ref": "PP 18/2021 Pasal 14 Ayat 1 b",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-256"
+    "claim_id": "PRO-249"
   },
   {
-    "claim": "Il Lembaga Pemberdayaan Masyarakat Kelurahan deve essere formato a livello di villaggio.",
+    "claim": "Il Lembaga Pemberdayaan Masyarakat Kelurahan (LPMK) deve essere formato a livello di Kelurahan.",
     "verbatim": "L PM K dibentuk di tingkat Kelurahan.",
     "pasal_ref": "PP 18/2021 Pasal 15 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "rule",
-    "claim_id": "PRO-257"
+    "claim_id": "PRO-250"
   },
   {
     "claim": "Il Pengurus LPMK deve essere un residente della Kelurahan locale e soddisfare determinati requisiti.",
@@ -2061,7 +2005,7 @@
     "pasal_ref": "PP 18/2021 Pasal 16 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-258"
+    "claim_id": "PRO-251"
   },
   {
     "claim": "Il Pengurus LPMK deve avere almeno 20 anni.",
@@ -2069,7 +2013,7 @@
     "pasal_ref": "PP 18/2021 Pasal 16 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-259"
+    "claim_id": "PRO-252"
   },
   {
     "claim": "Il Pengurus LPMK deve risiedere nella Kelurahan per almeno 6 mesi.",
@@ -2077,15 +2021,15 @@
     "pasal_ref": "PP 18/2021 Pasal 16 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-260"
+    "claim_id": "PRO-253"
   },
   {
-    "claim": "Il Pengurus LPMK deve essere scelto tramite consultazione.",
+    "claim": "Il Pengurus LPMK deve essere scelto tramite consenso dai rappresentanti locali.",
     "verbatim": "Pengurus L PM K  dipilih secara musyawarah untuk mufakat oleh perwakilan pengurus R T , pengurus R W , tokoh masyarakat.",
     "pasal_ref": "PP 18/2021 Pasal 16 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-261"
+    "claim_id": "PRO-254"
   },
   {
     "claim": "Il Lurah deve presiedere la riunione per l'elezione del Pengurus LPMK.",
@@ -2093,7 +2037,7 @@
     "pasal_ref": "PP 18/2021 Pasal 16 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-262"
+    "claim_id": "PRO-255"
   },
   {
     "claim": "Il Pengurus LPMK deve redigere un rapporto delle attività al termine del mandato.",
@@ -2101,7 +2045,7 @@
     "pasal_ref": "PP 18/2021 Pasal 18",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-263"
+    "claim_id": "PRO-256"
   },
   {
     "claim": "Il TP PKK deve essere formato a livello di Kelurahan.",
@@ -2109,7 +2053,7 @@
     "pasal_ref": "PP 18/2021 Pasal 19 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-264"
+    "claim_id": "PRO-257"
   },
   {
     "claim": "Il Ketua TP PKK deve essere il Lurah.",
@@ -2117,15 +2061,15 @@
     "pasal_ref": "PP 18/2021 Pasal 19 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-265"
+    "claim_id": "PRO-258"
   },
   {
-    "claim": "Il Ketua TP PKK deve essere nominato e inaugurato dal Ketua TP PKK Kecamatan.",
+    "claim": "Il Ketua TP PKK deve essere nominato e confermato dal Lurah.",
     "verbatim": "Ketua TP PK K  ditetapkan dan dilantik oleh Ketua TP PK K  Kecamatan dan dikukuhkan oleh Lurah.",
     "pasal_ref": "PP 18/2021 Pasal 19 Ayat 5",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-266"
+    "claim_id": "PRO-259"
   },
   {
     "claim": "Ogni Pokja deve avere almeno 2 membri.",
@@ -2133,7 +2077,15 @@
     "pasal_ref": "PP 18/2021 Pasal 19 Ayat 8",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
-    "claim_id": "PRO-267"
+    "claim_id": "PRO-260"
+  },
+  {
+    "claim": "Il TP PKK deve redigere un piano di lavoro basato sui risultati della Rakerda.",
+    "verbatim": "menyusun rencana keija P K K  sebagai penjabaran hasil Rakerda;",
+    "pasal_ref": "PP 18/2021 Pasal 20 Ayat 1",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "obligation",
+    "claim_id": "PRO-261"
   },
   {
     "claim": "Il Karang Taruna deve essere formato a livello di Kelurahan.",
@@ -2141,239 +2093,167 @@
     "pasal_ref": "PP 18/2021 Pasal 21 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
+    "claim_id": "PRO-262"
+  },
+  {
+    "claim": "Il Pengurus Karang Taruna deve essere scelto tra i residenti locali.",
+    "verbatim": "Pengurus Karang Taruna dipilih dari Penduduk pada wilayah setempat, dengan syarat-syarat sebagai berikut:",
+    "pasal_ref": "PP 18/2021 Pasal 21 Ayat 3",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "requirement",
+    "claim_id": "PRO-263"
+  },
+  {
+    "claim": "Il Pengurus Karang Taruna deve avere almeno 17 anni.",
+    "verbatim": "berumur sekurang-kurangnya 17 (tujuh belas) tahun sampai dengan 45 (empat puluh lim a) tahun;",
+    "pasal_ref": "PP 18/2021 Pasal 21 Ayat 3",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "requirement",
+    "claim_id": "PRO-264"
+  },
+  {
+    "claim": "Il Pengurus Karang Taruna deve redigere un rapporto delle attività.",
+    "verbatim": "membuat laporan hasil kegiatan kepada TP P K K  Kecamatan dengan tembusan kepada ketua dewan penyantun TP PK K  Kelurahan;",
+    "pasal_ref": "PP 18/2021 Pasal 20 Ayat 1 h",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "obligation",
+    "claim_id": "PRO-265"
+  },
+  {
+    "claim": "La recluta dei membri di S A T L IN M A S deve essere aperta a tutti i residenti della Kelurahan.",
+    "verbatim": "Perekrutan sebagaimana dimaksud pada ayat (9) dilakukan secara sukarela dan terbuka bagi seluruh Penduduk pada Kelurahan yang bersangkutan.",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "procedure",
+    "claim_id": "PRO-266"
+  },
+  {
+    "claim": "I membri di S A T L IN M A S devono avere almeno 10 membri.",
+    "verbatim": "Anggota dari S A T L IN M A S paling sedikit 10 (sepuluh) orang.",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 1",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "rule",
+    "claim_id": "PRO-267"
+  },
+  {
+    "claim": "I requisiti per la recluta di S A T L IN M A S includono la cittadinanza indonesiana e l'età compresa tra 18 e 60 anni.",
+    "verbatim": "Persyaratan sebagaimana dimaksud ayat (1) meliputi: a. Warga Negara Indonesia; e. berumur sekurang-kurangnya 18 (delapan belas) tahun sampai dengan 60 (enam puluh) tahun;",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
+    "instrument_id": "PP-18-2021-HakPengelolaan",
+    "category": "requirement",
     "claim_id": "PRO-268"
   },
   {
-    "claim": "I membri del Karang Taruna devono avere un'età compresa tra 17 e 45 anni.",
-    "verbatim": "berumur sekurang-kurangnya 17 (tujuh belas) tahun sampai dengan 45 (empat puluh lim a) tahun;",
-    "pasal_ref": "PP 18/2021 Pasal 21 Ayat 3",
+    "claim": "I membri di S A T L IN M A S devono essere in buona salute fisica e mentale.",
+    "verbatim": "f. sehat jasmani dan rohani;",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "requirement",
     "claim_id": "PRO-269"
   },
   {
-    "claim": "Il Karang Taruna deve essere composto da membri scelti.",
-    "verbatim": "Pengurus Karang Taruna disusun atas dasar pemilihan, dengan ketentuan sebagai berikut:",
-    "pasal_ref": "PP 18/2021 Pasal 21 Ayat 4",
+    "claim": "I membri di S A T L IN M A S devono avere un comportamento buono e onesto.",
+    "verbatim": "g. berkelakuan baik dan jujur;",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
+    "category": "requirement",
     "claim_id": "PRO-270"
   },
   {
-    "claim": "Il Karang Taruna deve assistere la Kelurahan nella gestione e nello sviluppo.",
-    "verbatim": "membantu Kelurahan dalam penyelenggaraan pemerintahan, pelaksanaan pembangunan, dan kemasyarakatan;",
-    "pasal_ref": "PP 18/2021 Pasal 22 Ayat 1",
+    "claim": "I membri di S A T L IN M A S devono risiedere nella Kelurahan per almeno 6 mesi.",
+    "verbatim": "h. telah bertempat tinggal tetap sekurang-kurangnya 6 (enam) bulan dengan tidak terputus-putus di Kelurahan setempat yang dibuktikan dengan K T P-el atau Kartu Keluarga;",
+    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
+    "category": "requirement",
     "claim_id": "PRO-271"
   },
   {
-    "claim": "Il SATLINMAS deve essere formato a livello di Kelurahan.",
-    "verbatim": "S A T L IN M A S  dibentuk di tingkat Kelurahan.",
-    "pasal_ref": "PP 18/2021 Pasal 23 Ayat 1",
+    "claim": "I membri di S A T L IN M A S devono rispettare le norme legali e sociali.",
+    "verbatim": "a. menjimjung tinggi norma hukum, norma agama, hak asasi manusia, dan norma sosial lainnya yang hidup dan berkembang di masyarakat;",
+    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "requirement",
+    "category": "obligation",
     "claim_id": "PRO-272"
   },
   {
-    "claim": "Il SATLINMAS deve avere un responsabile direttamente sotto il Lurah.",
-    "verbatim": "S A T L IN M A S  berkedudukan dibawah dan bertanggung jawab langsung kepada Lurah.",
-    "pasal_ref": "PP 18/2021 Pasal 23 Ayat 3",
+    "claim": "I membri di S A T L IN M A S devono mantenere la disciplina e rispettare il giuramento.",
+    "verbatim": "b. menaati disiplin dan berpegang teguh pada Sumpah Janji S A T L IN M A S;",
+    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "requirement",
+    "category": "obligation",
     "claim_id": "PRO-273"
   },
   {
-    "claim": "I membri del S A T L IN M A S devono essere almeno 10.",
-    "verbatim": "Anggota dari S A T L IN M A S paling sedikit 10 (sepuluh) orang.",
-    "pasal_ref": "PP 18/2021 Pasal 23 Ayat 8",
+    "claim": "I membri di S A T L IN M A S devono segnalare eventuali disturbi alla sicurezza.",
+    "verbatim": "d. melaporkan secara beijenjang apabila ditemukan atau patut diduga adanya gangguan perlindungan masyarakat.",
+    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "obligation",
     "claim_id": "PRO-274"
   },
   {
-    "claim": "Il reclutamento dei membri del S A T L IN M A S deve essere volontario e aperto a tutti i residenti.",
-    "verbatim": "Perekrutan sebagaimana dimaksud pada ayat (9) dilakukan secara sukarela dan terbuka bagi seluruh Penduduk pada Kelurahan yang bersangkutan.",
-    "pasal_ref": "PP 18/2021 Pasal 23 Ayat 10",
+    "claim": "Il Posyandu deve essere istituito a livello di Kelurahan.",
+    "verbatim": "Posyandu dibentuk di tingkat Kelurahan.",
+    "pasal_ref": "PP 18/2021 Pasal 28 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "rule",
     "claim_id": "PRO-275"
   },
   {
-    "claim": "I membri del S A T L IN M A S devono soddisfare determinati requisiti.",
-    "verbatim": "Perekrutan anggota S A T L IN M A S sebagaimana dimaksud Pasal 23 dilakukan terhadap masyarakat yang memenuhi persyaratan.",
-    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 1",
+    "claim": "I membri del Posyandu devono essere residenti della Kelurahan.",
+    "verbatim": "Pengurus Posyandu adalah penduduk Kelurahan setempat dengan persyaratan, sebagai berikut:",
+    "pasal_ref": "PP 18/2021 Pasal 28 Ayat 6",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "requirement",
     "claim_id": "PRO-276"
   },
   {
-    "claim": "I requisiti per diventare membri del S A T L IN M A S includono la cittadinanza indonesiana e la buona condotta.",
-    "verbatim": "Persyaratan sebagaimana dimaksud ayat (1) meliputi: a. Warga Negara Indonesia; b. bertaqwa kepada Tuhan Yang Maha Esa; g. berkelakuan baik dan jujur;",
-    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
+    "claim": "La durata del mandato dei membri del Lembaga Kemasyarakatan Kelurahan è di 5 anni.",
+    "verbatim": "Masa bakti Pengurus Lembaga Kemasyarakatan Kelurahan selama 5 (lim a) tahun terhitung sejak tanggal ditetapkan.",
+    "pasal_ref": "PP 18/2021 Pasal 31 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
+    "category": "duration",
     "claim_id": "PRO-277"
   },
   {
-    "claim": "I membri del S A T L IN M A S devono avere un'età compresa tra 18 e 60 anni.",
-    "verbatim": "e. berumur sekurang-kurangnya 18 (delapan belas) tahun sampai dengan 60 (enam puluh) tahun;",
-    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
+    "claim": "I membri del Lembaga Kemasyarakatan Kelurahan non possono ricoprire più di due mandati consecutivi.",
+    "verbatim": "Pengurus Lembaga Kemasyarakatan Kelurahan selain P K K dapat menjabat paling banyak 2 (dua) kali masa jabatan secara berturut-turut atau tidak secara berturut-turut.",
+    "pasal_ref": "PP 18/2021 Pasal 31 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "rule",
     "claim_id": "PRO-278"
   },
   {
-    "claim": "I membri del S A T L IN M A S devono risiedere nel villaggio per almeno 6 mesi.",
-    "verbatim": "h. telah bertempat tinggal tetap sekurang-kurangnya 6 (enam) bulan dengan tidak terputus-putus di Kelurahan setempat yang dibuktikan dengan K T P-el atau Kartu Keluarga;",
-    "pasal_ref": "PP 18/2021 Pasal 24 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-279"
-  },
-  {
-    "claim": "I membri del S A T L IN M A S sono nominati con una decisione del capo della polizia locale.",
-    "verbatim": "Warga masyarakat yang telah memenuhi persyaratan sebagaimana dimaksud dalam Pasal 24 ayat (2) ditetapkan sebagai S A T L IN M A S dengan Keputusan Kepala Satuan Polisi Pamong Praja atas nama Bupati atas dasar usulan dari Lurah setempat.",
-    "pasal_ref": "PP 18/2021 Pasal 25",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
-    "claim_id": "PRO-280"
-  },
-  {
-    "claim": "I membri del S A T L IN M A S devono prestare giuramento durante la cerimonia di nomina.",
-    "verbatim": "Pelantikan sebagaimana dimaksud pada ayat (1) disertai dengan pembacaan sumpah janji S A T L IN M A S.",
-    "pasal_ref": "PP 18/2021 Pasal 26 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
-    "claim_id": "PRO-281"
-  },
-  {
-    "claim": "I membri del S A T L IN M A S hanno l'obbligo di rispettare le norme legali e sociali.",
-    "verbatim": "Anggota S A T L IN M A S, mempunyai kewajiban: a. menjimjung tinggi norma hukum, norma agama, hak asasi manusia, dan norma sosial lainnya yang hidup dan berkembang di masyarakat;",
-    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
-    "claim_id": "PRO-282"
-  },
-  {
-    "claim": "I membri del S A T L IN M A S devono segnalare eventuali disturbi alla sicurezza.",
-    "verbatim": "d. melaporkan secara beijenjang apabila ditemukan atau patut diduga adanya gangguan perlindungan masyarakat.",
-    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
-    "claim_id": "PRO-283"
-  },
-  {
-    "claim": "I membri del S A T L IN M A S devono aiutare nella risoluzione delle controversie tra i cittadini.",
-    "verbatim": "c. membantu menyelesaikan perselisihan warga masyarakat yang dapat mengganggu keamanan, ketenteraman dan ketertiban masyarakat;",
-    "pasal_ref": "PP 18/2021 Pasal 27 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
-    "claim_id": "PRO-284"
-  },
-  {
-    "claim": "Le posyandu devono essere costituite a livello di villaggio.",
-    "verbatim": "Posyandu dibentuk di tingkat Kelurahan.",
-    "pasal_ref": "PP 18/2021 Pasal 28 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-285"
-  },
-  {
-    "claim": "I membri del comitato posyandu devono essere residenti del villaggio.",
-    "verbatim": "Pengurus Posyandu adalah penduduk Kelurahan setempat dengan persyaratan, sebagai berikut:",
-    "pasal_ref": "PP 18/2021 Pasal 28 Ayat 6",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-286"
-  },
-  {
-    "claim": "I membri del comitato posyandu devono avere almeno 20 anni.",
-    "verbatim": "c. berumur sekurang-kurangnya 20 (dua puluh) tahun;",
-    "pasal_ref": "PP 18/2021 Pasal 28 Ayat 6",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-287"
-  },
-  {
-    "claim": "Il sindaco può formare altre istituzioni sociali secondo necessità.",
-    "verbatim": "Lurah dapat membentuk Lembaga Kemasyarakatan Kelurahan Lainnya sesuai kebutuhan.",
-    "pasal_ref": "PP 18/2021 Pasal 29 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-288"
-  },
-  {
-    "claim": "La formazione di istituzioni sociali deve essere discussa con la comunità.",
-    "verbatim": "Pembentukan Lembaga Kemasyarakatan Kelurahan Lainnya sebagaimana dimaksud pada ayat (1) dimusyawarahkan oleh Masyarakat.",
-    "pasal_ref": "PP 18/2021 Pasal 29 Ayat 2",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
-    "claim_id": "PRO-289"
-  },
-  {
-    "claim": "I membri delle istituzioni sociali devono essere nominati con una decisione del sindaco.",
-    "verbatim": "Pengangkatan dan pemberhentian pengurus Lembaga Kemasyarakatan Kelurahan Lainnya sebagaimana dimaksud pada ayat (2) huruf e ditetapkan dengan Keputusan Lurah.",
-    "pasal_ref": "PP 18/2021 Pasal 29 Ayat 4",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "procedure",
-    "claim_id": "PRO-290"
-  },
-  {
-    "claim": "I membri delle istituzioni sociali devono informare il sindaco alla fine del loro mandato.",
-    "verbatim": "maka pengurus Lembaga Kemasyarakatan Kelurahan wajib memberitahukan dan mempertanggungjawabkan pelaksanaan tugasnya kepada anggota dan melaporkan kepada Lurah.",
+    "claim": "I membri del Lembaga Kemasyarakatan Kelurahan devono informare il Lurah al termine del loro mandato.",
+    "verbatim": "pengurus Lembaga Kemasyarakatan Kelurahan wajib memberitahukan dan mempertanggungjawabkan pelaksanaan tugasnya kepada anggota dan melaporkan kepada Lurah.",
     "pasal_ref": "PP 18/2021 Pasal 31 Ayat 5",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-291"
+    "claim_id": "PRO-279"
   },
   {
-    "claim": "Il mandato dei membri delle istituzioni sociali dura 5 anni.",
-    "verbatim": "Masa bakti Pengurus Lembaga Kemasyarakatan Kelurahan selama 5 (lim a) tahun terhitung sejak tanggal ditetapkan.",
-    "pasal_ref": "PP 18/2021 Pasal 31 Ayat 1",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "duration",
-    "claim_id": "PRO-292"
-  },
-  {
-    "claim": "I membri delle istituzioni sociali non possono ricoprire più di due mandati consecutivi.",
-    "verbatim": "Pengurus Lembaga Kemasyarakatan Kelurahan selain P K K dapat menjabat paling banyak 2 (dua) kali masa jabatan secara berturut-turut atau tidak secara berturut-turut.",
-    "pasal_ref": "PP 18/2021 Pasal 31 Ayat 3",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-293"
-  },
-  {
-    "claim": "I membri delle istituzioni sociali non possono ricoprire cariche in altre istituzioni sociali.",
-    "verbatim": "Pengurus Lembaga Kemasyarakatan Kelurahan dilarang merangkap jabatan pada Lembaga Kemasyarakatan Kelurahan lainnya dan/atau bukan merupakan perangkat Kelurahan.",
-    "pasal_ref": "PP 18/2021 Pasal 31 Ayat 4",
-    "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "prohibition",
-    "claim_id": "PRO-294"
-  },
-  {
-    "claim": "Il sindaco deve supervisionare le istituzioni sociali nel suo territorio.",
+    "claim": "Il Bupati deve supervisionare le istituzioni sociali a livello di Kelurahan.",
     "verbatim": "Bupati melakukan pembinaan dan pengawasan terhadap pembentukan, pemberdayaan dan pendayagunaan Lembaga Kemasyarakatan Kelurahan sebagai mitra Kelurahan di wilayahnya.",
     "pasal_ref": "PP 18/2021 Pasal 33 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-295"
+    "claim_id": "PRO-280"
   },
   {
-    "claim": "Il finanziamento delle attività delle istituzioni sociali può provenire da diverse fonti.",
+    "claim": "Le spese per le attività del Lembaga Kemasyarakatan Kelurahan possono provenire da diverse fonti.",
     "verbatim": "Pembiayaan kegiatan Lembaga kemasyarakatan. Kelurahan dapat bersumber dari: a. swadaya masyarakat; b. Anggaran Pendapatan dan Beianja Daerah dan/atau Anggaran Pendapatan dan Beianja Daerah Provinsi;",
     "pasal_ref": "PP 18/2021 Pasal 34",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "rule",
-    "claim_id": "PRO-296"
+    "category": "fee",
+    "claim_id": "PRO-281"
   },
   {
-    "claim": "Le decisioni del sindaco riguardanti le istituzioni sociali devono essere adeguate alle normative vigenti.",
+    "claim": "Le decisioni del Lurah riguardanti le istituzioni sociali devono essere conformi alle normative.",
     "verbatim": "semua Keputusan Lurah yang mengatur tentang Lembaga Kemasyarakatan Kelurahan agar menyesuaikan pengaturan dalam Peraturan Bupati ini.",
     "pasal_ref": "PP 18/2021 Pasal 35 Ayat 1",
     "instrument_id": "PP-18-2021-HakPengelolaan",
-    "category": "obligation",
-    "claim_id": "PRO-297"
+    "category": "prohibition",
+    "claim_id": "PRO-282"
   },
   {
     "claim": "Le decisioni devono essere adottate entro dicembre 2020.",
@@ -2381,7 +2261,7 @@
     "pasal_ref": "PP 18/2021 Pasal 35 Ayat 2",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "duration",
-    "claim_id": "PRO-298"
+    "claim_id": "PRO-283"
   },
   {
     "claim": "La nomina di tutti i dirigenti dell'Istituzione Sociale del Villaggio deve essere effettuata simultaneamente nel mese di gennaio 2021 con un mandato dal 2021 al 2026.",
@@ -2389,15 +2269,15 @@
     "pasal_ref": "PP 18/2021 Pasal 3 Ayat 3",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-299"
+    "claim_id": "PRO-284"
   },
   {
-    "claim": "Non si svolgeranno elezioni per nuovi dirigenti fino alla nomina simultanea prevista nel paragrafo 3.",
+    "claim": "Non si svolgeranno elezioni per nuovi dirigenti fino alla nomina simultanea prevista nel paragrafo (3).",
     "verbatim": "Pengurus Lembaga kemasyarakatan Kelurahan yang masa jabatannya habis sebelum bulan Januari 2021, tidak lagi diadakan pemilihan pengurus baru sampai dengan pengisian secara serentak sebagaimana dimaksud pada ayat (3).",
     "pasal_ref": "PP 18/2021 Pasal 3 Ayat 4",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "prohibition",
-    "claim_id": "PRO-300"
+    "claim_id": "PRO-285"
   },
   {
     "claim": "Durante il periodo di transizione, il Lurah deve nominare un dirigente temporaneo per l'Istituzione Sociale del Villaggio.",
@@ -2405,7 +2285,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3 Ayat 5",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-301"
+    "claim_id": "PRO-286"
   },
   {
     "claim": "Se il mandato del dirigente dell'Istituzione Sociale del Villaggio non è scaduto dopo dicembre 2020, la nomina può avvenire tramite riconferma o nuove elezioni.",
@@ -2413,7 +2293,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3 Ayat 6",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "right",
-    "claim_id": "PRO-302"
+    "claim_id": "PRO-287"
   },
   {
     "claim": "La modalità di nomina dei dirigenti deve essere decisa tramite consultazione della comunità.",
@@ -2421,7 +2301,7 @@
     "pasal_ref": "PP 18/2021 Pasal 3 Ayat 7",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "procedure",
-    "claim_id": "PRO-303"
+    "claim_id": "PRO-288"
   },
   {
     "claim": "La presente regolamentazione entra in vigore alla data della sua pubblicazione.",
@@ -2429,15 +2309,15 @@
     "pasal_ref": "PP 18/2021 Pasal 38",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "duration",
-    "claim_id": "PRO-304"
+    "claim_id": "PRO-289"
   },
   {
-    "claim": "Tutti devono essere informati della pubblicazione di questa regolamentazione tramite la sua inclusione nel Bollettino della Regione di Karanganyar.",
+    "claim": "La pubblicazione della presente regolamentazione deve essere effettuata affinché tutti ne siano a conoscenza.",
     "verbatim": "Agar setiap orang mengetahuinya, memerintahkan pengundangan Peraturan Bupati ini dengan penempatannya dalam Berita Daerah Kabupaten Karanganyar.",
     "pasal_ref": "PP 18/2021 Pasal 38",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "obligation",
-    "claim_id": "PRO-305"
+    "claim_id": "PRO-290"
   },
   {
     "claim": "La regolamentazione precedente riguardante l'Istituzione Sociale del Villaggio è abrogata e dichiarata non valida.",
@@ -2445,7 +2325,7 @@
     "pasal_ref": "PP 18/2021 Pasal 37",
     "instrument_id": "PP-18-2021-HakPengelolaan",
     "category": "sanction",
-    "claim_id": "PRO-306"
+    "claim_id": "PRO-291"
   },
   {
     "claim": "Lo Stato della Repubblica Indonesiana deve effettuare un aumento del capitale nel capitale azionario della PT Pelabuhan Indonesia III.",
@@ -2453,15 +2333,15 @@
     "pasal_ref": "Pasal 1",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "obligation",
-    "claim_id": "PRO-307"
+    "claim_id": "PRO-292"
   },
   {
-    "claim": "L'aumento del capitale statale deve essere effettuato con beni provenienti dal bilancio statale degli anni 1996/1997, 1998/1999 e 1999/2000.",
-    "verbatim": "Penambahan penyertaan modal Negara sebagaimana dimaksud dalam Pasal 1 berupa fasilitas pada Pelabuhan Semarang, Pelabuhan Tegal, dan Pelabuhan di Gresik, yang pembangunan dan pengadaannya berasal dari kekayaan Negara yang bersumber dari Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 1996/1997, Tahun Anggaran 1998/1999 dan Tahun Anggaran 1999/2000.",
+    "claim": "L'aumento del capitale statale deve essere effettuato attraverso strutture nei porti di Semarang, Tegal e Gresik.",
+    "verbatim": "Penambahan penyertaan modal Negara sebagaimana dimaksud dalam Pasal 1 berupa fasilitas pada Pelabuhan Semarang, Pelabuhan Tegal, dan Pelabuhan di Gresik.",
     "pasal_ref": "Pasal 2 Ayat 1",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "obligation",
-    "claim_id": "PRO-308"
+    "claim_id": "PRO-293"
   },
   {
     "claim": "Il valore dell'aumento del capitale statale è di Rp171.578.777.276,00.",
@@ -2469,7 +2349,7 @@
     "pasal_ref": "Pasal 2 Ayat 2",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "fee",
-    "claim_id": "PRO-309"
+    "claim_id": "PRO-294"
   },
   {
     "claim": "L'attuazione dell'aumento del capitale statale deve seguire le disposizioni della Legge n. 1 del 1995.",
@@ -2477,15 +2357,15 @@
     "pasal_ref": "Pasal 3",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "procedure",
-    "claim_id": "PRO-310"
+    "claim_id": "PRO-295"
   },
   {
-    "claim": "Ulteriori disposizioni necessarie per l'attuazione di questo regolamento devono essere stabilite dal Ministro delle Finanze e dal Ministro degli Affari delle Aziende Statali.",
+    "claim": "Ulteriori disposizioni necessarie per l'attuazione di questo regolamento devono essere stabilite dal Ministro delle Finanze e dal Ministro degli Affari delle Imprese di Stato.",
     "verbatim": "Ketentuan lebih lanjut yang diperlukan bagi pelaksanaan Peraturan Pemerintah ini diatur oleh Menteri Keuangan dan Menteri Negara Badan Usaha Milik Negara.",
     "pasal_ref": "Pasal 4",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "procedure",
-    "claim_id": "PRO-311"
+    "claim_id": "PRO-296"
   },
   {
     "claim": "Questo regolamento entra in vigore dalla data della sua pubblicazione.",
@@ -2493,7 +2373,7 @@
     "pasal_ref": "Pasal 5",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "duration",
-    "claim_id": "PRO-312"
+    "claim_id": "PRO-297"
   },
   {
     "claim": "Il costo per la strada del porto è di Rp 135.500.000,00.",
@@ -2501,14 +2381,14 @@
     "pasal_ref": "PP 103/2015 Pasal 3",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "fee",
-    "claim_id": "PRO-313"
+    "claim_id": "PRO-298"
   },
   {
     "claim": "Il costo totale per le strutture del porto di Gresik è di Rp 2.278.043.000,00.",
-    "verbatim": "Rp 2.278.043.000,00",
+    "verbatim": "Rp2.278.043.000,00",
     "pasal_ref": "PP 103/2015 Pasal 3",
     "instrument_id": "PP-103-2015-JDIH",
     "category": "fee",
-    "claim_id": "PRO-314"
+    "claim_id": "PRO-299"
   }
 ]

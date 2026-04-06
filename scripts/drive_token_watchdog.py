@@ -240,7 +240,9 @@ def main() -> int:
         message = header + "\n\n".join(alerts)
         sent = _send_telegram(message, bot_token)
         print(f"[drive-watchdog] {len(alerts)} alert{'s' if len(alerts) > 1 else ''} inviato: {sent}")
-        return 1 if any("🔴" in a for a in alerts) else 0
+        # Always exit 0 after successful alert delivery — the watchdog's job is done.
+        # Exit 1 would cause cron-wrapper to retry, sending duplicate alerts.
+        return 0
     else:
         print(f"[drive-watchdog] {timestamp} — tutto OK (token valido, SA key OK)")
         return 0
