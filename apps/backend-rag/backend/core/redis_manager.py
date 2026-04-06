@@ -6,8 +6,13 @@ instead of creating their own redis.from_url() connections.
 
 Graceful degradation: if Redis is unavailable, all consumers fall back to
 their existing in-memory alternatives.
+
+Auto-reconnect: if Redis goes down, a background task retries with exponential
+backoff (30s → 60s → 120s → 300s max). Rate limiting becomes distributed again
+automatically when Redis comes back.
 """
 
+import asyncio
 import contextlib
 import logging
 import time
@@ -54,7 +59,8 @@ class RedisManager:
         self._available: bool = False
         self._redis_url: str | None = None
         self._components: dict[str, str] = {}
-        self._stats: dict[str, int] = {"connections_created": 0}
+        self._stats: dict[str, int] = {"connections_created": 0, "reconnect_attempts": 0}
+        self._reconnect_task: asyncio.Task | None = None
 
     @classmethod
     def get_instance(cls) -> "RedisManager":
@@ -132,6 +138,8 @@ class RedisManager:
             logger.info("RedisManager initialized — Redis available")
         else:
             logger.warning("RedisManager initialized — Redis unavailable, using fallbacks")
+            # Start background reconnect loop
+            self._start_reconnect_loop()
 
     @property
     def available(self) -> bool:
@@ -202,6 +210,55 @@ class RedisManager:
             "connections_created": self._stats["connections_created"],
         }
 
+    def _start_reconnect_loop(self) -> None:
+        """Start background reconnect loop if not already running."""
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        try:
+            loop = asyncio.get_running_loop()
+            self._reconnect_task = loop.create_task(self._reconnect_loop())
+        except RuntimeError:
+            pass  # No running event loop — reconnect loop will be started later
+
+    async def _reconnect_loop(self) -> None:
+        """
+        Background task: retry Redis connection with exponential backoff.
+        30s → 60s → 120s → 300s (max). Stops when connection restored.
+        """
+        delays = [30, 60, 120, 300]
+        idx = 0
+        while not self._available and self._redis_url:
+            delay = delays[min(idx, len(delays) - 1)]
+            self._stats["reconnect_attempts"] += 1
+            logger.info(f"Redis reconnect attempt #{self._stats['reconnect_attempts']} in {delay}s")
+            await asyncio.sleep(delay)
+            idx += 1
+
+            if self._available:
+                break  # Already restored by another path
+
+            try:
+                import redis.asyncio as aioredis
+
+                client = aioredis.from_url(
+                    self._redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=5,
+                    socket_timeout=5,
+                    retry_on_timeout=True,
+                    max_connections=10,
+                )
+                await client.ping()
+                self._async_client = client
+                self._available = True
+                self._stats["connections_created"] += 1
+                logger.info("Redis reconnected successfully — distributed rate limiting restored")
+                return
+            except Exception as e:
+                logger.warning(f"Redis reconnect failed: {e}")
+
+        logger.debug("Redis reconnect loop exited")
+
     def _close_sync(self) -> None:
         """Close sync client (for cleanup)."""
         if self._sync_client is not None:
@@ -210,6 +267,10 @@ class RedisManager:
 
     async def close(self) -> None:
         """Close all connections."""
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            self._reconnect_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await self._reconnect_task
         self._close_sync()
         if self._async_client is not None:
             with contextlib.suppress(Exception):
