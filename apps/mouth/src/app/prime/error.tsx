@@ -24,7 +24,8 @@ export default function PrimeError({
       <div className="mt-6 text-center space-y-2 max-w-md">
         <h2 className="text-2xl font-semibold tracking-tight">Couldn&apos;t Load Prime</h2>
         <p className="text-muted-foreground">
-          There was an error loading this page. Please try again or contact support if the problem persists.
+          There was an error loading this page. Please try again or contact support if the problem
+          persists.
         </p>
       </div>
       <div className="mt-8 flex gap-3">
