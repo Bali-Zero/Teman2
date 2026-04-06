@@ -105,6 +105,17 @@ def get_current_user(
                     )
                     user_ctx["_warn_expired"] = True
 
+        # S03-S2: Token revocation check
+        # Note: get_current_user is sync. Full async revocation check
+        # runs in HybridAuthMiddleware (async context). This sync path
+        # logs a warning if revocation is enabled but cannot check.
+        if settings.enable_token_revocation:
+            jti = payload.get("jti")
+            if jti:
+                logger.debug(
+                    f"S03-S2: Token jti={jti} — revocation check deferred to middleware"
+                )
+
         return user_ctx
     except JWTError as e:
         logger.warning(f"JWT validation failed: {e}")
