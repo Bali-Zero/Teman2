@@ -19,7 +19,15 @@ from typing import Any
 
 from backend.app.core.logging_config import get_performance_logger
 from backend.llm.base import LLMMessage
-from backend.llm.client import UnifiedLLMClient, create_default_client
+
+try:
+    from backend.llm.client import UnifiedLLMClient, create_default_client
+except ImportError:
+    from typing import Any as UnifiedLLMClient  # type: ignore[assignment]
+
+    def create_default_client() -> Any:  # type: ignore[misc]
+        """Placeholder — backend.llm.client not yet implemented."""
+        raise NotImplementedError("UnifiedLLMClient not available; pass llm_client explicitly")
 
 logger = logging.getLogger(__name__)
 
