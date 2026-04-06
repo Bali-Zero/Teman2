@@ -23,7 +23,7 @@ from backend.app.utils.logging_utils import get_logger
 _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
-_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", os.environ.get("NUZANTARA_API_KEY", ""))
 
 logger = get_logger(__name__)
 
