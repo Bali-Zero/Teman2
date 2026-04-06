@@ -71,7 +71,11 @@ async def _call(
     params: Optional[dict] = None,
     timeout: Optional[int] = None,
 ) -> dict:
-    """Authenticated call to Nuzantara backend. Retries once on stale connection."""
+    """Authenticated call to Nuzantara backend.
+
+    Retries once on stale connection. Raises with structured error message
+    including HTTP status code and response excerpt for AI agent recovery.
+    """
     global _http_client
     client = _get_client()
     req_kwargs = dict(
@@ -92,6 +96,14 @@ async def _call(
         resp = await client.request(**req_kwargs)
         resp.raise_for_status()
         return resp.json()
+    except httpx.HTTPStatusError as e:
+        # Structured error: AI agent can distinguish 404/429/500 and act accordingly
+        body = e.response.text[:300] if e.response else ""
+        raise RuntimeError(
+            f"HTTP {e.response.status_code} from {method} {endpoint}: {body}"
+        ) from e
+    except httpx.TimeoutException as e:
+        raise RuntimeError(f"Timeout ({timeout or TIMEOUT}s) calling {method} {endpoint}") from e
 
 
 async def _call_safe(
@@ -108,6 +120,9 @@ async def _call_safe(
         return {"error": True, "status": e.response.status_code, "detail": str(e)}
     except httpx.RequestError as e:
         return {"error": True, "status": 0, "detail": f"Connection error: {e}"}
+    except RuntimeError as e:
+        # Catch structured errors from _call (HTTP status + timeout)
+        return {"error": True, "status": 0, "detail": str(e)}
 
 
 # --- Register all tool modules ---
