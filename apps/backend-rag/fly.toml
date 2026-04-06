@@ -20,7 +20,7 @@ primary_region = 'sin'
 
 [processes]
   api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"
-  rag = "uvicorn backend.app.main_rag:app --host 0.0.0.0 --port 8080 --workers 1"
+  rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1"
 
 [env]
   ENVIRONMENT = 'production'
