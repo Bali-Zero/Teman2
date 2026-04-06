@@ -181,7 +181,7 @@ async def _notify_hr_bonus_pending(
             "INTERNAL_EMAIL_API_URL",
             "https://nuzantara-rag.fly.dev/api/notifications/send-email",
         )
-        api_key = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
+        api_key = os.getenv("NUZANTARA_API_KEY", "")
 
         html_body = (
             f"<p>A new bonus entry needs your approval.</p>"

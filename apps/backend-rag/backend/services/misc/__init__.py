@@ -5,7 +5,6 @@ Uses lazy imports to avoid circular dependencies with llm module.
 
 from typing import TYPE_CHECKING
 
-# KnowledgeGraphBuilder moved to autonomous_agents, importing here for backward compatibility
 from ..autonomous_agents.knowledge_graph_builder import (
     Entity,
     EntityType,
@@ -13,19 +12,14 @@ from ..autonomous_agents.knowledge_graph_builder import (
     Relationship,
     RelationType,
 )
-
-# Eager imports - these don't cause circular imports
 from . import autonomous_scheduler
 from .autonomous_research_service import AutonomousResearchService
 from .autonomous_scheduler import AutonomousScheduler
 from .clarification_service import ClarificationService
-from .context_suggestion_service import ContextSuggestionService, get_context_suggestion_service
-from .context_window_manager import AdvancedContextWindowManager
 from .conversation_service import ConversationService
 from .cultural_insights_service import CulturalInsightsService
 from .cultural_rag_service import CulturalRAGService
 from .emotional_attunement import EmotionalAttunementService, ToneStyle
-from .graph_extractor import GraphExtractor
 from .graph_service import GraphService
 from .mcp_client_service import MCPClientService
 from .migration_runner import MigrationRunner
@@ -44,7 +38,7 @@ _LAZY_IMPORTS = {
     "FollowupService": ".followup_service",
     "GoldenAnswerService": ".golden_answer_service",
     "ImageGenerationService": ".image_generation_service",
-    "PersonalityService": ".personality_service",
+    # "PersonalityService": removed (audit 2026-04-03)
     "ZantaraTools": ".zantara_tools",
     "get_zantara_tools": ".zantara_tools",
 }
@@ -69,15 +63,11 @@ __all__ = [
     "AutonomousResearchService",
     "AutonomousScheduler",
     "ClarificationService",
-    "ContextSuggestionService",
-    "get_context_suggestion_service",
-    "AdvancedContextWindowManager",
     "ConversationService",
     "CulturalInsightsService",
     "CulturalRAGService",
     "EmotionalAttunementService",
     "ToneStyle",
-    "GraphExtractor",
     "GraphService",
     "KnowledgeGraphBuilder",
     "Entity",
@@ -99,7 +89,6 @@ __all__ = [
     "FollowupService",
     "GoldenAnswerService",
     "ImageGenerationService",
-    "PersonalityService",
     "ZantaraTools",
     "get_zantara_tools",
 ]

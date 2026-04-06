@@ -1,88 +1,17 @@
 {
-  "generated_at": "2026-03-31",
+  "generated_at": "2026-04-05",
   "date_range": {
-    "start": "2026-03-24",
-    "end": "2026-03-31"
+    "start": "2026-03-29",
+    "end": "2026-04-05"
   },
   "site_url": "https://balizero.com",
   "data_sources": {
     "gsc": "real",
-    "analytics": "real"
+    "analytics": "skipped"
   },
   "gsc_summary": {
-    "total_queries": 20,
-    "top_queries": [
-      {
-        "query": "bali zero",
-        "clicks": 9,
-        "impressions": 34,
-        "ctr": 0.2647,
-        "position": 1.9
-      },
-      {
-        "query": "balizero",
-        "clicks": 1,
-        "impressions": 6,
-        "ctr": 0.1667,
-        "position": 2.2
-      },
-      {
-        "query": "\"constitutional ai 2.0\" anthropic",
-        "clicks": 0,
-        "impressions": 2,
-        "ctr": 0,
-        "position": 6.5
-      },
-      {
-        "query": "alcohol license",
-        "clicks": 0,
-        "impressions": 3,
-        "ctr": 0,
-        "position": 69
-      },
-      {
-        "query": "balazuocom",
-        "clicks": 0,
-        "impressions": 2,
-        "ctr": 0,
-        "position": 2
-      },
-      {
-        "query": "bali zero visa",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 1
-      },
-      {
-        "query": "business license indonesia",
-        "clicks": 0,
-        "impressions": 10,
-        "ctr": 0,
-        "position": 36.6
-      },
-      {
-        "query": "business license outsourcing",
-        "clicks": 0,
-        "impressions": 1,
-        "ctr": 0,
-        "position": 42
-      },
-      {
-        "query": "food & beverage registration service",
-        "clicks": 0,
-        "impressions": 2,
-        "ctr": 0,
-        "position": 30
-      },
-      {
-        "query": "food and beverage registration services in indonesia",
-        "clicks": 0,
-        "impressions": 2,
-        "ctr": 0,
-        "position": 26.5
-      }
-    ],
+    "total_queries": 0,
+    "top_queries": [],
     "kbli_related_queries": []
   },
   "kbli_audit": {
@@ -95,64 +24,7 @@
       "01115"
     ]
   },
-  "critical_gaps": [
-    {
-      "query": "alcohol license",
-      "clicks": 0,
-      "impressions": 3,
-      "ctr": 0,
-      "position": 69
-    },
-    {
-      "query": "business license indonesia",
-      "clicks": 0,
-      "impressions": 10,
-      "ctr": 0,
-      "position": 36.6
-    },
-    {
-      "query": "business license outsourcing",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 42
-    },
-    {
-      "query": "food & beverage registration service",
-      "clicks": 0,
-      "impressions": 2,
-      "ctr": 0,
-      "position": 30
-    },
-    {
-      "query": "food and beverage registration services in indonesia",
-      "clicks": 0,
-      "impressions": 2,
-      "ctr": 0,
-      "position": 26.5
-    },
-    {
-      "query": "indonesia business license",
-      "clicks": 0,
-      "impressions": 7,
-      "ctr": 0,
-      "position": 35
-    },
-    {
-      "query": "license holder service",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 48
-    },
-    {
-      "query": "pub license",
-      "clicks": 0,
-      "impressions": 1,
-      "ctr": 0,
-      "position": 26
-    }
-  ],
+  "critical_gaps": [],
   "action_items": [
     {
       "priority": "HIGH",
@@ -166,7 +38,7 @@
     },
     {
       "priority": "MEDIUM",
-      "action": "Fix 8 queries with position >10 and 0 clicks",
+      "action": "Fix 0 queries with position >10 and 0 clicks",
       "reason": "High impression / zero click = metadata or content gap"
     },
     {
@@ -174,27 +46,5 @@
       "action": "Update llms.txt with latest service pricing",
       "reason": "AI crawlers (GPT, Gemini) reference llms.txt for structured answers"
     }
-  ],
-  "analytics_data": {
-    "dimensionHeaders": [
-      {
-        "name": "pagePath"
-      }
-    ],
-    "metricHeaders": [
-      {
-        "name": "sessions",
-        "type": "TYPE_INTEGER"
-      },
-      {
-        "name": "bounceRate",
-        "type": "TYPE_FLOAT"
-      }
-    ],
-    "metadata": {
-      "currencyCode": "USD",
-      "timeZone": "Etc/GMT-8"
-    },
-    "kind": "analyticsData#runReport"
-  }
+  ]
 }

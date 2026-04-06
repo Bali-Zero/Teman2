@@ -25,6 +25,11 @@ class InstagramChannelAdapter(BaseChannel):
         self.formatter = InstagramMessageFormatter()
         self.client = httpx.AsyncClient(timeout=30.0)
 
+    async def close(self) -> None:
+        """Close the HTTP client to prevent connection leaks."""
+        if self.client and not self.client.is_closed:
+            await self.client.aclose()
+
     async def receive_message(self, raw_event: dict) -> ChannelMessage:
         """Parse Instagram webhook."""
         try:

@@ -108,6 +108,9 @@ from nuzantara_mcp.tools.langsmith import register as register_langsmith
 # --- Legal Ingestion ---
 from nuzantara_mcp.tools.legal import register as register_legal
 
+# --- Prime Nexus (geospatial intelligence) ---
+from nuzantara_mcp.tools.prime import register as register_prime
+
 # --- Federation ---
 from nuzantara_mcp.tools.federation import register as register_federation
 
@@ -149,6 +152,9 @@ register_langsmith(mcp, _call, _call_safe)
 
 # Legal ingestion pipeline
 register_legal(mcp, _call, _call_safe)
+
+# Prime Nexus geospatial
+register_prime(mcp, _call, _call_safe)
 
 # Federation inter-node bus
 register_federation(mcp, _call, _call_safe)

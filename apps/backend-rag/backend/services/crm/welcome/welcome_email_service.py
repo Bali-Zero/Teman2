@@ -49,7 +49,7 @@ _EMAIL_API_URL = os.getenv(
     "INTERNAL_EMAIL_API_URL",
     "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
-_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "REDACTED-ROTATED-KEY")
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 # ─── BROCHURE ────────────────────────────────────────────
 # Served from Vercel (always available on Fly.io)

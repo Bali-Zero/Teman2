@@ -787,10 +787,37 @@ async def get_zoning(
 ) -> dict[str, Any]:
     """
     Return official RDTR zoning data + business opportunities for a given lat/lng.
-    Primary: BATARA API (live Badung DPUPR data).
-    Fallback: PostGIS local DB (GISTARU import, Badung only).
+
+    Delegates to PrimeNexusService.resolve() for the zone resolution pipeline
+    (Redis → BATARA → GISTARU → PostGIS), then enriches with price + intel.
+    Falls back to legacy inline logic if service is unavailable.
     """
-    # --- PRIMARY: BATARA live API + parallel price lookup ---
+    # --- PRIMARY: PrimeNexusService (v2 pipeline) ---
+    try:
+        from backend.services.prime.prime_nexus_service import PrimeNexusService
+
+        service = PrimeNexusService()  # Lightweight, no injected deps needed for resolve
+        resolve_result = await service.resolve(lat, lng)
+
+        if resolve_result.get("status") == "found":
+            # Enrich with price + intel (parallel, best-effort)
+            price = await _query_price(lat, lng)
+            if price:
+                resolve_result["avg_price_per_are"] = price
+
+            zone_code_val = resolve_result.get("zone_code", "")
+            subdistrict_val = resolve_result.get("zone_name", "Bali")
+            intel_articles = await _search_local_intel(zone_code_val, subdistrict_val)
+            if intel_articles:
+                resolve_result["intel_articles"] = intel_articles
+
+            return resolve_result
+        return resolve_result
+
+    except Exception as exc:
+        logger.warning("⚠️ [Prime] PrimeNexusService fallback: %s", exc)
+
+    # --- FALLBACK: Legacy inline logic (if service import/init fails) ---
     batara, price = await asyncio.gather(
         _query_batara(lat, lng),
         _query_price(lat, lng),
@@ -799,7 +826,6 @@ async def get_zoning(
         result: dict[str, Any] = {"status": "found", "lat": lat, "lng": lng, **batara}
         if price:
             result["avg_price_per_are"] = price
-        # Intel search: use zone_code + area name in parallel (best-effort, non-blocking)
         zone_code_val = batara.get("zone_code", "")
         subdistrict_val = batara.get("zone_name", "Bali")
         intel_articles = await _search_local_intel(zone_code_val, subdistrict_val)
@@ -807,7 +833,6 @@ async def get_zoning(
             result["intel_articles"] = intel_articles
         return result
 
-    # --- FALLBACK: PostGIS local DB ---
     try:
         db_url = os.environ.get("DATABASE_URL", "")
         if db_url.startswith("postgres://"):
@@ -820,41 +845,29 @@ async def get_zoning(
             await conn.close()
 
         if not row:
-            logger.info(f"⚠️ [Prime] No zoning match for {lat},{lng}")
             return {
                 "status": "outside_coverage",
                 "message": "Coordinates outside mapped Badung RDTR coverage.",
-                "lat": lat,
-                "lng": lng,
+                "lat": lat, "lng": lng,
             }
 
         zone_type: str = row["zoning_type"]
         zone_code = zone_type.split(":")[0].strip()
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
-
         label_info = _ZONE_LABELS.get(
             zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
         )
-        is_restricted = zone_code in _RESTRICTED_ZONES
         building_codes = _calculate_building_yield(zone_code)
 
-        logger.info(f"✅ [Prime/PostGIS] Zoning hit: {zone_type} @ {lat},{lng}")
         return {
-            "status": "found",
-            "lat": lat,
-            "lng": lng,
-            "district": row["district_name"],
-            "subdistrict": row["subdistrict_name"],
-            "zone_code": zone_code,
-            "zone_name": zone_name,
+            "status": "found", "lat": lat, "lng": lng,
+            "district": row["district_name"], "subdistrict": row["subdistrict_name"],
+            "zone_code": zone_code, "zone_name": zone_name,
             "zone_label_en": label_info["label_en"],
             "zone_description_en": label_info["desc_en"],
-            "zone_color_hex": None,
-            "zone_type": zone_type,
-            "is_restricted": is_restricted,
-            "businesses": [],
-            "business_count": 0,
-            "overlays": {},
+            "zone_color_hex": None, "zone_type": zone_type,
+            "is_restricted": zone_code in _RESTRICTED_ZONES,
+            "businesses": [], "business_count": 0, "overlays": {},
             "building_codes": building_codes,
             "avg_price_per_are": float(row["avg_price_per_are"] or 0),
             "risk_score": float(row["risk_score"] or 0),
@@ -863,12 +876,7 @@ async def get_zoning(
 
     except Exception as e:
         logger.error(f"❌ [Prime] Zoning query failed: {e}", exc_info=True)
-        return {
-            "status": "error",
-            "message": "Zoning lookup failed.",
-            "lat": lat,
-            "lng": lng,
-        }
+        return {"status": "error", "message": "Zoning lookup failed.", "lat": lat, "lng": lng}
 
 
 # =============================================================================

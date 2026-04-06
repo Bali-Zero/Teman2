@@ -1,16 +1,12 @@
-import PrimeMap3D from "@/components/maps/PrimeMap3D";
+import PrimeNexusLayout from '@/components/maps/prime/PrimeNexusLayout';
 
 export const metadata = {
-  title: "Prime Intelligence — Bali Zoning Map",
+  title: 'Prime Nexus — Bali Geospatial Decision Hub',
   description:
-    "Real-time GISTARU zoning intelligence for Bali property and business decisions.",
-  robots: "noindex",
+    'Real-time zoning intelligence, investment analysis, and CRM overlay for Bali property and business decisions.',
+  robots: 'noindex',
 };
 
 export default function PrimePage() {
-  return (
-    <main className="h-screen bg-black overflow-hidden">
-      <PrimeMap3D />
-    </main>
-  );
+  return <PrimeNexusLayout />;
 }
