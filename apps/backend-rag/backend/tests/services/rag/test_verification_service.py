@@ -3,7 +3,7 @@ Tests for verification_service.py - RAG response verification against source con
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -63,12 +63,15 @@ class TestVerificationServiceFallbacks:
     @pytest.mark.asyncio
     async def test_returns_verified_when_model_unavailable(self):
         service = VerificationService()
-        # Don't set up any client - model unavailable
-        result = await service.verify_response(
-            query="What is KITAS?",
-            draft_answer="KITAS is a temporary stay permit.",
-            context_chunks=["KITAS is a temporary stay permit in Indonesia."],
-        )
+        # Patch google_api_key to None so _get_genai_client() returns None
+        # (simulates deployment environment where key is absent)
+        with patch("backend.services.rag.verification_service.settings") as mock_settings:
+            mock_settings.google_api_key = None
+            result = await service.verify_response(
+                query="What is KITAS?",
+                draft_answer="KITAS is a temporary stay permit.",
+                context_chunks=["KITAS is a temporary stay permit in Indonesia."],
+            )
         assert result.is_valid is True
         assert result.status == VerificationStatus.VERIFIED
         assert "unavailable" in result.reasoning.lower()
