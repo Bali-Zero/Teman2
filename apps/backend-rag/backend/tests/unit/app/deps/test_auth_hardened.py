@@ -283,3 +283,42 @@ class TestSprint2Config:
 
         assert hasattr(settings, "enable_token_revocation")
         assert settings.enable_token_revocation is False
+
+
+class TestTokenRevocationInAuth:
+    """Test revocation config is accessible from auth deps."""
+
+    def _make_token(self, jti: str = "test-jti-revoke") -> str:
+        from backend.app.core.config import settings
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": "user-1",
+            "email": "test@balizero.com",
+            "role": "admin",
+            "exp": now + timedelta(hours=1),
+            "iat": now,
+            "jti": jti,
+            "type": "access",
+        }
+        return jose_jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+
+    def _make_request(self) -> MagicMock:
+        request = MagicMock()
+        request.state = MagicMock(spec=[])
+        return request
+
+    def _make_credentials(self, token: str) -> MagicMock:
+        creds = MagicMock()
+        creds.credentials = token
+        return creds
+
+    def test_revocation_disabled_passes_normally(self):
+        """When enable_token_revocation=False, auth works normally."""
+        from backend.app.deps.auth import get_current_user
+
+        token = self._make_token()
+        request = self._make_request()
+        creds = self._make_credentials(token)
+
+        user = get_current_user(request, creds)
+        assert user["email"] == "test@balizero.com"
