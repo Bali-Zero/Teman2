@@ -1270,11 +1270,17 @@ async def initialize_services_light(app: FastAPI) -> None:
     # 1. Database pool (CRITICAL)
     try:
         dsn, ssl_ctx = _clean_database_dsn(settings.database_url)
+        async def _light_init_connection(conn):
+            """Set statement timeout for api process pool connections."""
+            await conn.execute("SET statement_timeout = '30s'")
+
         pool_kwargs: dict = {
             "dsn": dsn,
             "min_size": 2,
             "max_size": 10,
             "command_timeout": 60,
+            "max_inactive_connection_lifetime": 30.0,
+            "init": _light_init_connection,
         }
         if ssl_ctx is not None:
             pool_kwargs["ssl"] = ssl_ctx
