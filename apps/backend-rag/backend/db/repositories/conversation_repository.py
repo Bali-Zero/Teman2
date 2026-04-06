@@ -36,6 +36,7 @@ class ConversationRepository(BaseRepository):
         """
         try:
             async with self.db_pool.acquire() as conn:
+              async with conn.transaction():
                 # Check if conversation exists for this session
                 existing = await conn.fetchrow(
                     """
