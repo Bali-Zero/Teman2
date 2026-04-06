@@ -2,7 +2,7 @@
 Nuzantara MCP Server v2.1
 Full-spectrum business automation for Bali Zero.
 
-96 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
+109 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
 
 Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
 """
@@ -36,6 +36,33 @@ mcp = FastMCP(
 )
 
 
+# --- Persistent HTTP Client ---
+# Singleton with connection pooling. Retries once on stale connection
+# (Fly.io auto_stop corrupts keep-alive sockets after backend idle).
+_http_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_client(timeout: Optional[int] = None) -> httpx.AsyncClient:
+    """Get or create persistent HTTP client."""
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            base_url=BACKEND_URL,
+            timeout=timeout or TIMEOUT,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+    return _http_client
+
+
+def _headers() -> dict[str, str]:
+    """Build auth headers."""
+    h: dict[str, str] = {"Content-Type": "application/json"}
+    if API_KEY:
+        h["Authorization"] = f"Bearer {API_KEY}"
+        h["X-API-Key"] = API_KEY
+    return h
+
+
 # --- HTTP Helpers ---
 async def _call(
     endpoint: str,
@@ -44,18 +71,25 @@ async def _call(
     params: Optional[dict] = None,
     timeout: Optional[int] = None,
 ) -> dict:
-    """Authenticated call to Nuzantara backend."""
-    headers: dict[str, str] = {"Content-Type": "application/json"}
-    if API_KEY:
-        headers["Authorization"] = f"Bearer {API_KEY}"
-        headers["X-API-Key"] = API_KEY
-
-    async with httpx.AsyncClient(
-        base_url=BACKEND_URL, timeout=timeout or TIMEOUT
-    ) as client:
-        resp = await client.request(
-            method=method, url=endpoint, json=json, params=params, headers=headers
-        )
+    """Authenticated call to Nuzantara backend. Retries once on stale connection."""
+    global _http_client
+    client = _get_client()
+    req_kwargs = dict(
+        method=method, url=endpoint, json=json, params=params,
+        headers=_headers(), timeout=timeout or TIMEOUT,
+    )
+    try:
+        resp = await client.request(**req_kwargs)
+        resp.raise_for_status()
+        return resp.json()
+    except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError):
+        # Stale connection after Fly.io auto_stop — reset pool, retry once
+        logger.warning(f"Stale connection to {endpoint}, resetting pool")
+        if _http_client and not _http_client.is_closed:
+            await _http_client.aclose()
+        _http_client = None
+        client = _get_client()
+        resp = await client.request(**req_kwargs)
         resp.raise_for_status()
         return resp.json()
 
@@ -114,8 +148,8 @@ from nuzantara_mcp.tools.prime import register as register_prime
 # --- Federation ---
 from nuzantara_mcp.tools.federation import register as register_federation
 
-# --- Prime Nexus ---
-from nuzantara_mcp.tools.prime import register as register_prime
+# --- Naga Research Engine ---
+from nuzantara_mcp.tools.naga import register as register_naga
 
 # --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
@@ -159,8 +193,8 @@ register_prime(mcp, _call, _call_safe)
 # Federation inter-node bus
 register_federation(mcp, _call, _call_safe)
 
-# Prime Nexus geospatial intelligence
-register_prime(mcp, _call, _call_safe)
+# Naga Research Engine
+register_naga(mcp, _call, _call_safe)
 
 # Prompts, resources, chains
 register_prompts(mcp)
