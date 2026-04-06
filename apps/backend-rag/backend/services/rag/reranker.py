@@ -93,7 +93,7 @@ class CrossEncoderReranker:
         self.max_length = max_length
         self.batch_size = batch_size
         self._model: Any = None
-        self._model_loading: bool = False
+        self._model_load_lock = __import__("threading").Lock()
 
         # Determine if enabled from settings or parameter
         if enabled is not None:
@@ -125,15 +125,13 @@ class CrossEncoderReranker:
             logger.debug(f"Using cached model: {self.model_name}")
             return _model_cache[self.model_name]
 
-        if self._model_loading:
-            logger.warning("Model is already being loaded, waiting...")
-            return None
+        with self._model_load_lock:
+            # Double-check under lock
+            if self.model_name in _model_cache:
+                return _model_cache[self.model_name]
 
-        self._model_loading = True
-
-        try:
-            # Import here to avoid loading transformers at module import time
-            from sentence_transformers import CrossEncoder
+            try:
+                from sentence_transformers import CrossEncoder
 
             logger.info(f"📥 Loading cross-encoder model: {self.model_name}")
             start_time = time.perf_counter()
@@ -165,8 +163,7 @@ class CrossEncoderReranker:
             self.enabled = False
             return None
 
-        finally:
-            self._model_loading = False
+
 
     @property
     def model(self) -> Any:
