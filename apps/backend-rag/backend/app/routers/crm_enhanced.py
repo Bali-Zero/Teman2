@@ -190,12 +190,12 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
             logger.warning(f"Gemini CLI error: {e}, falling back to API")
 
     # --- Attempt 2: Gemini API (paid, fast) ---
-    from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
 
     if not GENAI_AVAILABLE:
         raise RuntimeError("Neither Gemini CLI nor Gemini API available")
 
-    genai_client = GenAIClient()
+    genai_client = get_genai_client()
     if not genai_client.is_available:
         raise RuntimeError("Gemini not configured")
 
