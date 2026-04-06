@@ -1,3 +1,5 @@
+import hmac
+import os
 """
 Admin Auto-Practice Creation Router
 
@@ -24,7 +26,7 @@ def verify_api_key(
     x_debug_key: str | None = Header(default=None, alias="x-debug-key", convert_underscores=False),
 ) -> bool:
     """Verify via X-API-Key or X-Debug-Key."""
-    if x_api_key == "zantara-secret-2024":
+    if x_api_key and hmac.compare_digest(x_api_key, os.environ.get("NUZANTARA_API_KEY", "")):
         return True
     if settings.admin_api_key and x_debug_key == settings.admin_api_key:
         return True

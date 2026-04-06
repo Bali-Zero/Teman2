@@ -1,3 +1,4 @@
+import hmac
 """
 API Key Authentication Service
 Provides simple API key validation to bypass database dependency for testing
@@ -59,9 +60,14 @@ class APIKeyAuth:
             logger.warning("No API key provided")
             return None
 
-        key_info = self.valid_keys.get(api_key)
+        # Constant-time comparison to prevent timing attacks
+        key_info = None
+        for stored_key, info in self.valid_keys.items():
+            if hmac.compare_digest(api_key, stored_key):
+                key_info = info
+                break
         if not key_info:
-            logger.warning(f"Invalid API key provided: {api_key[:10]}...")
+            logger.warning("Invalid API key provided")
             return None
 
         # Update usage statistics
