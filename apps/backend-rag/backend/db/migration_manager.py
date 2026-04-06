@@ -257,9 +257,36 @@ class MigrationManager:
             - skipped: List of skipped migration numbers
             - failed: List of failed migration numbers with errors
         """
+        if not self.pool:
+            await self.connect()
+
+        # Advisory lock to prevent concurrent migration runs (e.g. rolling deploys)
+        async with self.pool.acquire() as conn:
+            locked = await conn.fetchval("SELECT pg_try_advisory_lock(73491)")
+            if not locked:
+                logger.warning("Another migration process is running, skipping")
+                return {"applied": [], "skipped": [], "failed": []}
+
+        try:
+            return await self._apply_all_pending_locked(dry_run)
+        finally:
+            async with self.pool.acquire() as conn:
+                await conn.execute("SELECT pg_advisory_unlock(73491)")
+
+    async def _apply_all_pending_locked(self, dry_run: bool = False) -> dict:
+        """Internal: apply pending migrations while holding advisory lock."""
         discovered = await self.discover_migrations()
         applied_migrations = await self.get_applied_migrations()
         applied_numbers = {m["migration_number"] for m in applied_migrations}
+
+        # Orphan tolerance: log applied migrations that no longer have files
+        discovered_numbers = {m["number"] for m in discovered}
+        orphan_numbers = applied_numbers - discovered_numbers
+        if orphan_numbers:
+            logger.warning(
+                f"Orphan migrations in _schema_versions (files removed): {sorted(orphan_numbers)}. "
+                "These are already applied and will be ignored."
+            )
 
         pending = [m for m in discovered if m["number"] not in applied_numbers]
 
