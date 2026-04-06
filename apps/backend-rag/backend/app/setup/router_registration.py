@@ -68,9 +68,6 @@ def include_routers(api: FastAPI) -> None:
         hr,  # [NEW] HR/Payroll module
         ingest,
         instagram_chat,
-        intel,
-        intel_analytics,
-        intel_scraper,
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -204,10 +201,6 @@ def include_routers(api: FastAPI) -> None:
     # Naga deep research engine
     api.include_router(naga.router)
 
-    # Intelligence & Oracle routers
-    api.include_router(intel.router)
-    api.include_router(intel_scraper.router)
-    api.include_router(intel_analytics.router)
     api.include_router(oracle_universal.router)
     api.include_router(
         kbli_notebook.router, prefix=settings.API_V1_STR,
@@ -380,7 +373,6 @@ def include_light_routers(api: FastAPI) -> None:
         crm_notifications,
         crm_portal_integration,
         crm_shared_memory,
-        dashboard_featured_articles,
         debug,
         documents_proxy,
         event_bus,
@@ -561,8 +553,7 @@ def include_light_routers(api: FastAPI) -> None:
     # Admin Team Activity router
     api.include_router(admin_team_activity.router)
 
-    # Dashboard (light)
-    api.include_router(dashboard_featured_articles.router)
+    # dashboard_featured_articles moved to heavy routers (shares /api/dashboard prefix)
 
     # CELL organism dashboard
     api.include_router(cell_status.router)
@@ -572,6 +563,8 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Knowledge Activity Tracking
     api.include_router(knowledge_activity.router)
+
+    # intel/intel_scraper/intel_analytics serve on rag process (need /data volume for staging files)
 
 
 def include_heavy_routers(api: FastAPI) -> None:
@@ -599,6 +592,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         crm_enhanced,
         crm_practices,
         dashboard,
+        dashboard_featured_articles,
         dashboard_summary,
         dream,
         dynamic_pricing,
@@ -656,11 +650,13 @@ def include_heavy_routers(api: FastAPI) -> None:
     # Naga deep research engine
     api.include_router(naga.router)
 
-    # Intelligence & Oracle routers
+    # Oracle router
+    api.include_router(oracle_universal.router)
+
+    # Intelligence & News Room routers (require /data volume — rag process only)
     api.include_router(intel.router)
     api.include_router(intel_scraper.router)
     api.include_router(intel_analytics.router)
-    api.include_router(oracle_universal.router)
 
     from backend.app.core.config import settings
 
@@ -694,8 +690,9 @@ def include_heavy_routers(api: FastAPI) -> None:
     # WhatsApp Chat (RAG-backed intelligent triage)
     api.include_router(whatsapp_chat.router)
 
-    # Dashboard aggregation routers (RAG-heavy)
+    # Dashboard aggregation routers (all under /api/dashboard — proxied to rag)
     api.include_router(dashboard.router)
+    api.include_router(dashboard_featured_articles.router)
     api.include_router(dashboard_summary.router)
 
     # RAG Monitoring router (Retrieval quality metrics and alerts)

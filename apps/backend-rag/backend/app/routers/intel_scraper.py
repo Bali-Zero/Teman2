@@ -33,7 +33,7 @@ from backend.app.routers.intel import (
     RegisterNotificationRequest,
     ScraperSubmission,
     classification_service,
-    embedder,
+    get_embedder,
     staging_service,
 )
 from backend.app.utils.internal_api_auth import verify_internal_api_key
@@ -512,7 +512,7 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
         embed_text = f"{title}\n\n{content}"
 
         # Generate embedding using text-embedding-3-small
-        embedding = await embedder.generate_single_embedding(embed_text)
+        embedding = await get_embedder().generate_single_embedding(embed_text)
 
         # Build metadata
         metadata = {

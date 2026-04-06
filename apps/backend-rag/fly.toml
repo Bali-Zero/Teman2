@@ -17,7 +17,7 @@ primary_region = 'sin'
 
 [processes]
   api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"
-  rag = "uvicorn backend.app.main_rag:app --host 0.0.0.0 --port 8080 --workers 1"
+  rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1"
 
 [env]
   ENVIRONMENT = 'production'
@@ -26,7 +26,7 @@ primary_region = 'sin'
   PORT = '8080'
   # QDRANT_URL set via fly secrets (Qdrant Cloud)
   PYTHONUNBUFFERED = '1'
-  RAG_WORKER_URL = 'http://rag.nuzantara-rag.internal:8080'
+  RAG_WORKER_URL = 'http://rag.process.nuzantara-rag.internal:8080'
   ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://mail.balizero.com,https://calendar.balizero.com,https://drive.balizero.com,https://knowledge.balizero.com,https://nuzantara-mouth.vercel.app'
 
 [[mounts]]
@@ -53,7 +53,12 @@ primary_region = 'sin'
     timeout = '10s'
     grace_period = '60s'
     method = 'GET'
-    path = '/health'
+    path = '/health/ready'
+
+[[services]]
+  internal_port = 8080
+  protocol = 'tcp'
+  processes = ['rag']
 
 [[vm]]
   memory = '1gb'
