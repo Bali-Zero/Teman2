@@ -167,6 +167,26 @@ async def login(
     user_agent = req.headers.get("user-agent") if req else None
 
     try:
+        # S03-S3: Brute force detection
+        brute_force = None
+        try:
+            from backend.core.redis_manager import RedisManager
+            from backend.services.security.brute_force import BruteForceDetector
+
+            redis_client = RedisManager.get_instance().get_async_client()
+            brute_force = BruteForceDetector(redis_client=redis_client)
+
+            if await brute_force.is_blocked(client_ip or "", request.email):
+                logger.warning(f"S03: Login blocked (brute force) ip={client_ip} email={request.email}")
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many failed attempts. Please try again later.",
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.debug(f"S03: Brute force check skipped: {e}")
+
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members
             # Use case-insensitive query to handle email case variations
@@ -188,6 +208,11 @@ async def login(
                     user_agent=user_agent,
                     failure_reason="User not found",
                 )
+                if brute_force:
+                    try:
+                        await brute_force.record_failure(client_ip or "", request.email)
+                    except Exception:
+                        pass
                 raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
             if not user["active"]:
@@ -199,6 +224,11 @@ async def login(
                     user_agent=user_agent,
                     failure_reason="Account inactive",
                 )
+                if brute_force:
+                    try:
+                        await brute_force.record_failure(client_ip or "", request.email)
+                    except Exception:
+                        pass
                 raise HTTPException(status_code=401, detail="Account inactive")
 
             # Verify PIN
@@ -211,6 +241,11 @@ async def login(
                     user_agent=user_agent,
                     failure_reason="Invalid PIN",
                 )
+                if brute_force:
+                    try:
+                        await brute_force.record_failure(client_ip or "", request.email)
+                    except Exception:
+                        pass
                 raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
             # Update last login
@@ -218,6 +253,13 @@ async def login(
                 "UPDATE team_members SET last_login = NOW(), failed_attempts = 0 WHERE id = $1",
                 user["id"],
             )
+
+            # S03-S3: Clear brute force counter on success
+            if brute_force:
+                try:
+                    await brute_force.clear_on_success(client_ip or "", request.email)
+                except Exception:
+                    pass
 
             # Create JWT token with role-specific data
             jwt_data = {
