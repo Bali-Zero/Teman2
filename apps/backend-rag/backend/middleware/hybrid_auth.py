@@ -616,8 +616,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             from jose import JWTError, jwt
 
             # Stateless validation using secret key
+            # S03: Two-phase JWT expiry enforcement
             payload = jwt.decode(
                 token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
             )
 
             # Validate required fields
@@ -656,8 +658,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             jwt_token = auth_header[7:]  # Remove "Bearer " prefix
 
             # Stateless validation using secret key
+            # S03: Two-phase JWT expiry enforcement
             payload = jwt.decode(
                 jwt_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+                options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
             )
 
             # Validate required fields
