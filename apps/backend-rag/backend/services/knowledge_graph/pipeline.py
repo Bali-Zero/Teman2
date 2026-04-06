@@ -22,7 +22,6 @@ from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,
     ExtractedRelation,
     ExtractionResult,
-    KGExtractor,
 )
 from backend.services.knowledge_graph.quality_filter import KGQualityFilter
 
@@ -114,27 +113,15 @@ class KGPipeline:
         """
         self.config = config or PipelineConfig()
 
-        # Initialize extractor based on type
-        if self.config.extractor_type == "gemini":
-            from backend.services.knowledge_graph.extractor_gemini import GeminiKGExtractor
+        # Initialize Gemini extractor (only production extractor)
+        from backend.services.knowledge_graph.extractor_gemini import GeminiKGExtractor
 
-            self.extractor = GeminiKGExtractor(
-                model=self.config.model,
-            )
-            # Disable LLM coreference with Gemini (use heuristics only to save cost)
-            self.coreference = CoreferenceResolver(
-                use_llm=False,
-            )
-        else:
-            self.extractor = KGExtractor(
-                model=self.config.model,
-                api_key=self.config.api_key,
-            )
-            self.coreference = CoreferenceResolver(
-                use_llm=self.config.use_coreference,
-                model=self.config.model,
-                api_key=self.config.api_key,
-            )
+        self.extractor = GeminiKGExtractor(
+            model=self.config.model,
+        )
+        self.coreference = CoreferenceResolver(
+            use_llm=False,
+        )
 
         # Database connection
         self._db_pool: asyncpg.Pool | None = None

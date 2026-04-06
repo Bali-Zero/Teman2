@@ -39,7 +39,6 @@ def kg_pipeline(pipeline_config):
     """Create KG pipeline instance"""
     # Patch both extractor types and coreference resolver
     with (
-        patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
         patch("backend.services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
         patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
     ):
@@ -52,7 +51,6 @@ class TestKGPipeline:
     def test_init(self, pipeline_config):
         """Test initialization"""
         with (
-            patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
             patch("backend.services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
             patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
         ):
@@ -62,7 +60,7 @@ class TestKGPipeline:
     def test_init_default_config(self):
         """Test initialization with default config"""
         with (
-            patch("backend.services.knowledge_graph.pipeline.KGExtractor"),
+            patch("backend.services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
             patch("backend.services.knowledge_graph.pipeline.CoreferenceResolver"),
         ):
             pipeline = KGPipeline()
@@ -461,7 +459,7 @@ class TestPipelineConfig:
     def test_default_config(self):
         """Test default configuration"""
         config = PipelineConfig()
-        assert config.extractor_type == "claude"
+        assert config.extractor_type == "gemini"
         assert config.use_coreference is True
         assert config.min_confidence == 0.6
 
