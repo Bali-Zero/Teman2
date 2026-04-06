@@ -20,6 +20,8 @@ import logging
 import time
 from typing import Any
 
+import asyncio
+
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.constants import EvidenceScoreConstants
@@ -301,7 +303,7 @@ class ReasoningEngine:
                             {"role": "assistant", "content": text_response},
                         )
 
-                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         logger.error(f"Error during chat interaction: {e}", exc_info=True)
                         set_span_status("error", str(e))
                         break
@@ -631,13 +633,11 @@ class ReasoningEngine:
                     "rp.",
                     "idr ",
                     "usd ",
-                    "$",
                     "20.000.000",
                     "15.000.000",
                     "10.000.000",
                     "5.000.000",
                     "juta",
-                    "million",
                 ]
             )
             if has_pricing_data:
@@ -743,7 +743,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     logger.info(
                         f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
                     tier1_response_duration.observe(tier1_duration)
                     error_type = type(e).__name__
@@ -854,7 +854,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
@@ -909,7 +909,7 @@ Make it feel natural and helpful, not forced.
                         enable_function_calling=False,
                     )
                     accumulated_usage = accumulated_usage + final_usage
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
                     logger.error("Failed to generate final answer", exc_info=True)
                     state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
         elif not state.final_answer:
@@ -932,7 +932,7 @@ Make it feel natural and helpful, not forced.
                         enable_function_calling=False,
                     )
                     accumulated_usage = accumulated_usage + final_usage
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
                     state.final_answer = self._get_localized_stub("error", language)
             else:
@@ -999,7 +999,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
@@ -1155,7 +1155,7 @@ Do not invent information. If the context is insufficient, admit it.
                     images=step_images,
                 )
 
-            except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+            except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                 logger.error(f"Error during chat interaction: {e}", exc_info=True)
                 yield {"type": "error", "data": {"message": str(e)}}
                 break
@@ -1431,13 +1431,11 @@ Do not invent information. If the context is insufficient, admit it.
                     "rp.",
                     "idr ",
                     "usd ",
-                    "$",
                     "20.000.000",
                     "15.000.000",
                     "10.000.000",
                     "5.000.000",
                     "juta",
-                    "million",
                 ]
             )
             if has_pricing_data:
@@ -1536,7 +1534,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     logger.info(
                         f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
                     tier1_response_duration.observe(tier1_duration)
                     error_type = type(e).__name__
@@ -1642,7 +1640,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__
@@ -1691,7 +1689,7 @@ Make it feel natural and helpful, not forced.
                         tier=model_tier,
                         enable_function_calling=False,
                     )
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
                     state.final_answer = "I apologize, but I couldn't generate a final answer."
         elif not state.final_answer:
             # No context gathered at all
@@ -1708,7 +1706,7 @@ Make it feel natural and helpful, not forced.
                         tier=model_tier,
                         enable_function_calling=False,
                     )
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
                     state.final_answer = self._get_localized_stub("error", language)
             else:
@@ -1769,7 +1767,7 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
                         tier1_response_duration.observe(tier1_duration)
                         error_type = type(e).__name__

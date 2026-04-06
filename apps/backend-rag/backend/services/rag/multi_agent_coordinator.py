@@ -87,8 +87,8 @@ def _get_multi_agent_llm() -> Any:
     """
     Get LLM instance for multi-agent reasoning.
 
-    Uses Claude Sonnet 4.5 for complex multi-domain synthesis,
-    falls back to OpenAI GPT-4 if Anthropic unavailable.
+    Reuses the cached singleton from kg_langgraph_orchestrator to ensure
+    consistent provider preference (OpenAI first) and connection pool reuse.
 
     Returns:
         LangChain LLM instance
@@ -96,32 +96,9 @@ def _get_multi_agent_llm() -> Any:
     Raises:
         ValueError: If no LLM provider is available
     """
-    import os
+    from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
-
-    if anthropic_key and ChatAnthropic is not None:
-        logger.info("🤖 [MultiAgent] Using Claude Sonnet 4.5 for reasoning")
-        return ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
-            temperature=0.2,
-            api_key=anthropic_key,
-        )
-    if openai_key and ChatOpenAI is not None:
-        logger.info("🤖 [MultiAgent] Using OpenAI GPT-4 for reasoning (Anthropic unavailable)")
-        return ChatOpenAI(
-            model="gpt-4-turbo-preview",
-            temperature=0.2,
-            api_key=openai_key,
-        )
-    raise ValueError(
-        "No LLM available for multi-agent reasoning. "
-        f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} "
-        f"(lib={'ok' if ChatAnthropic else 'missing'}), "
-        f"OPENAI_API_KEY={'set' if openai_key else 'missing'} "
-        f"(lib={'ok' if ChatOpenAI else 'missing'})",
-    )
+    return get_llm_for_reasoning()
 
 
 # ============================================================================
