@@ -24,7 +24,7 @@ def _register_tools(mock_mcp, mock_call, mock_call_safe):
 async def test_calculate_pricing_default(mock_mcp, mock_call, mock_call_safe) -> None:
     """calculate_pricing should POST with defaults."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {
+    mock_call_safe.return_value = {
         "base_price": 20_000_000,
         "surcharges": 0,
         "total": 20_000_000,
@@ -33,7 +33,7 @@ async def test_calculate_pricing_default(mock_mcp, mock_call, mock_call_safe) ->
 
     result = await tools["calculate_pricing"](service_type="kitas")
     assert result["total"] == 20_000_000
-    mock_call.assert_called_once_with(
+    mock_call_safe.assert_called_once_with(
         "/api/agents/pricing/calculate",
         method="POST",
         json={
@@ -48,13 +48,13 @@ async def test_calculate_pricing_default(mock_mcp, mock_call, mock_call_safe) ->
 async def test_calculate_pricing_urgent(mock_mcp, mock_call, mock_call_safe) -> None:
     """calculate_pricing with urgency surcharge."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {"total": 30_000_000, "surcharges": 10_000_000}
+    mock_call_safe.return_value = {"total": 30_000_000, "surcharges": 10_000_000}
 
     result = await tools["calculate_pricing"](
         service_type="pt_pma", complexity="complex", urgency="express"
     )
     assert result["surcharges"] == 10_000_000
-    call_json = mock_call.call_args[1]["json"]
+    call_json = mock_call_safe.call_args[1]["json"]
     assert call_json["urgency"] == "express"
     assert call_json["complexity"] == "complex"
 
@@ -63,23 +63,23 @@ async def test_calculate_pricing_urgent(mock_mcp, mock_call, mock_call_safe) -> 
 async def test_get_all_prices(mock_mcp, mock_call, mock_call_safe) -> None:
     """get_all_prices should call /pricing/all."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {"services": {"visa": [], "company": []}}
+    mock_call_safe.return_value = {"services": {"visa": [], "company": []}}
 
     result = await tools["get_all_prices"]()
     assert "services" in result
-    mock_call.assert_called_once_with("/pricing/all")
+    mock_call_safe.assert_called_once_with("/api/pricing/all")
 
 
 @pytest.mark.asyncio
 async def test_search_service_pricing(mock_mcp, mock_call, mock_call_safe) -> None:
     """search_service_pricing should pass query param."""
     tools = _register_tools(mock_mcp, mock_call, mock_call_safe)
-    mock_call.return_value = {
+    mock_call_safe.return_value = {
         "results": [{"service": "KITAS", "price_idr": 2_500_000}]
     }
 
     result = await tools["search_service_pricing"](query="work permit investor")
     assert len(result["results"]) == 1
-    mock_call.assert_called_once_with(
-        "/pricing/search", params={"q": "work permit investor"}
+    mock_call_safe.assert_called_once_with(
+        "/api/pricing/search", params={"q": "work permit investor"}
     )
