@@ -1,0 +1,262 @@
+# Golden Answers Canonical Questions
+# Each question is sent to the corresponding NLM notebook for grounded answer generation.
+# aliases: alternative phrasings that should match this golden answer.
+
+version: "1.0"
+generated: "2026-04-06"
+
+questions:
+  # ─── VISA DOMAIN (NB-2) ───
+  - question: "What are the requirements for a B211A social/cultural visa?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "B211A visa requirements"
+      - "B211 social budaya"
+      - "social cultural visa Bali"
+      - "visit visa sosial"
+      - "C316 social visa"
+
+  - question: "What is the difference between Golden Visa and Second Home Visa in Indonesia?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "golden visa vs second home"
+      - "compare golden visa retirement visa"
+      - "golden visa or second home better"
+
+  - question: "What are the requirements for the Golden Visa in Indonesia?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "golden visa requirements"
+      - "golden visa Indonesia"
+      - "KITAP golden visa"
+      - "golden visa 5 year 10 year"
+
+  - question: "What is a Digital Nomad Visa in Indonesia and how do I apply?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "digital nomad visa Bali"
+      - "remote worker visa Indonesia"
+      - "E33G digital nomad"
+      - "work remotely from Bali"
+
+  - question: "What are the requirements for a Working KITAS in Indonesia?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "KITAS work permit"
+      - "working visa Bali"
+      - "E23 employee KITAS"
+      - "E25B director KITAS"
+      - "work permit Indonesia foreigner"
+
+  - question: "What is the Second Home Visa E33 and who qualifies?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "second home visa"
+      - "E33 visa"
+      - "retirement visa Indonesia"
+      - "E33E retirement"
+      - "E33F retirement 55+"
+
+  - question: "What is the Investor KITAS E28A and what are the investment requirements?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "investor KITAS"
+      - "E28A visa"
+      - "investor visa Bali"
+      - "minimum investment KITAS"
+
+  - question: "How do I extend my visit visa in Bali?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "visa extension Bali"
+      - "perpanjangan visa"
+      - "extend C1 tourism visa"
+      - "extend visit visa 30 days"
+
+  - question: "What happens if my visa expires in Indonesia? What are the penalties?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "overstay penalty Indonesia"
+      - "visa expired Bali"
+      - "overstay fine"
+      - "denda overstay"
+
+  - question: "What documents do I need for an offshore KITAS application?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "offshore KITAS documents"
+      - "KITAS offshore application"
+      - "VITAS offshore"
+      - "apply KITAS from abroad"
+
+  - question: "What is the difference between KITAS and KITAP?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "KITAS vs KITAP"
+      - "temporary vs permanent stay"
+      - "izin tinggal terbatas vs tetap"
+
+  - question: "What is the E-VOA (Electronic Visa on Arrival) and how does it work?"
+    domain: visa
+    nb_id: "cff93ab0-813a-42f2-a8de-36987e724271"
+    aliases:
+      - "E-VOA Indonesia"
+      - "visa on arrival Bali"
+      - "electronic VOA"
+      - "molina e-voa"
+
+  # ─── TAX DOMAIN (NB-4) ───
+  - question: "What are the tax obligations for a PT PMA in Indonesia?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "PT PMA tax"
+      - "corporate tax Indonesia"
+      - "PPh badan"
+      - "tax obligations foreign company"
+
+  - question: "What is the corporate income tax rate in Indonesia?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "PPh 22%"
+      - "corporate tax rate"
+      - "tarif pajak perusahaan"
+      - "income tax rate Indonesia 2025"
+
+  - question: "What is the PPN (VAT) rate in Indonesia and when does it apply?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "PPN rate"
+      - "VAT Indonesia"
+      - "pajak pertambahan nilai"
+      - "PPN 11% or 12%"
+
+  - question: "What are the tax filing deadlines for a PT PMA?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "SPT deadline"
+      - "tax filing deadline Indonesia"
+      - "lapor pajak kapan"
+      - "SPT tahunan deadline"
+
+  - question: "How does PPh 21 employee withholding tax work in Indonesia?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "PPh 21"
+      - "employee tax Indonesia"
+      - "potong gaji pajak"
+      - "withholding tax salary"
+
+  - question: "What is the LKPM reporting requirement for foreign companies?"
+    domain: tax
+    nb_id: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
+    aliases:
+      - "LKPM report"
+      - "laporan kegiatan penanaman modal"
+      - "BKPM quarterly report"
+
+  # ─── COMPANY DOMAIN (NB-3/NB-6) ───
+  - question: "How do I set up a PT PMA company in Bali as a foreigner?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "PT PMA setup"
+      - "company formation Bali"
+      - "start business Indonesia foreigner"
+      - "open company Bali"
+
+  - question: "What is the minimum capital requirement for a PT PMA?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "PT PMA modal"
+      - "minimum investment PT PMA"
+      - "modal dasar PT PMA"
+      - "capital requirement foreign company"
+
+  - question: "What KBLI codes do I need for a restaurant in Bali?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "KBLI restaurant"
+      - "KBLI 56101"
+      - "KBLI food service"
+      - "kode KBLI restoran"
+      - "restaurant business license Bali"
+
+  - question: "How does the OSS (Online Single Submission) system work for business licensing?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "OSS RBA"
+      - "perizinan berusaha"
+      - "NIB application"
+      - "online single submission Indonesia"
+
+  - question: "What is the difference between PT PMA and PT PMDN?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "PMA vs PMDN"
+      - "foreign vs local company Indonesia"
+      - "penanaman modal asing vs dalam negeri"
+
+  - question: "What are the steps to get a NIB (Nomor Induk Berusaha)?"
+    domain: company
+    nb_id: "85207af3-352f-4554-8d2a-18f42cc541ba"
+    aliases:
+      - "NIB registration"
+      - "nomor induk berusaha"
+      - "business identification number"
+
+  # ─── PROPERTY DOMAIN (NB-5) ───
+  - question: "Can a foreigner buy property in Bali? What are the options?"
+    domain: property
+    nb_id: "d9438180-5e63-4e2a-a473-6061101f6a8d"
+    aliases:
+      - "foreigner buy property Bali"
+      - "hak pakai WNA"
+      - "property ownership foreigner Indonesia"
+      - "can foreigner own land Bali"
+
+  - question: "What is Hak Pakai and how does it work for foreigners?"
+    domain: property
+    nb_id: "d9438180-5e63-4e2a-a473-6061101f6a8d"
+    aliases:
+      - "hak pakai"
+      - "right to use Indonesia"
+      - "leasehold Bali"
+      - "hak pakai 30 20 20"
+
+  - question: "What taxes apply to property transactions in Indonesia?"
+    domain: property
+    nb_id: "d9438180-5e63-4e2a-a473-6061101f6a8d"
+    aliases:
+      - "property tax Indonesia"
+      - "BPHTB"
+      - "PBB property"
+      - "pajak tanah bangunan"
+
+  - question: "What is the process for transferring property ownership to a foreigner in Indonesia?"
+    domain: property
+    nb_id: "d9438180-5e63-4e2a-a473-6061101f6a8d"
+    aliases:
+      - "property transfer foreigner"
+      - "pelepasan hak"
+      - "hak milik to hak pakai"
+      - "BPN transfer process"
