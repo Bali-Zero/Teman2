@@ -758,3 +758,15 @@ def _format_uptime(seconds: float) -> str:
     if hours > 0:
         return f"{hours}h {minutes}m"
     return f"{minutes}m"
+
+
+@router.get("/metrics/prometheus", include_in_schema=False)
+async def prometheus_metrics():
+    """Prometheus text format metrics for external scraping (Grafana Cloud, Prometheus)."""
+    from backend.app.metrics import generate_latest
+    from starlette.responses import Response
+
+    return Response(
+        content=generate_latest(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
