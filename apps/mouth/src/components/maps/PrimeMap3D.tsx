@@ -721,7 +721,7 @@ export default function PrimeMap3D() {
   return (
     <div className="flex w-full h-screen bg-black overflow-hidden">
       <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d,places`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d`}
         strategy="afterInteractive"
         onLoad={() => setIsLoaded(true)}
       />
@@ -1168,6 +1168,14 @@ export default function PrimeMap3D() {
 
       {/* ── Map area ── */}
       <div className="relative flex-1 h-full">
+        {/* Skeleton placeholder while Maps 3D WASM loads */}
+        {!isLoaded && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0c0c0e]">
+            <div className="w-16 h-16 border-2 border-slate-800 border-t-[#d4845a] rounded-full animate-spin mb-4" />
+            <p className="text-sm text-slate-500 font-medium">Loading 3D Map</p>
+            <p className="text-xs text-slate-700 mt-1">Initializing terrain data...</p>
+          </div>
+        )}
         {/* 3D Map canvas */}
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
 

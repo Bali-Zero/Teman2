@@ -1,15 +1,35 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { PrimeNexusProvider, usePrimeNexus } from '@/contexts/PrimeNexusContext';
 import PrimeMap3D from '@/components/maps/PrimeMap3D';
 import { ModeSwitcher } from './ModeSwitcher';
-import { InvestmentAnalysisPanel } from './InvestmentAnalysisPanel';
 import { ClientMarkerLayer } from './ClientMarkerLayer';
-import { CRMPanel } from './CRMPanel';
-import { ComplianceOverlay } from './ComplianceOverlay';
-import { TemporalPanel } from './TemporalPanel';
-import { RegulationPanel } from './RegulationPanel';
-import { PortfolioPanel } from './PortfolioPanel';
+
+// Code-split mode panels — only loaded when their mode is active
+const InvestmentAnalysisPanel = dynamic(
+  () => import('./InvestmentAnalysisPanel').then((m) => ({ default: m.InvestmentAnalysisPanel })),
+  { ssr: false }
+);
+const CRMPanel = dynamic(() => import('./CRMPanel').then((m) => ({ default: m.CRMPanel })), {
+  ssr: false,
+});
+const ComplianceOverlay = dynamic(
+  () => import('./ComplianceOverlay').then((m) => ({ default: m.ComplianceOverlay })),
+  { ssr: false }
+);
+const TemporalPanel = dynamic(
+  () => import('./TemporalPanel').then((m) => ({ default: m.TemporalPanel })),
+  { ssr: false }
+);
+const RegulationPanel = dynamic(
+  () => import('./RegulationPanel').then((m) => ({ default: m.RegulationPanel })),
+  { ssr: false }
+);
+const PortfolioPanel = dynamic(
+  () => import('./PortfolioPanel').then((m) => ({ default: m.PortfolioPanel })),
+  { ssr: false }
+);
 
 /**
  * PrimeNexusLayout — Progressive enhancement wrapper around PrimeMap3D.
