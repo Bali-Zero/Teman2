@@ -411,13 +411,13 @@ def include_light_routers(api: FastAPI) -> None:
         team_members,
         telegram,
         telegram_webhook,
-        twitter,
+        # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
         webhooks,
         websocket,
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
-        x_monitor,
+        # x_monitor,  # DISABLED: CRC broken (audit 2026-04-03)
         zoho_email,
     )
 
@@ -488,9 +488,9 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     api.include_router(telegram.router)
     api.include_router(telegram_webhook.router)
-    api.include_router(twitter.router)
-    api.include_router(twitter.webhook_router)
-    api.include_router(x_monitor.router)
+    # api.include_router(twitter.router)  # DISABLED: CRC broken (audit 2026-04-03)
+    # api.include_router(twitter.webhook_router)
+    # api.include_router(x_monitor.router)
     api.include_router(whatsapp_conversations.router)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
