@@ -415,6 +415,7 @@ Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 | Drive Watchdog    | \*/6h :00   | `drive_token_watchdog.py`            |
 | Judgement Day     | Sun 16:00   | `auto_judgement_day.sh`              |
 | RAGAS Eval        | Sun 06:00   | `ragas_eval.py`                      |
+| KG Quality        | \*/48h 04:00| `auto_kg_quality.sh`                 |
 
 ### GitHub Secrets
 

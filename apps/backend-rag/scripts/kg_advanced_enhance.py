@@ -139,7 +139,7 @@ async def run_enhancement(
                             coll,
                         )
                     except Exception as e:
-                        logger.debug(f"Failed to insert relation: {e}")
+                        logger.warning(f"Failed to insert relation {rel_id}: {e}")
             else:
                 for rel in hierarchical[:5]:
                     logger.info(
@@ -194,7 +194,7 @@ async def run_enhancement(
                             coll,
                         )
                     except Exception as e:
-                        logger.debug(f"Failed to insert relation: {e}")
+                        logger.warning(f"Failed to insert relation {rel_id}: {e}")
             else:
                 for rel in domain_rels[:5]:
                     logger.info(
