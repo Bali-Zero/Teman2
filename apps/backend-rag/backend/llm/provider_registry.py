@@ -55,7 +55,7 @@ def list_providers() -> list[str]:
 
 
 def _register_builtin_providers():
-    """Register all built-in providers."""
+    """Register all active providers (S04: Gemini, OpenRouter, Ollama only)."""
     try:
         from backend.llm.providers.gemini import GeminiProvider
 
@@ -67,20 +67,6 @@ def _register_builtin_providers():
         from backend.llm.providers.openrouter import OpenRouterProvider
 
         register_provider("openrouter", OpenRouterProvider)
-    except ImportError:
-        pass
-
-    try:
-        from backend.llm.providers.deepseek import DeepSeekProvider
-
-        register_provider("deepseek", DeepSeekProvider)
-    except ImportError:
-        pass
-
-    try:
-        from backend.llm.providers.vertex import VertexProvider
-
-        register_provider("vertex", VertexProvider)
     except ImportError:
         pass
 
