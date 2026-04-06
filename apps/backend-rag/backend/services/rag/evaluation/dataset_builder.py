@@ -15,11 +15,18 @@ import logging
 import random
 import uuid
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Optional
 
 from backend.app.core.logging_config import get_performance_logger
 from backend.llm.base import LLMMessage
-from backend.llm.client import UnifiedLLMClient, create_default_client
+
+try:
+    from backend.llm.client import UnifiedLLMClient, create_default_client
+    _LLM_AVAILABLE = True
+except ImportError:
+    UnifiedLLMClient = None  # type: ignore[assignment,misc]
+    create_default_client = None  # type: ignore[assignment]
+    _LLM_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +218,8 @@ class DatasetBuilder:
 
     def __init__(
         self,
-        llm_client: UnifiedLLMClient | None = None,
-        seed: int | None = None,
+        llm_client: Optional[Any] = None,
+        seed: Optional[int] = None,
     ) -> None:
         """
         Initialize DatasetBuilder.
@@ -221,7 +228,7 @@ class DatasetBuilder:
             llm_client: LLM client for synthetic generation
             seed: Random seed for reproducibility
         """
-        self.llm_client = llm_client or create_default_client()
+        self.llm_client = llm_client or (create_default_client() if _LLM_AVAILABLE and create_default_client else None)
         self.seed = seed or 42
         random.seed(self.seed)
 

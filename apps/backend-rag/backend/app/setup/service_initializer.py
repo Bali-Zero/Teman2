@@ -1242,7 +1242,7 @@ async def initialize_services_light(app: FastAPI) -> None:
 
     # 2. Redis cache (non-critical)
     try:
-        from backend.services.caching.cache_service import CacheService
+        from backend.core.cache import CacheService
         cache = CacheService()
         app.state.cache = cache
         service_registry.register("cache", ServiceStatus.HEALTHY, critical=False)
@@ -1251,7 +1251,18 @@ async def initialize_services_light(app: FastAPI) -> None:
         logger.warning(f"⚠️ Redis cache failed (non-critical): {e}")
         app.state.cache = None
 
-    # 3. Mark RAG services as intentionally not-initialized (light mode)
+    # 3. Timesheet service (requires DB pool, used by team_activity router)
+    try:
+        from backend.services.analytics.team_timesheet_service import init_timesheet_service
+        ts_service = init_timesheet_service(db_pool)
+        app.state.ts_service = ts_service
+        await ts_service.start_auto_logout_monitor()
+        logger.info("✅ Timesheet service initialized (light)")
+    except Exception as e:
+        logger.warning(f"⚠️ Timesheet service failed (non-critical): {e}")
+        app.state.ts_service = None
+
+    # 4. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
     app.state.ai_client = None
     app.state.retriever = None

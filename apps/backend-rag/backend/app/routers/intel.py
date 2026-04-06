@@ -43,7 +43,13 @@ if scraper_scripts_path.exists():
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))
+_embedder = None
+
+def get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))
+    return _embedder
 
 # Qdrant collections for intel (from constants)
 INTEL_COLLECTIONS = IntelConstants.COLLECTIONS
