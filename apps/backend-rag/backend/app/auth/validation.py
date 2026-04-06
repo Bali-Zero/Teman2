@@ -20,14 +20,16 @@ logger = logging.getLogger(__name__)
 _api_key_auth = APIKeyAuth()
 
 
-async def validate_api_key(api_key: str | None) -> dict[str, Any] | None:
+async def validate_api_key(api_key: str | None, conn: Any | None = None) -> dict[str, Any] | None:
     """
     Validate API key for service-to-service authentication.
 
-    Returns a user payload when the API key is valid, otherwise None.
+    S03: Uses enhanced DB-backed resolution when connection available,
+    falls back to legacy in-memory validation otherwise.
 
     Args:
         api_key: API key string to validate
+        conn: Optional asyncpg connection for DB-backed resolution
 
     Returns:
         User context dict if valid, None otherwise
@@ -35,8 +37,8 @@ async def validate_api_key(api_key: str | None) -> dict[str, Any] | None:
     if not api_key:
         return None
 
-    # Use the centralized API key auth service
-    user_context = _api_key_auth.validate_api_key(api_key)
+    # S03: Use enhanced DB-backed validation when connection available
+    user_context = await _api_key_auth.validate_api_key_enhanced(api_key, conn)
     if user_context:
         logger.info("✅ API key authentication successful")
         return user_context
