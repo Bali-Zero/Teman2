@@ -113,12 +113,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/auth/team/login",  # BUSINESS: Team member login - must be public to allow initial authentication
             "/api/auth/login",  # BUSINESS: User login endpoint - must be public to allow initial authentication
             "/api/auth/csrf-token",  # BUSINESS: CSRF token generation - must be public for CSRF protection flow
-            "/api/whatsapp/conversations",  # BUSINESS: Omnichannel dashboard - allowing access via proxy
-            "/api/whatsapp/messages/",  # BUSINESS: Message history
-            "/api/telegram/conversations",
-            "/api/telegram/messages/",
-            "/api/instagram/conversations",
-            "/api/instagram/messages/",
+            # REMOVED: conversation endpoints require auth (security audit 2026-04-03)
+            # "/api/whatsapp/conversations",  # Now requires JWT/API key
+            # "/api/whatsapp/messages/",
+            # "/api/telegram/conversations",
+            # "/api/telegram/messages/",
+            # "/api/instagram/conversations",
+            # "/api/instagram/messages/",
             "/api/workflow/",
             # ========================================================================
             # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
@@ -156,13 +157,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
             "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
-            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming endpoint - public for Prime map widget (rate-limited: 10/min)
-            "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous for map intelligence (rate-limited: 10/min)
+            "/api/agentic-rag/stream",  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
+            "/api/agentic-rag/query",  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
             "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
             "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
             "/api/cell/metrics",  # BUSINESS: CELL ErrorRateSensor reads this internally — no user data exposed
             "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
-            "/api/v1/visa-oracle/",  # BUSINESS: Visa Oracle - public anonymous visa recommendation product
             "/api/webhook/chat",  # BUSINESS: Public AI chat webhook for website visitors
             "/api/webhook/chat/history",  # BUSINESS: Public chat history retrieval for session persistence
             # ========================================================================
@@ -181,9 +181,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
-            "/api/prime/v2/resolve",  # BUSINESS: Prime Nexus Layer 1 - public spatial resolution (no auth)
-            "/api/prime/v2/analyze",  # BUSINESS: Prime Nexus Layer 2 - public investment analysis (rate-limited: 10/min)
-            "/api/prime/v2/health",   # BUSINESS: Prime Nexus health check - public status endpoint
+            "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)
+            "/api/prime/v2/analyze",  # PRIME NEXUS: Layer 2 investment analysis (public base, auth for KG)
+            "/api/prime/v2/health",  # PRIME NEXUS: Health check
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================

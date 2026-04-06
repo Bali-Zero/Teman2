@@ -18,31 +18,34 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
-# In-memory rate limit storage (fallback)
-_rate_limit_storage: dict[str, list[int]] = {}
-_MAX_IN_MEMORY_KEYS = 10_000  # cap to prevent unbounded growth
+# In-memory rate limit storage (fallback) with eviction
+_rate_limit_storage: dict[str, list[float]] = {}
+_MAX_RATE_LIMIT_KEYS = 10_000
+_EVICTION_STALE_SECONDS = 120
+
+
+def _evict_stale_keys() -> None:
+    """Evict stale keys to prevent unbounded memory growth."""
+    global _rate_limit_storage
+    if len(_rate_limit_storage) <= _MAX_RATE_LIMIT_KEYS:
+        return
+    cutoff = time.time() - _EVICTION_STALE_SECONDS
+    _rate_limit_storage = {
+        k: v for k, v in _rate_limit_storage.items()
+        if v and v[-1] > cutoff
+    }
 
 
 class RateLimiter:
     """
-    Rate limiter with sliding window algorithm.
-
-    Uses lazy Redis connection: if instantiated before RedisManager.initialize()
-    (e.g. at module import time during middleware registration), it will attempt
-    to connect on first use rather than failing permanently.
+    Rate limiter with sliding window algorithm
     """
 
     def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
-        self._redis_checked = False
 
-    def _try_connect_redis(self) -> None:
-        """Lazily connect to Redis via RedisManager. Called once on first use."""
-        if self._redis_checked:
-            return
-        self._redis_checked = True
-
+        # Get sync Redis client from centralized RedisManager
         from backend.core.redis_manager import RedisManager
 
         manager = RedisManager.get_instance()
@@ -51,10 +54,10 @@ class RateLimiter:
             self.redis_client = client
             self.redis_available = True
             manager.register_component("rate_limiter", "active")
-            logger.info("Rate limiter connected to Redis via RedisManager")
+            logger.info("Rate limiter using Redis via RedisManager")
         else:
             manager.register_component("rate_limiter", "fallback_memory")
-            logger.info("Rate limiter using in-memory storage (Redis unavailable)")
+            logger.info("Rate limiter using in-memory storage")
 
     def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
         """
@@ -68,8 +71,6 @@ class RateLimiter:
         Returns:
             (allowed, info_dict)
         """
-        # Lazy Redis connection (handles import-time instantiation before RedisManager.initialize)
-        self._try_connect_redis()
         current_time = int(time.time())
         window_start = current_time - window
 
@@ -102,13 +103,9 @@ class RateLimiter:
                     "reset": current_time + window,
                 }
             else:
-                # In-memory fallback
+                # In-memory fallback (with eviction guard)
+                _evict_stale_keys()
                 if key not in _rate_limit_storage:
-                    # Evict stale keys when approaching cap
-                    if len(_rate_limit_storage) >= _MAX_IN_MEMORY_KEYS:
-                        stale = [k for k, v in _rate_limit_storage.items() if not v or v[-1] < window_start]
-                        for k in stale[:len(stale) // 2 + 1]:
-                            del _rate_limit_storage[k]
                     _rate_limit_storage[key] = []
 
                 # Remove old entries
@@ -188,20 +185,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         "/preview/": (60, 60),  # 60 per minute - article previews
         "/preview/upload": (10, 60),  # 10 per minute - prevent storage abuse
         "/api/legal/parent-documents": (20, 60),  # 20 per minute - internal ingestion
-        # Visa Oracle (public, consumer-facing)
-        "/api/v1/visa-oracle/chat": (15, 60),  # 15 per minute - LLM calls
-        "/api/v1/visa-oracle/": (60, 60),  # 60 per minute - quiz/handoff
-        # Agentic RAG (public LLM endpoints - cost protection)
-        "/api/agentic-rag/query": (10, 60),   # 10 per minute - LLM, cost-sensitive
-        "/api/agentic-rag/stream": (10, 60),  # 10 per minute - LLM streaming
-        "/api/agentic-rag/": (20, 60),        # 20 per minute - fallback for other agentic paths
-        # Prime Intelligence (public geospatial + LLM)
-        "/api/prime/v2/analyze": (10, 60),    # 10 per minute per IP - LLM scoring, cost-sensitive
-        "/api/prime/zoning": (30, 60),        # 30 per minute - PostGIS queries
-        "/api/prime/": (20, 60),              # 20 per minute - other prime endpoints
-        # Oracle (public AI chat)
-        "/api/oracle/chat": (10, 60),         # 10 per minute - LLM calls
-        "/api/oracle/": (30, 60),             # 30 per minute - other oracle endpoints
         # Default for all other endpoints
         "*": (200, 60),  # 200 per minute
     }
@@ -270,7 +253,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 def get_rate_limit_stats() -> dict:
     """Get rate limiting statistics"""
-    rate_limiter._try_connect_redis()
     return {
         "backend": "redis" if rate_limiter.redis_available else "memory",
         "connected": rate_limiter.redis_available,
