@@ -22,6 +22,7 @@ Features:
 
 import asyncio
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import structlog
 from prometheus_client import Counter, Gauge
@@ -267,7 +268,8 @@ async def run_auto_practice_creator(db_pool) -> dict:
     """
     logger.info("Starting auto-practice-creator job")
 
-    target_date = datetime.now(tz=timezone.utc).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
+    # Use Bali timezone — visa expiry dates are stored in local Bali dates (WITA/UTC+8)
+    target_date = datetime.now(tz=ZoneInfo("Asia/Makassar")).date() + timedelta(days=RENEWAL_TRIGGER_DAYS)
 
     stats = {
         "visas_checked": 0,
