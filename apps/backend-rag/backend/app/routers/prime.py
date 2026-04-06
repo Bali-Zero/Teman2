@@ -935,6 +935,18 @@ _ZONE_COLORS_MAP: dict[str, str] = {
     "IK-1": "#507DD2",
 }
 
+def _truncate_geojson_coords(geom: dict, precision: int = 6) -> None:
+    """Truncate GeoJSON coordinate arrays in-place to reduce payload size."""
+    def _trunc(coords: Any) -> Any:
+        if isinstance(coords, list):
+            if coords and isinstance(coords[0], (int, float)):
+                return [round(c, precision) for c in coords]
+            return [_trunc(c) for c in coords]
+        return coords
+    if "coordinates" in geom:
+        geom["coordinates"] = _trunc(geom["coordinates"])
+
+
 _ZONES_GEOJSON_QUERY = """
     SELECT
         ST_AsGeoJSON(ST_Simplify(l.boundary, 0.0001)) AS geometry,
@@ -978,6 +990,8 @@ async def get_zones_geojson() -> dict[str, Any]:
                 continue
             try:
                 geom = json.loads(geom_str)
+                # Truncate coordinates to 6 decimals (~10cm precision, -40% payload)
+                _truncate_geojson_coords(geom)
             except Exception:
                 continue
 
