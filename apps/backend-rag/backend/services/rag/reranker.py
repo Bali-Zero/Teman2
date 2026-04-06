@@ -133,35 +133,33 @@ class CrossEncoderReranker:
             try:
                 from sentence_transformers import CrossEncoder
 
-            logger.info(f"📥 Loading cross-encoder model: {self.model_name}")
-            start_time = time.perf_counter()
+                logger.info(f"📥 Loading cross-encoder model: {self.model_name}")
+                start_time = time.perf_counter()
 
-            model = CrossEncoder(
-                self.model_name,
-                max_length=self.max_length,
-                device="cpu",  # Can be changed to "cuda" if GPU is available
-            )
+                model = CrossEncoder(
+                    self.model_name,
+                    max_length=self.max_length,
+                    device="cpu",
+                )
 
-            load_time = (time.perf_counter() - start_time) * 1000
-            logger.info(f"✅ Model loaded in {load_time:.0f}ms")
+                load_time = (time.perf_counter() - start_time) * 1000
+                logger.info(f"✅ Model loaded in {load_time:.0f}ms")
 
-            # Cache the model
-            _model_cache[self.model_name] = model
+                _model_cache[self.model_name] = model
+                return model
 
-            return model
+            except ImportError as e:
+                logger.error(
+                    f"❌ Failed to import sentence-transformers: {e}. "
+                    "Install with: pip install sentence-transformers",
+                )
+                self.enabled = False
+                return None
 
-        except ImportError as e:
-            logger.error(
-                f"❌ Failed to import sentence-transformers: {e}. "
-                "Install with: pip install sentence-transformers",
-            )
-            self.enabled = False
-            return None
-
-        except Exception as e:
-            logger.error(f"❌ Failed to load model {self.model_name}: {e}")
-            self.enabled = False
-            return None
+            except Exception as e:
+                logger.error(f"❌ Failed to load model {self.model_name}: {e}")
+                self.enabled = False
+                return None
 
 
 
