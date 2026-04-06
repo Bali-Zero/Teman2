@@ -88,6 +88,57 @@ class APIKeyAuth:
             },
         }
 
+    async def validate_api_key_enhanced(
+        self, api_key: str, conn: Any | None = None,
+    ) -> dict[str, Any] | None:
+        """
+        Enhanced API key validation with DB-backed role resolution (S03).
+
+        Flow: DB lookup -> legacy fallback -> auto-migrate on fallback hit.
+        Falls back to legacy sync validation if no DB connection available.
+
+        Args:
+            api_key: API key from X-API-Key header
+            conn: Optional asyncpg connection for DB lookup
+
+        Returns:
+            User context dict or None if invalid
+        """
+        if not api_key:
+            return None
+
+        # Step 1: Try DB resolution if connection available
+        if conn:
+            db_role = await self.resolve_role_from_db(api_key, conn)
+            if db_role:
+                # Update usage stats
+                if api_key in self.key_stats:
+                    self.key_stats[api_key]["usage_count"] = self.key_stats[api_key].get("usage_count", 0) + 1
+                    self.key_stats[api_key]["last_used"] = datetime.now(timezone.utc).isoformat()
+
+                logger.info(f"S03: API key resolved from DB (role={db_role['role']})")
+                return {
+                    "id": f"api_key_{api_key[:8]}",
+                    "email": f"{db_role['role']}@zantara.dev",
+                    "name": f"API User ({db_role['role']})",
+                    "role": db_role["role"],
+                    "status": "active",
+                    "auth_method": "api_key",
+                    "permissions": db_role["permissions"],
+                }
+
+        # Step 2: Legacy fallback (sync in-memory validation)
+        result = self.validate_api_key(api_key)
+
+        # Step 3: Auto-migrate on legacy hit (if DB available)
+        if result and conn:
+            legacy_role = result["role"]
+            legacy_perms = result.get("permissions", ["read"])
+            await self.auto_migrate_key(api_key, legacy_role, legacy_perms, conn)
+            logger.info(f"S03: Legacy API key used, auto-migrating to DB (role={legacy_role})")
+
+        return result
+
     def is_valid_key(self, api_key: str) -> bool:
         """Check if API key is valid (simplified validation)"""
         return api_key in self.valid_keys
