@@ -5,19 +5,15 @@ Handles all database operations for conversation persistence
 
 from datetime import datetime, timedelta, timezone
 
-import asyncpg
-
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
+from backend.db.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
 
-class ConversationRepository:
+class ConversationRepository(BaseRepository):
     """Repository for conversation persistence operations"""
-
-    def __init__(self, db_pool: asyncpg.Pool) -> None:
-        self.db_pool = db_pool
 
     async def save_messages(
         self,

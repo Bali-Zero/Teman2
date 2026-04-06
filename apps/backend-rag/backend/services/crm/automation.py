@@ -73,6 +73,67 @@ async def _fetch_client_data(
         return dict(row) if row else None
 
 
+async def _fetch_practice_with_client(
+    db_pool: asyncpg.Pool, practice_id: int, *, include_drive: bool = False,
+) -> tuple[dict | None, dict | None]:
+    """Fetch practice + client in a single connection (eliminates N+1).
+
+    Returns:
+        (practice_data, client_data) — either may be None.
+    """
+    client_cols = (
+        "c.id as client_db_id, c.full_name, c.email, c.phone, "
+        "c.drive_folder_id, c.drive_folder_url, "
+        "c.drive_documents_folder_id, c.drive_final_folder_id"
+        if include_drive
+        else "c.id as client_db_id, c.full_name, c.email, c.phone, c.address, c.nationality"
+    )
+
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"""
+            SELECT
+                p.*,
+                pt.code as practice_type_code,
+                pt.name as practice_type_name,
+                {client_cols}
+            FROM practices p
+            LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
+            LEFT JOIN clients c ON p.client_id = c.id
+            WHERE p.id = $1
+            """,
+            practice_id,
+        )
+
+    if not row:
+        return None, None
+
+    row_dict = dict(row)
+
+    # Split into practice_data and client_data
+    client_keys = {
+        "client_db_id", "full_name", "email", "phone", "address", "nationality",
+        "drive_folder_id", "drive_folder_url", "drive_documents_folder_id",
+        "drive_final_folder_id",
+    }
+    client_data: dict[str, Any] = {}
+    practice_data: dict[str, Any] = {}
+    for k, v in row_dict.items():
+        if k in client_keys:
+            client_data[k] = v
+        else:
+            practice_data[k] = v
+
+    # Rename client_db_id → id for backward compatibility
+    if "client_db_id" in client_data:
+        client_data["id"] = client_data.pop("client_db_id")
+
+    if not client_data.get("id"):
+        return practice_data, None
+
+    return practice_data, client_data
+
+
 async def _send_with_brevo_fallback(
     zoho_email_service: Any,
     to_email: str,
@@ -162,14 +223,14 @@ class ProcessAutomationService:
         logger.info(f"Process start automation triggered for practice {practice_id}")
 
         try:
-            practice_data = await _fetch_practice_data(self.db_pool, practice_id)
+            practice_data, client_data = await _fetch_practice_with_client(
+                self.db_pool, practice_id,
+            )
             if not practice_data:
                 logger.error(f"Practice {practice_id} not found", exc_info=True)
                 return {"success": False, "error": "Practice not found"}
-
-            client_data = await _fetch_client_data(self.db_pool, practice_data["client_id"])
             if not client_data:
-                logger.error(f"Client {practice_data['client_id']} not found")
+                logger.error(f"Client for practice {practice_id} not found")
                 return {"success": False, "error": "Client not found"}
 
             team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
@@ -382,13 +443,11 @@ class CompletedProcessService:
         logger.info(f"Process completion automation triggered for practice {practice_id}")
 
         try:
-            practice_data = await _fetch_practice_data(self.db_pool, practice_id)
+            practice_data, client_data = await _fetch_practice_with_client(
+                self.db_pool, practice_id, include_drive=True,
+            )
             if not practice_data:
                 return {"success": False, "error": "Practice not found"}
-
-            client_data = await _fetch_client_data(
-                self.db_pool, practice_data["client_id"], include_drive=True,
-            )
             if not client_data:
                 return {"success": False, "error": "Client not found"}
 
@@ -640,11 +699,11 @@ class WaitingDocumentsService:
         logger.info(f"Waiting documents automation triggered for practice {practice_id}")
 
         try:
-            practice_data = await _fetch_practice_data(self.db_pool, practice_id)
+            practice_data, client_data = await _fetch_practice_with_client(
+                self.db_pool, practice_id,
+            )
             if not practice_data:
                 return {"success": False, "error": "Practice not found"}
-
-            client_data = await _fetch_client_data(self.db_pool, practice_data["client_id"])
             if not client_data:
                 return {"success": False, "error": "Client not found"}
 

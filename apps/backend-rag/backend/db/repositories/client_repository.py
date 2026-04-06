@@ -3,22 +3,18 @@ from typing import Any
 
 import asyncpg
 
-# Utility per la costruzione sicura delle query
+from backend.db.base_repository import BaseRepository
 from backend.utils.query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
-class ClientRepository:
+class ClientRepository(BaseRepository):
     """
     Repository per l'accesso ai dati dei Clienti.
     Gestisce esclusivamente l'interazione con PostgreSQL tramite asyncpg,
     isolando la logica DB dal livello HTTP/Routing.
     """
-
-    def __init__(self, db_pool: asyncpg.Pool) -> None:
-        self.db_pool = db_pool
 
     async def search_clients_dynamic(
         self, filters: dict[str, Any], limit: int = 50, offset: int = 0,
