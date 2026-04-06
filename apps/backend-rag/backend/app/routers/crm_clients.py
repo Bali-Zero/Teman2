@@ -18,6 +18,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
+    can_view_all_clients,
     is_crm_admin,
     verify_client_access,
 )
@@ -406,8 +407,8 @@ async def create_client(
 async def list_clients(
     status: str | None = Query(
         None,
-        description="Filter by status: active, inactive, prospect",
-        pattern="^(active|inactive|prospect)$",
+        description="Filter by status: active, inactive, prospect, lead",
+        pattern="^(active|inactive|prospect|lead)$",
     ),
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
@@ -426,7 +427,7 @@ async def list_clients(
     """
     List clients with pagination and search.
 
-    All authenticated users can see ALL clients.
+    Admin users see all clients. Non-admin users see only their assigned clients.
 
     FILTERS:
     - **status**: Filter by client status
@@ -480,10 +481,17 @@ async def list_clients(
                 params.append(status)
                 param_index += 1
 
-            # Optional filter by assigned_to (all users can see all clients)
+            # Optional filter by assigned_to (user-requested)
             if assigned_to:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(assigned_to)
+                param_index += 1
+
+            # RBAC: non-admin users see only their assigned clients
+            if not can_view_all_clients(current_user):
+                current_email = current_user.get("email", "").lower()
+                query_parts.append(f" AND c.assigned_to = ${param_index}")
+                params.append(current_email)
                 param_index += 1
 
             if search:
@@ -508,8 +516,10 @@ async def list_clients(
                 else:
                     query_parts.append(
                         f" AND c.passport_expiry IS NOT NULL"
-                        f" AND c.passport_expiry <= CURRENT_DATE + INTERVAL '{passport_expiring_days} days'",
+                        f" AND c.passport_expiry <= CURRENT_DATE + make_interval(days => ${param_index})",
                     )
+                    params.append(passport_expiring_days)
+                    param_index += 1
 
             query_parts.append(
                 f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}",
