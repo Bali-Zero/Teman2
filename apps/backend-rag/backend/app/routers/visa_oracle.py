@@ -326,23 +326,34 @@ async def handoff(request: Request, body: HandoffRequest) -> HandoffResponse:
             price=price,
         )
 
-        # Send Telegram notification
+        # Send Telegram notification — skip empty/unknown leads
         telegram_sent = False
+        qa = body.quiz_answers or {}
+        has_real_data = any(
+            qa.get(k) and qa.get(k) != "Unknown"
+            for k in ("nationality", "purpose", "duration")
+        ) or bool(body.recommended_visas)
         try:
-            language = body.language or "en"
-            summary = service.build_telegram_summary(
-                session_id=body.session_id,
-                quiz_answers=body.quiz_answers,
-                recommended_visas=body.recommended_visas,
-                messages=body.messages,
-                language=language,
-            )
-            await telegram_bot.send_message(
-                chat_id=TELEGRAM_LEAD_CHAT_ID,
-                text=summary,
-                parse_mode="Markdown",
-            )
-            telegram_sent = True
+            if not has_real_data:
+                logger.info(
+                    "visa-oracle /handoff: skipping Telegram — no real quiz data, session=%s",
+                    body.session_id[:12],
+                )
+            else:
+                language = body.language or "en"
+                summary = service.build_telegram_summary(
+                    session_id=body.session_id,
+                    quiz_answers=body.quiz_answers,
+                    recommended_visas=body.recommended_visas,
+                    messages=body.messages,
+                    language=language,
+                )
+                await telegram_bot.send_message(
+                    chat_id=TELEGRAM_LEAD_CHAT_ID,
+                    text=summary,
+                    parse_mode="Markdown",
+                )
+                telegram_sent = True
             logger.info(
                 "visa-oracle /handoff: Telegram notification sent, session=%s",
                 body.session_id[:12],
