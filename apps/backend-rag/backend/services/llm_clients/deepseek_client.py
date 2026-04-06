@@ -57,11 +57,11 @@ class DeepSeekClient:
             logger.warning("⚠️ DeepSeek API key not set. Set DEEPSEEK_API_KEY env var.")
         self._client: httpx.AsyncClient | None = None
 
-    def _get_client(self, timeout: float = 60.0) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx.AsyncClient:
         """Get or create the shared async client."""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
-                timeout=timeout,
+                timeout=httpx.Timeout(120.0, connect=10.0),
                 limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
             )
         return self._client
@@ -99,7 +99,7 @@ class DeepSeekClient:
         if not self.api_key:
             raise RuntimeError("DeepSeek API key not configured")
 
-        client = self._get_client(timeout=60.0)
+        client = self._get_client()
         response = await client.post(
             f"{self.BASE_URL}/chat/completions",
             headers={
@@ -151,7 +151,7 @@ class DeepSeekClient:
         if not self.api_key:
             raise RuntimeError("DeepSeek API key not configured")
 
-        client = self._get_client(timeout=120.0)
+        client = self._get_client()
         async with client.stream(
             "POST",
             f"{self.BASE_URL}/chat/completions",

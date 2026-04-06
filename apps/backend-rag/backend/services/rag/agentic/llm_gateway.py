@@ -113,18 +113,16 @@ class LLMGateway:
         # Uses singleton client that supports both API Key and Service Account (Vertex AI)
         self._genai_client: GenAIClient | None = None
 
-        # Model name constants - Updated 2026-04-06
-        # Gemini 3 Flash GA (Dec 2025)
-        # - GPQA Diamond: 90.4%, 3x faster than 2.5 Flash
-        # - Cost: $0.50/1M input, $3/1M output
-        # - Available via AI Studio API (no allowlist needed)
-        self.model_name_pro = "gemini-3-flash"  # Primary: GA release
-        self.model_name_flash = "gemini-3-flash"
-        self.model_name_fallback = "gemini-2.5-flash"  # Fallback: previous gen stable
+        # Model names from centralized config (S04 solidification)
+        from backend.llm.config import ModelName
+
+        self.model_name_pro = ModelName.PRIMARY
+        self.model_name_flash = ModelName.PRIMARY
+        self.model_name_fallback = ModelName.FALLBACK
 
         logger.info(
-            "✅ LLMGateway: Model configuration ready (gemini-3-flash primary, "
-            "gemini-2.5-flash fallback)",
+            f"✅ LLMGateway: Model configuration ready ({ModelName.PRIMARY} primary, "
+            f"{ModelName.FALLBACK} fallback)",
         )
 
         # Future 3-tier models (when implemented)

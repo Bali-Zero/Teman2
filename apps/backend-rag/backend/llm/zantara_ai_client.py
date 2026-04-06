@@ -124,8 +124,10 @@ class ZantaraAIClient:
             self.mock_mode = True
             self._genai_client = None
 
-        # Default: use Gemini 2.0 Flash (latest stable, fast, cost-effective)
-        self.model = model or "gemini-2.0-flash-lite"
+        # Use centralized model config (S04 solidification)
+        from backend.llm.config import ModelName
+
+        self.model = model or ModelName.CHANNEL
 
         # Initialize pricing even in mock mode
         self.pricing = {

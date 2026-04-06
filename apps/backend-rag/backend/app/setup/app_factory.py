@@ -411,6 +411,27 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing Agentic Tools client: {e}")
 
+    # LLM provider HTTP client cleanups (S04 solidification)
+    try:
+        from backend.services.llm_clients.openrouter_client import openrouter_client
+
+        await openrouter_client.close()
+        logger.info("✅ OpenRouter module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing OpenRouter client: {e}")
+
+    try:
+        from backend.services.llm_clients.deepseek_client import deepseek_client
+
+        await deepseek_client.close()
+        logger.info("✅ DeepSeek module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing DeepSeek client: {e}")
+
     logger.info("✅ ZANTARA shutdown complete")
 
 

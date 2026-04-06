@@ -1,22 +1,25 @@
 """
-Centralized LLM Configuration
+Centralized LLM Configuration — Single Source of Truth
 
-Consolidates model configurations, constants, and settings to avoid duplication
-across multiple LLM clients and services.
+All model names, generation params, and timeouts live here.
+Every consumer MUST import from this module instead of hardcoding.
+
+Updated: S04 LLM Solidification
 """
 
 
-# Model Names
+# ── Model Names ──────────────────────────────────────────────
 class ModelName:
-    """Gemini model names."""
+    """Gemini model names — the ONLY place to change model versions."""
 
-    FLASH = "gemini-2.5-flash"  # Primary: Gemini 2.5 Flash (latest stable, June 2025)
-    FLASH_FALLBACK = "gemini-2.5-flash"  # Fallback: Gemini 2.5 Flash
-    PRO = "gemini-2.0-pro"
-    PRO_EXPERIMENTAL = "gemini-2.0-pro-exp-02-05"
+    # Primary (Gemini 3 Flash GA)
+    PRIMARY = "gemini-3-flash"
+    # Fallback (Gemini 2.5 Flash — stable)
+    FALLBACK = "gemini-2.5-flash"
+    # Channel-facing (same as primary for cost parity)
+    CHANNEL = "gemini-3-flash"
 
 
-# OpenRouter Models
 class OpenRouterModel:
     """OpenRouter model identifiers."""
 
@@ -24,7 +27,17 @@ class OpenRouterModel:
     DEEPSEEK_CHAT = "deepseek/deepseek-chat"
 
 
-# Generation Parameters
+class OllamaModel:
+    """Ollama local model names."""
+
+    FAST = "qwen3.5:9b"
+    HEAVY = "deepseek-r1:32b"
+    KG = "qwen3.5:27b"
+    JSON = "gemma3:12b"
+    VISION = "qwen2.5vl:7b"
+
+
+# ── Generation Parameters ────────────────────────────────────
 class GenerationConfig:
     """Default generation parameters."""
 
@@ -33,13 +46,12 @@ class GenerationConfig:
     DEFAULT_TOP_P = 0.95
     DEFAULT_TOP_K = 40
 
-    # Specific configs by use case
     CREATIVE_TEMPERATURE = 0.7
     PRECISE_TEMPERATURE = 0.2
     CODING_TEMPERATURE = 0.3
 
 
-# Retry Configuration
+# ── Retry Configuration ──────────────────────────────────────
 class RetryConfig:
     """Retry and circuit breaker settings."""
 
@@ -48,36 +60,11 @@ class RetryConfig:
     MAX_DELAY = 30.0
     EXPONENTIAL_BASE = 2.0
 
-    # Circuit breaker
     CIRCUIT_FAILURE_THRESHOLD = 5
     CIRCUIT_RECOVERY_TIMEOUT = 60.0
 
 
-# Token Limits
-class TokenLimits:
-    """Token limits for different models."""
-
-    FLASH_INPUT = 1_048_576  # 1M tokens
-    FLASH_OUTPUT = 8_192
-    PRO_INPUT = 2_097_152  # 2M tokens
-    PRO_OUTPUT = 8_192
-
-    # Safety margins
-    INPUT_MARGIN = 1000
-    OUTPUT_MARGIN = 500
-
-
-# Cost Tracking (approximate, per 1M tokens)
-class ModelCost:
-    """Cost per million tokens (USD)."""
-
-    FLASH_INPUT = 0.075
-    FLASH_OUTPUT = 0.30
-    PRO_INPUT = 1.25
-    PRO_OUTPUT = 5.00
-
-
-# Timeout Configuration
+# ── Timeout Configuration ────────────────────────────────────
 class TimeoutConfig:
     """Timeout settings for LLM operations."""
 
