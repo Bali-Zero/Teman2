@@ -22,7 +22,7 @@ import logging
 import time
 from typing import Annotated, Any, TypedDict
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
 from backend.services.pricing.pricing_service import PricingService, get_pricing_service
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
@@ -477,11 +477,12 @@ class MultiAgentCoordinator:
         Build LangGraph StateGraph for multi-agent coordination.
 
         Topology:
-            START → legal → financial → timeline → synthesize → END
+            START → legal ───→ timeline → synthesize → END
+            START → financial ─┘
 
-        Legal runs first (provides context for timeline),
-        Financial runs second, Timeline third (uses legal output),
-        then Synthesizer combines everything.
+        Legal and Financial run in parallel from START.
+        Timeline depends on legal_analysis, so it waits for both to complete.
+        Synthesizer combines all outputs.
         """
         workflow = StateGraph(MultiAgentState)
 
@@ -491,9 +492,11 @@ class MultiAgentCoordinator:
         workflow.add_node("timeline", self._timeline_agent.analyze)
         workflow.add_node("synthesize", self._synthesize_outputs)
 
-        # Define edges: legal → financial → timeline → synthesize → END
-        workflow.set_entry_point("legal")
-        workflow.add_edge("legal", "financial")
+        # Parallel: START → legal AND START → financial
+        workflow.add_edge(START, "legal")
+        workflow.add_edge(START, "financial")
+        # Both converge on timeline (LangGraph waits for all incoming edges)
+        workflow.add_edge("legal", "timeline")
         workflow.add_edge("financial", "timeline")
         workflow.add_edge("timeline", "synthesize")
         workflow.add_edge("synthesize", END)
