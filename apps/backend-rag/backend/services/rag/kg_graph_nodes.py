@@ -444,33 +444,45 @@ async def resolve_entities_node(
     # Phase 2: Batch resolve remaining entities in a single connection
     if entities_to_resolve:
         async with db_pool.acquire() as conn:
+            # Step 2a: Single batch query for ALL exact matches
+            lower_names = [e.lower() for e in entities_to_resolve]
+            exact_rows = await conn.fetch(
+                """
+                SELECT entity_id, name, confidence, entity_type
+                FROM kg_nodes
+                WHERE entity_id = ANY($1) OR LOWER(name) = ANY($2)
+                """,
+                entities_to_resolve,
+                lower_names,
+            )
+
+            # Build lookup: lowered name → row, entity_id → row
+            exact_by_name: dict[str, Any] = {}
+            exact_by_id: dict[str, Any] = {}
+            for row in exact_rows:
+                exact_by_name[row["name"].lower()] = row
+                exact_by_id[row["entity_id"]] = row
+
+            # Match each entity to exact results
+            fuzzy_needed: list[str] = []
             for entity_str in entities_to_resolve:
-                entity_types = _get_entity_type_filter(entity_str)
-
-                # Try exact match first (uses idx_kg_nodes_name_lower index)
-                exact_match = await conn.fetchrow(
-                    """
-                    SELECT entity_id, name, confidence, entity_type
-                    FROM kg_nodes
-                    WHERE entity_id = $1 OR LOWER(name) = LOWER($2)
-                    LIMIT 1
-                    """,
-                    entity_str,
-                    entity_str,
-                )
-
-                if exact_match:
-                    eid = exact_match["entity_id"]
-                    conf = exact_match["confidence"]
+                match = exact_by_id.get(entity_str) or exact_by_name.get(entity_str.lower())
+                if match:
+                    eid = match["entity_id"]
+                    conf = match["confidence"]
                     entity_ids.append(eid)
                     confidence_scores[eid] = conf
                     await cache.set_resolved_entity(
                         entity_str, {"entity_id": eid, "confidence": conf},
                     )
                     logger.info(f"✅ [Resolve] Exact match: {entity_str} → {eid}")
-                    continue
+                else:
+                    fuzzy_needed.append(entity_str)
 
-                # Fallback: fuzzy match (uses idx_kg_nodes_name_trgm GIN index)
+            # Step 2b: Fuzzy match only for unresolved entities (sequential — params differ)
+            for entity_str in fuzzy_needed:
+                entity_types = _get_entity_type_filter(entity_str)
+
                 if entity_types:
                     fuzzy_matches = await conn.fetch(
                         """
@@ -704,8 +716,15 @@ async def reason_over_graph_node(
         state["reasoning_steps"].append("No graph evidence found, using general knowledge")
         return state
 
-    # Format chains for LLM context
+    # Format chains for LLM context, truncate to avoid context explosion
     graph_context = format_chains_for_llm(state["relationship_chains"])
+    max_context_chars = 4000  # ~1000 tokens, safe for any LLM context window
+    if len(graph_context) > max_context_chars:
+        logger.warning(
+            f"⚠️ [Reason] Graph context too large ({len(graph_context)} chars), "
+            f"truncating to {max_context_chars}",
+        )
+        graph_context = graph_context[:max_context_chars] + "\n... (truncated)"
 
     system_prompt = f"""You are analyzing a Knowledge Graph to answer: "{state["query"]}"
 

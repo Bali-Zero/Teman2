@@ -203,12 +203,15 @@ async def test_resolve_entities_node_exact_match(sample_state, mock_db_pool):
     pool, conn = mock_db_pool
     sample_state["extracted_entities"] = ["kbli:56101"]
 
-    # Mock DB response (exact match)
-    conn.fetchrow.return_value = {
-        "entity_id": "kbli:56101",
-        "name": "Restauran",
-        "confidence": 0.9,
-    }
+    # Mock DB response (batch exact match returns list of rows)
+    conn.fetch.return_value = [
+        {
+            "entity_id": "kbli:56101",
+            "name": "Restauran",
+            "confidence": 0.9,
+            "entity_type": "kbli",
+        },
+    ]
 
     # Execute node
     result = await resolve_entities_node(sample_state, pool)
@@ -224,16 +227,19 @@ async def test_resolve_entities_node_fuzzy_match(sample_state, mock_db_pool):
     pool, conn = mock_db_pool
     sample_state["extracted_entities"] = ["restaurant"]
 
-    # Mock DB responses
-    conn.fetchrow.return_value = None  # No exact match
-    conn.fetch.return_value = [
-        {
-            "entity_id": "kbli:56101",
-            "name": "Restauran",
-            "confidence": 0.9,
-            "sim_score": 0.85,
-            "entity_type": "kbli",
-        },
+    # Mock DB responses: batch exact returns empty, then fuzzy returns match
+    # conn.fetch is called twice: first for batch exact (empty), then for fuzzy
+    conn.fetch.side_effect = [
+        [],  # Batch exact match: no results
+        [   # Fuzzy match results
+            {
+                "entity_id": "kbli:56101",
+                "name": "Restauran",
+                "confidence": 0.9,
+                "sim_score": 0.85,
+                "entity_type": "kbli",
+            },
+        ],
     ]
 
     # Execute node
