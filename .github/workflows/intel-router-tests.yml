@@ -54,22 +54,22 @@ jobs:
       - name: Run Intel Classification Service tests
         working-directory: apps/backend-rag
         run: |
-          python -m pytest backend/tests/unit/services/intel/test_intel_classification_service.py -v --tb=short || echo "Tests failed but continuing"
+          python -m pytest backend/tests/unit/services/intel/test_intel_classification_service.py -v --tb=short
 
       - name: Run Intel Staging Service tests
         working-directory: apps/backend-rag
         run: |
-          python -m pytest backend/tests/unit/services/intel/test_intel_staging_service.py -v --tb=short || echo "Tests failed but continuing"
+          python -m pytest backend/tests/unit/services/intel/test_intel_staging_service.py -v --tb=short
 
       - name: Run Intel Approval Service tests
         working-directory: apps/backend-rag
         run: |
-          python -m pytest backend/tests/unit/services/intel/test_intel_approval_service.py -v --tb=short || echo "Tests failed but continuing"
+          python -m pytest backend/tests/unit/services/intel/test_intel_approval_service.py -v --tb=short
 
       - name: Run Intel Analytics Service tests
         working-directory: apps/backend-rag
         run: |
-          python -m pytest backend/tests/unit/services/intel/test_intel_analytics_service.py -v --tb=short || echo "Tests failed but continuing"
+          python -m pytest backend/tests/unit/services/intel/test_intel_analytics_service.py -v --tb=short
 
       - name: Check code syntax
         working-directory: apps/backend-rag
