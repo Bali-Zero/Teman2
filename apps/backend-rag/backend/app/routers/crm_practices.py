@@ -21,6 +21,11 @@ from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 from backend.core.cache import cached, invalidate_cache
+from backend.services.crm.practice_state_machine import (
+    InvalidTransitionError,
+    normalize_state,
+    validate_transition,
+)
 from backend.services.invoicing import InvoiceAutomationService
 
 logger = get_logger(__name__)
@@ -1024,6 +1029,18 @@ async def update_practice(
                     raise HTTPException(
                         status_code=403, detail="You don't have permission to update this practice",
                     )
+
+            # Validate state machine transition if status is being changed
+            if updates.status and updates.status != old_status:
+                # Normalize legacy states for comparison
+                normalized_old = normalize_state(old_status)
+                try:
+                    validate_transition(normalized_old, updates.status, current_user)
+                except InvalidTransitionError as e:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid status transition: {e}",
+                    ) from e
 
             # Build update query dynamically
             update_fields: list[str] = []
