@@ -36,12 +36,11 @@ HEAVY_PREFIXES = (
     "/api/crm/enhanced",
     "/api/crm/practices",
     "/api/ingest",
-    "/api/legal-ingest",
+    "/api/intel",
+    "/api/legal",
     "/api/oracle",
     "/api/naga",
-    "/api/intel",
-    "/api/intel-scraper",
-    "/api/intel-analytics",
+    "/api/kg",
     "/api/pricing",
     "/api/voice",
     "/api/whatsapp/chat",
@@ -59,6 +58,7 @@ _proxy_client_lock = asyncio.Lock()
 _HOP_BY_HOP_RESPONSE = frozenset({
     "connection", "keep-alive", "transfer-encoding",
     "te", "trailers", "upgrade", "proxy-authenticate", "proxy-authorization",
+    "content-length",  # Let Starlette recalculate — middleware may modify body
 })
 
 
