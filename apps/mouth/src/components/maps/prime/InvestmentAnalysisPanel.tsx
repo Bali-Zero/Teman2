@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { usePrimeNexus } from '@/contexts/PrimeNexusContext';
 import { VerdictBadge } from './VerdictBadge';
 import { DealFlowWizard } from './DealFlowWizard';
@@ -25,15 +26,16 @@ interface PredictData {
 }
 
 function TrendBadge({ zoneCode }: { zoneCode: string }) {
-  const [data, setData] = useState<PredictData | null>(null);
-
-  useEffect(() => {
-    if (!zoneCode) return;
-    fetch(`/api/prime/v2/predict?zone_code=${encodeURIComponent(zoneCode)}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(null));
-  }, [zoneCode]);
+  const { data } = useQuery<PredictData>({
+    queryKey: ['prime', 'predict', zoneCode],
+    queryFn: () =>
+      fetch(`/api/prime/v2/predict?zone_code=${encodeURIComponent(zoneCode)}`).then((r) =>
+        r.json()
+      ),
+    enabled: !!zoneCode,
+    staleTime: 12 * 60 * 60 * 1000, // 12h — predictions change slowly
+    gcTime: 24 * 60 * 60 * 1000,
+  });
 
   if (!data || (!data.factors.length && data.trend === 'stable')) return null;
 
@@ -66,18 +68,16 @@ interface DensityData {
 }
 
 function DensitySection({ zoneCode }: { zoneCode: string }) {
-  const [data, setData] = useState<DensityData | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!zoneCode) return;
-    setLoading(true);
-    fetch(`/api/prime/v2/density?zone_code=${encodeURIComponent(zoneCode)}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [zoneCode]);
+  const { data, isLoading: loading } = useQuery<DensityData>({
+    queryKey: ['prime', 'density', zoneCode],
+    queryFn: () =>
+      fetch(`/api/prime/v2/density?zone_code=${encodeURIComponent(zoneCode)}`).then((r) =>
+        r.json()
+      ),
+    enabled: !!zoneCode,
+    staleTime: 6 * 60 * 60 * 1000, // 6h — density changes slowly
+    gcTime: 12 * 60 * 60 * 1000,
+  });
 
   if (loading) {
     return (
