@@ -11,8 +11,6 @@ FROM python:3.11-slim as builder
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    nodejs \
-    npm \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -37,8 +35,6 @@ FROM python:3.11-slim
 # Install only runtime dependencies (curl for healthcheck)
 RUN apt-get update && apt-get install -y \
     curl \
-    nodejs \
-    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security

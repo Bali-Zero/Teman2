@@ -8,7 +8,6 @@
 !requirements-prod.txt
 !requirements.txt
 !Dockerfile
-!fly.toml
 
 # Exclude from included directories
 backend/.env*
