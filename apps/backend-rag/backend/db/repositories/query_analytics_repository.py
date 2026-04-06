@@ -11,18 +11,14 @@ Provides:
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import asyncpg
-
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
+from backend.db.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
 
-class QueryAnalyticsRepository:
+class QueryAnalyticsRepository(BaseRepository):
     """Repository for RAG query analytics persistence and aggregation."""
-
-    def __init__(self, db_pool: asyncpg.Pool) -> None:
-        self.db_pool = db_pool
 
     # ========== WRITE OPERATIONS ==========
 

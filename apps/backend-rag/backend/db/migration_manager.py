@@ -129,12 +129,12 @@ class MigrationManager:
                 for row in rows
             ]
 
-    async def is_applied(self, migration_number: int) -> bool:
+    async def is_applied(self, migration_name: str) -> bool:
         """
         Check if a migration has been applied.
 
         Args:
-            migration_number: Migration number to check
+            migration_name: Migration filename (without .py) to check
 
         Returns:
             True if migration is applied, False otherwise
@@ -148,10 +148,10 @@ class MigrationManager:
                 """
                 SELECT EXISTS(
                     SELECT 1 FROM _schema_versions
-                    WHERE migration_number = $1
+                    WHERE migration_name = $1
                 )
             """,
-                migration_number,
+                migration_name,
             )
             return bool(result)
 
