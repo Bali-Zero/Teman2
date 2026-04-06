@@ -3,7 +3,7 @@
 These tests make REAL LLM calls (no mocks) against local Ollama.
 Run with: PYTHONPATH=. pytest tests/test_reasoner_red.py -v -s
 The -s flag shows LLM output in real time for debugging.
-Requires: Ollama running with qwen3.5:9b and qwen3.5:27b available.
+Requires: Ollama running with qwen3.5:9b and gemma4:26b available.
 """
 import pytest
 

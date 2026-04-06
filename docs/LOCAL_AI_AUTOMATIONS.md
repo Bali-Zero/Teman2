@@ -20,12 +20,12 @@ Request → Try Ollama (local, free) → Success? → Return
 
 | Model            | Ollama Tag         | Size  | Role                                       |
 | ---------------- | ------------------ | ----- | ------------------------------------------ |
-| Qwen 3.5 27B     | `qwen3.5:27b`      | 17GB  | Heavy reasoning, KG extraction, Vision/OCR |
+| Gemma 4 26B MoE  | `gemma4:26b`       | 17GB  | KG extraction, JSON output, agentic tasks  |
 | Qwen 3.5 9B      | `qwen3.5:9b`       | 6.6GB | Fast classification, titles, short tasks   |
-| Gemma 3 12B      | `gemma3:12b`       | 8.1GB | Reliable JSON output, quality scoring      |
-| DeepSeek R1 1.5B | `deepseek-r1:1.5b` | 1.1GB | Health check, micro-tasks                  |
+| DeepSeek R1 32B  | `deepseek-r1:32b`  | 19GB  | Heavy reasoning, war-room, CELL            |
+| Qwen 2.5 VL 7B   | `qwen2.5vl:7b`    | 6.0GB | Vision OCR (passport, PDF, documents)      |
 
-**Total:** ~31GB on 48GB M4 Pro (leaves ~17GB for system + apps).
+**Total:** ~49GB on 48GB M4 Pro (models loaded on demand, not all at once).
 
 ## Core Client
 
@@ -37,8 +37,8 @@ from backend.llm.ollama_client import (
     ollama_generate,    # Async generate API
     is_ollama_available, # Check model availability
     MODEL_FAST,         # "qwen3.5:9b"
-    MODEL_HEAVY,        # "qwen3.5:27b"
-    MODEL_JSON,         # "gemma3:12b"
+    MODEL_HEAVY,        # "deepseek-r1:32b"
+    MODEL_JSON,         # "gemma4:26b"
 )
 ```
 
@@ -68,7 +68,7 @@ Supports Italian, English, Indonesian language detection.
 | Property    | Value                                                     |
 | ----------- | --------------------------------------------------------- |
 | **File**    | `backend/services/multimodal/pdf_vision_service.py`       |
-| **Model**   | qwen3.5:27b vision (local) → Gemini Vision (fallback)     |
+| **Model**   | qwen2.5vl:7b vision (local) → Gemini Vision (fallback)    |
 | **Trigger** | PDF upload for analysis (passports, invoices, legal docs) |
 | **Latency** | 13.2s warm / 63s cold (local), ~3s (Gemini)               |
 | **Cost**    | $0.00 local                                               |
@@ -84,8 +84,8 @@ never leave the local machine.
 | Property    | Value                                                 |
 | ----------- | ----------------------------------------------------- |
 | **File**    | `backend/services/rag/vision_rag.py`                  |
-| **Model**   | qwen3.5:27b vision (local) → Gemini Vision (fallback) |
-| **Trigger** | RAG queries that involve visual document elements     |
+| **Model**   | qwen2.5vl:7b vision (local) → Gemini Vision (fallback) |
+| **Trigger** | RAG queries that involve visual document elements       |
 | **Cost**    | $0.00 local                                           |
 
 Processes PDFs extracting both text and visual elements (tables, charts,
