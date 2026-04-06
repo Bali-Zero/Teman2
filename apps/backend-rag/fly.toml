@@ -63,12 +63,10 @@ primary_region = 'sin'
   protocol = 'tcp'
   processes = ['rag']
 
-  [[services.http_checks]]
+  [[services.tcp_checks]]
     interval = '30s'
-    timeout = '10s'
+    timeout = '5s'
     grace_period = '60s'
-    method = 'GET'
-    path = '/health'
 
 [[vm]]
   memory = '1gb'
