@@ -10,6 +10,8 @@ Created: 2026-04-06 — CRM Solidification Blocco A
 import logging
 from typing import Any
 
+from backend.app.utils.crm_utils import can_view_all_practices
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,9 +90,13 @@ def validate_transition(
     if (from_state, to_state) in ADMIN_ONLY_TRANSITIONS:
         if user is None:
             raise InvalidTransitionError(from_state, to_state, "requires admin role")
-        role = user.get("role", "").lower()
-        if role == "client":
-            raise InvalidTransitionError(from_state, to_state, "requires admin role")
+        if not can_view_all_practices(user):
+            raise InvalidTransitionError(
+                from_state,
+                to_state,
+                f"Admin-only transition: {from_state} -> {to_state}. "
+                f"Only admins can perform this action.",
+            )
 
     logger.debug(f"State transition validated: {from_state} → {to_state}")
     return True
