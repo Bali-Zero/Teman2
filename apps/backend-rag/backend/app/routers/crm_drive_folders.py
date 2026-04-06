@@ -12,6 +12,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import verify_client_access
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.google_drive_service import GoogleDriveService
 
 router = APIRouter()
@@ -194,6 +195,7 @@ async def create_client_drive_folder(
         f"Root folder: {root_folder['id']}",
     )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {
         "success": True,
         "client_id": client_id,
@@ -320,6 +322,7 @@ async def unlink_client_drive_folder(
         f"[CRM] Unlinked Drive folder {client['google_drive_folder_id']} from client {client_id}",
     )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {
         "success": True,
         "message": f"Unlinked folder {client['google_drive_folder_id']} from client {client_id}",

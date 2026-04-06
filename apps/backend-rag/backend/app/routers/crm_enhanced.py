@@ -22,6 +22,7 @@ from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import extract_json_from_llm_response, verify_client_access
 from backend.app.utils.json_utils import to_jsonb
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
 logger = logging.getLogger(__name__)
@@ -1094,6 +1095,7 @@ async def update_client_profile(
             *values,
         )
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True, "message": "Client profile updated"}
 
 
@@ -1289,6 +1291,7 @@ async def create_family_member(
             data.notes,
         )
 
+        await invalidate_cache("zantara:crm_clients_stats:*")
         return {"id": member_id, "success": True}
 
 
@@ -1346,6 +1349,7 @@ async def update_family_member(
         if result == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Family member not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 
@@ -1369,6 +1373,7 @@ async def delete_family_member(
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Family member not found")
 
+    await invalidate_cache("zantara:crm_clients_stats:*")
     return {"success": True}
 
 
