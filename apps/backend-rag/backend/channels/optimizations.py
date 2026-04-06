@@ -2,9 +2,10 @@
 Channel Optimizations.
 
 Performance improvements for multi-channel architecture:
-- Rate limiting per channel
+- Rate limiting per channel (Redis-backed + in-memory burst)
 - Connection pooling
 - Message deduplication
+- Dead Letter Queue with Redis fallback
 - Metrics collection
 
 Author: Claude Sonnet 4.5
@@ -12,14 +13,28 @@ Date: 2026-02-10
 """
 
 import asyncio
+import contextlib
 import hashlib
+import json
 import logging
 import time
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _get_redis_client() -> Any | None:
+    """Get async Redis client from RedisManager. Returns None if unavailable."""
+    try:
+        from backend.core.redis_manager import RedisManager
+
+        manager = RedisManager.get_instance()
+        return manager.get_async_client()
+    except Exception:
+        return None
 
 
 @dataclass
@@ -33,15 +48,19 @@ class RateLimitConfig:
 
 class ChannelRateLimiter:
     """
-    Token bucket rate limiter per channel.
+    Hybrid rate limiter per channel.
 
-    Prevents API abuse and ensures compliance with provider limits.
+    - In-memory token bucket for sub-second burst limiting (resets on deploy, acceptable).
+    - Redis INCR counters for per-minute and per-hour limits (persists across deploys).
+    - Falls back to in-memory counters when Redis is unavailable.
     """
 
     def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
+        # In-memory burst tokens (intentionally ephemeral)
         self.tokens: dict[str, float] = defaultdict(lambda: config.burst_size)
         self.last_refill: dict[str, float] = defaultdict(time.time)
+        # In-memory fallback counters (used only when Redis is down)
         self.minute_counts: dict[str, list[float]] = defaultdict(list)
         self.hour_counts: dict[str, list[float]] = defaultdict(list)
 
@@ -50,11 +69,11 @@ class ChannelRateLimiter:
         Acquire rate limit token.
 
         Returns:
-            True if request allowed, False if rate limited
+            True if request allowed, False if rate limited.
         """
         now = time.time()
 
-        # Refill tokens (1 token per second)
+        # --- Burst check (always in-memory, sub-second) ---
         elapsed = now - self.last_refill[channel_id]
         self.tokens[channel_id] = min(
             self.config.burst_size,
@@ -62,38 +81,88 @@ class ChannelRateLimiter:
         )
         self.last_refill[channel_id] = now
 
-        # Check burst capacity
         if self.tokens[channel_id] < 1:
             logger.warning(f"Rate limit (burst): {channel_id}")
             return False
 
-        # Check per-minute limit
+        # --- Per-minute / per-hour: try Redis first ---
+        redis_ok = await self._check_redis_limits(channel_id)
+        if redis_ok is not None:
+            # Redis answered definitively
+            if not redis_ok:
+                return False
+            # Redis says OK — consume burst token and return
+            self.tokens[channel_id] -= 1
+            return True
+
+        # --- Fallback: in-memory counters ---
         self._cleanup_old_counts(channel_id, now)
         if len(self.minute_counts[channel_id]) >= self.config.max_requests_per_minute:
-            logger.warning(f"Rate limit (minute): {channel_id}")
+            logger.warning(f"Rate limit (minute, in-memory): {channel_id}")
             return False
-
-        # Check per-hour limit
         if len(self.hour_counts[channel_id]) >= self.config.max_requests_per_hour:
-            logger.warning(f"Rate limit (hour): {channel_id}")
+            logger.warning(f"Rate limit (hour, in-memory): {channel_id}")
             return False
 
-        # Consume token
+        # Consume
         self.tokens[channel_id] -= 1
         self.minute_counts[channel_id].append(now)
         self.hour_counts[channel_id].append(now)
-
         return True
 
+    async def _check_redis_limits(self, channel_id: str) -> bool | None:
+        """
+        Check per-minute and per-hour limits via Redis INCR.
+
+        Returns:
+            True  — under limits (counters incremented)
+            False — rate limited
+            None  — Redis unavailable, caller should use in-memory fallback
+        """
+        redis = _get_redis_client()
+        if redis is None:
+            return None
+
+        try:
+            minute_key = f"channel_rate:{channel_id}:60"
+            hour_key = f"channel_rate:{channel_id}:3600"
+
+            # Atomic INCR + TTL for minute window
+            minute_count = await redis.incr(minute_key)
+            if minute_count == 1:
+                await redis.expire(minute_key, 60)
+
+            if minute_count > self.config.max_requests_per_minute:
+                logger.warning(f"Rate limit (minute, Redis): {channel_id} count={minute_count}")
+                # Decrement back since we're rejecting
+                await redis.decr(minute_key)
+                return False
+
+            # Atomic INCR + TTL for hour window
+            hour_count = await redis.incr(hour_key)
+            if hour_count == 1:
+                await redis.expire(hour_key, 3600)
+
+            if hour_count > self.config.max_requests_per_hour:
+                logger.warning(f"Rate limit (hour, Redis): {channel_id} count={hour_count}")
+                await redis.decr(hour_key)
+                # Also undo the minute increment
+                await redis.decr(minute_key)
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.debug(f"Redis rate limit check failed, falling back to in-memory: {e}")
+            return None
+
     def _cleanup_old_counts(self, channel_id: str, now: float) -> None:
-        """Remove counts older than time windows."""
-        # Remove minute-old counts
+        """Remove counts older than time windows (in-memory fallback only)."""
         minute_ago = now - 60
         self.minute_counts[channel_id] = [
             t for t in self.minute_counts[channel_id] if t > minute_ago
         ]
 
-        # Remove hour-old counts
         hour_ago = now - 3600
         self.hour_counts[channel_id] = [t for t in self.hour_counts[channel_id] if t > hour_ago]
 
@@ -231,16 +300,237 @@ class ConnectionPool:
             self.clients.clear()
 
 
+class DeliveryManager:
+    """
+    Dead Letter Queue manager for failed outbound messages.
+
+    Persists failed messages to PostgreSQL for retry with exponential backoff.
+    Falls back to Redis LPUSH if PG is unavailable, with a drain loop that
+    moves items from Redis back to PG when the database recovers.
+    """
+
+    REDIS_DLQ_KEY = "channel_dlq:pending"
+    MAX_ATTEMPTS = 3
+    BASE_BACKOFF_SECONDS = 30  # 30s, 60s, 120s
+
+    def __init__(self, db_pool: Any | None = None) -> None:
+        self._db_pool = db_pool
+        self._retry_task: asyncio.Task[None] | None = None
+
+    async def persist_failed(
+        self,
+        channel: str,
+        channel_id: str,
+        content: str,
+        error: str,
+        *,
+        sender_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Persist a failed message to the DLQ.
+
+        Tries PostgreSQL first; if PG write fails, falls back to Redis list.
+        """
+        record = {
+            "channel": channel,
+            "channel_id": channel_id,
+            "sender_id": sender_id or "",
+            "content": content,
+            "metadata": metadata or {},
+            "error_message": error,
+            "error_type": "send_failure",
+        }
+
+        if await self._persist_to_pg(record):
+            return
+
+        # PG failed — try Redis fallback
+        await self._persist_to_redis(record)
+
+    async def _persist_to_pg(self, record: dict[str, Any]) -> bool:
+        """Write failed message to PostgreSQL. Returns True on success."""
+        if self._db_pool is None:
+            return False
+        try:
+            next_retry = datetime.now(timezone.utc) + timedelta(seconds=self.BASE_BACKOFF_SECONDS)
+            await self._db_pool.execute(
+                """
+                INSERT INTO failed_messages
+                    (channel, channel_id, sender_id, content, metadata,
+                     error_message, error_type, attempt_count, max_attempts,
+                     next_retry_at, status)
+                VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, 0, $8, $9, 'pending')
+                """,
+                record["channel"],
+                record["channel_id"],
+                record["sender_id"],
+                record["content"],
+                json.dumps(record["metadata"]),
+                record["error_message"],
+                record["error_type"],
+                self.MAX_ATTEMPTS,
+                next_retry,
+            )
+            logger.info(f"DLQ: persisted failed message to PG ({record['channel']}:{record['channel_id']})")
+            return True
+        except Exception as e:
+            logger.warning(f"DLQ: PG write failed, trying Redis fallback: {e}")
+            return False
+
+    async def _persist_to_redis(self, record: dict[str, Any]) -> bool:
+        """Push failed message to Redis list as JSON. Returns True on success."""
+        redis = _get_redis_client()
+        if redis is None:
+            logger.error(f"DLQ: BOTH PG and Redis unavailable — message LOST: {record['channel']}:{record['channel_id']}")
+            return False
+        try:
+            payload = json.dumps({**record, "queued_at": time.time()})
+            await redis.lpush(self.REDIS_DLQ_KEY, payload)
+            logger.info(f"DLQ: persisted to Redis fallback ({record['channel']}:{record['channel_id']})")
+            return True
+        except Exception as e:
+            logger.error(f"DLQ: Redis LPUSH also failed — message LOST: {e}")
+            return False
+
+    async def _drain_redis_dlq(self) -> int:
+        """
+        Move items from Redis DLQ list back to PostgreSQL.
+
+        Called at the start of each retry loop iteration so that messages
+        buffered during a PG outage eventually land in the proper DLQ table.
+        Returns count of items drained.
+        """
+        if self._db_pool is None:
+            return 0
+
+        redis = _get_redis_client()
+        if redis is None:
+            return 0
+
+        drained = 0
+        try:
+            while True:
+                raw = await redis.rpop(self.REDIS_DLQ_KEY)
+                if raw is None:
+                    break
+                record = json.loads(raw)
+                # Remove the queued_at timestamp used for diagnostics
+                record.pop("queued_at", None)
+                if await self._persist_to_pg(record):
+                    drained += 1
+                else:
+                    # PG still down — push it back and stop draining
+                    await redis.lpush(self.REDIS_DLQ_KEY, json.dumps(record))
+                    logger.debug("DLQ drain: PG still unavailable, stopping drain")
+                    break
+        except Exception as e:
+            logger.warning(f"DLQ drain error: {e}")
+
+        if drained > 0:
+            logger.info(f"DLQ: drained {drained} items from Redis to PG")
+        return drained
+
+    async def _process_dlq(self, adapters: dict[str, Any]) -> None:
+        """Background loop that retries pending DLQ messages with exponential backoff."""
+        while True:
+            try:
+                await asyncio.sleep(30)  # Check every 30 seconds
+
+                # Drain Redis buffer first
+                await self._drain_redis_dlq()
+
+                if self._db_pool is None:
+                    continue
+
+                now = datetime.now(timezone.utc)
+                rows = await self._db_pool.fetch(
+                    """
+                    SELECT id, channel, channel_id, content, attempt_count, max_attempts
+                    FROM failed_messages
+                    WHERE status IN ('pending', 'retrying')
+                      AND next_retry_at <= $1
+                    ORDER BY next_retry_at ASC
+                    LIMIT 10
+                    """,
+                    now,
+                )
+
+                for row in rows:
+                    ch = row["channel"]
+                    adapter = adapters.get(ch)
+                    if adapter is None:
+                        continue
+
+                    attempt = row["attempt_count"] + 1
+                    try:
+                        from backend.channels.base import ChannelResponse
+
+                        await adapter.send_response(
+                            row["channel_id"],
+                            ChannelResponse(text=row["content"], metadata={}),
+                        )
+                        # Success — mark delivered
+                        await self._db_pool.execute(
+                            "UPDATE failed_messages SET status='delivered', attempt_count=$1, updated_at=NOW() WHERE id=$2",
+                            attempt, row["id"],
+                        )
+                        logger.info(f"DLQ: delivered message {row['id']} on attempt {attempt}")
+
+                    except Exception as e:
+                        if attempt >= row["max_attempts"]:
+                            new_status = "exhausted"
+                            next_retry = None
+                        else:
+                            new_status = "retrying"
+                            backoff = self.BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                            next_retry = now + timedelta(seconds=backoff)
+
+                        await self._db_pool.execute(
+                            """
+                            UPDATE failed_messages
+                            SET status=$1, attempt_count=$2, next_retry_at=$3,
+                                error_message=$4, updated_at=NOW()
+                            WHERE id=$5
+                            """,
+                            new_status, attempt, next_retry, str(e), row["id"],
+                        )
+                        logger.debug(f"DLQ: retry {attempt} failed for {row['id']}: {e}")
+
+            except asyncio.CancelledError:
+                logger.info("DLQ retry loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"DLQ retry loop error: {e}")
+                await asyncio.sleep(60)
+
+    async def start_retry_loop(self, adapters: dict[str, Any]) -> None:
+        """Start the background DLQ retry loop."""
+        if self._retry_task is not None:
+            return
+        self._retry_task = asyncio.create_task(self._process_dlq(adapters))
+        logger.info("DLQ retry loop started")
+
+    async def stop_retry_loop(self) -> None:
+        """Stop the background DLQ retry loop."""
+        if self._retry_task is not None:
+            self._retry_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._retry_task
+            self._retry_task = None
+
+
 # Global instances (initialized in service_initializer.py)
 rate_limiter: ChannelRateLimiter | None = None
 message_deduplicator: MessageDeduplicator | None = None
 channel_metrics: ChannelMetrics | None = None
 connection_pool: ConnectionPool | None = None
+delivery_manager: DeliveryManager | None = None
 
 
-def initialize_optimizations() -> None:
+def initialize_optimizations(db_pool: Any | None = None) -> None:
     """Initialize global optimization instances."""
-    global rate_limiter, message_deduplicator, channel_metrics, connection_pool
+    global rate_limiter, message_deduplicator, channel_metrics, connection_pool, delivery_manager
 
     rate_limiter = ChannelRateLimiter(
         RateLimitConfig(
@@ -253,5 +543,6 @@ def initialize_optimizations() -> None:
     message_deduplicator = MessageDeduplicator(ttl_seconds=300)
     channel_metrics = ChannelMetrics()
     connection_pool = ConnectionPool(max_connections=100, timeout=30.0)
+    delivery_manager = DeliveryManager(db_pool=db_pool)
 
-    logger.info("✅ Channel optimizations initialized")
+    logger.info("Channel optimizations initialized (rate_limiter, dedup, metrics, pool, DLQ)")
