@@ -78,6 +78,14 @@ def _require_hr_admin(user: dict[str, Any]) -> None:
         raise HTTPException(status_code=403, detail="HR admin access required")
 
 
+def _get_user_id(current_user: dict[str, Any]) -> str:
+    """Extract and validate user ID from auth context. Raises 400 if missing."""
+    user_id = current_user.get("id") or None
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID missing from auth token")
+    return user_id
+
+
 async def _get_my_employee_id(
     service: HRService, user: dict[str, Any],
 ) -> int:
@@ -195,9 +203,7 @@ async def approve_bonus(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     try:
-        approver_id = current_user.get("id") or None
-        if not approver_id:
-            raise HTTPException(status_code=400, detail="User ID missing from auth token")
+        approver_id = _get_user_id(current_user)
         result = await service.approve_bonus(bonus_id, approver_id)
         return {"success": True, "bonus": result}
     except ValueError as e:
@@ -216,7 +222,7 @@ async def calculate_payroll(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     result = await service.calculate_payroll(
-        data.month, data.year, current_user.get("id", ""),
+        data.month, data.year, _get_user_id(current_user),
     )
     return {"success": True, **result}
 
@@ -282,9 +288,7 @@ async def approve_payroll(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     try:
-        approver_id = current_user.get("id") or None
-        if not approver_id:
-            raise HTTPException(status_code=400, detail="User ID missing from auth token")
+        approver_id = _get_user_id(current_user)
         result = await service.approve_payroll(period_id, approver_id)
         return {"success": True, "period": result}
     except ValueError as e:
@@ -388,7 +392,7 @@ async def approve_leave(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     try:
-        result = await service.approve_leave(request_id, current_user.get("id", ""))
+        result = await service.approve_leave(request_id, _get_user_id(current_user))
         return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -406,7 +410,7 @@ async def reject_leave(
     service = _get_hr_service(db_pool)
     try:
         result = await service.reject_leave(
-            request_id, current_user.get("id", ""), data.reason or "",
+            request_id, _get_user_id(current_user), data.reason or "",
         )
         return {"success": True, "request": result}
     except ValueError as e:
