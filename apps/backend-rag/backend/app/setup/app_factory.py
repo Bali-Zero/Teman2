@@ -437,15 +437,6 @@ async def lifespan(app: FastAPI):
         from backend.llm.ollama_client import close_ollama_client
 
         await close_ollama_client()
-
-    # Close OpenRouter client
-    try:
-        from backend.services.llm_clients.openrouter_client import openrouter_client
-        if openrouter_client and hasattr(openrouter_client, "close"):
-            await openrouter_client.close()
-            logger.info("✅ OpenRouter client closed")
-    except Exception as e:
-        logger.debug(f"OpenRouter client close: {e}")
         logger.info("✅ Ollama module client closed")
     except ImportError:
         pass
