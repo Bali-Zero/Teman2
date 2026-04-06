@@ -183,18 +183,15 @@ class GenAIClient:
     The client uses connection pooling internally for efficiency.
     """
 
-    # Default models - Gemini 3 Flash Preview (Primary via AI Studio)
-    # Primary tier
-    DEFAULT_MODEL = "gemini-3-flash-preview"  # Primary: Gemini 3 Flash
-    PRO_MODEL = "gemini-3-flash-preview"  # Same as default
+    # Model names — imported from centralized config (backend.llm.config)
+    from backend.llm.config import ModelName as _MN
 
-    # Fallback tier (Gemini 2.0 Flash - use without -001 suffix)
-    FALLBACK_FLASH = "gemini-2.0-flash"  # Fallback: stable
-    FALLBACK_PRO = "gemini-2.0-flash"  # Fallback for pro
-
-    # Aliases for clarity
-    FLASH_MODEL = "gemini-3-flash-preview"  # Primary model
-    PRO_HIGH_MODEL = "gemini-3-flash-preview"  # Same as flash
+    DEFAULT_MODEL = _MN.PRIMARY
+    PRO_MODEL = _MN.PRIMARY
+    FALLBACK_FLASH = _MN.FALLBACK
+    FALLBACK_PRO = _MN.FALLBACK
+    FLASH_MODEL = _MN.PRIMARY
+    PRO_HIGH_MODEL = _MN.PRIMARY
 
     def __init__(self, api_key: str | None = None) -> None:
         """
