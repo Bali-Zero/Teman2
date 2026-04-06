@@ -138,3 +138,82 @@ class APIKeyAuth:
 
         logger.info(f"Removed API key: {key[:10]}...")
         return True
+
+    async def resolve_role_from_db(
+        self, api_key: str, conn: Any,
+    ) -> dict[str, Any] | None:
+        """
+        Resolve API key role from database (S03 hardening).
+
+        Looks up key hash in api_key_records table. Returns role and
+        permissions if found and active, None otherwise.
+
+        Args:
+            api_key: Raw API key string
+            conn: asyncpg connection
+
+        Returns:
+            Dict with role/permissions if found, None otherwise
+        """
+        import hashlib
+
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+
+        try:
+            row = await conn.fetchrow(
+                """
+                SELECT role, permissions, is_active
+                FROM api_key_records
+                WHERE key_hash = $1
+                """,
+                key_hash,
+            )
+
+            if row and row["is_active"]:
+                # Update last_used
+                await conn.execute(
+                    "UPDATE api_key_records SET last_used_at = NOW() WHERE key_hash = $1",
+                    key_hash,
+                )
+                return {
+                    "role": row["role"],
+                    "permissions": list(row["permissions"]) if row["permissions"] else ["read"],
+                }
+        except Exception as e:
+            logger.warning(f"DB API key lookup failed: {e}")
+
+        return None
+
+    async def auto_migrate_key(
+        self, api_key: str, legacy_role: str, legacy_permissions: list[str], conn: Any,
+    ) -> None:
+        """
+        Auto-migrate a legacy key to the database (S03 hardening).
+
+        Called on every legacy fallback hit. Writes the key hash and its
+        current role to api_key_records with source='auto_migrated'.
+
+        Args:
+            api_key: Raw API key string
+            legacy_role: Role inferred from legacy name-based logic
+            legacy_permissions: Permissions from legacy logic
+            conn: asyncpg connection
+        """
+        import hashlib
+
+        key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+        key_name = f"migrated_{api_key[:8]}"
+
+        try:
+            await conn.execute(
+                """
+                INSERT INTO api_key_records (key_hash, name, role, permissions, source)
+                VALUES ($1, $2, $3, $4, 'auto_migrated')
+                ON CONFLICT (key_hash) DO NOTHING
+                """,
+                key_hash, key_name, legacy_role,
+                legacy_permissions,
+            )
+            logger.info(f"S03: Auto-migrated API key {api_key[:8]}... to DB (role={legacy_role})")
+        except Exception as e:
+            logger.warning(f"S03: Auto-migration failed for {api_key[:8]}...: {e}")
