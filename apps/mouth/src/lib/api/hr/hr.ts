@@ -14,6 +14,7 @@ import type {
   LeaveBalance,
   LeaveRequest,
   LeaveRequestPayload,
+  LeaveType,
   PayrollPeriod,
   Payslip,
   PayslipDetail,
@@ -97,11 +98,15 @@ export const markPayrollPaid = (periodId: number) =>
     {},
   );
 
-// Leave Types
+// Leave Types — backend /leave/types returns active rows only,
+// projected to the columns the dropdown needs.
+export type LeaveTypeOption = Pick<
+  LeaveType,
+  "id" | "code" | "name" | "default_days" | "is_paid" | "requires_document"
+>;
+
 export const getLeaveTypes = () =>
-  api.get<{
-    leave_types: { id: number; name: string; max_days_per_year: number }[];
-  }>(`${BASE}/leave/types`);
+  api.get<{ leave_types: LeaveTypeOption[] }>(`${BASE}/leave/types`);
 
 // Leave
 export const requestLeave = (data: LeaveRequestPayload) =>

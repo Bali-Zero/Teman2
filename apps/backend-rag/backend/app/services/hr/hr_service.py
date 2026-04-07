@@ -667,11 +667,14 @@ class HRService:
             """, employee_id)
 
             # Leave balance
+            # NOTE: shape must match get_leave_balance() above —
+            # both endpoints feed the same LeaveBalance type on the frontend.
             leave_balance = await conn.fetch("""
-                SELECT lb.*, lt.name
+                SELECT lb.*, lt.code, lt.name AS leave_type_name, lt.is_paid
                 FROM hr_leave_balances lb
                 JOIN hr_leave_types lt ON lt.id = lb.leave_type_id
                 WHERE lb.employee_id = $1 AND lb.balance_year = $2
+                ORDER BY lt.code
             """, employee_id, today.year)
 
             return {
