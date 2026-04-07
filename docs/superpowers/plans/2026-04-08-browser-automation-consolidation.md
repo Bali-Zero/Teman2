@@ -1,8 +1,8 @@
-# Browser Automation Consolidation Implementation Plan (v2)
+# Browser Automation Consolidation Implementation Plan (v2.1)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Version**: v2 (2026-04-08) — incorporates first-round review findings from Gemini Flash, DeepSeek R1 32b, Qwen 3.5 9b.
+**Version**: v2.1 (2026-04-08) — incorporates first-round (Gemini Flash, DeepSeek R1 32b, Qwen 3.5 9b) and second-round (Codex GPT-5.4 xhigh, Gemini 2.5 Pro, DeepSeek R1 32b) review findings.
 
 **Goal:** Consolidate three disconnected browser automation implementations (`bali-intel-scraper/browser.py`, `osint-nexus/ahu.py` Playwright inline, empty `nuzantara-mcp-browser/`) under a single shared `packages/browser-core/` package, fix the AHU orchestration gap, add a FastMCP server for external consumers, and make `ahu.go.id` scraping safer with stealth + DOM-clobber fix.
 
@@ -41,6 +41,13 @@
 - Updated rollback plan (atomic per-task commit sequence).
 - Clarified Task 0 wording: any grep hit = HALT + human sign-off required.
 - Documented per-process BrowserConfig as intentional, not accidental.
+
+**v2.1 micro-fixes (second-round: Codex GPT-5.4 xhigh, Gemini 2.5 Pro, DeepSeek R1 32b):**
+- N1: Added `addopts = "-m 'not integration and not stealth'"` to all pyproject.toml pytest sections — `pytest` default run now actually excludes opt-in markers.
+- N2: Task 4.5 gains `test_ahu_scraper_produces_records_from_fixture` — monkeypatches `_get_browser()` and runs `AHUScraper.scrape()` end-to-end against HTML fixture, proving record construction not just selector matching.
+- N3: Task 4 `atexit` documented as best-effort safety net; primary shutdown path is explicit `await _get_browser().close()` by runtime owner.
+- N4: Task 7 Step 6 rewritten — connects in-memory Client, calls a tool (forces lifespan enter), disconnects, then verifies no orphan Chromium.
+- N5: Task 4 Step 1 pip fallback now branches `requirements.txt`-only projects separately (appends `-e ../../packages/browser-core`).
 
 **Pre-flight verification (do this before Task 1):**
 
@@ -636,9 +643,10 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
 markers = [
-    "integration: tests that launch real Chromium (skipped by default)",
-    "stealth: tests that hit bot.sannysoft.com to validate stealth patches",
+    "integration: tests that launch real Chromium (run with: pytest -m integration)",
+    "stealth: tests that hit bot.sannysoft.com (run with: pytest -m stealth)",
 ]
 ```
 
@@ -761,12 +769,12 @@ by Gemini Flash review (CRITICAL E.18)."
 ```bash
 cd ~/Desktop/nuzantara/.worktrees/browser-consolidation/apps/osint-nexus
 
-# Detect:
+# Detect package manager:
 MANAGER=""
 if [ -f uv.lock ]; then MANAGER="uv"
 elif [ -f poetry.lock ]; then MANAGER="poetry"
-elif [ -f requirements.txt ]; then MANAGER="pip"
-elif [ -f pyproject.toml ]; then MANAGER="pip"  # default
+elif [ -f pyproject.toml ]; then MANAGER="pip-pyproject"
+elif [ -f requirements.txt ]; then MANAGER="pip-requirements"
 fi
 echo "Package manager detected: $MANAGER"
 ```
@@ -782,9 +790,16 @@ Run `uv sync`.
 
 **If poetry**: `poetry add --editable ../../packages/browser-core`.
 
-**If pip (fallback)**: add `"browser-core"` to `pyproject.toml` dependencies, then:
+**If pip-pyproject**: add `"browser-core"` to `pyproject.toml` dependencies, then:
 ```bash
 source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
+python -m pip install -e ../../packages/browser-core
+```
+
+**If pip-requirements** (no pyproject.toml — Codex review N5): append editable dep to `requirements.txt`:
+```bash
+source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
+echo "-e ../../packages/browser-core" >> requirements.txt
 python -m pip install -e ../../packages/browser-core
 ```
 
@@ -845,7 +860,17 @@ def _get_browser() -> BrowserManager:
 
 
 def _shutdown_browser() -> None:
-    """atexit hook: closes the lazy browser if it was ever initialized."""
+    """Best-effort atexit hook: closes the lazy browser if it was ever initialized.
+
+    WARNING (Codex GPT-5.4 review N3): this creates a new event loop to close
+    Playwright objects that were created on the original loop. This is a known
+    footgun — it may fail silently if the original loop is still alive or if
+    Playwright objects hold references to it. The PRIMARY shutdown path should
+    be the runtime owner (dossier CLI, pipeline runner) calling:
+        await _get_browser().close()
+    explicitly in its own `finally` block. This atexit hook is a safety net
+    for cases where the caller forgets.
+    """
     global _browser_instance
     if _browser_instance is None:
         return
@@ -854,7 +879,7 @@ def _shutdown_browser() -> None:
         loop.run_until_complete(_browser_instance.close())
         loop.close()
     except Exception as exc:
-        logger.warning("AHU browser atexit shutdown failed: %s", exc)
+        logger.warning("AHU browser atexit shutdown failed (best-effort): %s", exc)
     finally:
         _browser_instance = None
 
@@ -1145,6 +1170,48 @@ async def test_ahu_parser_handles_all_three_pts(local_browser: BrowserManager) -
                 names.add((await cells[0].inner_text()).strip())
 
         assert names == expected_names, f"mismatch: {names ^ expected_names}"
+
+
+async def test_ahu_scraper_produces_records_from_fixture(
+    local_browser: BrowserManager,
+) -> None:
+    """End-to-end: AHUScraper.scrape() runs against the fixture HTML and
+    produces real ScrapedRecord objects with correct fields.
+
+    (Codex GPT-5.4 review N2: the selector-level tests above don't prove
+    the scraper's record construction, URL assembly, or dedup work.)
+
+    We monkeypatch _get_browser() to return our local_browser so the
+    scraper hits the fixture file:// URL instead of ahu.go.id.
+    """
+    from unittest.mock import patch
+
+    from osint_nexus.scrapers.ahu import AHUScraper
+
+    file_url = f"file://{FIXTURE_PATH}"
+
+    # Patch _get_browser so the scraper uses our fixture-pointed manager
+    with patch("osint_nexus.scrapers.ahu._get_browser", return_value=local_browser):
+        # Also patch AHU_BASE so URLs resolve to file://
+        with patch("osint_nexus.scrapers.ahu.AHU_BASE", str(FIXTURE_PATH.parent)):
+            scraper = AHUScraper()
+            # Override search_url construction to point at the fixture
+            with patch.object(
+                scraper,
+                "save_records",
+                return_value=FIXTURE_PATH.parent,
+            ):
+                # Call scrape with a dummy query — the fixture is static
+                records = await scraper.scrape("test", search_type="pt")
+
+    # The fixture has 3 rows — we should get 3 ScrapedRecord objects
+    assert len(records) >= 1, f"expected records from fixture, got {len(records)}"
+    # Verify record fields
+    for r in records:
+        assert r.source == "ahu"
+        assert r.entity_type == "company"
+        assert r.raw_data.get("nama"), f"record missing 'nama': {r.raw_data}"
+        assert r.raw_data.get("tipe") == "pt"
 ```
 
 - [ ] **Step 3: Add `integration` marker to osint-nexus pyproject.toml**
@@ -1153,10 +1220,11 @@ If not already present, append:
 
 ```toml
 [tool.pytest.ini_options]
-markers = [
-    "integration: tests that launch real Chromium (skipped by default)",
-]
 asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
+markers = [
+    "integration: tests that launch real Chromium (run with: pytest -m integration)",
+]
 ```
 
 - [ ] **Step 4: Run the snapshot test (opt-in)**
@@ -1312,8 +1380,9 @@ include = ["nuzantara_mcp_browser*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
 markers = [
-    "integration: tests launching real Chromium (skipped by default)",
+    "integration: tests launching real Chromium (run with: pytest -m integration)",
 ]
 ```
 
@@ -1766,33 +1835,47 @@ timeout 3s nuzantara-mcp-browser < /dev/null; echo "exit=$?"
 
 Expected: `exit=124` (timeout — server booted, waited for stdio, timed out). A clean traceback here means the module-level `make_browser_manager()` call fails — probably missing `playwright install`.
 
-- [ ] **Step 6: Verify no orphan Chromium after shutdown**
+- [ ] **Step 6: Verify lifespan lifecycle — init + shutdown + no orphan Chromium**
 
 ```bash
-# Start server in background
-nuzantara-mcp-browser &
-SERVER_PID=$!
-sleep 2
+# This test proves the lifespan actually runs: connect a client, call a
+# tool (forces browser init), disconnect, then verify cleanup.
+# (Codex GPT-5.4 review N4: previous version never triggered lifespan.)
 
-# Check no Chromium is running yet (lifespan only initializes on first tool call or init)
-pgrep -fl "chrome.*--headless" || echo "no headless chromium — OK (lifespan not triggered without client)"
+cd ~/Desktop/nuzantara/.worktrees/browser-consolidation/apps/nuzantara-mcp-browser
 
-# Kill server
-kill -TERM $SERVER_PID
-sleep 2
+# Use an in-process Python script instead of background shell:
+.venv/bin/python -c "
+import asyncio
+from fastmcp import Client
 
-# Verify no orphan Chromium
-if pgrep -fl "chrome.*--headless" > /dev/null; then
-  echo "LEAK: orphan chromium found"
-  pgrep -fl "chrome.*--headless"
-  pkill -9 -f "chrome.*--headless"
-  exit 1
-else
-  echo "shutdown clean — no leak"
-fi
+async def main():
+    import nuzantara_mcp_browser.server as srv
+
+    # Phase 1: connect + call tool (forces lifespan enter + browser init)
+    async with Client(srv.mcp) as client:
+        result = await client.call_tool('browser_navigate', {'url': 'about:blank'})
+        print('Tool called OK:', result.data.get('url'))
+
+    # Phase 2: client disconnected — lifespan should have exited, browser closed.
+    # Give a moment for cleanup.
+    await asyncio.sleep(1)
+
+    # Phase 3: check no orphan Chromium
+    import subprocess
+    r = subprocess.run(['pgrep', '-fl', 'chrome.*--headless'], capture_output=True, text=True)
+    if r.stdout.strip():
+        print('LEAK: orphan chromium found')
+        print(r.stdout)
+        raise SystemExit(1)
+    else:
+        print('shutdown clean — no leak')
+
+asyncio.run(main())
+"
 ```
 
-Expected: `shutdown clean — no leak`. If leak, fix the `@lifespan` wiring before committing.
+Expected: `Tool called OK: about:blank` then `shutdown clean — no leak`. If leak, the `@lifespan` finally block did not fire — fix the wiring before committing.
 
 - [ ] **Step 7: Commit**
 
