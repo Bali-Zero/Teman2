@@ -22,15 +22,38 @@ import time
 from typing import Any
 
 from backend.app.metrics import metrics_collector
+from backend.services.agents.confirmation_service import (
+    ConfirmationRedisDown,
+    ConfirmationService,
+    ConfirmationTimeout,
+)
 from backend.services.agents.tool_authorizer import ToolAuthorizer
 from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
 
-# Module-level singleton — stateless authorizer, safe to share across requests.
-# Phase 3 will replace this with a per-app instance built in service_initializer
-# that takes `confirmation_service` as a constructor arg. The migration is one line.
+# Module-level singletons — set by service_initializer.py at app startup.
+# Before Phase 3 wiring, the authorizer was a bare ToolAuthorizer() with no
+# dependencies. Now it may have a ConfirmationService. Both are replaced once
+# by `configure_tool_executor()` during initialization.
 _authorizer = ToolAuthorizer()
+_confirmation_service: ConfirmationService | None = None
+
+
+def configure_tool_executor(
+    authorizer: ToolAuthorizer,
+    confirmation_service: ConfirmationService | None = None,
+) -> None:
+    """
+    Called once by service_initializer.py to inject app-scoped singletons.
+
+    This replaces the module-level defaults with properly wired instances.
+    The function exists so that tool_executor doesn't import from
+    service_initializer (which would create a circular import).
+    """
+    global _authorizer, _confirmation_service  # noqa: PLW0603
+    _authorizer = authorizer
+    _confirmation_service = confirmation_service
 
 
 def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
@@ -165,6 +188,7 @@ async def execute_tool(
     user_id: str | None = None,
     tool_execution_counter: dict[str, int] | None = None,
     agent_role: Any | None = None,
+    confirmation_emitter: Any | None = None,
 ) -> tuple[str, float]:
     """
     Execute tool with rate limiting and RBAC authorization.
@@ -180,6 +204,15 @@ async def execute_tool(
             (legacy /stream path, blog/marketing flows), the authorizer
             passes through as ALLOWED. Read by reasoning.py via
             getattr(state, "agent_role", None) at each call site.
+        confirmation_emitter: VASSAL Phase 3. Optional async callback
+            ``Callable[[dict], Awaitable[None]]`` that pushes SSE events
+            upstream to the streaming generator. Set by reasoning.py at
+            the streaming call site; None for non-streaming paths.
+            Deviation from briefing §3.2 ("no new params on execute_tool"):
+            the alternative — pre-computing confirmation needs in
+            reasoning.py — would duplicate authorizer logic and pollute
+            args. This single optional kwarg keeps the authorizer as the
+            single source of truth for confirmation decisions.
 
     Returns:
         Tuple of (tool execution result as string, execution duration in seconds)
@@ -232,23 +265,68 @@ async def execute_tool(
             time.time() - start_time,
         )
     if auth_result.needs_confirmation:
-        # Phase 3 will replace this defensive branch with the actual
-        # `await confirmation_service.request_and_wait(...)` call. For
-        # Phase 2 we treat NEEDS_CONFIRMATION as a hard deny so a
-        # premature wiring (e.g. someone adds requires_confirmation
-        # to AgentRole before Phase 3 lands) cannot accidentally let
-        # an unconfirmed write tool execute.
-        logger.warning(
-            "tool_authz: NEEDS_CONFIRMATION received for %s but Phase 3 "
-            "confirmation gates are not active yet — treating as DENIED",
-            tool_name,
-        )
-        metrics_collector.record_tool_call(tool_name, "denied")
-        return (
-            f"Tool execution denied (requires confirmation but Phase 3 is "
-            f"not active yet): {auth_result.reason}",
-            time.time() - start_time,
-        )
+        # ── VASSAL Phase 3: interactive confirmation gate ────────────────
+        # The authorizer has determined that this tool requires user
+        # confirmation before execution. If a ConfirmationService is
+        # wired, we request confirmation, emit an SSE event for the
+        # frontend modal (Phase 3B), and block until the user resolves.
+        # If the service is not wired (e.g., in tests or light mode),
+        # fail-closed: treat as DENIED.
+        if _confirmation_service is None:
+            logger.warning(
+                "tool_authz: NEEDS_CONFIRMATION for %s but "
+                "ConfirmationService is not wired — treating as DENIED",
+                tool_name,
+            )
+            metrics_collector.record_tool_call(tool_name, "denied")
+            return (
+                f"Tool execution denied: confirmation service unavailable "
+                f"for '{tool_name}'",
+                time.time() - start_time,
+            )
+        try:
+            approved = await _confirmation_service.request_and_wait(
+                tool_name=tool_name,
+                args=arguments,
+                user_email=user_id or "anonymous",
+                preview=auth_result.reason,
+                emitter=confirmation_emitter,
+            )
+        except ConfirmationRedisDown as exc:
+            metrics_collector.record_tool_call(tool_name, "denied")
+            logger.warning(
+                "tool_authz: confirmation Redis down for %s: %s",
+                tool_name,
+                exc,
+            )
+            return (
+                f"Tool execution denied: confirmation system unavailable "
+                f"(Redis down) for '{tool_name}'",
+                time.time() - start_time,
+            )
+        except ConfirmationTimeout:
+            metrics_collector.record_tool_call(tool_name, "timeout")
+            logger.info(
+                "tool_authz: confirmation timed out for %s",
+                tool_name,
+            )
+            return (
+                f"Tool execution denied: user did not confirm "
+                f"'{tool_name}' within the allowed time",
+                time.time() - start_time,
+            )
+        if not approved:
+            metrics_collector.record_tool_call(tool_name, "rejected")
+            logger.info(
+                "tool_authz: user rejected confirmation for %s",
+                tool_name,
+            )
+            return (
+                f"Tool execution denied: user rejected '{tool_name}'",
+                time.time() - start_time,
+            )
+        metrics_collector.record_tool_call(tool_name, "confirmed")
+        logger.info("tool_authz: user confirmed %s — proceeding", tool_name)
     # Authoritative args after the authorizer (possibly mutated in
     # Phase 3+; Phase 2 returns args unchanged).
     arguments = auth_result.args

@@ -251,6 +251,11 @@ async def lifespan(app: FastAPI):
     # shutdown removed — _init_background_services() is disabled (omnichannel stabilization).
     # Re-add shutdown code when _init_background_services() is re-enabled.
 
+    # Shutdown ConfirmationService (VASSAL Phase 3) — before Redis closes
+    confirmation_service = getattr(app.state, "confirmation_service", None)
+    if confirmation_service:
+        await _safe_stop("ConfirmationService", confirmation_service.stop())
+
     # Shutdown Health Monitor
     health_monitor = getattr(app.state, "health_monitor", None)
     if health_monitor:
