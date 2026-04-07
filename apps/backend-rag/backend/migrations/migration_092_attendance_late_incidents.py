@@ -1,6 +1,16 @@
 """
 Migration 092: Attendance late-incident state machine.
 
+⚠️ NOT WIRED INTO THE LOADER. This file is kept only as historical reference,
+matching the 91+ migration_*.py files in this directory. The actual migration
+applied by ``python -m backend.db.migrate apply-all`` is the SQL version at:
+
+    backend/db/migrations_v2/092_attendance_late_incidents.sql
+
+The v2 loader (backend/db/migration_manager.py) only picks up *.sql files in
+backend/db/migrations_v2/. The legacy migration_*.py files in backend/migrations/
+are NOT discovered by any automated loader and must be applied manually if used.
+
 Tracks every clock_in that arrives at or after 09:40 Bali time as a discrete
 incident with a state machine:
 
