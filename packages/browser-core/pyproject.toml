@@ -1,0 +1,13 @@
+[project]
+name = "browser-core"
+version = "0.1.0"
+description = "Shared stealth Playwright browser manager for Nuzantara apps"
+requires-python = ">=3.11"
+dependencies = ["playwright>=1.40"]
+
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["browser_core*"]
