@@ -463,6 +463,16 @@ class HRService:
         """Create a leave request."""
         async with self.db_pool.acquire() as conn:
             async with conn.transaction():
+                # Validate leave_type_id exists and is active (server-side guard
+                # against clients bypassing the dropdown filter).
+                leave_type = await conn.fetchrow("""
+                    SELECT id FROM hr_leave_types
+                    WHERE id = $1 AND is_active = TRUE
+                """, data["leave_type_id"])
+                if not leave_type:
+                    msg = f"Leave type {data['leave_type_id']} not found or inactive"
+                    raise ValueError(msg)
+
                 # Check balance
                 balance = await conn.fetchrow("""
                     SELECT * FROM hr_leave_balances
