@@ -16,6 +16,7 @@ import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 import { api } from "@/lib/api";
+import { sendChat } from "@/lib/gateway";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -28,9 +29,6 @@ interface ChatMsg {
 
 const genId = () =>
   `wa_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-
-const BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev";
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -101,17 +99,11 @@ export function WorkspaceAssistant() {
       // agent_role here — the backend resolves them from the cookie JWT
       // via team_agent_config so they cannot be spoofed by the client.
       // The backend also forces channel="workspace" server-side.
-      const res = await fetch(`${BACKEND}/api/agentic-rag/workspace-stream`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // Send httpOnly cookie for auth
-        body: JSON.stringify({
-          query: text,
-          session_id: `ws_${userEmail.replace("@", "_")}`,
-          enable_vision: false,
-          conversation_history: history,
-          workspace_page: pathname,
-        }),
+      const res = await sendChat({
+        query: text,
+        session_id: `ws_${userEmail.replace("@", "_")}`,
+        conversation_history: history,
+        workspace_page: pathname,
       });
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
