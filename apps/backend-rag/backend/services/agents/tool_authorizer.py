@@ -66,6 +66,14 @@ from backend.services.agents.team_agent_config import AgentRole, is_tool_allowed
 logger = logging.getLogger(__name__)
 
 
+def _truncate(value: Any, max_len: int = 40) -> str:
+    """Render a tool argument value short enough for a confirmation modal."""
+    s = str(value)
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1] + "…"
+
+
 class AuthDecision(str, Enum):
     """Outcome of an authorization check."""
 
@@ -194,15 +202,24 @@ class ToolAuthorizer:
         if scope_result is not None:
             return scope_result
 
-        # ── 3. Confirmation requirement (SCAFFOLDING) ────────────────────
-        # No-op for Phase 2: AgentRole has no `requires_confirmation`
-        # field yet. Phase 3 will add it and this branch will start
-        # returning NEEDS_CONFIRMATION for write tools like
-        # `delete_client`, `delete_practice`, etc.
+        # ── 3. Confirmation requirement (VASSAL Phase 3) ──────────────────
+        # When Phase 3 landed, `AgentRole` grew a `requires_confirmation:
+        # list[str]` field. If the requested tool is in that list, this
+        # branch returns AuthResult.confirm() with a preview reason that
+        # tool_executor forwards to ConfirmationService.request_and_wait.
+        # For tools NOT in the list, `_check_requires_confirmation` still
+        # returns None and the ALLOWED path below fires.
         confirm_result = self._check_requires_confirmation(
             user_email, agent_role, tool_name, args,
         )
         if confirm_result is not None:
+            self._audit(
+                "needs_confirmation",
+                user_email,
+                agent_role,
+                tool_name,
+                confirm_result.reason,
+            )
             return confirm_result
 
         # ── ALLOWED ──────────────────────────────────────────────────────
@@ -260,14 +277,49 @@ class ToolAuthorizer:
         """
         Check whether the tool requires interactive user confirmation.
 
-        Phase 2 scope: scaffold only. `AgentRole` does not yet have a
-        `requires_confirmation: list[str]` field. When Phase 3 adds it,
-        this method becomes `if tool_name in agent_role.requires_confirmation: return AuthResult.confirm(...)`.
+        VASSAL Phase 3: no longer a no-op. If the role's
+        `requires_confirmation` list contains this tool, return
+        AuthResult.confirm() with a human-readable preview reason. The
+        tool_executor then awaits ConfirmationService.request_and_wait
+        with that reason as the SSE `preview` field, and either proceeds
+        or denies based on the user's decision.
 
-        Returns None today.
+        Returns None for tools that are not gated — callers keep their
+        normal ALLOWED-path behavior. This preserves the Phase 2 contract
+        for every tool not explicitly listed.
         """
-        _ = (user_email, agent_role, tool_name, args)
-        return None
+        _ = user_email  # reserved for future per-user overrides
+        required = getattr(agent_role, "requires_confirmation", None) or []
+        if tool_name not in required:
+            return None
+        reason = self._build_confirmation_preview(agent_role, tool_name, args)
+        return AuthResult.confirm(reason=reason, args=args)
+
+    @staticmethod
+    def _build_confirmation_preview(
+        agent_role: AgentRole,
+        tool_name: str,
+        args: dict[str, Any],
+    ) -> str:
+        """
+        Build the preview reason surfaced to the user in the SSE
+        `confirmation_required` event and used as the LLM observation
+        when the user rejects.
+
+        The text must be informative enough that a reasonable user can
+        decide approve/reject without additional context, and short
+        enough to render in a small modal (see Phase 3B frontend).
+        """
+        # Keep args short — modal UI will truncate anyway.
+        arg_preview = ", ".join(
+            f"{k}={_truncate(v)}" for k, v in list(args.items())[:4]
+        )
+        if len(args) > 4:
+            arg_preview += f", … (+{len(args) - 4} more)"
+        return (
+            f"Tool '{tool_name}' requires user confirmation for role "
+            f"'{agent_role.role_id}'. Arguments: {{{arg_preview}}}"
+        )
 
     @staticmethod
     def _audit(
@@ -282,9 +334,15 @@ class ToolAuthorizer:
 
         We use a single logger format that downstream log shippers can
         grep/parse. The "tool_authz" prefix is unique to this module.
+
+        Phase 3 adds `needs_confirmation` as a third decision value
+        alongside `allow` and `deny`. The format string is unchanged so
+        existing log shipper grep patterns keep working.
         """
         role_id = agent_role.role_id if agent_role else "none"
         scope = agent_role.client_scope if agent_role else "none"
+        # `allow` is INFO; everything else (`deny`, `needs_confirmation`)
+        # is WARNING because both are exceptional outcomes worth surfacing.
         log_fn = logger.info if action == "allow" else logger.warning
         log_fn(
             "tool_authz decision=%s user=%s role=%s scope=%s tool=%s reason=%s",
