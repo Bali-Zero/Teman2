@@ -172,7 +172,15 @@ async def stream_ollama_react(
       3. Repeat up to config.ollama_max_tool_iterations
       4. If tool calling fails consecutively >= threshold, drop tools (knowledge-only)
     """
-    tools = await mcp.get_tool_definitions()
+    if not mcp.is_ready():
+        logger.info("MCP not ready — Ollama running without tools")
+        tools = []
+    else:
+        try:
+            tools = await asyncio.wait_for(mcp.get_tool_definitions(), timeout=5)
+        except Exception as e:
+            logger.warning("MCP tools unavailable for Ollama fallback: %s", e)
+            tools = []
     messages: list[dict[str, Any]] = [{"role": "user", "content": query}]
 
     consecutive_tool_failures = 0
@@ -187,6 +195,7 @@ async def stream_ollama_react(
                 "model": config.ollama_model,
                 "messages": messages,
                 "stream": True,
+                "think": False,  # Disable thinking tokens — they send empty content
             }
 
             if use_tools and tools:
@@ -200,14 +209,18 @@ async def stream_ollama_react(
             assistant_content = ""
             tool_calls: list[dict[str, Any]] = []
 
+            logger.info("Ollama POST /api/chat payload keys=%s", list(payload.keys()))
             async with client.stream(
                 "POST", "/api/chat", json=payload
             ) as resp:
+                logger.info("Ollama response status=%d", resp.status_code)
                 resp.raise_for_status()
 
                 async for raw_line in resp.aiter_lines():
                     if not raw_line.strip():
                         continue
+
+                    logger.debug("Ollama chunk: %s", raw_line[:200])
 
                     try:
                         chunk = json.loads(raw_line)
@@ -461,16 +474,23 @@ async def cors_middleware(
 
 
 async def on_startup(app: web.Application) -> None:
-    """Start MCP client on app startup."""
+    """Start MCP client in background — don't block HTTP server startup."""
     mcp_client: MCPToolClient = app["mcp_client"]
-    try:
-        await mcp_client.connect()
-        tools = await mcp_client.get_tool_definitions()
-        logger.info("MCP client connected, %d tools available", len(tools))
-    except Exception as e:
-        logger.warning(
-            "MCP client failed to connect: %s — Ollama fallback will run without tools", e
-        )
+
+    async def _connect_mcp() -> None:
+        try:
+            await asyncio.wait_for(mcp_client.connect(), timeout=30)
+            tools = await mcp_client.get_tool_definitions()
+            logger.info("MCP client connected, %d tools available", len(tools))
+        except asyncio.TimeoutError:
+            logger.warning("MCP client connect timed out after 30s — Ollama fallback will run without tools")
+        except Exception as e:
+            logger.warning(
+                "MCP client failed to connect: %s — Ollama fallback will run without tools", e
+            )
+
+    # Launch in background so HTTP server can start accepting requests immediately
+    asyncio.create_task(_connect_mcp())
 
 
 async def on_shutdown(app: web.Application) -> None:

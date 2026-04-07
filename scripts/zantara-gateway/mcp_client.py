@@ -47,6 +47,11 @@ class MCPToolClient:
         self._session: ClientSession | None = None
         self._tools_cache: list[dict] | None = None
         self._cm = None  # context manager for stdio_client
+        self._ready = False  # set True after successful connect + init
+
+    def is_ready(self) -> bool:
+        """True if MCP session is fully initialized and can list/execute tools."""
+        return self._ready
 
     async def connect(self) -> None:
         """Start MCP server subprocess and establish session."""
@@ -69,6 +74,7 @@ class MCPToolClient:
         read, write = await self._cm.__aenter__()
         self._session = ClientSession(read, write)
         await self._session.initialize()
+        self._ready = True
         logger.info("MCP session established for role=%s", self._role)
 
     async def close(self) -> None:
