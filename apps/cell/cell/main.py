@@ -185,6 +185,24 @@ async def main() -> None:
         maturation = Maturation(age_days=self_model.model.age_days)
         maturation.log_phase()
 
+        # Cortex — Phase 3+4 (optional, best-effort)
+        from cell.cortex.cortex import Cortex
+
+        cortex: Cortex | None = None
+        try:
+            cortex = Cortex(
+                pool=_db_pool_ep,
+                reasoner=reasoner,
+                episodic=episodic,
+                self_model=self_model,
+                journal=journal,
+                attention=attention,
+                maturation=maturation,
+                ollama_client=ollama_client,
+            )
+        except Exception as e:
+            logger.warning(f"Cortex init failed (non-fatal, CELL runs Phase 1+2 only): {e}")
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -214,6 +232,7 @@ async def main() -> None:
             journal=journal,
             attention=attention,
             maturation=maturation,
+            cortex=cortex,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
