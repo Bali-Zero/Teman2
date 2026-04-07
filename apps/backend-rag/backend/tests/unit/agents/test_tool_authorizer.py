@@ -149,8 +149,19 @@ class TestAuthorizeDecisions:
     async def test_visa_specialist_allowed_runtime_tools(
         self, authorizer: ToolAuthorizer,
     ) -> None:
-        """Phase 2 v8 allowlist additions for runtime tools must be in effect."""
-        # These are the path Z runtime tools added in Phase 2 v8 brief.
+        """Phase 2 v8 allowlist additions for runtime tools must be in effect.
+
+        Note (VASSAL Phase 3): `image_generation` is still in the visa
+        specialist allowlist, but Phase 3 put it behind a confirmation
+        gate, so `authorize()` returns NEEDS_CONFIRMATION (not ALLOWED)
+        for it. The confirmation path is exercised in
+        test_confirmation_authorizer.py::TestAuthorizeEndToEndConfirmation.
+        We intentionally keep the Phase 2 loop here narrowed to the
+        non-gated tools so this test documents exactly what Phase 2
+        unlocked without confirmation.
+        """
+        # These are the path Z read-only runtime tools added in Phase 2 v8
+        # that were and remain plain ALLOWED (no confirmation gate).
         for tool in (
             "vector_search",
             "pricing",
@@ -159,7 +170,6 @@ class TestAuthorizeDecisions:
             "calculator",
             "vision",
             "web_search",
-            "image_generation",
         ):
             r = await authorizer.authorize(
                 user_email="damar@balizero.com",
@@ -170,6 +180,21 @@ class TestAuthorizeDecisions:
             assert r.is_allowed, (
                 f"visa specialist must allow runtime tool {tool} (Phase 2 v8)"
             )
+
+        # image_generation is in the allowlist but gated in Phase 3.
+        r = await authorizer.authorize(
+            user_email="damar@balizero.com",
+            agent_role=ROLE_VISA_SPECIALIST,
+            tool_name="image_generation",
+            args={},
+        )
+        assert r.needs_confirmation, (
+            "image_generation should be in the visa specialist allowlist "
+            "but gated by Phase 3 confirmation"
+        )
+        assert not r.is_denied, (
+            "image_generation must not be denied — denial would regress Phase 2 v8"
+        )
 
     @pytest.mark.asyncio
     async def test_visa_specialist_blocked_tool_denied(
