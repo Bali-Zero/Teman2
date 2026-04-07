@@ -580,7 +580,7 @@ function LkpmQuarterCard({
       <div className="text-center p-3 rounded-lg border border-[var(--bz-border)]">
         <p className="text-lg font-bold text-[var(--bz-text-1)]">{quarter}</p>
         <p className="text-[10px] text-[var(--bz-text-2)]">{qLabels[quarter]}</p>
-        <p className="text-[10px] text-[var(--bz-text-2)] mt-1 italic">Belum ada laporan</p>
+        <p className="text-[10px] text-[var(--bz-text-2)] mt-1 italic">No report</p>
       </div>
     );
   }
@@ -639,7 +639,7 @@ function LkpmQuarterCard({
       {/* 2. Days to deadline */}
       {!report.oss_submitted && report.days_to_deadline != null && (
         <p className={`text-[10px] ${daysColor}`}>
-          {report.days_to_deadline} hari
+          {report.days_to_deadline} days
         </p>
       )}
 
@@ -647,7 +647,7 @@ function LkpmQuarterCard({
       {assignedName ? (
         <p className="text-[10px] text-[var(--bz-text-2)]">{assignedName}</p>
       ) : (
-        <p className="text-[10px] text-red-400">Belum di-assign</p>
+        <p className="text-[10px] text-red-400">Unassigned</p>
       )}
 
       {/* 4. Client approved */}
@@ -655,16 +655,16 @@ function LkpmQuarterCard({
         {report.client_approved ? (
           <span className="text-emerald-400">{'\u2713'} Approved</span>
         ) : (
-          <span className="text-red-400">{'\u2717'} Pending</span>
+          <span className="text-red-400">{'\u2717'} Not approved</span>
         )}
       </p>
 
-      {/* Buka link */}
+      {/* Open link */}
       <a
         href={`/lkpm/${report.id}`}
         className="text-[10px] text-[var(--bz-accent)] hover:underline block mt-1"
       >
-        Buka
+        Open
       </a>
     </div>
   );
@@ -859,7 +859,7 @@ export function TaxTab({
                     className="text-center p-3 rounded-lg border border-[var(--bz-border)]"
                   >
                     <p className="text-lg font-bold text-[var(--bz-text-1)]">Q{q}</p>
-                    <p className="text-xs text-[var(--bz-text-2)]">Belum ada laporan</p>
+                    <p className="text-xs text-[var(--bz-text-2)]">No report</p>
                   </div>
                 ))}
               </div>
