@@ -28,6 +28,17 @@ export const lkpmApi = {
     return { count: r.count ?? 0, items: r.items ?? [] };
   },
 
+  async getClientHistory(
+    clientId: number,
+  ): Promise<{ count: number; items: LKPMBatchItem[] }> {
+    const r = await api.get<{
+      success: boolean;
+      count: number;
+      items: LKPMBatchItem[];
+    }>(`/api/v1/lkpm/history/${clientId}`);
+    return { count: r.count ?? 0, items: r.items ?? [] };
+  },
+
   async getAlerts(): Promise<LKPMValidationAlert[]> {
     const r = await api.get<{
       success: boolean;

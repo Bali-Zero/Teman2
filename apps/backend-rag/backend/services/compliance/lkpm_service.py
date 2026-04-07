@@ -837,6 +837,18 @@ class LKPMService:
             ],
         )
 
+        # Compute days_to_deadline
+        quarter = row["quarter"]
+        year = row["year"]
+        if quarter in QUARTER_DEADLINES:
+            month, day = QUARTER_DEADLINES[quarter]
+            deadline_year = year + 1 if quarter == "Q4" else year
+            deadline_dt = datetime(deadline_year, month, day, tzinfo=timezone.utc)
+            now = datetime.now(tz=timezone.utc)
+            days_to_deadline = (deadline_dt.date() - now.date()).days
+        else:
+            days_to_deadline = None
+
         return LKPMBatchItem(
             id=row["id"],
             client_id=row["client_id"],
@@ -850,5 +862,8 @@ class LKPMService:
             yellow_alerts=yellow_count,
             oss_submitted=row["oss_submitted"],
             oss_receipt_number=row.get("oss_receipt_number"),
+            client_approved=row.get("client_approved", False),
+            lkpm_assigned_to=row.get("lkpm_assigned_to"),
+            days_to_deadline=days_to_deadline,
             updated_at=row["updated_at"],
         )
