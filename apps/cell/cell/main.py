@@ -39,7 +39,7 @@ from cell.memory.dreamer import Dreamer
 from cell.identity.journal import Journal
 from cell.metabolism.attention_allocator import AttentionAllocator
 from cell.lifecycle.maturation import Maturation
-from cell.core.db import create_dreams_table, create_journal_table
+from cell.core.db import create_dreams_table, create_journal_table, create_cortex_tables
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,6 +65,7 @@ async def main() -> None:
     await create_episodes_table()
     await create_dreams_table()
     await create_journal_table()
+    await create_cortex_tables()
 
     dna_loader = DNALoader()
     dna_hash = dna_loader.compute_hash()
