@@ -1373,9 +1373,17 @@ class OrchestratorCore:
         deep_think_mode: bool = False,
         kg_context_str: str = "",  # New argument to pass pre-fetched KG context
         channel: str | None = None,  # Channel overlay for response formatting
+        agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
     ) -> tuple[str, bool, AgentState, str]:
         """
         Common ReAct loop preparation.
+
+        VASSAL Phase 2: when `agent_role` is provided (workspace-stream
+        endpoint), it is stored on `state.agent_role` so that the
+        downstream tool_authorizer (called from reasoning.py via
+        execute_tool) can enforce per-role tool RBAC. None for legacy
+        /stream and any non-workspace caller — handled by the authorizer's
+        backward-compat passthrough.
 
         Returns:
             Tuple of (model_tier, deep_think_mode, state, system_prompt)
@@ -1386,6 +1394,11 @@ class OrchestratorCore:
         # Override deep_think_mode if explicitly provided
         if deep_think_mode:
             state.deep_think_mode = True
+
+        # VASSAL Phase 2: stamp the request-scoped AgentRole onto the state.
+        # reasoning.py reads this via `getattr(state, "agent_role", None)`
+        # at every execute_tool call site and forwards it to the authorizer.
+        state.agent_role = agent_role
 
         # Use pre-fetched KG context if available, otherwise fetch it (fallback)
         system_context_for_prompt = kg_context_str
@@ -1432,6 +1445,7 @@ class OrchestratorCore:
         deep_think_mode: bool = False,
         kg_context_str: str = "",
         channel: str | None = None,
+        agent_role: Any | None = None,  # VASSAL Phase 2
     ) -> tuple[str, bool, AgentState, str]:
         """
         Prepare ReAct execution (alias for _prepare_react_loop for streaming compatibility).
@@ -1447,4 +1461,5 @@ class OrchestratorCore:
             deep_think_mode=deep_think_mode,
             kg_context_str=kg_context_str,
             channel=channel,
+            agent_role=agent_role,
         )

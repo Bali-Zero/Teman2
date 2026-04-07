@@ -1100,6 +1100,12 @@ async def stream_workspace_agent(
                 session_id=session_id,
                 images=images_for_vision,
                 channel="workspace",
+                # VASSAL Phase 2: forward the JWT-derived AgentRole so the
+                # downstream tool_authorizer (called from reasoning.py via
+                # tool_executor.execute_tool) enforces per-role tool RBAC.
+                # agent_role is non-None here because we 403'd above for
+                # users not in TEAM_AGENTS.
+                agent_role=agent_role,
             ):
                 if event is None or not isinstance(event, dict):
                     continue

@@ -106,6 +106,13 @@ class AgentState:
     intent_type: str = "simple"  # Intent category from classifier (business_complex, etc.)
     evidence_score: float | None = None  # Confidence score from evidence evaluation (0.0–1.0)
     trusted_tools_used: bool = False  # Whether trusted tools (PricingTool, DB) were invoked
+    # VASSAL Phase 2: AgentRole carried as request-scoped state for the
+    # tool_authorizer. Set by the workspace endpoint via the orchestrator
+    # chain (stream_query → stream_query_core → _prepare_react_loop), read
+    # by reasoning.py at each execute_tool call site, forwarded to the
+    # authorizer in tool_executor.execute_tool. Typed as Any to avoid
+    # coupling this module to backend.services.agents.team_agent_config.
+    agent_role: Any | None = None  # AgentRole | None — see services.agents.team_agent_config
 
 
 class BaseTool(ABC):

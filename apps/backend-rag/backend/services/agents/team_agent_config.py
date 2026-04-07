@@ -56,6 +56,18 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "get_journey", "get_journey_next_steps",
         "recall_similar", "list_recent_episodes",
         "federation_inbox", "federation_status",
+        # Phase 2 v8: path Z runtime tools (agentic ReAct loop registry).
+        # These are the actual tools registered into AgenticRAGOrchestrator
+        # via service_initializer; without them in the allowlist, the
+        # tool_authorizer would default-deny every call from this role.
+        # See VASSAL_PHASE2_HANDOFF.md (a)1-2 for the gap analysis.
+        "vector_search",
+        "pricing",
+        "team_knowledge",
+        "knowledge_graph",
+        "calculator",
+        "vision",
+        "web_search",
     ],
     allowed_write_tools=[
         "log_interaction",
@@ -64,6 +76,11 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "complete_journey_step",
         "federation_send", "federation_mark_read",
         "save_episode",
+        # Phase 2 v8: path Z runtime write tool. image_generation is the
+        # only write-class runtime tool currently registered into the
+        # ReAct loop. Visa specialists do NOT get `timesheet` (clock-in/out
+        # is for executive consultants — product decision, see Phase 2 v8 brief).
+        "image_generation",
     ],
     blocked_tools=[
         "execute_plan", "create_execution_plan",
@@ -99,6 +116,16 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "recall_similar", "list_recent_episodes",
         "federation_inbox", "federation_status",
         "list_drive_files", "search_drive",
+        # Phase 2 v8: path Z runtime tools (agentic ReAct loop registry).
+        # Same gap analysis as ROLE_VISA_SPECIALIST — see
+        # VASSAL_PHASE2_HANDOFF.md (a)1-2.
+        "vector_search",
+        "pricing",
+        "team_knowledge",
+        "knowledge_graph",
+        "calculator",
+        "vision",
+        "web_search",
     ],
     allowed_write_tools=[
         "log_interaction",
@@ -110,6 +137,15 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "create_drive_folder", "create_client_drive_folder",
         "federation_send", "federation_mark_read",
         "save_episode",
+        # Phase 2 v8: path Z runtime write tools. Executive consultants get
+        # both image_generation (asset creation for clients) AND timesheet
+        # (clock-in/out — exec consultants track billable hours). Note:
+        # TimeSheetTool currently accepts a user-supplied `email` arg, so
+        # an authorized exec can technically clock in/out for ANY team
+        # member. Hardening tracked for Phase 6 (in-tool scope filter,
+        # not authorizer). See VASSAL_PHASE2_HANDOFF.md (a)4.
+        "image_generation",
+        "timesheet",
     ],
     blocked_tools=[
         "execute_plan",
