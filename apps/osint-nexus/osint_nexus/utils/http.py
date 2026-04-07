@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import httpx
-from fake_useragent import UserAgent
 
 from osint_nexus.config import (
     SCRAPE_MAX_DELAY,
@@ -20,7 +19,14 @@ from osint_nexus.config import (
 from osint_nexus.utils.logging import get_logger
 
 logger = get_logger("http")
-_ua = UserAgent(browsers=["chrome", "firefox", "edge"])
+
+# Stable Chrome UA. fake-useragent rotates to weird strings that hit cold
+# cache entries / WAF blocks on .go.id sites.
+_STABLE_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -40,7 +46,7 @@ async def get_client(**kwargs) -> AsyncIterator[httpx.AsyncClient]:
         "follow_redirects": True,
         "http2": True,
         "headers": {
-            "User-Agent": _ua.random,
+            "User-Agent": _STABLE_UA,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "id-ID,id;q=0.9,en;q=0.5",
             "Accept-Encoding": "gzip, deflate, br",
@@ -49,6 +55,12 @@ async def get_client(**kwargs) -> AsyncIterator[httpx.AsyncClient]:
     }
     if SCRAPE_PROXY:
         defaults["proxy"] = SCRAPE_PROXY
+
+    # Merge user headers into defaults instead of replacing them wholesale
+    user_headers = kwargs.pop("headers", None)
+    if user_headers:
+        defaults["headers"] = {**defaults["headers"], **user_headers}
+
     defaults.update(kwargs)
     async with httpx.AsyncClient(**defaults) as client:
         yield client

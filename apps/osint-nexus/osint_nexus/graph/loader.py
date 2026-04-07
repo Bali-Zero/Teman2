@@ -200,7 +200,15 @@ class GraphLoader:
         rel_type: str,
         properties: dict[str, Any] | None = None,
     ) -> None:
-        """Create or update a relationship between two nodes."""
+        """Create or update a relationship between two nodes.
+
+        Drops self-loops (from_name == to_name) to avoid NER noise.
+        """
+        if from_name.strip().lower() == to_name.strip().lower():
+            logger.debug("Skipping self-loop: %s -[%s]-> %s",
+                         from_name, rel_type, to_name)
+            return
+
         props = properties or {}
         props["updated_at"] = datetime.now(timezone.utc).isoformat()
 
