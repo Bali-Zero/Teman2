@@ -61,6 +61,7 @@ class OrchestratorStreamingCore:
         correlation_id: str,
         initial_user_context: dict[str, Any] | None = None,
         channel: str | None = None,
+        agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
     ) -> AsyncGenerator[dict, None]:
         """
         Core streaming query processing logic.
@@ -188,6 +189,7 @@ class OrchestratorStreamingCore:
             deep_think_mode=False,  # Will be determined by routing
             kg_context_str=kg_context_str,  # Pass pre-fetched KG context
             channel=channel,
+            agent_role=agent_role,  # VASSAL Phase 2 — stamps state.agent_role
         )
 
         # 4. Create chat session

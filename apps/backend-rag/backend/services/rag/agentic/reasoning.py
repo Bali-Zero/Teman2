@@ -371,11 +371,17 @@ class ReasoningEngine:
                                     },
                                 )
                                 result, duration = await execute_tool(
-                                    self.tool_map,
-                                    tc.tool_name,
-                                    tc.arguments,
-                                    user_id,
-                                    tool_execution_counter,
+                                    tool_map=self.tool_map,
+                                    tool_name=tc.tool_name,
+                                    arguments=tc.arguments,
+                                    user_id=user_id,
+                                    tool_execution_counter=tool_execution_counter,
+                                    # VASSAL Phase 2: forward request-scoped
+                                    # AgentRole to the tool_authorizer.
+                                    # state.agent_role is set by
+                                    # _prepare_react_loop from the workspace
+                                    # endpoint chain. None for legacy /stream.
+                                    agent_role=getattr(state, "agent_role", None),
                                 )
                                 return tc, result, duration
                             except Exception as e:
@@ -1195,11 +1201,14 @@ Do not invent information. If the context is insufficient, admit it.
 
                 logger.info(f"🔧 [Agent Stream] Calling tool: {tool_call.tool_name}")
                 tool_result, tool_duration = await execute_tool(
-                    self.tool_map,
-                    tool_call.tool_name,
-                    tool_call.arguments,
-                    user_id,
-                    tool_execution_counter,
+                    tool_map=self.tool_map,
+                    tool_name=tool_call.tool_name,
+                    arguments=tool_call.arguments,
+                    user_id=user_id,
+                    tool_execution_counter=tool_execution_counter,
+                    # VASSAL Phase 2: see parallel call in execute_react_loop
+                    # (non-streaming). Same forwarding pattern.
+                    agent_role=getattr(state, "agent_role", None),
                 )
                 tool_call.execution_time = tool_duration
 
