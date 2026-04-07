@@ -1072,6 +1072,37 @@ async def initialize_services(app: FastAPI) -> None:
     except Exception as e:
         logger.warning(f"RedisManager initialization failed: {e} — Redis features disabled")
 
+    # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
+    # Must happen after RedisManager (the service depends on it) and
+    # before anything that calls execute_tool (which reads the module-level
+    # authorizer and confirmation service singletons).
+    try:
+        from backend.services.agents.confirmation_service import ConfirmationService
+        from backend.services.agents.tool_authorizer import ToolAuthorizer
+        from backend.services.rag.agentic.tool_executor import configure_tool_executor
+
+        redis_mgr = getattr(app.state, "redis_manager", None)
+        confirmation_service = ConfirmationService(redis_manager=redis_mgr)
+        await confirmation_service.start()
+        app.state.confirmation_service = confirmation_service
+
+        authorizer = ToolAuthorizer()
+        configure_tool_executor(
+            authorizer=authorizer,
+            confirmation_service=confirmation_service,
+        )
+        logger.info(
+            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired "
+            "(Redis available=%s)",
+            getattr(redis_mgr, "available", False),
+        )
+    except Exception as e:
+        logger.warning(
+            "⚠️ VASSAL Phase 3: ConfirmationService wiring failed: %s — "
+            "confirmation gates will fail-closed (deny)",
+            e,
+        )
+
     # 1. Critical services (fail-fast)
     search_service, ai_client = await _init_critical_services(app)
 
