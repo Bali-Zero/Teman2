@@ -42,6 +42,10 @@ BONUS_PDFS: list[dict] = [
 EMPLOYEE_MAP: dict[str, int] = {
     "SAHIRA": 5,
     "KRISNA": 4,
+    "SURYA": 3,
+    "ADIT": 1,
+    "ARI": 2,
+    "DAMAR": 7,
 }
 
 
