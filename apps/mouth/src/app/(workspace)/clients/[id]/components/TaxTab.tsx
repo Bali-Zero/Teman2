@@ -1,12 +1,24 @@
 'use client';
 
-import React, { useState, useRef, useCallback, memo } from 'react';
-import { User, Building2, Calendar, FileText, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useCallback, memo, useEffect } from 'react';
+import { User, Building2, Calendar, FileText, Upload, X, CheckCircle, AlertCircle, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
 import type { Client, ClientCompanyLink } from '@/lib/api/crm/crm.types';
+
+// ============================================
+// TAX CONSULTANT DROPDOWN (Bali Zero tax team)
+// ============================================
+// 5 allowed values, kept in sync with backend migration 093 CHECK constraint.
+const TAX_CONSULTANTS: { value: string; label: string }[] = [
+  { value: 'veronika.tax@balizero.com', label: 'Veronika' },
+  { value: 'kadek.tax@balizero.com', label: 'Kadek' },
+  { value: 'dewaayu.tax@balizero.com', label: 'Dewa Ayu' },
+  { value: 'angel.tax@balizero.com', label: 'Angel' },
+  { value: 'faisha.tax@balizero.com', label: 'Faisha' },
+];
 
 // ============================================
 // TAX TYPES AND INTERFACES
@@ -411,6 +423,91 @@ const SideWorkspace = memo(function SideWorkspace({
 });
 
 // ============================================
+// TAX CONSULTANT SELECTOR
+// ============================================
+interface TaxConsultantSelectorProps {
+  clientId: number;
+  initialValue: string | null | undefined;
+  onSaved?: () => Promise<void> | void;
+}
+
+const TaxConsultantSelector = memo(function TaxConsultantSelector({
+  clientId,
+  initialValue,
+  onSaved,
+}: TaxConsultantSelectorProps) {
+  const [value, setValue] = useState<string>(initialValue ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Keep local state in sync if the parent's initialValue changes
+  // (e.g. after an external refresh).
+  useEffect(() => {
+    setValue(initialValue ?? '');
+  }, [initialValue]);
+
+  const handleChange = useCallback(
+    async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newValue = e.target.value;
+      const previous = value;
+      setValue(newValue);
+      setIsSaving(true);
+      try {
+        const user = await api.getProfile();
+        // null clears the assignment; backend accepts explicit null for this field.
+        await api.crm.updateClient(
+          clientId,
+          { tax_consultant: newValue || null },
+          user.email,
+        );
+        toast.success(
+          newValue
+            ? `Tax consultant: ${TAX_CONSULTANTS.find((c) => c.value === newValue)?.label ?? newValue}`
+            : 'Tax consultant cleared',
+        );
+        await onSaved?.();
+      } catch (err) {
+        setValue(previous); // revert on error
+        toast.error('Failed to update tax consultant', {
+          description: (err as Error).message,
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [clientId, value, onSaved],
+  );
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)]">
+      <UserCheck className="w-4 h-4 text-[var(--bz-accent)] shrink-0" />
+      <label
+        htmlFor={`tax-consultant-${clientId}`}
+        className="text-sm font-medium text-[var(--bz-text-1)]"
+      >
+        Tax Consultant
+      </label>
+      <select
+        id={`tax-consultant-${clientId}`}
+        value={value}
+        onChange={handleChange}
+        disabled={isSaving}
+        className="flex-1 max-w-[220px] px-3 py-1.5 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-base)] text-sm text-[var(--bz-text-1)] focus:outline-none focus:border-[var(--bz-accent)] transition-colors disabled:opacity-60"
+      >
+        <option value="">— not assigned —</option>
+        {TAX_CONSULTANTS.map((c) => (
+          <option key={c.value} value={c.value}>
+            {c.label}
+          </option>
+        ))}
+      </select>
+      {isSaving && (
+        <span className="text-xs text-[var(--bz-text-2)]">Saving…</span>
+      )}
+    </div>
+  );
+});
+
+// ============================================
 // TAX ID BADGE
 // ============================================
 function TaxIdBadge({
@@ -521,6 +618,13 @@ export function TaxTab({
         </div>
         <YearSelector selectedYear={selectedYear} onYearChange={setSelectedYear} />
       </div>
+
+      {/* Tax Consultant selector (Bali Zero team assignment) */}
+      <TaxConsultantSelector
+        clientId={clientId}
+        initialValue={client?.tax_consultant}
+        onSaved={onRefresh}
+      />
 
       {/* Tax identifiers from CRM */}
       {(() => {

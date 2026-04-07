@@ -114,6 +114,16 @@ export class ApiClient extends ApiClientBase {
   }
 
   /**
+   * Simple PUT request for endpoints that don't need domain-specific logic.
+   */
+  async put<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
    * Simple DELETE request for endpoints that don't need domain-specific logic.
    */
   async delete<T>(endpoint: string): Promise<T> {
