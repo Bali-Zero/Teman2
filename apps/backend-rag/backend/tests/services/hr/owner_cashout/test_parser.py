@@ -110,3 +110,40 @@ class TestParseBzTab:
             ["NAME", "PROCESS"],
         ]
         assert parse_bz_tab(rows) == []
+
+
+class TestParseBsTab:
+    def test_extracts_clients(self):
+        rows = load_fixture("bs_22_aug_sample.json")
+        result = parse_bs_tab(rows)
+        assert len(result) == 3
+        names = [r.client_name for r in result]
+        assert "JULIANNA JANOSI" in names
+        assert "EVA MARIE CASTEL" in names
+
+    def test_parses_bs_schema_amounts(self):
+        rows = load_fixture("bs_22_aug_sample.json")
+        result = parse_bs_tab(rows)
+        julianna = next(r for r in result if r.client_name == "JULIANNA JANOSI")
+        assert julianna.entity == "BS"
+        assert julianna.process == "BRIDGING VISA"
+        assert julianna.pnbp_idr == 1_000_000
+        assert julianna.margin_bs_idr == 3_000_000
+        assert julianna.final_price_idr == 4_000_000
+        assert julianna.total_income_idr == 0  # BS doesn't populate this
+        assert julianna.margin_bz_idr == 0     # BS doesn't populate this
+        assert julianna.note is None
+
+    def test_skips_empty_rows(self):
+        rows = load_fixture("bs_22_aug_sample.json")
+        result = parse_bs_tab(rows)
+        assert all(r.client_name for r in result)
+
+    def test_row_index_preserved(self):
+        rows = load_fixture("bs_22_aug_sample.json")
+        result = parse_bs_tab(rows)
+        julianna = next(r for r in result if r.client_name == "JULIANNA JANOSI")
+        assert julianna.row_index == 3
+
+    def test_empty_input(self):
+        assert parse_bs_tab([]) == []
