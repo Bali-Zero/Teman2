@@ -56,6 +56,7 @@ class PulseEngine:
         journal: Any = None,
         attention: Any = None,
         maturation: Any = None,
+        cortex: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -85,6 +86,7 @@ class PulseEngine:
         self._journal = journal
         self._attention = attention
         self._maturation = maturation
+        self._cortex = cortex
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
@@ -287,6 +289,14 @@ class PulseEngine:
             if self._attention is not None and _did_dream:
                 self._attention.reset()
 
+            # ── CORTEX HOOK 4: during sleep ──
+            if self._cortex is not None:
+                try:
+                    sleep_summary = await self._cortex.during_sleep()
+                    logger.info(f"Cortex sleep: {sleep_summary}")
+                except Exception as e:
+                    logger.warning(f"Cortex hook 4 failed: {e}")
+
             return PulseResult(
                 timestamp=now,
                 health_status=status,
@@ -341,6 +351,20 @@ class PulseEngine:
                 max_tier = 0
                 logger.debug("Attention budget low — restricting to tier 0 reasoning")
 
+        # ── CORTEX HOOK 1: before reasoning ──
+        skill_context = ""
+        if self._cortex is not None:
+            try:
+                situation = {
+                    "health_status": status.value,
+                    "response_time_ms": response_ms,
+                    "stress": self._homeostatic.state.stress_level if self._homeostatic else 0.0,
+                    "sensors": sensor_metadata,
+                }
+                skill_context = await self._cortex.before_reasoning(situation)
+            except Exception as e:
+                logger.warning(f"Cortex hook 1 failed: {e}")
+
         if status != HealthStatus.GREEN and self._reasoner and self._interpreter:
             try:
                 proposal = await self._reasoner.think(
@@ -358,6 +382,7 @@ class PulseEngine:
                     trend_context=trend_context,
                     ltm_context=ltm_context,
                     journal_context=journal_context,
+                    skill_context=skill_context,
                 )
 
                 thought_tier = proposal.tier_used
@@ -524,6 +549,7 @@ class PulseEngine:
                 logger.warning(f"Self-model update failed: {e}")
 
         # 9. EPISODIC MEMORY — record significant events
+        episode_id: int | None = None
         if self._episodic is not None and self._episodic.should_record(
             health_status=status.value, action_taken=action
         ):
@@ -547,9 +573,34 @@ class PulseEngine:
                     outcome="partial",  # actual outcome updated in future phase (post-action feedback loop)
                     lesson=action_reason or "no action needed",
                 )
-                await self._episodic.store(ep)
+                episode_id = await self._episodic.store(ep)
             except Exception as e:
                 logger.warning(f"Episodic memory store failed: {e}")
+
+        # ── CORTEX HOOK 2: after action ──
+        if self._cortex is not None:
+            try:
+                await self._cortex.after_action(
+                    episode_data=None,
+                    proposal=proposal if "proposal" in locals() else None,
+                    action=action,
+                    episode_id=episode_id,
+                    current_pulse=pulse_number,
+                )
+            except Exception as e:
+                logger.warning(f"Cortex hook 2 failed: {e}")
+
+        # ── CORTEX HOOK 3: during idle ──
+        if self._cortex is not None and status == HealthStatus.GREEN:
+            try:
+                idle_state = {
+                    "stress": self._homeostatic.state.stress_level if self._homeostatic else 0.0,
+                    "attention_remaining": self._attention.available() if self._attention else 100,
+                    "phase": self._maturation.phase.value if self._maturation else "unknown",
+                }
+                await self._cortex.during_idle(idle_state)
+            except Exception as e:
+                logger.warning(f"Cortex hook 3 failed: {e}")
 
         return PulseResult(
             timestamp=now,

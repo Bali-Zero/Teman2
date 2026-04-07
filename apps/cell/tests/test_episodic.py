@@ -72,6 +72,8 @@ class TestEpisodicMemory:
     @pytest.mark.asyncio
     async def test_store_episode(self, mock_pool: AsyncMock) -> None:
         mem = EpisodicMemory(pool=mock_pool, max_episodes=1000)
+        conn = await mock_pool.acquire().__aenter__()
+        conn.fetchval.return_value = 42
         ep = Episode(
             situation={"health": "red"},
             emotion="alert",
@@ -79,9 +81,9 @@ class TestEpisodicMemory:
             outcome="success",
             lesson="Logs showed OOM",
         )
-        await mem.store(ep)
-        conn = await mock_pool.acquire().__aenter__()
-        conn.execute.assert_called_once()
+        result = await mem.store(ep)
+        assert result == 42
+        conn.fetchval.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_recall_returns_most_activated(self, mock_pool: AsyncMock) -> None:
