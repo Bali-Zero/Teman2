@@ -937,6 +937,16 @@ def _surgeon_core(
 
     logger.info(f"Worktree created: {worktree_path}")
 
+    # V4: Pre-fix snapshot
+    _snapshot_tag = None
+    _rollback_engine = None
+    try:
+        from rollback_engine import RollbackEngine
+        _rollback_engine = RollbackEngine()
+        _snapshot_tag = _rollback_engine.create_pre_fix_snapshot(branch_name)
+    except Exception as _re:
+        logger.debug(f"Rollback engine not available: {_re}")
+
     try:
         # --- INVOKE OPENCLAW ---
 
@@ -1022,6 +1032,20 @@ def _surgeon_core(
         err = run_pytest_in_worktree(worktree_path, baseline_passed)
         if err:
             _record_failure(state, run_id, ruff_code, err)
+            # V4: Rollback to snapshot + log decision
+            if _snapshot_tag and _rollback_engine is not None:
+                try:
+                    _rollback_engine.rollback_to_snapshot(_snapshot_tag, branch_name)
+                    from decision_logger import log_decision_sync
+                    log_decision_sync(
+                        run_id, "surgeon", f"rollback_{ruff_code}",
+                        f"Test failure after fix: {err[:200]}",
+                        "warning", "rollback",
+                        rationale="Pytest failed after fix, reverted to pre-fix state",
+                        rollback_plan=f"Reverted to tag {_snapshot_tag}",
+                    )
+                except Exception:
+                    pass
             cleanup_worktree(worktree_path, branch_name)
             write_last_json("core_guardian", "failed", detail=f"TEST FAILED: {err[:200]}")
             return _fail(run_id, f"TEST FAILED: {err}")
@@ -1060,6 +1084,48 @@ def _surgeon_core(
             write_last_json("core_guardian", "failed", detail=f"merge failed: {merge_error}")
         else:
             write_last_json("core_guardian", "ok", detail=f"merged {branch_name}")
+
+            # V4: Record success in rollback engine + spawn regression monitor
+            if _rollback_engine is not None:
+                try:
+                    _rollback_engine.record_success()
+                except Exception:
+                    pass
+
+            # V4: Spawn regression monitor as background process
+            _regression_script = Path(__file__).parent / "regression_monitor.py"
+            if _regression_script.exists() and _snapshot_tag:
+                try:
+                    _reg_log = AGENT_DIR / "regression_monitor.log"
+                    _reg_log.parent.mkdir(parents=True, exist_ok=True)
+                    _log_fd = open(_reg_log, "a")
+                    proc = subprocess.Popen(
+                        [str(VENV_PYTHON), str(_regression_script),
+                         "--branch", branch_name,
+                         "--tag", _snapshot_tag or "",
+                         "--duration", "3600"],
+                        cwd=str(PROJECT_ROOT),
+                        stdout=_log_fd,
+                        stderr=subprocess.STDOUT,
+                    )
+                    # Close fd in parent — child inherits its own copy
+                    _log_fd.close()
+                    logger.info(f"Regression monitor spawned for {branch_name} (pid={proc.pid})")
+                except Exception as _re:
+                    logger.debug(f"Regression monitor spawn failed: {_re}")
+
+            # V4: Log decision
+            try:
+                from decision_logger import log_decision_sync
+                log_decision_sync(
+                    run_id, "surgeon", f"fix_{ruff_code}",
+                    f"Fixed {ruff_code} in {target_file}",
+                    "info", "auto_fix",
+                    rationale=f"Deterministic fix, all gates passed",
+                    metadata={"branch": branch_name, "cost_usd": cost_usd},
+                )
+            except Exception:
+                pass
 
         # 16. Record success
         state["consecutive_failures"] = 0

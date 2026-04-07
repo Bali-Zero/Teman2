@@ -150,6 +150,21 @@ def run_guardian(scout_only: bool = False, dry_run: bool = False) -> dict:
             "message": result["message"][:100],
         })
 
+        # V4: Log decision to DB
+        try:
+            from decision_logger import log_decision_sync
+            _run_id = f"guardian-{start.strftime('%Y%m%d%H%M')}"
+            log_decision_sync(
+                _run_id, "cron_guardian", f"surgeon_fix_{code}",
+                f"{code} in {target} ({count} violations)",
+                "info" if result["success"] else "warning",
+                "auto_fix" if result["success"] else "fix_failed",
+                rationale=result["message"][:200],
+                metadata={"branch": result.get("branch", ""), "dry_run": dry_run},
+            )
+        except Exception:
+            pass  # Decision logging is best-effort
+
         if not result["success"]:
             logger.warning(f"Fix failed: {result['message'][:100]}")
             # Don't stop on failure — Surgeon's circuit breaker handles that
@@ -193,12 +208,42 @@ def run_guardian(scout_only: bool = False, dry_run: bool = False) -> dict:
         pass
 
     logger.info(f"=== Guardian Complete: {fixed} fixed, {failed} failed, {duration:.0f}s ===")
+
+    # 7. V5: Run learning cycle (pattern mining, weight calibration, fragility)
+    learn_summary = _run_learn_cycle()
+    if learn_summary:
+        summary["learn"] = learn_summary
+
     return summary
+
+
+def _run_learn_cycle() -> dict | None:
+    """Run the V5 learning cycle. Best-effort — never blocks the guardian."""
+    try:
+        from learn import run_learning_cycle_sync
+        logger.info("Running V5 learning cycle...")
+        result = run_learning_cycle_sync()
+        patterns = result.get("patterns_found", 0)
+        proposals = result.get("rule_proposals", 0)
+        confidence = result.get("weight_calibration", {}).get("confidence", 0)
+        logger.info(
+            f"Learn cycle: {patterns} patterns, {proposals} proposals, "
+            f"calibration confidence={confidence:.0%}"
+        )
+        return result
+    except Exception as e:
+        logger.warning(f"Learn cycle failed (non-blocking): {e}")
+        return None
 
 
 if __name__ == "__main__":
     scout_only = "--scout-only" in sys.argv
     dry_run = "--dry-run" in sys.argv
+    learn_only = "--learn-only" in sys.argv
 
-    result = run_guardian(scout_only=scout_only, dry_run=dry_run)
-    print(json.dumps(result, indent=2))
+    if learn_only:
+        result = _run_learn_cycle()
+        print(json.dumps(result or {}, indent=2, default=str))
+    else:
+        result = run_guardian(scout_only=scout_only, dry_run=dry_run)
+        print(json.dumps(result, indent=2))
