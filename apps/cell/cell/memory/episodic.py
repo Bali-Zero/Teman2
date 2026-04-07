@@ -78,13 +78,14 @@ class EpisodicMemory:
             return True
         return False
 
-    async def store(self, episode: Episode) -> None:
-        """Persist an episode to PostgreSQL."""
+    async def store(self, episode: Episode) -> int:
+        """Persist an episode to PostgreSQL. Returns the new episode id."""
         async with self._pool.acquire() as conn:
-            await conn.execute(
+            row_id = await conn.fetchval(
                 """INSERT INTO cell_episodes
                    (timestamp, situation, emotion, action_taken, outcome, lesson, recall_count)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)
+                   RETURNING id""",
                 episode.timestamp,
                 json.dumps(episode.situation),
                 episode.emotion,
@@ -93,7 +94,8 @@ class EpisodicMemory:
                 episode.lesson,
                 episode.recall_count,
             )
-        logger.info(f"Episode stored: emotion={episode.emotion} action={episode.action_taken} outcome={episode.outcome}")
+        logger.info(f"Episode stored: id={row_id} emotion={episode.emotion} action={episode.action_taken} outcome={episode.outcome}")
+        return int(row_id)
 
     async def recall(self, situation: dict[str, Any], limit: int = 5) -> list[Episode]:
         """Retrieve the most relevant episodes for a given situation.
