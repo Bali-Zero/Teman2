@@ -87,6 +87,7 @@ function AdminDashboardView({ data }: { data: AdminDashboard }) {
 }
 
 function PersonalDashboardView({ data }: { data: PersonalDashboard }) {
+  const annualBalance = data.leave_balances?.find((b) => b.code === "annual");
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-100">My HR Dashboard</h1>
@@ -121,8 +122,8 @@ function PersonalDashboardView({ data }: { data: PersonalDashboard }) {
           icon={Calendar}
           label="Leave Balance"
           value={
-            data.leave_balances?.[0]
-              ? `${data.leave_balances[0].allocated_days - data.leave_balances[0].used_days - data.leave_balances[0].pending_days} days`
+            annualBalance
+              ? `${annualBalance.allocated_days - annualBalance.used_days - annualBalance.pending_days} days`
               : "N/A"
           }
           sub="annual leave remaining"
