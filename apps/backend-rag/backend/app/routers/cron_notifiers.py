@@ -1,10 +1,11 @@
 """
 Cron Notifiers Router
 
-Exposes POST endpoints for the three daily notification jobs:
+Exposes POST endpoints for the daily notification jobs:
 1. Visa/KITAS/Passport expiry alerts → team leaders + zero@
 2. Unpaid invoice reminders → asya@
 3. Stale practice alerts → team leaders + zero@
+4. LKPM deadline reminders → tax consultants + zero@
 
 All endpoints are API-key authenticated (same key as MCP/OpenClaw).
 Designed to be called from Air cron or OpenClaw scheduler.
@@ -92,6 +93,20 @@ async def run_stale_practice_notifier(request: Request) -> dict[str, Any]:
     result = await notifier.check_and_notify()
     logger.info(f"Stale practice notifier: {result}")
     return {"service": "stale_practices", **result}
+
+
+@router.post("/lkpm-deadlines")
+async def run_lkpm_deadline_notifier(request: Request) -> dict[str, Any]:
+    """Check pending LKPM reports and remind tax consultants of approaching deadlines."""
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    from backend.services.compliance.lkpm_deadline_notifier import LKPMDeadlineNotifier
+
+    notifier = LKPMDeadlineNotifier(db_pool)
+    result = await notifier.check_and_notify()
+    logger.info(f"LKPM deadline notifier: {result}")
+    return {"service": "lkpm_deadlines", **result}
 
 
 @router.post("/welcome-pending")
@@ -262,6 +277,16 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Stale practice notifier failed: {e}", exc_info=True)
         results["stale_practices"] = {"error": str(e)}
+
+    # 4. LKPM deadlines (kill switch handled inside the notifier)
+    try:
+        from backend.services.compliance.lkpm_deadline_notifier import LKPMDeadlineNotifier
+
+        notifier = LKPMDeadlineNotifier(db_pool)
+        results["lkpm_deadlines"] = await notifier.check_and_notify()
+    except Exception as e:
+        logger.error(f"LKPM deadline notifier failed: {e}", exc_info=True)
+        results["lkpm_deadlines"] = {"error": str(e)}
 
     logger.info(f"All notifiers completed: {results}")
     return results
