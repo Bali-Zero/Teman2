@@ -16,6 +16,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.crm_utils import can_view_all_practices, is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
@@ -49,19 +50,6 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
 MAX_LIMIT = 200
-
-# Module-level persistent httpx client (Golden Rule 10)
-_module_http_client: Any = None
-
-
-def _get_http_client() -> Any:
-    """Return a persistent module-level httpx.AsyncClient, creating it lazily."""
-    import httpx as _httpx
-
-    global _module_http_client
-    if _module_http_client is None:
-        _module_http_client = _httpx.AsyncClient(timeout=30.0)
-    return _module_http_client
 
 
 async def _create_hr_bonus_on_completed(
@@ -176,41 +164,29 @@ async def _notify_hr_bonus_pending(
     practice_id: int,
 ) -> None:
     """Send email to HR admin (Asya) when a bonus needs approval."""
-    try:
-        import os
+    from html import escape
 
-        amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
-        practice_label = practice_type.replace("_", " ").title()
+    amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
+    practice_label = practice_type.replace("_", " ").title()
 
-        api_url = os.getenv(
-            "INTERNAL_EMAIL_API_URL",
-            "https://nuzantara-rag.fly.dev/api/notifications/send-email",
-        )
-        api_key = os.getenv("NUZANTARA_API_KEY", "")
+    safe_email = escape(employee_email)
+    safe_label = escape(practice_label)
 
-        html_body = (
-            f"<p>A new bonus entry needs your approval.</p>"
-            f"<p><strong>Employee:</strong> {employee_email}<br>"
-            f"<strong>Practice:</strong> {practice_label} (#{practice_id})<br>"
-            f"<strong>Amount:</strong> {amount_fmt}</p>"
-            f'<p><a href="https://kita.balizero.com/hr/bonuses">Approve in HR Dashboard</a></p>'
-        )
+    html_body = (
+        f"<p>A new bonus entry needs your approval.</p>"
+        f"<p><strong>Employee:</strong> {safe_email}<br>"
+        f"<strong>Practice:</strong> {safe_label} (#{practice_id})<br>"
+        f"<strong>Amount:</strong> {amount_fmt}</p>"
+        f'<p><a href="https://kita.balizero.com/hr/bonuses">'
+        f"Approve in HR Dashboard</a></p>"
+    )
 
-        client = _get_http_client()
-        response = await client.post(
-            api_url,
-            headers={"X-API-Key": api_key},
-            json={
-                "to": "asya@balizero.com",
-                "subject": f"HR Bonus Pending: {practice_label} — {amount_fmt}",
-                "body": html_body,
-            },
-        )
-        response.raise_for_status()
-
-        logger.info(f"HR bonus notification sent to asya@balizero.com for practice {practice_id}")
-    except Exception as e:
-        logger.warning(f"HR bonus email notification failed: {e}")
+    await send_internal_email(
+        to="asya@balizero.com",
+        subject=f"HR Bonus Pending: {practice_label} — {amount_fmt}",
+        body=html_body,
+        log_context=f"crm bonus practice={practice_id}",
+    )
 
 
 DEFAULT_LIMIT = 50
