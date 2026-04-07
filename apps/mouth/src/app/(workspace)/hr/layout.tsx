@@ -7,25 +7,37 @@ import {
   Banknote,
   Gift,
   Calendar,
+  Lock,
   Settings,
   LayoutDashboard,
   Users,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { isHRAdmin } from "@/lib/hr/admin";
+import { isOwner } from "@/lib/auth/owner";
 
-const allNavItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  adminOnly: boolean;
+  ownerOnly?: boolean;
+};
+
+const allNavItems: NavItem[] = [
   { href: "/hr", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { href: "/hr/employees", label: "Employees", icon: Users, adminOnly: true },
   { href: "/hr/bonuses", label: "Bonuses", icon: Gift, adminOnly: false },
   { href: "/hr/payroll", label: "Payroll", icon: Banknote, adminOnly: false },
   { href: "/hr/leave", label: "Leave", icon: Calendar, adminOnly: false },
   { href: "/hr/settings", label: "Settings", icon: Settings, adminOnly: true },
+  { href: "/hr/owner-cashout", label: "Owner Cashout", icon: Lock, adminOnly: false, ownerOnly: true },
 ];
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwnerUser, setIsOwnerUser] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -33,14 +45,19 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       .getProfile()
       .then((user) => {
         setIsAdmin(isHRAdmin(user));
+        setIsOwnerUser(isOwner(user?.email));
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
 
   const navItems = loaded
-    ? allNavItems.filter((item) => !item.adminOnly || isAdmin)
-    : allNavItems.filter((item) => !item.adminOnly);
+    ? allNavItems.filter((item) => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.ownerOnly && !isOwnerUser) return false;
+        return true;
+      })
+    : allNavItems.filter((item) => !item.adminOnly && !item.ownerOnly);
 
   return (
     <div className="flex flex-col md:flex-row h-full">
