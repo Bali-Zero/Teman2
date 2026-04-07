@@ -290,43 +290,6 @@ class ZantaraAIClient:
 
         return gemini_history, last_user_message
 
-    def _extract_response_text(self, response: Any) -> str:
-        """
-        Extract text from Gemini response, handling safety blocks.
-
-        Args:
-            response: Gemini API response object
-
-        Returns:
-            Extracted text content
-
-        Raises:
-            ValueError: If response is blocked by safety filters and no content available
-        """
-        if not hasattr(response, "candidates") or not response.candidates:
-            return response.text if hasattr(response, "text") else ""
-
-        candidate = response.candidates[0]
-
-        # Check if blocked by safety filters
-        if hasattr(candidate, "safety_ratings"):
-            blocked = any(
-                rating.probability.name in ["HIGH", "MEDIUM"] for rating in candidate.safety_ratings
-            )
-            if blocked:
-                # Try to extract content anyway from parts
-                if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
-                    if candidate.content.parts:
-                        return candidate.content.parts[0].text
-                    else:
-                        raise ValueError(
-                            "Response blocked by safety filters and no content available",
-                        )
-                else:
-                    raise ValueError("Response blocked by safety filters")
-
-        return response.text
-
     def _estimate_tokens(
         self, messages: list[dict[str, str]], response_text: str,
     ) -> dict[str, int]:
