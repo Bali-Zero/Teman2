@@ -48,7 +48,7 @@ class TestNotifyLeaveRequestPending:
         call_kwargs = mock_client.post.call_args.kwargs
         payload = call_kwargs["json"]
         assert payload["to"] == "tax@balizero.com"
-        assert payload["cc"] == ["zero@balizero.com", "asya@balizero.com"]
+        assert payload["cc"] == "zero@balizero.com, asya@balizero.com"
         assert "Kadek" in payload["subject"]
         assert "5 days" in payload["subject"]
         assert "Annual Leave" in payload["body"]
@@ -144,3 +144,56 @@ class TestNotifyLeaveRequestPending:
         ):
             # Must not raise
             await notify_leave_request_pending(**sample_call_args)
+
+    @pytest.mark.asyncio
+    async def test_payload_validates_against_send_email_request_schema(
+        self, sample_call_args: dict,
+    ) -> None:
+        """Regression: cc must be comma-separated str, not list (commit 08c4df17c)."""
+        from backend.app.modules.notifications.router import SendEmailRequest
+
+        captured: dict = {}
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+
+        async def fake_post(url: str, **kwargs: object) -> MagicMock:
+            captured["payload"] = kwargs["json"]
+            return mock_response
+
+        mock_client.post = AsyncMock(side_effect=fake_post)
+
+        with patch(
+            "backend.app.services.hr.hr_leave_notifier.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            await notify_leave_request_pending(**sample_call_args)
+
+        # Will raise pydantic.ValidationError if schema drifts
+        SendEmailRequest(**captured["payload"])
+
+    @pytest.mark.asyncio
+    async def test_html_injection_in_reason_is_escaped(
+        self, sample_call_args: dict,
+    ) -> None:
+        """Regression: free-text reason must not break HTML structure."""
+        sample_call_args["reason"] = "</p><script>alert(1)</script>"
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch(
+            "backend.app.services.hr.hr_leave_notifier.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            await notify_leave_request_pending(**sample_call_args)
+
+        body = mock_client.post.call_args.kwargs["json"]["body"]
+        assert "<script>" not in body
+        assert "&lt;script&gt;" in body
