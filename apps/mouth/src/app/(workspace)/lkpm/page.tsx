@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Loader2,
   ClipboardCheck,
@@ -11,12 +11,31 @@ import {
   Calendar,
   Filter,
   Plus,
+  Key,
+  KeyRound,
+  Copy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/toast';
 import { logger } from '@/lib/logger';
 import { lkpmApi } from '@/lib/api/workspace/lkpm.api';
-import type { LKPMBatchItem, LKPMDeadline } from '@/lib/api/portal/portal.types';
+import type {
+  LKPMBatchItem,
+  LKPMDeadline,
+  LKPMOSSCredentials,
+} from '@/lib/api/portal/portal.types';
+
+// Tax consultants — kept in sync with backend migration 093.
+const TAX_CONSULTANTS: { value: string; label: string }[] = [
+  { value: 'veronika.tax@balizero.com', label: 'Veronika' },
+  { value: 'kadek.tax@balizero.com', label: 'Kadek' },
+  { value: 'dewaayu.tax@balizero.com', label: 'Dewa Ayu' },
+  { value: 'angel.tax@balizero.com', label: 'Angel' },
+  { value: 'faisha.tax@balizero.com', label: 'Faisha' },
+];
+
+const consultantLabel = (email: string | null | undefined) =>
+  email ? TAX_CONSULTANTS.find((c) => c.value === email)?.label ?? email.split('@')[0] : null;
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'] as const;
 type StatusFilter = 'all' | 'draft' | 'validated' | 'approved' | 'submitted';
@@ -33,6 +52,10 @@ export default function LKPMBatchPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [validatingId, setValidatingId] = useState<number | null>(null);
+  const [assigningId, setAssigningId] = useState<number | null>(null);
+  const [credsLoadingId, setCredsLoadingId] = useState<number | null>(null);
+  // draft_id -> credentials object (shown inline below the row)
+  const [openCreds, setOpenCreds] = useState<Record<number, LKPMOSSCredentials>>({});
 
   useEffect(() => {
     loadData();
@@ -82,6 +105,62 @@ export default function LKPMBatchPage() {
       logger.error(`LKPM mark submitted failed ${draftId}`, {}, err as Error);
     }
   };
+
+  const handleAssign = async (draftId: number, newAssignee: string) => {
+    const value = newAssignee === '' ? null : newAssignee;
+    setAssigningId(draftId);
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((it) => (it.id === draftId ? { ...it, lkpm_assigned_to: value } : it)),
+    );
+    try {
+      await lkpmApi.assignReport(draftId, value);
+      success(
+        'Assignment updated',
+        value ? `Assigned to ${consultantLabel(value)}` : 'Assignment cleared',
+      );
+    } catch (err) {
+      error('Failed to update assignment', 'Please try again');
+      logger.error(`LKPM assign failed ${draftId}`, {}, err as Error);
+      loadData(); // refresh to revert optimistic change
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const handleToggleCreds = async (item: LKPMBatchItem) => {
+    // Toggle closed if already open
+    if (openCreds[item.id]) {
+      setOpenCreds((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+      return;
+    }
+    setCredsLoadingId(item.id);
+    try {
+      const creds = await lkpmApi.getCredentials(item.client_id);
+      setOpenCreds((prev) => ({ ...prev, [item.id]: creds }));
+    } catch (err) {
+      error('Failed to load credentials', (err as Error).message || 'Check access rights');
+      logger.error(`LKPM creds fetch failed client=${item.client_id}`, {}, err as Error);
+    } finally {
+      setCredsLoadingId(null);
+    }
+  };
+
+  const handleCopy = useCallback(
+    async (text: string, label: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        success('Copied', `${label} copied to clipboard`);
+      } catch {
+        error('Copy failed', 'Your browser blocked clipboard access');
+      }
+    },
+    [success, error],
+  );
 
   const filteredItems =
     statusFilter === 'all' ? items : items.filter((item) => item.status === statusFilter);
@@ -295,6 +374,8 @@ export default function LKPMBatchPage() {
               >
                 <th className="text-left px-4 py-3">Company</th>
                 <th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Assigned to</th>
+                <th className="text-center px-4 py-3">OSS</th>
                 <th className="text-right px-4 py-3">Realized Total</th>
                 <th className="text-center px-4 py-3">Alerts</th>
                 <th className="text-right px-4 py-3">Actions</th>
@@ -304,7 +385,7 @@ export default function LKPMBatchPage() {
               {filteredItems.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-sm"
                     style={{ color: 'var(--bz-text-2)' }}
                   >
@@ -313,10 +394,61 @@ export default function LKPMBatchPage() {
                 </tr>
               ) : (
                 filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-[rgba(255,255,255,0.05)] transition-colors">
+                  <React.Fragment key={item.id}>
+                  <tr className="hover:bg-[rgba(255,255,255,0.05)] transition-colors">
                     <td className="px-4 py-3 font-medium">{item.company_name}</td>
                     <td className="px-4 py-3">
                       <BatchStatusBadge status={item.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={item.lkpm_assigned_to ?? ''}
+                        onChange={(e) => handleAssign(item.id, e.target.value)}
+                        disabled={assigningId === item.id}
+                        className="rounded border px-2 py-1 text-xs backdrop-blur-md"
+                        style={{
+                          background: 'rgba(35,35,40,0.6)',
+                          borderColor: 'rgba(255,255,255,0.05)',
+                          color: item.lkpm_assigned_to ? 'var(--bz-text-1)' : 'var(--bz-text-2)',
+                        }}
+                        aria-label={`Assign ${item.company_name} tax consultant`}
+                      >
+                        <option value="">— none —</option>
+                        {TAX_CONSULTANTS.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => handleToggleCreds(item)}
+                        disabled={credsLoadingId === item.id}
+                        className="px-2 py-1 rounded text-xs font-medium inline-flex items-center gap-1"
+                        style={{
+                          background: openCreds[item.id]
+                            ? 'rgba(212, 132, 90, 0.2)'
+                            : 'rgba(255,255,255,0.05)',
+                          color: openCreds[item.id] ? '#d4845a' : 'var(--bz-text-2)',
+                        }}
+                        aria-label="Show OSS credentials"
+                        aria-expanded={!!openCreds[item.id]}
+                      >
+                        {credsLoadingId === item.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : openCreds[item.id] ? (
+                          <>
+                            <KeyRound className="w-3 h-3" />
+                            Hide
+                          </>
+                        ) : (
+                          <>
+                            <Key className="w-3 h-3" />
+                            Show
+                          </>
+                        )}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-xs">
                       {formatIDR(item.realized_total)}
@@ -395,6 +527,76 @@ export default function LKPMBatchPage() {
                       </div>
                     </td>
                   </tr>
+                  {openCreds[item.id] && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-3"
+                        style={{
+                          background: 'rgba(212, 132, 90, 0.06)',
+                          borderLeft: '3px solid var(--bz-accent-warm)',
+                        }}
+                      >
+                        <div className="flex items-center gap-4 flex-wrap text-xs">
+                          <span
+                            className="font-semibold uppercase tracking-wide"
+                            style={{ color: '#d4845a' }}
+                          >
+                            OSS Credentials
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span style={{ color: 'var(--bz-text-2)' }}>Username:</span>
+                            <code
+                              className="font-mono px-2 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--bz-text-1)' }}
+                            >
+                              {openCreds[item.id].oss_username ?? '—'}
+                            </code>
+                            {openCreds[item.id].oss_username && (
+                              <button
+                                onClick={() =>
+                                  handleCopy(openCreds[item.id].oss_username!, 'Username')
+                                }
+                                className="p-1 rounded hover:bg-[rgba(255,255,255,0.08)]"
+                                aria-label="Copy username"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span style={{ color: 'var(--bz-text-2)' }}>Password:</span>
+                            <code
+                              className="font-mono px-2 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--bz-text-1)' }}
+                            >
+                              {openCreds[item.id].oss_password ?? '—'}
+                            </code>
+                            {openCreds[item.id].oss_password && (
+                              <button
+                                onClick={() =>
+                                  handleCopy(openCreds[item.id].oss_password!, 'Password')
+                                }
+                                className="p-1 rounded hover:bg-[rgba(255,255,255,0.08)]"
+                                aria-label="Copy password"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          {openCreds[item.id].oss_creds_updated_at && (
+                            <span style={{ color: 'var(--bz-text-2)' }}>
+                              Updated:{' '}
+                              {new Date(openCreds[item.id].oss_creds_updated_at!).toLocaleDateString(
+                                'en-GB',
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
