@@ -1,5 +1,5 @@
 [project]
-name = "browser-core"
+name = "nuzantara-browser-core"
 version = "0.1.0"
 description = "Shared stealth Playwright browser manager for Nuzantara apps"
 requires-python = ">=3.11"

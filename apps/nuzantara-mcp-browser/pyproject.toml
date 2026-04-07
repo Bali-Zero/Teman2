@@ -3,13 +3,13 @@ name = "nuzantara-mcp-browser"
 version = "0.1.0"
 description = "MCP server exposing Nuzantara's stealth browser-core"
 requires-python = ">=3.11"
-# NOTE on browser-core: resolved via [tool.uv.sources] with `uv`.
-# For pip: install local browser-core first, then this package:
+# NOTE on nuzantara-browser-core: resolved via [tool.uv.sources] with `uv`.
+# For pip: install local package first, then this package:
 #   pip install -e ../../packages/browser-core && pip install -e ".[dev]"
 dependencies = [
     "fastmcp>=2.0",
     "playwright>=1.40",
-    "browser-core",
+    "nuzantara-browser-core",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +22,7 @@ dev = [
 nuzantara-mcp-browser = "nuzantara_mcp_browser.server:main"
 
 [tool.uv.sources]
-browser-core = { path = "../../packages/browser-core", editable = true }
+nuzantara-browser-core = { path = "../../packages/browser-core", editable = true }
 
 [build-system]
 requires = ["setuptools>=69.0"]

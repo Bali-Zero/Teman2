@@ -1,4 +1,4 @@
-"""browser-core — shared stealth Playwright manager for Nuzantara."""
+"""nuzantara-browser-core — shared stealth Playwright manager for Nuzantara."""
 from browser_core.manager import (
     BrowserConfig,
     BrowserError,
