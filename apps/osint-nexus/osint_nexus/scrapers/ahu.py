@@ -83,57 +83,50 @@ class AHUScraper(BaseScraper):
             try:
                 await random_delay(1, 3)
 
-                search_input = page.locator("input[type='text']").first
+                # AHU uses input[name='nama'] — no submit button, Enter key triggers search
+                search_input = page.locator("input[name='nama']")
                 await search_input.fill(query)
                 await random_delay(0.5, 1.5)
+                await search_input.press("Enter")
 
-                submit_btn = page.locator(
-                    "button[type='submit'], input[type='submit']"
-                ).first
-                await submit_btn.click()
                 await page.wait_for_load_state("networkidle", timeout=15000)
                 await random_delay(1, 2)
 
-                rows = await page.locator("table tbody tr").all()
-                self.logger.info("AHU search '%s': %d results", query, len(rows))
+                # AHU renders results as div cards inside section#hasil_cari,
+                # NOT as table rows. Each card is div.cl0 or div.cl1.
+                cards = await page.locator("section#hasil_cari div[class^='cl']").all()
+                self.logger.info("AHU search '%s': %d results", query, len(cards))
 
-                for row in rows:
-                    cells = await row.locator("td").all()
-                    if len(cells) < 3:
+                for card in cards:
+                    # Company name in strong.judul with data-id attribute
+                    nama_el = card.locator("strong.judul")
+                    nama = (await nama_el.inner_text()).strip() if await nama_el.count() else ""
+                    data_id = await nama_el.get_attribute("data-id") if await nama_el.count() else ""
+
+                    # Address in div.alamat
+                    alamat_el = card.locator("div.alamat")
+                    alamat = (await alamat_el.inner_text()).strip() if await alamat_el.count() else ""
+
+                    # City/province in div.kabpro
+                    kabpro_el = card.locator("div.kabpro")
+                    kabpro = (await kabpro_el.inner_text()).strip() if await kabpro_el.count() else ""
+
+                    if not nama:
                         continue
 
-                    nama = await cells[0].inner_text()
-                    nomor_sk = await cells[1].inner_text() if len(cells) > 1 else ""
-                    status = await cells[2].inner_text() if len(cells) > 2 else ""
-
                     record_data: dict[str, Any] = {
-                        "nama": nama.strip(),
-                        "nomor_sk": nomor_sk.strip(),
-                        "status": status.strip(),
+                        "nama": nama,
+                        "data_id": data_id,
+                        "alamat": alamat,
+                        "kabpro": kabpro,
                         "tipe": search_type,
                     }
-
-                    detail_link = await row.locator("a").first.get_attribute("href")
-                    if detail_link:
-                        detail_url = (
-                            detail_link
-                            if detail_link.startswith("http")
-                            else f"{AHU_BASE}{detail_link}"
-                        )
-                        await random_delay(2, 4)
-                        try:
-                            detail_data = await self._fetch_detail(
-                                page.context, detail_url
-                            )
-                            record_data.update(detail_data)
-                        except Exception as e:
-                            self.logger.warning("AHU detail failed: %s", e)
 
                     records.append(
                         ScrapedRecord(
                             source="ahu",
                             entity_type="company",
-                            url=detail_link or search_url,
+                            url=f"{AHU_BASE}/pencarian/profil-{search_type}?id={data_id}" if data_id else search_url,
                             raw_data=record_data,
                         )
                     )
