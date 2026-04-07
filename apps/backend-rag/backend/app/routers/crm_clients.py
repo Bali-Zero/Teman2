@@ -15,10 +15,10 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.crm_access import can_view_all_clients, get_crm_user_filter
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (
-    can_view_all_clients,
     is_crm_admin,
     verify_client_access,
 )
@@ -450,11 +450,13 @@ async def list_clients(
     """
     List clients with pagination and search.
 
-    Admin users see all clients. Non-admin users see only their assigned clients.
+    RBAC:
+    - Admin/board users: See ALL clients
+    - Team members: Only clients assigned to them
 
     FILTERS:
     - **status**: Filter by client status
-    - **assigned_to**: Filter by assigned team member (optional)
+    - **assigned_to**: Filter by assigned team member (optional, admin only)
     - **search**: Search in name, email, phone fields
     - **nationality**: Filter by nationality
     - **limit**: Max results (default: 50, max: 200)
@@ -468,9 +470,12 @@ async def list_clients(
         if not current_user_email:
             raise HTTPException(status_code=401, detail="Authentication required to view clients")
 
+        # RBAC: non-admin users only see their own clients
+        rbac_filter = get_crm_user_filter(current_user)
+
         logger.info(
             f"📋 [CRM Clients] User {current_user_email} requesting clients list "
-            f"(assigned_to_filter={assigned_to})",
+            f"(assigned_to_filter={assigned_to}, rbac_filter={rbac_filter})",
         )
 
         async with db_pool.acquire() as conn:
@@ -499,12 +504,18 @@ async def list_clients(
             params: list[Any] = []
             param_index = 1
 
+            # RBAC: enforce assigned_to filter for non-admin users
+            if rbac_filter is not None:
+                query_parts.append(f" AND c.assigned_to = ${param_index}")
+                params.append(rbac_filter)
+                param_index += 1
+
             if status:
                 query_parts.append(f" AND c.status = ${param_index}")
                 params.append(status)
                 param_index += 1
 
-            # Optional filter by assigned_to (user-requested)
+            # Optional filter by assigned_to (admin users can filter by any team member)
             if assigned_to:
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(assigned_to)
@@ -628,8 +639,6 @@ async def get_client_by_email(
     - Team members: Can only view clients assigned to them
     """
     try:
-        user_email = current_user.get("email", "").lower()
-
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
@@ -655,18 +664,8 @@ async def get_client_by_email(
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
 
-            # RBAC: non-admin users can only view clients assigned to them
-            if not is_crm_admin(current_user):
-                assigned_to = row["assigned_to"]
-                if not assigned_to or assigned_to.lower() != user_email:
-                    logger.warning(
-                        f"RBAC: User {user_email} denied access to client by email "
-                        f"(assigned_to: {assigned_to})",
-                    )
-                    raise HTTPException(
-                        status_code=403,
-                        detail="You don't have permission to access this client.",
-                    )
+            # RBAC: verify user has access to this specific client
+            await verify_client_access(row["id"], current_user, conn, allow_assigned=True)
 
             return ClientResponse(**dict(row))
 

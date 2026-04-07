@@ -16,8 +16,9 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.crm_access import get_practices_user_filter
 from backend.app.services.internal_email import send_internal_email
-from backend.app.utils.crm_utils import can_view_all_practices, is_crm_admin
+from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
@@ -623,12 +624,13 @@ async def list_practices(
 
             # RBAC: non-admin users only see practices assigned to them
             # When current_user is None (direct call), use assigned_to param for filtering
-            if current_user and not can_view_all_practices(current_user):
-                user_email = current_user.get("email", "").lower()
-                query_parts.append(f" AND p.assigned_to = ${param_index}")
-                params.append(user_email)
-                param_index += 1
-                logger.info(f"RBAC: Filtering practices for {user_email} (p.assigned_to)")
+            if current_user:
+                practices_filter = get_practices_user_filter(current_user)
+                if practices_filter:
+                    query_parts.append(f" AND p.assigned_to = ${param_index}")
+                    params.append(practices_filter)
+                    param_index += 1
+                    logger.info(f"RBAC: Filtering practices for {practices_filter} (p.assigned_to)")
 
             # Month filter
             month_range = _parse_month_param(month)
@@ -703,8 +705,9 @@ async def get_active_practices(
     """
     try:
         # RBAC: non-admin users can only see their own practices
-        if not can_view_all_practices(current_user) and not assigned_to:
-            assigned_to = current_user.get("email", "")
+        practices_filter = get_practices_user_filter(current_user)
+        if practices_filter and not assigned_to:
+            assigned_to = practices_filter
 
         async with db_pool.acquire() as conn:
             query_parts = ["SELECT * FROM active_practices_view WHERE 1=1"]
@@ -748,28 +751,15 @@ async def get_upcoming_renewals(
     """
     try:
         # RBAC: non-admin users can only see their own renewals
-        user_email = (
-            current_user.get("email", "") if not can_view_all_practices(current_user) else None
-        )
+        practices_filter = get_practices_user_filter(current_user)
 
         async with db_pool.acquire() as conn:
-            if user_email:
-                rows = await conn.fetch(
-                    """
-                    SELECT * FROM upcoming_renewals_view
-                    WHERE days_until_expiry <= $1 AND assigned_to = $2
-                    """,
-                    days,
-                    user_email,
-                )
-            else:
-                rows = await conn.fetch(
-                    """
-                    SELECT * FROM upcoming_renewals_view
-                    WHERE days_until_expiry <= $1
-                    """,
-                    days,
-                )
+            query = "SELECT * FROM upcoming_renewals_view WHERE days_until_expiry <= $1"
+            params: list[Any] = [days]
+            if practices_filter:
+                query += " AND assigned_to = $2"
+                params.append(practices_filter)
+            rows = await conn.fetch(query, *params)
             return [dict(row) for row in rows]
 
     except Exception as e:
@@ -861,9 +851,8 @@ async def get_practice(
     try:
         async with db_pool.acquire() as conn:
             # RBAC: non-admin users only see practices they own
-            if can_view_all_practices(current_user):
-                row = await conn.fetchrow(
-                    """
+            practices_filter = get_practices_user_filter(current_user)
+            base_query = """
                     SELECT
                         p.*,
                         c.full_name as client_name,
@@ -878,36 +867,16 @@ async def get_practice(
                     JOIN clients c ON p.client_id = c.id
                     JOIN practice_types pt ON p.practice_type_id = pt.id
                     WHERE p.id = $1
-                    """,
-                    practice_id,
-                )
-            else:
-                user_email = current_user.get("email", "").lower()
-                row = await conn.fetchrow(
-                    """
-                    SELECT
-                        p.*,
-                        c.full_name as client_name,
-                        c.email as client_email,
-                        c.phone as client_phone,
-                        c.assigned_to as client_lead,
-                        pt.name as practice_type_name,
-                        pt.code as practice_type_code,
-                        pt.category as practice_category,
-                        pt.required_documents as required_documents
-                    FROM practices p
-                    JOIN clients c ON p.client_id = c.id
-                    JOIN practice_types pt ON p.practice_type_id = pt.id
-                    WHERE p.id = $1
-                      AND (p.assigned_to = $2 OR c.assigned_to = $2 OR p.created_by = $2)
-                    """,
-                    practice_id,
-                    user_email,
-                )
+            """
+            if practices_filter:
+                base_query += " AND (c.assigned_to = $2 OR p.created_by = $2)"
+                row = await conn.fetchrow(base_query, practice_id, practices_filter)
                 if not row:
                     logger.info(
-                        f"RBAC: Practice {practice_id} not visible to {user_email}"
+                        f"RBAC: Practice {practice_id} not visible to {practices_filter}"
                     )
+            else:
+                row = await conn.fetchrow(base_query, practice_id)
 
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
@@ -1229,18 +1198,8 @@ async def update_practice(
                 )
                 logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
 
-            # 🚀 Process Start Automation: Trigger when status changes to 'on_process'
-            if updates.status == "on_process" and old_status != "on_process":
-                from backend.services.crm.process_automation_service import ProcessAutomationService
-
-                process_service = ProcessAutomationService(db_pool)
-                asyncio.create_task(
-                    process_service.trigger_on_process_start(
-                        practice_id=practice_id,
-                        triggered_by=user_email,
-                    ),
-                )
-                logger.info(f"🚀 Process start automation triggered for practice {practice_id}")
+            # NOTE: on_process automation handled by PracticeStatusListener (M5)
+            # via PG NOTIFY trigger — no need to duplicate here.
 
             # 🚀 Process Completion Automation: Trigger when status changes to 'completed'
             if updates.status == "completed" and old_status != "completed":
@@ -1466,7 +1425,7 @@ async def get_practices_stats(
             effective_user = user_id.lower()
         elif isinstance(current_user, dict):
             effective_user = current_user.get("email", "").lower()
-            is_admin = is_admin or is_crm_admin(current_user)
+            is_admin = is_admin or not get_practices_user_filter(current_user)
         else:
             logger.debug("get_practices_stats called without user context (internal call)")
 
