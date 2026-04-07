@@ -9,7 +9,8 @@ import logging
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.models.lkpm import (
@@ -20,6 +21,36 @@ from backend.app.models.lkpm import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/lkpm", tags=["lkpm"])
+
+
+# Allowed tax team emails that can be assigned to an LKPM report.
+# Kept in sync with crm_clients.TAX_CONSULTANT_VALUES and the DB CHECK
+# constraint from migration 093. Adding a new consultant requires updating
+# all three (Python model + CRM router + DB migration).
+LKPM_ASSIGNEES: set[str] = {
+    "veronika.tax@balizero.com",
+    "kadek.tax@balizero.com",
+    "dewaayu.tax@balizero.com",
+    "angel.tax@balizero.com",
+    "faisha.tax@balizero.com",
+}
+
+
+class LKPMAssignBody(BaseModel):
+    """Request body for PUT /lkpm/reports/{id}/assign."""
+
+    lkpm_assigned_to: str | None = None
+
+    @field_validator("lkpm_assigned_to")
+    @classmethod
+    def _validate_assignee(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        if v not in LKPM_ASSIGNEES:
+            raise ValueError(
+                f"lkpm_assigned_to must be one of {sorted(LKPM_ASSIGNEES)} or null, got '{v}'",
+            )
+        return v
 
 
 def _get_service(db_pool: asyncpg.Pool) -> Any:
@@ -329,4 +360,129 @@ async def get_deadlines(
     return {
         "success": True,
         "deadlines": [d.model_dump() for d in deadlines],
+    }
+
+
+# ------------------------------------------------------------------
+# Assignment & OSS credentials (Q1 2026 rollout)
+# ------------------------------------------------------------------
+
+
+@router.put("/reports/{draft_id}/assign", response_model=dict)
+async def assign_lkpm_report(
+    draft_id: int,
+    body: LKPMAssignBody = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Assign (or unassign) an LKPM report to a tax consultant.
+
+    RBAC: admin only. The admin-only gate is enforced in the handler because
+    the LKPM module does not use the verify_client_access helper from the
+    CRM router.
+
+    Body:
+        lkpm_assigned_to: one of LKPM_ASSIGNEES or null to clear.
+    """
+    user_role = current_user.get("role", "user").lower() if isinstance(current_user, dict) else "user"
+    if user_role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin can assign LKPM reports",
+        )
+
+    async with db_pool.acquire() as conn:
+        existing = await conn.fetchrow(
+            "SELECT id, client_id, quarter, year, lkpm_assigned_to FROM lkpm_reports WHERE id = $1",
+            draft_id,
+        )
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"LKPM draft {draft_id} not found")
+
+        await conn.execute(
+            """
+            UPDATE lkpm_reports
+            SET lkpm_assigned_to = $1,
+                updated_at = NOW()
+            WHERE id = $2
+            """,
+            body.lkpm_assigned_to,
+            draft_id,
+        )
+
+    logger.info(
+        f"LKPM assign: draft_id={draft_id} -> {body.lkpm_assigned_to} "
+        f"(by={current_user.get('email') if isinstance(current_user, dict) else 'unknown'})",
+    )
+    return {
+        "success": True,
+        "draft_id": draft_id,
+        "lkpm_assigned_to": body.lkpm_assigned_to,
+    }
+
+
+@router.get("/credentials/{client_id}", response_model=dict)
+async def get_oss_credentials(
+    client_id: int,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Return OSS plaintext credentials for a company.
+
+    User explicitly requested plaintext storage + plaintext retrieval; the
+    team accesses credentials from the workspace and the client from their
+    portal. No Fernet encryption, no per-access audit row.
+
+    RBAC (any of):
+      - admin
+      - the tax consultant currently assigned to ANY Q1/2026 report of that client
+    """
+    if not isinstance(current_user, dict):
+        raise HTTPException(status_code=401, detail="Invalid authentication context")
+
+    user_email = (current_user.get("email") or "").lower()
+    user_role = (current_user.get("role") or "user").lower()
+
+    async with db_pool.acquire() as conn:
+        # Fetch creds (always needed)
+        cfg = await conn.fetchrow(
+            """
+            SELECT oss_username, oss_password, oss_creds_updated_at, oss_creds_updated_by, company_name
+            FROM lkpm_client_config
+            WHERE client_id = $1
+            """,
+            client_id,
+        )
+        if not cfg:
+            raise HTTPException(status_code=404, detail=f"LKPM config for client_id={client_id} not found")
+
+        if user_role != "admin":
+            # Non-admin: require that the user is the assigned tax consultant
+            # on an active LKPM report for this client (any quarter/year).
+            is_assignee = await conn.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM lkpm_reports
+                    WHERE client_id = $1 AND lkpm_assigned_to = $2
+                )
+                """,
+                client_id,
+                user_email,
+            )
+            if not is_assignee:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Not authorized to view OSS credentials for this client",
+                )
+
+    return {
+        "success": True,
+        "client_id": client_id,
+        "company_name": cfg["company_name"],
+        "oss_username": cfg["oss_username"],
+        "oss_password": cfg["oss_password"],
+        "oss_creds_updated_at": cfg["oss_creds_updated_at"].isoformat() if cfg["oss_creds_updated_at"] else None,
+        "oss_creds_updated_by": cfg["oss_creds_updated_by"],
     }

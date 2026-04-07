@@ -130,6 +130,15 @@ class ClientCreate(BaseModel):
         return v
 
 
+TAX_CONSULTANT_VALUES: set[str] = {
+    "veronika.tax@balizero.com",
+    "kadek.tax@balizero.com",
+    "dewaayu.tax@balizero.com",
+    "angel.tax@balizero.com",
+    "faisha.tax@balizero.com",
+}
+
+
 class ClientUpdate(BaseModel):
     full_name: str | None = None
     email: EmailStr | None = None
@@ -143,6 +152,7 @@ class ClientUpdate(BaseModel):
     status: str | None = None  # 'active', 'inactive', 'prospect', 'lead'
     client_type: str | None = None
     assigned_to: str | None = None
+    tax_consultant: str | None = None  # one of TAX_CONSULTANT_VALUES or null
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
@@ -166,6 +176,18 @@ class ClientUpdate(BaseModel):
         allowed_types = {"individual", "company"}
         if v is not None and v not in allowed_types:
             raise ValueError(f"client_type must be one of {allowed_types}, got '{v}'")
+        return v
+
+    @field_validator("tax_consultant")
+    @classmethod
+    def validate_tax_consultant(cls, v: str | None) -> str | None:
+        """Validate tax_consultant is one of the 5 Bali Zero tax team emails, or None."""
+        if v is None or v == "":
+            return None
+        if v not in TAX_CONSULTANT_VALUES:
+            raise ValueError(
+                f"tax_consultant must be one of {sorted(TAX_CONSULTANT_VALUES)} or null, got '{v}'",
+            )
         return v
 
     @field_validator("email", "passport_expiry", "date_of_birth", mode="before")
@@ -226,6 +248,7 @@ class ClientResponse(BaseModel):
     status: str
     client_type: str
     assigned_to: str | None = None
+    tax_consultant: str | None = None
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
@@ -561,7 +584,7 @@ async def get_client(
 
             row = await conn.fetchrow(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
-                   c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                   c.client_type, c.assigned_to, c.tax_consultant, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
@@ -610,7 +633,7 @@ async def get_client_by_email(
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
-                   c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                   c.client_type, c.assigned_to, c.tax_consultant, c.avatar_url, c.first_contact_date, c.last_interaction_date,
                    c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
@@ -693,6 +716,7 @@ async def update_client(
                 "status": "status",
                 "client_type": "client_type",
                 "assigned_to": "assigned_to",
+                "tax_consultant": "tax_consultant",
                 "avatar_url": "avatar_url",
                 "address": "address",
                 "notes": "notes",
@@ -706,6 +730,10 @@ async def update_client(
 
             # Date fields that need empty string → None conversion
             date_fields = {"passport_expiry", "date_of_birth"}
+
+            # Fields that are allowed to be explicitly set to NULL (clearing a value).
+            # Without this, the loop below would silently drop None values.
+            nullable_fields = {"tax_consultant"}
 
             for field, value in updates.dict(exclude_unset=True).items():
                 if field not in field_mapping:
@@ -721,7 +749,8 @@ async def update_client(
                         except ValueError:
                             value = None
 
-                if value is not None:
+                # Allow explicit NULL assignment for nullable fields
+                if value is not None or field in nullable_fields:
                     column_name = field_mapping[field]
                     update_fields.append(f"{column_name} = ${param_index}")
                     params.append(value)

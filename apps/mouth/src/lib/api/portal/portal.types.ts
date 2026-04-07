@@ -356,6 +356,16 @@ export interface LKPMBatchItem {
   red_alerts: number;
   yellow_alerts: number;
   updated_at: string;
+  lkpm_assigned_to?: string | null;
+}
+
+export interface LKPMOSSCredentials {
+  client_id: number;
+  company_name: string;
+  oss_username: string | null;
+  oss_password: string | null;
+  oss_creds_updated_at: string | null;
+  oss_creds_updated_by: string | null;
 }
 
 export interface LKPMDeadline {
