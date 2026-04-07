@@ -22,9 +22,15 @@ import time
 from typing import Any
 
 from backend.app.metrics import metrics_collector
+from backend.services.agents.tool_authorizer import ToolAuthorizer
 from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
+
+# Module-level singleton — stateless authorizer, safe to share across requests.
+# Phase 3 will replace this with a per-app instance built in service_initializer
+# that takes `confirmation_service` as a constructor arg. The migration is one line.
+_authorizer = ToolAuthorizer()
 
 
 def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
@@ -158,16 +164,22 @@ async def execute_tool(
     arguments: dict,
     user_id: str | None = None,
     tool_execution_counter: dict[str, int] | None = None,
+    agent_role: Any | None = None,
 ) -> tuple[str, float]:
     """
-    Execute tool with rate limiting to prevent abuse.
+    Execute tool with rate limiting and RBAC authorization.
 
     Args:
         tool_map: Dictionary mapping tool names to tool instances
         tool_name: Name of tool to execute
-        arguments: Tool arguments
+        arguments: Tool arguments (LLM-supplied — must NOT contain server fields)
         user_id: Optional user ID for admin tools
         tool_execution_counter: Mutable dict with 'count' key for rate limiting
+        agent_role: VASSAL Phase 2. The caller's AgentRole (from
+            team_agent_config) for server-side RBAC enforcement. When None
+            (legacy /stream path, blog/marketing flows), the authorizer
+            passes through as ALLOWED. Read by reasoning.py via
+            getattr(state, "agent_role", None) at each call site.
 
     Returns:
         Tuple of (tool execution result as string, execution duration in seconds)
@@ -187,14 +199,64 @@ async def execute_tool(
             metrics_collector.record_tool_call(tool_name, "rate_limited")
             raise RuntimeError("Maximum tool executions exceeded (10 per query)")
 
+    # Unknown-tool short-circuit MUST run BEFORE authorization. There is no
+    # point asking the authorizer about a tool that doesn't exist in the
+    # registry — and the test contract (test_unknown_tool_short_circuits_before_authz)
+    # encodes this ordering explicitly.
     if tool_name not in tool_map:
         metrics_collector.record_tool_call(tool_name, "unknown")
         return f"Error: Unknown tool '{tool_name}'", time.time() - start_time
 
     tool = tool_map[tool_name]
 
+    # ── VASSAL Phase 2: RBAC chokepoint ─────────────────────────────────
+    # The authorizer is invoked BEFORE we mutate `arguments` with server
+    # fields (`_user_id`). This matters because:
+    #   1. The authorizer must see only LLM-supplied args (server fields
+    #      would confuse future client_scope checks).
+    #   2. The authorizer can mutate args (Phase 3+ may inject scope
+    #      filters); whatever it returns becomes the new authoritative
+    #      args dict.
+    # When `agent_role=None` (legacy /stream path), the authorizer's own
+    # backward-compat branch returns ALLOWED — see ToolAuthorizer.authorize().
+    auth_result = await _authorizer.authorize(
+        user_email=user_id,
+        agent_role=agent_role,
+        tool_name=tool_name,
+        args=arguments,
+    )
+    if auth_result.is_denied:
+        metrics_collector.record_tool_call(tool_name, "denied")
+        return (
+            f"Tool execution denied: {auth_result.reason}",
+            time.time() - start_time,
+        )
+    if auth_result.needs_confirmation:
+        # Phase 3 will replace this defensive branch with the actual
+        # `await confirmation_service.request_and_wait(...)` call. For
+        # Phase 2 we treat NEEDS_CONFIRMATION as a hard deny so a
+        # premature wiring (e.g. someone adds requires_confirmation
+        # to AgentRole before Phase 3 lands) cannot accidentally let
+        # an unconfirmed write tool execute.
+        logger.warning(
+            "tool_authz: NEEDS_CONFIRMATION received for %s but Phase 3 "
+            "confirmation gates are not active yet — treating as DENIED",
+            tool_name,
+        )
+        metrics_collector.record_tool_call(tool_name, "denied")
+        return (
+            f"Tool execution denied (requires confirmation but Phase 3 is "
+            f"not active yet): {auth_result.reason}",
+            time.time() - start_time,
+        )
+    # Authoritative args after the authorizer (possibly mutated in
+    # Phase 3+; Phase 2 returns args unchanged).
+    arguments = auth_result.args
+
     try:
-        # Pass user_id to tools that need it (e.g., MCPSuperTool for admin check)
+        # Pass user_id to tools that need it (e.g., MCPSuperTool for admin
+        # check). Injected AFTER the authorizer call so the authorizer never
+        # sees server-controlled fields mixed in with LLM-supplied args.
         if user_id:
             arguments["_user_id"] = user_id
         result = await tool.execute(**arguments)
