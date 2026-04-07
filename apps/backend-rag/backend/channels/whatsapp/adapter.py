@@ -165,6 +165,7 @@ class WhatsAppChannelAdapter(BaseChannel):
 
         except Exception as e:
             logger.error(f"Error sending WhatsApp response: {e}", exc_info=True)
+            raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
         """
@@ -198,7 +199,7 @@ class WhatsAppChannelAdapter(BaseChannel):
                 if response.workflow:
                     accumulated_workflow = response.workflow
 
-            # Send complete message
+            # Send complete message (via DLQ-safe wrapper)
             if accumulated_text:
                 final_response = ChannelResponse(
                     text=accumulated_text,
@@ -207,17 +208,17 @@ class WhatsAppChannelAdapter(BaseChannel):
                     metadata={"final": True},
                 )
 
-                await self.send_response(channel_id, final_response)
+                await self.send_response_safe(channel_id, final_response)
 
                 logger.info(f"✅ Completed WhatsApp stream: {len(accumulated_text)} chars")
 
         except Exception as e:
             logger.error(f"Error streaming to WhatsApp: {e}", exc_info=True)
 
-            # Send error message
+            # Send error message (via DLQ-safe wrapper in case API is down)
             error_text = self.formatter.format_error("Si è verificato un errore. Riprova.")
             error_response = ChannelResponse(text=error_text, metadata={})
-            await self.send_response(channel_id, error_response)
+            await self.send_response_safe(channel_id, error_response)
 
     # BaseChannel properties
 

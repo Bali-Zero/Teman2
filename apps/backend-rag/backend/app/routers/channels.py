@@ -9,10 +9,10 @@ Provides visibility into the multi-channel messaging system:
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from backend.app.dependencies import get_current_user
 
@@ -246,3 +246,70 @@ async def dlq_messages(
     except Exception as e:
         logger.debug(f"DLQ query failed: {e}")
         return {"messages": [], "error": str(e)}
+
+
+@router.post("/dlq/{message_id}/retry")
+async def dlq_retry_message(
+    request: Request,
+    message_id: int = Path(..., description="Failed message ID to retry"),
+    _user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Manually retry a single failed DLQ message."""
+    db_pool = getattr(request.app.state, "db_pool", None)
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    # Atomic conditional update (avoids race with concurrent retry requests)
+    result = await db_pool.fetchrow(
+        """
+        UPDATE failed_messages
+        SET status = 'pending', next_retry_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND status != 'delivered'
+        RETURNING id
+        """,
+        message_id,
+    )
+    if not result:
+        exists = await db_pool.fetchval(
+            "SELECT status FROM failed_messages WHERE id = $1", message_id,
+        )
+        if not exists:
+            raise HTTPException(status_code=404, detail="Message not found")
+        return {"status": "already_delivered", "id": message_id}
+
+    logger.info(f"DLQ: manual retry queued for message {message_id}")
+    return {"status": "queued_for_retry", "id": message_id}
+
+
+@router.delete("/dlq/purge")
+async def dlq_purge(
+    request: Request,
+    _user: dict = Depends(get_current_user),
+    older_than_days: int = Query(7, ge=1, le=90, description="Purge exhausted messages older than N days"),
+) -> dict[str, Any]:
+    """Purge exhausted DLQ messages older than N days. Admin-only."""
+    from backend.app.deps.crm_access import can_view_all_clients
+
+    if not can_view_all_clients(_user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    db_pool = getattr(request.app.state, "db_pool", None)
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+    # Batch delete to avoid long table locks
+    result = await db_pool.execute(
+        """
+        DELETE FROM failed_messages
+        WHERE id IN (
+            SELECT id FROM failed_messages
+            WHERE status = 'exhausted' AND created_at < $1
+            LIMIT 1000
+        )
+        """,
+        cutoff,
+    )
+    deleted = int(result.split()[-1]) if result else 0
+    logger.info(f"DLQ: purged {deleted} exhausted messages older than {older_than_days} days")
+    return {"purged": deleted, "older_than_days": older_than_days}
