@@ -103,8 +103,7 @@ async def resolve_zone(req: SpatialResolveRequest, request: Request) -> dict[str
     Public endpoint — no authentication required.
     """
     service = _get_service(request)
-    result = await service.resolve(req.lat, req.lng)
-    return result
+    return await service.resolve(req.lat, req.lng)
 
 
 # ── Layer 2: Investment Analysis ──────────────────────────────────────
@@ -121,7 +120,7 @@ async def analyze_investment(req: BusinessAnalyzeRequest, request: Request) -> d
     Public endpoint — rate limited to 10 req/min per IP.
     """
     service = _get_service(request)
-    result = await service.analyze(
+    return await service.analyze(
         lat=req.lat,
         lng=req.lng,
         kbli_code=req.kbli_code,
@@ -131,7 +130,6 @@ async def analyze_investment(req: BusinessAnalyzeRequest, request: Request) -> d
         investor_profile=req.investor_profile.model_dump() if req.investor_profile else None,
         geo_data=req.geo_data,
     )
-    return result
 
 
 # ── Layer 3: CRM Intelligence Overlay ────────────────────────────────
