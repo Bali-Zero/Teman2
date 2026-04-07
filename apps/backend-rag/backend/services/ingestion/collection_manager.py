@@ -7,7 +7,6 @@ Extracted from SearchService to follow Single Responsibility Principle.
 
 import asyncio
 import logging
-from collections import defaultdict
 from typing import Any
 
 from backend.app.core.config import settings
