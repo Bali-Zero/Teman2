@@ -96,9 +96,13 @@ HR_REPLY_BASE_URL: str = os.getenv(
     "https://kita.balizero.com/hr/late-reply",
 )
 
-# Telegram digest target — Zero's personal chat (see CLAUDE.md §14).
+# Telegram digest target — Zero's personal chat with @Balizerobot.
+# The fallback chat_id 1125336968 was verified live on 2026-04-07 by hitting
+# Telegram getMe + sendMessage from inside the production container; CLAUDE.md
+# §14 previously documented 413539912 which is unreachable ("chat not found").
+# The TELEGRAM_OWNER_CHAT_ID env var still takes precedence if set.
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "413539912")
+TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 # Telegram sendMessage hard limit is 4096 chars; leave headroom for the
 # "(part N/M)\n" header that chunked messages get.
