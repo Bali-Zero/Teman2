@@ -419,7 +419,7 @@ Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 
 ### GitHub Secrets
 
-`FLY_API_TOKEN` · `TELEGRAM_BOT_TOKEN` · `TELEGRAM_OWNER_CHAT_ID` (413539912)
+`FLY_API_TOKEN` · `TELEGRAM_BOT_TOKEN` · `TELEGRAM_OWNER_CHAT_ID` (1125336968 — Zero's `@zero0101010101010` chat with `@Balizerobot`, verified live 2026-04-07)
 
 ## 15. Escalation Tasks
 

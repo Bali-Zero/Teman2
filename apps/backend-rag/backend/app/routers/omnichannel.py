@@ -291,7 +291,8 @@ async def assign_thread(
         from backend.services.integrations.telegram_bot_service import TelegramBotService
 
         bot = TelegramBotService()
-        owner_chat = getattr(settings, "telegram_owner_chat_id", None) or "413539912"
+        # Fallback verified live 2026-04-07 (the previous 413539912 was unreachable).
+        owner_chat = getattr(settings, "telegram_owner_chat_id", None) or "1125336968"
 
         thread_row = await db_pool.fetchrow(
             "SELECT subject, last_message_preview FROM conversation_threads WHERE id = $1",
