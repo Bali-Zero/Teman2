@@ -81,4 +81,27 @@ def parse_bz_tab(rows: list[list[str]]) -> list[CashoutRow]:
 
 
 def parse_bs_tab(rows: list[list[str]]) -> list[CashoutRow]:
-    raise NotImplementedError
+    """Parse a BS weekly tab. Schema has 7 columns (no TOTAL INCOME / MARGIN BZ)."""
+    out: list[CashoutRow] = []
+    for i, row in enumerate(rows[2:], start=3):
+        padded = (list(row) + [""] * 7)[:7]
+        name = str(padded[0]).strip() if padded[0] else ""
+        if not name:
+            continue
+        out.append(
+            CashoutRow(
+                entity="BS",
+                row_index=i,
+                client_name=name,
+                process=(str(padded[1]).strip() or None),
+                pnbp_idr=parse_idr(padded[2]),
+                urgent_idr=parse_idr(padded[3]),
+                rptka_imta_idr=parse_idr(padded[4]),
+                total_income_idr=0,
+                margin_bs_idr=parse_idr(padded[5]),
+                margin_bz_idr=0,
+                final_price_idr=parse_idr(padded[6]),
+                note=None,
+            )
+        )
+    return out
