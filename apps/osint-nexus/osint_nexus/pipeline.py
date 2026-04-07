@@ -217,15 +217,20 @@ async def run_full_pipeline(
         "wiki": WikiScraper,
     }
 
-    # Scrape all sources
+    # Scrape all sources — isolate failures so one broken source doesn't kill the batch
     all_records: list[ScrapedRecord] = []
+    failed_sources: list[str] = []
     for source in sources:
         if source not in scraper_map:
             logger.warning("Unknown source: %s", source)
             continue
         scraper = scraper_map[source]()
-        records = await scraper.scrape(query, **kwargs)
-        all_records.extend(records)
+        try:
+            records = await scraper.scrape(query, **kwargs)
+            all_records.extend(records)
+        except Exception as exc:
+            logger.error("Source '%s' failed, skipping: %s", source, exc)
+            failed_sources.append(source)
 
     logger.info("Total records scraped: %d", len(all_records))
 
