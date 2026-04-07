@@ -46,6 +46,30 @@ def test_no_false_positive():
     assert r.entity_count == 2
 
 
+def test_short_name_no_false_positive():
+    """Regression: 'Agus' should NOT fuzzy-match 'Agus Andrianto'.
+
+    token_set_ratio gives score=100 for subsets. Short single-word names
+    must require stricter matching to avoid collapsing distinct persons.
+    """
+    r = EntityResolver()
+    r.resolve({"nama": "Agus Andrianto"})
+    result = r.resolve({"nama": "Agus"})
+    assert result.match_method == "new", (
+        f"'Agus' wrongly matched '{result.canonical_name}'"
+    )
+    assert r.entity_count == 2
+
+
+def test_ministry_subset_no_false_positive():
+    """Similar: 'Imigrasi' should not collapse into 'Imigrasi Ngurah Rai'."""
+    r = EntityResolver()
+    r.resolve({"nama": "Kantor Imigrasi Ngurah Rai"}, entity_type="organization")
+    result = r.resolve({"nama": "Imigrasi"}, entity_type="organization")
+    assert result.match_method == "new"
+    assert r.entity_count == 2
+
+
 def test_property_merge():
     r = EntityResolver()
     r.resolve({"nama": "Test Person", "nip": "123456789012345678"})

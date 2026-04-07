@@ -93,28 +93,44 @@ class EntityResolver:
                 )
 
         # Tier 3: fuzzy name match (weak, flag for review)
+        # Guards against subset false positives like 'Agus' ⊂ 'Agus Andrianto':
+        # for short single-word names we require ≥80% length similarity AND
+        # token_sort_ratio ≥70 (which penalises subset matches).
         name_lower = nama.lower()
         if self._name_index:
             names = list(self._name_index.keys())
             match = process.extractOne(name_lower, names, scorer=fuzz.token_set_ratio)
             if match and match[1] >= FUZZY_THRESHOLD:
                 matched_name, score, _ = match
-                cid = self._name_index[matched_name]
-                existing = self._entities[cid]
-                conf = score / 100.0
-                self._merge_properties(existing, entity)
-                existing.merged_from.append(nama)
-                logger.info(
-                    "Fuzzy match: '%s' → '%s' (%.2f, score=%d)",
-                    nama, existing.canonical_name, conf, score,
-                )
-                return ResolvedEntity(
-                    canonical_id=cid,
-                    canonical_name=existing.canonical_name,
-                    entity_type=entity_type,
-                    confidence=conf,
-                    match_method="fuzzy_name",
-                )
+                words_a = name_lower.split()
+                words_b = matched_name.split()
+                accept = True
+                if len(words_a) < 2 or len(words_b) < 2:
+                    shorter = min(len(name_lower), len(matched_name))
+                    longer = max(len(name_lower), len(matched_name))
+                    if longer == 0 or shorter / longer < 0.80:
+                        accept = False
+                if accept:
+                    sort_score = fuzz.token_sort_ratio(name_lower, matched_name)
+                    if sort_score < 70:
+                        accept = False
+                if accept:
+                    cid = self._name_index[matched_name]
+                    existing = self._entities[cid]
+                    conf = score / 100.0
+                    self._merge_properties(existing, entity)
+                    existing.merged_from.append(nama)
+                    logger.info(
+                        "Fuzzy match: '%s' → '%s' (%.2f, score=%d)",
+                        nama, existing.canonical_name, conf, score,
+                    )
+                    return ResolvedEntity(
+                        canonical_id=cid,
+                        canonical_name=existing.canonical_name,
+                        entity_type=entity_type,
+                        confidence=conf,
+                        match_method="fuzzy_name",
+                    )
 
         # Tier 4: new entity
         cid = self._generate_id(nama, entity_type)
