@@ -66,6 +66,7 @@ def include_routers(api: FastAPI) -> None:
         handlers,
         health,
         hr,  # [NEW] HR/Payroll module
+        hr_late_reply,  # [NEW] Late check-in reply form (token-auth, public)
         ingest,
         instagram_chat,
         kbli_notebook,
@@ -166,6 +167,7 @@ def include_routers(api: FastAPI) -> None:
 
     # HR/Payroll router
     api.include_router(hr.router)  # [NEW] HR/Payroll module
+    api.include_router(hr_late_reply.router)  # [NEW] Late check-in reply form
 
     # Notification router (Automated email alerts)
     from backend.app.modules.notifications.router import router as notifications_router
@@ -382,6 +384,7 @@ def include_light_routers(api: FastAPI) -> None:
         handlers,
         health,
         hr,
+        hr_late_reply,
         image_generation,
         instagram_chat,
         knowledge_activity,
@@ -452,6 +455,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # HR/Payroll router
     api.include_router(hr.router)
+    api.include_router(hr_late_reply.router)
 
     # Notifications module router
     from backend.app.modules.notifications.router import router as notifications_router

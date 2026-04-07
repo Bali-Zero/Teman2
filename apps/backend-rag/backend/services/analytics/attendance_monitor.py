@@ -17,7 +17,10 @@ Integration points:
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import os
+import secrets
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
@@ -70,6 +73,66 @@ _EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "")
 
 # Number of consecutive working days without clock-in before triggering an alert
 ABSENT_THRESHOLD_DAYS: int = 2
+
+# ---------------------------------------------------------------------------
+# Late-incident escalation parameters
+# ---------------------------------------------------------------------------
+
+# How long an incident may stay in each waiting state before being promoted.
+# Counted in *working hours* (Mon–Fri 00:00–23:59 Bali time, weekends skipped).
+INCIDENT_REMINDER_AFTER_WORKING_HOURS: int = 24
+INCIDENT_ULTIMATUM_AFTER_WORKING_HOURS: int = 24  # additional 24h after reminder
+
+# State machine values — kept as plain strings to mirror the DB CHECK constraint.
+STATE_AWAITING_REPLY: str = "AWAITING_REPLY"
+STATE_REMINDER_SENT: str = "REMINDER_SENT"
+STATE_ESCALATED: str = "ESCALATED"
+STATE_RESOLVED: str = "RESOLVED"
+STATE_RESOLVED_LATE: str = "RESOLVED_LATE"
+
+# Public reply form on the HR portal. Token is appended at send time.
+HR_REPLY_BASE_URL: str = os.getenv(
+    "HR_LATE_REPLY_BASE_URL",
+    "https://kita.balizero.com/hr/late-reply",
+)
+
+# Telegram digest target — Zero's personal chat (see CLAUDE.md §14).
+TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "413539912")
+
+# Manager routing: which supervisor to CC on the ultimatum email.
+# - tax team (any *.tax@balizero.com) -> Veronika
+# - dea / rina                          -> Ruslana
+# - everyone else                       -> only zero@ in CC
+TAX_MANAGER_EMAIL: str = "veronika@balizero.com"
+RUSLANA_REPORTS: frozenset[str] = frozenset(
+    {"dea@balizero.com", "rina@balizero.com"},
+)
+RUSLANA_EMAIL: str = "ruslana@balizero.com"
+
+# Background scheduler intervals.
+ESCALATION_SCAN_INTERVAL_SECONDS: int = 15 * 60  # every 15 minutes
+DAILY_DIGEST_HOUR: int = 18  # 18:00 WITA
+DAILY_DIGEST_MINUTE: int = 0
+
+
+def resolve_responsible_manager(email: str) -> str | None:
+    """
+    Return the supervisor email to CC on the ultimatum, or None if there is
+    no specific supervisor (in which case only ``zero@balizero.com`` is CC'd).
+
+    Routing rules (per Zero, 2026-04-07):
+        - *.tax@balizero.com  -> veronika@balizero.com
+        - dea@ / rina@        -> ruslana@balizero.com
+        - everyone else       -> None (zero@ only)
+    """
+    normalized = email.lower().strip()
+    if normalized in RUSLANA_REPORTS:
+        return RUSLANA_EMAIL
+    local_part = normalized.split("@", 1)[0]
+    if local_part.endswith(".tax"):
+        return TAX_MANAGER_EMAIL
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -162,16 +225,118 @@ def _render_email_shell(
 class AttendanceMonitor:
     """
     Monitors team attendance and dispatches email alerts for:
-    - Late check-ins (after 09:30 Bali time)
+    - Late check-ins (gentle reminder + incident escalation state machine)
     - Consecutive absences (2+ working days without any clock-in)
 
-    Does NOT own a scheduler loop — callers must invoke the check methods
-    at the appropriate time.
+    Owns two long-running background tasks (started by ``start_schedulers``):
+    - escalation_scan_task: every 15 minutes, calls ``run_escalation_scan``.
+    - daily_digest_task:    every day at 18:00 WITA, calls
+                            ``send_daily_telegram_digest``.
+
+    The ``check_late_checkin`` and ``check_absent_members`` methods can still
+    be invoked directly (e.g. from ``TeamTimesheetService.clock_in``).
     """
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.pool = db_pool
+        self._escalation_task: asyncio.Task | None = None
+        self._digest_task: asyncio.Task | None = None
+        self._running: bool = False
         logger.info("AttendanceMonitor initialized")
+
+    # ------------------------------------------------------------------
+    # Background scheduler lifecycle
+    # ------------------------------------------------------------------
+
+    async def start_schedulers(self) -> None:
+        """Start the escalation-scan and daily-digest background loops."""
+        if self._running:
+            logger.warning("AttendanceMonitor: schedulers already running")
+            return
+        self._running = True
+        self._escalation_task = asyncio.create_task(
+            self._escalation_loop(),
+            name="attendance-escalation-loop",
+        )
+        self._digest_task = asyncio.create_task(
+            self._daily_digest_loop(),
+            name="attendance-daily-digest-loop",
+        )
+        logger.info(
+            "AttendanceMonitor: schedulers started "
+            "(escalation every %ds, digest at %02d:%02d WITA)",
+            ESCALATION_SCAN_INTERVAL_SECONDS,
+            DAILY_DIGEST_HOUR,
+            DAILY_DIGEST_MINUTE,
+        )
+
+    async def stop_schedulers(self) -> None:
+        """Stop background loops cleanly. Safe to call multiple times."""
+        self._running = False
+        for task in (self._escalation_task, self._digest_task):
+            if task is None:
+                continue
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        self._escalation_task = None
+        self._digest_task = None
+        logger.info("AttendanceMonitor: schedulers stopped")
+
+    async def _escalation_loop(self) -> None:
+        """Run ``run_escalation_scan`` every ESCALATION_SCAN_INTERVAL_SECONDS."""
+        while self._running:
+            try:
+                await self.run_escalation_scan()
+            except Exception as exc:
+                logger.error(
+                    "AttendanceMonitor._escalation_loop: scan failed — %s",
+                    exc,
+                    exc_info=True,
+                )
+            try:
+                await asyncio.sleep(ESCALATION_SCAN_INTERVAL_SECONDS)
+            except asyncio.CancelledError:
+                logger.info("AttendanceMonitor._escalation_loop: cancelled")
+                break
+
+    async def _daily_digest_loop(self) -> None:
+        """
+        Sleep until the next 18:00 WITA, send the digest, repeat.
+
+        On startup the loop computes the next digest time and sleeps until
+        then — so deploys at e.g. 09:00 WITA wait until 18:00 same day, and
+        deploys at 18:30 wait until 18:00 next day.
+        """
+        while self._running:
+            now = datetime.now(BALI_TZ)
+            target = now.replace(
+                hour=DAILY_DIGEST_HOUR,
+                minute=DAILY_DIGEST_MINUTE,
+                second=0,
+                microsecond=0,
+            )
+            if target <= now:
+                target = target + timedelta(days=1)
+            sleep_seconds = (target - now).total_seconds()
+            logger.info(
+                "AttendanceMonitor._daily_digest_loop: next digest in %.0fs (at %s)",
+                sleep_seconds,
+                target.isoformat(),
+            )
+            try:
+                await asyncio.sleep(sleep_seconds)
+            except asyncio.CancelledError:
+                logger.info("AttendanceMonitor._daily_digest_loop: cancelled")
+                break
+            try:
+                await self.send_daily_telegram_digest()
+            except Exception as exc:
+                logger.error(
+                    "AttendanceMonitor._daily_digest_loop: digest failed — %s",
+                    exc,
+                    exc_info=True,
+                )
 
     # ------------------------------------------------------------------
     # Public interface
@@ -244,16 +409,14 @@ class AttendanceMonitor:
             await self._send_gentle_reminder(email, full_name, checkin_str)
             return
 
-        # Incident window: clock_in ≥ 09:40.
-        # Commit 1: sends a stronger notification email (still 1-to-1, Indonesian).
-        # Commit 2: will also open a row in attendance_late_incidents and kick off
-        #           the reply/reminder/ultimatum state machine.
+        # Incident window: clock_in ≥ 09:40 — open or update an incident row
+        # and send the mandatory-reply email with a signed reply link.
         logger.info(
             "check_late_checkin: %s in incident window at %s — opening incident",
             email,
             checkin_str,
         )
-        await self._send_incident_opened_notification(email, full_name, checkin_str)
+        await self._send_incident_opened_notification(email, full_name, checkin_time)
 
     async def check_absent_members(self) -> None:
         """
@@ -530,46 +693,94 @@ class AttendanceMonitor:
         self,
         email: str,
         full_name: str,
-        checkin_time: str,
+        checkin_time_dt: datetime,
     ) -> None:
         """
         Stage 2 — incident window (clock_in ≥ 09:40).
 
-        Sends a more serious 1-to-1 email in Indonesian asking for a mandatory
-        reply explaining the reason for the late arrival.
+        1. Insert a row in ``attendance_late_incidents`` (state=AWAITING_REPLY)
+           with a freshly generated reply_token.
+        2. Send a 1-to-1 Indonesian email asking for a mandatory reply, with a
+           signed reply link the team member can use without authentication.
 
-        NOTE (commit 1): this method currently only sends the email. Commit 2
-        will also insert a row in ``attendance_late_incidents`` and embed a
-        signed reply link so the escalation cron can track response status.
+        If an incident already exists for (email, late_date) the insert is a
+        no-op (UNIQUE constraint) and no second email is sent — this protects
+        against duplicate clock_in events on the same day.
         """
         first_name: str = full_name.split()[0] if full_name else email
-        subject: str = f"Keterlambatan hari ini — {first_name}, {checkin_time}"
+        checkin_str: str = checkin_time_dt.strftime("%H:%M")
+        late_date: date = checkin_time_dt.date()
+        reply_token: str = secrets.token_urlsafe(32)
+        manager_email: str | None = resolve_responsible_manager(email)
+
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO attendance_late_incidents (
+                    email, full_name, late_date, checkin_time,
+                    state, first_email_sent_at, reply_token,
+                    responsible_manager_email
+                )
+                VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+                ON CONFLICT (email, late_date) DO NOTHING
+                RETURNING id, reply_token
+                """,
+                email,
+                full_name,
+                late_date,
+                checkin_time_dt,
+                STATE_AWAITING_REPLY,
+                reply_token,
+                manager_email,
+            )
+
+        if row is None:
+            logger.info(
+                "_send_incident_opened: incident already exists for %s on %s — "
+                "skipping duplicate email",
+                email,
+                late_date,
+            )
+            return
+
+        incident_id = row["id"]
+        token = row["reply_token"]
+        reply_link = f"{HR_REPLY_BASE_URL}/{incident_id}?token={token}"
+
+        subject: str = f"Keterlambatan hari ini — {first_name}, {checkin_str}"
 
         html_body: str = _render_email_shell(
             header_title=f"Halo {first_name} — Keterlambatan tercatat",
-            accent="#ed8936",  # orange — stronger
+            accent="#ed8936",
             body_html=f"""
             <p>
                 Check-in kamu hari ini tercatat pukul
-                <strong>{checkin_time} WITA</strong>, setelah batas 09:40.
+                <strong>{checkin_str} WITA</strong>, setelah batas 09:40.
             </p>
             <div style="background:#fffaf0; border-left:4px solid #ed8936;
                         padding:12px 16px; border-radius:0 8px 8px 0;
                         margin:20px 0; font-size:14px;">
-                Mohon balas email ini atau hubungi manajermu untuk menjelaskan
-                <strong>alasan keterlambatan hari ini</strong>. Balasan bersifat wajib.
+                Mohon jelaskan <strong>alasan keterlambatan hari ini</strong>
+                melalui formulir berikut. Balasan bersifat <strong>wajib</strong>.
             </div>
-            <p>
-                Jika keterlambatan karena alasan yang sudah direncanakan (cuti, izin, dinas luar),
-                pastikan leave request sudah diajukan dan disetujui sebelumnya.
+            <p style="text-align:center; margin:24px 0;">
+                <a href="{reply_link}"
+                   style="display:inline-block; background:#ed8936; color:white;
+                          text-decoration:none; padding:12px 26px; border-radius:6px;
+                          font-weight:600; font-size:15px;">
+                    Kirim alasan keterlambatan →
+                </a>
             </p>
-            <p style="margin-top: 24px; color: #555;">
+            <p style="font-size:13px; color:#777;">
+                Jika keterlambatan karena alasan yang sudah direncanakan (cuti, izin,
+                dinas luar), pastikan leave request sudah diajukan dan disetujui sebelumnya.
+            </p>
+            <p style="margin-top: 16px; color: #555;">
                 Terima kasih atas perhatian dan kerjasamanya. 🙏
             </p>
             """,
         )
 
-        # Still no CC at stage 2 — escalation CC only at ultimatum stage.
         await self._post_email(
             to=email,
             subject=subject,
@@ -577,6 +788,452 @@ class AttendanceMonitor:
             cc=None,
             log_tag="incident_opened",
         )
+
+    # ------------------------------------------------------------------
+    # Escalation state machine
+    # ------------------------------------------------------------------
+
+    async def run_escalation_scan(self) -> dict[str, int]:
+        """
+        Promote stale late incidents through the state machine.
+
+        Called every 15 minutes by the attendance scheduler. Returns a small
+        dict of counters for observability.
+
+        Promotion rules (working hours = Mon–Fri, weekends skipped):
+            AWAITING_REPLY -> REMINDER_SENT  if first_email_sent_at is older
+                                              than INCIDENT_REMINDER_AFTER_WORKING_HOURS
+            REMINDER_SENT  -> ESCALATED      if reminder_sent_at is older than
+                                              INCIDENT_ULTIMATUM_AFTER_WORKING_HOURS
+
+        Incidents whose ``reply_received_at`` has been populated by the HR
+        reply form are skipped — they will be transitioned to RESOLVED /
+        RESOLVED_LATE inside the same scan.
+        """
+        now = datetime.now(BALI_TZ)
+        promoted_to_reminder = 0
+        promoted_to_ultimatum = 0
+        resolved = 0
+        resolved_late = 0
+
+        async with self.pool.acquire() as conn:
+            # 1. Resolve any incidents that received a reply since last scan.
+            #    AWAITING_REPLY + reply -> RESOLVED
+            #    REMINDER_SENT  + reply -> RESOLVED_LATE
+            #    ESCALATED      + reply -> stays ESCALATED (history preserved),
+            #                              but reply_received_at is already set.
+            resolved_rows = await conn.fetch(
+                """
+                UPDATE attendance_late_incidents
+                   SET state = $1
+                 WHERE state = $2
+                   AND reply_received_at IS NOT NULL
+                RETURNING id
+                """,
+                STATE_RESOLVED,
+                STATE_AWAITING_REPLY,
+            )
+            resolved = len(resolved_rows)
+
+            resolved_late_rows = await conn.fetch(
+                """
+                UPDATE attendance_late_incidents
+                   SET state = $1
+                 WHERE state = $2
+                   AND reply_received_at IS NOT NULL
+                RETURNING id
+                """,
+                STATE_RESOLVED_LATE,
+                STATE_REMINDER_SENT,
+            )
+            resolved_late = len(resolved_late_rows)
+
+            # 2. Find AWAITING_REPLY rows old enough for a reminder.
+            awaiting = await conn.fetch(
+                """
+                SELECT id, email, full_name, late_date, checkin_time,
+                       first_email_sent_at, reply_token,
+                       responsible_manager_email
+                  FROM attendance_late_incidents
+                 WHERE state = $1
+                   AND reply_received_at IS NULL
+                """,
+                STATE_AWAITING_REPLY,
+            )
+
+            for inc in awaiting:
+                hours = self._working_hours_between(inc["first_email_sent_at"], now)
+                if hours < INCIDENT_REMINDER_AFTER_WORKING_HOURS:
+                    continue
+
+                await conn.execute(
+                    """
+                    UPDATE attendance_late_incidents
+                       SET state = $1, reminder_sent_at = NOW()
+                     WHERE id = $2
+                    """,
+                    STATE_REMINDER_SENT,
+                    inc["id"],
+                )
+                promoted_to_reminder += 1
+
+                # Email is sent OUTSIDE the connection (httpx is slow).
+                # We've already updated state so a crash won't loop the email.
+                await self._send_reminder_email(
+                    incident_id=inc["id"],
+                    email=inc["email"],
+                    full_name=inc["full_name"] or inc["email"],
+                    late_date=inc["late_date"],
+                    reply_token=inc["reply_token"],
+                )
+
+            # 3. Find REMINDER_SENT rows old enough for an ultimatum.
+            reminder_sent_rows = await conn.fetch(
+                """
+                SELECT id, email, full_name, late_date, checkin_time,
+                       reminder_sent_at, reply_token,
+                       responsible_manager_email
+                  FROM attendance_late_incidents
+                 WHERE state = $1
+                   AND reply_received_at IS NULL
+                """,
+                STATE_REMINDER_SENT,
+            )
+
+            for inc in reminder_sent_rows:
+                hours = self._working_hours_between(inc["reminder_sent_at"], now)
+                if hours < INCIDENT_ULTIMATUM_AFTER_WORKING_HOURS:
+                    continue
+
+                await conn.execute(
+                    """
+                    UPDATE attendance_late_incidents
+                       SET state = $1, ultimatum_sent_at = NOW()
+                     WHERE id = $2
+                    """,
+                    STATE_ESCALATED,
+                    inc["id"],
+                )
+                promoted_to_ultimatum += 1
+
+                await self._send_ultimatum_email(
+                    incident_id=inc["id"],
+                    email=inc["email"],
+                    full_name=inc["full_name"] or inc["email"],
+                    late_date=inc["late_date"],
+                    manager_email=inc["responsible_manager_email"],
+                )
+
+                # Ultimatum is the only event that breaks the "digest only"
+                # Telegram rule — send an immediate ping out-of-band.
+                await self._send_telegram(
+                    f"🚨 ULTIMATUM inviato — {inc['email']}\n"
+                    f"Ritardo del {inc['late_date'].strftime('%d/%m/%Y')}, "
+                    f"nessuna risposta in 48h lavorative.\n"
+                    f"CC: zero@"
+                    + (f" + {inc['responsible_manager_email']}"
+                       if inc["responsible_manager_email"] else ""),
+                )
+
+        counters = {
+            "resolved": resolved,
+            "resolved_late": resolved_late,
+            "promoted_to_reminder": promoted_to_reminder,
+            "promoted_to_ultimatum": promoted_to_ultimatum,
+        }
+        if any(counters.values()):
+            logger.info("run_escalation_scan: %s", counters)
+        else:
+            logger.debug("run_escalation_scan: nothing to do")
+        return counters
+
+    @staticmethod
+    def _working_hours_between(start: datetime, end: datetime) -> float:
+        """
+        Count hours between two datetimes, skipping Saturdays and Sundays.
+
+        Both datetimes are converted to Bali timezone before counting. The
+        algorithm walks day-by-day in Bali time so weekend rollover is exact:
+        a clock_in on Friday 09:45 will only start its 24h reminder counter
+        on Monday 00:00 — i.e. the cron will not promote it on the weekend.
+        """
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=BALI_TZ)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=BALI_TZ)
+        start_bali = start.astimezone(BALI_TZ)
+        end_bali = end.astimezone(BALI_TZ)
+        if end_bali <= start_bali:
+            return 0.0
+
+        total_seconds: float = 0.0
+        cursor = start_bali
+        while cursor < end_bali:
+            # End of the current calendar day in Bali time.
+            day_end = (cursor + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0, microsecond=0,
+            )
+            slice_end = min(day_end, end_bali)
+            if cursor.weekday() < 5:  # Mon–Fri only
+                total_seconds += (slice_end - cursor).total_seconds()
+            cursor = slice_end
+        return total_seconds / 3600.0
+
+    async def _send_reminder_email(
+        self,
+        *,
+        incident_id,
+        email: str,
+        full_name: str,
+        late_date: date,
+        reply_token: str,
+    ) -> None:
+        """
+        Stage 3 — 24h reminder (Indonesian, no CC).
+
+        Sent when an AWAITING_REPLY incident is older than 24 working hours.
+        Warns explicitly that further silence triggers an escalation.
+        """
+        first_name = full_name.split()[0] if full_name else email
+        reply_link = f"{HR_REPLY_BASE_URL}/{incident_id}?token={reply_token}"
+        date_str = late_date.strftime("%d/%m/%Y")
+        subject = f"Pengingat — keterlambatan {date_str} belum dijawab"
+
+        html_body = _render_email_shell(
+            header_title=f"Halo {first_name} — Pengingat penting",
+            accent="#dd6b20",
+            body_html=f"""
+            <p>
+                Kami belum menerima alasan keterlambatan kamu pada
+                <strong>{date_str}</strong>.
+            </p>
+            <div style="background:#fff5f5; border-left:4px solid #dd6b20;
+                        padding:12px 16px; border-radius:0 8px 8px 0;
+                        margin:20px 0; font-size:14px;">
+                Mohon dikirim secepatnya. <strong>Tidak menjawab dapat memicu
+                eskalasi terhadap kepatuhan dan kedisiplinan</strong> kamu.
+            </div>
+            <p style="text-align:center; margin:24px 0;">
+                <a href="{reply_link}"
+                   style="display:inline-block; background:#dd6b20; color:white;
+                          text-decoration:none; padding:12px 26px; border-radius:6px;
+                          font-weight:600; font-size:15px;">
+                    Kirim alasan sekarang →
+                </a>
+            </p>
+            <p style="font-size:13px; color:#777;">
+                Jika sudah terkirim sebelumnya dan email ini tetap kamu terima,
+                mohon hubungi langsung Zero atau manajermu.
+            </p>
+            """,
+        )
+        await self._post_email(
+            to=email,
+            subject=subject,
+            html_body=html_body,
+            cc=None,
+            log_tag="reminder_sent",
+        )
+
+    async def _send_ultimatum_email(
+        self,
+        *,
+        incident_id,
+        email: str,
+        full_name: str,
+        late_date: date,
+        manager_email: str | None,
+    ) -> None:
+        """
+        Stage 4 — ultimatum (English, CC zero@ + supervisor if any).
+
+        Sent when a REMINDER_SENT incident is older than 24 additional working
+        hours. Switches to English because the supervisor (Ruslana / Veronika)
+        is on the thread.
+
+        No reply link is included: the conduct review is now formal and any
+        explanation must be provided directly to the supervisor.
+        """
+        first_name = full_name.split()[0] if full_name else email
+        date_str = late_date.strftime("%d %B %Y")
+        subject = f"⚠️ Conduct escalation — unanswered late check-in ({date_str})"
+
+        cc_list: list[str] = [ADMIN_EMAIL]
+        if manager_email:
+            cc_list.append(manager_email)
+
+        manager_line = (
+            f"<p>This message has been escalated to <strong>{manager_email}</strong> "
+            f"and to Bali Zero management.</p>"
+            if manager_email
+            else "<p>This message has been escalated to Bali Zero management.</p>"
+        )
+
+        html_body = _render_email_shell(
+            header_title=f"{first_name} — Conduct escalation",
+            accent="#c53030",
+            body_html=f"""
+            <p>
+                Your late check-in on <strong>{date_str}</strong> has not been
+                answered despite two prior emails over the past 48 working hours.
+            </p>
+            <div style="background:#fff5f5; border-left:4px solid #c53030;
+                        padding:14px 18px; border-radius:0 8px 8px 0;
+                        margin:20px 0; font-size:14px;">
+                As of now this incident is logged as a <strong>conduct issue</strong>.
+                Repeated occurrences will be considered a formal disciplinary matter
+                under your employment terms.
+            </div>
+            {manager_line}
+            <p>
+                You are required to discuss this incident <strong>in person</strong>
+                with your supervisor before the end of the next working day.
+            </p>
+            <p style="margin-top: 24px; color: #555;">
+                Bali Zero Management
+            </p>
+            """,
+        )
+        await self._post_email(
+            to=email,
+            subject=subject,
+            html_body=html_body,
+            cc=cc_list,
+            log_tag="ultimatum_sent",
+        )
+
+    # ------------------------------------------------------------------
+    # Telegram digest
+    # ------------------------------------------------------------------
+
+    async def _send_telegram(self, message: str) -> None:
+        """
+        POST a plain-text message to Telegram. Silent no-op if the bot token
+        is not configured (e.g. in unit tests).
+        """
+        if not TELEGRAM_BOT_TOKEN:
+            logger.debug("_send_telegram: no token configured — skipping")
+            return
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_DIGEST_CHAT_ID,
+            "text": message,
+            "disable_web_page_preview": True,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+            logger.info("_send_telegram: sent (%d chars)", len(message))
+        except Exception as exc:
+            logger.error("_send_telegram: failed — %s", exc)
+
+    async def send_daily_telegram_digest(self) -> bool:
+        """
+        Build and send the 18:00 WITA daily digest. Returns True if a message
+        was sent, False if there was nothing to report (silent day).
+
+        Aggregates four sections — only those with data are included:
+          • New late incidents opened today
+          • Replies received today
+          • Currently escalated (ESCALATED state)
+          • Closed today (RESOLVED / RESOLVED_LATE state changes today)
+        """
+        today = datetime.now(BALI_TZ).date()
+
+        async with self.pool.acquire() as conn:
+            new_today = await conn.fetch(
+                """
+                SELECT email,
+                       to_char(checkin_time AT TIME ZONE 'Asia/Makassar', 'HH24:MI') AS hhmm,
+                       state
+                  FROM attendance_late_incidents
+                 WHERE late_date = $1
+                 ORDER BY checkin_time
+                """,
+                today,
+            )
+            replies_today = await conn.fetch(
+                """
+                SELECT email,
+                       late_date,
+                       LEFT(reply_content, 80) AS preview
+                  FROM attendance_late_incidents
+                 WHERE reply_received_at IS NOT NULL
+                   AND (reply_received_at AT TIME ZONE 'Asia/Makassar')::date = $1
+                 ORDER BY reply_received_at
+                """,
+                today,
+            )
+            escalated = await conn.fetch(
+                """
+                SELECT email, late_date
+                  FROM attendance_late_incidents
+                 WHERE state = $1
+                 ORDER BY late_date DESC
+                """,
+                STATE_ESCALATED,
+            )
+            closed_today = await conn.fetchval(
+                """
+                SELECT COUNT(*)
+                  FROM attendance_late_incidents
+                 WHERE state IN ($1, $2)
+                   AND (updated_at AT TIME ZONE 'Asia/Makassar')::date = $3
+                """,
+                STATE_RESOLVED,
+                STATE_RESOLVED_LATE,
+                today,
+            )
+
+        if not new_today and not replies_today and not escalated and not closed_today:
+            logger.info(
+                "send_daily_telegram_digest: nothing to report for %s — staying silent",
+                today,
+            )
+            return False
+
+        lines: list[str] = [
+            f"🕘 Ritardi & risposte — {today.strftime('%d/%m/%Y')}",
+            "",
+        ]
+
+        if new_today:
+            lines.append(f"⚠️ Ritardi oggi ({len(new_today)}):")
+            for r in new_today:
+                state_label = {
+                    STATE_AWAITING_REPLY: "incident aperto",
+                    STATE_REMINDER_SENT: "reminder inviato",
+                    STATE_ESCALATED: "ESCALATED",
+                    STATE_RESOLVED: "risolto",
+                    STATE_RESOLVED_LATE: "risolto in ritardo",
+                }.get(r["state"], r["state"])
+                lines.append(f"  • {r['email']} — {r['hhmm']} → {state_label}")
+            lines.append("")
+
+        if replies_today:
+            lines.append(f"💬 Risposte ricevute oggi ({len(replies_today)}):")
+            for r in replies_today:
+                preview = (r["preview"] or "").replace("\n", " ")
+                lines.append(
+                    f"  • {r['email']} ({r['late_date'].strftime('%d/%m')}): "
+                    f"\"{preview}\"",
+                )
+            lines.append("")
+
+        if escalated:
+            lines.append(f"🚨 Escalation attive ({len(escalated)}):")
+            for r in escalated:
+                lines.append(
+                    f"  • {r['email']} — {r['late_date'].strftime('%d/%m/%Y')}",
+                )
+            lines.append("")
+
+        if closed_today:
+            lines.append(f"✅ Chiusi oggi: {closed_today}")
+
+        await self._send_telegram("\n".join(lines).rstrip())
+        return True
 
     async def _send_absent_alert(self, absent_members: list[dict]) -> None:
         """
