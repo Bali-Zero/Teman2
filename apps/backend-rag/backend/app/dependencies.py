@@ -34,6 +34,7 @@ from backend.app.deps.auth import (
     require_team_member,
     security,
 )
+from backend.app.deps.owner import OWNER_EMAILS, require_owner
 
 # ============================================================================
 # DATABASE DEPENDENCIES
@@ -82,6 +83,8 @@ __all__ = [
     "get_current_user_optional",
     "get_current_user_email",
     "require_team_member",
+    "require_owner",
+    "OWNER_EMAILS",
     "get_current_portal_client",
     # database
     "get_database_pool",
