@@ -19,6 +19,7 @@ async def db_pool(monkeypatch):
     async with pool.acquire() as c:
         await c.execute("DELETE FROM owner_weekly_cashout_rows")
         await c.execute("DELETE FROM owner_weekly_cashout_weeks")
+        await c.execute("DELETE FROM owner_cashout_sync_log")
     yield pool
     await pool.close()
 
@@ -157,3 +158,113 @@ async def test_upsert_week_replaces_rows_on_rerun(db_pool):
         )
         assert week["total_practices"] == 1
         assert week["total_margin_bz_idr"] == 1_000_000
+
+
+from unittest.mock import patch
+
+
+class FakeReader:
+    def __init__(self, tabs: dict[str, list[list[str]]]):
+        self.tabs = tabs
+
+    def list_tabs(self, sheet_id: str) -> list[str]:
+        return list(self.tabs.keys())
+
+    def read_range(self, sheet_id: str, range_: str) -> list[list[str]]:
+        # range_ is like "BZ 22 AUG!A1:I200"
+        tab = range_.split("!")[0]
+        return self.tabs.get(tab, [])
+
+
+@pytest.mark.asyncio
+async def test_run_sync_happy_path(db_pool):
+    from backend.services.hr.owner_cashout.sync_service import run_sync
+
+    fake_tabs = {
+        "BZ 22 AUG": [
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+        ],
+        "BS 22 AUG": [
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "MARGIN BS", "FINAL PRICE"],
+            ["A BC", "C1", "Rp1,000,000", "", "", "Rp600,000", "Rp1,600,000"],
+        ],
+        "Sheet18": [["junk"]],
+    }
+
+    with patch(
+        "backend.services.hr.owner_cashout.sync_service.SheetReader",
+        return_value=FakeReader(fake_tabs),
+    ):
+        result = await run_sync(db_pool, triggered_by="test")
+
+    assert result.status == "success"
+    assert result.weeks_processed == 1
+    assert result.rows_upserted == 2
+    assert result.unknown_tabs == []
+
+
+@pytest.mark.asyncio
+async def test_run_sync_unknown_tab_triggers_partial(db_pool):
+    from backend.services.hr.owner_cashout.sync_service import run_sync
+
+    fake_tabs = {
+        "BZ 22 AUG": [
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+        ],
+        "BS 22 AUG": [
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "MARGIN BS", "FINAL PRICE"],
+            ["A BC", "C1", "Rp1,000,000", "", "", "Rp600,000", "Rp1,600,000"],
+        ],
+        "BZ 13 FEB 26": [  # unknown, not in TAB_TO_WEEK
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            ["X Y", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+        ],
+    }
+
+    with patch(
+        "backend.services.hr.owner_cashout.sync_service.SheetReader",
+        return_value=FakeReader(fake_tabs),
+    ), patch(
+        "backend.services.hr.owner_cashout.sync_service.send_alert",
+    ) as mock_alert:
+        result = await run_sync(db_pool, triggered_by="test")
+
+    assert result.status == "partial"
+    assert "BZ 13 FEB 26" in result.unknown_tabs
+    assert result.weeks_skipped >= 1
+    assert result.weeks_processed == 1
+    mock_alert.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_run_sync_writes_log_row(db_pool):
+    from backend.services.hr.owner_cashout.sync_service import run_sync
+
+    fake_tabs = {
+        "BZ 22 AUG": [
+            ["NEW CASHOUT"],
+            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+        ],
+    }
+
+    with patch(
+        "backend.services.hr.owner_cashout.sync_service.SheetReader",
+        return_value=FakeReader(fake_tabs),
+    ):
+        await run_sync(db_pool, triggered_by="manual:zero@balizero.com")
+
+    async with db_pool.acquire() as c:
+        row = await c.fetchrow(
+            "SELECT * FROM owner_cashout_sync_log ORDER BY started_at DESC LIMIT 1"
+        )
+        assert row["status"] in ("success", "partial")
+        assert row["triggered_by"] == "manual:zero@balizero.com"
+        assert row["finished_at"] is not None
