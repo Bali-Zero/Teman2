@@ -131,8 +131,12 @@ async def _require_can_review_leave(
 
 
 def _get_user_id(current_user: dict[str, Any]) -> str:
-    """Extract and validate user ID from auth context. Raises 400 if missing."""
-    user_id = current_user.get("id") or None
+    """Extract and validate user ID from auth context. Raises 400 if missing.
+
+    Reads `user_id` (the key populated by get_current_user) with `id` as a
+    backward-compatible fallback.
+    """
+    user_id = current_user.get("user_id") or current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=400, detail="User ID missing from auth token")
     return user_id
