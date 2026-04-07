@@ -707,6 +707,77 @@ def _watchdog_core() -> None:
     except Exception as _e:
         logger.debug(f"API contract audit skip: {_e}")
 
+    # 12. Unified Risk Scoring (V4)
+    try:
+        from apps.evaluator.core_guardian.risk_scorer import (
+            compute_risk_score,
+            get_threshold_action,
+            write_deploy_block,
+            clear_deploy_block,
+        )
+        from apps.evaluator.core_guardian.decision_logger import (
+            log_decision_sync,
+            log_risk_score_sync,
+        )
+
+        _audit_counts = {
+            "rbac": locals().get("_rbac_errors", 0) or 0,
+            "api_contract": locals().get("_ghost_count", 0) or 0,
+            "cache": len(locals().get("_cache_findings", []) or []),
+            "dead_code": locals().get("_dead_count", 0) or 0,
+        }
+
+        _risk = compute_risk_score(_audit_counts)
+        _action = get_threshold_action(_risk["overall"])
+
+        logger.info(
+            f"Risk score: {_risk['overall']}/100 "
+            f"(RBAC={_risk['rbac']}, API={_risk['api_contract']}, "
+            f"Cache={_risk['cache']}, Dead={_risk['dead_code']}) → {_action}"
+        )
+
+        # Persist to DB
+        _run_id = f"watchdog-{now.replace(':', '').replace('-', '')[:15]}"
+        log_risk_score_sync(
+            _risk["overall"], _risk["rbac"], _risk["api_contract"],
+            _risk["cache"], _risk["dead_code"],
+        )
+
+        # Log decisions for non-zero checks
+        for _check_name, _count in _audit_counts.items():
+            if _count > 0:
+                log_decision_sync(
+                    _run_id, "watchdog", f"{_check_name}_audit",
+                    f"{_count} findings", "warning" if _risk[_check_name] > 50 else "info",
+                    _action, rationale=f"Score {_risk[_check_name]}/100",
+                    risk_score=_risk["overall"],
+                )
+
+        # Persist to baseline
+        baseline["risk_score"] = _risk["overall"]
+        baseline["updated_at"] = now
+        atomic_write_json(BASELINE_FILE, baseline)
+
+        # Deploy gate
+        if _risk["overall"] >= 95:
+            write_deploy_block(_risk["overall"], _risk)
+            send_telegram_alert(
+                f"DEPLOY BLOCKED — Risk Score {_risk['overall']}/100\n"
+                f"RBAC={_risk['rbac']} API={_risk['api_contract']} "
+                f"Cache={_risk['cache']} Dead={_risk['dead_code']}"
+            )
+        else:
+            clear_deploy_block()
+            if _risk["overall"] >= 80:
+                send_telegram_alert(
+                    f"Risk Score HIGH: {_risk['overall']}/100\n"
+                    f"RBAC={_risk['rbac']} API={_risk['api_contract']} "
+                    f"Cache={_risk['cache']} Dead={_risk['dead_code']}"
+                )
+
+    except Exception as _e:
+        logger.debug(f"Risk scoring skip: {_e}")
+
 
 def _log_circuit_breaker_event(event_type: str, data: dict) -> None:
     """Appende un evento al circuit breaker log."""
