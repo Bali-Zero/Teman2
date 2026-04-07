@@ -118,15 +118,34 @@ class LHKPNScraper(BaseScraper):
                 )
                 self.logger.info("reCAPTCHA v3 token generated for '%s'", query)
 
-                # Submit
-                await page.click("#announ button[type=submit]")
-                await page.wait_for_timeout(5000)
-                await page.wait_for_load_state("networkidle")
+                # Submit — form POSTs to a new URL, wait for navigation
+                async with page.expect_navigation(
+                    wait_until="networkidle", timeout=30000
+                ):
+                    await page.click("#announ button[type=submit]")
+                await page.wait_for_timeout(3000)
                 await random_delay(1, 2)
 
-                # Parse results table in #announ section
-                rows = await page.locator("#announ table tbody tr").all()
-                self.logger.info("LHKPN search '%s': %d results", query, len(rows))
+                # Parse results table (we're now on /check_search_announ)
+                # Get total from "Showing 1 to 10 of N entries"
+                info_el = page.locator(".dataTables_info")
+                info_text = (
+                    await info_el.inner_text() if await info_el.count() else ""
+                )
+                total_match = re.search(r"of\s+([\d,]+)\s+entries", info_text)
+                total_entries = (
+                    int(total_match.group(1).replace(",", ""))
+                    if total_match
+                    else 0
+                )
+
+                rows = await page.locator("table tbody tr").all()
+                self.logger.info(
+                    "LHKPN search '%s': %d rows on page, %d total entries",
+                    query,
+                    len(rows),
+                    total_entries,
+                )
 
                 for row in rows:
                     cells = await row.locator("td").all()
@@ -137,6 +156,7 @@ class LHKPNScraper(BaseScraper):
                     # [0]=hash [1]=id [2]=empty [3]=tahun [4]=type [5]=no
                     # [6]=NAMA [7]=lembaga [8]=unit_kerja [9]=jabatan
                     # [10]=tanggal_lapor [11]=jenis_laporan [12]=total_harta [13]=aksi
+                    tahun_data = (await cells[3].inner_text()).strip()
                     nama = (await cells[6].inner_text()).strip()
                     lembaga = (await cells[7].inner_text()).strip()
                     unit_kerja = (await cells[8].inner_text()).strip()
@@ -150,6 +170,7 @@ class LHKPNScraper(BaseScraper):
 
                     record_data: dict[str, Any] = {
                         "nama": nama,
+                        "tahun_data": tahun_data,
                         "lembaga": lembaga,
                         "unit_kerja": unit_kerja,
                         "jabatan": jabatan,
