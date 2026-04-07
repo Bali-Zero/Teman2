@@ -1209,6 +1209,69 @@ async def stream_workspace_agent(
     )
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# VASSAL Phase 3 — Confirmation gate endpoint
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class ConfirmationDecisionRequest(BaseModel):
+    """Body for POST /api/agentic-rag/confirm."""
+
+    request_id: str
+    decision: str  # "approve" or "reject"
+
+
+@router.post("/confirm")
+async def resolve_confirmation(
+    body: ConfirmationDecisionRequest,
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """
+    Resolve a pending tool confirmation request.
+
+    VASSAL Phase 3: called by the frontend WorkspaceAssistant (Phase 3B)
+    or by `curl` during manual testing. The user must be authenticated
+    (same JWT middleware as workspace-stream) and must be the same user
+    who triggered the request (ownership verified inside the service).
+
+    Returns 200 with ``{resolved: true}`` on success, or 404 if the
+    request_id is unknown, expired, or owned by another user.
+    """
+    user_email = current_user.get("email")
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # Lazy import to avoid circular deps at module load time.
+    # The ConfirmationService singleton lives in tool_executor's module
+    # scope, populated by service_initializer at startup.
+    from backend.services.rag.agentic.tool_executor import _confirmation_service
+
+    if _confirmation_service is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Confirmation service not available",
+        )
+
+    resolved = await _confirmation_service.resolve_confirmation(
+        request_id=body.request_id,
+        decision=body.decision,
+        user_email=user_email,
+    )
+    if not resolved:
+        raise HTTPException(
+            status_code=404,
+            detail="Confirmation request not found, expired, or unauthorized",
+        )
+
+    logger.info(
+        "confirmation_resolved request_id=%s decision=%s user=%s",
+        body.request_id,
+        body.decision,
+        user_email,
+    )
+    return {"resolved": True, "request_id": body.request_id}
+
+
 class ProactiveTriggerRequest(BaseModel):
     """Request to trigger proactive AI behavior based on system events"""
 
