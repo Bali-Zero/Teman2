@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { fileToBase64 } from '@/lib/utils';
 import type { Client, ClientCompanyLink } from '@/lib/api/crm/crm.types';
+import { lkpmApi } from '@/lib/api/workspace/lkpm.api';
+import type { LKPMBatchItem } from '@/lib/api/portal/portal.types';
 
 // ============================================
 // TAX CONSULTANT DROPDOWN (Bali Zero tax team)
@@ -557,6 +559,118 @@ function TaxIdBadge({
 }
 
 // ============================================
+// LKPM QUARTER CARD — 5 tokens per card
+// ============================================
+function LkpmQuarterCard({
+  quarter,
+  report,
+}: {
+  quarter: string;
+  report: LKPMBatchItem | null;
+}) {
+  const qLabels: Record<string, string> = {
+    Q1: 'Jan-Mar',
+    Q2: 'Apr-Jun',
+    Q3: 'Jul-Sep',
+    Q4: 'Oct-Dec',
+  };
+
+  if (!report) {
+    return (
+      <div className="text-center p-3 rounded-lg border border-[var(--bz-border)]">
+        <p className="text-lg font-bold text-[var(--bz-text-1)]">{quarter}</p>
+        <p className="text-[10px] text-[var(--bz-text-2)]">{qLabels[quarter]}</p>
+        <p className="text-[10px] text-[var(--bz-text-2)] mt-1 italic">Belum ada laporan</p>
+      </div>
+    );
+  }
+
+  // 1. Status+OSS badge
+  const statusLabel = report.oss_submitted
+    ? 'Submitted'
+    : report.status === 'approved'
+      ? 'Approved'
+      : report.status === 'validated'
+        ? 'Validated'
+        : 'Draft';
+  const statusColor = report.oss_submitted
+    ? 'text-emerald-400'
+    : report.status === 'approved'
+      ? 'text-blue-400'
+      : report.status === 'validated'
+        ? 'text-blue-300'
+        : 'text-amber-400';
+  const statusIcon = report.oss_submitted ? ' \u2705' : '';
+
+  // 2. Days to deadline — hide if submitted
+  const daysColor =
+    report.days_to_deadline != null && report.days_to_deadline <= 3
+      ? 'text-red-400'
+      : report.days_to_deadline != null && report.days_to_deadline <= 7
+        ? 'text-amber-400'
+        : 'text-emerald-400';
+
+  // 3. Assigned consultant — extract first name from email
+  const assignedName = report.lkpm_assigned_to
+    ? report.lkpm_assigned_to.split('.')[0].replace(/^\w/, (c) => c.toUpperCase())
+    : null;
+
+  // 5. Alert health dot
+  const healthDot =
+    report.red_alerts > 0
+      ? '\uD83D\uDD34'
+      : report.yellow_alerts > 0
+        ? '\uD83D\uDFE1'
+        : '\uD83D\uDFE2';
+
+  return (
+    <div className="p-3 rounded-lg border border-[var(--bz-border)] bg-[var(--bz-surface)] space-y-1">
+      {/* Quarter header */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-[var(--bz-text-1)]">{quarter}</p>
+        <span className="text-[10px]">{healthDot}</span>
+      </div>
+
+      {/* 1. Status badge */}
+      <p className={`text-[10px] font-semibold ${statusColor}`}>
+        {statusLabel}{statusIcon}
+      </p>
+
+      {/* 2. Days to deadline */}
+      {!report.oss_submitted && report.days_to_deadline != null && (
+        <p className={`text-[10px] ${daysColor}`}>
+          {report.days_to_deadline} hari
+        </p>
+      )}
+
+      {/* 3. Assigned consultant */}
+      {assignedName ? (
+        <p className="text-[10px] text-[var(--bz-text-2)]">{assignedName}</p>
+      ) : (
+        <p className="text-[10px] text-red-400">Belum di-assign</p>
+      )}
+
+      {/* 4. Client approved */}
+      <p className="text-[10px]">
+        {report.client_approved ? (
+          <span className="text-emerald-400">{'\u2713'} Approved</span>
+        ) : (
+          <span className="text-red-400">{'\u2717'} Pending</span>
+        )}
+      </p>
+
+      {/* Buka link */}
+      <a
+        href={`/lkpm/${report.id}`}
+        className="text-[10px] text-[var(--bz-accent)] hover:underline block mt-1"
+      >
+        Buka
+      </a>
+    </div>
+  );
+}
+
+// ============================================
 // TAX TAB COMPONENT
 // ============================================
 export function TaxTab({
@@ -576,6 +690,37 @@ export function TaxTab({
   const [activeSection, setActiveSection] = useState<TaxSection>('personal');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lkpmItems, setLkpmItems] = useState<LKPMBatchItem[]>([]);
+  const [lkpmLoading, setLkpmLoading] = useState(false);
+
+  // Fetch LKPM data for this client
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    setLkpmLoading(true);
+    lkpmApi
+      .getClientHistory(clientId)
+      .then((res) => {
+        if (!cancelled) setLkpmItems(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setLkpmItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLkpmLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [clientId]);
+
+  // Group LKPM items by company for the selected year
+  const lkpmByCompany = lkpmItems
+    .filter((item) => item.year === selectedYear)
+    .reduce<Record<string, LKPMBatchItem[]>>((acc, item) => {
+      const key = item.company_name;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
 
   // Calculate deadlines based on selected year
   const deadlines = {
@@ -680,7 +825,7 @@ export function TaxTab({
             onClick={() => setActiveSection('monthly')}
           />
 
-          {/* LKPM with 4 quarters */}
+          {/* LKPM with live quarter cards */}
           <div className="rounded-xl border border-[var(--bz-border)] bg-[var(--bz-surface)] p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -703,26 +848,37 @@ export function TaxTab({
               </Button>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
-              {[1, 2, 3, 4].map((q) => (
-                <div
-                  key={q}
-                  className={`text-center p-3 rounded-lg border ${
-                    activeSection === 'lkpm'
-                      ? 'border-[var(--accent)] bg-[var(--bz-accent)]/10'
-                      : 'border-[var(--bz-border)]'
-                  }`}
-                >
-                  <p className="text-lg font-bold">Q{q}</p>
-                  <p className="text-xs text-[var(--bz-text-2)]">
-                    {q === 1 && 'Jan-Mar'}
-                    {q === 2 && 'Apr-Jun'}
-                    {q === 3 && 'Jul-Sep'}
-                    {q === 4 && 'Oct-Dec'}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {lkpmLoading ? (
+              <div className="text-center py-4 text-xs text-[var(--bz-text-2)]">Loading LKPM data...</div>
+            ) : Object.keys(lkpmByCompany).length === 0 ? (
+              /* No LKPM data — show static Q1-Q4 placeholders */
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3, 4].map((q) => (
+                  <div
+                    key={q}
+                    className="text-center p-3 rounded-lg border border-[var(--bz-border)]"
+                  >
+                    <p className="text-lg font-bold text-[var(--bz-text-1)]">Q{q}</p>
+                    <p className="text-xs text-[var(--bz-text-2)]">Belum ada laporan</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Live LKPM data grouped by company */
+              <div className="space-y-4">
+                {Object.entries(lkpmByCompany).map(([companyName, items]) => (
+                  <div key={companyName}>
+                    <p className="text-xs font-medium text-[var(--bz-text-2)] mb-2">{companyName}</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((q) => {
+                        const report = items.find((r) => r.quarter === q);
+                        return <LkpmQuarterCard key={q} quarter={q} report={report ?? null} />;
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
