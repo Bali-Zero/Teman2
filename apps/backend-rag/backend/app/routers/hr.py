@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.hr.hr_leave_routing import resolve_approver
 from backend.app.services.hr.hr_service import HRService
 from backend.app.utils.hr_utils import is_hr_admin
 
@@ -83,6 +84,47 @@ def _get_hr_service(db_pool: asyncpg.Pool) -> HRService:
 def _require_hr_admin(user: dict[str, Any]) -> None:
     if not is_hr_admin(user):
         raise HTTPException(status_code=403, detail="HR admin access required")
+
+
+async def _require_can_review_leave(
+    service: HRService,
+    user: dict[str, Any],
+    request_id: int,
+) -> dict[str, Any]:
+    """Return the leave request row if the user may approve/reject it.
+
+    Policy:
+    - HR admins (Zero, Asya, Ruslana, antonellosiano) can review anyone
+      EXCEPT their own requests (self-approval is forbidden).
+    - Delegated supervisors (resolved via hr_leave_routing.resolve_approver)
+      can review their direct reports only.
+    - Raises HTTPException 404 if the request does not exist.
+    - Raises HTTPException 403 if the user lacks permission.
+    """
+    req = await service.get_leave_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    user_email = (user.get("email") or "").lower().strip()
+    requester_email = (req.get("requester_email") or "").lower().strip()
+
+    # Self-approval is forbidden even for HR admins.
+    if user_email and user_email == requester_email:
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot approve or reject your own leave request",
+        )
+
+    if is_hr_admin(user):
+        return req
+
+    if resolve_approver(requester_email) == user_email:
+        return req
+
+    raise HTTPException(
+        status_code=403,
+        detail="You are not authorized to review this leave request",
+    )
 
 
 def _get_user_id(current_user: dict[str, Any]) -> str:
