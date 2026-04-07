@@ -118,6 +118,8 @@ class PatternMiner:
                 continue
 
             canonical = self._pick_canonical(cluster)
+            if not canonical:
+                continue
             # Dedup by canonical similarity
             if any(SequenceMatcher(None, canonical, s).ratio() > 0.9 for s in seen_canonicals):
                 continue
@@ -549,6 +551,7 @@ class FragilityScorer:
             try:
                 violations = json.loads(result.stdout) if result.stdout else []
             except json.JSONDecodeError:
+                logger.warning("Ruff output is not valid JSON — violation count will be 0")
                 violations = []
 
             for v in violations:
