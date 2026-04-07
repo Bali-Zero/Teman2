@@ -81,7 +81,7 @@ async def get_connection_status(
     service = GoogleDriveService(db_pool)
 
     return ConnectionStatus(
-        connected=await service.is_connected(current_user["id"]),
+        connected=await service.is_connected(current_user["user_id"]),
         configured=service.is_configured(),
         root_folder_id=service.root_folder_id,
     )
@@ -245,7 +245,7 @@ async def disconnect(
     Disconnect Google Drive for current user.
     """
     service = GoogleDriveService(db_pool)
-    success = await service.disconnect(current_user["id"])
+    success = await service.disconnect(current_user["user_id"])
     return {"success": success}
 
 
@@ -410,7 +410,7 @@ async def list_files(
         # Get breadcrumb path
         breadcrumb = []
         if folder_id:
-            breadcrumb = await service.get_folder_path(current_user["id"], folder_id)
+            breadcrumb = await service.get_folder_path(current_user["user_id"], folder_id)
 
         return FileListResponse(
             files=files,
