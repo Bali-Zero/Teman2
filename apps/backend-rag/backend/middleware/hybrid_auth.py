@@ -153,6 +153,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             "/api/portal/invite/validate/",  # BUSINESS: Client invitation validation - token-based security
             "/api/portal/invite/complete",  # BUSINESS: Client registration completion - token-based security
+            "/api/hr/late-reply/",  # BUSINESS: HR late check-in reply form - per-incident token-based security (secrets.compare_digest), GET form + POST submit, no PII collected. Token IS the auth.
             # ========================================================================
             # PUBLIC KNOWLEDGE BASE ENDPOINTS
             # ========================================================================
@@ -190,6 +191,13 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/prime/v2/regulations",  # PRIME NEXUS: Regulation feed per zone (public)
             "/api/prime/v2/proposal/",  # PRIME NEXUS: Public proposal view (token-based)
             "/api/prime/v2/health",  # PRIME NEXUS: Health check
+            # ========================================================================
+            # VISA ORACLE ENDPOINTS (Public product — anonymous visa recommendations)
+            # ========================================================================
+            "/api/v1/visa-oracle/recommend",  # BUSINESS: Anonymous visa quiz recommendations — no user data, pure scoring logic
+            "/api/v1/visa-oracle/chat",  # BUSINESS: Anonymous visa Q&A chat — rate-limited by IP hash, no PII collected
+            "/api/v1/visa-oracle/handoff",  # BUSINESS: WhatsApp/Telegram handoff — builds deep-link URL + team notification
+            "/api/v1/visa-oracle/visa-types",  # BUSINESS: Visa types catalog — used by Next.js SSG at build time
             # ========================================================================
             # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
             # ========================================================================
