@@ -318,10 +318,11 @@ async def get_leave_types(
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Return all leave types for dropdown population."""
+    """Return all active leave types for dropdown population."""
     async with db_pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT id, name, max_days_per_year FROM hr_leave_types ORDER BY id",
+            "SELECT id, code, name, default_days, is_paid, requires_document "
+            "FROM hr_leave_types WHERE is_active = TRUE ORDER BY id",
         )
         return {"leave_types": [dict(r) for r in rows]}
 
