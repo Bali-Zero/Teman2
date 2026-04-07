@@ -40,6 +40,7 @@ class CellSettings(BaseSettings):
     class Config:
         env_prefix = "CELL_"
         env_file = ".env"
+        extra = "ignore"
 
 
 settings = CellSettings()
