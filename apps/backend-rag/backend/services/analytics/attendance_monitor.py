@@ -4,7 +4,7 @@ Responsibility: Late check-in alerts and consecutive-absence detection.
 
 Two automations:
 1. Late check-in alert  — triggered immediately when clock_in arrives after 09:30 Bali time.
-   Sends a friendly email to the member + CC to zero@balizero.com.
+   Sends a friendly email to the member (from zantara@balizero.com) + CC to zero@balizero.com.
 
 2. Absent alert — called daily at 10:00 Bali time (from scheduler or daily_checkin_notifier).
    Finds members with no clock_in for 2+ consecutive working days (Mon–Fri) and sends a
@@ -37,8 +37,19 @@ logger = get_logger(__name__)
 
 BALI_TZ = ZoneInfo("Asia/Makassar")
 
-LATE_THRESHOLD_HOUR: int = 9
-LATE_THRESHOLD_MINUTE: int = 40  # 09:40 Bali time
+# Two-stage late policy (Bali time):
+#   [start, GRACE)          → on time, no email
+#   [GRACE, INCIDENT)       → gentle reminder email only (no incident, no escalation)
+#   [INCIDENT, ...)         → opens a late-incident record with full escalation flow
+LATE_GRACE_HOUR: int = 9
+LATE_GRACE_MINUTE: int = 30  # 09:30 — below this nothing happens
+
+LATE_INCIDENT_HOUR: int = 9
+LATE_INCIDENT_MINUTE: int = 40  # 09:40 — at/after this an incident is opened
+
+# Legacy aliases kept so existing imports / tests do not break.
+LATE_THRESHOLD_HOUR: int = LATE_GRACE_HOUR
+LATE_THRESHOLD_MINUTE: int = LATE_GRACE_MINUTE
 
 ADMIN_EMAIL: str = "zero@balizero.com"
 
@@ -59,6 +70,88 @@ _EMAIL_API_KEY: str = os.getenv("NUZANTARA_API_KEY", "")
 
 # Number of consecutive working days without clock-in before triggering an alert
 ABSENT_THRESHOLD_DAYS: int = 2
+
+
+# ---------------------------------------------------------------------------
+# Shared email shell
+# ---------------------------------------------------------------------------
+
+
+def _render_email_shell(
+    *,
+    header_title: str,
+    accent: str,
+    body_html: str,
+) -> str:
+    """
+    Shared HTML wrapper for all attendance emails.
+
+    Keeps a single source of truth for colors, typography, and layout so the
+    gentle reminder, incident email, 24h reminder and ultimatum all look like
+    part of the same conversation.
+    """
+    return f"""<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }}
+        .container {{
+            max-width: 560px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }}
+        .header {{
+            background: {accent};
+            color: white;
+            padding: 28px 32px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+        }}
+        .content {{
+            padding: 32px;
+            color: #333333;
+            line-height: 1.7;
+            font-size: 15px;
+        }}
+        .footer {{
+            text-align: center;
+            padding: 20px 32px;
+            color: #888888;
+            font-size: 12px;
+            border-top: 1px solid #f0f0f0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{header_title}</h1>
+        </div>
+        <div class="content">{body_html}
+            <p style="margin-top: 24px; color:#888; font-size:12px;">
+                Bali Zero Management · Zantara CRM
+            </p>
+        </div>
+        <div class="footer">
+            Bali Zero · Zantara Team Management
+        </div>
+    </div>
+</body>
+</html>"""
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +179,12 @@ class AttendanceMonitor:
 
     async def check_late_checkin(self, email: str, checkin_time: datetime) -> None:
         """
-        Called immediately when a clock_in event is recorded after 09:40 Bali time.
+        Called immediately when a clock_in event is recorded.
+
+        Two-stage policy (Bali time):
+          * clock_in < 09:30               → nothing (on time)
+          * 09:30 <= clock_in < 09:40      → gentle reminder only (Indonesian, no incident)
+          * clock_in >= 09:40              → incident opened (handled by commit 2)
 
         Skips members in LATE_EXEMPT_EMAILS (zero, ruslana, veronika) and members
         who have an approved leave request covering today.
@@ -100,16 +198,23 @@ class AttendanceMonitor:
             logger.debug("check_late_checkin: %s is exempt — skipping", email)
             return
 
-        late_threshold = checkin_time.replace(
-            hour=LATE_THRESHOLD_HOUR,
-            minute=LATE_THRESHOLD_MINUTE,
+        grace_start = checkin_time.replace(
+            hour=LATE_GRACE_HOUR,
+            minute=LATE_GRACE_MINUTE,
+            second=0,
+            microsecond=0,
+        )
+        incident_start = checkin_time.replace(
+            hour=LATE_INCIDENT_HOUR,
+            minute=LATE_INCIDENT_MINUTE,
             second=0,
             microsecond=0,
         )
 
-        if checkin_time <= late_threshold:
+        # On time — below grace window.
+        if checkin_time < grace_start:
             logger.debug(
-                "check_late_checkin: %s checked in at %s — not late, skipping",
+                "check_late_checkin: %s checked in at %s — on time, skipping",
                 email,
                 checkin_time.strftime("%H:%M"),
             )
@@ -125,19 +230,30 @@ class AttendanceMonitor:
             )
             return
 
-        logger.info(
-            "check_late_checkin: %s checked in at %s (after threshold %s:%s) — sending alert",
-            email,
-            checkin_time.strftime("%H:%M"),
-            LATE_THRESHOLD_HOUR,
-            str(LATE_THRESHOLD_MINUTE).zfill(2),
-        )
-
         member = await self._get_member_by_email(email)
         full_name: str = member["full_name"] if member else email
-
         checkin_str = checkin_time.strftime("%H:%M")
-        await self._send_late_notification(email, full_name, checkin_str)
+
+        # Grace window: 09:30 ≤ clock_in < 09:40 → gentle reminder only.
+        if checkin_time < incident_start:
+            logger.info(
+                "check_late_checkin: %s in grace window at %s — sending gentle reminder",
+                email,
+                checkin_str,
+            )
+            await self._send_gentle_reminder(email, full_name, checkin_str)
+            return
+
+        # Incident window: clock_in ≥ 09:40.
+        # Commit 1: sends a stronger notification email (still 1-to-1, Indonesian).
+        # Commit 2: will also open a row in attendance_late_incidents and kick off
+        #           the reply/reminder/ultimatum state machine.
+        logger.info(
+            "check_late_checkin: %s in incident window at %s — opening incident",
+            email,
+            checkin_str,
+        )
+        await self._send_incident_opened_notification(email, full_name, checkin_str)
 
     async def check_absent_members(self) -> None:
         """
@@ -317,119 +433,24 @@ class AttendanceMonitor:
     # Email senders
     # ------------------------------------------------------------------
 
-    async def _send_late_notification(self, email: str, full_name: str, checkin_time: str) -> None:
+    async def _post_email(
+        self,
+        *,
+        to: str,
+        subject: str,
+        html_body: str,
+        cc: str | list[str] | None = None,
+        log_tag: str = "email",
+    ) -> None:
         """
-        Send a late check-in email to the member (CC zero@balizero.com).
+        Internal helper: POST a rendered email to the notifications API.
 
-        Subject: "Late Check-In — [name], [time]"
-        Language: English.
-        Reminds the member to submit a leave request via HR portal if needed.
+        Centralises the httpx call + structured logging so callers only worry
+        about subject + body.
         """
-        first_name: str = full_name.split()[0] if full_name else email
-
-        subject: str = f"Late Check-In — {first_name}, {checkin_time}"
-
-        html_body: str = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-        }}
-        .container {{
-            max-width: 560px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }}
-        .header {{
-            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
-            color: white;
-            padding: 28px 32px;
-            text-align: center;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 22px;
-            font-weight: 600;
-        }}
-        .content {{
-            padding: 32px;
-            color: #333333;
-            line-height: 1.7;
-            font-size: 15px;
-        }}
-        .highlight {{
-            background: #fffaf0;
-            border-left: 4px solid #ed8936;
-            padding: 12px 16px;
-            border-radius: 0 8px 8px 0;
-            margin: 20px 0;
-            font-size: 14px;
-        }}
-        .btn {{
-            display: inline-block;
-            background: #ed8936;
-            color: white;
-            text-decoration: none;
-            padding: 10px 22px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-            margin-top: 8px;
-        }}
-        .footer {{
-            text-align: center;
-            padding: 20px 32px;
-            color: #888888;
-            font-size: 12px;
-            border-top: 1px solid #f0f0f0;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Hi {first_name} — Late Check-In</h1>
-        </div>
-        <div class="content">
-            <p>
-                Your check-in today was recorded at <strong>{checkin_time} WITA</strong>,
-                which is after the 09:40 start time.
-            </p>
-            <div class="highlight">
-                If you need to take time off or arrived late due to a planned reason,
-                please submit a leave request through the HR portal and wait for your
-                manager's approval before the absence or late arrival.
-            </div>
-            <p>
-                <a href="https://kita.balizero.com/hr" class="btn">Submit Leave Request →</a>
-            </p>
-            <p style="margin-top: 24px; color: #555;">
-                If this was an emergency or unexpected situation, just let your manager know.
-            </p>
-            <p>Bali Zero Management<br><strong>Zantara CRM</strong></p>
-        </div>
-        <div class="footer">
-            Bali Zero · Zantara Team Management
-        </div>
-    </div>
-</body>
-</html>"""
-
-        payload: dict = {
-            "to": email,
-            "cc": ADMIN_EMAIL,
-            "subject": subject,
-            "body": html_body,
-        }
+        payload: dict = {"to": to, "subject": subject, "body": html_body}
+        if cc is not None:
+            payload["cc"] = cc
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -440,25 +461,122 @@ class AttendanceMonitor:
                 )
                 response.raise_for_status()
             logger.info(
-                "_send_late_notification: sent late alert to %s (CC %s) for check-in at %s",
-                email,
-                ADMIN_EMAIL,
-                checkin_time,
+                "%s: sent to %s (cc=%s) subject=%r",
+                log_tag,
+                to,
+                cc,
+                subject,
             )
         except httpx.HTTPStatusError as exc:
             logger.error(
-                "_send_late_notification: HTTP %s sending to %s — %s",
+                "%s: HTTP %s sending to %s — %s",
+                log_tag,
                 exc.response.status_code,
-                email,
+                to,
                 exc.response.text,
             )
         except Exception as exc:
             logger.error(
-                "_send_late_notification: failed to send to %s — %s",
-                email,
+                "%s: failed to send to %s — %s",
+                log_tag,
+                to,
                 exc,
                 exc_info=True,
             )
+
+    async def _send_gentle_reminder(
+        self,
+        email: str,
+        full_name: str,
+        checkin_time: str,
+    ) -> None:
+        """
+        Stage 1 — grace window (09:30 ≤ clock_in < 09:40).
+
+        Sends a friendly 1-to-1 reminder in Indonesian. No CC, no incident,
+        no escalation. Purely informational.
+        """
+        first_name: str = full_name.split()[0] if full_name else email
+        subject: str = f"Pengingat check-in — {first_name}, {checkin_time}"
+
+        html_body: str = _render_email_shell(
+            header_title=f"Halo {first_name} 👋",
+            accent="#f6ad55",  # amber — soft
+            body_html=f"""
+            <p>
+                Check-in kamu hari ini tercatat pukul
+                <strong>{checkin_time} WITA</strong>, sedikit melewati jam mulai 09:30.
+            </p>
+            <p>
+                Ini hanya pengingat ramah — tidak ada tindakan yang perlu kamu lakukan.
+                Mohon usahakan check-in sebelum jam <strong>09:30</strong> mulai besok ya. 🙏
+            </p>
+            <p style="margin-top: 18px; color:#666; font-size:13px;">
+                Jika kamu butuh cuti atau izin, silakan ajukan leave request melalui portal HR.
+            </p>
+            """,
+        )
+
+        # No CC — this is strictly 1-to-1.
+        await self._post_email(
+            to=email,
+            subject=subject,
+            html_body=html_body,
+            cc=None,
+            log_tag="gentle_reminder",
+        )
+
+    async def _send_incident_opened_notification(
+        self,
+        email: str,
+        full_name: str,
+        checkin_time: str,
+    ) -> None:
+        """
+        Stage 2 — incident window (clock_in ≥ 09:40).
+
+        Sends a more serious 1-to-1 email in Indonesian asking for a mandatory
+        reply explaining the reason for the late arrival.
+
+        NOTE (commit 1): this method currently only sends the email. Commit 2
+        will also insert a row in ``attendance_late_incidents`` and embed a
+        signed reply link so the escalation cron can track response status.
+        """
+        first_name: str = full_name.split()[0] if full_name else email
+        subject: str = f"Keterlambatan hari ini — {first_name}, {checkin_time}"
+
+        html_body: str = _render_email_shell(
+            header_title=f"Halo {first_name} — Keterlambatan tercatat",
+            accent="#ed8936",  # orange — stronger
+            body_html=f"""
+            <p>
+                Check-in kamu hari ini tercatat pukul
+                <strong>{checkin_time} WITA</strong>, setelah batas 09:40.
+            </p>
+            <div style="background:#fffaf0; border-left:4px solid #ed8936;
+                        padding:12px 16px; border-radius:0 8px 8px 0;
+                        margin:20px 0; font-size:14px;">
+                Mohon balas email ini atau hubungi manajermu untuk menjelaskan
+                <strong>alasan keterlambatan hari ini</strong>. Balasan bersifat wajib.
+            </div>
+            <p>
+                Jika keterlambatan karena alasan yang sudah direncanakan (cuti, izin, dinas luar),
+                pastikan leave request sudah diajukan dan disetujui sebelumnya.
+            </p>
+            <p style="margin-top: 24px; color: #555;">
+                Terima kasih atas perhatian dan kerjasamanya. 🙏
+            </p>
+            """,
+        )
+
+        # Still no CC at stage 2 — escalation CC only at ultimatum stage.
+        await self._post_email(
+            to=email,
+            subject=subject,
+            html_body=html_body,
+            cc=None,
+            log_tag="incident_opened",
+        )
 
     async def _send_absent_alert(self, absent_members: list[dict]) -> None:
         """

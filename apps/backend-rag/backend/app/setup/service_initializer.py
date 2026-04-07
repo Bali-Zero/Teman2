@@ -371,11 +371,15 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 if result != 1:
                     raise ValueError("Pool validation failed")
 
+            from backend.services.analytics.attendance_monitor import AttendanceMonitor
             from backend.services.analytics.daily_checkin_notifier import init_daily_notifier
             from backend.services.analytics.team_timesheet_service import init_timesheet_service
             from backend.services.analytics.weekly_email_reporter import init_weekly_reporter
 
-            ts_service = init_timesheet_service(db_pool)
+            attendance_monitor = AttendanceMonitor(db_pool)
+            app.state.attendance_monitor = attendance_monitor
+
+            ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
             app.state.ts_service = ts_service
             app.state.db_pool = db_pool  # Store pool for other services
 
@@ -1306,14 +1310,18 @@ async def initialize_services_light(app: FastAPI) -> None:
 
     # 3. Timesheet service (requires DB pool, used by team_activity router)
     try:
+        from backend.services.analytics.attendance_monitor import AttendanceMonitor
         from backend.services.analytics.team_timesheet_service import init_timesheet_service
-        ts_service = init_timesheet_service(db_pool)
+        attendance_monitor = AttendanceMonitor(db_pool)
+        app.state.attendance_monitor = attendance_monitor
+        ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
         app.state.ts_service = ts_service
         await ts_service.start_auto_logout_monitor()
         logger.info("✅ Timesheet service initialized (light)")
     except Exception as e:
         logger.warning(f"⚠️ Timesheet service failed (non-critical): {e}")
         app.state.ts_service = None
+        app.state.attendance_monitor = None
 
     # 4. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
