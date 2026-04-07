@@ -100,6 +100,10 @@ HR_REPLY_BASE_URL: str = os.getenv(
 TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_DIGEST_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "413539912")
 
+# Telegram sendMessage hard limit is 4096 chars; leave headroom for the
+# "(part N/M)\n" header that chunked messages get.
+TELEGRAM_MAX_MSG_LEN: int = 4000
+
 # Manager routing: which supervisor to CC on the ultimatum email.
 # - tax team (any *.tax@balizero.com) -> Veronika
 # - dea / rina                          -> Ruslana
@@ -138,6 +142,55 @@ def resolve_responsible_manager(email: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Shared email shell
 # ---------------------------------------------------------------------------
+
+
+def _chunk_telegram_message(
+    message: str,
+    *,
+    max_len: int = TELEGRAM_MAX_MSG_LEN,
+) -> list[str]:
+    """
+    Split a Telegram message into ≤ ``max_len`` chunks on newline boundaries.
+
+    Returns a list with at least one element. If the input is short enough,
+    the list contains the original message unchanged. If splitting is needed,
+    each chunk is prefixed with a "(part N/M)\\n" header so the recipient can
+    tell what they are reading.
+
+    Lines longer than ``max_len`` are hard-broken at ``max_len`` characters —
+    this should never happen for the digest (rows are short) but it stops the
+    function returning a chunk that would itself be rejected by Telegram.
+    """
+    if len(message) <= max_len:
+        return [message]
+
+    # First pass: greedy pack lines into chunks ≤ max_len.
+    raw_chunks: list[str] = []
+    current: list[str] = []
+    current_len: int = 0
+    for raw_line in message.split("\n"):
+        # Hard-break a line that on its own exceeds the limit.
+        line_pieces: list[str] = (
+            [raw_line[i : i + max_len] for i in range(0, len(raw_line), max_len)]
+            if len(raw_line) > max_len
+            else [raw_line]
+        )
+        for line in line_pieces:
+            # +1 for the newline that joins lines inside a chunk.
+            extra = len(line) + (1 if current else 0)
+            if current_len + extra > max_len:
+                raw_chunks.append("\n".join(current))
+                current = [line]
+                current_len = len(line)
+            else:
+                current.append(line)
+                current_len += extra
+    if current:
+        raw_chunks.append("\n".join(current))
+
+    # Second pass: prefix each chunk with "(part N/M)" header.
+    total = len(raw_chunks)
+    return [f"(part {i + 1}/{total})\n{chunk}" for i, chunk in enumerate(raw_chunks)]
 
 
 def _render_email_shell(
@@ -813,19 +866,40 @@ class AttendanceMonitor:
         Incidents whose ``reply_received_at`` has been populated by the HR
         reply form are skipped — they will be transitioned to RESOLVED /
         RESOLVED_LATE inside the same scan.
+
+        Implementation notes
+        --------------------
+        The DB phase (SELECT, UPDATE, RETURNING) and the I/O phase (HTTP email
+        + Telegram) are deliberately separated:
+
+          * Phase 1 (under pool.acquire) does ALL the SQL — including the
+            state-promoting UPDATEs — and builds two in-memory lists of work
+            items containing every field the email senders need. This means
+            the connection is held only for a few milliseconds even on busy
+            mornings, instead of being blocked behind 30-second httpx calls.
+
+          * Phase 2 (no connection held) iterates the lists and sends the
+            emails / Telegram pings. Each item is wrapped in its own try /
+            except so a single failure does not abort the rest of the scan.
+
+        State is committed to the DB BEFORE any email is attempted. This trades
+        a possible "missed email on crash" against the much worse alternative
+        of "duplicate email on crash" — the cron will not re-promote an
+        already-promoted row, but a missed email is at least visible in the
+        Telegram digest the same evening.
         """
         now = datetime.now(BALI_TZ)
-        promoted_to_reminder = 0
-        promoted_to_ultimatum = 0
         resolved = 0
         resolved_late = 0
+        to_remind: list[dict] = []
+        to_escalate: list[dict] = []
 
+        # ─── Phase 1: DB only (no HTTP) ────────────────────────────────────
         async with self.pool.acquire() as conn:
-            # 1. Resolve any incidents that received a reply since last scan.
-            #    AWAITING_REPLY + reply -> RESOLVED
-            #    REMINDER_SENT  + reply -> RESOLVED_LATE
-            #    ESCALATED      + reply -> stays ESCALATED (history preserved),
-            #                              but reply_received_at is already set.
+            # 1a. Resolve any incidents that received a reply since last scan.
+            #     AWAITING_REPLY + reply -> RESOLVED
+            #     REMINDER_SENT  + reply -> RESOLVED_LATE
+            #     ESCALATED      + reply -> stays ESCALATED (history preserved)
             resolved_rows = await conn.fetch(
                 """
                 UPDATE attendance_late_incidents
@@ -852,24 +926,21 @@ class AttendanceMonitor:
             )
             resolved_late = len(resolved_late_rows)
 
-            # 2. Find AWAITING_REPLY rows old enough for a reminder.
+            # 1b. AWAITING_REPLY -> REMINDER_SENT (rows old enough only).
             awaiting = await conn.fetch(
                 """
-                SELECT id, email, full_name, late_date, checkin_time,
-                       first_email_sent_at, reply_token,
-                       responsible_manager_email
+                SELECT id, email, full_name, late_date, first_email_sent_at,
+                       reply_token, responsible_manager_email
                   FROM attendance_late_incidents
                  WHERE state = $1
                    AND reply_received_at IS NULL
                 """,
                 STATE_AWAITING_REPLY,
             )
-
             for inc in awaiting:
                 hours = self._working_hours_between(inc["first_email_sent_at"], now)
                 if hours < INCIDENT_REMINDER_AFTER_WORKING_HOURS:
                     continue
-
                 await conn.execute(
                     """
                     UPDATE attendance_late_incidents
@@ -879,23 +950,20 @@ class AttendanceMonitor:
                     STATE_REMINDER_SENT,
                     inc["id"],
                 )
-                promoted_to_reminder += 1
-
-                # Email is sent OUTSIDE the connection (httpx is slow).
-                # We've already updated state so a crash won't loop the email.
-                await self._send_reminder_email(
-                    incident_id=inc["id"],
-                    email=inc["email"],
-                    full_name=inc["full_name"] or inc["email"],
-                    late_date=inc["late_date"],
-                    reply_token=inc["reply_token"],
+                to_remind.append(
+                    {
+                        "id": inc["id"],
+                        "email": inc["email"],
+                        "full_name": inc["full_name"] or inc["email"],
+                        "late_date": inc["late_date"],
+                        "reply_token": inc["reply_token"],
+                    },
                 )
 
-            # 3. Find REMINDER_SENT rows old enough for an ultimatum.
+            # 1c. REMINDER_SENT -> ESCALATED (rows old enough only).
             reminder_sent_rows = await conn.fetch(
                 """
-                SELECT id, email, full_name, late_date, checkin_time,
-                       reminder_sent_at, reply_token,
+                SELECT id, email, full_name, late_date, reminder_sent_at,
                        responsible_manager_email
                   FROM attendance_late_incidents
                  WHERE state = $1
@@ -903,12 +971,10 @@ class AttendanceMonitor:
                 """,
                 STATE_REMINDER_SENT,
             )
-
             for inc in reminder_sent_rows:
                 hours = self._working_hours_between(inc["reminder_sent_at"], now)
                 if hours < INCIDENT_ULTIMATUM_AFTER_WORKING_HOURS:
                     continue
-
                 await conn.execute(
                     """
                     UPDATE attendance_late_incidents
@@ -918,32 +984,85 @@ class AttendanceMonitor:
                     STATE_ESCALATED,
                     inc["id"],
                 )
-                promoted_to_ultimatum += 1
+                to_escalate.append(
+                    {
+                        "id": inc["id"],
+                        "email": inc["email"],
+                        "full_name": inc["full_name"] or inc["email"],
+                        "late_date": inc["late_date"],
+                        "manager_email": inc["responsible_manager_email"],
+                    },
+                )
+        # ─── End of Phase 1 — connection released here ─────────────────────
 
+        # ─── Phase 2: HTTP I/O (no connection held) ────────────────────────
+        for inc in to_remind:
+            try:
+                await self._send_reminder_email(
+                    incident_id=inc["id"],
+                    email=inc["email"],
+                    full_name=inc["full_name"],
+                    late_date=inc["late_date"],
+                    reply_token=inc["reply_token"],
+                )
+            except Exception as exc:
+                # State is already promoted in DB. Log loud so the missed
+                # email is visible in monitoring.
+                logger.error(
+                    "run_escalation_scan: reminder email FAILED for "
+                    "incident_id=%s email=%s — %s",
+                    inc["id"],
+                    inc["email"],
+                    exc,
+                    exc_info=True,
+                )
+
+        for inc in to_escalate:
+            try:
                 await self._send_ultimatum_email(
                     incident_id=inc["id"],
                     email=inc["email"],
-                    full_name=inc["full_name"] or inc["email"],
+                    full_name=inc["full_name"],
                     late_date=inc["late_date"],
-                    manager_email=inc["responsible_manager_email"],
+                    manager_email=inc["manager_email"],
+                )
+            except Exception as exc:
+                logger.error(
+                    "run_escalation_scan: ultimatum email FAILED for "
+                    "incident_id=%s email=%s — %s",
+                    inc["id"],
+                    inc["email"],
+                    exc,
+                    exc_info=True,
                 )
 
-                # Ultimatum is the only event that breaks the "digest only"
-                # Telegram rule — send an immediate ping out-of-band.
+            # Ultimatum is the only event that breaks the "digest only"
+            # Telegram rule — send an immediate ping out-of-band.
+            try:
                 await self._send_telegram(
                     f"🚨 ULTIMATUM inviato — {inc['email']}\n"
                     f"Ritardo del {inc['late_date'].strftime('%d/%m/%Y')}, "
                     f"nessuna risposta in 48h lavorative.\n"
                     f"CC: zero@"
-                    + (f" + {inc['responsible_manager_email']}"
-                       if inc["responsible_manager_email"] else ""),
+                    + (
+                        f" + {inc['manager_email']}"
+                        if inc["manager_email"]
+                        else ""
+                    ),
+                )
+            except Exception as exc:
+                logger.error(
+                    "run_escalation_scan: telegram ping FAILED for "
+                    "incident_id=%s — %s",
+                    inc["id"],
+                    exc,
                 )
 
         counters = {
             "resolved": resolved,
             "resolved_late": resolved_late,
-            "promoted_to_reminder": promoted_to_reminder,
-            "promoted_to_ultimatum": promoted_to_ultimatum,
+            "promoted_to_reminder": len(to_remind),
+            "promoted_to_ultimatum": len(to_escalate),
         }
         if any(counters.values()):
             logger.info("run_escalation_scan: %s", counters)
@@ -1116,23 +1235,43 @@ class AttendanceMonitor:
         """
         POST a plain-text message to Telegram. Silent no-op if the bot token
         is not configured (e.g. in unit tests).
+
+        Long messages (> TELEGRAM_MAX_MSG_LEN ≈ 4000 chars) are split on
+        newline boundaries via ``_chunk_telegram_message`` and sent as
+        multiple sendMessage calls, each prefixed with "(part N/M)". The
+        4096-char Telegram hard limit is otherwise easy to hit on heavy days.
         """
         if not TELEGRAM_BOT_TOKEN:
             logger.debug("_send_telegram: no token configured — skipping")
             return
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_DIGEST_CHAT_ID,
-            "text": message,
-            "disable_web_page_preview": True,
-        }
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                response = await client.post(url, json=payload)
-                response.raise_for_status()
-            logger.info("_send_telegram: sent (%d chars)", len(message))
-        except Exception as exc:
-            logger.error("_send_telegram: failed — %s", exc)
+        chunks = _chunk_telegram_message(message)
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            for idx, chunk in enumerate(chunks, start=1):
+                payload = {
+                    "chat_id": TELEGRAM_DIGEST_CHAT_ID,
+                    "text": chunk,
+                    "disable_web_page_preview": True,
+                }
+                try:
+                    response = await client.post(url, json=payload)
+                    response.raise_for_status()
+                    logger.info(
+                        "_send_telegram: sent chunk %d/%d (%d chars)",
+                        idx,
+                        len(chunks),
+                        len(chunk),
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "_send_telegram: failed chunk %d/%d — %s",
+                        idx,
+                        len(chunks),
+                        exc,
+                    )
+                    # Keep going so a transient error on one chunk does not
+                    # block the rest of the digest.
 
     async def send_daily_telegram_digest(self) -> bool:
         """

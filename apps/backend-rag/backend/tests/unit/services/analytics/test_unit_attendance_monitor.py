@@ -257,3 +257,78 @@ def test_threshold_constants_match_policy() -> None:
     """Pin the policy in code so a future edit can't silently move 09:30/09:40."""
     assert (LATE_GRACE_HOUR, LATE_GRACE_MINUTE) == (9, 30)
     assert (LATE_INCIDENT_HOUR, LATE_INCIDENT_MINUTE) == (9, 40)
+
+
+# ---------------------------------------------------------------------------
+# _send_incident_opened_notification — duplicate clock_in handling
+# ---------------------------------------------------------------------------
+
+
+class TestIncidentInsertConflict:
+    """
+    The incident table has UNIQUE (email, late_date). A second clock_in by
+    the same person on the same day must NOT open a duplicate incident and
+    must NOT send a second email.
+    """
+
+    @pytest.mark.asyncio
+    async def test_duplicate_same_day_does_not_resend_email(self) -> None:
+        # Build a monitor whose conn.fetchrow returns None — simulating the
+        # ON CONFLICT (email, late_date) DO NOTHING branch firing because a
+        # row already exists.
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(return_value=None)
+        conn.__aenter__ = AsyncMock(return_value=conn)
+        conn.__aexit__ = AsyncMock(return_value=None)
+
+        pool = MagicMock()
+        pool.acquire = MagicMock(return_value=conn)
+
+        monitor = AttendanceMonitor(db_pool=pool)
+        monitor._post_email = AsyncMock()  # spy on email sending
+
+        late_dt = datetime(2026, 4, 7, 9, 45, tzinfo=BALI_TZ)
+        await monitor._send_incident_opened_notification(
+            email="adit@balizero.com",
+            full_name="Adit Test",
+            checkin_time_dt=late_dt,
+        )
+
+        # The INSERT should have been attempted exactly once.
+        conn.fetchrow.assert_awaited_once()
+        # But because it returned None (ON CONFLICT), no email should have been sent.
+        monitor._post_email.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_first_incident_of_day_sends_email(self) -> None:
+        # Same setup, but conn.fetchrow returns a row — simulating a freshly
+        # inserted incident.
+        conn = AsyncMock()
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "id": "00000000-0000-0000-0000-000000000001",
+                "reply_token": "token_xyz_long_enough_for_query",
+            },
+        )
+        conn.__aenter__ = AsyncMock(return_value=conn)
+        conn.__aexit__ = AsyncMock(return_value=None)
+
+        pool = MagicMock()
+        pool.acquire = MagicMock(return_value=conn)
+
+        monitor = AttendanceMonitor(db_pool=pool)
+        monitor._post_email = AsyncMock()
+
+        late_dt = datetime(2026, 4, 7, 9, 45, tzinfo=BALI_TZ)
+        await monitor._send_incident_opened_notification(
+            email="adit@balizero.com",
+            full_name="Adit Test",
+            checkin_time_dt=late_dt,
+        )
+
+        conn.fetchrow.assert_awaited_once()
+        monitor._post_email.assert_awaited_once()
+        # Verify the reply link is embedded in the rendered body.
+        call_kwargs = monitor._post_email.call_args.kwargs
+        assert "token_xyz_long_enough_for_query" in call_kwargs["html_body"]
+        assert "00000000-0000-0000-0000-000000000001" in call_kwargs["html_body"]
