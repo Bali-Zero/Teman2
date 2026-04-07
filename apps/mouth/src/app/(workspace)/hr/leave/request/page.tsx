@@ -2,19 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import * as hrApi from "@/lib/api/hr/hr";
-
-interface LeaveTypeOption {
-  id: number;
-  name: string;
-  max_days_per_year: number;
-}
+import type { LeaveTypeOption } from "@/lib/api/hr/hr";
 
 export default function LeaveRequestPage() {
   const router = useRouter();
   const [form, setForm] = useState({
-    leave_type_id: 1,
+    leave_type_id: 0,
     start_date: "",
     end_date: "",
     total_days: 1,
@@ -28,13 +23,34 @@ export default function LeaveRequestPage() {
   useEffect(() => {
     hrApi
       .getLeaveTypes()
-      .then((res) => setLeaveTypes(res.leave_types ?? []))
-      .catch(() => setLeaveTypes([]))
+      .then((res) => {
+        const types = res.leave_types ?? [];
+        setLeaveTypes(types);
+        // Default to the first available type so the form is submittable
+        // immediately. Avoids submitting leave_type_id=0 (or a hardcoded id
+        // that may not exist after migrations).
+        if (types.length > 0) {
+          setForm((prev) => ({ ...prev, leave_type_id: types[0].id }));
+        }
+      })
+      .catch((err) =>
+        setError(
+          err instanceof Error ? err.message : "Failed to load leave types",
+        ),
+      )
       .finally(() => setLoadingTypes(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.leave_type_id) {
+      setError("Please select a leave type");
+      return;
+    }
+    if (!form.start_date || !form.end_date) {
+      setError("Please select start and end dates");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -79,17 +95,18 @@ export default function LeaveRequestPage() {
                 leave_type_id: Number(e.target.value),
               }))
             }
-            disabled={loadingTypes}
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-200"
+            disabled={loadingTypes || leaveTypes.length === 0}
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-200 disabled:opacity-50"
           >
             {loadingTypes ? (
-              <option>Loading...</option>
+              <option value={0}>Loading...</option>
             ) : leaveTypes.length === 0 ? (
-              <option>No leave types available</option>
+              <option value={0}>No leave types available</option>
             ) : (
               leaveTypes.map((lt) => (
                 <option key={lt.id} value={lt.id}>
-                  {lt.name} ({lt.max_days_per_year}d/yr)
+                  {lt.name}
+                  {lt.default_days > 0 ? ` (${lt.default_days}d/yr)` : ""}
                 </option>
               ))
             )}
@@ -151,8 +168,8 @@ export default function LeaveRequestPage() {
 
         <button
           type="submit"
-          disabled={submitting}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-zinc-950 hover:opacity-90 text-sm font-medium transition-opacity disabled:opacity-50"
+          disabled={submitting || leaveTypes.length === 0}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--bz-accent)] text-zinc-950 hover:opacity-90 text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send size={16} />
           {submitting ? "Submitting..." : "Submit Request"}

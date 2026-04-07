@@ -12,13 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { api } from "@/lib/api";
-
-const ADMIN_EMAILS = [
-  "zero@balizero.com",
-  "asya@balizero.com",
-  "ruslana@balizero.com",
-  "antonellosiano@gmail.com",
-];
+import { isHRAdmin } from "@/lib/hr/admin";
 
 const allNavItems = [
   { href: "/hr", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
@@ -37,8 +31,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api
       .getProfile()
-      .then((user: { email: string }) => {
-        setIsAdmin(ADMIN_EMAILS.includes(user.email));
+      .then((user) => {
+        setIsAdmin(isHRAdmin(user));
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
