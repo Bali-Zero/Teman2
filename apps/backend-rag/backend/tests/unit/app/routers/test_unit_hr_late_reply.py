@@ -9,21 +9,22 @@ Coverage focus:
 - POST submit: invalid token rejected
 - POST submit: replay protection (already replied)
 
-The router calls ``await get_database_pool()`` directly (it is a coroutine,
-not a FastAPI dependency), so we monkeypatch the symbol on the router module
-itself rather than using ``app.dependency_overrides``.
+The router takes the DB pool via FastAPI dependency injection
+(``Depends(get_database_pool)``), so we override that dependency on the
+test app to inject a fake asyncpg-style pool.
 """
 
 from __future__ import annotations
 
-from datetime import date
-from unittest.mock import AsyncMock, MagicMock
+from datetime import date, datetime, timezone
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from backend.app.dependencies import get_database_pool
 from backend.app.routers import hr_late_reply
 from backend.services.analytics.attendance_monitor import (
     STATE_AWAITING_REPLY,
@@ -93,15 +94,18 @@ def client(app: FastAPI) -> TestClient:
     return TestClient(app)
 
 
+def _override_pool(app: FastAPI, pool) -> None:
+    """Wire ``pool`` into the app's get_database_pool dependency."""
+    app.dependency_overrides[get_database_pool] = lambda: pool
+
+
 # ---------------------------------------------------------------------------
 # GET form
 # ---------------------------------------------------------------------------
 
 
 class TestGetLateReplyForm:
-    def test_get_form_with_valid_token(
-        self, client: TestClient, monkeypatch,
-    ) -> None:
+    def test_get_form_with_valid_token(self, app: FastAPI, client: TestClient) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_xyz"
         pool = _make_pool(
@@ -113,9 +117,7 @@ class TestGetLateReplyForm:
                 "state": STATE_AWAITING_REPLY,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = client.get(
             f"/api/hr/late-reply/{incident_id}?token={token}",
@@ -126,7 +128,7 @@ class TestGetLateReplyForm:
         assert token in response.text  # rendered into the hidden form field
 
     def test_get_form_with_wrong_token_returns_404(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
         incident_id = uuid4()
         pool = _make_pool(
@@ -138,9 +140,7 @@ class TestGetLateReplyForm:
                 "state": STATE_AWAITING_REPLY,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = client.get(
             f"/api/hr/late-reply/{incident_id}?token=completely_wrong_value_xx",
@@ -150,10 +150,8 @@ class TestGetLateReplyForm:
         assert "Tautan tidak valid" in response.text
 
     def test_get_form_when_already_replied(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
-        from datetime import datetime, timezone
-
         incident_id = uuid4()
         token = "valid_token_with_enough_length_xyz"
         pool = _make_pool(
@@ -165,9 +163,7 @@ class TestGetLateReplyForm:
                 "state": STATE_RESOLVED,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = client.get(
             f"/api/hr/late-reply/{incident_id}?token={token}",
@@ -196,7 +192,7 @@ class TestPostLateReply:
         )
 
     def test_awaiting_reply_transitions_to_resolved(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_aaa"
@@ -207,9 +203,7 @@ class TestPostLateReply:
                 "state": STATE_AWAITING_REPLY,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = self._post(client, incident_id, token)
 
@@ -221,7 +215,7 @@ class TestPostLateReply:
         assert args[1] == STATE_RESOLVED
 
     def test_reminder_sent_transitions_to_resolved_late(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_bbb"
@@ -232,9 +226,7 @@ class TestPostLateReply:
                 "state": STATE_REMINDER_SENT,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = self._post(client, incident_id, token)
 
@@ -243,7 +235,7 @@ class TestPostLateReply:
         assert args[1] == STATE_RESOLVED_LATE
 
     def test_escalated_state_is_preserved_on_late_reply(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
         """
         Reply arriving AFTER the ultimatum must NOT downgrade the state.
@@ -259,9 +251,7 @@ class TestPostLateReply:
                 "state": STATE_ESCALATED,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = self._post(
             client,
@@ -279,7 +269,7 @@ class TestPostLateReply:
         assert args[0] == "Sorry, I had a family emergency on that day."
 
     def test_invalid_token_returns_404(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
         incident_id = uuid4()
         pool = _make_pool(
@@ -289,9 +279,7 @@ class TestPostLateReply:
                 "state": STATE_AWAITING_REPLY,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = self._post(
             client, incident_id, "wrong_token_value_zzzzzzzzz",
@@ -302,10 +290,8 @@ class TestPostLateReply:
         assert pool._conn.executed == []
 
     def test_replay_after_first_reply_is_idempotent(
-        self, client: TestClient, monkeypatch,
+        self, app: FastAPI, client: TestClient,
     ) -> None:
-        from datetime import datetime, timezone
-
         incident_id = uuid4()
         token = "valid_token_with_enough_length_ddd"
         pool = _make_pool(
@@ -315,9 +301,7 @@ class TestPostLateReply:
                 "state": STATE_RESOLVED,
             },
         )
-        monkeypatch.setattr(
-            hr_late_reply, "get_database_pool", AsyncMock(return_value=pool),
-        )
+        _override_pool(app, pool)
 
         response = self._post(client, incident_id, token)
 
