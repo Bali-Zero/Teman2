@@ -692,6 +692,7 @@ export class CrmApi {
       status: string;
       client_type: string;
       assigned_to: string;
+      tax_consultant: string | null;
       address: string;
       notes: string;
       tags: string[];

@@ -97,6 +97,7 @@ export interface Client {
   status: "lead" | "active" | "completed" | "lost" | "inactive";
   client_type: "individual" | "company";
   assigned_to?: string;
+  tax_consultant?: string | null;
   avatar_url?: string;
   company_name?: string;
   first_contact_date?: string;

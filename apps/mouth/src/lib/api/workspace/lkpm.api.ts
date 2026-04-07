@@ -12,6 +12,7 @@ import type {
   LKPMValidationAlert,
   LKPMDeadline,
   LKPMReadyPack,
+  LKPMOSSCredentials,
 } from "../portal/portal.types";
 
 export const lkpmApi = {
@@ -92,5 +93,43 @@ export const lkpmApi = {
       draft_id: number;
       realized_total: number;
     }>(`/api/v1/lkpm/sync-jurnal/${clientId}`, { quarter, year });
+  },
+
+  /**
+   * Assign (or clear) an LKPM report to a tax consultant.
+   * Pass null to clear the assignment.
+   * Backend: PUT /api/v1/lkpm/reports/{draft_id}/assign  (admin-only RBAC)
+   */
+  async assignReport(
+    draftId: number,
+    lkpmAssignedTo: string | null,
+  ): Promise<{ draft_id: number; lkpm_assigned_to: string | null }> {
+    const r = await api.put<{
+      success: boolean;
+      draft_id: number;
+      lkpm_assigned_to: string | null;
+    }>(`/api/v1/lkpm/reports/${draftId}/assign`, {
+      lkpm_assigned_to: lkpmAssignedTo,
+    });
+    return { draft_id: r.draft_id, lkpm_assigned_to: r.lkpm_assigned_to };
+  },
+
+  /**
+   * Fetch OSS credentials (plaintext) for a company.
+   * Backend: GET /api/v1/lkpm/credentials/{client_id}
+   * RBAC: admin OR the tax consultant assigned to a LKPM report for this client.
+   */
+  async getCredentials(clientId: number): Promise<LKPMOSSCredentials> {
+    const r = await api.get<
+      LKPMOSSCredentials & { success: boolean }
+    >(`/api/v1/lkpm/credentials/${clientId}`);
+    return {
+      client_id: r.client_id,
+      company_name: r.company_name,
+      oss_username: r.oss_username,
+      oss_password: r.oss_password,
+      oss_creds_updated_at: r.oss_creds_updated_at,
+      oss_creds_updated_by: r.oss_creds_updated_by,
+    };
   },
 };
