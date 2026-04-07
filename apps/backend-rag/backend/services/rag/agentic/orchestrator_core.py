@@ -1095,20 +1095,25 @@ class OrchestratorCore:
             reasoning_steps = []
             sources_list: list[dict[str, Any]] = []
             for step in state.steps:
+                if step.thought:
+                    reasoning_steps.append(
+                        ReasoningStep(step_type="thought", content=step.thought),
+                    )
                 if step.observation:
                     reasoning_steps.append(
                         ReasoningStep(step_type="observation", content=step.observation),
                     )
                     # Extract source docs from tool results
-                    if step.tool_name == "vector_search" and step.observation:
+                    tool_name = step.action.tool_name if step.action else ""
+                    if tool_name == "vector_search" and step.observation:
                         docs.append(
                             RetrievedDoc(
                                 content=step.observation[:2000],
-                                score=0.7,  # Default score from tool results
-                                source=step.tool_name,
+                                score=0.7,
+                                source=tool_name,
                             ),
                         )
-                        sources_list.append({"source": step.tool_name, "content": step.observation[:500]})
+                        sources_list.append({"source": tool_name, "content": step.observation[:500]})
 
             ctx = GradingContext(
                 answer=answer,
