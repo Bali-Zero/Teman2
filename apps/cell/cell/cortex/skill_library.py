@@ -73,7 +73,7 @@ def cosine_similarity(a: bytes, b: bytes) -> float:
 
 @dataclass
 class Skill:
-    """A single evolvable skill stored in the cortex_skills table."""
+    """A single evolvable skill stored in the cell_skills table."""
 
     id: int
     name: str
@@ -136,7 +136,7 @@ class SkillLibrary:
         if parent_id is not None:
             async with self._pool.acquire() as conn:
                 row = await conn.fetchval(
-                    "SELECT generation FROM cortex_skills WHERE id = $1",
+                    "SELECT generation FROM cell_skills WHERE id = $1",
                     parent_id,
                 )
                 if row is not None:
@@ -145,7 +145,7 @@ class SkillLibrary:
         async with self._pool.acquire() as conn:
             new_id: int = await conn.fetchval(
                 """
-                INSERT INTO cortex_skills
+                INSERT INTO cell_skills
                     (name, trigger_nl, action_sequence, rationale_nl,
                      fitness, success_count, failure_count, use_count,
                      generation, parent_id, embedding, status, source)
@@ -171,7 +171,7 @@ class SkillLibrary:
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 """
-                UPDATE cortex_skills
+                UPDATE cell_skills
                 SET status = 'active'
                 WHERE id = $1 AND status = 'candidate'
                 """,
@@ -185,7 +185,7 @@ class SkillLibrary:
             if success:
                 await conn.execute(
                     """
-                    UPDATE cortex_skills
+                    UPDATE cell_skills
                     SET success_count = success_count + 1,
                         use_count = use_count + 1,
                         fitness = (success_count + 1 - failure_count)::float
@@ -198,7 +198,7 @@ class SkillLibrary:
             else:
                 await conn.execute(
                     """
-                    UPDATE cortex_skills
+                    UPDATE cell_skills
                     SET failure_count = failure_count + 1,
                         use_count = use_count + 1,
                         fitness = (success_count - (failure_count + 1))::float
@@ -235,7 +235,7 @@ class SkillLibrary:
                        fitness, success_count, failure_count, use_count,
                        generation, parent_id, embedding, status,
                        created_at, last_used_at, last_decay_check
-                FROM cortex_skills
+                FROM cell_skills
                 WHERE status = 'active'
                 ORDER BY fitness DESC
                 LIMIT 50
@@ -299,7 +299,7 @@ class SkillLibrary:
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 f"""
-                UPDATE cortex_skills
+                UPDATE cell_skills
                 SET status = 'apoptosed',
                     last_decay_check = NOW()
                 WHERE status = 'active'
@@ -320,7 +320,7 @@ class SkillLibrary:
         """
         async with self._pool.acquire() as conn:
             active_count: int = await conn.fetchval(
-                "SELECT COUNT(*) FROM cortex_skills WHERE status = 'active'"
+                "SELECT COUNT(*) FROM cell_skills WHERE status = 'active'"
             )
             if active_count <= self._max_active:
                 return 0
@@ -328,10 +328,10 @@ class SkillLibrary:
             excess = active_count - self._max_active
             result = await conn.execute(
                 """
-                UPDATE cortex_skills
+                UPDATE cell_skills
                 SET status = 'apoptosed'
                 WHERE id IN (
-                    SELECT id FROM cortex_skills
+                    SELECT id FROM cell_skills
                     WHERE status = 'active'
                     ORDER BY fitness ASC
                     LIMIT $1
