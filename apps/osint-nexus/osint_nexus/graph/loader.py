@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
 from osint_nexus.config import NEO4J_DATABASE, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER
+from osint_nexus.parsers.lhkpn_parser import LhkpnReport
 from osint_nexus.resolver.entity_resolver import ResolvedEntity
 from osint_nexus.utils.logging import get_logger
 
@@ -189,6 +191,175 @@ class GraphLoader:
         async with self._driver.session(database=self._db) as session:
             await session.run(query, params)
 
+    # ── LHKPN Asset Nodes ──
+
+    async def upsert_property(self, data: dict[str, Any]) -> None:
+        """MERGE a Property node by property_id."""
+        query = """
+        MERGE (p:Property {property_id: $property_id})
+        ON CREATE SET
+            p.lokasi = $lokasi,
+            p.luas_tanah_m2 = $luas_tanah_m2,
+            p.luas_bangunan_m2 = $luas_bangunan_m2,
+            p.tipe = $tipe,
+            p.created_at = datetime(),
+            p.source = 'lhkpn'
+        ON MATCH SET
+            p.updated_at = datetime()
+        """
+        params = {
+            "property_id": data["property_id"],
+            "lokasi": data.get("lokasi", ""),
+            "luas_tanah_m2": data.get("luas_tanah_m2", 0),
+            "luas_bangunan_m2": data.get("luas_bangunan_m2", 0),
+            "tipe": data.get("tipe", ""),
+        }
+        async with self._driver.session(database=self._db) as session:
+            await session.run(query, params)
+            logger.info("Upserted Property: %s (%s)", params["lokasi"], params["property_id"][:12])
+
+    async def upsert_vehicle(self, data: dict[str, Any]) -> None:
+        """MERGE a Vehicle node by vehicle_id."""
+        query = """
+        MERGE (v:Vehicle {vehicle_id: $vehicle_id})
+        ON CREATE SET
+            v.jenis = $jenis,
+            v.merk_model = $merk_model,
+            v.tahun_perolehan = $tahun_perolehan,
+            v.created_at = datetime(),
+            v.source = 'lhkpn'
+        ON MATCH SET
+            v.updated_at = datetime()
+        """
+        params = {
+            "vehicle_id": data["vehicle_id"],
+            "jenis": data.get("jenis", ""),
+            "merk_model": data.get("merk_model", ""),
+            "tahun_perolehan": data.get("tahun_perolehan", 0),
+        }
+        async with self._driver.session(database=self._db) as session:
+            await session.run(query, params)
+            logger.info("Upserted Vehicle: %s %s", params["jenis"], params["merk_model"])
+
+    async def upsert_bank_account(self, data: dict[str, Any]) -> None:
+        """MERGE a BankAccount node by account_id."""
+        query = """
+        MERGE (b:BankAccount {account_id: $account_id})
+        ON CREATE SET
+            b.tipe = $tipe,
+            b.created_at = datetime(),
+            b.source = 'lhkpn'
+        ON MATCH SET
+            b.updated_at = datetime()
+        """
+        params = {
+            "account_id": data["account_id"],
+            "tipe": data.get("tipe", "kas_setara_kas"),
+        }
+        async with self._driver.session(database=self._db) as session:
+            await session.run(query, params)
+            logger.info("Upserted BankAccount: %s", params["account_id"][:12])
+
+    # ── LHKPN Report Loader ──
+
+    async def load_lhkpn_report(self, report: LhkpnReport) -> int:
+        """Load a complete LHKPN report into Neo4j.
+
+        Upserts the Official node, all asset nodes (Property, Vehicle,
+        BankAccount), and creates OWNS relationships between them.
+
+        Returns the count of asset nodes created/updated.
+        """
+        asset_count = 0
+
+        # 1. Upsert Official
+        await self.upsert_official({
+            "name": report.nama,
+            "jabatan": report.jabatan,
+            "source": "lhkpn",
+        })
+
+        # 2. Properties
+        rel_props = {
+            "tahun": report.tahun,
+            "source": "lhkpn",
+        }
+        for prop in report.tanah_bangunan:
+            await self.upsert_property({
+                "property_id": prop.property_id,
+                "lokasi": prop.lokasi,
+                "luas_tanah_m2": prop.luas_tanah_m2,
+                "luas_bangunan_m2": prop.luas_bangunan_m2,
+                "tipe": prop.tipe,
+            })
+            await self.create_relationship(
+                from_name=report.nama,
+                from_label="Official",
+                to_name="",
+                to_label="Property",
+                rel_type="OWNS",
+                properties={
+                    **rel_props,
+                    "nilai": prop.nilai,
+                    "sumber": prop.sumber,
+                },
+                match_by_id=("property_id", prop.property_id),
+            )
+            asset_count += 1
+
+        # 3. Vehicles
+        for v in report.kendaraan:
+            await self.upsert_vehicle({
+                "vehicle_id": v.vehicle_id,
+                "jenis": v.jenis,
+                "merk_model": v.merk_model,
+                "tahun_perolehan": v.tahun_perolehan,
+            })
+            await self.create_relationship(
+                from_name=report.nama,
+                from_label="Official",
+                to_name="",
+                to_label="Vehicle",
+                rel_type="OWNS",
+                properties={
+                    **rel_props,
+                    "nilai": v.nilai,
+                    "sumber": v.sumber,
+                },
+                match_by_id=("vehicle_id", v.vehicle_id),
+            )
+            asset_count += 1
+
+        # 4. Cash (BankAccount) — only if kas > 0
+        if report.kas > 0:
+            account_id = hashlib.sha256(
+                f"{report.nama}|kas_setara_kas".encode()
+            ).hexdigest()[:16]
+            await self.upsert_bank_account({
+                "account_id": account_id,
+                "tipe": "kas_setara_kas",
+            })
+            await self.create_relationship(
+                from_name=report.nama,
+                from_label="Official",
+                to_name="",
+                to_label="BankAccount",
+                rel_type="OWNS",
+                properties={
+                    **rel_props,
+                    "nilai": report.kas,
+                    "sumber": "",
+                },
+                match_by_id=("account_id", account_id),
+            )
+            asset_count += 1
+
+        logger.info(
+            "Loaded LHKPN report: %s (%d) — %d asset nodes",
+            report.nama, report.tahun, asset_count,
+        )
+        return asset_count
+
     # ── Relationship Operations ──
 
     async def create_relationship(
@@ -199,12 +370,18 @@ class GraphLoader:
         to_label: str,
         rel_type: str,
         properties: dict[str, Any] | None = None,
+        match_by_id: tuple[str, str] | None = None,
     ) -> None:
         """Create or update a relationship between two nodes.
 
-        Drops self-loops (from_name == to_name) to avoid NER noise.
+        Drops self-loops (from_name == to_name) to avoid NER noise,
+        only when matching by name (match_by_id is None).
+
+        Args:
+            match_by_id: Optional (id_field, id_value) tuple. When provided,
+                the target node is matched by that ID field instead of name.
         """
-        if from_name.strip().lower() == to_name.strip().lower():
+        if match_by_id is None and from_name.strip().lower() == to_name.strip().lower():
             logger.debug("Skipping self-loop: %s -[%s]-> %s",
                          from_name, rel_type, to_name)
             return
@@ -213,13 +390,25 @@ class GraphLoader:
         props["updated_at"] = datetime.now(timezone.utc).isoformat()
 
         prop_string = ", ".join(f"r.{k} = ${k}" for k in props)
-        query = f"""
-        MATCH (a:{from_label} {{name: $from_name}})
-        MATCH (b:{to_label} {{name: $to_name}})
-        MERGE (a)-[r:{rel_type}]->(b)
-        SET {prop_string}
-        """
-        params = {"from_name": from_name, "to_name": to_name, **props}
+
+        if match_by_id:
+            id_field, id_value = match_by_id
+            query = f"""
+            MATCH (a:{from_label} {{name: $from_name}})
+            MATCH (b:{to_label} {{{id_field}: $to_id}})
+            MERGE (a)-[r:{rel_type}]->(b)
+            SET {prop_string}
+            """
+            params = {"from_name": from_name, "to_id": id_value, **props}
+        else:
+            query = f"""
+            MATCH (a:{from_label} {{name: $from_name}})
+            MATCH (b:{to_label} {{name: $to_name}})
+            MERGE (a)-[r:{rel_type}]->(b)
+            SET {prop_string}
+            """
+            params = {"from_name": from_name, "to_name": to_name, **props}
+
         async with self._driver.session(database=self._db) as session:
             await session.run(query, params)
             logger.info(
