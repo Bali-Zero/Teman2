@@ -280,8 +280,12 @@ class CommunityDetector:
         )
         return communities
 
-    async def persist(self, communities: list[Community]) -> int:
-        """Save detected communities to PostgreSQL.
+    async def persist(self, communities: list[Community], batch_size: int = 500) -> int:
+        """Save detected communities to PostgreSQL using batch inserts.
+
+        Args:
+            communities: List of communities to persist
+            batch_size: Rows per batch for membership inserts (default 500)
 
         Returns number of communities persisted.
         """
@@ -289,49 +293,55 @@ class CommunityDetector:
             return 0
 
         async with self._pool.acquire() as conn:
-            # Clear old communities at same level
-            levels = {c.level for c in communities}
-            for level in levels:
-                await conn.execute(
-                    "DELETE FROM kg_node_community WHERE community_id IN "
-                    "(SELECT community_id FROM kg_communities WHERE level = $1)",
-                    level,
-                )
-                await conn.execute(
-                    "DELETE FROM kg_communities WHERE level = $1",
-                    level,
-                )
+            async with conn.transaction():
+                # Clear old communities at same level
+                levels = {c.level for c in communities}
+                for level in levels:
+                    await conn.execute(
+                        "DELETE FROM kg_node_community WHERE community_id IN "
+                        "(SELECT community_id FROM kg_communities WHERE level = $1)",
+                        level,
+                    )
+                    await conn.execute(
+                        "DELETE FROM kg_communities WHERE level = $1",
+                        level,
+                    )
 
-            # Insert communities
-            for c in communities:
-                await conn.execute(
+                # Batch insert communities
+                comm_rows = [
+                    (c.community_id, c.level, c.parent_id, c.name, c.summary,
+                     c.member_count, c.top_entities, c.top_relations)
+                    for c in communities
+                ]
+                await conn.executemany(
                     "INSERT INTO kg_communities "
                     "(community_id, level, parent_id, name, summary, member_count, "
                     "top_entities, top_relations) "
                     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-                    c.community_id,
-                    c.level,
-                    c.parent_id,
-                    c.name,
-                    c.summary,
-                    c.member_count,
-                    c.top_entities,
-                    c.top_relations,
+                    comm_rows,
                 )
 
-            # Insert memberships
-            for c in communities:
-                for member in c.members:
-                    await conn.execute(
+                # Batch insert memberships
+                membership_rows: list[tuple[str, str, float]] = []
+                for c in communities:
+                    for member in c.members:
+                        membership_rows.append((member, c.community_id, 1.0))
+
+                # Insert in batches to avoid memory spike on huge lists
+                for i in range(0, len(membership_rows), batch_size):
+                    batch = membership_rows[i : i + batch_size]
+                    await conn.executemany(
                         "INSERT INTO kg_node_community (entity_id, community_id, membership_score) "
                         "VALUES ($1, $2, $3) "
                         "ON CONFLICT (entity_id, community_id) DO UPDATE SET membership_score = $3",
-                        member,
-                        c.community_id,
-                        1.0,
+                        batch,
                     )
 
-        logger.info("Persisted %d communities", len(communities))
+        logger.info(
+            "Persisted %d communities, %d memberships",
+            len(communities),
+            len(membership_rows),
+        )
         return len(communities)
 
     async def generate_summaries(
