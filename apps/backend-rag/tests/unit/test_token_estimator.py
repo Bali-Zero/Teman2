@@ -1,8 +1,9 @@
 """
 Unit tests for TokenEstimator
-"""
 
-import pytest
+The TokenEstimator was simplified in S04 Solidification to use word-based
+approximation only (removed tiktoken dependency).
+"""
 
 from backend.llm.token_estimator import TokenEstimator  # noqa: E402
 
@@ -11,8 +12,6 @@ def test_token_estimator_init():
     """Test TokenEstimator initialization"""
     estimator = TokenEstimator(model="gpt-4")
     assert estimator.model == "gpt-4"
-    assert estimator.TOKEN_CHAR_RATIO == 4
-    assert estimator.TOKEN_WORD_RATIO == 1.3
 
 
 def test_token_estimator_init_gemini():
@@ -22,39 +21,20 @@ def test_token_estimator_init_gemini():
 
 
 def test_estimate_tokens_approximate():
-    """Test token estimation with approximation (no tiktoken)"""
+    """Test token estimation with word-based approximation"""
     estimator = TokenEstimator(model="test-model")
-    estimator._encoding = None  # Force approximation
 
     text = "Hello world this is a test"
     tokens = estimator.estimate_tokens(text)
 
-    # Should use word-based approximation: 5 words * 1.3 = 6.5 -> 6
+    # Should use word-based approximation: 6 words * 1.3 = 7.8 -> 7
     assert tokens > 0
     assert isinstance(tokens, int)
-
-
-def test_estimate_tokens_with_tiktoken():
-    """Test token estimation with tiktoken when available"""
-    try:
-        import tiktoken  # noqa: F401
-
-        estimator = TokenEstimator(model="gpt-4")
-
-        # If tiktoken is available, encoding should be set
-        if estimator._encoding:
-            text = "Hello world"
-            tokens = estimator.estimate_tokens(text)
-            assert tokens > 0
-            assert isinstance(tokens, int)
-    except ImportError:
-        pytest.skip("tiktoken not available")
 
 
 def test_estimate_messages_tokens():
     """Test estimating tokens for multiple messages"""
     estimator = TokenEstimator(model="test-model")
-    estimator._encoding = None  # Force approximation
 
     messages = [
         {"role": "user", "content": "Hello"},
@@ -75,27 +55,26 @@ def test_estimate_messages_tokens_empty():
 
     tokens = estimator.estimate_messages_tokens(messages)
 
-    # Should return 0 or small overhead
-    assert tokens >= 0
+    # Should return 0
+    assert tokens == 0
     assert isinstance(tokens, int)
 
 
 def test_estimate_tokens_empty_text():
     """Test estimating tokens for empty text"""
     estimator = TokenEstimator(model="test-model")
-    estimator._encoding = None
 
     tokens = estimator.estimate_tokens("")
 
     assert tokens == 0
 
 
-def test_estimate_approximate_method():
-    """Test the _estimate_approximate method directly"""
+def test_token_estimator_word_count():
+    """Test word-count based estimation"""
     estimator = TokenEstimator(model="test-model")
 
     text = "This is a test"
-    tokens = estimator._estimate_approximate(text)
+    tokens = estimator.estimate_tokens(text)
 
     # 4 words * 1.3 = 5.2 -> 5
     assert tokens == 5
@@ -105,7 +84,6 @@ def test_token_estimator_gemini_fallback():
     """Test TokenEstimator handles Gemini models correctly"""
     estimator = TokenEstimator(model="gemini-3-flash-preview")
 
-    # Should not raise error even if tiktoken doesn't recognize Gemini
     text = "Hello world"
     tokens = estimator.estimate_tokens(text)
 

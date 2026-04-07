@@ -1,23 +1,25 @@
 """
 Unit tests for llm.providers.vertex
 Auto-generated test template for high coverage
+
+NOTE: The standalone vertex provider was removed. Gemini access is via
+the GeminiProvider (backend.llm.providers.gemini). This test verifies
+that the standalone vertex module no longer exists.
 """
 
-import sys
-from pathlib import Path
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-# Explicit import (already explicit, no wildcard)
+import pytest
 
 
 class TestVertex:
-    """Tests for llm.providers.vertex"""
+    """Tests for vertex provider"""
 
-    def test_module_import(self):
-        """Test that module can be imported"""
-        import llm.providers.vertex
+    def test_no_standalone_module(self):
+        """Verify standalone vertex module was removed (access via GeminiProvider)"""
+        with pytest.raises(ModuleNotFoundError):
+            import backend.llm.providers.vertex  # noqa: F401
 
-        assert llm.providers.vertex is not None
+    def test_gemini_provider_exists(self):
+        """Verify GeminiProvider is the active Gemini integration"""
+        from backend.llm.providers.gemini import GeminiProvider
+
+        assert GeminiProvider is not None
