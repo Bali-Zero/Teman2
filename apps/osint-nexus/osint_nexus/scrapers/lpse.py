@@ -1,10 +1,21 @@
-"""LPSE scraper — government procurement data from SPSE/INAPROC."""
+"""LPSE scraper — government procurement data from SPSE/INAPROC.
+
+Primary path: httpx async → DataTables JSON endpoint (fast, no browser).
+Fallback: browser-core → Playwright with stealth (for when Cloudflare
+blocks httpx, which happens when the origin server has SSL issues or
+the site enables JS challenge). The fallback was added 2026-04-08 after
+lpse.kemenkumham.go.id went behind Cloudflare with broken TLS origin.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import atexit
+from typing import Any, Optional
 
 from bs4 import BeautifulSoup
+
+from browser_core import BrowserConfig, BrowserManager
 
 from osint_nexus.scrapers.base import BaseScraper, ScrapedRecord
 from osint_nexus.utils.http import get_client, random_delay
@@ -12,10 +23,37 @@ from osint_nexus.utils.logging import get_logger
 
 # Kemenkumham LPSE instance
 LPSE_BASE = "https://lpse.kemenkumham.go.id"
-# Alternative: INAPROC aggregator
-INAPROC_API = "https://isb.lkpp.go.id/isb-2/api"
 
 logger = get_logger("scraper.lpse")
+
+# --- Lazy browser for Cloudflare bypass fallback ---
+_browser_instance: Optional[BrowserManager] = None
+
+
+def _get_browser() -> BrowserManager:
+    global _browser_instance
+    if _browser_instance is None:
+        _browser_instance = BrowserManager(
+            BrowserConfig(headless=True, locale="id-ID", max_contexts=2)
+        )
+    return _browser_instance
+
+
+def _shutdown_browser() -> None:
+    global _browser_instance
+    if _browser_instance is None:
+        return
+    try:
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(_browser_instance.close())
+        loop.close()
+    except Exception:
+        pass
+    finally:
+        _browser_instance = None
+
+
+atexit.register(_shutdown_browser)
 
 
 class LPSEScraper(BaseScraper):
@@ -73,7 +111,77 @@ class LPSEScraper(BaseScraper):
 
                 self.logger.info("LPSE page %d: %d items", page, len(items))
 
+        # If httpx got zero records (all pages failed), try browser fallback
+        if not records:
+            self.logger.info("httpx path yielded 0 records, trying browser fallback")
+            records = await self._scrape_browser(query, max_pages=min(max_pages, 3))
+
         self.save_records(records)
+        return records
+
+    async def _scrape_browser(
+        self, query: str, max_pages: int = 3
+    ) -> list[ScrapedRecord]:
+        """Browser fallback: navigate LPSE with stealth Playwright.
+
+        Used when httpx fails due to Cloudflare or SSL issues.
+        Loads the search page, enters query, parses DataTables results.
+        """
+        records: list[ScrapedRecord] = []
+        browser = _get_browser()
+
+        try:
+            async with browser.get_page() as page:
+                try:
+                    await page.goto(
+                        f"{LPSE_BASE}/eproc4/lelang",
+                        wait_until="domcontentloaded",
+                        timeout=30000,
+                    )
+                except Exception as e:
+                    self.logger.warning("LPSE browser fallback: page load failed: %s", e)
+                    return records
+
+                await page.wait_for_load_state("networkidle")
+                await random_delay(1, 2)
+
+                # Fill search if there's a search input
+                search_input = page.locator("input[type='search'], #DataTables_Table_0_filter input")
+                if await search_input.count() > 0:
+                    await search_input.first.fill(query)
+                    await page.wait_for_timeout(3000)
+                    await page.wait_for_load_state("networkidle")
+
+                # Parse result rows from DataTables
+                rows = await page.locator("table tbody tr").all()
+                self.logger.info("LPSE browser: %d rows found", len(rows))
+
+                for row in rows:
+                    cells = await row.locator("td").all()
+                    if len(cells) < 5:
+                        continue
+
+                    link_el = row.locator("a[href]").first
+                    href = await link_el.get_attribute("href") if await link_el.count() else ""
+                    url = href if href and href.startswith("http") else f"{LPSE_BASE}{href}" if href else LPSE_BASE
+
+                    records.append(
+                        ScrapedRecord(
+                            source="lpse",
+                            entity_type="tender",
+                            url=url,
+                            raw_data={
+                                "kode_tender": (await cells[0].inner_text()).strip() if len(cells) > 0 else "",
+                                "nama_paket": (await cells[1].inner_text()).strip() if len(cells) > 1 else "",
+                                "instansi": (await cells[2].inner_text()).strip() if len(cells) > 2 else "",
+                                "hps": (await cells[3].inner_text()).strip() if len(cells) > 3 else "",
+                                "tahap": (await cells[4].inner_text()).strip() if len(cells) > 4 else "",
+                            },
+                        )
+                    )
+        except Exception as e:
+            self.logger.error("LPSE browser fallback failed: %s", e)
+
         return records
 
     async def _scrape_html(
