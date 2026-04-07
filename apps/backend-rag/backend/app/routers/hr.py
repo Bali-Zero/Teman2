@@ -13,10 +13,14 @@ from datetime import date
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.hr.hr_leave_notifier import (
+    notify_leave_request_pending,
+)
+from backend.app.services.hr.hr_leave_routing import resolve_approver
 from backend.app.services.hr.hr_service import HRService
 from backend.app.utils.hr_utils import is_hr_admin
 
@@ -83,6 +87,47 @@ def _get_hr_service(db_pool: asyncpg.Pool) -> HRService:
 def _require_hr_admin(user: dict[str, Any]) -> None:
     if not is_hr_admin(user):
         raise HTTPException(status_code=403, detail="HR admin access required")
+
+
+async def _require_can_review_leave(
+    service: HRService,
+    user: dict[str, Any],
+    request_id: int,
+) -> dict[str, Any]:
+    """Return the leave request row if the user may approve/reject it.
+
+    Policy:
+    - HR admins (Zero, Asya, Ruslana, antonellosiano) can review anyone
+      EXCEPT their own requests (self-approval is forbidden).
+    - Delegated supervisors (resolved via hr_leave_routing.resolve_approver)
+      can review their direct reports only.
+    - Raises HTTPException 404 if the request does not exist.
+    - Raises HTTPException 403 if the user lacks permission.
+    """
+    req = await service.get_leave_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    user_email = (user.get("email") or "").lower().strip()
+    requester_email = (req.get("requester_email") or "").lower().strip()
+
+    # Self-approval is forbidden even for HR admins.
+    if user_email and user_email == requester_email:
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot approve or reject your own leave request",
+        )
+
+    if is_hr_admin(user):
+        return req
+
+    if resolve_approver(requester_email) == user_email:
+        return req
+
+    raise HTTPException(
+        status_code=403,
+        detail="You are not authorized to review this leave request",
+    )
 
 
 def _get_user_id(current_user: dict[str, Any]) -> str:
@@ -337,10 +382,16 @@ async def get_leave_types(
 @router.post("/leave/request")
 async def request_leave(
     data: LeaveRequestCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Create a leave request."""
+    """Create a leave request.
+
+    On success, schedules a fire-and-forget email notification to the
+    supervisor (see hr_leave_routing.build_notification_recipients).
+    Email failure does NOT fail the request; it is logged as a warning.
+    """
     service = _get_hr_service(db_pool)
     my_id = await _get_my_employee_id(service, current_user)
     try:
@@ -348,9 +399,26 @@ async def request_leave(
             "employee_id": my_id,
             **data.model_dump(),
         })
-        return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Schedule the supervisor notification email (fire-and-forget)
+    leave_type_name = await service.get_leave_type_name(data.leave_type_id)
+    background_tasks.add_task(
+        notify_leave_request_pending,
+        request_id=result["id"],
+        requester_email=current_user.get("email", ""),
+        requester_name=(
+            current_user.get("full_name") or current_user.get("email", "")
+        ),
+        leave_type_name=leave_type_name,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        total_days=data.total_days,
+        reason=data.reason,
+    )
+
+    return {"success": True, "request": result}
 
 
 @router.get("/leave/requests")
@@ -396,11 +464,17 @@ async def approve_leave(
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Approve a leave request."""
-    _require_hr_admin(current_user)
+    """Approve a leave request.
+
+    Permission: HR admins (except self) OR the delegated supervisor of
+    the requester. Self-approval is forbidden for everyone.
+    """
     service = _get_hr_service(db_pool)
+    await _require_can_review_leave(service, current_user, request_id)
     try:
-        result = await service.approve_leave(request_id, _get_user_id(current_user))
+        result = await service.approve_leave(
+            request_id, _get_user_id(current_user),
+        )
         return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -413,9 +487,13 @@ async def reject_leave(
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Reject a leave request."""
-    _require_hr_admin(current_user)
+    """Reject a leave request.
+
+    Permission: HR admins (except self) OR the delegated supervisor of
+    the requester. Self-rejection is forbidden for everyone.
+    """
     service = _get_hr_service(db_pool)
+    await _require_can_review_leave(service, current_user, request_id)
     try:
         result = await service.reject_leave(
             request_id, _get_user_id(current_user), data.reason or "",
