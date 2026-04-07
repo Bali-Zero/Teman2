@@ -37,6 +37,7 @@ def include_routers(api: FastAPI) -> None:
         autonomous_execution,
         blog_ask,
         cell_status,  # [CELL] CELL organism dashboard status
+        channels,  # Channel health, DLQ, unified conversations
         collective_memory,
         conversations,
         crm_analytics,  # [NEW] CRM Analytics dashboard
@@ -166,7 +167,8 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 
-    # Omnichannel router (unified inbox)
+    # Channel system + Omnichannel router (unified inbox)
+    api.include_router(channels.router)  # Channel health, DLQ, unified conversations
     api.include_router(omnichannel.router)  # [NEW] Unified inbox threads API
 
     # HR/Payroll router
@@ -374,6 +376,7 @@ def include_light_routers(api: FastAPI) -> None:
         article_composer,
         auth,
         cell_status,
+        channels,  # Channel health, DLQ, unified conversations
         crm_analytics,
         crm_clients_documents,
         crm_company,
@@ -401,6 +404,7 @@ def include_light_routers(api: FastAPI) -> None:
         messaging_identity,
         newsletter,
         nusantara_health,
+        omnichannel,
         performance,
         portal,
         portal_billing,
@@ -460,6 +464,10 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)
     api.include_router(crm_portal_integration.router)
+
+    # Channel system + Omnichannel router (unified inbox)
+    api.include_router(channels.router)  # /api/channels (health, DLQ, conversations)
+    api.include_router(omnichannel.router)  # /api/omnichannel (threads, assignment)
 
     # HR/Payroll router
     api.include_router(hr.router)
