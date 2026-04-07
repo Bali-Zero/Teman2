@@ -198,9 +198,10 @@ async def run_full_pipeline(
     """Convenience function to run full pipeline.
 
     Args:
-        sources: List of source names ['lhkpn', 'lpse', 'putusan']
+        sources: List of source names ['ahu', 'lhkpn', 'lpse', 'putusan', 'news', 'wiki']
         query: Search query
     """
+    from osint_nexus.scrapers.ahu import AHUScraper
     from osint_nexus.scrapers.lhkpn import LHKPNScraper
     from osint_nexus.scrapers.lpse import LPSEScraper
     from osint_nexus.scrapers.news import NewsScraper
@@ -208,6 +209,7 @@ async def run_full_pipeline(
     from osint_nexus.scrapers.wiki import WikiScraper
 
     scraper_map = {
+        "ahu": AHUScraper,
         "lhkpn": LHKPNScraper,
         "lpse": LPSEScraper,
         "putusan": PutusanMAScraper,
