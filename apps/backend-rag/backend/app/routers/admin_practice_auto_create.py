@@ -1,5 +1,3 @@
-import hmac
-import os
 """
 Admin Auto-Practice Creation Router
 
@@ -8,6 +6,9 @@ POST /api/admin/practice/auto-create
 Triggers auto-creation of visa renewal practices for visas expiring in ~60 days.
 Access: Requires X-API-Key (REDACTED-ROTATED-KEY) or ADMIN_API_KEY.
 """
+
+import hmac
+import os
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -40,5 +41,4 @@ async def trigger_auto_practice_creation(
 ):
     """Trigger auto-creation of renewal practices for expiring visas."""
     logger.info("admin_auto_practice_creation_triggered")
-    stats = await run_auto_practice_creator(db_pool)
-    return stats
+    return await run_auto_practice_creator(db_pool)

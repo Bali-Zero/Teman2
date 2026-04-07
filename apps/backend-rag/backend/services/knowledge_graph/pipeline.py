@@ -255,13 +255,6 @@ class KGPipeline:
         name_normalized = entity.name.upper().strip().replace(" ", "_")
         return f"{entity.type.value}_{name_normalized.lower()}"
 
-    def _get_canonical_id_by_local(self, local_id: str, entities: list[ExtractedEntity]) -> str:
-        """Map local entity ID to canonical ID"""
-        for entity in entities:
-            if entity.id == local_id:
-                return self._get_canonical_id(entity)
-        return local_id
-
     async def persist_results(
         self,
         results: list[ExtractionResult],

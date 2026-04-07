@@ -293,8 +293,6 @@ class AdvancedContextWindowManager:
         self.recent_window_tokens = recent_window_tokens
         self.summary_max_tokens = summary_max_tokens
         try:
-            # import tiktoken
-            # self.tokenizer = tiktoken.get_encoding("cl100k_base")
             self.tokenizer = None  # Force fallback to character estimation to prevent crashes
         except ImportError:
             self.tokenizer = None

@@ -1454,10 +1454,6 @@ class PortalService:
         if skip_ocr:
             logger.warning(f"File too large for OCR ({file_size_kb}KB), skipping: {file_name}")
 
-        # Calculate file hash for deduplication
-        # import hashlib
-        # file_hash = hashlib.sha256(file_content).hexdigest()[:32]
-
         # =========================================================================
         # STEP 0: RATE LIMITING & VALIDATION
         # =========================================================================
@@ -2511,68 +2507,6 @@ Questa è una notifica automatica da Bali Zero CRM.
     # ================================================
     # HELPER METHODS
     # ================================================
-
-    def _format_visa_summary(self, visa: asyncpg.Record) -> dict[str, Any]:
-        """Format visa practice as summary."""
-        today = datetime.now(timezone.utc).date()
-        expiry = visa["expiry_date"].date() if visa["expiry_date"] else None
-        days_left = (expiry - today).days if expiry else None
-
-        return {
-            "type": visa["code"],
-            "name": visa["name"],
-            "status": visa["status"],
-            "expiry_date": visa["expiry_date"].isoformat() if visa["expiry_date"] else None,
-            "days_remaining": days_left,
-            "is_expiring_soon": days_left is not None and days_left <= 90,
-        }
-
-    def _format_visa_detail(self, visa: asyncpg.Record) -> dict[str, Any]:
-        """Format visa practice as detailed view."""
-        today = datetime.now(timezone.utc).date()
-        expiry = visa["expiry_date"].date() if visa["expiry_date"] else None
-        days_left = (expiry - today).days if expiry else None
-
-        return {
-            "id": visa["id"],
-            "type": visa["code"],
-            "name": visa["type_name"],
-            "status": visa["status"],
-            "start_date": visa["start_date"].isoformat() if visa["start_date"] else None,
-            "expiry_date": visa["expiry_date"].isoformat() if visa["expiry_date"] else None,
-            "days_remaining": days_left,
-        }
-
-    def _format_visa_case(self, case: asyncpg.Record) -> dict[str, Any]:
-        """Format active visa case."""
-        return {
-            "id": case["id"],
-            "name": case["name"],
-            "status": case["status"],
-            "start_date": case["start_date"].isoformat() if case["start_date"] else None,
-            "progress": self._status_to_progress(case["status"]),
-        }
-
-    def _format_case_progress(self, case: asyncpg.Record) -> dict[str, Any]:
-        """Format case with progress percentage."""
-        return {
-            "id": case["id"],
-            "name": case["name"],
-            "status": case["status"],
-            "progress": self._status_to_progress(case["status"]),
-            "payment_status": case["payment_status"],
-        }
-
-    def _status_to_progress(self, status: str) -> int:
-        """Convert status to progress percentage."""
-        progress_map = {
-            "inquiry": 10,
-            "waiting_documents": 30,
-            "sending_invoice": 50,
-            "on_process": 75,
-            "completed": 100,
-        }
-        return progress_map.get(status, 0)
 
     def _get_standard_tax_deadlines(self, today: datetime) -> list[dict[str, Any]]:
         """Generate standard Indonesian tax deadlines."""

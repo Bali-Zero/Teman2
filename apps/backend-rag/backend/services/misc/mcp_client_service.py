@@ -30,21 +30,7 @@ class MCPClientService:
             return
 
         # Server MCP da connettere (quelli che non richiedono API key)
-        # Server MCP da connettere (quelli che non richiedono API key)
-        servers = {
-            # "filesystem": {
-            #     "command": "npx",
-            #     "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-            # },
-            # "memory": {
-            #     "command": "npx",
-            #     "args": ["-y", "@modelcontextprotocol/server-memory"],
-            # },
-            # "sequential-thinking": {
-            #     "command": "npx",
-            #     "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-            # },
-        }
+        servers: dict[str, dict[str, Any]] = {}
 
         for name, config in servers.items():
             try:
