@@ -49,7 +49,35 @@ def parse_idr(value: Any) -> int:
 
 
 def parse_bz_tab(rows: list[list[str]]) -> list[CashoutRow]:
-    raise NotImplementedError
+    """Parse a BZ weekly tab. Rows 1-2 are title+header, data starts at row 3.
+
+    Empty rows are visual separators and must be skipped.
+    """
+    out: list[CashoutRow] = []
+    # rows[0] = title, rows[1] = header, data from rows[2]
+    for i, row in enumerate(rows[2:], start=3):
+        # Pad row to 9 columns to avoid IndexError
+        padded = (list(row) + [""] * 9)[:9]
+        name = str(padded[0]).strip() if padded[0] else ""
+        if not name:
+            continue  # separator row
+        out.append(
+            CashoutRow(
+                entity="BZ",
+                row_index=i,
+                client_name=name,
+                process=(str(padded[1]).strip() or None),
+                pnbp_idr=parse_idr(padded[2]),
+                urgent_idr=parse_idr(padded[3]),
+                rptka_imta_idr=parse_idr(padded[4]),
+                total_income_idr=parse_idr(padded[5]),
+                margin_bs_idr=parse_idr(padded[6]),
+                margin_bz_idr=parse_idr(padded[7]),
+                final_price_idr=0,
+                note=(str(padded[8]).strip() or None),
+            )
+        )
+    return out
 
 
 def parse_bs_tab(rows: list[list[str]]) -> list[CashoutRow]:
