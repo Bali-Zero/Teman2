@@ -150,6 +150,27 @@ class TestPatternMiner(unittest.TestCase):
         if len(patterns) >= 2:
             self.assertGreaterEqual(patterns[0]["count"], patterns[1]["count"])
 
+    def test_empty_findings_skipped(self) -> None:
+        """Decisions with empty or very short findings should be skipped."""
+        decisions = [_make_decision(finding="") for _ in range(10)]
+        miner = PatternMiner(decisions)
+        patterns = miner.mine()
+        self.assertEqual(patterns, [])
+
+    def test_metadata_as_string_handled(self) -> None:
+        """Metadata stored as JSON string should be parsed correctly."""
+        decisions = [
+            _make_decision(
+                finding="Issue in backend/app/routers/crm.py line 42",
+                metadata='{"file": "backend/app/routers/crm.py"}',
+            )
+            for _ in range(6)
+        ]
+        miner = PatternMiner(decisions)
+        patterns = miner.mine()
+        self.assertGreaterEqual(len(patterns), 1)
+        self.assertIn("backend/app/routers/crm.py", patterns[0]["files"])
+
 
 # ============================================================================
 # WeightCalibrator Tests
@@ -373,6 +394,60 @@ class TestFragilityScorer(unittest.TestCase):
         counts = scorer._git_mod_frequency()
         # test files are counted in raw data but filtered in score_files()
         self.assertIn("backend/tests/test_crm.py", counts)
+
+    def test_cicatrix_scores_parses_scars(self) -> None:
+        """Should extract recurrence counts from cicatrix-scars.md."""
+        import tempfile
+
+        scar_md = """# Cicatrix
+### ⚠️ SCAR: /app/backend/llm/zantara_ai_client.py
+_Recurrence: 5 observations_
+
+```markdown
+TRAUMA: GenAIClient lacks create_chat
+```
+
+### ⚠️ SCAR: apps/backend-rag/backend/services/rag/orchestrator_core.py
+_Recurrence: 12 observations_
+
+```markdown
+TRAUMA: Unused variables
+```
+"""
+        with tempfile.TemporaryDirectory() as tmp:
+            scar_file = Path(tmp) / ".claude" / "rules" / "cicatrix-scars.md"
+            scar_file.parent.mkdir(parents=True)
+            scar_file.write_text(scar_md)
+
+            scorer = self._make_scorer()
+            scorer.project_root = Path(tmp)
+            scores = scorer._cicatrix_scores()
+
+        # /app/ prefix stripped, backend-rag split applied
+        self.assertEqual(scores.get("backend/llm/zantara_ai_client.py"), 5)
+        self.assertEqual(scores.get("backend/services/rag/orchestrator_core.py"), 12)
+
+    def test_cicatrix_scores_missing_file(self) -> None:
+        """Should return empty dict when cicatrix file doesn't exist."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            scorer = self._make_scorer()
+            scorer.project_root = Path(tmp)
+            scores = scorer._cicatrix_scores()
+        self.assertEqual(scores, {})
+
+    def test_cicatrix_scores_no_matching_scars(self) -> None:
+        """Should return empty dict when file has no SCAR blocks."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            scar_file = Path(tmp) / ".claude" / "rules" / "cicatrix-scars.md"
+            scar_file.parent.mkdir(parents=True)
+            scar_file.write_text("# Cicatrix\nNo scars found.\n")
+
+            scorer = self._make_scorer()
+            scorer.project_root = Path(tmp)
+            scores = scorer._cicatrix_scores()
+        self.assertEqual(scores, {})
 
 
 # ============================================================================
