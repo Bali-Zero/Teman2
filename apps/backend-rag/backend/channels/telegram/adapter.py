@@ -195,6 +195,7 @@ class TelegramChannelAdapter(BaseChannel):
 
         except Exception as e:
             logger.error(f"Error sending Telegram response: {e}", exc_info=True)
+            raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
         """

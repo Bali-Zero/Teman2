@@ -132,6 +132,7 @@ class TwitterChannelAdapter(BaseChannel):
                 )
         except Exception as e:
             logger.error(f"X DM send failed: {e}")
+            raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
         """X doesn't support typing indicators."""
@@ -146,7 +147,7 @@ class TwitterChannelAdapter(BaseChannel):
             if r.text:
                 text += r.text
         if text:
-            await self.send_response(channel_id, ChannelResponse(text=text, metadata={}))
+            await self.send_response_safe(channel_id, ChannelResponse(text=text, metadata={}))
 
     @property
     def channel_name(self) -> str:
