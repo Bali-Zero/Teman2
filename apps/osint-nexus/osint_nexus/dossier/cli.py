@@ -83,13 +83,16 @@ async def _dossier_async(target: str, output: str | None, fmt: str):
 
 
 @main.command()
-@click.argument("source", type=click.Choice(["lhkpn", "lpse", "ahu", "putusan"]))
+@click.argument(
+    "source",
+    type=click.Choice(["lhkpn", "lpse", "ahu", "putusan", "news", "wiki"]),
+)
 @click.argument("query")
 @click.option("--max-pages", default=3, help="Max pages to scrape")
 def scrape(source: str, query: str, max_pages: int):
     """Run a scraper.
 
-    Example: nexus scrape lhkpn "Raja Ulul Azmi"
+    Example: nexus scrape news "kanim ngurah rai"
     """
     _run(_scrape_async(source, query, max_pages))
 
@@ -100,6 +103,8 @@ async def _scrape_async(source: str, query: str, max_pages: int):
         "lpse": "osint_nexus.scrapers.lpse:LPSEScraper",
         "ahu": "osint_nexus.scrapers.ahu:AHUScraper",
         "putusan": "osint_nexus.scrapers.putusan:PutusanMAScraper",
+        "news": "osint_nexus.scrapers.news:NewsScraper",
+        "wiki": "osint_nexus.scrapers.wiki:WikiScraper",
     }
     module_path, class_name = scraper_map[source].rsplit(":", 1)
 
