@@ -52,43 +52,37 @@ export default function OmnichannelPage() {
     } finally {
       setIsLoadingThreads(false);
     }
-  }, [api, filters]);
+  }, [filters]);
 
   // Fetch thread detail
-  const fetchThread = useCallback(
-    async (threadId: string) => {
-      setIsLoadingMessages(true);
-      try {
-        const data = await api.request<{
-          thread: Thread;
-          messages: ThreadMessage[];
-        }>(`/api/omnichannel/threads/${threadId}?message_limit=100`);
-        setSelectedThread(data.thread);
-        setMessages(data.messages);
-      } catch (err) {
-        logger.error('Failed to fetch thread', {}, err as Error);
-      } finally {
-        setIsLoadingMessages(false);
-      }
-    },
-    [api]
-  );
+  const fetchThread = useCallback(async (threadId: string) => {
+    setIsLoadingMessages(true);
+    try {
+      const data = await api.request<{
+        thread: Thread;
+        messages: ThreadMessage[];
+      }>(`/api/omnichannel/threads/${threadId}?message_limit=100`);
+      setSelectedThread(data.thread);
+      setMessages(data.messages);
+    } catch (err) {
+      logger.error('Failed to fetch thread', {}, err as Error);
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, []);
 
   // Fetch CRM context
-  const fetchContext = useCallback(
-    async (threadId: string) => {
-      setIsLoadingContext(true);
-      try {
-        const data = await api.request<CRMContext>(`/api/omnichannel/threads/${threadId}/context`);
-        setCrmContext(data);
-      } catch (err) {
-        logger.error('Failed to fetch context', {}, err as Error);
-      } finally {
-        setIsLoadingContext(false);
-      }
-    },
-    [api]
-  );
+  const fetchContext = useCallback(async (threadId: string) => {
+    setIsLoadingContext(true);
+    try {
+      const data = await api.request<CRMContext>(`/api/omnichannel/threads/${threadId}/context`);
+      setCrmContext(data);
+    } catch (err) {
+      logger.error('Failed to fetch context', {}, err as Error);
+    } finally {
+      setIsLoadingContext(false);
+    }
+  }, []);
 
   // Load threads on mount and filter change
   useEffect(() => {
@@ -128,7 +122,7 @@ export default function OmnichannelPage() {
         logger.error('Failed to send message', {}, err as Error);
       }
     },
-    [api, selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads]
   );
 
   const handleUpdateThread = useCallback(
@@ -145,7 +139,7 @@ export default function OmnichannelPage() {
         logger.error('Failed to update thread', {}, err as Error);
       }
     },
-    [api, selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads]
   );
 
   const handleAssign = useCallback(
@@ -162,7 +156,7 @@ export default function OmnichannelPage() {
         logger.error('Failed to assign thread', {}, err as Error);
       }
     },
-    [api, selectedId, fetchThread, fetchThreads]
+    [selectedId, fetchThread, fetchThreads]
   );
 
   return (
