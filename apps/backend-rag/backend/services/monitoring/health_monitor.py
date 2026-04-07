@@ -287,7 +287,7 @@ class HealthMonitor:
                         "pg_dead_tuples",
                         float(dead_tup),
                         10000.0,
-                        unit=f" dead tuples (auto-VACUUM triggered)",
+                        unit=" dead tuples (auto-VACUUM triggered)",
                     )
                     # Auto-trigger VACUUM ANALYZE off-peak or critical
                     # Use timezone-aware UTC time (utcnow() is deprecated in Python 3.12+)
@@ -303,7 +303,7 @@ class HealthMonitor:
                         "pg_dead_tuples_warn",
                         float(dead_tup),
                         5000.0,
-                        unit=f" dead tuples (VACUUM recommended)",
+                        unit=" dead tuples (VACUUM recommended)",
                     )
 
                 if wal_mb > 500:
@@ -311,7 +311,7 @@ class HealthMonitor:
                         "pg_wal_size",
                         wal_mb,
                         500.0,
-                        unit=f"MB WAL (I/O saturation risk)",
+                        unit="MB WAL (I/O saturation risk)",
                     )
 
         except Exception as e:
