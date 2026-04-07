@@ -15,7 +15,7 @@ import re
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -1218,7 +1218,7 @@ class ConfirmationDecisionRequest(BaseModel):
     """Body for POST /api/agentic-rag/confirm."""
 
     request_id: str
-    decision: str  # "approve" or "reject"
+    decision: Literal["approve", "reject"]
 
 
 @router.post("/confirm")
