@@ -1,115 +1,181 @@
-"""LHKPN scraper — elhkpn.kpk.go.id asset declarations."""
+"""LHKPN scraper — elhkpn.kpk.go.id asset declarations.
 
+As of 2026-04, KPK moved from a simple GET endpoint to a SPA with
+reCAPTCHA v3 (invisible). This scraper uses browser-core to:
+1. Navigate to the homepage
+2. Remove the modal overlay
+3. Fill the search form
+4. Generate and inject a reCAPTCHA v3 token
+5. Submit and parse the results table
+"""
 from __future__ import annotations
 
-from typing import Any
-from urllib.parse import quote
+import asyncio
+import atexit
+import re
+from typing import Any, Optional
 
-from bs4 import BeautifulSoup
+from browser_core import BrowserConfig, BrowserManager
 
 from osint_nexus.scrapers.base import BaseScraper, ScrapedRecord
-from osint_nexus.utils.http import get_client, random_delay
+from osint_nexus.utils.http import random_delay
+from osint_nexus.utils.logging import get_logger
 
-BASE_URL = "https://elhkpn.kpk.go.id/portal/user/pengumumanlhkpn"
-SEARCH_URL = "https://elhkpn.kpk.go.id/portal/user/pengumumanlhkpn/index"
+BASE_URL = "https://elhkpn.kpk.go.id"
+RECAPTCHA_SITE_KEY = "6LfANPQrAAAAAFAKhYMdri6OAuMOPZZorjsCqUGk"
+
+logger = get_logger("scraper.lhkpn")
+
+# --- Lazy per-process BrowserManager (same pattern as ahu.py) ---
+_browser_instance: Optional[BrowserManager] = None
+
+
+def _get_browser() -> BrowserManager:
+    global _browser_instance
+    if _browser_instance is None:
+        _browser_instance = BrowserManager(
+            BrowserConfig(
+                headless=True,
+                locale="id-ID",
+                timezone="Asia/Makassar",
+                max_contexts=2,
+                page_load_timeout_ms=30000,
+            )
+        )
+    return _browser_instance
+
+
+def _shutdown_browser() -> None:
+    """Best-effort atexit cleanup."""
+    global _browser_instance
+    if _browser_instance is None:
+        return
+    try:
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(_browser_instance.close())
+        loop.close()
+    except Exception as exc:
+        logger.warning("LHKPN browser atexit shutdown failed: %s", exc)
+    finally:
+        _browser_instance = None
+
+
+atexit.register(_shutdown_browser)
 
 
 class LHKPNScraper(BaseScraper):
-    """Scrapes LHKPN (harta kekayaan) declarations from KPK portal."""
+    """Scrapes LHKPN (harta kekayaan) declarations from KPK e-Announcement."""
 
     name = "lhkpn"
 
     async def scrape(self, query: str, **kwargs: Any) -> list[ScrapedRecord]:
-        """Search by name, return asset declaration records."""
+        """Search by name/NIK, return asset declaration records."""
         records: list[ScrapedRecord] = []
-        async with get_client() as client:
-            # Search page to get session/token
-            resp = await client.get(BASE_URL)
-            resp.raise_for_status()
+        browser = _get_browser()
 
-            # POST search
-            await random_delay()
-            search_resp = await client.post(
-                SEARCH_URL,
-                data={
-                    "q": query,
-                    "capilfilterset": "",
-                },
-                headers={"Referer": BASE_URL},
-            )
-            search_resp.raise_for_status()
-            soup = BeautifulSoup(search_resp.text, "lxml")
+        async with browser.get_page(BASE_URL) as page:
+            try:
+                await page.wait_for_load_state("networkidle")
 
-            # Parse result rows
-            rows = soup.select("table.table tbody tr")
-            self.logger.info("LHKPN search '%s': %d results", query, len(rows))
+                # Remove modal overlay that blocks interaction
+                await page.evaluate("""() => {
+                    document.querySelectorAll('.remodal-wrapper, .remodal-overlay, .remodal')
+                        .forEach(el => el.remove());
+                }""")
+                await random_delay(0.5, 1)
 
-            for row in rows:
-                cells = row.select("td")
-                if len(cells) < 5:
-                    continue
+                # Fill search form
+                await page.fill("#CARI_NAMA", query)
+                await random_delay(0.5, 1)
 
-                record_data = {
-                    "nama": cells[1].get_text(strip=True),
-                    "instansi": cells[2].get_text(strip=True),
-                    "jabatan": cells[3].get_text(strip=True),
-                    "tahun_pelaporan": cells[4].get_text(strip=True),
-                }
+                # Optional: fill tahun if provided
+                tahun = kwargs.get("tahun")
+                if tahun:
+                    await page.fill("#CARI_TAHUN", str(tahun))
 
-                # Try to get detail link
-                detail_link = row.select_one("a[href*='detailannounce']")
-                detail_url = ""
-                if detail_link:
-                    detail_url = detail_link["href"]
-                    if not detail_url.startswith("http"):
-                        detail_url = f"https://elhkpn.kpk.go.id{detail_url}"
-
-                    # Fetch detail page
-                    await random_delay()
-                    try:
-                        detail_resp = await client.get(detail_url)
-                        detail_resp.raise_for_status()
-                        detail_soup = BeautifulSoup(detail_resp.text, "lxml")
-                        record_data.update(self._parse_detail(detail_soup))
-                    except Exception as e:
-                        self.logger.warning("Failed detail fetch: %s", e)
-
-                records.append(
-                    ScrapedRecord(
-                        source="lhkpn",
-                        entity_type="asset_declaration",
-                        url=detail_url or BASE_URL,
-                        raw_data=record_data,
-                    )
+                # Generate reCAPTCHA v3 token and inject it
+                await page.evaluate(
+                    """(siteKey) => {
+                    return new Promise((resolve, reject) => {
+                        if (typeof grecaptcha === 'undefined') {
+                            reject('grecaptcha not loaded');
+                            return;
+                        }
+                        grecaptcha.ready(() => {
+                            grecaptcha.execute(siteKey, {action: 'search'})
+                                .then(token => {
+                                    const field = document.querySelector(
+                                        '[name=g-recaptcha-response-announ]'
+                                    );
+                                    if (field) field.value = token;
+                                    resolve(token);
+                                })
+                                .catch(err => reject(err.toString()));
+                        });
+                    });
+                }""",
+                    RECAPTCHA_SITE_KEY,
                 )
+                self.logger.info("reCAPTCHA v3 token generated for '%s'", query)
+
+                # Submit
+                await page.click("#announ button[type=submit]")
+                await page.wait_for_timeout(5000)
+                await page.wait_for_load_state("networkidle")
+                await random_delay(1, 2)
+
+                # Parse results table in #announ section
+                rows = await page.locator("#announ table tbody tr").all()
+                self.logger.info("LHKPN search '%s': %d results", query, len(rows))
+
+                for row in rows:
+                    cells = await row.locator("td").all()
+                    if len(cells) < 13:
+                        continue
+
+                    # Real column layout (14 cells):
+                    # [0]=hash [1]=id [2]=empty [3]=tahun [4]=type [5]=no
+                    # [6]=NAMA [7]=lembaga [8]=unit_kerja [9]=jabatan
+                    # [10]=tanggal_lapor [11]=jenis_laporan [12]=total_harta [13]=aksi
+                    nama = (await cells[6].inner_text()).strip()
+                    lembaga = (await cells[7].inner_text()).strip()
+                    unit_kerja = (await cells[8].inner_text()).strip()
+                    jabatan = (await cells[9].inner_text()).strip()
+                    tanggal_lapor = (await cells[10].inner_text()).strip()
+                    jenis_laporan = (await cells[11].inner_text()).strip()
+                    total_harta_raw = (await cells[12].inner_text()).strip()
+
+                    # Parse total harta (e.g., "Rp.34.983.828.731")
+                    total_harta = self._parse_rupiah(total_harta_raw)
+
+                    record_data: dict[str, Any] = {
+                        "nama": nama,
+                        "lembaga": lembaga,
+                        "unit_kerja": unit_kerja,
+                        "jabatan": jabatan,
+                        "tanggal_lapor": tanggal_lapor,
+                        "jenis_laporan": jenis_laporan,
+                        "total_harta_raw": total_harta_raw,
+                        "total_harta": total_harta,
+                    }
+
+                    records.append(
+                        ScrapedRecord(
+                            source="lhkpn",
+                            entity_type="asset_declaration",
+                            url=BASE_URL,
+                            raw_data=record_data,
+                        )
+                    )
+
+            except Exception as e:
+                self.logger.error("LHKPN scrape failed: %s", e)
 
         self.save_records(records)
         return records
 
-    def _parse_detail(self, soup: BeautifulSoup) -> dict[str, Any]:
-        """Extract structured data from LHKPN detail page."""
-        data: dict[str, Any] = {}
-
-        # NHK (registration number)
-        nhk_el = soup.select_one("td:-soup-contains('NHK') + td")
-        if nhk_el:
-            data["nhk"] = nhk_el.get_text(strip=True)
-
-        # Parse summary tables for totals
-        for label_text in [
-            "Harta Tidak Bergerak",
-            "Harta Bergerak",
-            "Surat Berharga",
-            "Kas dan Setara Kas",
-            "Harta Lainnya",
-            "Total Harta",
-            "Total Hutang",
-            "Total Harta Kekayaan",
-        ]:
-            el = soup.find("td", string=lambda t: t and label_text in t if t else False)
-            if el:
-                val_el = el.find_next_sibling("td")
-                if val_el:
-                    data[label_text.lower().replace(" ", "_")] = val_el.get_text(strip=True)
-
-        return data
+    @staticmethod
+    def _parse_rupiah(text: str) -> int:
+        """Parse 'Rp.34.983.828.731' → 34983828731."""
+        digits = re.sub(r"[^\d]", "", text)
+        return int(digits) if digits else 0
