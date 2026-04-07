@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import date
+from html import escape
 
 import httpx
 
@@ -54,14 +55,20 @@ async def notify_leave_request_pending(
             else f"{start_date.isoformat()} → {end_date.isoformat()}"
         )
         day_label = "day" if total_days == 1 else "days"
+
+        # Escape user-controlled values to prevent HTML injection in mail clients
+        safe_name = escape(requester_name)
+        safe_email = escape(requester_email)
+        safe_type = escape(leave_type_name)
+        safe_reason = escape(reason) if reason else None
         reason_block = (
-            f"<p><strong>Reason:</strong> {reason}</p>" if reason else ""
+            f"<p><strong>Reason:</strong> {safe_reason}</p>" if safe_reason else ""
         )
 
         html_body = (
             f"<p>A leave request needs your review.</p>"
-            f"<p><strong>Employee:</strong> {requester_name} ({requester_email})<br>"
-            f"<strong>Type:</strong> {leave_type_name}<br>"
+            f"<p><strong>Employee:</strong> {safe_name} ({safe_email})<br>"
+            f"<strong>Type:</strong> {safe_type}<br>"
             f"<strong>Dates:</strong> {date_range}<br>"
             f"<strong>Duration:</strong> {total_days} {day_label}</p>"
             f"{reason_block}"
@@ -69,19 +76,24 @@ async def notify_leave_request_pending(
             f"Review in HR Dashboard</a></p>"
         )
 
+        # cc must be a comma-joined string (Pydantic SendEmailRequest expects
+        # str | None, NOT list[str]). Same scar as commit 08c4df17c.
+        payload: dict[str, str] = {
+            "to": recipients["to"],
+            "subject": (
+                f"Leave Request — {safe_name} "
+                f"({total_days} {day_label})"
+            ),
+            "body": html_body,
+        }
+        if recipients["cc"]:
+            payload["cc"] = ", ".join(recipients["cc"])
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 _EMAIL_API_URL,
                 headers={"X-API-Key": _EMAIL_API_KEY},
-                json={
-                    "to": recipients["to"],
-                    "cc": recipients["cc"],
-                    "subject": (
-                        f"Leave Request — {requester_name} "
-                        f"({total_days} {day_label})"
-                    ),
-                    "body": html_body,
-                },
+                json=payload,
             )
             response.raise_for_status()
 
@@ -89,7 +101,7 @@ async def notify_leave_request_pending(
             "Leave notification sent: req=%s to=%s cc=%s",
             request_id,
             recipients["to"],
-            ",".join(recipients["cc"]),
+            payload.get("cc", ""),
         )
     except Exception as e:
         logger.warning(
