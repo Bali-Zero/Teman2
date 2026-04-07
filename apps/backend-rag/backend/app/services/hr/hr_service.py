@@ -575,6 +575,41 @@ class HRService:
                 logger.info(f"Leave request {request_id} rejected by {reviewed_by}")
                 return dict(req)
 
+    async def get_leave_request(
+        self, request_id: int,
+    ) -> dict[str, Any] | None:
+        """Fetch a single leave request with requester email + leave type.
+
+        Returns None if the request does not exist. Used by the router to
+        perform delegated RBAC checks before approve/reject.
+        """
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT lr.*,
+                       tm.email AS requester_email,
+                       tm.full_name AS requester_name,
+                       lt.name AS leave_type_name
+                FROM hr_leave_requests lr
+                JOIN hr_employees e ON e.id = lr.employee_id
+                JOIN team_members tm ON tm.id = e.team_member_id
+                JOIN hr_leave_types lt ON lt.id = lr.leave_type_id
+                WHERE lr.id = $1
+            """, request_id)
+        return dict(row) if row else None
+
+    async def get_leave_type_name(self, type_id: int) -> str:
+        """Return the human-readable name of a leave type.
+
+        Falls back to "Leave type #N" if the id is not found (defensive:
+        should not happen given FK constraints, but keeps the notifier
+        independent of strict row presence).
+        """
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT name FROM hr_leave_types WHERE id = $1", type_id,
+            )
+        return row["name"] if row else f"Leave type #{type_id}"
+
     async def get_leave_balance(
         self, employee_id: int, year: int | None = None,
     ) -> list[dict[str, Any]]:
