@@ -5,6 +5,8 @@ and TTL configuration.
 All Redis connections are mocked to avoid requiring a live Redis server.
 """
 
+import asyncio
+import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -454,3 +456,183 @@ class TestRedisManagerClose:
 
         mock_sync.close.assert_called_once()
         assert RedisManager._instance is None
+
+
+# =============================================================================
+# RedisManager — Reconnect Loop (Bug Regression Tests)
+# =============================================================================
+
+
+class TestRedisManagerReconnectLoop:
+    """
+    Regression tests for reconnect loop bugs.
+
+    Bug fixes covered:
+    1. _reconnect_loop must restore BOTH async AND sync clients so rate-limiter
+       becomes fully operational after reconnect (not just async cache).
+    2. _start_reconnect_loop called from sync context must set _reconnect_pending=True
+       so _ensure_reconnect_loop() starts it on the first async call.
+    """
+
+    def setup_method(self) -> None:
+        RedisManager._instance = None
+
+    def teardown_method(self) -> None:
+        RedisManager._instance = None
+
+    def test_start_reconnect_loop_sets_pending_when_no_event_loop(self) -> None:
+        """
+        BUG: When _start_reconnect_loop() is called outside an event loop
+        (e.g., sync test setup or CLI), it silently dropped the reconnect
+        intent. The reconnect loop never started.
+
+        FIX: Sets _reconnect_pending=True so async callers can start it later.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        # There is no running event loop in this sync test
+        mgr._start_reconnect_loop()
+        assert getattr(mgr, "_reconnect_pending", False) is True
+        assert mgr._reconnect_task is None
+
+    @pytest.mark.asyncio
+    async def test_ensure_reconnect_loop_starts_deferred_task(self) -> None:
+        """
+        _ensure_reconnect_loop() must start the task when _reconnect_pending=True.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = False
+        mgr._reconnect_pending = True
+
+        mgr._ensure_reconnect_loop()
+
+        assert mgr._reconnect_task is not None
+        assert not mgr._reconnect_task.done()
+        assert mgr._reconnect_pending is False
+
+        # Clean up
+        mgr._reconnect_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await mgr._reconnect_task
+
+    @pytest.mark.asyncio
+    async def test_ensure_reconnect_loop_noop_when_available(self) -> None:
+        """
+        If Redis became available before the deferred loop fires, do nothing.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = True
+        mgr._reconnect_pending = True
+
+        mgr._ensure_reconnect_loop()
+
+        # Should clear the flag but not create a task
+        assert mgr._reconnect_pending is False
+        assert mgr._reconnect_task is None
+
+    @pytest.mark.asyncio
+    async def test_ensure_reconnect_loop_noop_when_not_pending(self) -> None:
+        """When _reconnect_pending is False, _ensure_reconnect_loop is a no-op."""
+        mgr = RedisManager()
+        mgr._reconnect_pending = False
+
+        mgr._ensure_reconnect_loop()
+
+        assert mgr._reconnect_task is None
+
+    @pytest.mark.asyncio
+    async def test_health_check_starts_deferred_reconnect(self) -> None:
+        """
+        health_check() must call _ensure_reconnect_loop() so the deferred
+        task starts on the first async call into the manager.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = False
+        mgr._reconnect_pending = True
+
+        # health_check should start the loop even though Redis is unavailable
+        await mgr.health_check()
+
+        assert mgr._reconnect_task is not None
+        assert mgr._reconnect_pending is False
+
+        # Clean up
+        mgr._reconnect_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await mgr._reconnect_task
+
+    @pytest.mark.asyncio
+    async def test_reconnect_loop_restores_both_clients(self) -> None:
+        """
+        BUG: _reconnect_loop only restored _async_client. _sync_client stayed
+        None so the rate-limiter middleware remained in in-memory fallback mode
+        even after Redis came back.
+
+        FIX: _reconnect_loop must restore both async and sync clients.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = False
+
+        mock_async_client = AsyncMock()
+        mock_async_client.ping.return_value = True
+
+        mock_sync_client = MagicMock()
+        mock_sync_client.ping.return_value = True
+
+        with (
+            patch("redis.asyncio.from_url", return_value=mock_async_client),
+            patch("redis.from_url", return_value=mock_sync_client),
+        ):
+            # Patch sleep to avoid waiting 30 seconds
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                # Run one iteration of the loop; it should reconnect and return
+                await mgr._reconnect_loop()
+
+        assert mgr._available is True
+        assert mgr._async_client is mock_async_client, "async client must be restored"
+        assert mgr._sync_client is mock_sync_client, "sync client must be restored (rate-limiter)"
+
+    @pytest.mark.asyncio
+    async def test_reconnect_loop_async_only_when_sync_fails(self) -> None:
+        """
+        If sync client cannot reconnect, async-only mode is used and
+        _available is still set to True (graceful degradation).
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = False
+
+        mock_async_client = AsyncMock()
+        mock_async_client.ping.return_value = True
+
+        with (
+            patch("redis.asyncio.from_url", return_value=mock_async_client),
+            patch("redis.from_url", side_effect=Exception("sync refused")),
+        ):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                await mgr._reconnect_loop()
+
+        assert mgr._available is True
+        assert mgr._async_client is mock_async_client
+        assert mgr._sync_client is None  # Sync failed but async-only is fine
+
+    @pytest.mark.asyncio
+    async def test_reconnect_loop_cancelled_during_sleep(self) -> None:
+        """
+        When close() cancels the task during asyncio.sleep(), CancelledError
+        must propagate cleanly without being swallowed.
+        """
+        mgr = RedisManager()
+        mgr._redis_url = "redis://localhost:6379"
+        mgr._available = False
+
+        async def cancel_immediately(*args: object, **kwargs: object) -> None:
+            raise asyncio.CancelledError()
+
+        with patch("asyncio.sleep", side_effect=cancel_immediately):
+            with pytest.raises(asyncio.CancelledError):
+                await mgr._reconnect_loop()
