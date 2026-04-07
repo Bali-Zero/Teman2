@@ -25,9 +25,19 @@ Dari teks yang diberikan, ekstrak entitas berikut dalam format JSON:
   "relations": [{"subject": "", "predicate": "", "object": "", "context": ""}]
 }
 
-Predicate yang valid: JABATAN_DI, BERTEMU, MENANG_TENDER, HADIR_DI, KELUARGA, MEMILIKI, DILAPORKAN, ANGKATAN.
-Jika field tidak ditemukan, kosongkan string. HANYA output JSON, tanpa penjelasan.
-/no_think"""
+Predicate yang valid dan ARAH yang benar:
+- JABATAN_DI: subject=PERSON, object=KANTOR
+- BERTEMU: subject=PERSON, object=PERSON
+- MENANG_TENDER: subject=VENDOR (perusahaan pemenang), object=NAMA_PAKET
+  Contoh: "PT Boga memenangkan tender X" → subject="PT Boga", object="X"
+  JANGAN tulis "Kanim memenangkan" — Kanim adalah pemberi tender, bukan pemenang.
+- HADIR_DI: subject=PERSON, object=EVENT
+- KELUARGA: subject=PERSON, object=PERSON (context: istri/suami/anak/saudara)
+- MEMILIKI: subject=PERSON, object=ASSET/COMPANY
+- DILAPORKAN: subject=PERSON, object=DOKUMEN
+- ANGKATAN: subject=PERSON, object=TAHUN_ANGKATAN
+
+Jika field tidak ditemukan, kosongkan string. HANYA output JSON valid, tanpa penjelasan."""
 
 NER_USER_TEMPLATE = """Ekstrak entitas dari teks berikut:
 
@@ -82,6 +92,8 @@ class NERExtractor:
                         {"role": "user", "content": NER_USER_TEMPLATE.format(text=text)},
                     ],
                     "stream": False,
+                    "think": False,  # CRITICAL: qwen3.5 thinks for 60s+ otherwise
+                    "format": "json",  # Force valid JSON output
                     "options": {
                         "temperature": 0.1,
                         "num_predict": 2048,
