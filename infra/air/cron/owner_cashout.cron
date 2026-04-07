@@ -1,0 +1,6 @@
+# Owner Weekly Cashout sync — Monday 09:00 WITA (01:00 UTC)
+# Runs sync on Fly backend via fly ssh console
+# Requires: flyctl installed and authenticated on Air
+# Script: ~/Projects/nuzantara/scripts/sync_owner_cashout_fly.sh
+
+0 1 * * 1 /Users/antonellosiano/Projects/nuzantara/scripts/cron-wrapper.sh owner-cashout-sync /Users/antonellosiano/Projects/nuzantara/scripts/sync_owner_cashout_fly.sh
