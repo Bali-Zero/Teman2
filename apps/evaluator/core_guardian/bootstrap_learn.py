@@ -125,22 +125,15 @@ def extract_from_mos() -> list[dict]:
 
 
 def _parse_csv_line(line: str) -> list[str]:
-    """Parse a CSV line handling quoted fields with commas."""
-    fields: list[str] = []
-    current = ""
-    in_quotes = False
-
-    for char in line:
-        if char == '"':
-            in_quotes = not in_quotes
-        elif char == ',' and not in_quotes:
-            fields.append(current.strip())
-            current = ""
-        else:
-            current += char
-
-    fields.append(current.strip())
-    return fields
+    """Parse a CSV line using stdlib csv.reader (RFC 4180 compliant)."""
+    import csv
+    import io
+    try:
+        reader = csv.reader(io.StringIO(line))
+        return next(reader)
+    except (csv.Error, StopIteration):
+        # Fallback: naive split
+        return line.split(",")
 
 
 def _classify_content(content: str) -> str:
@@ -369,7 +362,11 @@ async def insert_records(records: list[dict], dry_run: bool = False) -> int:
         return 0
 
     import asyncpg
-    conn = await asyncpg.connect(db_url, timeout=15)
+    try:
+        conn = await asyncpg.connect(db_url, timeout=15)
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {e}")
+        return 0
 
     try:
         # Check if bootstrap already ran (idempotent)
@@ -395,10 +392,13 @@ async def insert_records(records: list[dict], dry_run: bool = False) -> int:
                     try:
                         ts = _dt.fromisoformat(ts.replace("Z", "+00:00"))
                     except ValueError:
-                        # Fallback for SQLite format "2026-04-03 06:23:49"
-                        ts = _dt.strptime(ts, "%Y-%m-%d %H:%M:%S").replace(
-                            tzinfo=timezone.utc
-                        )
+                        try:
+                            ts = _dt.strptime(ts, "%Y-%m-%d %H:%M:%S").replace(
+                                tzinfo=timezone.utc
+                            )
+                        except ValueError:
+                            logger.warning(f"Unparseable timestamp '{ts}', using now()")
+                            ts = _dt.now(timezone.utc)
 
                 await conn.execute(
                     """
