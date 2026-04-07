@@ -107,7 +107,7 @@ async def get_auth_url(
         )
 
     # Create state token with user ID for CSRF protection
-    state = f"{current_user['id']}:{secrets.token_urlsafe(32)}"
+    state = f"{current_user['user_id']}:{secrets.token_urlsafe(32)}"
 
     # Store state in session/cache for verification (simplified: using query param)
     auth_url = service.get_authorization_url(state)
