@@ -1,21 +1,26 @@
 """
 Unit tests for llm.providers.deepseek
 Auto-generated test template for high coverage
+
+NOTE: The deepseek provider was removed. DeepSeek access is now via
+OpenRouter (see backend.llm.providers.openrouter). This test verifies
+that the standalone module no longer exists and the OpenRouter provider
+covers the DeepSeek model.
 """
 
-import sys
-from pathlib import Path
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
+import pytest
 
 
 class TestDeepseek:
-    """Tests for llm.providers.deepseek"""
+    """Tests for deepseek provider access"""
 
-    def test_module_import(self):
-        """Test that module can be imported"""
-        import llm.providers.deepseek
+    def test_no_standalone_module(self):
+        """Verify standalone deepseek module was removed (access via OpenRouter)"""
+        with pytest.raises(ModuleNotFoundError):
+            import backend.llm.providers.deepseek  # noqa: F401
 
-        assert llm.providers.deepseek is not None
+    def test_openrouter_has_deepseek_model(self):
+        """Verify DeepSeek is available via OpenRouter config"""
+        from backend.llm.config import OpenRouterModel
+
+        assert "deepseek" in OpenRouterModel.DEEPSEEK_CHAT.lower()
