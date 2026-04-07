@@ -202,13 +202,26 @@ async def resolve_and_fix(
                 continue
 
             undelete = action == "undelete_and_fix"
-            await _apply_fix(
-                conn,
-                decision["lkpm_id"],
-                decision["old_client_id"],
-                decision["new_client_id"],
-                undelete,
-            )
+            try:
+                await _apply_fix(
+                    conn,
+                    decision["lkpm_id"],
+                    decision["old_client_id"],
+                    decision["new_client_id"],
+                    undelete,
+                )
+            except Exception as exc:
+                if "uq_lkpm_report" in str(exc):
+                    decision["action"] = "unique_collision"
+                    decision["info"] = (
+                        f"UNIQUE(client_id={decision['new_client_id']}, Q1, 2026) "
+                        f"already taken — same director for 2+ PTs"
+                    )
+                    decision["marker"] = "⚡"
+                else:
+                    decision["action"] = "error"
+                    decision["info"] = str(exc)
+                    decision["marker"] = "!"
 
     _print_summary(report, dry_run)
     return report
