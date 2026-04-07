@@ -418,8 +418,17 @@ class AgenticRAGOrchestrator:
         session_id: str | None = None,
         images: list[dict] | None = None,
         channel: str | None = None,
+        agent_role: Any | None = None,  # VASSAL Phase 2: AgentRole | None
     ):
-        """Stream query with comprehensive error handling. Delegates to OrchestratorStreamingCore."""
+        """
+        Stream query with comprehensive error handling. Delegates to OrchestratorStreamingCore.
+
+        VASSAL Phase 2: `agent_role` is the caller's AgentRole (from
+        team_agent_config), passed by the workspace-stream router so the
+        downstream tool_authorizer can enforce per-role tool RBAC. None
+        for legacy /stream callers — handled by the authorizer's own
+        backward-compat passthrough.
+        """
         # Initialize required arguments for stream_query_core
         tool_execution_counter: dict[str, int] = {"count": 0}
         correlation_id: str = str(uuid.uuid4())
@@ -434,5 +443,6 @@ class AgenticRAGOrchestrator:
             tool_execution_counter=tool_execution_counter,
             correlation_id=correlation_id,
             channel=channel,
+            agent_role=agent_role,  # VASSAL Phase 2 — propagate to react loop
         ):
             yield event
