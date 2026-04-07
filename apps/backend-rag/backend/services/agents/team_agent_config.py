@@ -28,6 +28,12 @@ class AgentRole:
     allowed_write_tools: list[str] = field(default_factory=list)
     blocked_tools: list[str] = field(default_factory=list)
     client_scope: str = "assigned"  # "assigned" = only their clients, "all" = admin
+    # VASSAL Phase 3: tools that require interactive user confirmation before
+    # they may execute. The ToolAuthorizer reads this list and returns
+    # AuthResult.confirm() with a non-empty preview reason; tool_executor
+    # then awaits ConfirmationService.request_and_wait. Empty list = no
+    # confirmation needed for any tool (admin default).
+    requires_confirmation: list[str] = field(default_factory=list)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -91,6 +97,16 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "approve_staging_item",
     ],
     client_scope="assigned",
+    # VASSAL Phase 3 (§5.1 of plan v8): image_generation is the real
+    # candidate write tool — it is the only tool in the current ReAct
+    # registry with per-call $ cost. Visa specialists may use it (see
+    # allowed_write_tools above), but each call must be user-confirmed.
+    # Timesheet is NOT confirmed (it is not in this role's allowlist
+    # anyway, and the plan v8 defers timesheet confirmation pending
+    # write-semantics verification).
+    requires_confirmation=[
+        "image_generation",
+    ],
 )
 
 ROLE_EXECUTIVE_CONSULTANT = AgentRole(
@@ -155,6 +171,14 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "get_admin_logs",
     ],
     client_scope="assigned",
+    # VASSAL Phase 3 (§5.1 of plan v8): same rationale as the visa
+    # specialist role — image_generation is gated. Timesheet is NOT
+    # confirmed (Phase 6 will revisit timesheet write semantics; the
+    # email-spoofing concern in Phase 2 handoff (a)4 is independent of
+    # confirmation gates).
+    requires_confirmation=[
+        "image_generation",
+    ],
 )
 
 ROLE_ADMIN = AgentRole(
