@@ -341,21 +341,59 @@ class AttendanceMonitor:
         logger.info("AttendanceMonitor: schedulers stopped")
 
     async def _escalation_loop(self) -> None:
-        """Run ``run_escalation_scan`` every ESCALATION_SCAN_INTERVAL_SECONDS."""
+        """
+        Run ``run_escalation_scan`` every ESCALATION_SCAN_INTERVAL_SECONDS.
+
+        Logs an INFO heartbeat on every iteration (with worker pid + loop id)
+        so silent failures of the scheduling loop become visible in production
+        — even on iterations where the scan finds nothing to promote. Without
+        this heartbeat, ``run_escalation_scan`` only logs at DEBUG when
+        ``counters`` is empty, making it impossible to tell from logs whether
+        the loop is alive or dead.
+        """
+        loop_id = id(asyncio.get_running_loop())
+        pid = os.getpid()
+        iteration = 0
+        logger.info(
+            "AttendanceMonitor._escalation_loop: STARTED pid=%d loop_id=%d "
+            "interval=%ds",
+            pid,
+            loop_id,
+            ESCALATION_SCAN_INTERVAL_SECONDS,
+        )
         while self._running:
+            iteration += 1
             try:
-                await self.run_escalation_scan()
+                counters = await self.run_escalation_scan()
+                logger.info(
+                    "AttendanceMonitor._escalation_loop: heartbeat "
+                    "iter=%d pid=%d counters=%s",
+                    iteration,
+                    pid,
+                    counters,
+                )
             except Exception as exc:
                 logger.error(
-                    "AttendanceMonitor._escalation_loop: scan failed — %s",
+                    "AttendanceMonitor._escalation_loop: scan failed iter=%d — %s",
+                    iteration,
                     exc,
                     exc_info=True,
                 )
             try:
                 await asyncio.sleep(ESCALATION_SCAN_INTERVAL_SECONDS)
             except asyncio.CancelledError:
-                logger.info("AttendanceMonitor._escalation_loop: cancelled")
+                logger.info(
+                    "AttendanceMonitor._escalation_loop: cancelled iter=%d pid=%d",
+                    iteration,
+                    pid,
+                )
                 break
+        logger.warning(
+            "AttendanceMonitor._escalation_loop: EXITED pid=%d iter=%d _running=%s",
+            pid,
+            iteration,
+            self._running,
+        )
 
     async def _daily_digest_loop(self) -> None:
         """
@@ -365,6 +403,13 @@ class AttendanceMonitor:
         then — so deploys at e.g. 09:00 WITA wait until 18:00 same day, and
         deploys at 18:30 wait until 18:00 next day.
         """
+        loop_id = id(asyncio.get_running_loop())
+        pid = os.getpid()
+        logger.info(
+            "AttendanceMonitor._daily_digest_loop: STARTED pid=%d loop_id=%d",
+            pid,
+            loop_id,
+        )
         while self._running:
             now = datetime.now(BALI_TZ)
             target = now.replace(
@@ -377,23 +422,32 @@ class AttendanceMonitor:
                 target = target + timedelta(days=1)
             sleep_seconds = (target - now).total_seconds()
             logger.info(
-                "AttendanceMonitor._daily_digest_loop: next digest in %.0fs (at %s)",
+                "AttendanceMonitor._daily_digest_loop: next digest in %.0fs (at %s) pid=%d",
                 sleep_seconds,
                 target.isoformat(),
+                pid,
             )
             try:
                 await asyncio.sleep(sleep_seconds)
             except asyncio.CancelledError:
-                logger.info("AttendanceMonitor._daily_digest_loop: cancelled")
+                logger.info(
+                    "AttendanceMonitor._daily_digest_loop: cancelled pid=%d", pid,
+                )
                 break
             try:
                 await self.send_daily_telegram_digest()
             except Exception as exc:
                 logger.error(
-                    "AttendanceMonitor._daily_digest_loop: digest failed — %s",
+                    "AttendanceMonitor._daily_digest_loop: digest failed pid=%d — %s",
+                    pid,
                     exc,
                     exc_info=True,
                 )
+        logger.warning(
+            "AttendanceMonitor._daily_digest_loop: EXITED pid=%d _running=%s",
+            pid,
+            self._running,
+        )
 
     # ------------------------------------------------------------------
     # Public interface
