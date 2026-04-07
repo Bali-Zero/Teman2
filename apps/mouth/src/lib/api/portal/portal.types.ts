@@ -293,6 +293,11 @@ export interface LKPMDraftSummary {
     | "submitted"
     | "archived";
   realized_total: number;
+  oss_submitted?: boolean;
+  oss_receipt_number?: string | null;
+  client_approved?: boolean;
+  lkpm_assigned_to?: string | null;
+  days_to_deadline?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -355,8 +360,12 @@ export interface LKPMBatchItem {
   realized_total: number;
   red_alerts: number;
   yellow_alerts: number;
-  updated_at: string;
+  oss_submitted: boolean;
+  oss_receipt_number?: string | null;
+  client_approved: boolean;
   lkpm_assigned_to?: string | null;
+  days_to_deadline?: number | null;
+  updated_at: string;
 }
 
 export interface LKPMOSSCredentials {
