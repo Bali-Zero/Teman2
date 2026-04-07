@@ -53,3 +53,24 @@ def build_notification_recipients(
     if requester != ASYA_EMAIL:
         cc.append(ASYA_EMAIL)
     return {"to": approver, "cc": cc}
+
+
+def build_review_recipients(
+    requester_email: str,
+    reviewer_email: str,
+) -> dict[str, str | list[str]]:
+    """Return {to, cc[]} for the approval/rejection notification email.
+
+    Rules:
+    - TO: the requester (the person who asked for leave)
+    - Asya always in CC for HR audit, unless she is the reviewer or requester
+    - Zero always in CC for visibility, unless he is the reviewer or requester
+    """
+    requester = _normalize(requester_email)
+    reviewer = _normalize(reviewer_email)
+    cc: list[str] = []
+    if reviewer != ZERO_EMAIL and requester != ZERO_EMAIL:
+        cc.append(ZERO_EMAIL)
+    if reviewer != ASYA_EMAIL and requester != ASYA_EMAIL:
+        cc.append(ASYA_EMAIL)
+    return {"to": requester, "cc": cc}

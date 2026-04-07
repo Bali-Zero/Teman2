@@ -308,6 +308,31 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
 
 ## Task 3: Create `hr_leave_notifier.py` module (TDD)
 
+> **⚠️ POST-EXECUTION NOTE (2026-04-07):** the original code blocks below
+> reproduce two bugs that were caught in code review and fixed in commit
+> `3dffb6e6e`. **If you re-execute this task from scratch, apply these
+> deltas BEFORE committing:**
+>
+> 1. **CRIT — `cc` must be a comma-joined string, not `list[str]`.** The
+>    receiving Pydantic model `SendEmailRequest`
+>    (`backend/app/modules/notifications/router.py:68`) declares
+>    `cc: str | None`. Sending a list raises 422 in production. Build the
+>    payload conditionally: `if recipients["cc"]: payload["cc"] = ", ".join(recipients["cc"])`
+>    and omit the key entirely when the list is empty. Same scar as
+>    commit `08c4df17c` in `attendance_monitor.py`.
+>
+> 2. **IMP — Escape user-controlled HTML.** `requester_name`, `requester_email`,
+>    `leave_type_name`, and especially `reason` (free-text TEXT column) must
+>    pass through `html.escape()` from stdlib before being interpolated into
+>    the body. The subject also uses the escaped name.
+>
+> Tests must be updated to (a) assert `payload["cc"]` is a string, and
+> (b) include a regression test that validates the payload against the
+> real `SendEmailRequest` model and a regression test for HTML injection
+> in `reason`. See `apps/backend-rag/backend/app/services/hr/hr_leave_notifier.py`
+> and `tests/unit/services/hr/test_hr_leave_notifier.py` at HEAD for the
+> corrected implementation.
+
 **Files:**
 - Create: `apps/backend-rag/backend/tests/unit/services/hr/test_hr_leave_notifier.py`
 - Create: `apps/backend-rag/backend/app/services/hr/hr_leave_notifier.py`
