@@ -175,18 +175,27 @@ def _split_sections(text: str) -> dict[str, str]:
 
 # Pattern for "Tanah dan Bangunan Seluas 340 m2/250 m2 di KAB / KOTA ..."
 _PROP_TB_PATTERN = re.compile(
-    r"Tanah\s+dan\s+Bangunan\s+Seluas\s+(\d+)\s*m2\s*/\s*(\d+)\s*m2\s+"
+    r"Tanah\s+dan\s+Bangunan\s+Seluas\s+([\d.]+)\s*m2\s*/\s*([\d.]+)\s*m2\s+"
     r"di\s+KAB\s*/\s*KOTA\s+(.*?)"
-    r"(?:,\s*(HASIL\s+\w+))?"
+    r"(?:,?\s*(HASIL\s+\w+|WARISAN|HIBAH))?"
     r"\s+Rp\.\s*([\d.]+)",
     re.DOTALL,
 )
 
 # Pattern for "Tanah Seluas 300 m2 di KAB / KOTA ..."  (no building)
 _PROP_T_PATTERN = re.compile(
-    r"Tanah\s+Seluas\s+(\d+)\s*m2\s+"
+    r"Tanah\s+Seluas\s+([\d.]+)\s*m2\s+"
     r"di\s+KAB\s*/\s*KOTA\s+(.*?)"
-    r"(?:,\s*(HASIL\s+\w+))?"
+    r"(?:,?\s*(HASIL\s+\w+|WARISAN|HIBAH))?"
+    r"\s+Rp\.\s*([\d.]+)",
+    re.DOTALL,
+)
+
+# Pattern for "Bangunan Seluas 142 m2 di KAB / KOTA ..." (building only, no land)
+_PROP_B_PATTERN = re.compile(
+    r"Bangunan\s+Seluas\s+([\d.]+)\s*m2\s+"
+    r"di\s+KAB\s*/\s*KOTA\s+(.*?)"
+    r"(?:,?\s*(HASIL\s+\w+|WARISAN|HIBAH))?"
     r"\s+Rp\.\s*([\d.]+)",
     re.DOTALL,
 )
@@ -236,9 +245,9 @@ def _parse_properties(text: str) -> list[PropertyItem]:
     joined = _join_continuation_lines(text)
     items: list[PropertyItem] = []
 
-    # Extract numbered items
-    # Split by numbered entries
-    item_texts = re.split(r"(?=\d+\.\s)", joined)
+    # Extract numbered items — split on "N. Tanah" or "N. Bangunan" patterns
+    # Avoids false splits on thousand separators like "1.015 m2"
+    item_texts = re.split(r"(?=\d{1,2}\.\s+(?:Tanah|Bangunan))", joined)
 
     for item_text in item_texts:
         item_text = item_text.strip()
@@ -248,8 +257,8 @@ def _parse_properties(text: str) -> list[PropertyItem]:
         # Try tanah_bangunan pattern first
         tb_match = _PROP_TB_PATTERN.search(item_text)
         if tb_match:
-            luas_tanah = int(tb_match.group(1))
-            luas_bangunan = int(tb_match.group(2))
+            luas_tanah = int(tb_match.group(1).replace(".", ""))
+            luas_bangunan = int(tb_match.group(2).replace(".", ""))
             lokasi_raw = tb_match.group(3).strip()
             sumber = (tb_match.group(4) or "").strip()
             nilai_str = tb_match.group(5)
@@ -273,7 +282,7 @@ def _parse_properties(text: str) -> list[PropertyItem]:
         # Try tanah-only pattern
         t_match = _PROP_T_PATTERN.search(item_text)
         if t_match:
-            luas_tanah = int(t_match.group(1))
+            luas_tanah = int(t_match.group(1).replace(".", ""))
             lokasi_raw = t_match.group(2).strip()
             sumber = (t_match.group(3) or "").strip()
             nilai_str = t_match.group(4)
@@ -286,6 +295,27 @@ def _parse_properties(text: str) -> list[PropertyItem]:
                 luas_tanah_m2=luas_tanah,
                 luas_bangunan_m2=0,
                 tipe="tanah",
+                nilai=parse_rp(f"Rp. {nilai_str}"),
+                sumber=sumber,
+            ))
+            continue
+
+        # Try bangunan-only pattern (building without land)
+        b_match = _PROP_B_PATTERN.search(item_text)
+        if b_match:
+            luas_bangunan = int(b_match.group(1).replace(".", ""))
+            lokasi_raw = b_match.group(2).strip()
+            sumber = (b_match.group(3) or "").strip()
+            nilai_str = b_match.group(4)
+
+            lokasi = re.sub(r"\s*,?\s*$", "", lokasi_raw).strip()
+            lokasi = re.sub(r"\s+", " ", lokasi)
+
+            items.append(PropertyItem(
+                lokasi=lokasi,
+                luas_tanah_m2=0,
+                luas_bangunan_m2=luas_bangunan,
+                tipe="bangunan",
                 nilai=parse_rp(f"Rp. {nilai_str}"),
                 sumber=sumber,
             ))
@@ -306,7 +336,7 @@ _VEHICLE_PATTERN = re.compile(
     r"(\w+),\s+"               # jenis (MOBIL, MOTOR, etc.)
     r"(.+?)\s+"                # merk_model
     r"Tahun\s+(\d{4})"        # tahun_perolehan
-    r"(?:,\s*(HASIL\s+\w+))?" # optional sumber
+    r"(?:,\s*(HASIL\s+\w+|WARISAN|HIBAH))?"  # optional sumber
     r"\s+Rp\.\s*([\d.]+)",    # nilai
     re.DOTALL,
 )
@@ -403,7 +433,9 @@ def parse_lhkpn_pdf(pdf_path: Path | str) -> LhkpnReport:
         raise ValueError(f"No text extracted from PDF: {pdf_path}")
 
     # --- Personal data ---
-    nama = _extract_field(full_text, "Nama")
+    # KPK PDFs use UPPERCASE names; normalize to title case so
+    # "BUGIE KURNIAWAN" becomes "Bugie Kurniawan" for entity resolution.
+    nama = _extract_field(full_text, "Nama").title()
     jabatan = _extract_field(full_text, "Jabatan")
     nhk = _extract_field(full_text, "NHK")
     lembaga = _extract_field(full_text, "LEMBAGA")
