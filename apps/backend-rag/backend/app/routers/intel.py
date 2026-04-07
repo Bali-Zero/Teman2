@@ -8,7 +8,6 @@ import base64
 import logging
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path as PathLib
 from typing import Any
 
@@ -529,7 +528,7 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
 
 # ─── Post-publish queue (PostgreSQL-backed, survives deploys) ────────────────
 
-from backend.app.dependencies import get_database_pool
+from backend.app.dependencies import get_database_pool  # noqa: E402
 
 
 @router.post("/api/intel/post-publish-queue")

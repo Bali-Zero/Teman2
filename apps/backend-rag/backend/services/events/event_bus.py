@@ -30,9 +30,10 @@ import json
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 import asyncpg
 
@@ -190,7 +191,7 @@ class EventBus:
             )
 
         async with self._db_pool.acquire() as conn:
-            await conn.execute(f"SELECT pg_notify($1, $2)", channel, payload_str)
+            await conn.execute("SELECT pg_notify($1, $2)", channel, payload_str)
 
     # ── Lifecycle ──────────────────────────────────────────────────────
 
