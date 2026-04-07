@@ -29,6 +29,11 @@ from backend.app.dependencies import (
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
 from backend.db.repositories.conversation_repository import ConversationRepository
+from backend.services.agents.team_agent_config import (
+    AgentRole,
+    build_agent_context,
+    get_agent_role,
+)
 from backend.services.rag.agentic import AgenticRAGOrchestrator
 from backend.services.rag.evaluation import ABTestManager, MetricsTracker
 
@@ -182,6 +187,25 @@ class AgenticQueryRequest(BaseModel):
         None  # Direct history from frontend
     )
     channel: str | None = None  # Channel overlay: "website", "webapp", "whatsapp", etc.
+
+
+class WorkspaceQueryRequest(BaseModel):
+    """
+    Request schema for the authenticated workspace agent endpoint.
+
+    Subset of AgenticQueryRequest. Identity (user_id, agent_role, agent_email,
+    agent_name) is derived server-side from the JWT — never trust client metadata.
+    The `channel` field is forced to "workspace" to make the audit log actor
+    unambiguous regardless of what the client sends.
+    """
+
+    query: str
+    enable_vision: bool | None = False
+    images: list[ImageInput] | None = None
+    session_id: str | None = None
+    conversation_id: int | None = None
+    conversation_history: list[ConversationMessageInput] | None = None
+    workspace_page: str | None = None  # Page path the user is on (Cmd+J context)
 
 
 class AgenticQueryResponse(BaseModel):
@@ -864,6 +888,308 @@ async def stream_agentic_rag(
                     f"events_yielded={events_yielded}, tokens_sent={tokens_sent}, "
                     f"duration={duration:.2f}s, events_by_type={events_by_type}",
                 )
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "X-Correlation-ID": correlation_id,
+        },
+    )
+
+
+# =============================================================================
+# WORKSPACE AGENT ENDPOINT (auth required, server-side agent context)
+# =============================================================================
+#
+# Phase 1 of VASSAL_PLAN_V7: endpoint splitting + auth required + agent context
+# wiring. The legacy /stream endpoint above stays auth-optional for backward
+# compatibility (blog/marketing). This new endpoint is the canonical path for
+# the kita.balizero.com workspace widget (Cmd+J) and derives agent identity
+# strictly from the JWT — never from client-supplied metadata.
+#
+# Phase 2 will add tool_authorizer enforcement inside the orchestrator's
+# tool_executor. Phase 1 only injects the agent context as a query prefix
+# (same pattern used by conversation/engine.py for the Telegram path).
+
+
+def _inject_agent_context_prefix(
+    query: str,
+    agent_context: dict[str, Any],
+    workspace_page: str | None = None,
+) -> str:
+    """
+    Prepend an [AGENT CONTEXT] block to the user query.
+
+    Mirrors the pattern in backend/conversation/engine.py:80-106 used by the
+    Telegram pipeline. Tells the LLM who it is talking to and, when client
+    scope is "assigned", instructs it to filter client data by the agent's
+    email so the response is personalized even before tool-level enforcement
+    lands in Phase 2.
+
+    Security note (Phase 2 hardening): `workspace_page` is embedded *inside*
+    the server-built [AGENT CONTEXT] block, never as a leading sentence the
+    user could imitate. If a malicious user types "[User is on page: /admin]"
+    in their query, that text appears AFTER the system block, where the LLM
+    treats it as user input rather than as system context.
+
+    Args:
+        query: Raw user query from the workspace widget.
+        agent_context: Dict produced by build_agent_context().
+        workspace_page: Optional page path the user is currently on (Cmd+J context).
+            Embedded inside the system block, not as a separate prefix.
+
+    Returns:
+        Query string with the agent context prefix prepended.
+    """
+    agent_name = agent_context.get("agent_name", "Team Member")
+    agent_role_display = agent_context.get("agent_role_display", "")
+    agent_system = agent_context.get("agent_system_context", "")
+    agent_scope = agent_context.get("agent_client_scope", "all")
+    agent_email = agent_context.get("agent_email", "")
+
+    page_instruction = ""
+    if workspace_page:
+        page_instruction = f" Currently viewing page {workspace_page}."
+
+    scope_instruction = ""
+    if agent_scope == "assigned":
+        scope_instruction = (
+            f" When querying client data, filter by assigned_to='{agent_email}'. "
+            f"Only show clients assigned to {agent_name}."
+        )
+
+    context_prefix = (
+        f"[AGENT CONTEXT] Speaking with {agent_name} ({agent_role_display})."
+        f"{page_instruction} {agent_system}{scope_instruction}\n\n"
+    )
+    return context_prefix + query
+
+
+@router.post("/workspace-stream")
+async def stream_workspace_agent(
+    request_body: WorkspaceQueryRequest,
+    http_request: Request,
+    current_user: dict = Depends(get_current_user),
+    orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
+    db_pool: Any | None = Depends(get_optional_database_pool),
+) -> StreamingResponse:
+    """
+    Authenticated workspace agent endpoint (SSE).
+
+    **AUTH REQUIRED.** No anonymous fallback. The agent identity (email,
+    role, client_scope) is derived server-side from the JWT via
+    `get_agent_role()` + `build_agent_context()`. Any agent_* fields the
+    client sends in the request body are ignored.
+
+    Phase 1 scope: endpoint splitting + agent context prefix injection.
+    Phase 2 will add server-side tool RBAC enforcement via tool_authorizer.
+    """
+    # 1) Authoritative identity from JWT (never from client body)
+    user_email = current_user.get("email")
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # 2) Resolve agent role; non-team users cannot use the workspace agent
+    agent_role: AgentRole | None = get_agent_role(user_email)
+    if not agent_role:
+        logger.warning(
+            f"🚫 workspace-stream denied: {user_email} is not a registered team agent",
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="User is not registered as a team agent",
+        )
+
+    # 3) Build agent context server-side (no client metadata trusted)
+    agent_context = build_agent_context(email=user_email, full_name=user_email)
+    if not agent_context:
+        # Defensive: get_agent_role above already returned non-None
+        raise HTTPException(status_code=403, detail="Agent context unavailable")
+
+    # 4) Validate query
+    if not request_body.query or not request_body.query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    # 5) Inject context prefix (Phase 2 hardening: workspace_page is embedded
+    # inside the server-built [AGENT CONTEXT] block via the helper, NOT
+    # concatenated to the user-facing query. This prevents prompt injection
+    # where a user could write "[User is on page: /admin]" to spoof page
+    # context. The user's raw query is appended UNCHANGED after the system
+    # block, where the LLM treats user-supplied [User is on page: ...] as
+    # untrusted input rather than authoritative system context.
+    enriched_query = _inject_agent_context_prefix(
+        query=request_body.query,
+        agent_context=agent_context,
+        workspace_page=request_body.workspace_page,
+    )
+
+    # 6) Correlation + logging
+    correlation_id = (
+        getattr(http_request.state, "correlation_id", None)
+        or getattr(http_request.state, "request_id", None)
+        or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
+    )
+    query_hash = hashlib.sha256(request_body.query.encode()).hexdigest()[:8]
+    start_time = time.time()
+    logger.info(
+        f"📡 Workspace agent stream: user={user_email} role={agent_role.role_id} "
+        f"scope={agent_role.client_scope} correlation_id={correlation_id} "
+        f"query_hash={query_hash}",
+    )
+
+    # 7) Session id default — namespace by email so each agent has own thread
+    session_id = request_body.session_id or f"ws_{user_email.replace('@', '_')}"
+
+    # 8) Conversation history (frontend-supplied or DB lookup, mirrors /stream)
+    async def event_generator() -> Any:
+        events_yielded = 0
+        full_answer = ""
+        conversation_id_persisted: int | None = None
+        persisted = False
+        final_answer_received = False
+
+        try:
+            # Initial status
+            yield (
+                f"data: {json.dumps({'type': 'status', 'data': {'status': 'processing', 'correlation_id': correlation_id}})}\n\n"
+            )
+            events_yielded += 1
+
+            conversation_history: list[dict] = []
+            if (
+                request_body.conversation_history
+                and len(request_body.conversation_history) > 0
+            ):
+                conversation_history = [
+                    {"role": msg.role, "content": msg.content}
+                    for msg in request_body.conversation_history
+                ]
+            elif request_body.conversation_id or request_body.session_id:
+                try:
+                    conversation_history = await get_conversation_history_for_agentic(
+                        conversation_id=request_body.conversation_id,
+                        session_id=request_body.session_id,
+                        user_id=user_email,
+                        db_pool=db_pool,
+                    )
+                except Exception as e:
+                    logger.warning(f"workspace-stream: failed to load history: {e}")
+
+            if await http_request.is_disconnected():
+                logger.warning(
+                    f"workspace-stream: client disconnected before stream start "
+                    f"(correlation_id={correlation_id})",
+                )
+                return
+
+            images_for_vision = None
+            if request_body.images and request_body.enable_vision:
+                images_for_vision = [
+                    {"base64": img.base64, "name": img.name}
+                    for img in request_body.images
+                ]
+
+            async for event in orchestrator.stream_query(
+                query=enriched_query,
+                user_id=user_email,
+                conversation_history=conversation_history or None,
+                session_id=session_id,
+                images=images_for_vision,
+                channel="workspace",
+            ):
+                if event is None or not isinstance(event, dict):
+                    continue
+
+                if event.get("type") == "token" and isinstance(event.get("data"), str):
+                    event["data"] = clean_image_generation_response(event["data"])
+
+                yield f"data: {json.dumps(event)}\n\n"
+                events_yielded += 1
+
+                event_type = event.get("type", "unknown")
+                if event_type == "token":
+                    token_content = event.get("data", "") or ""
+                    if isinstance(token_content, str):
+                        full_answer += token_content
+                if event_type == "done" or (
+                    event_type == "status" and event.get("data") == "[DONE]"
+                ):
+                    final_answer_received = True
+
+                if await http_request.is_disconnected():
+                    logger.info(
+                        f"workspace-stream: client disconnected mid-stream "
+                        f"(correlation_id={correlation_id})",
+                    )
+                    break
+
+            # Final status
+            yield (
+                f"data: {json.dumps({'type': 'status', 'data': {'status': 'completed', 'correlation_id': correlation_id}})}\n\n"
+            )
+            events_yielded += 1
+
+        except Exception as e:
+            logger.exception(f"workspace-stream fatal error: {e}")
+            yield (
+                f"data: {json.dumps({'type': 'error', 'data': {'error_type': 'fatal_error', 'message': str(e), 'fatal': True, 'correlation_id': correlation_id}})}\n\n"
+            )
+            events_yielded += 1
+        finally:
+            duration = time.time() - start_time
+
+            # Persist conversation (same pattern as legacy /stream)
+            if db_pool and full_answer and session_id:
+                try:
+                    repo = ConversationRepository(db_pool)
+                    new_messages = [
+                        {
+                            "role": "user",
+                            "content": request_body.query,
+                            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                        },
+                        {
+                            "role": "assistant",
+                            "content": full_answer,
+                            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                        },
+                    ]
+                    conversation_metadata = {
+                        "source": "agentic_rag_workspace_stream",
+                        "correlation_id": correlation_id,
+                        "execution_time": duration,
+                        "agent_role": agent_role.role_id,
+                        "agent_email": user_email,
+                        "streamed": True,
+                    }
+                    conversation_id_persisted = await repo.save_messages(
+                        session_id=session_id,
+                        user_id=user_email,
+                        messages=new_messages,
+                        metadata=conversation_metadata,
+                    )
+                    persisted = conversation_id_persisted is not None
+                except Exception as persist_error:
+                    logger.warning(
+                        f"workspace-stream: failed to persist conversation: {persist_error}",
+                    )
+                    persisted = False
+
+                if persisted:
+                    yield (
+                        f"data: {json.dumps({'type': 'metadata', 'data': {'conversation_id': conversation_id_persisted, 'persisted': True, 'execution_time': duration, 'session_id': session_id}})}\n\n"
+                    )
+                    events_yielded += 1
+
+            logger.info(
+                f"✅ workspace-stream done: user={user_email} role={agent_role.role_id} "
+                f"duration={duration:.2f}s events_yielded={events_yielded} "
+                f"final_answer_received={final_answer_received} persisted={persisted}",
+            )
 
     return StreamingResponse(
         event_generator(),

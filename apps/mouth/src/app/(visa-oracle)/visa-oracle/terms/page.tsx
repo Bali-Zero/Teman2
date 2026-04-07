@@ -40,12 +40,12 @@ export default function TermsPage() {
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-3" style={{ color: 'var(--bz-accent)' }}>
-          3. Not a Law Firm
+          3. Licensed Immigration Consultancy
         </h2>
         <p style={{ color: 'var(--tx-secondary)' }}>
-          Bali Zero is a registered business services provider in Indonesia, not a law firm or
-          licensed immigration consultancy. Our AI provides information, not professional legal
-          counsel.
+          Bali Zero is a licensed immigration consultancy registered in Indonesia, not a law firm.
+          While our team provides professional immigration services, the AI-powered Visa Oracle tool
+          offers general guidance only and does not constitute formal legal counsel.
         </p>
       </section>
 
@@ -87,11 +87,11 @@ export default function TermsPage() {
         <p style={{ color: 'var(--tx-secondary)' }}>
           For questions about these terms, reach us at{' '}
           <a
-            href="mailto:info@balizero.com"
+            href="mailto:zantara@balizero.com"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: 'var(--bz-accent)' }}
           >
-            info@balizero.com
+            zantara@balizero.com
           </a>
           . We are located in Canggu, Bali, Indonesia.
         </p>

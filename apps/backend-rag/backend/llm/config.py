@@ -12,12 +12,12 @@ Updated: S04 LLM Solidification
 class ModelName:
     """Gemini model names — the ONLY place to change model versions."""
 
-    # Primary (Gemini 3 Flash GA)
-    PRIMARY = "gemini-3-flash"
-    # Fallback (Gemini 2.5 Flash — stable)
+    # Primary (Gemini 3 Flash Preview)
+    PRIMARY = "gemini-3-flash-preview"
+    # Fallback (Gemini 2.5 Flash — stable GA)
     FALLBACK = "gemini-2.5-flash"
     # Channel-facing (same as primary for cost parity)
-    CHANNEL = "gemini-3-flash"
+    CHANNEL = "gemini-3-flash-preview"
 
 
 class OpenRouterModel:

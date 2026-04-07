@@ -97,11 +97,11 @@ export default function PrivacyPage() {
           You have the right to request information about your data, or to ask for its deletion.
           Contact us at{' '}
           <a
-            href="mailto:info@balizero.com"
+            href="mailto:zantara@balizero.com"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: 'var(--bz-accent)' }}
           >
-            info@balizero.com
+            zantara@balizero.com
           </a>{' '}
           for any privacy questions.
         </p>

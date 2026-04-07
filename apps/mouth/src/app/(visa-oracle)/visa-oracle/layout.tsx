@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ConsentBanner } from '@/components/visa-oracle/ConsentBanner';
 
@@ -27,23 +28,27 @@ export default function VisaOracleLayout({ children }: { children: React.ReactNo
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/visa-oracle"
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
+            <Image
+              src="/assets/logo/balizero-logo-clean.png"
+              alt="Bali Zero"
+              width={36}
+              height={36}
+              className="rounded-full"
+            />
             <span
               className="text-xl font-semibold tracking-tight"
               style={{ color: 'var(--bz-accent)' }}
             >
               Visa Oracle
             </span>
-            <span className="text-sm" style={{ color: 'var(--tx-secondary)' }}>
-              by Bali Zero
-            </span>
           </Link>
           <Link
             href="https://balizero.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm hover:opacity-80 transition-opacity"
+            className="text-sm hover:opacity-80 transition-opacity flex items-center gap-2"
             style={{ color: 'var(--tx-secondary)' }}
           >
             balizero.com
