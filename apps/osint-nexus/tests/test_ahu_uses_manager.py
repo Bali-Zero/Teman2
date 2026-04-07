@@ -38,3 +38,32 @@ def test_ahu_source_imports_from_browser_core() -> None:
         or "import browser_core" in source
     )
     assert has_browser_core_import, "AHU does not import from browser_core"
+
+
+# --- Task 9 additions ---
+
+
+def test_ahu_instantiable_without_network() -> None:
+    """Importing AHUScraper must not trigger browser initialization."""
+    from osint_nexus.scrapers.ahu import AHUScraper, _browser_instance
+    scraper = AHUScraper()
+    assert scraper.name == "ahu"
+    assert _browser_instance is None, (
+        "Lazy init violated — _browser_instance should be None on import"
+    )
+
+
+def test_ahu_detail_opens_fresh_page() -> None:
+    """Regression for DOM-clobber bug: _fetch_detail must open new page."""
+    source = AHU_PATH.read_text(encoding="utf-8")
+    assert "context.new_page()" in source, (
+        "_fetch_detail must open a fresh page from the context, not reuse "
+        "the search-results page"
+    )
+
+
+def test_ahu_has_atexit_shutdown_hook() -> None:
+    """atexit hook must be registered for browser cleanup."""
+    source = AHU_PATH.read_text(encoding="utf-8")
+    assert "atexit.register" in source, "Missing atexit hook"
+    assert "_shutdown_browser" in source, "Missing _shutdown_browser function"
