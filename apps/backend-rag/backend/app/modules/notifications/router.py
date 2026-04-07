@@ -339,10 +339,6 @@ async def _send_via_zoho_smtp(
     attachments: list[dict] | None = None,
 ) -> bool:
     """Send via Zoho SMTP (for intra-domain @balizero.com delivery)."""
-    import base64
-    from email.mime.base import MIMEBase
-    from email import encoders
-
     try:
         from backend.app.modules.notifications.service import SMTPProvider
 

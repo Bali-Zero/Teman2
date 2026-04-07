@@ -13,13 +13,15 @@ Design rules:
 import asyncio
 import logging
 import time
-from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from backend.services.events.event_bus import EventBus
 
 # ── Deduplication guard ──────────────────────────────────────────────────
 # PG triggers fire on every UPDATE, including no-op updates (SET x = x).
@@ -79,8 +81,6 @@ def register_handlers(
 
     Called once at app startup after EventBus.start().
     """
-    from backend.services.events.event_bus import EventBus
-
     # ── client.changed ─────────────────────────────────────────────────
     async def on_client_changed(payload: dict[str, Any]) -> None:
         """React to client creation or update.
@@ -364,7 +364,7 @@ async def _check_client_expiry_on_completion(
 async def _send_admin_telegram(title: str, message: str) -> None:
     """Send alert to admin via Telegram."""
     try:
-        from backend.services.monitoring.alert_service import AlertService, AlertLevel
+        from backend.services.monitoring.alert_service import AlertLevel, AlertService
         svc = AlertService()
         await svc.send_alert(title=title, message=message, level=AlertLevel.WARNING)
     except Exception as e:
