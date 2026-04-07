@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Map user-declared purpose to the pricing categories that are relevant.
 # Order within the list represents preference priority.
 PURPOSE_CATEGORY_MAP: dict[str, list[str]] = {
-    "visit": ["single_entry_visas", "multiple_entry_visas"],
+    "visit": ["visa_on_arrival", "single_entry_visas", "multiple_entry_visas"],
     "work": ["kitas_permits", "single_entry_visas"],
     "invest": ["kitas_permits", "multiple_entry_visas"],
     "retire": ["kitas_permits"],
@@ -32,7 +32,7 @@ PURPOSE_CATEGORY_MAP: dict[str, list[str]] = {
 
 # Keywords matched against visa names (case-insensitive) per purpose.
 PURPOSE_KEYWORDS: dict[str, list[str]] = {
-    "visit": ["tourism", "tourist", "c1", "visit", "business"],
+    "visit": ["tourism", "tourist", "c1", "visit", "business", "b1", "voa"],
     "work": ["working", "work", "employment", "kitas", "imta"],
     "invest": ["investor", "invest", "business", "kitas"],
     "retire": ["retirement", "retire", "pensioner", "pension"],
@@ -41,16 +41,19 @@ PURPOSE_KEYWORDS: dict[str, list[str]] = {
     "study": ["internship", "student", "c22", "study", "education"],
 }
 
-# Short / medium / long duration thresholds (days).
+# Short / medium / long / permanent duration thresholds (days).
 DURATION_THRESHOLDS: dict[str, tuple[int, int]] = {
     "short": (0, 60),
-    "medium": (61, 180),
-    "long": (181, 99999),
+    "medium": (61, 365),
+    "long": (366, 1825),
+    "permanent": (1826, 99999),
 }
 
 # Static visa metadata (duration/validity not stored in PricingService data).
 # Keys match exact visa names from the pricing JSON.
 VISA_METADATA: dict[str, dict[str, str]] = {
+    # Visa on Arrival
+    "B1 Visa on Arrival (VOA)": {"duration": "30 days", "validity": "Extendable once (+30 days)"},
     # Single-entry visas
     "C1 Tourism": {"duration": "30 days", "validity": "Single entry"},
     "C2 Business": {"duration": "60 days", "validity": "Single entry"},
@@ -122,6 +125,16 @@ class VisaOracleService:
     # Public API
     # ------------------------------------------------------------------
 
+    # B1 VOA injected directly (not in PricingService JSON)
+    _VOA_DATA: dict[str, dict[str, Any]] = {
+        "visa_on_arrival": {
+            "B1 Visa on Arrival (VOA)": {
+                "price": "680.000 IDR",
+                "notes": "Available at airport on arrival. Extendable once for additional 30 days.",
+            },
+        },
+    }
+
     def recommend_visas(
         self,
         nationality: str,
@@ -152,7 +165,8 @@ class VisaOracleService:
 
         scored: list[dict[str, Any]] = []
 
-        services = self._pricing.prices.get("services", {})
+        # Merge pricing data with injected VOA data
+        services = {**self._pricing.prices.get("services", {}), **self._VOA_DATA}
 
         for category in relevant_categories:
             category_data = services.get(category, {})
@@ -198,7 +212,7 @@ class VisaOracleService:
             List of dicts with keys: name, category, price.
         """
         result: list[dict[str, Any]] = []
-        services = self._pricing.prices.get("services", {})
+        services = {**self._pricing.prices.get("services", {}), **self._VOA_DATA}
 
         for category, entries in services.items():
             for visa_name, details in entries.items():
@@ -344,8 +358,11 @@ class VisaOracleService:
             if kw.lower() in name_lower:
                 score += SCORE_KEYWORD_MATCH
 
-        # Duration fit
+        # Duration fit — check pricing data first, fall back to VISA_METADATA
         visa_duration_raw = details.get("duration", "")
+        if not visa_duration_raw:
+            meta = VISA_METADATA.get(visa_name, {})
+            visa_duration_raw = meta.get("duration", "")
         visa_days = self._parse_duration_days(visa_duration_raw)
         if visa_days is not None and duration in DURATION_THRESHOLDS:
             lo, hi = DURATION_THRESHOLDS[duration]
@@ -362,7 +379,7 @@ class VisaOracleService:
 
     @staticmethod
     def _parse_duration_days(duration_str: str) -> int | None:
-        """Parse a duration string like '60 days', '180 days', '1 year', '2 years'.
+        """Parse a duration string like '60 days', '1 year', 'Up to 60 days/stay'.
 
         Returns:
             Integer number of days, or None if unparseable.
@@ -371,6 +388,15 @@ class VisaOracleService:
             return None
 
         lower = duration_str.lower().strip()
+
+        # Strip leading "up to " prefix (e.g. "Up to 60 days/stay")
+        if lower.startswith("up to "):
+            lower = lower[6:]
+
+        # Strip trailing "/stay" suffix
+        if "/stay" in lower:
+            lower = lower.split("/stay")[0].strip()
+
         parts = lower.split()
         if not parts:
             return None

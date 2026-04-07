@@ -653,7 +653,7 @@ async def whatsapp_status() -> dict[str, Any]:
         "phone_number_id": settings.whatsapp_phone_number_id if configured else None,
         "triage_enabled": True,
         "personal_contacts_count": len(whatsapp_triage_service.personal_contacts),
-        "ai_model": "gemini-3-flash",
+        "ai_model": "gemini-3-flash-preview",
         "persona": "zan_v2",
     }
 
