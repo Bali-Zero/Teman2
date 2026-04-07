@@ -602,7 +602,7 @@ class AttendanceMonitor:
         to: str,
         subject: str,
         html_body: str,
-        cc: str | list[str] | None = None,
+        cc: str | None = None,
         log_tag: str = "email",
     ) -> None:
         """
@@ -610,9 +610,13 @@ class AttendanceMonitor:
 
         Centralises the httpx call + structured logging so callers only worry
         about subject + body.
+
+        ``cc`` is a single comma-separated string per the SendEmailRequest
+        schema in backend.app.modules.notifications.router (it does NOT accept
+        a list). Callers with multiple recipients must join them themselves.
         """
         payload: dict = {"to": to, "subject": subject, "body": html_body}
-        if cc is not None:
+        if cc:
             payload["cc"] = cc
 
         try:
@@ -1058,9 +1062,11 @@ class AttendanceMonitor:
         date_str = late_date.strftime("%d %B %Y")
         subject = f"⚠️ Conduct escalation — unanswered late check-in ({date_str})"
 
-        cc_list: list[str] = [ADMIN_EMAIL]
+        # The notifications API accepts cc as a single comma-separated string.
+        cc_recipients: list[str] = [ADMIN_EMAIL]
         if manager_email:
-            cc_list.append(manager_email)
+            cc_recipients.append(manager_email)
+        cc_str = ", ".join(cc_recipients)
 
         manager_line = (
             f"<p>This message has been escalated to <strong>{manager_email}</strong> "
@@ -1098,7 +1104,7 @@ class AttendanceMonitor:
             to=email,
             subject=subject,
             html_body=html_body,
-            cc=cc_list,
+            cc=cc_str,
             log_tag="ultimatum_sent",
         )
 
