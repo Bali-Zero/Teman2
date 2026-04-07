@@ -221,15 +221,15 @@ class TestImageGenerationTool:
 
     @pytest.mark.asyncio
     async def test_execute_no_api_key(self):
-        """Test executing without API key"""
-        with patch("backend.app.core.config.settings") as mock_settings:
-            mock_settings.google_imagen_api_key = None
-            mock_settings.google_ai_studio_key = None
-            mock_settings.google_api_key = None
+        """Test executing without API key — Pollinations.ai needs no key.
 
-            tool = ImageGenerationTool()
-            result = await tool.execute(prompt="test")
-            assert "not configured" in result.lower() or "error" in result.lower()
+        The implementation uses Pollinations.ai (free, no API key required),
+        so it always returns success with a generated image URL.
+        """
+        tool = ImageGenerationTool()
+        result = await tool.execute(prompt="test")
+        assert "success" in result.lower()
+        assert "image_url" in result
 
     @pytest.mark.asyncio
     async def test_execute_with_api_key(self):
