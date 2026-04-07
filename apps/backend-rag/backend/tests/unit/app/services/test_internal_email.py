@@ -159,3 +159,52 @@ class TestSendInternalEmail:
                 subject="x",
                 body="<p>x</p>",
             )
+
+    @pytest.mark.asyncio
+    async def test_raise_on_failure_propagates_http_error(self) -> None:
+        """Used by callers with fallback transport (e.g. Zoho)."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "500 Server Error",
+                request=MagicMock(),
+                response=MagicMock(status_code=500),
+            ),
+        )
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch(
+            "backend.app.services.internal_email.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            with pytest.raises(httpx.HTTPStatusError):
+                await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                    raise_on_failure=True,
+                )
+
+    @pytest.mark.asyncio
+    async def test_raise_on_failure_propagates_network_error(self) -> None:
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = None
+        mock_client.post = AsyncMock(
+            side_effect=httpx.ConnectError("connection refused"),
+        )
+
+        with patch(
+            "backend.app.services.internal_email.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
+            with pytest.raises(httpx.ConnectError):
+                await send_internal_email(
+                    to="x@balizero.com",
+                    subject="x",
+                    body="<p>x</p>",
+                    raise_on_failure=True,
+                )

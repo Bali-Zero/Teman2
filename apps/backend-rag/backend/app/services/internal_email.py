@@ -48,10 +48,14 @@ async def send_internal_email(
     body: str,
     cc: list[str] | None = None,
     log_context: str | None = None,
+    raise_on_failure: bool = False,
 ) -> None:
     """Send an email through the internal Brevo adapter.
 
-    Fire-and-forget: catches every exception, logs a warning, never raises.
+    Fire-and-forget by default: catches every exception, logs a warning,
+    never raises. Pass ``raise_on_failure=True`` to propagate exceptions
+    instead — useful when the caller has its own fallback transport
+    (e.g. Zoho) and needs to detect Brevo failures.
 
     Args:
         to: primary recipient address
@@ -65,6 +69,8 @@ async def send_internal_email(
         log_context: optional short string included in success/failure log
             lines so the caller can correlate the email with its source (e.g.
             ``"hr_leave req=42"`` or ``"crm bonus practice=99"``).
+        raise_on_failure: when True, re-raise after logging instead of
+            swallowing. Default False (fire-and-forget).
     """
     try:
         payload: dict[str, str] = {
@@ -95,3 +101,5 @@ async def send_internal_email(
             log_context or "",
             e,
         )
+        if raise_on_failure:
+            raise
