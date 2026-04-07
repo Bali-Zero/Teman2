@@ -379,17 +379,25 @@ async def assign_lkpm_report(
     """
     Assign (or unassign) an LKPM report to a tax consultant.
 
-    RBAC: CRM admin only (admin / board member / ceo / founder, plus the
-    explicit CRM_ADMIN_EMAILS list). Reuses the same gate the rest of the
-    CRM router uses for write operations.
+    RBAC: any CRM admin OR any of the 5 tax consultants in LKPM_ASSIGNEES.
+    The tax team is collaborative — Veronika/Kadek/Dewa Ayu/Angel/Faisha
+    can re-route reports between themselves without going through an admin.
+    Users outside both groups get 403.
 
     Body:
         lkpm_assigned_to: one of LKPM_ASSIGNEES or null to clear.
     """
-    if not isinstance(current_user, dict) or not is_crm_admin(current_user):
+    if not isinstance(current_user, dict):
+        raise HTTPException(status_code=401, detail="Invalid authentication context")
+
+    user_email = (current_user.get("email") or "").lower()
+    is_admin = is_crm_admin(current_user)
+    is_tax_consultant = user_email in LKPM_ASSIGNEES
+
+    if not (is_admin or is_tax_consultant):
         raise HTTPException(
             status_code=403,
-            detail="Only CRM admins can assign LKPM reports",
+            detail="Only CRM admins or tax consultants can assign LKPM reports",
         )
 
     async with db_pool.acquire() as conn:
@@ -443,9 +451,20 @@ async def get_oss_credentials(
         raise HTTPException(status_code=401, detail="Invalid authentication context")
 
     user_email = (current_user.get("email") or "").lower()
+    is_admin = is_crm_admin(current_user)
+    is_tax_consultant = user_email in LKPM_ASSIGNEES
+
+    # The tax team is collaborative: any of the 5 tax consultants can read
+    # credentials for any PMA, regardless of who is assigned to a specific
+    # report. Avoids the catch-22 where consultants couldn't read until an
+    # admin assigned them. Admins also pass.
+    if not (is_admin or is_tax_consultant):
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to view OSS credentials",
+        )
 
     async with db_pool.acquire() as conn:
-        # Fetch creds (always needed)
         cfg = await conn.fetchrow(
             """
             SELECT oss_username, oss_password, oss_creds_updated_at, oss_creds_updated_by, company_name
@@ -456,25 +475,6 @@ async def get_oss_credentials(
         )
         if not cfg:
             raise HTTPException(status_code=404, detail=f"LKPM config for client_id={client_id} not found")
-
-        if not is_crm_admin(current_user):
-            # Non-admin: require that the user is the assigned tax consultant
-            # on an active LKPM report for this client (any quarter/year).
-            is_assignee = await conn.fetchval(
-                """
-                SELECT EXISTS (
-                    SELECT 1 FROM lkpm_reports
-                    WHERE client_id = $1 AND lkpm_assigned_to = $2
-                )
-                """,
-                client_id,
-                user_email,
-            )
-            if not is_assignee:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Not authorized to view OSS credentials for this client",
-                )
 
     return {
         "success": True,

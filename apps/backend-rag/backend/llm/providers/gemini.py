@@ -17,16 +17,16 @@ class GeminiProvider(LLMProvider):
     LLMProvider adapter for Google Gemini (via GeminiJakselService).
 
     Supports:
-    - gemini-3-flash (default)
+    - gemini-3-flash-preview (default)
     - gemini-2.5-flash (fallback)
     """
 
-    def __init__(self, model_name: str = "gemini-3-flash") -> None:
+    def __init__(self, model_name: str = "gemini-3-flash-preview") -> None:
         """
         Initialize Gemini provider.
 
         Args:
-            model_name: Model to use (default: gemini-3-flash)
+            model_name: Model to use (default: gemini-3-flash-preview)
         """
         self._model_name = model_name
         self._service = None

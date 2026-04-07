@@ -1,41 +1,40 @@
 {
-  "seoTitle": "Waspada Haji Ilegal 2026: Bahaya Visa Non-Resmi & Sanksi",
-  "seoDescription": "Pemerintah Indonesia & Arab Saudi mengingatkan risiko berat penggunaan visa non-resmi untuk haji 2026. Hindari deportasi dan denda, kenali aturannya.",
+  "seoTitle": "Indonesia Emergency Guide 2026: Safety for Foreigners",
+  "seoDescription": "Stay safe in Indonesia. Our 2026 guide covers earthquakes, volcanoes, and emergencies for expats and tourists. Get essential safety tips now.",
   "keywords": [
-    "haji ilegal",
-    "visa haji 2026",
-    "haji tanpa tasreh",
-    "sanksi haji ilegal",
-    "Kementerian Agama",
-    "visa turis untuk haji",
-    "penipuan haji",
-    "haji furoda"
+    "indonesia emergency",
+    "bali safety for foreigners",
+    "expat safety indonesia",
+    "natural disasters indonesia",
+    "indonesia travel advisory 2026",
+    "what to do in an earthquake bali",
+    "emergency services indonesia"
   ],
   "aiOptimization": {
-    "answerSnippet": "Menggunakan visa non-resmi seperti visa turis untuk ibadah haji adalah pelanggaran berat di Arab Saudi. Jemaah yang terbukti ilegal akan menghadapi sanksi tegas berupa denda, deportasi, dan larangan masuk kembali hingga 10 tahun.",
-    "primaryQuestion": "Apa risiko dan sanksi jika melaksanakan haji dengan visa non-resmi atau ilegal?",
+    "answerSnippet": "In an emergency in Indonesia, foreigners must prioritize their immediate safety, then contact their embassy and follow local authority instructions. Key risks include natural disasters like earthquakes and volcanic eruptions due to the country's position on the Pacific Ring of Fire.",
+    "primaryQuestion": "What should a foreigner do during an emergency in Indonesia?",
     "entityMentions": [
-      {"name": "Ibadah Haji", "type": "Event"},
-      {"name": "Pemerintah Arab Saudi", "type": "GovernmentOrganization"},
-      {"name": "Kementerian Agama Republik Indonesia", "type": "GovernmentOrganization"},
-      {"name": "Visa Haji", "type": "Product"},
-      {"name": "Tasreh", "type": "Regulation"}
+      {"name": "Indonesia", "type": "Place"},
+      {"name": "Bali", "type": "Place"},
+      {"name": "Pacific Ring of Fire", "type": "Place"},
+      {"name": "BNPB (Badan Nasional Penanggulangan Bencana)", "type": "GovernmentOrganization"},
+      {"name": "Basarnas (Badan Nasional Pencarian dan Pertolongan)", "type": "GovernmentOrganization"}
     ]
   },
   "faqSchema": [
     {
-      "question": "Apakah bisa naik haji dengan visa turis di tahun 2026?",
-      "answer": "Tidak. Pemerintah Arab Saudi melarang keras penggunaan visa turis, ziarah, atau jenis visa non-haji lainnya untuk melaksanakan ibadah haji. Hanya visa haji resmi yang diizinkan."
+      "question": "What are the main emergency numbers in Indonesia?",
+      "answer": "The national emergency number is 112. For specific services, call 110 for police, 118 for ambulance, and 113 for the fire department. It's wise to save these and your embassy's number."
     },
     {
-      "question": "Apa sanksi bagi jemaah haji ilegal tanpa tasreh?",
-      "answer": "Sanksi bagi jemaah haji ilegal mencakup denda sebesar 10.000 riyal Saudi, deportasi dari negara tersebut, dan larangan masuk kembali ke Arab Saudi selama 10 tahun."
+      "question": "Do I need special insurance for visiting Indonesia?",
+      "answer": "Yes, comprehensive travel and health insurance that covers natural disasters and medical evacuation is strongly recommended. Quality of medical care can vary, and private evacuation is costly."
     },
     {
-      "question": "Mengapa daftar tunggu haji resmi di Indonesia sangat lama?",
-      "answer": "Daftar tunggu yang panjang disebabkan oleh kuota haji nasional yang terbatas dari Arab Saudi, sementara jumlah pendaftar di Indonesia, negara dengan populasi Muslim terbesar, sangat tinggi."
+      "question": "How can I prepare for an earthquake in Bali or Indonesia?",
+      "answer": "Familiarize yourself with the 'Drop, Cover, and Hold On' technique. Identify safe spots in your accommodation, and have an emergency kit with water, a first-aid kit, a flashlight, and important documents."
     }
   ],
-  "og_title": "Peringatan Pemerintah RI: Waspada Bahaya & Sanksi Berat Haji Ilegal 2026 dengan Visa Non-Resmi",
-  "og_description": "Jangan ambil risiko! Pemerintah mengingatkan jemaah tentang bahaya menggunakan visa turis atau ziarah untuk haji 2026. Sanksi berat seperti denda, deportasi, dan blacklist menanti pelanggar."
+  "og_title": "A Foreigner's Guide to Navigating Accidents and Emergencies in Indonesia",
+  "og_description": "From seismic activity on the Pacific Ring of Fire to common travel mishaps, here’s what every foreigner needs to know about staying safe during an emergency in Indonesia and Bali."
 }
