@@ -84,6 +84,7 @@ def include_routers(api: FastAPI) -> None:
         news,
         newsletter,
         nusantara_health,
+        omnichannel,  # [NEW] Unified inbox for cross-channel conversations
         oracle_ingest,
         oracle_universal,
         performance,
@@ -164,6 +165,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
+
+    # Omnichannel router (unified inbox)
+    api.include_router(omnichannel.router)  # [NEW] Unified inbox threads API
 
     # HR/Payroll router
     api.include_router(hr.router)  # [NEW] HR/Payroll module
@@ -337,6 +341,10 @@ def include_routers(api: FastAPI) -> None:
 
     # EventBus monitoring
     api.include_router(event_bus.router)
+
+    # Guardian V4 decision audit + risk scores
+    from backend.app.routers import guardian
+    api.include_router(guardian.router)
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)

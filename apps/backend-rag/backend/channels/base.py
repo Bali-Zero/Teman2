@@ -177,6 +177,46 @@ class BaseChannel(ABC):
         """
         pass
 
+    # ==================== DLQ Integration ====================
+
+    async def send_response_safe(
+        self, channel_id: str, response: ChannelResponse,
+    ) -> bool:
+        """Send response with DLQ fallback on failure.
+
+        Wraps ``send_response()`` in try/except. On failure, persists the
+        message to the Dead Letter Queue for automatic retry.
+
+        Args:
+            channel_id: Platform-specific identifier.
+            response: Normalized response to send.
+
+        Returns:
+            True if sent successfully, False if queued to DLQ.
+        """
+        try:
+            await self.send_response(channel_id, response)
+            return True
+        except Exception as e:
+            logger.error(
+                f"Send failed on {self.channel_name} to {channel_id}, "
+                f"routing to DLQ: {e}",
+            )
+            try:
+                from backend.channels.optimizations import delivery_manager
+
+                if delivery_manager:
+                    await delivery_manager.persist_failed(
+                        channel=self.channel_name,
+                        channel_id=channel_id,
+                        content=response.text[:10000],
+                        error=str(e),
+                        metadata=response.metadata,
+                    )
+            except Exception as dlq_err:
+                logger.error(f"DLQ persist also failed: {dlq_err}")
+            return False
+
     # ==================== Helper Methods (Optional) ====================
 
     def truncate_message(self, text: str, max_length: int | None = None) -> str:

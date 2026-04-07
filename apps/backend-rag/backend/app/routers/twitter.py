@@ -56,6 +56,31 @@ def _verify_webhook_signature(
     return hmac.compare_digest(f"sha256={signature_header.removeprefix('sha256=')}", expected)
 
 
+@router.get("/crc-test")
+async def test_crc_config() -> dict:
+    """Manual CRC test to verify X_CONSUMER_SECRET is properly configured.
+
+    Returns a sample CRC response so ops can validate the secret
+    without waiting for Twitter's callback.
+    """
+    consumer_secret = settings.x_consumer_secret
+    if not consumer_secret:
+        return {
+            "status": "error",
+            "message": "X_CONSUMER_SECRET not configured",
+            "hint": "Set via: fly secrets set X_CONSUMER_SECRET=<value>",
+        }
+
+    test_token = "test_crc_token_nuzantara"
+    response_token = _compute_crc_response(test_token, consumer_secret)
+    return {
+        "status": "ok",
+        "secret_configured": True,
+        "test_token": test_token,
+        "response_token": response_token,
+    }
+
+
 @router.get("/conversations")
 async def get_tw_convs() -> list:
     return []
