@@ -227,7 +227,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 - **Primary:** `apps/nuzantara-mcp/` (v2.1, 131 tools, 10 prompts, 5 resources, 8 chains)
 - **Advanced:** `apps/nuzantara-mcp-advanced/` (Fly.io ops, 14 tools)
-- **Browser:** `apps/nuzantara-mcp-browser/`
+- **Browser:** `apps/nuzantara-mcp-browser/` (FastMCP, 6 tools over shared `packages/browser-core` stealth manager -- default remains `mcp__claude-in-chrome__*`; use `mcp__nuzantara-browser__*` only from non-interactive contexts or when explicitly ordered)
 - **GA4:** property 505466833 (G-S3H2M6VXWT)
 - **GSC:** 19 SEO tools, SA auth, site owner balizero.com
 - **OCR:** tesseract with Indonesian support
