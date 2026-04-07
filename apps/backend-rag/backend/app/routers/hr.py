@@ -14,7 +14,7 @@ from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.hr.hr_service import HRService
@@ -56,6 +56,13 @@ class LeaveRequestCreate(BaseModel):
     end_date: date
     total_days: int = Field(gt=0)
     reason: str | None = None
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> LeaveRequestCreate:
+        if self.start_date > self.end_date:
+            msg = "start_date must be on or before end_date"
+            raise ValueError(msg)
+        return self
 
 
 class LeaveReviewRequest(BaseModel):
