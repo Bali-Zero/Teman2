@@ -111,7 +111,7 @@ class TestDataclasses:
             sumber="HASIL SENDIRI",
         )
         assert p1.property_id == p2.property_id
-        assert len(p1.property_id) == 64  # sha256 hex digest
+        assert len(p1.property_id) == 16  # truncated sha256
 
     def test_property_item_id_differs_on_change(self) -> None:
         p1 = PropertyItem(
@@ -134,7 +134,7 @@ class TestDataclasses:
             tahun_perolehan=2012, nilai=100_000_000, sumber="HASIL SENDIRI",
         )
         assert v1.vehicle_id == v2.vehicle_id
-        assert len(v1.vehicle_id) == 64
+        assert len(v1.vehicle_id) == 16
 
     def test_vehicle_item_id_differs_on_change(self) -> None:
         v1 = VehicleItem(
@@ -219,7 +219,7 @@ class TestParseProperties:
         items = _parse_properties(SECTION_A_TEXT)
         for item in items:
             assert item.property_id
-            assert len(item.property_id) == 64
+            assert len(item.property_id) == 16
 
 
 # ===================================================================
@@ -259,7 +259,7 @@ class TestParseVehicles:
         items = _parse_vehicles(SECTION_B_TEXT)
         for item in items:
             assert item.vehicle_id
-            assert len(item.vehicle_id) == 64
+            assert len(item.vehicle_id) == 16
 
 
 # ===================================================================
@@ -319,3 +319,41 @@ class TestParseLhkpnPdf:
         assert v.jenis == "MOBIL"
         assert v.merk_model == "TOYOTA VIOS"
         assert v.tahun_perolehan == 2012
+
+
+# ---------------------------------------------------------------------------
+# Cross-year consistency tests
+# ---------------------------------------------------------------------------
+
+_PDF_DIR = PDF_PATH.parent
+ALL_PDFS = sorted(_PDF_DIR.glob("*.pdf")) if _PDF_DIR.exists() else []
+
+
+@pytest.mark.skipif(len(ALL_PDFS) < 2, reason="need multiple PDFs for cross-year test")
+class TestCrossYear:
+    def test_all_pdfs_parse_without_error(self) -> None:
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
+        assert len(reports) == len(ALL_PDFS)
+        for r in reports:
+            assert r.nama != ""
+            assert r.tahun > 2000
+
+    def test_same_person_across_years(self) -> None:
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
+        names = {r.nama for r in reports}
+        assert len(names) == 1, f"Expected 1 person, got: {names}"
+
+    def test_property_ids_stable_across_years(self) -> None:
+        """Same physical property should have same ID across years."""
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
+        deli_serdang_ids: set[str] = set()
+        for r in reports:
+            for p in r.tanah_bangunan:
+                if p.lokasi == "DELI SERDANG" and p.luas_tanah_m2 == 340:
+                    deli_serdang_ids.add(p.property_id)
+        assert len(deli_serdang_ids) == 1, f"Expected 1 ID, got: {deli_serdang_ids}"
+
+    def test_total_harta_positive(self) -> None:
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
+        for r in reports:
+            assert r.total_harta > 0, f"{r.tahun}: total_harta should be positive"

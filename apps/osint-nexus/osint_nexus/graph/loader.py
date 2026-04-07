@@ -391,12 +391,17 @@ class GraphLoader:
 
         prop_string = ", ".join(f"r.{k} = ${k}" for k in props)
 
+        # If tahun is in properties, include it in MERGE to create per-year rels
+        merge_props = ""
+        if "tahun" in props:
+            merge_props = " {tahun: $tahun}"
+
         if match_by_id:
             id_field, id_value = match_by_id
             query = f"""
             MATCH (a:{from_label} {{name: $from_name}})
             MATCH (b:{to_label} {{{id_field}: $to_id}})
-            MERGE (a)-[r:{rel_type}]->(b)
+            MERGE (a)-[r:{rel_type}{merge_props}]->(b)
             SET {prop_string}
             """
             params = {"from_name": from_name, "to_id": id_value, **props}
@@ -404,7 +409,7 @@ class GraphLoader:
             query = f"""
             MATCH (a:{from_label} {{name: $from_name}})
             MATCH (b:{to_label} {{name: $to_name}})
-            MERGE (a)-[r:{rel_type}]->(b)
+            MERGE (a)-[r:{rel_type}{merge_props}]->(b)
             SET {prop_string}
             """
             params = {"from_name": from_name, "to_name": to_name, **props}

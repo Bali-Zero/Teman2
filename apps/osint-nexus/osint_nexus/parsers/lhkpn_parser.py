@@ -40,9 +40,9 @@ class PropertyItem:
 
     @property
     def property_id(self) -> str:
-        """Deterministic SHA-256 hash of key fields."""
-        key = f"{self.lokasi}|{self.luas_tanah_m2}|{self.luas_bangunan_m2}|{self.tipe}|{self.nilai}|{self.sumber}"
-        return hashlib.sha256(key.encode()).hexdigest()
+        """Deterministic ID from physical characteristics (not value/year)."""
+        key = f"{self.lokasi}|{self.luas_tanah_m2}|{self.luas_bangunan_m2}"
+        return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
 @dataclass
@@ -57,9 +57,9 @@ class VehicleItem:
 
     @property
     def vehicle_id(self) -> str:
-        """Deterministic SHA-256 hash of key fields."""
-        key = f"{self.jenis}|{self.merk_model}|{self.tahun_perolehan}|{self.nilai}|{self.sumber}"
-        return hashlib.sha256(key.encode()).hexdigest()
+        """Deterministic ID from vehicle identity (not value)."""
+        key = f"{self.merk_model}|{self.tahun_perolehan}"
+        return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
 @dataclass
