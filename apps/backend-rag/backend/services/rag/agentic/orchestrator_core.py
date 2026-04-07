@@ -40,6 +40,17 @@ from backend.services.rag.agentic.query_helpers import wrap_query_with_language_
 from backend.services.rag.agentic.query_planner import QueryPlanner  # GraphRAG v6.0
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.grading import (
+    AnswerGrader,
+    GradingContext,
+    HallucinationGrader,
+    PricingGrader,
+    ReasoningGrader,
+    ReasoningStep,
+    RetrievedDoc,
+    contains_pricing,
+)
+from backend.services.rag.grading.hallucination_grader import grade_with_llm_verification
 from backend.services.rag.kg_auto_expansion import KGAutoExpansion
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from backend.services.rag.multi_agent_coordinator import MultiAgentCoordinator, requires_multi_agent
@@ -52,6 +63,11 @@ logger.setLevel(logging.INFO)  # Info level for core orchestration
 # Feature flag: USE_QUERY_PLANNER (shadow mode — logs plan but doesn't route)
 
 _USE_QUERY_PLANNER = os.getenv("USE_QUERY_PLANNER", "false").lower() in ("true", "1", "yes")
+
+# Feature flag: ENABLE_GRADING_GATES (GraphRAG 2.0 quality gates)
+# When false, graders still run but only LOG results (shadow mode).
+# When true, graders can trigger retry/fail-fast actions.
+_ENABLE_GRADING_GATES = os.getenv("ENABLE_GRADING_GATES", "false").lower() in ("true", "1", "yes")
 
 
 class OrchestratorCore:
@@ -855,6 +871,13 @@ class OrchestratorCore:
             tool_execution_counter=tool_execution_counter,
         )
 
+        # 7b. [GraphRAG 2.0] Grading gates — quality checks on ReAct output
+        await self._run_grading_gates(
+            state=state,
+            start_time=start_time,
+            extracted_entities=extracted_entities,
+        )
+
         # 8. Extract metrics data
         timings = self.metrics_manager.extract_timings_from_state(
             state=state,
@@ -1038,6 +1061,143 @@ class OrchestratorCore:
             )
         except Exception as e:
             logger.debug(f"⚠️ [GraphRAG v6 SHADOW] Planner error: {e}")
+
+    async def _run_grading_gates(
+        self,
+        state: AgentState,
+        start_time: float,
+        extracted_entities: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        [GraphRAG 2.0] Run quality grading gates on ReAct loop output.
+
+        Graders always run and log results. When ENABLE_GRADING_GATES=true,
+        failed grades can modify the state (e.g., mark answer as low-confidence).
+
+        Returns dict with grading results for metrics.
+        """
+        results: dict[str, Any] = {}
+
+        try:
+            answer = state.final_answer or ""
+            logger.info(
+                "[GraphRAG 2.0] Grading gate entry: final_answer=%d chars, steps=%d, active=%s",
+                len(answer),
+                len(state.steps),
+                _ENABLE_GRADING_GATES,
+            )
+            if not answer:
+                logger.info("[Grading] No answer to grade, skipping")
+                return results
+
+            # Build grading context from AgentState
+            docs = []
+            reasoning_steps = []
+            sources_list: list[dict[str, Any]] = []
+            for step in state.steps:
+                if step.observation:
+                    reasoning_steps.append(
+                        ReasoningStep(step_type="observation", content=step.observation),
+                    )
+                    # Extract source docs from tool results
+                    if step.tool_name == "vector_search" and step.observation:
+                        docs.append(
+                            RetrievedDoc(
+                                content=step.observation[:2000],
+                                score=0.7,  # Default score from tool results
+                                source=step.tool_name,
+                            ),
+                        )
+                        sources_list.append({"source": step.tool_name, "content": step.observation[:500]})
+
+            ctx = GradingContext(
+                answer=answer,
+                sources=sources_list,
+                confidence_overall=state.evidence_score or 0.5,
+                retrieved_documents=docs,
+                reasoning_steps=reasoning_steps,
+                kg_entities=[],
+            )
+
+            # --- Gate 1: Answer quality ---
+            answer_grade = AnswerGrader().grade(ctx)
+            results["answer"] = {
+                "decision": answer_grade.decision.value,
+                "score": answer_grade.score,
+            }
+
+            # --- Gate 2: Hallucination check ---
+            if docs:
+                hallucination_grade = HallucinationGrader().grade(ctx)
+                results["hallucination"] = {
+                    "decision": hallucination_grade.decision.value,
+                    "score": hallucination_grade.score,
+                }
+
+                # LLM verify for borderline scores (async, only if gateway available)
+                if (
+                    _ENABLE_GRADING_GATES
+                    and 0.50 <= hallucination_grade.score <= 0.80
+                    and hasattr(self, "llm_gateway")
+                ):
+                    try:
+                        verified = await grade_with_llm_verification(
+                            ctx, llm_gateway=self.llm_gateway,
+                        )
+                        results["hallucination_llm"] = {
+                            "decision": verified.decision.value,
+                            "score": verified.score,
+                        }
+                    except Exception as e:
+                        logger.debug("[Grading] LLM hallucination verify failed: %s", e)
+
+            # --- Gate 3: Pricing check (strict, only if pricing in answer) ---
+            if contains_pricing(answer):
+                pricing_grade = PricingGrader().grade(ctx)
+                results["pricing"] = {
+                    "decision": pricing_grade.decision.value,
+                    "score": pricing_grade.score,
+                }
+
+            # --- Gate 4: Reasoning quality (if steps available) ---
+            if reasoning_steps:
+                reasoning_grade = ReasoningGrader().grade(ctx)
+                results["reasoning"] = {
+                    "decision": reasoning_grade.decision.value,
+                    "score": reasoning_grade.score,
+                }
+
+            # Log all grades
+            logger.info(
+                "[GraphRAG 2.0] Grading gates: %s (active=%s)",
+                {k: f"{v['decision']}({v['score']:.2f})" for k, v in results.items()},
+                _ENABLE_GRADING_GATES,
+            )
+
+            # Active mode: apply consequences
+            if _ENABLE_GRADING_GATES:
+                # If answer grade is FAIL and we have no trusted tools, mark as low confidence
+                if (
+                    results.get("answer", {}).get("decision") == "fail"
+                    and not state.trusted_tools_used
+                ):
+                    logger.warning(
+                        "[Grading ACTIVE] Answer grade FAIL — marking low confidence",
+                    )
+                    state.evidence_score = min(state.evidence_score or 0.5, 0.15)
+
+                # If hallucination LLM-verified as FAIL, add warning
+                hlm = results.get("hallucination_llm", results.get("hallucination", {}))
+                if hlm.get("decision") == "fail" and not state.trusted_tools_used:
+                    logger.warning(
+                        "[Grading ACTIVE] Hallucination FAIL — adding warning",
+                    )
+                    state.evidence_score = min(state.evidence_score or 0.5, 0.15)
+
+        except Exception as e:
+            logger.warning("[Grading] Gate execution error (non-blocking): %s", e)
+
+        return results
 
     def _extract_source_chunks_text(self, state: AgentState) -> list[str]:
         """
