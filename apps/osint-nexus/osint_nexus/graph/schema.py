@@ -19,6 +19,9 @@ SCHEMA_QUERIES = [
     "CREATE CONSTRAINT alumni_id IF NOT EXISTS FOR (n:Alumni_Group) REQUIRE n.name IS UNIQUE",
     "CREATE CONSTRAINT banjar_name IF NOT EXISTS FOR (n:Banjar) REQUIRE n.name IS UNIQUE",
     "CREATE CONSTRAINT komunitas_name IF NOT EXISTS FOR (n:Komunitas) REQUIRE n.name IS UNIQUE",
+    "CREATE CONSTRAINT property_id IF NOT EXISTS FOR (n:Property) REQUIRE n.property_id IS UNIQUE",
+    "CREATE CONSTRAINT vehicle_id IF NOT EXISTS FOR (n:Vehicle) REQUIRE n.vehicle_id IS UNIQUE",
+    "CREATE CONSTRAINT bank_account_id IF NOT EXISTS FOR (n:BankAccount) REQUIRE n.account_id IS UNIQUE",
 
     # ── Indexes for query performance ──
     "CREATE INDEX official_jabatan IF NOT EXISTS FOR (n:Official) ON (n.jabatan)",
@@ -27,6 +30,8 @@ SCHEMA_QUERIES = [
     "CREATE INDEX tender_instansi IF NOT EXISTS FOR (n:Tender) ON (n.instansi)",
     "CREATE INDEX tender_tahun IF NOT EXISTS FOR (n:Tender) ON (n.tahun)",
     "CREATE INDEX person_type IF NOT EXISTS FOR (n:Person) ON (n.person_type)",
+    "CREATE INDEX property_lokasi IF NOT EXISTS FOR (n:Property) ON (n.lokasi)",
+    "CREATE INDEX vehicle_merk IF NOT EXISTS FOR (n:Vehicle) ON (n.merk_model)",
 
     # ── Full-text search ──
     """CREATE FULLTEXT INDEX ft_person_name IF NOT EXISTS
