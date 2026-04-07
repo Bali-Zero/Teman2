@@ -13,10 +13,13 @@ from datetime import date
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.services.hr.hr_leave_notifier import (
+    notify_leave_request_pending,
+)
 from backend.app.services.hr.hr_leave_routing import resolve_approver
 from backend.app.services.hr.hr_service import HRService
 from backend.app.utils.hr_utils import is_hr_admin
@@ -379,10 +382,16 @@ async def get_leave_types(
 @router.post("/leave/request")
 async def request_leave(
     data: LeaveRequestCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Create a leave request."""
+    """Create a leave request.
+
+    On success, schedules a fire-and-forget email notification to the
+    supervisor (see hr_leave_routing.build_notification_recipients).
+    Email failure does NOT fail the request; it is logged as a warning.
+    """
     service = _get_hr_service(db_pool)
     my_id = await _get_my_employee_id(service, current_user)
     try:
@@ -390,9 +399,26 @@ async def request_leave(
             "employee_id": my_id,
             **data.model_dump(),
         })
-        return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # Schedule the supervisor notification email (fire-and-forget)
+    leave_type_name = await service.get_leave_type_name(data.leave_type_id)
+    background_tasks.add_task(
+        notify_leave_request_pending,
+        request_id=result["id"],
+        requester_email=current_user.get("email", ""),
+        requester_name=(
+            current_user.get("full_name") or current_user.get("email", "")
+        ),
+        leave_type_name=leave_type_name,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        total_days=data.total_days,
+        reason=data.reason,
+    )
+
+    return {"success": True, "request": result}
 
 
 @router.get("/leave/requests")
