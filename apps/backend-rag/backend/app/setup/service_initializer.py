@@ -377,6 +377,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             from backend.services.analytics.weekly_email_reporter import init_weekly_reporter
 
             attendance_monitor = AttendanceMonitor(db_pool)
+            await attendance_monitor.start_schedulers()
             app.state.attendance_monitor = attendance_monitor
 
             ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
@@ -1313,6 +1314,7 @@ async def initialize_services_light(app: FastAPI) -> None:
         from backend.services.analytics.attendance_monitor import AttendanceMonitor
         from backend.services.analytics.team_timesheet_service import init_timesheet_service
         attendance_monitor = AttendanceMonitor(db_pool)
+        await attendance_monitor.start_schedulers()
         app.state.attendance_monitor = attendance_monitor
         ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
         app.state.ts_service = ts_service
