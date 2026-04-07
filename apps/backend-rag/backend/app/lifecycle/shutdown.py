@@ -99,6 +99,12 @@ def register_shutdown_handlers(app: FastAPI) -> None:
             await ts_service.stop_auto_logout_monitor()
             logger.info("✅ Team Timesheet Service stopped")
 
+        # Shutdown Attendance Monitor (escalation + daily digest schedulers)
+        attendance_monitor = getattr(app.state, "attendance_monitor", None)
+        if attendance_monitor:
+            await attendance_monitor.stop_schedulers()
+            logger.info("✅ Attendance Monitor stopped")
+
         # Shutdown Database Health Check Loop
         db_health_check_task = getattr(app.state, "db_health_check_task", None)
         if db_health_check_task:

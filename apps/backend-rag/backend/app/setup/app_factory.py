@@ -286,6 +286,13 @@ async def lifespan(app: FastAPI):
     if ts_service:
         await _safe_stop("Timesheet Service", ts_service.stop_auto_logout_monitor())
 
+    # Shutdown Attendance Monitor (escalation + daily digest schedulers)
+    attendance_monitor = getattr(app.state, "attendance_monitor", None)
+    if attendance_monitor:
+        await _safe_stop(
+            "Attendance Monitor", attendance_monitor.stop_schedulers(),
+        )
+
     # Shutdown Practice Status Listener (M4 + M5)
     practice_listener = getattr(app.state, "practice_status_listener", None)
     if practice_listener:
