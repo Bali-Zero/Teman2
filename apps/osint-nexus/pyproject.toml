@@ -31,6 +31,13 @@ dossier = "osint_nexus.dossier.cli:main"
 [tool.setuptools.packages.find]
 include = ["osint_nexus*"]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
+markers = [
+    "integration: tests that launch real Chromium (run with: pytest -m integration)",
+]
+
 [build-system]
 requires = ["setuptools>=69.0"]
 build-backend = "setuptools.build_meta"
