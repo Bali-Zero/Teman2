@@ -15,6 +15,8 @@ from zoneinfo import ZoneInfo
 if TYPE_CHECKING:
     import asyncpg
 
+    from backend.services.analytics.attendance_monitor import AttendanceMonitor
+
 logger = logging.getLogger(__name__)
 
 # Bali timezone
@@ -33,11 +35,19 @@ class TeamTimesheetService:
     - Admin-only dashboard data
     """
 
-    def __init__(self, db_pool: "asyncpg.Pool") -> None:
+    def __init__(
+        self,
+        db_pool: "asyncpg.Pool",
+        attendance_monitor: "AttendanceMonitor | None" = None,
+    ) -> None:
         self.pool = db_pool
+        self.attendance_monitor = attendance_monitor
         self.auto_logout_task: asyncio.Task | None = None
         self.running = False
-        logger.info("✅ TeamTimesheetService initialized")
+        logger.info(
+            "✅ TeamTimesheetService initialized (attendance_monitor=%s)",
+            "wired" if attendance_monitor else "none",
+        )
 
     async def start_auto_logout_monitor(self) -> None:
         """Start background task for auto-logout at 18:30"""
@@ -142,8 +152,18 @@ class TeamTimesheetService:
 
             logger.info(f"🟢 Clock-in: {email} at {now.strftime('%H:%M')} Bali time")
 
-            # NOTE: Admin notification removed - will be replaced by MCP
-            logger.info(f"📢 Admin notification: {email} clocked in (MCP pending)")
+            # Late check-in alert: fire-and-forget so the API response is not blocked
+            # by the email call. AttendanceMonitor handles its own threshold and
+            # exempt-list logic.
+            if self.attendance_monitor is not None:
+                asyncio.create_task(
+                    self.attendance_monitor.check_late_checkin(email, now),
+                    name=f"late-checkin-alert:{email}",
+                )
+            else:
+                logger.debug(
+                    "clock_in: attendance_monitor not configured — skipping late check",
+                )
 
             return {
                 "success": True,
@@ -470,8 +490,11 @@ def get_timesheet_service() -> TeamTimesheetService | None:
     return _timesheet_service
 
 
-def init_timesheet_service(db_pool: "asyncpg.Pool") -> TeamTimesheetService:
+def init_timesheet_service(
+    db_pool: "asyncpg.Pool",
+    attendance_monitor: "AttendanceMonitor | None" = None,
+) -> TeamTimesheetService:
     """Initialize the global TeamTimesheetService instance"""
     global _timesheet_service
-    _timesheet_service = TeamTimesheetService(db_pool)
+    _timesheet_service = TeamTimesheetService(db_pool, attendance_monitor=attendance_monitor)
     return _timesheet_service
