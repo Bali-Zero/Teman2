@@ -18,7 +18,7 @@ import asyncpg
 from fastapi import APIRouter, Depends
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 
@@ -129,15 +129,14 @@ async def get_client_overview(
     try:
         async with db_pool.acquire() as conn:
             # Check permissions
-            user_is_admin = is_crm_admin(current_user)
-            user_email = current_user.get("email", "").lower()
+            assigned_filter = get_crm_user_filter(current_user)
 
             # Base query conditions
             where_clause = ""
             params = []
-            if not user_is_admin:
+            if assigned_filter:
                 where_clause = "WHERE assigned_to = $1"
-                params = [user_email]
+                params = [assigned_filter]
 
             # Total clients
             total_query = f"SELECT COUNT(*) FROM clients {where_clause}"
@@ -186,7 +185,7 @@ async def get_client_overview(
             nat_rows = await conn.fetch(nat_query, *params)
             by_nationality = {row["nationality"] or "Unknown": row["count"] for row in nat_rows}
 
-            log_success(logger, "Fetched client overview", user=user_email)
+            log_success(logger, "Fetched client overview", user=current_user.get("email", ""))
 
             return {
                 "total_clients": total_clients,
@@ -221,16 +220,15 @@ async def get_team_performance(
     """
     try:
         async with db_pool.acquire() as conn:
-            user_is_admin = is_crm_admin(current_user)
-            user_email = current_user.get("email", "").lower()
+            assigned_filter = get_crm_user_filter(current_user)
 
             # RBAC: non-admin sees only their own row; admin sees all members.
-            if user_is_admin:
-                where_clause = ""
-                params: list[Any] = []
-            else:
+            if assigned_filter:
                 where_clause = "WHERE c.assigned_to = $1"
-                params = [user_email]
+                params: list[Any] = [assigned_filter]
+            else:
+                where_clause = ""
+                params = []
 
             # Single aggregate query — replaces the per-member loop.
             query = f"""
@@ -290,14 +288,13 @@ async def get_revenue_summary(
     """
     try:
         async with db_pool.acquire() as conn:
-            user_is_admin = is_crm_admin(current_user)
-            user_email = current_user.get("email", "").lower()
+            assigned_filter = get_crm_user_filter(current_user)
 
             where_clause = ""
             params = []
-            if not user_is_admin:
+            if assigned_filter:
                 where_clause = "WHERE c.assigned_to = $1"
-                params = [user_email]
+                params = [assigned_filter]
 
             # Total metrics
             totals_query = f"""
@@ -379,14 +376,13 @@ async def get_processes_by_type(
     """
     try:
         async with db_pool.acquire() as conn:
-            user_is_admin = is_crm_admin(current_user)
-            user_email = current_user.get("email", "").lower()
+            assigned_filter = get_crm_user_filter(current_user)
 
             where_clause = ""
             params = []
-            if not user_is_admin:
+            if assigned_filter:
                 where_clause = "WHERE c.assigned_to = $1"
-                params = [user_email]
+                params = [assigned_filter]
 
             query = f"""
                 SELECT
@@ -443,17 +439,16 @@ async def get_client_trend(
     """
     try:
         async with db_pool.acquire() as conn:
-            user_is_admin = is_crm_admin(current_user)
-            user_email = current_user.get("email", "").lower()
+            assigned_filter = get_crm_user_filter(current_user)
 
             where_clause = ""
             client_params = []
             practice_params = []
 
-            if not user_is_admin:
+            if assigned_filter:
                 where_clause = "WHERE assigned_to = $1"
-                client_params = [user_email]
-                practice_params = [user_email]
+                client_params = [assigned_filter]
+                practice_params = [assigned_filter]
 
             results = []
             for i in range(months - 1, -1, -1):

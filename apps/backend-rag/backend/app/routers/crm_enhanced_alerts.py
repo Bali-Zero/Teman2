@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import can_view_all_practices
+from backend.app.deps.crm_access import get_practices_user_filter
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -36,8 +36,9 @@ async def get_all_expiry_alerts(
     """
     async with pool.acquire() as conn:
         # RBAC: non-admin users only see their own assigned alerts
-        if not can_view_all_practices(current_user) and not assigned_to:
-            assigned_to = current_user.get("email", "")
+        user_filter = get_practices_user_filter(current_user)
+        if user_filter and not assigned_to:
+            assigned_to = user_filter
 
         query = """
             SELECT
@@ -77,29 +78,44 @@ async def get_expiry_alerts_summary(
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Get summary counts of expiry alerts for dashboard."""
+    user_filter = get_practices_user_filter(current_user)
+
     async with pool.acquire() as conn:
+        rbac_clause = ""
+        params: list = []
+        if user_filter:
+            rbac_clause = "WHERE LOWER(assigned_to) = $1"
+            params.append(user_filter)
+
         summary = await conn.fetchrow(
-            """
+            f"""
             SELECT
                 COUNT(*) FILTER (WHERE alert_color = 'expired') as expired,
                 COUNT(*) FILTER (WHERE alert_color = 'red') as red,
                 COUNT(*) FILTER (WHERE alert_color = 'yellow') as yellow,
                 COUNT(*) FILTER (WHERE alert_color = 'green') as green
             FROM client_expiry_alerts_view
+            {rbac_clause}
             """,
+            *params,
         )
 
         # Get top 5 urgent alerts
+        urgent_where = "WHERE alert_color IN ('expired', 'red')"
+        if user_filter:
+            urgent_where += " AND LOWER(assigned_to) = $1"
+
         urgent = await conn.fetch(
-            """
+            f"""
             SELECT
                 client_name, entity_name, document_type,
                 expiry_date, days_until_expiry, alert_color
             FROM client_expiry_alerts_view
-            WHERE alert_color IN ('expired', 'red')
+            {urgent_where}
             ORDER BY expiry_date
             LIMIT 5
             """,
+            *params,
         )
 
         return {"counts": dict(summary), "urgent_alerts": [dict(a) for a in urgent]}
