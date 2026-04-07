@@ -438,11 +438,17 @@ async def approve_leave(
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Approve a leave request."""
-    _require_hr_admin(current_user)
+    """Approve a leave request.
+
+    Permission: HR admins (except self) OR the delegated supervisor of
+    the requester. Self-approval is forbidden for everyone.
+    """
     service = _get_hr_service(db_pool)
+    await _require_can_review_leave(service, current_user, request_id)
     try:
-        result = await service.approve_leave(request_id, _get_user_id(current_user))
+        result = await service.approve_leave(
+            request_id, _get_user_id(current_user),
+        )
         return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -455,9 +461,13 @@ async def reject_leave(
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
-    """Reject a leave request."""
-    _require_hr_admin(current_user)
+    """Reject a leave request.
+
+    Permission: HR admins (except self) OR the delegated supervisor of
+    the requester. Self-rejection is forbidden for everyone.
+    """
     service = _get_hr_service(db_pool)
+    await _require_can_review_leave(service, current_user, request_id)
     try:
         result = await service.reject_leave(
             request_id, _get_user_id(current_user), data.reason or "",
