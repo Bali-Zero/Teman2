@@ -1,12 +1,16 @@
 """
-Image Generation Router - Handles image generation requests
+Image Generation Router - Handles image generation requests via Pollinations.ai (free)
+
+UPDATED 2026-04-08: Removed Google Imagen (paid). Pollinations-only, zero cost.
 """
 
-import httpx
-from fastapi import APIRouter, HTTPException, status
+import logging
+from urllib.parse import quote
+
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from backend.app.core.config import settings
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/image", tags=["image"])
 
@@ -15,8 +19,6 @@ class ImageGenerationRequest(BaseModel):
     prompt: str
     number_of_images: int = 1
     aspect_ratio: str = "1:1"
-    safety_filter_level: str = "block_some"
-    person_generation: str = "allow_adult"
 
 
 class ImageGenerationResponse(BaseModel):
@@ -28,75 +30,41 @@ class ImageGenerationResponse(BaseModel):
 @router.post("/generate", response_model=ImageGenerationResponse)
 async def generate_image(request: ImageGenerationRequest) -> ImageGenerationResponse:
     """
-    Generate images using Google Imagen API
-
-    Args:
-        request: Image generation request with prompt and parameters
-
-    Returns:
-        ImageGenerationResponse with generated images or error
+    Generate images using Pollinations.ai (free, no API key required).
     """
-    # Use dedicated Imagen API key if available, otherwise fallback to other Google keys
-    imagen_api_key = (
-        getattr(settings, "google_imagen_api_key", None)
-        or getattr(settings, "google_ai_studio_key", None)
-        or getattr(settings, "google_api_key", None)
-    )
-
-    if not imagen_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Google Imagen API key not configured. Set GOOGLE_IMAGEN_API_KEY or GOOGLE_API_KEY environment variable.",
+    if not request.prompt or not request.prompt.strip():
+        return ImageGenerationResponse(
+            images=[], success=False, error="Prompt cannot be empty",
         )
 
-    # SECURITY: Use API key in header instead of URL to prevent logging exposure
-    url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict"
-
-    payload = {
-        "prompt": request.prompt,
-        "number_of_images": request.number_of_images,
-        "aspect_ratio": request.aspect_ratio,
-        "safety_filter_level": request.safety_filter_level,
-        "person_generation": request.person_generation,
-        "language": "auto",
-    }
-
-    # Use API key in header (X-Goog-Api-Key) instead of query parameter
-    headers = {
-        "X-Goog-Api-Key": imagen_api_key,
-        "Content-Type": "application/json",
-    }
-
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, json=payload, headers=headers)
+        encoded_prompt = quote(request.prompt)
 
-            if response.status_code == 403:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Imagen API not enabled or insufficient permissions. Please check Google Cloud console.",
-                )
+        # Map aspect_ratio to Pollinations width/height params
+        aspect_params = {
+            "1:1": "width=1024&height=1024",
+            "16:9": "width=1024&height=576",
+            "9:16": "width=576&height=1024",
+            "4:3": "width=1024&height=768",
+            "3:4": "width=768&height=1024",
+        }
+        params = aspect_params.get(request.aspect_ratio, "width=1024&height=1024")
 
-            response.raise_for_status()
+        images = [
+            f"https://image.pollinations.ai/prompt/{encoded_prompt}?{params}&seed={i}&nologo=true"
+            for i in range(request.number_of_images)
+        ]
 
-            result = response.json()
+        logger.info(
+            "Image generation via Pollinations: prompt=%s count=%d",
+            request.prompt[:80],
+            request.number_of_images,
+        )
 
-            # Extract generated images
-            images = []
-            if "generatedImages" in result:
-                for img in result["generatedImages"]:
-                    if "bytesBase64Encoded" in img:
-                        # Convert base64 to data URL
-                        images.append(f"data:image/png;base64,{img['bytesBase64Encoded']}")
+        return ImageGenerationResponse(images=images, success=True)
 
-            return ImageGenerationResponse(images=images, success=len(images) > 0)
-
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(
-            status_code=e.response.status_code, detail=f"Image generation failed: {e.response.text}",
-        ) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error during image generation: {str(e)}",
-        ) from e
+        logger.error(f"Image generation failed: {e}")
+        return ImageGenerationResponse(
+            images=[], success=False, error=f"Image generation failed: {e}",
+        )
