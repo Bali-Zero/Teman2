@@ -113,5 +113,153 @@ async def upsert_week(
             return week_id
 
 
+async def _create_sync_log(
+    pool: asyncpg.Pool, triggered_by: str
+) -> int:
+    async with pool.acquire() as c:
+        return await c.fetchval(
+            """
+            INSERT INTO owner_cashout_sync_log (status, triggered_by)
+            VALUES ('running', $1)
+            RETURNING id
+            """,
+            triggered_by,
+        )
+
+
+async def _finalize_sync_log(
+    pool: asyncpg.Pool,
+    log_id: int,
+    *,
+    status: str,
+    weeks_processed: int,
+    weeks_skipped: int,
+    rows_upserted: int,
+    unknown_tabs: list[str],
+    error: str | None,
+) -> None:
+    async with pool.acquire() as c:
+        await c.execute(
+            """
+            UPDATE owner_cashout_sync_log SET
+                finished_at = now(),
+                status = $2,
+                weeks_processed = $3,
+                weeks_skipped = $4,
+                rows_upserted = $5,
+                unknown_tabs = $6,
+                error = $7
+            WHERE id = $1
+            """,
+            log_id,
+            status,
+            weeks_processed,
+            weeks_skipped,
+            rows_upserted,
+            ",".join(unknown_tabs) if unknown_tabs else None,
+            error,
+        )
+
+
 async def run_sync(pool: asyncpg.Pool, *, triggered_by: str) -> SyncResult:
-    raise NotImplementedError  # implemented in Task 11
+    """Read sheet, parse all known tabs, upsert to DB, log result."""
+    log_id = await _create_sync_log(pool, triggered_by)
+    weeks_processed = 0
+    weeks_skipped = 0
+    rows_upserted = 0
+    unknown_tabs: list[str] = []
+
+    try:
+        reader = SheetReader()
+        all_tabs = reader.list_tabs(SHEET_ID)
+
+        # Group tabs by week_start
+        weeks: dict[date, dict[str, str]] = {}
+        for tab in all_tabs:
+            if tab in JUNK_TABS:
+                continue
+            if tab not in TAB_TO_WEEK:
+                unknown_tabs.append(tab)
+                weeks_skipped += 1
+                continue
+            week_start = TAB_TO_WEEK[tab]
+            entry = weeks.setdefault(week_start, {})
+            if tab.startswith("BZ"):
+                entry["bz"] = tab
+            elif tab.startswith("BS"):
+                entry["bs"] = tab
+
+        for week_start in sorted(weeks.keys()):
+            entry = weeks[week_start]
+            tab_bz = entry.get("bz")
+            tab_bs = entry.get("bs")
+            all_rows: list[CashoutRow] = []
+
+            if tab_bz:
+                raw = reader.read_range(SHEET_ID, f"{tab_bz}!A1:I200")
+                all_rows.extend(parse_bz_tab(raw))
+            if tab_bs:
+                raw = reader.read_range(SHEET_ID, f"{tab_bs}!A1:G200")
+                all_rows.extend(parse_bs_tab(raw))
+
+            await upsert_week(
+                pool,
+                week_start=week_start,
+                tab_bz=tab_bz,
+                tab_bs=tab_bs,
+                rows=all_rows,
+            )
+            weeks_processed += 1
+            rows_upserted += len(all_rows)
+
+        if unknown_tabs:
+            status = "partial"
+            msg = (
+                "\u26a0\ufe0f *Owner Cashout sync*: tab sconosciute rilevate.\n"
+                f"Tabs: `{', '.join(unknown_tabs)}`\n"
+                "Aggiungi entry a `TAB_TO_WEEK` in "
+                "`backend/services/hr/owner_cashout/constants.py` e rifai sync."
+            )
+            await send_alert(msg)
+        else:
+            status = "success"
+
+        await _finalize_sync_log(
+            pool, log_id,
+            status=status,
+            weeks_processed=weeks_processed,
+            weeks_skipped=weeks_skipped,
+            rows_upserted=rows_upserted,
+            unknown_tabs=unknown_tabs,
+            error=None,
+        )
+        return SyncResult(
+            status=status,
+            weeks_processed=weeks_processed,
+            weeks_skipped=weeks_skipped,
+            rows_upserted=rows_upserted,
+            unknown_tabs=unknown_tabs,
+        )
+
+    except Exception as e:
+        logger.exception("[CASHOUT] sync failed")
+        await _finalize_sync_log(
+            pool, log_id,
+            status="failed",
+            weeks_processed=weeks_processed,
+            weeks_skipped=weeks_skipped,
+            rows_upserted=rows_upserted,
+            unknown_tabs=unknown_tabs,
+            error=str(e)[:500],
+        )
+        await send_alert(
+            f"\u274c *Owner Cashout sync failed*\n```\n{str(e)[:400]}\n```"
+        )
+        return SyncResult(
+            status="failed",
+            weeks_processed=weeks_processed,
+            weeks_skipped=weeks_skipped,
+            rows_upserted=rows_upserted,
+            unknown_tabs=unknown_tabs,
+            error=str(e)[:500],
+        )
