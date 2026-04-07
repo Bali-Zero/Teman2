@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One-off fix: create missing clients and client_company_links for 6 LKPM orphan rows.
+One-off fix: create missing clients and client_company_links for 13 LKPM orphan rows.
 
 These companies were imported into lkpm_reports with client_id pointing at
 companies.id, but they have NO client_company_links rows at all.  This script:
@@ -102,8 +102,89 @@ ORPHAN_FIXES: list[dict[str, Any]] = [
         "director_nationality": "German",
         "director_email": None,
         "director_phone": None,
+        "director_passport": "CG9FNY3C5",
         "commissioner_name": "Gabriele Frank",
         "commissioner_nationality": "German",
+        "commissioner_passport": "CG9F3W19F",
+    },
+    # ── Batch 2: added 2026-04-08 from profil perseroan PDFs ──
+    {
+        "lkpm_id": 75,  # PT Royal Aura Brands
+        "company_id": 2380,
+        "director_name": "Tugce Oztol",
+        "director_nationality": "Turkish",
+        "director_email": None,
+        "director_phone": None,
+        "director_passport": "U13979970",
+        "commissioner_name": "Halit Yagiz Oztol",
+        "commissioner_nationality": "Turkish",
+        "commissioner_passport": "U30677413",
+    },
+    {
+        "lkpm_id": 76,  # PT Karta Developers Paradise
+        "company_id": 1999,
+        "director_name": "Nikita Zimarkov",
+        "director_nationality": "Russian",
+        "director_email": None,
+        "director_phone": None,
+        "commissioner_name": "Kira Naumenko",
+        "commissioner_nationality": "Russian",
+    },
+    {
+        "lkpm_id": 82,  # PT Sduare Property Bali
+        "company_id": 2399,
+        "director_name": "Ivan Sizov",
+        "director_nationality": "Russian",
+        "director_email": None,
+        "director_phone": None,
+        "commissioner_name": "Liudmila Sizova",
+        "commissioner_nationality": "Russian",
+    },
+    {
+        "lkpm_id": 93,  # PT Alis Volat Propriis
+        "company_id": 4074,
+        "director_name": "Sophia Julia Bonafini",
+        "director_nationality": "Italian",
+        "director_email": None,
+        "director_phone": None,
+        "director_passport": "YC2156357",
+        "commissioner_name": "Nicolo Scarabello",
+        "commissioner_nationality": "Italian",
+        "commissioner_passport": "YC0369193",
+    },
+    {
+        "lkpm_id": 94,  # PT Ichnos West Sumbawa
+        "company_id": 1897,
+        "director_name": "Armando Puddu",
+        "director_nationality": "Italian",
+        "director_email": None,
+        "director_phone": None,
+        "director_passport": "YB7750628",
+        "commissioner_name": "Valentina Milani",
+        "commissioner_nationality": "Italian",
+        "commissioner_passport": "YB2375645",
+    },
+    {
+        "lkpm_id": 102,  # PT Nepu Global Invest
+        "company_id": 2345,
+        "director_name": "Enrique Nello Jover",
+        "director_nationality": "Spanish",
+        "director_email": None,
+        "director_phone": None,
+        "director_passport": "PAJ215067",
+        "commissioner_name": "Maria Carmen Pueyo Toldra",
+        "commissioner_nationality": "Spanish",
+        "commissioner_passport": "PAB273722",
+    },
+    {
+        "lkpm_id": 115,  # PT Whatsyum Tech Group
+        "company_id": 2467,
+        "director_name": "James Andrew Barton",
+        "director_nationality": None,
+        "director_email": None,
+        "director_phone": None,
+        "commissioner_name": "James Aidan Charles Earley",
+        "commissioner_nationality": None,
     },
 ]
 
