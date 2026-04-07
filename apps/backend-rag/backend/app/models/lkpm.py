@@ -308,6 +308,9 @@ class LKPMBatchItem(BaseModel):
     yellow_alerts: int = 0
     oss_submitted: bool = False
     oss_receipt_number: str | None = None
+    client_approved: bool = False
+    lkpm_assigned_to: str | None = None
+    days_to_deadline: int | None = None
     updated_at: datetime | None = None
 
 
