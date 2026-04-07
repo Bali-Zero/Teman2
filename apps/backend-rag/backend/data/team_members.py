@@ -74,7 +74,7 @@ TEAM_MEMBERS = [
     {
         "id": "vino",
         "name": "Vino",
-        "email": "info@balizero.com",
+        "email": "vino@balizero.com",
         "role": "Junior Consultant",
         "department": "setup",
         "team": "setup",
@@ -119,7 +119,7 @@ TEAM_MEMBERS = [
     {
         "id": "adit",
         "name": "Adit",
-        "email": "consulting@balizero.com",
+        "email": "adit@balizero.com",
         "role": "Supervisor",
         "department": "setup",
         "team": "setup",
@@ -284,7 +284,7 @@ TEAM_MEMBERS = [
     {
         "id": "dewaayu",
         "name": "Dewa Ayu",
-        "email": "dewa.ayu.tax@balizero.com",
+        "email": "dewaayu.tax@balizero.com",
         "role": "Tax Lead",
         "department": "tax",
         "team": "tax",
@@ -306,7 +306,7 @@ TEAM_MEMBERS = [
     {
         "id": "faisha",
         "name": "Faisha",
-        "email": "faisha.tax@balizero.com",
+        "email": "faysha.tax@balizero.com",
         "role": "Tax Care",
         "department": "tax",
         "team": "tax",
