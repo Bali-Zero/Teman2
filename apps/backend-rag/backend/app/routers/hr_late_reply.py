@@ -26,7 +26,7 @@ import secrets
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 from backend.app.dependencies import get_database_pool
@@ -180,9 +180,9 @@ def _render_success() -> str:
 async def get_late_reply_form(
     incident_id: UUID,
     token: str = Query(..., min_length=10, max_length=128),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> HTMLResponse:
     """Serve the reply form. Returns the form HTML or an error page."""
-    db_pool: asyncpg.Pool = await get_database_pool()
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -220,6 +220,7 @@ async def post_late_reply(
     incident_id: UUID,
     token: str = Form(..., min_length=10, max_length=128),
     reason: str = Form(..., min_length=1, max_length=2000),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> HTMLResponse:
     """
     Persist the reply. Updates ``reply_received_at`` + ``reply_content`` only
@@ -231,7 +232,6 @@ async def post_late_reply(
         REMINDER_SENT  -> RESOLVED_LATE
         ESCALATED      -> stays ESCALATED (history preserved)
     """
-    db_pool: asyncpg.Pool = await get_database_pool()
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
             """
