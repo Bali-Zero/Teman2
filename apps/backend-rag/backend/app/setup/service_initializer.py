@@ -927,6 +927,7 @@ async def initialize_channel_router(
         channel_router = ChannelRouter(conversation_engine)
         app.state.channel_router = channel_router
         channel_router._db_pool = db_pool  # Enable conversation persistence
+        conversation_engine._db_pool = db_pool  # Enable cross-channel context injection
         logger.info("✅ ChannelRouter initialized")
 
         # Register Telegram adapter (if configured)

@@ -77,6 +77,13 @@ class ConversationEngine:
             # 2. Build conversation history
             conversation_history = context.get("history", [])
 
+            # 2.3. Cross-channel memory: inject thread history from other channels
+            thread_id = message.metadata.get("thread_id")
+            if thread_id:
+                cross_channel_context = await self._load_cross_channel_context(thread_id)
+                if cross_channel_context:
+                    conversation_history = cross_channel_context + conversation_history
+
             # 2.5. Agent Mesh: inject team member context into conversation
             query_text = message.text
             agent_ctx = message.metadata.get("agent_mesh")
@@ -225,6 +232,44 @@ class ConversationEngine:
         """
         # TODO Phase 4: Implement context loading from database
         return {"history": [], "user_state": {}}
+
+    async def _load_cross_channel_context(self, thread_id: str) -> list[dict[str, str]]:
+        """Load recent messages from the same thread across all channels.
+
+        Converts cross-channel messages into conversation history format
+        so the LLM can see what the client said on other channels.
+
+        Args:
+            thread_id: UUID of the conversation thread.
+
+        Returns:
+            List of ``{"role": "...", "content": "..."}`` dicts, or empty.
+        """
+        try:
+            from uuid import UUID
+
+            from backend.services.communication.thread_manager import ThreadManager
+
+            # Get db_pool from app state (set during lifespan)
+            db_pool = getattr(self, "_db_pool", None)
+            if not db_pool:
+                return []
+
+            tm = ThreadManager(db_pool)
+            summary = await tm.get_thread_summary(UUID(thread_id), max_messages=8)
+            if not summary:
+                return []
+
+            return [{
+                "role": "system",
+                "content": (
+                    f"[Cross-Channel History] This client has an ongoing conversation "
+                    f"across multiple channels. Recent messages:\n{summary}"
+                ),
+            }]
+        except Exception as e:
+            logger.debug(f"Cross-channel context load failed (non-fatal): {e}")
+            return []
 
     async def _save_context(self, session_id: str, context: dict[str, Any]) -> None:
         """

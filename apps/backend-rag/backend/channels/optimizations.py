@@ -497,12 +497,57 @@ class DeliveryManager:
                         )
                         logger.debug(f"DLQ: retry {attempt} failed for {row['id']}: {e}")
 
+                        if new_status == "exhausted":
+                            await self._alert_exhausted(row, str(e))
+
             except asyncio.CancelledError:
                 logger.info("DLQ retry loop cancelled")
                 break
             except Exception as e:
                 logger.error(f"DLQ retry loop error: {e}")
                 await asyncio.sleep(60)
+
+    _alert_client: Any = None  # Persistent httpx client for TG alerts (Golden Rule #10)
+
+    async def _get_alert_client(self) -> Any:
+        """Get or create persistent httpx client for Telegram alerts."""
+        if self._alert_client is None or self._alert_client.is_closed:
+            import httpx
+            self._alert_client = httpx.AsyncClient(timeout=10.0)
+        return self._alert_client
+
+    async def _alert_exhausted(self, row: Any, error: str) -> None:
+        """Send Telegram alert when a DLQ message is permanently exhausted."""
+        try:
+            from backend.core.config import settings
+
+            bot_token = getattr(settings, "telegram_bot_token", None)
+            owner_chat = getattr(settings, "telegram_owner_chat_id", None) or "413539912"
+            if not bot_token:
+                logger.warning("DLQ alert: TELEGRAM_BOT_TOKEN not set, skipping alert")
+                return
+
+            # Escape markdown special chars in user content to prevent parse errors
+            safe_error = error[:200].replace("`", "'").replace("_", "-")
+            safe_content = row["content"][:100].replace("`", "'").replace("_", "-")
+            text = (
+                f"🔴 *DLQ Exhausted*\n"
+                f"Channel: `{row['channel']}`\n"
+                f"To: `{row['channel_id']}`\n"
+                f"Attempts: {row['attempt_count'] + 1}/{row['max_attempts']}\n"
+                f"Error: `{safe_error}`\n"
+                f"Content: _{safe_content}_"
+            )
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            client = await self._get_alert_client()
+            await client.post(url, json={
+                "chat_id": owner_chat,
+                "text": text,
+                "parse_mode": "Markdown",
+            })
+            logger.info(f"DLQ: sent exhaustion alert for message {row['id']}")
+        except Exception as alert_err:
+            logger.warning(f"DLQ: failed to send exhaustion alert: {alert_err}")
 
     async def start_retry_loop(self, adapters: dict[str, Any]) -> None:
         """Start the background DLQ retry loop."""
