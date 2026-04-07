@@ -17,6 +17,7 @@ from backend.app.models.lkpm import (
     LKPMClientConfig,
     LKPMClientSubmission,
 )
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -378,18 +379,17 @@ async def assign_lkpm_report(
     """
     Assign (or unassign) an LKPM report to a tax consultant.
 
-    RBAC: admin only. The admin-only gate is enforced in the handler because
-    the LKPM module does not use the verify_client_access helper from the
-    CRM router.
+    RBAC: CRM admin only (admin / board member / ceo / founder, plus the
+    explicit CRM_ADMIN_EMAILS list). Reuses the same gate the rest of the
+    CRM router uses for write operations.
 
     Body:
         lkpm_assigned_to: one of LKPM_ASSIGNEES or null to clear.
     """
-    user_role = current_user.get("role", "user").lower() if isinstance(current_user, dict) else "user"
-    if user_role != "admin":
+    if not isinstance(current_user, dict) or not is_crm_admin(current_user):
         raise HTTPException(
             status_code=403,
-            detail="Only admin can assign LKPM reports",
+            detail="Only CRM admins can assign LKPM reports",
         )
 
     async with db_pool.acquire() as conn:
@@ -443,7 +443,6 @@ async def get_oss_credentials(
         raise HTTPException(status_code=401, detail="Invalid authentication context")
 
     user_email = (current_user.get("email") or "").lower()
-    user_role = (current_user.get("role") or "user").lower()
 
     async with db_pool.acquire() as conn:
         # Fetch creds (always needed)
@@ -458,7 +457,7 @@ async def get_oss_credentials(
         if not cfg:
             raise HTTPException(status_code=404, detail=f"LKPM config for client_id={client_id} not found")
 
-        if user_role != "admin":
+        if not is_crm_admin(current_user):
             # Non-admin: require that the user is the assigned tax consultant
             # on an active LKPM report for this client (any quarter/year).
             is_assignee = await conn.fetchval(
