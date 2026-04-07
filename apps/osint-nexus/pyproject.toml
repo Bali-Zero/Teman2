@@ -7,6 +7,7 @@ dependencies = [
     "httpx[http2]>=0.27",
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
+    "browser-core",
     "playwright>=1.40",
     "neo4j>=5.20",
     "tenacity>=8.2",
@@ -29,6 +30,13 @@ dossier = "osint_nexus.dossier.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["osint_nexus*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
+markers = [
+    "integration: tests that launch real Chromium (run with: pytest -m integration)",
+]
 
 [build-system]
 requires = ["setuptools>=69.0"]
