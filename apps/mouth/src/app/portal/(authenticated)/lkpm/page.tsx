@@ -238,72 +238,122 @@ function ReportCard({
   report: LKPMDraftSummary;
   formatIDR: (amount: number) => string;
 }) {
-  const statusConfig: Record<
-    string,
-    { icon: React.ElementType; label: string; style: React.CSSProperties }
-  > = {
-    draft: {
-      icon: FileText,
-      label: "Draft",
-      style: { background: "rgba(245,158,11,0.12)", color: "#fbbf24" },
-    },
-    validated: {
-      icon: CheckCircle,
-      label: "Validated",
-      style: { background: "rgba(59,130,246,0.12)", color: "#60a5fa" },
-    },
-    approved: {
-      icon: CheckCircle,
-      label: "Approved",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-    },
-    submitted: {
-      icon: CheckCircle,
-      label: "Submitted",
-      style: { background: "rgba(16,185,129,0.12)", color: "#34d399" },
-    },
-  };
+  // 3-state indicator
+  const isGreen = report.oss_submitted === true;
+  const isOrange =
+    report.status === "validated" && !report.client_approved;
+  // Gray = everything else (draft, approved without OSS, etc.)
 
-  const {
-    icon: Icon,
-    label,
-    style,
-  } = statusConfig[report.status] ?? statusConfig.draft;
+  const accentBorder = isGreen
+    ? "rgba(16,185,129,0.4)"
+    : isOrange
+      ? "rgba(245,158,11,0.4)"
+      : "rgba(255,255,255,0.05)";
+
+  const statusLabel = isGreen
+    ? "Sudah dilapor ke OSS"
+    : isOrange
+      ? "Perlu persetujuan Anda"
+      : "Sedang diproses oleh tim Bali Zero";
+
+  const StatusIcon = isGreen
+    ? CheckCircle
+    : isOrange
+      ? AlertTriangle
+      : Clock;
+
+  const statusColor = isGreen
+    ? "#34d399"
+    : isOrange
+      ? "#fbbf24"
+      : "var(--bz-text-2)";
+
+  // Deadline formatting helper
+  const QUARTER_DEADLINES: Record<string, [number, number]> = {
+    Q1: [4, 15],
+    Q2: [7, 15],
+    Q3: [10, 15],
+    Q4: [1, 15],
+  };
+  const deadlineEntry = QUARTER_DEADLINES[report.quarter];
+  let deadlineStr = "";
+  if (deadlineEntry) {
+    const [m, d] = deadlineEntry;
+    const dYear = report.quarter === "Q4" ? report.year + 1 : report.year;
+    deadlineStr = `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${dYear}`;
+  }
+
+  const daysColor =
+    report.days_to_deadline != null && report.days_to_deadline <= 3
+      ? "#f87171"
+      : report.days_to_deadline != null && report.days_to_deadline <= 7
+        ? "#fbbf24"
+        : "#34d399";
+
+  const cardContent = (
+    <div
+      className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-accent-warm)]"
+      style={{
+        background: "rgba(30,30,35,0.7)",
+        borderColor: accentBorder,
+        backdropFilter: "blur(24px)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">
+            {report.quarter} {report.year}
+          </p>
+          {/* Status line */}
+          <div
+            className="flex items-center gap-1.5 mt-1"
+          >
+            <StatusIcon className="w-3.5 h-3.5" style={{ color: statusColor }} />
+            <span className="text-xs font-medium" style={{ color: statusColor }}>
+              {statusLabel}
+            </span>
+          </div>
+          {/* Receipt number for green */}
+          {isGreen && report.oss_receipt_number && (
+            <p className="text-[10px] mt-0.5" style={{ color: "var(--bz-text-2)" }}>
+              No. {report.oss_receipt_number}
+            </p>
+          )}
+        </div>
+        <ArrowRight
+          className="w-4 h-4 flex-shrink-0"
+          style={{ color: "var(--bz-text-2)" }}
+        />
+      </div>
+
+      {/* Deadline — only when NOT green */}
+      {!isGreen && deadlineStr && report.days_to_deadline != null && (
+        <p className="text-xs mt-1" style={{ color: daysColor }}>
+          Deadline: {deadlineStr} ({report.days_to_deadline} hari)
+        </p>
+      )}
+
+      {/* Realized total — secondary */}
+      <p
+        className="text-[10px] mt-1.5"
+        style={{ color: "var(--bz-text-2)" }}
+      >
+        Total Realized: {formatIDR(report.realized_total)}
+      </p>
+    </div>
+  );
+
+  if (isOrange) {
+    return (
+      <Link href={`/portal/lkpm/${report.quarter}?year=${report.year}`}>
+        {cardContent}
+      </Link>
+    );
+  }
 
   return (
     <Link href={`/portal/lkpm/${report.quarter}?year=${report.year}`}>
-      <div
-        className="rounded-lg border p-4 transition-colors hover:border-[var(--bz-accent-warm)]"
-        style={{
-          background: "rgba(30,30,35,0.7)",
-          borderColor: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(24px)",
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold">
-              {report.quarter} {report.year}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--bz-text-2)" }}>
-              Total Realized: {formatIDR(report.realized_total)}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className="text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1"
-              style={style}
-            >
-              <Icon className="w-3 h-3" />
-              {label}
-            </span>
-            <ArrowRight
-              className="w-4 h-4"
-              style={{ color: "var(--bz-text-2)" }}
-            />
-          </div>
-        </div>
-      </div>
+      {cardContent}
     </Link>
   );
 }
