@@ -272,9 +272,13 @@ class GraphLoader:
         """
         asset_count = 0
 
+        # KPK PDFs use UPPERCASE names; normalize to title case so
+        # "BUGIE KURNIAWAN" merges with existing "Bugie Kurniawan".
+        official_name = report.nama.title()
+
         # 1. Upsert Official
         await self.upsert_official({
-            "name": report.nama,
+            "name": official_name,
             "jabatan": report.jabatan,
             "source": "lhkpn",
         })
@@ -293,7 +297,7 @@ class GraphLoader:
                 "tipe": prop.tipe,
             })
             await self.create_relationship(
-                from_name=report.nama,
+                from_name=official_name,
                 from_label="Official",
                 to_name="",
                 to_label="Property",
@@ -316,7 +320,7 @@ class GraphLoader:
                 "tahun_perolehan": v.tahun_perolehan,
             })
             await self.create_relationship(
-                from_name=report.nama,
+                from_name=official_name,
                 from_label="Official",
                 to_name="",
                 to_label="Vehicle",
@@ -333,14 +337,14 @@ class GraphLoader:
         # 4. Cash (BankAccount) — only if kas > 0
         if report.kas > 0:
             account_id = hashlib.sha256(
-                f"{report.nama}|kas_setara_kas".encode()
+                f"{official_name}|kas_setara_kas".encode()
             ).hexdigest()[:16]
             await self.upsert_bank_account({
                 "account_id": account_id,
                 "tipe": "kas_setara_kas",
             })
             await self.create_relationship(
-                from_name=report.nama,
+                from_name=official_name,
                 from_label="Official",
                 to_name="",
                 to_label="BankAccount",
@@ -356,7 +360,7 @@ class GraphLoader:
 
         logger.info(
             "Loaded LHKPN report: %s (%d) — %d asset nodes",
-            report.nama, report.tahun, asset_count,
+            official_name, report.tahun, asset_count,
         )
         return asset_count
 
