@@ -116,8 +116,9 @@ async def zoho_oauth_callback_redirect(
     """
     Registered OAuth redirect URI. Exchanges code for tokens automatically.
     """
-    import asyncpg
     import logging
+
+    import asyncpg
 
     logger = logging.getLogger(__name__)
 
@@ -130,8 +131,8 @@ async def zoho_oauth_callback_redirect(
     # Auto-exchange the code for tokens
     try:
         import json
-        import urllib.request
         import urllib.parse
+        import urllib.request
 
         client_id = settings.zoho_client_id
         client_secret = os.environ.get("ZOHO_CLIENT_SECRET", "")
@@ -165,7 +166,7 @@ async def zoho_oauth_callback_redirect(
         try:
             async with pool.acquire() as conn:
                 # Update zero@balizero.com token
-                user_id = state or "7dfe56b2-ff63-4d40-b78b-90c018127a02"
+                _user_id = state or "7dfe56b2-ff63-4d40-b78b-90c018127a02"  # reserved for multi-user Zoho
                 if refresh_token:
                     await conn.execute(
                         "UPDATE zoho_email_tokens SET access_token = $1, refresh_token = $2, "
