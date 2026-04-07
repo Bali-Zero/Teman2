@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, model_validator
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.hr.hr_leave_notifier import (
     notify_leave_request_pending,
+    notify_leave_request_reviewed,
 )
 from backend.app.services.hr.hr_leave_routing import resolve_approver
 from backend.app.services.hr.hr_service import HRService
@@ -465,6 +466,7 @@ async def get_leave_balance(
 @router.post("/leave/{request_id}/approve")
 async def approve_leave(
     request_id: int,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -472,22 +474,47 @@ async def approve_leave(
 
     Permission: HR admins (except self) OR the delegated supervisor of
     the requester. Self-approval is forbidden for everyone.
+
+    On success, schedules a fire-and-forget email notification to the
+    requester (with Zero/Asya in CC, dedup'd against the reviewer).
     """
     service = _get_hr_service(db_pool)
-    await _require_can_review_leave(service, current_user, request_id)
+    req = await _require_can_review_leave(service, current_user, request_id)
     try:
-        result = await service.approve_leave(
+        await service.approve_leave(
             request_id, _get_user_id(current_user),
         )
-        return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    background_tasks.add_task(
+        notify_leave_request_reviewed,
+        request_id=request_id,
+        requester_email=req.get("requester_email", ""),
+        requester_name=req.get("requester_name") or req.get("requester_email", ""),
+        reviewer_email=current_user.get("email", ""),
+        reviewer_name=(
+            current_user.get("name") or current_user.get("email", "")
+        ),
+        leave_type_name=req.get("leave_type_name") or "Leave",
+        start_date=req["start_date"],
+        end_date=req["end_date"],
+        total_days=req["total_days"],
+        action="approved",
+        rejection_reason=None,
+    )
+
+    return {
+        "success": True,
+        "request": {**req, "status": "approved"},
+    }
 
 
 @router.post("/leave/{request_id}/reject")
 async def reject_leave(
     request_id: int,
     data: LeaveReviewRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
@@ -495,16 +522,44 @@ async def reject_leave(
 
     Permission: HR admins (except self) OR the delegated supervisor of
     the requester. Self-rejection is forbidden for everyone.
+
+    On success, schedules a fire-and-forget email notification to the
+    requester (with Zero/Asya in CC, dedup'd against the reviewer).
     """
     service = _get_hr_service(db_pool)
-    await _require_can_review_leave(service, current_user, request_id)
+    req = await _require_can_review_leave(service, current_user, request_id)
     try:
-        result = await service.reject_leave(
+        await service.reject_leave(
             request_id, _get_user_id(current_user), data.reason or "",
         )
-        return {"success": True, "request": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    background_tasks.add_task(
+        notify_leave_request_reviewed,
+        request_id=request_id,
+        requester_email=req.get("requester_email", ""),
+        requester_name=req.get("requester_name") or req.get("requester_email", ""),
+        reviewer_email=current_user.get("email", ""),
+        reviewer_name=(
+            current_user.get("name") or current_user.get("email", "")
+        ),
+        leave_type_name=req.get("leave_type_name") or "Leave",
+        start_date=req["start_date"],
+        end_date=req["end_date"],
+        total_days=req["total_days"],
+        action="rejected",
+        rejection_reason=data.reason or None,
+    )
+
+    return {
+        "success": True,
+        "request": {
+            **req,
+            "status": "rejected",
+            "rejection_reason": data.reason or None,
+        },
+    }
 
 
 # ─── DASHBOARD ───────────────────────────────────────────────────────────
