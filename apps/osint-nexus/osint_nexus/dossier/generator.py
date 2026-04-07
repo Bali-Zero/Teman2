@@ -196,6 +196,45 @@ class DossierGenerator:
     def _format_lhkpn(self, power: dict) -> str:
         if not power:
             return "*Dati LHKPN non disponibili — eseguire scraper LHKPN*"
+
+        # Try multi-year LHKPN data from scraper records (raw_data list)
+        lhkpn_records = power.get("lhkpn_records", [])
+        if lhkpn_records:
+            lines = [
+                "| Tahun | Jabatan | Lembaga | Total Harta | PDF |",
+                "|---|---|---|---|---|",
+            ]
+            for rec in sorted(lhkpn_records, key=lambda r: r.get("tahun_data", ""), reverse=True):
+                tahun = rec.get("tahun_data", "?")
+                jabatan = rec.get("jabatan", "-")[:30]
+                lembaga = rec.get("lembaga", "-")[:30]
+                harta = rec.get("total_harta_raw", "?")
+                pdf = rec.get("pdf_path", "")
+                pdf_name = pdf.split("/")[-1] if pdf else "-"
+                lines.append(f"| {tahun} | {jabatan} | {lembaga} | {harta} | {pdf_name} |")
+
+            # Trend analysis
+            values = [
+                (r.get("tahun_data", ""), r.get("total_harta", 0))
+                for r in lhkpn_records
+                if r.get("total_harta")
+            ]
+            if len(values) >= 2:
+                values.sort()
+                first_year, first_val = values[0]
+                last_year, last_val = values[-1]
+                if first_val > 0:
+                    growth = ((last_val - first_val) / first_val) * 100
+                    lines.append("")
+                    lines.append(
+                        f"**Trend {first_year}→{last_year}:** "
+                        f"Rp {first_val:,.0f} → Rp {last_val:,.0f} "
+                        f"(**{growth:+.1f}%**)"
+                    )
+
+            return "\n".join(lines)
+
+        # Fallback: single value from graph
         lhkpn = power.get("lhkpn_total")
         if lhkpn:
             return f"**Total Harta Kekayaan:** Rp {lhkpn:,}" if isinstance(lhkpn, (int, float)) else f"**Total:** {lhkpn}"
