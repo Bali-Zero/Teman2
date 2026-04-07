@@ -1,4 +1,9 @@
-"""Putusan MA scraper — court decisions from putusan3.mahkamahagung.go.id."""
+"""Putusan MA scraper — court decisions from putusan3.mahkamahagung.go.id.
+
+Uses Playwright: the site serves JS-rendered content that plain HTTP clients
+receive as stale edge-cache HTML. Full Chrome rendering returns 42+ entries.
+From Bali IP: commit in 0.3s, .spost renders within 15s.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +12,9 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 from osint_nexus.scrapers.base import BaseScraper, ScrapedRecord
-from osint_nexus.utils.http import get_client, random_delay
+from osint_nexus.utils.http import random_delay
 
 PUTUSAN_BASE = "https://putusan3.mahkamahagung.go.id"
-SEARCH_URL = f"{PUTUSAN_BASE}/search.html"
 
 
 class PutusanMAScraper(BaseScraper):
@@ -19,65 +23,94 @@ class PutusanMAScraper(BaseScraper):
     name = "putusan_ma"
 
     async def scrape(self, query: str, **kwargs: Any) -> list[ScrapedRecord]:
-        """Search court decisions by name or keyword.
+        """Fetch court decisions, optionally filtered by query.
 
         Args:
-            query: Person name or case keyword
+            query: Keyword filter (client-side, applied after fetching)
             kwargs:
-                kategori: 'pidana', 'perdata', 'tun', etc.
-                max_pages: max pages to fetch (default: 3)
+                max_pages: pages to fetch (default: 3)
         """
-        kategori = kwargs.get("kategori", "")
         max_pages = kwargs.get("max_pages", 3)
         records: list[ScrapedRecord] = []
 
-        async with get_client() as client:
-            for page_num in range(1, max_pages + 1):
-                await random_delay()
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            self.logger.error("Playwright required. Run: playwright install chromium")
+            return records
 
-                params: dict[str, Any] = {
-                    "q": f'"{query}"',
-                    "page": page_num,
-                }
-                if kategori:
-                    params["cat"] = kategori
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                ctx = await browser.new_context(
+                    ignore_https_errors=True,
+                    locale="id-ID",
+                    user_agent=(
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+                    ),
+                )
+                page = await ctx.new_page()
 
-                try:
-                    resp = await client.get(SEARCH_URL, params=params)
-                    resp.raise_for_status()
-                except Exception as e:
-                    self.logger.warning("Putusan MA page %d failed: %s", page_num, e)
-                    continue
+                for page_num in range(1, max_pages + 1):
+                    await random_delay(1, 3)
 
-                soup = BeautifulSoup(resp.text, "lxml")
-                result_items = soup.select(".result-item, .search-result-item, .entry")
+                    url = (
+                        f"{PUTUSAN_BASE}/direktori.html"
+                        if page_num == 1
+                        else f"{PUTUSAN_BASE}/direktori/page/{page_num}.html"
+                    )
 
-                if not result_items:
-                    # Try alternative selectors
-                    result_items = soup.select("table tbody tr")
+                    try:
+                        resp = await page.goto(url, wait_until="commit", timeout=30000)
+                        if not resp or resp.status != 200:
+                            self.logger.warning("Page %d: HTTP %s", page_num, resp.status if resp else "none")
+                            continue
 
-                if not result_items:
-                    self.logger.info("No more results at page %d", page_num)
-                    break
+                        # Wait for .spost to render (JS-dependent)
+                        try:
+                            await page.wait_for_selector(".spost", timeout=30000)
+                        except Exception:
+                            # Fallback: check if content loaded anyway
+                            html_check = await page.content()
+                            if ".spost" not in html_check and len(html_check) < 20000:
+                                self.logger.warning("Page %d: .spost timeout", page_num)
+                                continue
 
-                self.logger.info("Putusan MA page %d: %d items", page_num, len(result_items))
+                    except Exception as e:
+                        self.logger.warning("Page %d: %s", page_num, type(e).__name__)
+                        continue
 
-                for item in result_items:
-                    record = self._parse_result(item)
-                    if record:
-                        records.append(record)
+                    html = await page.content()
+                    soup = BeautifulSoup(html, "lxml")
+                    items = soup.select(".spost")
+
+                    if not items:
+                        break
+
+                    self.logger.info("Putusan page %d: %d items", page_num, len(items))
+
+                    query_lower = query.lower() if query else ""
+                    for item in items:
+                        record = self._parse_result(item)
+                        if record:
+                            if query_lower:
+                                blob = " ".join(str(v).lower() for v in record.raw_data.values())
+                                if query_lower not in blob:
+                                    continue
+                            records.append(record)
+            finally:
+                await browser.close()
 
         self.save_records(records)
         return records
 
     def _parse_result(self, item: Any) -> ScrapedRecord | None:
-        """Parse a single search result."""
+        """Parse a single .spost element."""
         try:
-            # Try structured result format
-            title_el = item.select_one("h3 a, .title a, a.result-title")
+            title_el = item.select_one('a[href*="/direktori/putusan/"]')
             if not title_el:
-                title_el = item.select_one("a")
-
+                title_el = item.select_one("h3 a, .title a, a")
             if not title_el:
                 return None
 
@@ -85,35 +118,24 @@ class PutusanMAScraper(BaseScraper):
             href = title_el.get("href", "")
             url = href if href.startswith("http") else f"{PUTUSAN_BASE}{href}"
 
-            # Extract metadata
             meta: dict[str, str] = {"judul": title}
 
-            # Court name
-            court_el = item.select_one(".court, .pengadilan")
-            if court_el:
-                meta["pengadilan"] = court_el.get_text(strip=True)
-
-            # Case number
-            number_el = item.select_one(".nomor, .case-number")
-            if number_el:
-                meta["nomor_perkara"] = number_el.get_text(strip=True)
-            elif "/" in title:
+            # Extract nomor perkara from title
+            if "/" in title:
                 meta["nomor_perkara"] = title
 
-            # Date
-            date_el = item.select_one(".date, .tanggal")
-            if date_el:
-                meta["tanggal_putusan"] = date_el.get_text(strip=True)
-
-            # Category
-            cat_el = item.select_one(".category, .kategori")
-            if cat_el:
-                meta["kategori"] = cat_el.get_text(strip=True)
-
-            # Snippet/summary
-            snippet_el = item.select_one(".snippet, .summary, p")
-            if snippet_el:
-                meta["ringkasan"] = snippet_el.get_text(strip=True)[:500]
+            # Look for metadata in sibling/child elements
+            for sel, key in [
+                (".court, .pengadilan", "pengadilan"),
+                (".date, .tanggal", "tanggal_putusan"),
+                (".category, .kategori", "kategori"),
+                ("p, .snippet", "ringkasan"),
+            ]:
+                el = item.select_one(sel)
+                if el:
+                    text = el.get_text(strip=True)
+                    if text and text != title:
+                        meta[key] = text[:500]
 
             return ScrapedRecord(
                 source="putusan_ma",
@@ -124,33 +146,3 @@ class PutusanMAScraper(BaseScraper):
         except Exception as e:
             self.logger.warning("Parse error: %s", e)
             return None
-
-    async def fetch_full_decision(self, url: str) -> dict[str, Any]:
-        """Fetch and parse full court decision text."""
-        async with get_client() as client:
-            await random_delay()
-            resp = await client.get(url)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "lxml")
-
-            data: dict[str, Any] = {}
-
-            # Decision text
-            content = soup.select_one("#putusan-content, .putusan-body, .content-putusan")
-            if content:
-                data["full_text"] = content.get_text(separator="\n", strip=True)[:10000]
-
-            # Parties
-            for label in ["Penggugat", "Tergugat", "Terdakwa", "Penuntut"]:
-                el = soup.find(string=lambda t: t and label in t if t else False)
-                if el and el.parent:
-                    sibling = el.parent.find_next_sibling()
-                    if sibling:
-                        data[label.lower()] = sibling.get_text(strip=True)
-
-            # Amar putusan
-            amar = soup.find(string=lambda t: t and "MENGADILI" in t.upper() if t else False)
-            if amar and amar.parent:
-                data["amar"] = amar.parent.get_text(separator="\n", strip=True)[:2000]
-
-            return data
