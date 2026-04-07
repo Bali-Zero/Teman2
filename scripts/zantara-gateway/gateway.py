@@ -27,50 +27,55 @@ logger = logging.getLogger("zantara-gateway")
 
 
 def ndjson_line_to_sse(line: str) -> str | None:
-    """Convert a single NDJSON line from Gemini CLI stream-json to SSE format.
+    """Convert a single NDJSON line from Gemini CLI to an SSE event.
 
-    Maps:
-      textDelta   → {"type":"token","data":"..."}
-      done        → [DONE]
-      toolCallStart → {"type":"tool_call","name":"...","args":{...}}
-      toolCallEnd   → {"type":"tool_result","name":"...","result":"..."}
+    Maps actual Gemini CLI stream-json format:
+      type:"message", role:"assistant", delta:true → {"type":"token","data":"<content>"}
+      type:"result"                                → [DONE]
+      type:"tool_use"                              → {"type":"tool_call","data":{"name":"...","args":{...}}}
+      type:"tool_result"                           → {"type":"tool_result","data":{"name":"...","result":"..."}}
+      type:"init"                                  → None (skip)
+      type:"message", role:"user"                  → None (skip, echo of input)
 
     Returns None for unknown types or invalid JSON.
     """
+    line = line.strip()
+    if not line:
+        return None
     try:
         obj = json.loads(line)
-    except (json.JSONDecodeError, TypeError):
+    except json.JSONDecodeError:
         return None
 
-    event_type = obj.get("type")
+    event_type = obj.get("type", "")
 
-    # Use compact separators for consistent SSE payloads
-    _sep = (",", ":")
+    if event_type == "message":
+        role = obj.get("role", "")
+        if role == "assistant" and obj.get("delta"):
+            content = obj.get("content", "")
+            return f'data: {json.dumps({"type": "token", "data": content}, separators=(",", ":"))}\n\n'
+        return None  # skip user messages and non-delta
 
-    if event_type == "textDelta":
-        text = obj.get("text", "")
-        payload = json.dumps({"type": "token", "data": text}, separators=_sep)
-        return f"data: {payload}\n\n"
-
-    if event_type == "done":
+    if event_type == "result":
         return "data: [DONE]\n\n"
 
-    if event_type == "toolCallStart":
-        payload = json.dumps({
-            "type": "tool_call",
-            "name": obj.get("toolName", ""),
-            "args": obj.get("args", {}),
-        }, separators=_sep)
-        return f"data: {payload}\n\n"
+    if event_type == "tool_use":
+        raw_name = obj.get("tool_name", "")
+        # Strip MCP server prefix: "mcp_nuzantara-mcp_check_health" → "check_health"
+        name = raw_name
+        for prefix in ("mcp_nuzantara-mcp_", "mcp_nuzantara_"):
+            if raw_name.startswith(prefix):
+                name = raw_name[len(prefix):]
+                break
+        args = obj.get("parameters", {})
+        return f'data: {json.dumps({"type": "tool_call", "data": {"name": name, "args": args}}, separators=(",", ":"))}\n\n'
 
-    if event_type == "toolCallEnd":
-        payload = json.dumps({
-            "type": "tool_result",
-            "name": obj.get("toolName", ""),
-            "result": obj.get("result", ""),
-        }, separators=_sep)
-        return f"data: {payload}\n\n"
+    if event_type == "tool_result":
+        tool_id = obj.get("tool_id", "")
+        output = obj.get("output", "")
+        return f'data: {json.dumps({"type": "tool_result", "data": {"name": tool_id, "result": output}}, separators=(",", ":"))}\n\n'
 
+    # init, unknown types → skip
     return None
 
 
