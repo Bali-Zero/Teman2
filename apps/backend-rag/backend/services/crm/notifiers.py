@@ -8,23 +8,16 @@ Merges:
 
 import asyncio
 import json
-import os
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
-import httpx
 
+from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 logger = get_logger(__name__)
-
-# Internal email API — uses Brevo, from=zantara@balizero.com
-_EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
-)
-_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", os.environ.get("NUZANTARA_API_KEY", ""))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -192,17 +185,18 @@ class BirthdayNotifierService:
             subject, html_content = self.build_email_content(client, language)
             sent_via_brevo = False
             try:
-                async with httpx.AsyncClient(timeout=30.0) as http_client:
-                    response = await http_client.post(
-                        _EMAIL_API_URL,
-                        headers={"X-API-Key": _EMAIL_API_KEY},
-                        json={"to": client["email"], "subject": subject, "body": html_content},
-                    )
-                    response.raise_for_status()
+                await send_internal_email(
+                    to=client["email"],
+                    subject=subject,
+                    body=html_content,
+                    log_context=f"birthday {language}",
+                    raise_on_failure=True,
+                )
                 sent_via_brevo = True
-                logger.info(f"Birthday email sent to {client['email']} via Brevo ({language})")
             except Exception as brevo_err:
-                logger.warning(f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}")
+                logger.warning(
+                    f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}",
+                )
             if not sent_via_brevo:
                 await self.email_service.send_email(
                     user_id=SYSTEM_SENDER_USER_ID,
@@ -422,13 +416,13 @@ class StalePracticeNotifier:
         </html>
         """
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                _EMAIL_API_URL,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-                json={"to": ADMIN_EMAIL, "subject": subject, "body": body},
-            )
-            response.raise_for_status()
+        await send_internal_email(
+            to=ADMIN_EMAIL,
+            subject=subject,
+            body=body,
+            log_context=f"stale admin summary count={len(stale)}",
+            raise_on_failure=True,
+        )
 
         logger.info("Admin summary sent", extra={"context": {"to": ADMIN_EMAIL, "stale_count": len(stale)}})
 
@@ -477,13 +471,13 @@ class StalePracticeNotifier:
         </html>
         """
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                _EMAIL_API_URL,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-                json={"to": email, "subject": subject, "body": body},
-            )
-            response.raise_for_status()
+        await send_internal_email(
+            to=email,
+            subject=subject,
+            body=body,
+            log_context=f"stale team alert count={len(practices)}",
+            raise_on_failure=True,
+        )
 
         logger.info("Team-leader alert sent", extra={"context": {"to": email, "practice_count": len(practices)}})
 
