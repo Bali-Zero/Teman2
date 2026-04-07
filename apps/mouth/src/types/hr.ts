@@ -183,7 +183,6 @@ export interface LeaveBalance {
   carried_over: number;
   used_days: number;
   pending_days: number;
-  name?: string; // alias from query
 }
 
 export interface LeaveRequest {

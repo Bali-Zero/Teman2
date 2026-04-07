@@ -16,16 +16,10 @@ import {
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import * as hrApi from "@/lib/api/hr/hr";
+import { isHRAdmin } from "@/lib/hr/admin";
 import type { LeaveRequest, LeaveBalance } from "@/types/hr";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const ADMIN_EMAILS = [
-  "zero@balizero.com",
-  "asya@balizero.com",
-  "ruslana@balizero.com",
-  "antonellosiano@gmail.com",
-];
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -345,11 +339,11 @@ export default function LeavePage() {
 
   useEffect(() => {
     Promise.all([
-      (api.getProfile() as Promise<{ email: string }>).catch(() => null),
+      api.getProfile().catch(() => null),
       hrApi.listLeaveRequests().catch(() => ({ requests: [] })),
       hrApi.getLeaveBalance().catch(() => ({ balances: [] })),
     ]).then(([profile, reqData, balData]) => {
-      if (profile) setIsAdmin(ADMIN_EMAILS.includes(profile.email));
+      setIsAdmin(isHRAdmin(profile));
       setRequests((reqData.requests as LeaveRequest[]) ?? []);
       setBalances((balData.balances as LeaveBalance[]) ?? []);
       setLoading(false);
