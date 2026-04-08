@@ -1,6 +1,18 @@
+// Maps both province names AND kota names to centroids.
+// Neo4j stores k.kota which may be "Badung"/"Denpasar" rather than "Bali".
 export const PROVINCE_CENTROIDS: Record<string, { lat: number; lng: number }> = {
   'Bali':              { lat: -8.4095, lng: 115.1889 },
+  'Badung':            { lat: -8.5820, lng: 115.1770 },
+  'Denpasar':          { lat: -8.6500, lng: 115.2167 },
+  'Gianyar':           { lat: -8.5353, lng: 115.3317 },
+  'Tabanan':           { lat: -8.5410, lng: 115.1259 },
+  'Buleleng':          { lat: -8.1120, lng: 115.0882 },
+  'Karangasem':        { lat: -8.4484, lng: 115.6127 },
+  'Klungkung':         { lat: -8.5402, lng: 115.4044 },
+  'Bangli':            { lat: -8.4545, lng: 115.3536 },
+  'Jembrana':          { lat: -8.3600, lng: 114.6413 },
   'DKI Jakarta':       { lat: -6.2088, lng: 106.8456 },
+  'Jakarta':           { lat: -6.2088, lng: 106.8456 },
   'Jawa Barat':        { lat: -6.9175, lng: 107.6191 },
   'Jawa Tengah':       { lat: -7.1510, lng: 110.1403 },
   'Jawa Timur':        { lat: -7.5361, lng: 112.2384 },
