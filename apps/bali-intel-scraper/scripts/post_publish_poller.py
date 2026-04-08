@@ -413,6 +413,88 @@ def _update_news_image_url(article_id: str, image_url: str):
         log(f"  ⚠ news_items.image_url update failed: {e}")
 
 
+# ─── HERO ROTATION ────────────────────────────────────────────────────────────
+
+HOMEPAGE_LAYOUT_PATH = "apps/mouth/src/content/homepage-layout.json"
+HERO_KEYS = ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
+LATEST_KEYS = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
+
+
+def rotate_hero(new_slug: str) -> bool:
+    """Rotate homepage-layout.json: push new_slug to hero_main, cascade others down.
+    Old hero_5 moves to latest_1, shifting latest_* down (latest_5 dropped).
+    Commits and pushes to GitHub.
+    """
+    import base64 as _b64
+
+    log(f"  ▶ Hero rotation: {new_slug}")
+
+    # Read current layout from GitHub (source of truth)
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{HOMEPAGE_LAYOUT_PATH}"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            log("  ⚠ Hero: cannot read homepage-layout.json from GitHub")
+            return False
+        data = json.loads(result.stdout)
+        layout = json.loads(_b64.b64decode(data["content"]).decode("utf-8"))
+        sha = data["sha"]
+    except Exception as e:
+        log(f"  ⚠ Hero: read error: {e}")
+        return False
+
+    # Skip if already hero_main
+    if layout.get("hero_main") == new_slug:
+        log("  ⏭ Hero: already hero_main")
+        return True
+
+    # Skip if slug not yet in layout at all (might not have MDX on GitHub yet)
+    # We proceed regardless — the new article is being published right now.
+
+    # Cascade: old hero_main→hero_2→…→hero_5 → latest_1→…→latest_5
+    old_heros = [layout.get(k) for k in HERO_KEYS]  # current [main, 2, 3, 4, 5]
+    old_latests = [layout.get(k) for k in LATEST_KEYS]
+
+    # New hero list: new slug at front, old heroes shift down (drop last)
+    new_heros = [new_slug] + [s for s in old_heros if s and s != new_slug][:len(HERO_KEYS) - 1]
+    # New latest: old hero_5 at front, shift down (drop last)
+    evicted = old_heros[-1] if old_heros[-1] and old_heros[-1] != new_slug else None
+    if evicted:
+        new_latests = [evicted] + [s for s in old_latests if s and s != evicted][:len(LATEST_KEYS) - 1]
+    else:
+        new_latests = old_latests
+
+    for i, key in enumerate(HERO_KEYS):
+        if i < len(new_heros):
+            layout[key] = new_heros[i]
+    for i, key in enumerate(LATEST_KEYS):
+        if i < len(new_latests):
+            layout[key] = new_latests[i]
+
+    # Write back to GitHub
+    new_content = json.dumps(layout, indent=2, ensure_ascii=False) + "\n"
+    encoded = _b64.b64encode(new_content.encode("utf-8")).decode("utf-8")
+    payload = {
+        "message": f"feat(homepage): rotate hero → {new_slug[:50]}",
+        "content": encoded,
+        "sha": sha,
+    }
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{HOMEPAGE_LAYOUT_PATH}",
+             "--method", "PUT", "--input", "-"],
+            input=json.dumps(payload), capture_output=True, text=True, timeout=30,
+        )
+        ok = result.returncode == 0
+        log(f"  {'✅' if ok else '❌'} Hero rotation pushed (hero_main={new_slug[:40]})")
+        return ok
+    except Exception as e:
+        log(f"  ⚠ Hero rotation push error: {e}")
+        return False
+
+
 # ─── GIT OPERATIONS ───────────────────────────────────────────────────────────
 
 def git_pull_monorepo():
@@ -488,6 +570,8 @@ def process_item(item: dict) -> tuple[bool, list[str]]:
             if run_translate(slug, category):
                 mark_step_done(slug, "translate")
                 return_translate = True
+                # Auto-rotate hero after successful translate
+                rotate_hero(slug)
             else:
                 failed_steps.append("translate")
                 return_translate = False

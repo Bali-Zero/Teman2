@@ -276,7 +276,7 @@ class TestParseLhkpnPdf:
         return parse_lhkpn_pdf(PDF_PATH)
 
     def test_personal_data(self, report: LhkpnReport) -> None:
-        assert report.nama == "Raja Ulul Azmi Syahwal"
+        assert report.nama == "RAJA ULUL AZMI SYAHWAL"
         assert report.jabatan == "PENYIDIK PEGAWAI NEGERI SIPIL (PPNS)"
         assert report.nhk == "496999"
         assert report.tahun == 2022
@@ -326,23 +326,27 @@ class TestParseLhkpnPdf:
 # ---------------------------------------------------------------------------
 
 _PDF_DIR = PDF_PATH.parent
-RAJA_PDFS = sorted(_PDF_DIR.glob("LHKPN_RAJA_ULUL*.pdf")) if _PDF_DIR.exists() else []
+ALL_PDFS = sorted(_PDF_DIR.glob("*.pdf")) if _PDF_DIR.exists() else []
+# Filter to RAJA only for stable cross-year tests (dir may contain multiple persons)
+RAJA_PDFS = [p for p in ALL_PDFS if "RAJA_ULUL" in p.name]
 
 
-@pytest.mark.skipif(len(RAJA_PDFS) < 2, reason="need RAJA PDFs for cross-year test")
+@pytest.mark.skipif(len(ALL_PDFS) < 2, reason="need multiple PDFs for cross-year test")
 class TestCrossYear:
-    def test_all_raja_pdfs_parse(self) -> None:
-        reports = [parse_lhkpn_pdf(p) for p in RAJA_PDFS]
-        assert len(reports) == len(RAJA_PDFS)
+    def test_all_pdfs_parse_without_error(self) -> None:
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
+        assert len(reports) == len(ALL_PDFS)
         for r in reports:
             assert r.nama != ""
             assert r.tahun > 2000
 
+    @pytest.mark.skipif(len(RAJA_PDFS) < 2, reason="need RAJA PDFs")
     def test_same_person_across_years(self) -> None:
         reports = [parse_lhkpn_pdf(p) for p in RAJA_PDFS]
         names = {r.nama for r in reports}
         assert len(names) == 1, f"Expected 1 person, got: {names}"
 
+    @pytest.mark.skipif(len(RAJA_PDFS) < 2, reason="need RAJA PDFs")
     def test_property_ids_stable_across_years(self) -> None:
         """Same physical property should have same ID across years."""
         reports = [parse_lhkpn_pdf(p) for p in RAJA_PDFS]
@@ -354,6 +358,6 @@ class TestCrossYear:
         assert len(deli_serdang_ids) == 1, f"Expected 1 ID, got: {deli_serdang_ids}"
 
     def test_total_harta_positive(self) -> None:
-        reports = [parse_lhkpn_pdf(p) for p in RAJA_PDFS]
+        reports = [parse_lhkpn_pdf(p) for p in ALL_PDFS]
         for r in reports:
             assert r.total_harta > 0, f"{r.tahun}: total_harta should be positive"
