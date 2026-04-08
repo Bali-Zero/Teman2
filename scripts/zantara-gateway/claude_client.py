@@ -45,6 +45,10 @@ async def stream_claude_cli(
     if system_prompt:
         cmd.extend(["--system-prompt", system_prompt])
 
+    # Low effort for faster responses when query is simple
+    if len(query) < 100:
+        cmd.extend(["--effort", "low"])
+
     logger.info("Spawning Claude CLI: model=%s", model)
 
     proc = await asyncio.create_subprocess_exec(
