@@ -202,7 +202,8 @@ class OracleService:
                 clarification_service=self.clarification_service,
             )
             # Inject pre-initialized entity extractor if needed, or rely on factory
-            # Factory creates new one. We can inject our shared one if we modify factory or set it after.
+            # Factory creates new one. We can inject our shared one
+            # if we modify factory or set it after.
             self._orchestrator.entity_extractor = self._entity_extractor
         return self._orchestrator
 
@@ -229,15 +230,7 @@ class OracleService:
 
     @property
     def personality_service(self):
-        """Personality service (optional — may not be available)."""
-        if not self._personality_service:
-            try:
-                from backend.services.misc.personality_service import PersonalityService
-
-                self._personality_service = PersonalityService()
-            except ImportError:
-                pass
-        return self._personality_service
+        return None
 
     @property
     def golden_answer_service(self) -> GoldenAnswerService | None:
