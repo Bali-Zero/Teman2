@@ -293,6 +293,21 @@ async def stream_ollama_react(
 # ── HTTP handlers ────────────────────────────────────────────────────────
 
 
+async def _send_heartbeats(response: web.StreamResponse, interval: float = 3.0) -> None:
+    """Send SSE comment heartbeats to keep the connection alive.
+
+    Gemini CLI can be silent for 20+ seconds while loading MCP tools.
+    Without heartbeats, the browser may close the idle connection.
+    SSE comments (lines starting with ':') are ignored by EventSource parsers.
+    """
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            await response.write(b": keepalive\n\n")
+    except (asyncio.CancelledError, ConnectionResetError):
+        pass
+
+
 async def handle_chat(request: web.Request) -> web.StreamResponse:
     """POST /v1/chat — SSE streaming chat endpoint.
 
@@ -344,10 +359,14 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     await response.prepare(request)
 
     try:
-        # Try Gemini CLI first
+        # Try Gemini CLI first, with keepalive heartbeats
         try:
-            async for sse_line in stream_gemini_cli(query, config):
-                await response.write(sse_line.encode("utf-8"))
+            heartbeat_task = asyncio.create_task(_send_heartbeats(response))
+            try:
+                async for sse_line in stream_gemini_cli(query, config):
+                    await response.write(sse_line.encode("utf-8"))
+            finally:
+                heartbeat_task.cancel()
         except Exception as e:
             logger.warning("Gemini CLI failed (%s), falling back to Ollama", e)
 
