@@ -27,7 +27,7 @@ logger = logging.getLogger("nuzantara-mcp.agent")
 
 ROLE_TOOLS: dict[str, set[str]] = {
     "visa_specialist": {
-        # READ tools
+        # READ — CRM & Visa
         "list_clients", "get_client", "get_client_stats", "get_client_timeline",
         "list_practices", "get_practice",
         "get_visa_details", "list_visa_types", "get_portal_visa_status",
@@ -39,13 +39,31 @@ ROLE_TOOLS: dict[str, set[str]] = {
         "get_journey", "get_journey_next_steps",
         "recall_similar", "list_recent_episodes",
         "federation_inbox", "federation_status",
-        # WRITE tools (with natural language approval via Gemini)
+        # READ — Content & Marketing
+        "list_articles", "get_article",
+        "list_subscribers",
+        # READ — Intel & Research
+        "list_staging_items",
+        "get_intel_metrics", "get_critical_alerts", "get_intel_trends",
+        "search_intel",
+        # READ — Comms
+        "list_emails", "search_emails",
+        "list_whatsapp_conversations", "list_telegram_conversations",
+        # WRITE — CRM
         "log_interaction",
         "update_practice_status",
         "send_portal_message",
         "complete_journey_step",
         "federation_send", "federation_mark_read",
         "save_episode",
+        # WRITE — Content & Marketing
+        "compose_article", "publish_article",
+        "subscribe_newsletter",
+        # WRITE — Intel (scraper + curation)
+        "submit_scraper_job",
+        "approve_staging_item", "publish_intel",
+        # WRITE — Comms / Outreach
+        "send_email", "send_whatsapp",
     },
     "executive_consultant": {
         # Everything visa_specialist has, plus:
