@@ -7,8 +7,9 @@ export interface OfficialListItem {
   name: string;
   jabatan: string;
   nip: string | null;
-  kantor: string;
+  kantors: string[];
   total_assets: number;
+  asset_count: number;
   has_lhkpn: boolean;
 }
 
@@ -112,6 +113,11 @@ export function OfficialsList({ officials, selected, anomalyNames, onSelect }: O
               <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] mt-0.5 truncate">
                 {o.jabatan || 'N/A'}
               </div>
+              {o.kantors && o.kantors.filter(Boolean).length > 0 && (
+                <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] mt-0.5 truncate opacity-60">
+                  {o.kantors.filter(Boolean).join(' \u00b7 ')}
+                </div>
+              )}
               <div className="font-[family-name:var(--font-mono)] text-[11px] mt-0.5">
                 {o.has_lhkpn ? (
                   <span className="text-[var(--sg-copper)]">{formatRupiah(o.total_assets)}</span>

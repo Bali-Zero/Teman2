@@ -89,7 +89,81 @@ export const QUERIES = {
 
   officialProfile: `
     MATCH (o:Official {name: $name})
-    OPTIONAL MATCH (o)-[:WORKS_AT]->(k:Kanim_Office)
-    RETURN o.name AS name, o.jabatan AS jabatan, o.nip AS nip, k.name AS kantor
+    OPTIONAL MATCH (o)-[:WORKS_AT]->(k)
+    WITH o, collect(DISTINCT k.name) AS kantors
+    RETURN o.name AS name, o.jabatan AS jabatan, o.nip AS nip,
+           kantors[0] AS kantor,
+           o.pangkat AS pangkat, o.angkatan AS angkatan, o.asal AS asal,
+           o.agama AS agama, o.ttl AS ttl,
+           kantors
+  `,
+
+  officialConnections: `
+    MATCH (o:Official {name: $name})
+    OPTIONAL MATCH (o)-[:FAMILY_OF]-(fam)
+    OPTIONAL MATCH (o)-[:MET_WITH]-(met)
+    OPTIONAL MATCH (o)-[:SUPERVISES]-(sup)
+    WITH o,
+         collect(DISTINCT CASE WHEN fam IS NOT NULL THEN {name: fam.name, type: labels(fam)[0]} END) AS family_raw,
+         collect(DISTINCT CASE WHEN met IS NOT NULL THEN {name: met.name, type: labels(met)[0]} END) AS met_raw,
+         collect(DISTINCT CASE WHEN sup IS NOT NULL THEN {name: sup.name, rel: 'SUPERVISES'} END) AS sup_raw
+    RETURN [x IN family_raw WHERE x IS NOT NULL] AS family,
+           [x IN met_raw WHERE x IS NOT NULL] AS met_with,
+           [x IN sup_raw WHERE x IS NOT NULL] AS supervises
+  `,
+
+  statsDetailed: `
+    CALL {
+      MATCH (n) RETURN count(n) AS nodes
+    }
+    CALL {
+      MATCH ()-[r]->() RETURN count(r) AS relationships
+    }
+    CALL {
+      MATCH (o:Official) RETURN count(o) AS officials
+    }
+    CALL {
+      MATCH (o:Official)-[:OWNS]->()
+      RETURN count(DISTINCT o) AS lhkpn_reports
+    }
+    CALL {
+      MATCH (n:Property) RETURN count(n) AS properties
+    }
+    CALL {
+      MATCH (n:Vehicle) RETURN count(n) AS vehicles
+    }
+    CALL {
+      MATCH (n:BankAccount) RETURN count(n) AS bank_accounts
+    }
+    CALL {
+      MATCH (n:Organization) RETURN count(n) AS organizations
+    }
+    CALL {
+      MATCH (n:Kanim_Office) RETURN count(n) AS kanim_offices
+    }
+    CALL {
+      MATCH (n:Person) RETURN count(n) AS persons
+    }
+    CALL {
+      MATCH ()-[r:OWNS]->() RETURN count(r) AS owns_count
+    }
+    CALL {
+      MATCH ()-[r:WORKS_AT]->() RETURN count(r) AS works_at_count
+    }
+    CALL {
+      MATCH ()-[r:FAMILY_OF]-() RETURN count(r) AS family_of_count
+    }
+    CALL {
+      MATCH ()-[r:MET_WITH]-() RETURN count(r) AS met_with_count
+    }
+    CALL {
+      MATCH ()-[r:SUPERVISES]->() RETURN count(r) AS supervises_count
+    }
+    CALL {
+      MATCH ()-[r:PART_OF]->() RETURN count(r) AS part_of_count
+    }
+    RETURN nodes, relationships, officials, lhkpn_reports,
+           properties, vehicles, bank_accounts, organizations, kanim_offices, persons,
+           owns_count, works_at_count, family_of_count, met_with_count, supervises_count, part_of_count
   `,
 } as const;

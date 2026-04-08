@@ -49,8 +49,15 @@ export interface OfficialData {
   name: string;
   jabatan: string;
   nip: string | null;
+  pangkat: string | null;
+  angkatan: string | null;
+  asal: string | null;
+  agama: string | null;
+  ttl: string | null;
+  kantors: string[];
   has_lhkpn: boolean;
   total_assets: number;
+  asset_count: number;
   anomaly: boolean;
 }
 
@@ -82,11 +89,55 @@ export interface YearlyAssets {
   total: number;
 }
 
+export interface ConnectionItem {
+  name: string;
+  type: string;
+}
+
+export interface OfficialConnections {
+  family: ConnectionItem[];
+  met_with: ConnectionItem[];
+  supervises: { name: string; rel: string }[];
+}
+
+export interface OfficialProfile {
+  name: string;
+  jabatan: string;
+  nip: string | null;
+  kantor: string;
+  pangkat: string | null;
+  angkatan: string | null;
+  asal: string | null;
+  agama: string | null;
+  ttl: string | null;
+  kantors: string[];
+}
+
 export interface OfficialDetail {
-  profile: { name: string; jabatan: string; nip: string | null; kantor: string };
+  profile: OfficialProfile;
+  connections: OfficialConnections;
   lhkpn_years: number[];
   assets_by_year: Record<number, YearlyAssets>;
   delta: { from_year: number; to_year: number; pct_change: number }[];
+}
+
+export interface NodesByType {
+  Officials: number;
+  Properties: number;
+  Vehicles: number;
+  BankAccounts: number;
+  Organizations: number;
+  Kanim_Office: number;
+  Persons: number;
+}
+
+export interface RelsByType {
+  OWNS: number;
+  WORKS_AT: number;
+  FAMILY_OF: number;
+  MET_WITH: number;
+  SUPERVISES: number;
+  PART_OF: number;
 }
 
 export interface GraphStats {
@@ -94,4 +145,6 @@ export interface GraphStats {
   relationships: number;
   officials: number;
   lhkpn_reports: number;
+  nodes_by_type: NodesByType;
+  rels_by_type: RelsByType;
 }
