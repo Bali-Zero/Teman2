@@ -1,7 +1,7 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "lombok-rising-why-indonesias-second-island-is-rewriting-the-expat-playbook",
-  "hero_2": "bali-2026-the-rules-every-visitor-must-know-before-landing",
+  "hero_2": "belgian-biker-deported-after-viral-bali-cliff-stunt-triggers-immigration-crackdown",
   "hero_3": "indonesia-tightens-passport-rules-originals-required-at-interview",
   "hero_4": "indonesia-bets-on-green-tourism-to-triple-arrivals-by-2045",
   "hero_5": "retiring-in-bali-2026-what-foreign-buyers-must-know-before-they-sign",
