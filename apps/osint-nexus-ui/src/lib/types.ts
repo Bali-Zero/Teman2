@@ -94,10 +94,45 @@ export interface ConnectionItem {
   type: string;
 }
 
+export interface FamilyConnection {
+  name: string;
+  type: string;
+  notes: string | null;
+  person_type: string | null;
+}
+
+export interface MetWithConnection {
+  name: string;
+  type: string;
+  context: string | null;
+  predicate: string | null;
+}
+
+export interface SupervisionConnection {
+  name: string;
+  jabatan: string | null;
+}
+
+export interface AlumniConnection {
+  name: string;
+  angkatan: string | null;
+}
+
+export interface WorkplaceConnection {
+  name: string;
+  type: string;
+  jabatan: string | null;
+  context: string | null;
+}
+
 export interface OfficialConnections {
-  family: ConnectionItem[];
-  met_with: ConnectionItem[];
-  supervises: { name: string; rel: string }[];
+  family: FamilyConnection[];
+  met_with: MetWithConnection[];
+  subordinates: SupervisionConnection[];
+  supervisors: SupervisionConnection[];
+  alumni: AlumniConnection[];
+  children: { name: string }[];
+  workplaces: WorkplaceConnection[];
 }
 
 export interface OfficialProfile {
@@ -147,4 +182,48 @@ export interface GraphStats {
   lhkpn_reports: number;
   nodes_by_type: NodesByType;
   rels_by_type: RelsByType;
+}
+
+/** Organization data */
+export interface OrganizationData {
+  name: string;
+  tipe: string | null;
+  lokasi: string | null;
+  official_count: number;
+  officials: string[];
+}
+
+/** Hierarchy chain node */
+export interface HierarchyNode {
+  name: string;
+  type: string;
+}
+
+/** PART_OF chain */
+export interface HierarchyChain {
+  chain: HierarchyNode[];
+}
+
+/** SUPERVISES chain */
+export interface SupervisesChain {
+  chain: { name: string; jabatan: string | null }[];
+}
+
+/** Relationship intel for StatsOverview */
+export interface RelationshipIntel {
+  from: string;
+  to: string;
+  type: string;
+  context: string | null;
+  predicate: string | null;
+  notes: string | null;
+}
+
+/** Person entity */
+export interface PersonData {
+  name: string;
+  person_type: string | null;
+  notes: string | null;
+  relationship_to_us: string | null;
+  connected_to: string[];
 }
