@@ -347,8 +347,8 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(event_bus.router)
 
     # Guardian V4 decision audit + risk scores
-    from backend.app.routers import guardian
-    api.include_router(guardian.router)
+    # from backend.app.routers import guardian
+    # api.include_router(guardian.router)
 
     # Visa Oracle — public product (no auth required)
     api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
