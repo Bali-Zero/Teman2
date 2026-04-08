@@ -10,8 +10,10 @@ ReAct loop if Gemini CLI is unavailable.
 import asyncio
 import json
 import logging
+import os
 import shutil
 import ssl
+from pathlib import Path
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -572,9 +574,18 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
         role=config.role,
         agent_name=config.agent_name,
     )
+    # Resolve MCP server command for ACP session
+    mcp_cmd = shutil.which("nuzantara-mcp-server") or ""
     acp_client = ACPGeminiClient(
         gemini_path=shutil.which("gemini") or "gemini",
-        cwd=config.tls_cert.rsplit("/", 2)[0] if "/" in config.tls_cert else ".",
+        cwd=str(Path.home() / "Desktop" / "nuzantara"),
+        mcp_server_command=mcp_cmd,
+        mcp_server_env={
+            "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
+            "NUZANTARA_API_KEY": os.environ.get("NUZANTARA_API_KEY", "admin-key-2024"),
+            "AGENT_ROLE": config.role,
+            "AGENT_NAME": config.agent_name,
+        } if mcp_cmd else None,
     )
 
     app = web.Application(middlewares=[cors_middleware])
