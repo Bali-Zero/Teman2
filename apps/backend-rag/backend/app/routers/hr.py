@@ -463,6 +463,20 @@ async def get_leave_balance(
     return {"balances": balances}
 
 
+@router.get("/leave/team-summary")
+async def get_team_leave_summary(
+    year: int | None = Query(None),
+    current_user: dict[str, Any] = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Get leave balance summary for all team members. Admin only."""
+    if not is_hr_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    service = _get_hr_service(db_pool)
+    summary = await service.get_team_leave_summary(year)
+    return {"summary": summary}
+
+
 @router.post("/leave/{request_id}/approve")
 async def approve_leave(
     request_id: int,
