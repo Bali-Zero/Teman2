@@ -86,13 +86,4 @@ body::after {
   pointer-events: none;
 }
 
-/* Map desaturation for L3 */
-.map-desaturated {
-  filter: saturate(0.08) brightness(0.35) contrast(1.1);
-  transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.map-normal {
-  filter: none;
-  transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Map desaturation classes removed — no longer using Google Maps 3D */

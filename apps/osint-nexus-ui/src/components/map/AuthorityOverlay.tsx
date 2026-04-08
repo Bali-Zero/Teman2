@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
@@ -19,20 +18,6 @@ export function AuthorityOverlay() {
       ? `/api/graph/official/${encodeURIComponent(state.selectedOfficial)}`
       : null
   );
-
-  useEffect(() => {
-    const mapEl = document.querySelector('gmp-map-3d') as HTMLElement | null;
-    if (mapEl) {
-      mapEl.classList.add('map-desaturated');
-      mapEl.classList.remove('map-normal');
-    }
-    return () => {
-      if (mapEl) {
-        mapEl.classList.remove('map-desaturated');
-        mapEl.classList.add('map-normal');
-      }
-    };
-  }, []);
 
   const latestYear = officialDetail?.lhkpn_years[officialDetail.lhkpn_years.length - 1];
   const latestAssets = latestYear ? officialDetail?.assets_by_year[latestYear] : null;
