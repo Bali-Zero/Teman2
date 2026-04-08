@@ -346,7 +346,8 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         context_block = "\n".join(context_lines)
         query = f"Recent conversation:\n{context_block}\n\nCurrent question: {query}"
 
-    # SSE response
+    # SSE response — CORS headers MUST be set before prepare() for StreamResponse
+    origin = request.headers.get("Origin", "")
     response = web.StreamResponse(
         status=200,
         headers={
@@ -356,6 +357,9 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
             "X-Accel-Buffering": "no",
         },
     )
+    if origin in config.allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Gateway-Token"
     await response.prepare(request)
 
     try:
