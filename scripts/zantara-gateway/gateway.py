@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 from aiohttp import web
 
+from acp_client import ACPGeminiClient
 from config import GatewayConfig, load_config
 from mcp_client import MCPToolClient
 
@@ -362,41 +363,58 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Gateway-Token"
     await response.prepare(request)
 
+    acp: ACPGeminiClient = request.app["acp_client"]
+    streamed = False
+
     try:
-        # Try Gemini CLI first, with keepalive heartbeats
-        try:
-            heartbeat_task = asyncio.create_task(_send_heartbeats(response))
+        # ── Path 1: ACP persistent (instant, no cold start) ──
+        if acp.is_ready():
             try:
-                async for sse_line in stream_gemini_cli(query, config):
+                async for sse_line in acp.prompt_stream(query):
                     await response.write(sse_line.encode("utf-8"))
-            finally:
-                heartbeat_task.cancel()
-        except Exception as e:
-            logger.warning("Gemini CLI failed (%s), falling back to Ollama", e)
+                    streamed = True
+                if streamed:
+                    await response.write_eof()
+                    return response
+            except Exception as e:
+                logger.warning("ACP failed (%s), trying CLI spawn", e)
 
-            # Notify client about fallback
-            fallback_msg = json.dumps({
-                "type": "system",
-                "data": "Switching to local model...",
-            })
+        # ── Path 2: Gemini CLI spawn (cold start ~10s, with heartbeat) ──
+        if not streamed:
+            try:
+                heartbeat_task = asyncio.create_task(_send_heartbeats(response))
+                try:
+                    async for sse_line in stream_gemini_cli(query, config):
+                        await response.write(sse_line.encode("utf-8"))
+                        streamed = True
+                finally:
+                    heartbeat_task.cancel()
+                if streamed:
+                    await response.write_eof()
+                    return response
+            except Exception as e:
+                logger.warning("Gemini CLI spawn failed (%s), falling back to Ollama", e)
+
+        # ── Path 3: Ollama fallback ──
+        if not streamed:
+            fallback_msg = json.dumps({"type": "system", "data": "Switching to local model..."})
             await response.write(f"data: {fallback_msg}\n\n".encode("utf-8"))
-
             try:
                 async for sse_line in stream_ollama_react(query, config, mcp_client):
                     await response.write(sse_line.encode("utf-8"))
             except Exception as e2:
-                logger.error("Ollama fallback also failed: %s", e2)
-                error_msg = json.dumps({
-                    "type": "error",
-                    "data": f"Both Gemini CLI and Ollama failed: {e2}",
-                })
+                logger.error("All paths failed: %s", e2)
+                error_msg = json.dumps({"type": "error", "data": f"All AI backends unavailable: {e2}"})
                 await response.write(f"data: {error_msg}\n\n".encode("utf-8"))
                 await response.write(b"data: [DONE]\n\n")
 
     except ConnectionResetError:
         logger.info("Client disconnected")
     finally:
-        await response.write_eof()
+        try:
+            await response.write_eof()
+        except Exception:
+            pass
 
     return response
 
@@ -423,10 +441,13 @@ async def handle_health(request: web.Request) -> web.Response:
     except Exception:
         pass
 
-    status = "healthy" if (gemini_ok or ollama_ok) else "degraded"
+    acp: ACPGeminiClient = request.app["acp_client"]
+    acp_ready = acp.is_ready()
+    status = "healthy" if (acp_ready or gemini_ok or ollama_ok) else "degraded"
 
     return web.json_response({
         "status": status,
+        "acp_persistent": acp_ready,
         "gemini_cli": gemini_ok,
         "ollama": {
             "reachable": ollama_ok,
@@ -497,8 +518,16 @@ async def cors_middleware(
 
 
 async def on_startup(app: web.Application) -> None:
-    """Start MCP client in background — don't block HTTP server startup."""
+    """Start ACP + MCP clients in background — don't block HTTP server."""
+    acp: ACPGeminiClient = app["acp_client"]
     mcp_client: MCPToolClient = app["mcp_client"]
+
+    async def _connect_acp() -> None:
+        try:
+            await asyncio.wait_for(acp.connect(), timeout=30)
+            logger.info("ACP persistent Gemini CLI connected (pid=%d)", acp._proc.pid)
+        except Exception as e:
+            logger.warning("ACP connect failed: %s — will use CLI spawn fallback", e)
 
     async def _connect_mcp() -> None:
         try:
@@ -506,24 +535,29 @@ async def on_startup(app: web.Application) -> None:
             tools = await mcp_client.get_tool_definitions()
             logger.info("MCP client connected, %d tools available", len(tools))
         except asyncio.TimeoutError:
-            logger.warning("MCP client connect timed out after 30s — Ollama fallback will run without tools")
+            logger.warning("MCP client timed out — Ollama fallback without tools")
         except Exception as e:
-            logger.warning(
-                "MCP client failed to connect: %s — Ollama fallback will run without tools", e
-            )
+            logger.warning("MCP client failed: %s — Ollama fallback without tools", e)
 
-    # Launch in background so HTTP server can start accepting requests immediately
+    # Launch both in background
+    asyncio.create_task(_connect_acp())
     asyncio.create_task(_connect_mcp())
 
 
 async def on_shutdown(app: web.Application) -> None:
-    """Stop MCP client on app shutdown."""
+    """Stop ACP + MCP clients on app shutdown."""
+    acp: ACPGeminiClient = app["acp_client"]
     mcp_client: MCPToolClient = app["mcp_client"]
     try:
-        await mcp_client.close()
-        logger.info("MCP client disconnected")
+        await acp.close()
+        logger.info("ACP client closed")
     except Exception as e:
-        logger.warning("MCP client shutdown error: %s", e)
+        logger.warning("ACP shutdown error: %s", e)
+    try:
+        await mcp_client.close()
+        logger.info("MCP client closed")
+    except Exception as e:
+        logger.warning("MCP shutdown error: %s", e)
 
 
 # ── App factory ──────────────────────────────────────────────────────────
@@ -538,10 +572,15 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
         role=config.role,
         agent_name=config.agent_name,
     )
+    acp_client = ACPGeminiClient(
+        gemini_path=shutil.which("gemini") or "gemini",
+        cwd=config.tls_cert.rsplit("/", 2)[0] if "/" in config.tls_cert else ".",
+    )
 
     app = web.Application(middlewares=[cors_middleware])
     app["config"] = config
     app["mcp_client"] = mcp_client
+    app["acp_client"] = acp_client
 
     app.router.add_post("/v1/chat", handle_chat)
     app.router.add_get("/health", handle_health)
