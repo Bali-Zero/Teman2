@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { runQuery } from '@/lib/neo4j';
 import { QUERIES } from '@/lib/queries';
-import type { YearlyAssets, OfficialProfile, OfficialConnections } from '@/lib/types';
+import type {
+  YearlyAssets, OfficialProfile, OfficialConnections,
+  FamilyConnection, MetWithConnection, SupervisionConnection,
+  AlumniConnection, WorkplaceConnection,
+} from '@/lib/types';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
@@ -19,9 +23,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
         items: Array<Record<string, unknown>>;
       }>(QUERIES.officialAssets, { name: officialName }),
       runQuery<{
-        family: Array<{ name: string; type: string }>;
-        met_with: Array<{ name: string; type: string }>;
-        supervises: Array<{ name: string; rel: string }>;
+        family: FamilyConnection[];
+        met_with: MetWithConnection[];
+        subordinates: SupervisionConnection[];
+        supervisors: SupervisionConnection[];
+        alumni: AlumniConnection[];
+        children: { name: string }[];
+        workplaces: WorkplaceConnection[];
       }>(QUERIES.officialConnections, { name: officialName }),
     ]);
 
@@ -50,9 +58,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
       ? {
           family: (rawConnections.family ?? []).filter((f) => f && f.name),
           met_with: (rawConnections.met_with ?? []).filter((m) => m && m.name),
-          supervises: (rawConnections.supervises ?? []).filter((s) => s && s.name),
+          subordinates: (rawConnections.subordinates ?? []).filter((s) => s && s.name),
+          supervisors: (rawConnections.supervisors ?? []).filter((s) => s && s.name),
+          alumni: (rawConnections.alumni ?? []).filter((a) => a && a.name),
+          children: (rawConnections.children ?? []).filter((c) => c && c.name),
+          workplaces: (rawConnections.workplaces ?? []).filter((w) => w && w.name),
         }
-      : { family: [], met_with: [], supervises: [] };
+      : { family: [], met_with: [], subordinates: [], supervisors: [], alumni: [], children: [], workplaces: [] };
 
     const assetsByYear: Record<number, YearlyAssets> = {};
     const years = new Set<number>();
