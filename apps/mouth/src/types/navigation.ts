@@ -39,6 +39,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
+      { title: "Terminal", href: "/terminal", icon: "Terminal" },
       {
         title: "Zantara AI",
         href: "https://zantara.balizero.com",
@@ -130,6 +131,7 @@ export const routeTitles: Record<string, string> = {
   "/intelligence/visa-oracle": "Visa Oracle",
   "/intelligence/news-room": "News Room",
   "/intelligence/system-pulse": "System Pulse",
+  "/terminal": "Terminal",
   "/chat": "Zantara AI",
   "/whatsapp": "WhatsApp",
   "/clients": "Clients",

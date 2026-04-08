@@ -10,13 +10,21 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import {
+  MessageCircle,
+  X,
+  Send,
+  Loader2,
+  SquareArrowOutUpRight,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 import { api } from "@/lib/api";
 import { sendChat } from "@/lib/gateway";
+import { TERMINAL_HANDOFF_KEY } from "@/components/terminal/types";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -174,6 +182,25 @@ export function WorkspaceAssistant() {
     }
   }, [input, isStreaming, messages, userEmail, pathname]);
 
+  // Persist the current conversation to localStorage so that the full
+  // `/terminal` page can seed its block list on mount. We strip any
+  // in-progress streaming message to avoid transferring partial content.
+  const handleOpenInTerminal = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const history = messages
+        .filter((m) => !m.isStreaming && m.content.trim().length > 0)
+        .map((m) => ({ role: m.role, content: m.content }));
+      window.localStorage.setItem(
+        TERMINAL_HANDOFF_KEY,
+        JSON.stringify({ history, createdAt: Date.now() }),
+      );
+    } catch {
+      // Quota or serialization failure — ignore, terminal will start fresh.
+    }
+    setOpen(false);
+  }, [messages]);
+
   // Don't render for clients (portal users)
   if (userRole === "client") return null;
 
@@ -204,13 +231,24 @@ export function WorkspaceAssistant() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label="Close assistant"
-            >
-              <X className="w-4 h-4 text-white/50" />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/terminal"
+                onClick={handleOpenInTerminal}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Open in terminal"
+                title="Open in terminal"
+              >
+                <SquareArrowOutUpRight className="w-4 h-4 text-white/50" />
+              </Link>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Close assistant"
+              >
+                <X className="w-4 h-4 text-white/50" />
+              </button>
+            </div>
           </div>
 
           {/* Messages */}
