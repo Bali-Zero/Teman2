@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
 import { PROVINCIAL_CAMERAS } from '@/lib/geo';
@@ -83,7 +84,13 @@ export function ProvincialMap() {
         );
       })}
 
-      <div className="absolute left-4 top-16 bottom-12 pointer-events-auto" style={{ width: 360 }}>
+      <motion.div
+        initial={{ x: -380, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="absolute left-4 top-16 bottom-12 pointer-events-auto"
+        style={{ width: 360 }}
+      >
         <ObsidianPanel className="h-full overflow-y-auto p-5">
           <div className="mb-5">
             <div className="font-[family-name:var(--font-display)] text-[15px] font-bold tracking-[0.08em] uppercase text-[var(--sg-text-primary)]">
@@ -139,7 +146,7 @@ export function ProvincialMap() {
             </div>
           )}
         </ObsidianPanel>
-      </div>
+      </motion.div>
     </div>
   );
 }

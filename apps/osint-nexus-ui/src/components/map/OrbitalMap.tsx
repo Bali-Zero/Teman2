@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Script from 'next/script';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
@@ -99,6 +100,7 @@ export function OrbitalMap() {
       <div ref={mapContainerRef} className="absolute inset-0" />
       <PulseRing containerRef={mapContainerRef} />
 
+      <AnimatePresence>
       {state.level === 'orbital' && data?.provinces.map((prov) => {
         const pos = spherePositions.get(prov.name);
         if (!pos) return null;
@@ -107,8 +109,12 @@ export function OrbitalMap() {
         const opacity = sphereOpacity(prov.official_count);
 
         return (
-          <div
+          <motion.div
             key={prov.name}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ duration: 0.4 }}
             className="absolute cursor-pointer group"
             style={{
               left: pos.x - radius,
@@ -148,9 +154,10 @@ export function OrbitalMap() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         );
       })}
+      </AnimatePresence>
     </>
   );
 }
