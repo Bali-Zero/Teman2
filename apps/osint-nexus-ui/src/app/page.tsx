@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNeo4j } from '@/hooks/useNeo4j';
-import { OfficialsList, type OfficialListItem } from '@/components/dashboard/OfficialsList';
+import { OfficialsList, type OfficialListItem, type OfficialsListHandle } from '@/components/dashboard/OfficialsList';
 import { OrganizationsList } from '@/components/dashboard/OrganizationsList';
 import { OfficialProfile } from '@/components/dashboard/OfficialProfile';
 import { AssetTimeline } from '@/components/dashboard/AssetTimeline';
@@ -18,6 +18,7 @@ type LeftTab = 'officials' | 'organizations';
 export default function Home() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>('officials');
+  const officialsListRef = useRef<OfficialsListHandle>(null);
 
   // Fetch all officials
   const { data: officialsData, loading: officialsLoading } = useNeo4j<{ officials: OfficialListItem[] }>(
@@ -73,6 +74,17 @@ export default function Home() {
   const officials = officialsData?.officials ?? [];
   const organizations = orgsData?.organizations ?? [];
 
+  // Compute connection counts from relationships data
+  const connectionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (!relsData?.relationships) return counts;
+    for (const rel of relsData.relationships) {
+      counts.set(rel.from, (counts.get(rel.from) ?? 0) + 1);
+      counts.set(rel.to, (counts.get(rel.to) ?? 0) + 1);
+    }
+    return counts;
+  }, [relsData]);
+
   // Top 10 holders for overview
   const topHolders = useMemo(() => {
     return officials
@@ -85,10 +97,35 @@ export default function Home() {
     setSelectedName((prev) => (prev === name ? null : name));
   }, []);
 
+  // Keyboard navigation: arrow up/down in the officials list
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Only handle when not typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if (leftTab !== 'officials') return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        officialsListRef.current?.navigateDown();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        officialsListRef.current?.navigateUp();
+      } else if (e.key === 'Escape') {
+        setSelectedName(null);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [leftTab]);
+
   // Header stats text
   const headerText = stats
     ? `${formatNumber(stats.officials)} Officials \u00b7 ${formatNumber(stats.lhkpn_reports)} LHKPN \u00b7 ${formatNumber(stats.nodes)} Nodes \u00b7 ${formatNumber(organizations.length)} Orgs`
     : 'Loading...';
+
+  const showProfile = selectedName !== null;
 
   return (
     <div className="flex flex-col w-screen h-screen bg-[var(--sg-base)]">
@@ -143,9 +180,11 @@ export default function Home() {
                 </div>
               ) : (
                 <OfficialsList
+                  ref={officialsListRef}
                   officials={officials}
                   selected={selectedName}
                   anomalyNames={anomalyNames}
+                  connectionCounts={connectionCounts}
                   onSelect={handleSelect}
                 />
               )
@@ -158,8 +197,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Center Panel: Profile or Overview */}
-        <div className="flex-1 min-w-0 overflow-hidden">
+        {/* Center Panel: Profile or Overview — thin left border when showing profile */}
+        <div className={`flex-1 min-w-0 overflow-hidden ${showProfile ? 'border-l border-[var(--sg-border-copper)]' : ''}`}>
           {selectedName && officialDetail && !detailLoading ? (
             <OfficialProfile detail={officialDetail} loading={false} onSelectOfficial={handleSelect} />
           ) : selectedName && detailLoading ? (
@@ -183,6 +222,8 @@ export default function Home() {
               hierarchy={hierarchyData?.part_of}
               supervisesChains={hierarchyData?.supervises}
               persons={personsData?.persons}
+              officials={officials}
+              connectionCounts={connectionCounts}
             />
           )}
         </div>
@@ -212,7 +253,7 @@ export default function Home() {
       {/* Footer status bar */}
       <footer className="flex items-center justify-between px-6 py-2 border-t border-[var(--sg-border)] bg-[var(--sg-base-deep)] shrink-0">
         <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-[var(--sg-text-ghost)]">
-          SISMOGRAFO DEL POTERE v0.2
+          SISMOGRAFO DEL POTERE v0.3
         </span>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--sg-clean)]" />
