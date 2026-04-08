@@ -248,6 +248,32 @@ def run_translate(slug: str, category: str) -> bool:
     wait_for_ollama_free()
     translate_script = SCRIPT_DIR.parent.parent.parent / "scripts" / "translate-articles.py"
     log(f"  ▶ Translating {slug} (4 langs)")
+
+    # Ensure the MDX file exists locally before translating.
+    # The news-room pushes to GitHub but the local repo may lag behind.
+    repo_root = SCRIPT_DIR.parent.parent.parent
+    mdx_local = repo_root / "apps" / "mouth" / "src" / "content" / "articles" / category / f"{slug}.mdx"
+    if not mdx_local.exists():
+        log(f"  ⚠ MDX not found locally — pulling from GitHub")
+        try:
+            import base64 as _b64
+            gh_result = subprocess.run(
+                ["gh", "api", f"repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/apps/mouth/src/content/articles/{category}/{slug}.mdx"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if gh_result.returncode == 0:
+                import json as _json
+                data = _json.loads(gh_result.stdout)
+                content = _b64.b64decode(data["content"]).decode("utf-8")
+                mdx_local.parent.mkdir(parents=True, exist_ok=True)
+                mdx_local.write_text(content, encoding="utf-8")
+                log(f"  ✅ MDX pulled from GitHub ({len(content)} chars)")
+            else:
+                log(f"  ❌ MDX not on GitHub either — cannot translate")
+                return False
+        except Exception as e:
+            log(f"  ❌ GitHub pull error: {e}")
+            return False
     result = subprocess.run(
         [str(VENV_PYTHON), str(translate_script), "--slug", slug, "--category", category, "--lang", "all"],
         capture_output=True, text=True, timeout=15 * 60,
