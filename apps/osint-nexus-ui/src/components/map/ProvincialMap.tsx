@@ -4,12 +4,19 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
-import { PROVINCIAL_CAMERAS } from '@/lib/geo';
 import { formatRupiah, formatDelta } from '@/lib/format';
 import type { ProvinceDetail } from '@/lib/types';
 import { ObsidianPanel } from '@/components/ui/ObsidianPanel';
 import { RedactedText } from '@/components/ui/RedactedText';
 import { DataPylon } from '@/components/ui/DataPylon';
+
+/** Project Bali lat/lng to screen pixel coordinates */
+function baliToScreen(lat: number, lng: number, width: number, height: number) {
+  // Bali spans roughly lat -8.85 to -8.05, lng 114.4 to 115.7
+  const x = ((lng - 114.4) / (115.7 - 114.4)) * width;
+  const y = ((lat - (-8.05)) / (-8.85 - (-8.05))) * height;
+  return { x, y };
+}
 
 export function ProvincialMap() {
   const { state, dispatch } = useLevel();
@@ -17,57 +24,27 @@ export function ProvincialMap() {
   const { data } = useNeo4j<ProvinceDetail>(
     province ? `/api/graph/province/${encodeURIComponent(province)}` : null
   );
-  const [pylonPositions, setPylonPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [dimensions, setDimensions] = useState({ width: 1440, height: 900 });
 
   useEffect(() => {
-    if (!province) return;
-    const cam = PROVINCIAL_CAMERAS[province];
-    if (!cam) return;
-
-    const mapEl = document.querySelector('gmp-map-3d') as any;
-    if (mapEl?.flyCameraTo) {
-      mapEl.flyCameraTo({
-        endCamera: {
-          center: { lat: cam.lat, lng: cam.lng, altitude: 0 },
-          tilt: cam.tilt,
-          range: cam.range,
-          heading: 0,
-        },
-        durationMillis: 1800,
-      });
-    }
-  }, [province]);
-
-  useEffect(() => {
-    if (!data?.institutions) return;
-    const mapEl = document.querySelector('gmp-map-3d') as any;
-    if (!mapEl?.convertLocationToScreenPoint) return;
-
-    const update = () => {
-      const newPos = new Map<string, { x: number; y: number }>();
-      for (const inst of data.institutions) {
-        try {
-          const pt = mapEl.convertLocationToScreenPoint({
-            lat: inst.lat, lng: inst.lng, altitude: 0,
-          });
-          if (pt) newPos.set(inst.name, { x: pt.x, y: pt.y });
-        } catch { /* off-screen */ }
-      }
-      setPylonPositions(newPos);
-    };
-
+    const update = () =>
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
     update();
-    const interval = setInterval(update, 200);
-    return () => clearInterval(interval);
-  }, [data]);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   if (!data || !province) return null;
 
   return (
-    <div className="absolute inset-0 z-20 pointer-events-none">
+    <motion.div
+      className="absolute inset-0 z-20 pointer-events-none"
+      initial={{ opacity: 0, scale: 1.05 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+    >
       {data.institutions.map((inst, i) => {
-        const pos = pylonPositions.get(inst.name);
-        if (!pos) return null;
+        const pos = baliToScreen(inst.lat, inst.lng, dimensions.width, dimensions.height);
         return (
           <div key={inst.name} className="pointer-events-auto">
             <DataPylon
@@ -135,11 +112,11 @@ export function ProvincialMap() {
               </div>
               {data.anomalies.map((a) => (
                 <div key={`${a.official}-${a.year}`} className="flex items-center gap-2 py-1.5">
-                  <span className="text-[var(--sg-anomaly)] text-[10px]">⚠</span>
+                  <span className="text-[var(--sg-anomaly)] text-[10px]">&#x26A0;</span>
                   <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-amber)]">
                     {formatDelta(a.delta_pct)} assets YoY
                   </span>
-                  <span className="text-[var(--sg-text-ghost)]">—</span>
+                  <span className="text-[var(--sg-text-ghost)]">&mdash;</span>
                   <RedactedText text={a.official} className="font-[family-name:var(--font-mono)] text-[10px]" />
                 </div>
               ))}
@@ -147,7 +124,7 @@ export function ProvincialMap() {
           )}
         </ObsidianPanel>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
