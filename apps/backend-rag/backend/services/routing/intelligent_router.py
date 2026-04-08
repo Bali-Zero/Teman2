@@ -37,10 +37,7 @@ class IntelligentRouter:
         self.collaborator_service = collaborator_service
         self.db_pool = db_pool
 
-        # Initialize Context Suggestion Service (Phase 3 Proactive AI)
-        from backend.services.misc.context_suggestion_service import get_context_suggestion_service
 
-        self.context_suggestion_service = get_context_suggestion_service(db_pool=db_pool)
 
         # Initialize Clarification Service
         from backend.services.misc.clarification_service import ClarificationService
@@ -144,35 +141,7 @@ class IntelligentRouter:
             if routing_stats:
                 response_data["routing_stats"] = routing_stats
 
-            # Phase 3: Add proactive context suggestions
-            if include_suggestions:
-                try:
-                    suggestions = await self.context_suggestion_service.get_suggestions(
-                        query=message,
-                        user_id=user_id,
-                        response=answer,  # Use the extracted answer
-                        conversation_history=conversation_history,
-                    )
 
-                    if suggestions:
-                        response_data["suggestions"] = [
-                            {
-                                "id": s.suggestion_id,
-                                "type": s.suggestion_type.value,
-                                "priority": s.priority.value,
-                                "title": s.title,
-                                "description": s.description,
-                                "action_label": s.action_label,
-                                "action_payload": s.action_payload,
-                                "icon": s.icon,
-                            }
-                            for s in suggestions
-                        ]
-                        logger.info(f"💡 [Router] Added {len(suggestions)} proactive suggestions")
-
-                except Exception as e:
-                    logger.warning(f"⚠️ [Router] Failed to get suggestions: {e}")
-                    # Don't fail the whole request if suggestions fail
 
             return response_data
 
