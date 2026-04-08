@@ -12,6 +12,23 @@ export function getDriver(): Driver {
   return driver;
 }
 
+/** Recursively convert Neo4j Integer objects ({low, high}) to JS numbers */
+function toNative(val: unknown): unknown {
+  if (val === null || val === undefined) return val;
+  if (typeof val === 'object' && val !== null && 'toNumber' in val) {
+    return (val as { toNumber(): number }).toNumber();
+  }
+  if (Array.isArray(val)) return val.map(toNative);
+  if (typeof val === 'object' && val !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(val)) {
+      out[k] = toNative(v);
+    }
+    return out;
+  }
+  return val;
+}
+
 export async function runQuery<T>(
   cypher: string,
   params: Record<string, unknown> = {}
@@ -22,10 +39,7 @@ export async function runQuery<T>(
     return result.records.map((r) => {
       const obj: Record<string, unknown> = {};
       r.keys.forEach((key) => {
-        const val = r.get(key);
-        obj[key as string] = typeof val === 'object' && val !== null && 'toNumber' in val
-          ? (val as { toNumber(): number }).toNumber()
-          : val;
+        obj[key as string] = toNative(r.get(key));
       });
       return obj as T;
     });
