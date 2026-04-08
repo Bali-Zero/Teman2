@@ -5,23 +5,10 @@
 
 // ─── Enums ────────────────────────────────────────────────────────────
 
-export type BonusStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "paid"
-  | "reversed";
-export type PayrollStatus = "draft" | "calculated" | "approved" | "paid";
-export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
-export type PTKPStatus =
-  | "TK/0"
-  | "TK/1"
-  | "TK/2"
-  | "TK/3"
-  | "K/0"
-  | "K/1"
-  | "K/2"
-  | "K/3";
+export type BonusStatus = 'pending' | 'approved' | 'rejected' | 'paid' | 'reversed';
+export type PayrollStatus = 'draft' | 'calculated' | 'approved' | 'paid';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type PTKPStatus = 'TK/0' | 'TK/1' | 'TK/2' | 'TK/3' | 'K/0' | 'K/1' | 'K/2' | 'K/3';
 
 // ─── Employees ────────────────────────────────────────────────────────
 
@@ -201,6 +188,19 @@ export interface LeaveRequest {
   rejection_reason: string | null;
   employee_name: string;
   employee_email: string;
+}
+
+export interface TeamLeaveSummaryRow {
+  employee_name: string;
+  email: string;
+  employee_id: number;
+  leave_type: string;
+  leave_type_name: string;
+  allocated_days: number;
+  used_days: number;
+  pending_days: number;
+  carried_over: number;
+  remaining_days: number;
 }
 
 export interface LeaveRequestPayload {
