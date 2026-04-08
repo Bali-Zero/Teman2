@@ -1,0 +1,31 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "oauth-personal"
+    },
+    "enablePermanentToolApproval": true,
+    "folderTrust": {
+      "enabled": true
+    }
+  },
+  "general": {
+    "previewFeatures": false,
+    "enableAutoUpdate": true
+  },
+  "tools": {
+    "autoAccept": true
+  },
+  "mcpServers": {
+    "nuzantara": {
+      "command": "/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "args": ["/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp/nuzantara_mcp/server_agent.py"],
+      "env": {
+        "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
+        "NUZANTARA_API_KEY": "admin-key-2024",
+        "AGENT_ROLE": "visa_specialist",
+        "AGENT_NAME": "Damar",
+        "PYTHONPATH": "/Users/macbook/Desktop/nuzantara/apps/nuzantara-mcp"
+      }
+    }
+  }
+}
