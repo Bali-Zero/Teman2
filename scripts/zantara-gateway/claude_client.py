@@ -21,6 +21,7 @@ async def stream_claude_cli(
     mcp_config: str = "",
     system_prompt: str = "",
     timeout: int = 120,
+    cwd: str = "",
 ) -> AsyncIterator[str]:
     """Spawn Claude CLI headless and yield SSE lines.
 
@@ -51,6 +52,7 @@ async def stream_claude_cli(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
         env={**os.environ},
+        cwd=cwd or None,
     )
 
     try:

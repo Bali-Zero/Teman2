@@ -376,7 +376,18 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                 heartbeat_task = asyncio.create_task(_send_heartbeats(response))
                 try:
                     async for sse_line in stream_claude_cli(
-                        query, model="sonnet", timeout=config.gemini_timeout
+                        query,
+                        model="sonnet",
+                        timeout=config.gemini_timeout,
+                        cwd=str(Path.home() / "Desktop" / "nuzantara"),
+                        system_prompt=(
+                            "You are Zantara, the AI assistant for Zero (founder of Bali Zero). "
+                            "Zero is Italian, living in Bali. Bali Zero is a business services company "
+                            "(visa, company setup, tax, property) with 5000+ clients. "
+                            "You have access to MCP tools for CRM, content, intel, and communications. "
+                            "Respond in the user's language. Be concise and direct. "
+                            "Use tools for real data — never guess."
+                        ),
                     ):
                         await response.write(sse_line.encode("utf-8"))
                         streamed = True
