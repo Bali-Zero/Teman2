@@ -3,7 +3,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronLeft, ChevronRight, CheckCircle, XCircle, Clock, Plus } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Plus,
+  Users,
+  Calendar,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import * as hrApi from '@/lib/api/hr/hr';
@@ -491,6 +500,7 @@ export default function LeavePage() {
   const [teamSummary, setTeamSummary] = useState<TeamLeaveSummaryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminTab, setAdminTab] = useState<'team' | 'mine'>('team');
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
@@ -581,18 +591,41 @@ export default function LeavePage() {
         </Link>
       </div>
 
-      {/* Admin: pending count indicator */}
-      {isAdmin && pendingTeam.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-amber-400">
-          <Clock size={14} />
-          <span>
-            {pendingTeam.length} pending approval{pendingTeam.length > 1 ? 's' : ''}
-          </span>
+      {/* Admin tab switcher */}
+      {isAdmin && (
+        <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setAdminTab('team')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              adminTab === 'team'
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <Users size={14} />
+            Team
+            {pendingTeam.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-semibold leading-none">
+                {pendingTeam.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setAdminTab('mine')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              adminTab === 'mine'
+                ? 'bg-zinc-800 text-zinc-100'
+                : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            <Calendar size={14} />
+            My Leave
+          </button>
         </div>
       )}
 
       {/* TEAM VIEW */}
-      {isAdmin ? (
+      {isAdmin && adminTab === 'team' ? (
         <div className="space-y-6">
           <div>
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
