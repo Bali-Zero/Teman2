@@ -12,7 +12,7 @@ from backend.services.memory.memory_service_postgres import MemoryServicePostgre
 from backend.services.oracle.oracle_database import db_manager
 
 if TYPE_CHECKING:
-    from backend.services.misc.personality_service import PersonalityService
+    from typing import Any as PersonalityService
 
 logger = logging.getLogger(__name__)
 
