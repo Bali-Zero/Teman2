@@ -104,7 +104,7 @@ export const QUERIES = {
     OPTIONAL MATCH (o)-[r2:MET_WITH]-(met)
     OPTIONAL MATCH (o)-[r3:SUPERVISES]->(subordinate)
     OPTIONAL MATCH (supervisor)-[r4:SUPERVISES]->(o)
-    OPTIONAL MATCH (o)-[r5:ALUMNI]->(alumni)
+    OPTIONAL MATCH (o)-[r5:ALUMNI]-(alumni)
     OPTIONAL MATCH (o)-[r6:PARENT_OF]-(child)
     OPTIONAL MATCH (o)-[r7:WORKS_AT]->(org)
     WITH o,
