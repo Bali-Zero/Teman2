@@ -40,9 +40,26 @@ def _get_id() -> int:
 class ACPGeminiClient:
     """Persistent connection to Gemini CLI via ACP protocol."""
 
-    def __init__(self, gemini_path: str = "gemini", cwd: str = "."):
+    def __init__(
+        self,
+        gemini_path: str = "gemini",
+        cwd: str = ".",
+        mcp_server_command: str = "",
+        mcp_server_args: list[str] | None = None,
+        mcp_server_env: dict[str, str] | None = None,
+    ):
         self._gemini_path = gemini_path
         self._cwd = cwd
+        # MCP server config in ACP format
+        self._mcp_servers: list[dict] = []
+        if mcp_server_command:
+            env_list = [{"name": k, "value": v} for k, v in (mcp_server_env or {}).items()]
+            self._mcp_servers = [{
+                "name": "nuzantara",
+                "command": mcp_server_command,
+                "args": mcp_server_args or [],
+                "env": env_list,
+            }]
         self._proc: asyncio.subprocess.Process | None = None
         self._session_id: str = ""
         self._ready = False
@@ -84,11 +101,11 @@ class ACPGeminiClient:
             raise RuntimeError(f"ACP authenticate failed: {resp}")
         logger.info("ACP authenticated")
 
-        # Create session
+        # Create session with MCP servers
         resp = await self._rpc("session/new", {
             "cwd": self._cwd,
-            "mcpServers": [],
-        }, timeout=30)
+            "mcpServers": self._mcp_servers,
+        }, timeout=60)
         if not resp or "error" in resp:
             raise RuntimeError(f"ACP session/new failed: {resp}")
         self._session_id = resp.get("result", {}).get("sessionId", "")
