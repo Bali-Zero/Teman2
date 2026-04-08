@@ -4,10 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: { ignoreBuildErrors: false },
   poweredByHeader: false,
-  experimental: {
-    turbo: {
-      root: __dirname,
-    },
+  turbopack: {
+    root: __dirname,
   },
 };
 
