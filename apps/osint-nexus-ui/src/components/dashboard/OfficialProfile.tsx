@@ -31,9 +31,42 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
   const latestAssets = latestYear !== null ? assets_by_year[latestYear] : null;
 
   const totalAssets = latestAssets?.total ?? 0;
-  const propertyCount = latestAssets?.properties.length ?? 0;
-  const vehicleCount = latestAssets?.vehicles.length ?? 0;
   const cashAmount = latestAssets?.cash ?? 0;
+
+  // Aggregate ALL properties and vehicles across ALL years for total value
+  let totalPropertyValue = 0;
+  let totalVehicleValue = 0;
+  const allPropertiesByYear: { year: number; count: number }[] = [];
+  const allVehiclesByYear: { year: number; count: number }[] = [];
+  const allPropertyCities = new Set<string>();
+
+  for (const y of lhkpn_years) {
+    const ya = assets_by_year[y];
+    if (!ya) continue;
+    if (ya.properties.length > 0) {
+      allPropertiesByYear.push({ year: y, count: ya.properties.length });
+      for (const p of ya.properties) {
+        totalPropertyValue += p.nilai;
+        if (p.lokasi) {
+          // Extract city name (typically first word or before comma)
+          const city = p.lokasi.split(',')[0].split('/')[0].trim().toUpperCase();
+          if (city) allPropertyCities.add(city);
+        }
+      }
+    }
+    if (ya.vehicles.length > 0) {
+      allVehiclesByYear.push({ year: y, count: ya.vehicles.length });
+      for (const v of ya.vehicles) {
+        totalVehicleValue += v.nilai;
+      }
+    }
+  }
+
+  // Latest year properties/vehicles for display
+  const latestProperties = latestAssets?.properties ?? [];
+  const latestVehicles = latestAssets?.vehicles ?? [];
+  const propertyCount = latestProperties.length;
+  const vehicleCount = latestVehicles.length;
 
   // Check for anomalies
   const maxDelta = delta.length > 0
@@ -41,17 +74,30 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
     : null;
   const hasAnomaly = maxDelta && Math.abs(maxDelta.pct_change) > 30;
 
-  // Collect all properties and vehicles across all years (deduplicated by latest year)
-  const allProperties = latestAssets?.properties ?? [];
-  const allVehicles = latestAssets?.vehicles ?? [];
+  // Count ALL connections
+  const totalConnections =
+    (connections.family?.length ?? 0) +
+    (connections.met_with?.length ?? 0) +
+    (connections.subordinates?.length ?? 0) +
+    (connections.supervisors?.length ?? 0) +
+    (connections.alumni?.length ?? 0) +
+    (connections.children?.length ?? 0) +
+    (connections.workplaces?.length ?? 0);
 
-  // Personal info tags (only non-empty)
-  const personalTags: { label: string; value: string }[] = [];
-  if (profile.pangkat) personalTags.push({ label: 'Pangkat', value: profile.pangkat });
-  if (profile.angkatan) personalTags.push({ label: 'Angkatan', value: profile.angkatan });
-  if (profile.asal) personalTags.push({ label: 'Asal', value: profile.asal });
-  if (profile.agama) personalTags.push({ label: 'Agama', value: profile.agama });
-  if (profile.ttl) personalTags.push({ label: 'TTL', value: profile.ttl });
+  // Connection type summary
+  const connSummary: string[] = [];
+  if ((connections.supervisors?.length ?? 0) > 0) connSummary.push(`${connections.supervisors.length} supervisor`);
+  if ((connections.subordinates?.length ?? 0) > 0) connSummary.push(`${connections.subordinates.length} subordinate`);
+  if ((connections.alumni?.length ?? 0) > 0) connSummary.push(`${connections.alumni.length} alumni`);
+  if ((connections.family?.length ?? 0) > 0) connSummary.push(`${connections.family.length} family`);
+  if ((connections.met_with?.length ?? 0) > 0) connSummary.push(`${connections.met_with.length} met_with`);
+  if ((connections.workplaces?.length ?? 0) > 0) connSummary.push(`${connections.workplaces.length} workplace`);
+  if ((connections.children?.length ?? 0) > 0) connSummary.push(`${connections.children.length} child`);
+
+  // Property city summary
+  const citySummary = allPropertyCities.size > 0
+    ? `${propertyCount} propert${propertyCount === 1 ? 'y' : 'ies'} in ${[...allPropertyCities].join(', ')}`
+    : `${propertyCount} propert${propertyCount === 1 ? 'y' : 'ies'} declared`;
 
   // Connections availability
   const hasFamily = (connections.family?.length ?? 0) > 0;
@@ -63,14 +109,27 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
   const hasWorkplaces = (connections.workplaces?.length ?? 0) > 0;
   const hasConnections = hasFamily || hasMetWith || hasSubordinates || hasSupervisors || hasAlumni || hasChildren || hasWorkplaces;
 
+  // Parse TTL for display
+  let ttlDisplay: string | null = null;
+  if (profile.ttl) {
+    ttlDisplay = profile.ttl;
+  } else if (profile.asal) {
+    ttlDisplay = profile.asal;
+  }
+
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
-      {/* Header block */}
+    <div className="p-6 space-y-5 overflow-y-auto h-full">
+      {/* DOSSIER Header */}
       <div>
-        <h2 className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-[var(--sg-text-primary)]">
+        <div className="font-[family-name:var(--font-display)] text-[10px] font-bold tracking-[0.2em] uppercase text-[var(--sg-text-ghost)] mb-1">
+          DOSSIER
+        </div>
+        <div className="w-full h-[1px] bg-[var(--sg-copper)] opacity-40 mb-3" />
+
+        <h2 className="font-[family-name:var(--font-display)] text-[18px] font-semibold text-[var(--sg-text-primary)] leading-tight">
           {profile.name}
         </h2>
-        <div className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-ghost)] mt-1">
+        <div className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-copper)] mt-1 uppercase tracking-wide">
           {profile.jabatan || 'N/A'}
         </div>
         {/* Kantors */}
@@ -79,7 +138,6 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
             {profile.kantors.filter(Boolean).join(' \u00b7 ')}
           </div>
         )}
-        {/* Fallback single kantor */}
         {(!profile.kantors || profile.kantors.filter(Boolean).length === 0) && profile.kantor && (
           <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] mt-0.5">
             {profile.kantor}
@@ -90,28 +148,116 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
             NIP: {profile.nip}
           </div>
         )}
-
-        {/* Personal info tags */}
-        {personalTags.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mt-2">
-            {personalTags.map((tag) => (
-              <span
-                key={tag.label}
-                className="px-2 py-0.5 rounded text-[9px] font-[family-name:var(--font-mono)] bg-[var(--sg-base-deep)] text-[var(--sg-text-secondary)] border border-[var(--sg-border)]"
-              >
-                {tag.label}: {tag.value}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
-      {/* Connections block */}
+      {/* BIO Box */}
+      {(ttlDisplay || profile.pangkat || profile.angkatan || profile.agama) && (
+        <div className="p-3 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)]">
+          <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.1em] text-[var(--sg-text-ghost)] mb-2">
+            BIO
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+            {ttlDisplay && (
+              <BioField label="Lahir" value={ttlDisplay} />
+            )}
+            {profile.pangkat && (
+              <BioField label="Pangkat" value={profile.pangkat} />
+            )}
+            {profile.angkatan && (
+              <BioField label="Angkatan" value={profile.angkatan} />
+            )}
+            {profile.asal && !ttlDisplay?.includes(profile.asal) && (
+              <BioField label="Asal" value={profile.asal} />
+            )}
+            {profile.agama && (
+              <BioField label="Agama" value={profile.agama} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* INTEL SUMMARY Box */}
+      {lhkpn_years.length > 0 && (
+        <div className="p-3 rounded border border-[var(--sg-copper)] bg-[rgba(186,135,89,0.06)]">
+          <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.1em] text-[var(--sg-copper)] mb-2 font-bold">
+            INTEL SUMMARY
+          </div>
+          <div className="space-y-1.5">
+            {/* Anomaly line */}
+            {hasAnomaly && maxDelta && (
+              <IntelLine
+                icon={'\u{1F534}'}
+                text={`ANOMALY: ${maxDelta.pct_change >= 0 ? '+' : ''}${maxDelta.pct_change.toFixed(1)}% asset growth ${maxDelta.from_year}\u2192${maxDelta.to_year}`}
+                color="var(--sg-anomaly)"
+              />
+            )}
+            {/* LHKPN filings */}
+            <IntelLine
+              icon={'\u{1F4CA}'}
+              text={`${lhkpn_years.length} LHKPN filing${lhkpn_years.length === 1 ? '' : 's'} (${lhkpn_years[0]}-${lhkpn_years[lhkpn_years.length - 1]})`}
+            />
+            {/* Properties */}
+            <IntelLine
+              icon={'\u{1F3E0}'}
+              text={citySummary}
+            />
+            {/* Vehicles */}
+            <IntelLine
+              icon={'\u{1F697}'}
+              text={`${vehicleCount} vehicle${vehicleCount === 1 ? '' : 's'} declared`}
+            />
+            {/* Total declared */}
+            <IntelLine
+              icon={'\u{1F4B0}'}
+              text={`${formatRupiah(totalAssets)} total declared (${latestYear})`}
+              color="var(--sg-copper)"
+            />
+            {/* Cash */}
+            {cashAmount > 0 && (
+              <IntelLine
+                icon={'\u{1F4B5}'}
+                text={`${formatRupiah(cashAmount)} cash & equivalents (${latestYear})`}
+              />
+            )}
+            {/* Connections */}
+            {totalConnections > 0 && (
+              <IntelLine
+                icon={'\u{1F517}'}
+                text={`${totalConnections} connection${totalConnections === 1 ? '' : 's'} (${connSummary.join(', ')})`}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* No LHKPN data notice */}
+      {lhkpn_years.length === 0 && (
+        <div className="p-3 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)]">
+          <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.1em] text-[var(--sg-text-ghost)] mb-2 font-bold">
+            INTEL SUMMARY
+          </div>
+          <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-ghost)]">
+            No LHKPN data available for this official
+          </span>
+          {totalConnections > 0 && (
+            <div className="mt-2">
+              <IntelLine
+                icon={'\u{1F517}'}
+                text={`${totalConnections} connection${totalConnections === 1 ? '' : 's'} (${connSummary.join(', ')})`}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* CONNECTIONS block — prominent */}
       {hasConnections && (
-        <div className="p-4 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)]">
-          <div className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
+        <div>
+          <div className="font-[family-name:var(--font-display)] text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-ghost)] mb-3">
             CONNECTIONS
           </div>
+          <div className="w-full h-[1px] bg-[var(--sg-border)] mb-3" />
+
           <div className="space-y-4">
             {/* Supervisors (who supervises this official) */}
             {hasSupervisors && (
@@ -151,7 +297,7 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
                   {connections.children.map((c) => (
                     <span
                       key={c.name}
-                      className="inline-flex items-center px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)]"
+                      className="inline-flex items-center px-2.5 py-1.5 rounded text-[10px] font-[family-name:var(--font-mono)] border border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)]"
                     >
                       {c.name}
                     </span>
@@ -176,7 +322,7 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
               />
             )}
 
-            {/* Workplaces */}
+            {/* Workplaces — ALL types including Kanim_Office */}
             {hasWorkplaces && (
               <WorkplacesGroup
                 items={connections.workplaces}
@@ -187,48 +333,13 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
         </div>
       )}
 
-      {/* Summary cards */}
-      {lhkpn_years.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
-          <SummaryCard icon="Rp" label="TOTAL ASSETS" value={formatRupiah(totalAssets)} />
-          <SummaryCard icon="P" label="PROPERTIES" value={String(propertyCount)} />
-          <SummaryCard icon="V" label="VEHICLES" value={String(vehicleCount)} />
-          <SummaryCard icon="$" label="CASH" value={formatRupiah(cashAmount)} />
-        </div>
-      )}
-
-      {/* No LHKPN data */}
-      {lhkpn_years.length === 0 && (
-        <div className="p-4 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)]">
-          <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-ghost)]">
-            No LHKPN data available for this official
-          </span>
-        </div>
-      )}
-
-      {/* Anomaly banner */}
-      {hasAnomaly && maxDelta && (
-        <div className="p-3 rounded border border-[var(--sg-anomaly)] bg-[rgba(232,113,108,0.08)]">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--sg-anomaly)] text-[14px]">&#9888;</span>
-            <div>
-              <div className="font-[family-name:var(--font-display)] text-[12px] font-semibold text-[var(--sg-anomaly)]">
-                ANOMALY DETECTED
-              </div>
-              <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-secondary)] mt-0.5">
-                {maxDelta.from_year}&rarr;{maxDelta.to_year}: {maxDelta.pct_change >= 0 ? '+' : ''}{maxDelta.pct_change.toFixed(0)}% asset change
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* LHKPN years badge row */}
       {lhkpn_years.length > 0 && (
         <div>
-          <div className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-2">
+          <div className="font-[family-name:var(--font-display)] text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-ghost)] mb-2">
             LHKPN YEARS
           </div>
+          <div className="w-full h-[1px] bg-[var(--sg-border)] mb-2" />
           <div className="flex gap-1.5 flex-wrap">
             {lhkpn_years.map((y) => (
               <span
@@ -243,15 +354,56 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
       )}
 
       {/* Properties */}
-      {allProperties.length > 0 && <PropertyCards properties={allProperties} />}
+      {latestProperties.length > 0 && (
+        <div>
+          <div className="font-[family-name:var(--font-display)] text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-ghost)] mb-2">
+            PROPERTIES &middot; {latestProperties.length}
+          </div>
+          <div className="w-full h-[1px] bg-[var(--sg-border)] mb-2" />
+          <PropertyCards properties={latestProperties} />
+        </div>
+      )}
 
       {/* Vehicles */}
-      {allVehicles.length > 0 && <VehicleCards vehicles={allVehicles} />}
+      {latestVehicles.length > 0 && (
+        <div>
+          <div className="font-[family-name:var(--font-display)] text-[11px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-ghost)] mb-2">
+            VEHICLES &middot; {latestVehicles.length}
+          </div>
+          <div className="w-full h-[1px] bg-[var(--sg-border)] mb-2" />
+          <VehicleCards vehicles={latestVehicles} />
+        </div>
+      )}
     </div>
   );
 }
 
-/* ─── Family Group ─── */
+/* --- BIO Field --- */
+function BioField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)]">{label}: </span>
+      <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-primary)] font-medium">{value}</span>
+    </div>
+  );
+}
+
+/* --- Intel Line --- */
+function IntelLine({ icon, text, color }: { icon: string; text: string; color?: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span className="text-[12px] shrink-0 leading-[18px]">{icon}</span>
+      <span
+        className="font-[family-name:var(--font-mono)] text-[10px] leading-[18px]"
+        style={{ color: color ?? 'var(--sg-text-secondary)' }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/* --- Family Group --- */
 function FamilyGroup({
   items,
   onSelect,
@@ -272,10 +424,10 @@ function FamilyGroup({
               <button
                 onClick={() => isOfficial && onSelect?.(item.name)}
                 disabled={!isOfficial || !onSelect}
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border transition-colors self-start ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-[family-name:var(--font-mono)] border transition-colors self-start ${
                   isOfficial
-                    ? 'border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)] hover:bg-[rgba(232,168,73,0.12)] cursor-pointer'
-                    : 'border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)] cursor-default'
+                    ? 'border-[rgba(232,168,73,0.2)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)] hover:bg-[rgba(232,168,73,0.12)] cursor-pointer'
+                    : 'border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.04)] text-[var(--sg-amber)] cursor-default'
                 }`}
               >
                 {item.name}
@@ -297,7 +449,7 @@ function FamilyGroup({
   );
 }
 
-/* ─── Met With Group — context prominently displayed ─── */
+/* --- Met With Group --- */
 function MetWithGroup({
   items,
   onSelect,
@@ -316,7 +468,7 @@ function MetWithGroup({
           return (
             <div
               key={`${item.name}-${item.context ?? ''}`}
-              className="p-2 rounded border border-[rgba(139,156,247,0.12)] bg-[rgba(139,156,247,0.04)]"
+              className="p-2.5 rounded border border-[rgba(139,156,247,0.15)] bg-[rgba(139,156,247,0.04)]"
             >
               <div className="flex items-center gap-2">
                 <button
@@ -334,7 +486,6 @@ function MetWithGroup({
                   {item.type}
                 </span>
               </div>
-              {/* Context is KEY intel — display prominently */}
               {item.context && (
                 <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-periwinkle)] mt-1 opacity-80">
                   &ldquo;{item.context}&rdquo;
@@ -353,7 +504,7 @@ function MetWithGroup({
   );
 }
 
-/* ─── Supervision Group ─── */
+/* --- Supervision Group --- */
 function SupervisionGroup({
   label,
   items,
@@ -374,17 +525,17 @@ function SupervisionGroup({
       <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
         {label}
       </div>
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="space-y-1.5">
         {items.map((item) => (
           <button
             key={item.name}
             onClick={() => onSelect?.(item.name)}
-            className="inline-flex flex-col items-start px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border transition-colors cursor-pointer hover:opacity-80"
+            className="w-full text-left flex flex-col items-start px-3 py-2 rounded text-[11px] font-[family-name:var(--font-mono)] border transition-colors cursor-pointer hover:opacity-80"
             style={{ borderColor, backgroundColor: bgColor, color: textColor }}
           >
-            <span>{item.name}</span>
+            <span className="font-medium">{item.name}</span>
             {item.jabatan && (
-              <span className="text-[8px] opacity-60">{item.jabatan}</span>
+              <span className="text-[9px] opacity-60 mt-0.5">{item.jabatan}</span>
             )}
           </button>
         ))}
@@ -393,7 +544,7 @@ function SupervisionGroup({
   );
 }
 
-/* ─── Alumni Group ─── */
+/* --- Alumni Group --- */
 function AlumniGroup({
   items,
   onSelect,
@@ -411,7 +562,7 @@ function AlumniGroup({
           <button
             key={item.name}
             onClick={() => onSelect?.(item.name)}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border border-[rgba(94,196,144,0.15)] bg-[rgba(94,196,144,0.06)] text-[var(--sg-clean)] hover:bg-[rgba(94,196,144,0.12)] cursor-pointer transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-[family-name:var(--font-mono)] border border-[rgba(94,196,144,0.2)] bg-[rgba(94,196,144,0.06)] text-[var(--sg-clean)] hover:bg-[rgba(94,196,144,0.12)] cursor-pointer transition-colors"
           >
             {item.name}
             {item.angkatan && (
@@ -424,7 +575,7 @@ function AlumniGroup({
   );
 }
 
-/* ─── Workplaces Group ─── */
+/* --- Workplaces Group --- show ALL workplaces including Kanim_Office */
 function WorkplacesGroup({
   items,
   onSelect,
@@ -432,26 +583,24 @@ function WorkplacesGroup({
   items: WorkplaceConnection[];
   onSelect?: (name: string) => void;
 }) {
-  // Filter out Kanim_Office type items since those are already shown in header as kantors
-  const orgItems = items.filter((w) => w.type !== 'Kanim_Office');
-  if (orgItems.length === 0) return null;
+  if (items.length === 0) return null;
 
   return (
     <div>
       <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
-        ORGANIZATIONS
+        WORKPLACES
       </div>
       <div className="space-y-1.5">
-        {orgItems.map((item) => (
+        {items.map((item) => (
           <div
             key={item.name}
-            className="p-2 rounded border border-[var(--sg-border)] bg-[var(--sg-base)]"
+            className="p-2.5 rounded border border-[var(--sg-border)] bg-[var(--sg-base)]"
           >
             <div className="flex items-center gap-2">
-              <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-secondary)]">
+              <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-secondary)] font-medium">
                 {item.name}
               </span>
-              <span className="text-[8px] font-[family-name:var(--font-mono)] text-[var(--sg-text-ghost)] uppercase">
+              <span className="text-[8px] font-[family-name:var(--font-mono)] text-[var(--sg-text-ghost)] uppercase px-1 py-0 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)]">
                 {item.type}
               </span>
             </div>
@@ -467,26 +616,6 @@ function WorkplacesGroup({
             )}
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function SummaryCard({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="obsidian-glass rounded-lg p-3">
-      <div className="relative z-10">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="w-4 h-4 rounded flex items-center justify-center bg-[var(--sg-copper-dim)] font-[family-name:var(--font-mono)] text-[8px] text-[var(--sg-copper)]">
-            {icon}
-          </span>
-          <span className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)]">
-            {label}
-          </span>
-        </div>
-        <div className="font-[family-name:var(--font-mono)] text-[14px] font-medium text-[var(--sg-copper)]">
-          {value}
-        </div>
       </div>
     </div>
   );
