@@ -1,24 +1,58 @@
 import { NextResponse } from 'next/server';
 import { runQuery } from '@/lib/neo4j';
 import { QUERIES } from '@/lib/queries';
-import type { YearlyAssets } from '@/lib/types';
+import type { YearlyAssets, OfficialProfile, OfficialConnections } from '@/lib/types';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
   const officialName = decodeURIComponent(name);
 
   try {
-    const [profileRows, assetRows] = await Promise.all([
-      runQuery<{ name: string; jabatan: string; nip: string | null; kantor: string }>(
-        QUERIES.officialProfile, { name: officialName }
-      ),
+    const [profileRows, assetRows, connectionRows] = await Promise.all([
+      runQuery<{
+        name: string; jabatan: string; nip: string | null; kantor: string;
+        pangkat: string | null; angkatan: string | null; asal: string | null;
+        agama: string | null; ttl: string | null; kantors: string[];
+      }>(QUERIES.officialProfile, { name: officialName }),
       runQuery<{
         year: number; asset_type: string; subtotal: number;
         items: Array<Record<string, unknown>>;
       }>(QUERIES.officialAssets, { name: officialName }),
+      runQuery<{
+        family: Array<{ name: string; type: string }>;
+        met_with: Array<{ name: string; type: string }>;
+        supervises: Array<{ name: string; rel: string }>;
+      }>(QUERIES.officialConnections, { name: officialName }),
     ]);
 
-    const profile = profileRows[0] ?? { name: officialName, jabatan: '', nip: null, kantor: '' };
+    const rawProfile = profileRows[0];
+    const profile: OfficialProfile = rawProfile
+      ? {
+          name: rawProfile.name,
+          jabatan: rawProfile.jabatan,
+          nip: rawProfile.nip,
+          kantor: rawProfile.kantor ?? '',
+          pangkat: rawProfile.pangkat ?? null,
+          angkatan: rawProfile.angkatan ?? null,
+          asal: rawProfile.asal ?? null,
+          agama: rawProfile.agama ?? null,
+          ttl: rawProfile.ttl ?? null,
+          kantors: (rawProfile.kantors ?? []).filter(Boolean),
+        }
+      : {
+          name: officialName, jabatan: '', nip: null, kantor: '',
+          pangkat: null, angkatan: null, asal: null, agama: null, ttl: null,
+          kantors: [],
+        };
+
+    const rawConnections = connectionRows[0];
+    const connections: OfficialConnections = rawConnections
+      ? {
+          family: (rawConnections.family ?? []).filter((f) => f && f.name),
+          met_with: (rawConnections.met_with ?? []).filter((m) => m && m.name),
+          supervises: (rawConnections.supervises ?? []).filter((s) => s && s.name),
+        }
+      : { family: [], met_with: [], supervises: [] };
 
     const assetsByYear: Record<number, YearlyAssets> = {};
     const years = new Set<number>();
@@ -73,6 +107,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ name: s
 
     return NextResponse.json({
       profile,
+      connections,
       lhkpn_years: sortedYears,
       assets_by_year: assetsByYear,
       delta,

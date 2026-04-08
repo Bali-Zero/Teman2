@@ -44,11 +44,11 @@ export default function Home() {
 
   const officials = officialsData?.officials ?? [];
 
-  // Top 5 holders for overview
+  // Top 10 holders for overview
   const topHolders = useMemo(() => {
     return officials
       .filter((o) => o.has_lhkpn && o.total_assets > 0)
-      .slice(0, 5)
+      .slice(0, 10)
       .map((o) => ({ name: o.name, jabatan: o.jabatan, total_assets: o.total_assets }));
   }, [officials]);
 
@@ -98,14 +98,20 @@ export default function Home() {
         {/* Center Panel: Profile or Overview */}
         <div className="flex-1 min-w-0 overflow-hidden">
           {selectedName && officialDetail && !detailLoading ? (
-            <OfficialProfile detail={officialDetail} loading={false} />
+            <OfficialProfile detail={officialDetail} loading={false} onSelectOfficial={handleSelect} />
           ) : selectedName && detailLoading ? (
             <OfficialProfile
-              detail={{ profile: { name: selectedName, jabatan: '', nip: null, kantor: '' }, lhkpn_years: [], assets_by_year: {}, delta: [] }}
+              detail={{
+                profile: { name: selectedName, jabatan: '', nip: null, kantor: '', pangkat: null, angkatan: null, asal: null, agama: null, ttl: null, kantors: [] },
+                connections: { family: [], met_with: [], supervises: [] },
+                lhkpn_years: [],
+                assets_by_year: {},
+                delta: [],
+              }}
               loading={true}
             />
           ) : (
-            <StatsOverview stats={stats} topHolders={topHolders} loading={officialsLoading} />
+            <StatsOverview stats={stats} topHolders={topHolders} loading={officialsLoading} onSelectOfficial={handleSelect} />
           )}
         </div>
 
