@@ -101,6 +101,7 @@ def call_ollama(prompt: str, timeout: float = 1200) -> str:
         "model": MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
+        "think": False,
         "options": {
             "temperature": 0.3,
             "num_predict": 16384,
