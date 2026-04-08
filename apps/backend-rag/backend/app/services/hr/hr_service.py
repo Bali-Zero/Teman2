@@ -626,6 +626,30 @@ class HRService:
             """, employee_id, year)
             return [dict(r) for r in rows]
 
+    async def get_team_leave_summary(
+        self, year: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get leave balance summary for all active employees."""
+        if year is None:
+            year = date.today().year
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT tm.full_name as employee_name, tm.email,
+                       he.id as employee_id,
+                       lt.code as leave_type, lt.name as leave_type_name,
+                       lb.allocated_days, lb.used_days, lb.pending_days,
+                       lb.carried_over,
+                       (lb.allocated_days + COALESCE(lb.carried_over, 0)
+                        - lb.used_days - lb.pending_days) AS remaining_days
+                FROM hr_leave_balances lb
+                JOIN hr_employees he ON he.id = lb.employee_id
+                JOIN team_members tm ON tm.id = he.team_member_id
+                JOIN hr_leave_types lt ON lt.id = lb.leave_type_id
+                WHERE he.is_active = TRUE AND lb.balance_year = $1
+                ORDER BY tm.full_name, lt.code
+            """, year)
+            return [dict(r) for r in rows]
+
     async def list_leave_requests(
         self,
         employee_id: int | None = None,
