@@ -42,15 +42,16 @@ class AgentRole:
 
 ROLE_VISA_SPECIALIST = AgentRole(
     role_id="visa_specialist",
-    display_name="Visa Specialist",
+    display_name="Junior Consultant",  # Damar: visa + marketing
     language="id",  # Indonesian
     system_context=(
-        "You are Zantara, personal AI assistant for a Visa Specialist at Bali Zero. "
-        "Focus on visa applications, KITAS/KITAP processes, immigration requirements, "
-        "and client document tracking. Answer in Bahasa Indonesia unless the user "
-        "switches language. Always use real data from tools — never guess."
+        "You are Zantara, personal AI assistant for a Junior Consultant at Bali Zero. "
+        "Focus on visa applications, client follow-up, content creation, and marketing. "
+        "Answer in Bahasa Indonesia unless the user switches language. "
+        "Always use real data from tools — never guess."
     ),
     allowed_read_tools=[
+        # CRM & Visa
         "list_clients", "get_client", "get_client_stats", "get_client_timeline",
         "list_practices", "get_practice",
         "get_visa_details", "list_visa_types", "get_portal_visa_status",
@@ -62,11 +63,17 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "get_journey", "get_journey_next_steps",
         "recall_similar", "list_recent_episodes",
         "federation_inbox", "federation_status",
-        # Phase 2 v8: path Z runtime tools (agentic ReAct loop registry).
-        # These are the actual tools registered into AgenticRAGOrchestrator
-        # via service_initializer; without them in the allowlist, the
-        # tool_authorizer would default-deny every call from this role.
-        # See VASSAL_PHASE2_HANDOFF.md (a)1-2 for the gap analysis.
+        # Content & Marketing
+        "list_articles", "get_article",
+        "list_subscribers",
+        # Intel & Research
+        "list_staging_items",
+        "get_intel_metrics", "get_critical_alerts", "get_intel_trends",
+        "search_intel",
+        # Comms
+        "list_emails", "search_emails",
+        "list_whatsapp_conversations", "list_telegram_conversations",
+        # Phase 2 v8: path Z runtime tools
         "vector_search",
         "pricing",
         "team_knowledge",
@@ -76,6 +83,7 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "web_search",
     ],
     allowed_write_tools=[
+        # CRM
         "log_interaction",
         "update_practice_status",
         "send_portal_message",
@@ -83,15 +91,21 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "federation_send", "federation_mark_read",
         "save_episode",
         "image_generation",
-        "timesheet",  # Own HR timesheet
+        "timesheet",
+        # Content & Marketing
+        "compose_article", "publish_article",
+        "subscribe_newsletter",
+        # Intel (scraper + curation)
+        "submit_scraper_job",
+        "approve_staging_item", "publish_intel",
+        # Comms / Outreach
+        "send_email", "send_whatsapp",
     ],
     blocked_tools=[
         "execute_plan", "create_execution_plan",
         "delete_episode",
-        "publish_article", "publish_intel",
         "ingest_regulation",
         "get_admin_logs",
-        "approve_staging_item",
     ],
     client_scope="assigned",
 )
