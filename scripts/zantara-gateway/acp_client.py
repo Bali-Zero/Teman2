@@ -2,21 +2,32 @@
 """
 ACP (Agent Client Protocol) client for persistent Gemini CLI connection.
 
-Instead of spawning a new Gemini CLI process per request (8-10s cold start),
-this maintains a single persistent Gemini CLI process via ACP JSON-RPC over stdio.
+Architecture: a single reader task reads ALL lines from stdout and dispatches
+them to the appropriate consumer via asyncio queues. This avoids the buffering
+issue where _rpc() and prompt_stream() competed for stdout lines.
 
-Protocol verified: initialize → authenticate → session/new → session/prompt
-Notifications: sessionUpdate=agent_message_chunk with content.type=text
+    ┌─────────────┐    stdin     ┌───────────────┐
+    │  acp_client  │ ──────────► │  gemini --acp  │
+    │  (Python)    │ ◄────────── │  (Node.js)     │
+    └──────┬──────┘    stdout    └───────────────┘
+           │
+    _reader_loop task reads ALL lines from stdout
+           │
+    ┌──────▼──────┐
+    │  _dispatch   │──► _rpc_responses[id] (asyncio.Future)
+    │              │──► _notification_queue (asyncio.Queue for prompt_stream)
+    │              │──► _server_requests (auto-respond: approve, readFile)
+    └─────────────┘
 """
 
 import asyncio
 import json
 import logging
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 logger = logging.getLogger("zantara-gateway.acp")
 
-# JSON-RPC request ID counter
 _next_id = 0
 
 
@@ -35,14 +46,18 @@ class ACPGeminiClient:
         self._proc: asyncio.subprocess.Process | None = None
         self._session_id: str = ""
         self._ready = False
-        self._lock = asyncio.Lock()  # serialize prompts
+        self._prompt_lock = asyncio.Lock()
+
+        # Dispatcher state
+        self._reader_task: asyncio.Task | None = None
+        self._rpc_futures: dict[int, asyncio.Future] = {}
+        self._notification_queue: asyncio.Queue[dict] = asyncio.Queue()
 
     def is_ready(self) -> bool:
-        """True if ACP session is initialized and ready for prompts."""
         return self._ready and self._proc is not None and self._proc.returncode is None
 
     async def connect(self) -> None:
-        """Spawn Gemini CLI in ACP mode and initialize session."""
+        """Spawn Gemini CLI in ACP mode, start reader, initialize session."""
         self._proc = await asyncio.create_subprocess_exec(
             self._gemini_path, "--acp",
             stdin=asyncio.subprocess.PIPE,
@@ -51,63 +66,171 @@ class ACPGeminiClient:
         )
         logger.info("ACP process spawned: pid=%d", self._proc.pid)
 
-        # 1. Initialize
+        # Start the reader loop
+        self._reader_task = asyncio.create_task(self._reader_loop())
+
+        # Initialize
         resp = await self._rpc("initialize", {
             "protocolVersion": 1,
             "clientCapabilities": {},
-        }, timeout=10)
+        })
         if not resp or "error" in resp:
             raise RuntimeError(f"ACP initialize failed: {resp}")
         logger.info("ACP initialized")
 
-        # 2. Authenticate (uses oauth-personal from ~/.gemini/settings.json)
-        resp = await self._rpc("authenticate", {
-            "methodId": "oauth-personal",
-        }, timeout=10)
+        # Authenticate
+        resp = await self._rpc("authenticate", {"methodId": "oauth-personal"})
         if resp and "error" in resp:
             raise RuntimeError(f"ACP authenticate failed: {resp}")
         logger.info("ACP authenticated")
 
-        # 3. Create session
+        # Create session
         resp = await self._rpc("session/new", {
             "cwd": self._cwd,
-            "mcpServers": [],  # uses servers from settings.json
-        }, timeout=15)
+            "mcpServers": [],
+        }, timeout=30)
         if not resp or "error" in resp:
             raise RuntimeError(f"ACP session/new failed: {resp}")
         self._session_id = resp.get("result", {}).get("sessionId", "")
         if not self._session_id:
-            raise RuntimeError(f"ACP session/new returned no sessionId: {resp}")
+            raise RuntimeError("No sessionId returned")
 
         self._ready = True
         logger.info("ACP session ready: %s", self._session_id[:20])
 
     async def close(self) -> None:
-        """Kill the persistent Gemini CLI process."""
         self._ready = False
         self._session_id = ""
+        if self._reader_task:
+            self._reader_task.cancel()
+            try:
+                await self._reader_task
+            except asyncio.CancelledError:
+                pass
+            self._reader_task = None
         if self._proc and self._proc.returncode is None:
             self._proc.kill()
             try:
                 await asyncio.wait_for(self._proc.wait(), timeout=5)
             except asyncio.TimeoutError:
                 pass
-            logger.info("ACP process killed")
         self._proc = None
+        # Cancel pending futures
+        for fut in self._rpc_futures.values():
+            if not fut.done():
+                fut.cancel()
+        self._rpc_futures.clear()
+
+    # ── Reader loop (single consumer of stdout) ──
+
+    async def _reader_loop(self) -> None:
+        """Read ALL lines from stdout and dispatch to appropriate consumer."""
+        try:
+            while True:
+                raw = await self._proc.stdout.readline()
+                if not raw:
+                    logger.warning("ACP stdout closed")
+                    break
+                line = raw.decode("utf-8", errors="replace").strip()
+                if not line:
+                    continue
+
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                msg_id = obj.get("id")
+                method = obj.get("method", "")
+
+                # 1. RPC response (has id, has result or error, no method)
+                if msg_id is not None and not method and ("result" in obj or "error" in obj):
+                    fut = self._rpc_futures.get(msg_id)
+                    if fut and not fut.done():
+                        fut.set_result(obj)
+                    continue
+
+                # 2. Server request (has id AND method) — auto-respond
+                if msg_id is not None and method:
+                    await self._handle_server_request(msg_id, method, obj.get("params", {}))
+                    continue
+
+                # 3. Notification (has method, no id) — push to queue
+                if method:
+                    await self._notification_queue.put(obj)
+                    continue
+
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error("ACP reader loop error: %s", e)
+
+    async def _handle_server_request(self, req_id: int, method: str, params: dict) -> None:
+        """Auto-respond to server requests (permission, file reads, etc.)."""
+        if "permission" in method.lower() or "Permission" in method:
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {
+                "outcome": {"outcome": "approved"}
+            }}
+        elif "readTextFile" in method or "ReadTextFile" in method:
+            path = params.get("path", "")
+            content = ""
+            try:
+                content = Path(path).read_text()[:10000]
+            except Exception:
+                pass
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {"content": content}}
+        elif "writeTextFile" in method or "WriteTextFile" in method:
+            # Deny writes in gateway context
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {}}
+        elif "createTerminal" in method or "CreateTerminal" in method:
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {"terminalId": "gateway-noop"}}
+        else:
+            logger.debug("ACP auto-responding to unknown request: %s", method)
+            resp = {"jsonrpc": "2.0", "id": req_id, "result": {}}
+
+        self._proc.stdin.write((json.dumps(resp) + "\n").encode())
+        await self._proc.stdin.drain()
+
+    # ── RPC (for init/auth/session) ──
+
+    async def _rpc(self, method: str, params: dict, timeout: float = 15) -> dict | None:
+        """Send JSON-RPC request and wait for response via future."""
+        rid = _get_id()
+        fut: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
+        self._rpc_futures[rid] = fut
+
+        msg = {"jsonrpc": "2.0", "id": rid, "method": method, "params": params}
+        self._proc.stdin.write((json.dumps(msg) + "\n").encode())
+        await self._proc.stdin.drain()
+
+        try:
+            result = await asyncio.wait_for(fut, timeout=timeout)
+            return result
+        except asyncio.TimeoutError:
+            logger.warning("ACP RPC timeout: %s", method)
+            return None
+        finally:
+            self._rpc_futures.pop(rid, None)
+
+    # ── Prompt streaming (for chat) ──
 
     async def prompt_stream(self, query: str) -> AsyncIterator[str]:
-        """Send a prompt and yield SSE lines as they arrive.
-
-        Yields SSE-formatted strings compatible with the widget:
-          data: {"type":"token","data":"text"}\n\n
-          data: {"type":"tool_call","data":{...}}\n\n
-          data: [DONE]\n\n
-        """
+        """Send prompt and yield SSE lines as agent responds."""
         if not self.is_ready():
-            raise RuntimeError("ACP not ready. Call connect() first.")
+            raise RuntimeError("ACP not ready")
 
-        async with self._lock:  # one prompt at a time
+        async with self._prompt_lock:
+            # Drain any stale notifications
+            while not self._notification_queue.empty():
+                try:
+                    self._notification_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+
             rid = _get_id()
+            fut: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
+            self._rpc_futures[rid] = fut
+
             msg = {
                 "jsonrpc": "2.0",
                 "id": rid,
@@ -117,132 +240,65 @@ class ACPGeminiClient:
                     "prompt": [{"type": "text", "text": query}],
                 },
             }
-            logger.info("ACP prompt sending: rid=%d query=%s", rid, query[:50])
             self._proc.stdin.write((json.dumps(msg) + "\n").encode())
             await self._proc.stdin.drain()
-            logger.info("ACP prompt sent, reading response...")
+            logger.info("ACP prompt sent: %s", query[:50])
 
-            # Read until we get the response with our id
+            # Read notifications until we get the response
             try:
                 while True:
-                    raw = await asyncio.wait_for(
-                        self._proc.stdout.readline(), timeout=120
-                    )
-                    if not raw:
-                        break
-                    line = raw.decode("utf-8", errors="replace").strip()
-                    if not line:
-                        continue
-
-                    try:
-                        obj = json.loads(line)
-                    except json.JSONDecodeError:
-                        logger.debug("ACP non-JSON line: %s", line[:100])
-                        continue
-
-                    # Response to our request — done
-                    if obj.get("id") == rid:
+                    # Check if response arrived
+                    if fut.done():
                         yield "data: [DONE]\n\n"
                         return
 
-                    method = obj.get("method", "")
-
-                    # Notification — session/update (streaming chunks)
-                    if method == "session/update":
-                        sse = self._update_to_sse(obj.get("params", {}).get("update", {}))
-                        if sse:
-                            yield sse
+                    # Read next notification (with timeout)
+                    try:
+                        notif = await asyncio.wait_for(
+                            self._notification_queue.get(), timeout=2.0
+                        )
+                    except asyncio.TimeoutError:
+                        # No notification yet — check if response arrived
+                        if fut.done():
+                            yield "data: [DONE]\n\n"
+                            return
                         continue
 
-                    # Server request — requestPermission (auto-approve tool calls)
-                    if method == "session/requestPermission":
-                        req_id = obj.get("id")
-                        if req_id is not None:
-                            approve = {"jsonrpc": "2.0", "id": req_id, "result": {"outcome": {"outcome": "approved"}}}
-                            self._proc.stdin.write((json.dumps(approve) + "\n").encode())
-                            await self._proc.stdin.drain()
-                            logger.debug("ACP auto-approved tool call")
-                        continue
+                    # Convert notification to SSE
+                    sse = self._notif_to_sse(notif)
+                    if sse:
+                        yield sse
 
-                    # Server request — readTextFile
-                    if method == "session/readTextFile":
-                        req_id = obj.get("id")
-                        path = obj.get("params", {}).get("path", "")
-                        content = ""
-                        try:
-                            with open(path) as f:
-                                content = f.read()
-                        except Exception:
-                            pass
-                        if req_id is not None:
-                            resp = {"jsonrpc": "2.0", "id": req_id, "result": {"content": content}}
-                            self._proc.stdin.write((json.dumps(resp) + "\n").encode())
-                            await self._proc.stdin.drain()
-                        continue
-
-                    # Server request — writeTextFile (deny in gateway context)
-                    if method == "session/writeTextFile":
-                        req_id = obj.get("id")
-                        if req_id is not None:
-                            resp = {"jsonrpc": "2.0", "id": req_id, "result": {}}
-                            self._proc.stdin.write((json.dumps(resp) + "\n").encode())
-                            await self._proc.stdin.drain()
-                        continue
-
-                    logger.debug("ACP unhandled: %s", line[:200])
-
-            except asyncio.TimeoutError:
-                logger.warning("ACP prompt timeout after 120s")
-                yield "data: [DONE]\n\n"
             except Exception as e:
-                logger.error("ACP prompt error: %s", e)
+                logger.error("ACP prompt_stream error: %s", e)
                 yield f'data: {json.dumps({"type": "error", "data": str(e)})}\n\n'
                 yield "data: [DONE]\n\n"
-
-    async def _rpc(self, method: str, params: dict, timeout: float = 15) -> dict | None:
-        """Send a JSON-RPC request and wait for the response."""
-        rid = _get_id()
-        msg = {"jsonrpc": "2.0", "id": rid, "method": method, "params": params}
-        self._proc.stdin.write((json.dumps(msg) + "\n").encode())
-        await self._proc.stdin.drain()
-
-        # Read lines until we get our response
-        try:
-            while True:
-                raw = await asyncio.wait_for(
-                    self._proc.stdout.readline(), timeout=timeout
-                )
-                if not raw:
-                    return None
-                line = raw.decode("utf-8", errors="replace").strip()
-                if not line:
-                    continue
-                obj = json.loads(line)
-                if obj.get("id") == rid:
-                    return obj
-                # Skip notifications during init
-        except asyncio.TimeoutError:
-            logger.warning("ACP RPC timeout: method=%s", method)
-            return None
+            finally:
+                self._rpc_futures.pop(rid, None)
 
     @staticmethod
-    def _update_to_sse(update: dict) -> str | None:
-        """Convert an ACP session/update notification to SSE format."""
-        session_update = update.get("sessionUpdate", "")
+    def _notif_to_sse(notif: dict) -> str | None:
+        """Convert ACP notification to SSE format for widget."""
+        method = notif.get("method", "")
+        if method != "session/update":
+            return None
 
-        if session_update == "agent_message_chunk":
+        update = notif.get("params", {}).get("update", {})
+        su = update.get("sessionUpdate", "")
+
+        if su == "agent_message_chunk":
             content = update.get("content", {})
             if isinstance(content, dict) and content.get("type") == "text":
                 text = content.get("text", "")
                 if text:
                     return f'data: {json.dumps({"type": "token", "data": text}, separators=(",", ":"))}\n\n'
 
-        if session_update == "tool_call_start":
-            tool_name = update.get("toolName", "")
-            return f'data: {json.dumps({"type": "tool_call", "data": {"name": tool_name}}, separators=(",", ":"))}\n\n'
+        if su == "tool_call_start":
+            name = update.get("toolName", "")
+            return f'data: {json.dumps({"type": "tool_call", "data": {"name": name}}, separators=(",", ":"))}\n\n'
 
-        if session_update == "tool_call_end":
-            tool_name = update.get("toolName", "")
-            return f'data: {json.dumps({"type": "tool_result", "data": {"name": tool_name}}, separators=(",", ":"))}\n\n'
+        if su == "tool_call_end":
+            name = update.get("toolName", "")
+            return f'data: {json.dumps({"type": "tool_result", "data": {"name": name}}, separators=(",", ":"))}\n\n'
 
         return None
