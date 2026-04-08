@@ -1,9 +1,11 @@
 'use client';
 
+import { useMemo } from 'react';
 import type {
   GraphStats, RelationshipIntel, HierarchyChain, SupervisesChain, PersonData,
 } from '@/lib/types';
 import { formatRupiah, formatNumber } from '@/lib/format';
+import type { OfficialListItem } from './OfficialsList';
 
 interface TopHolder {
   name: string;
@@ -20,6 +22,8 @@ interface StatsOverviewProps {
   hierarchy?: HierarchyChain[];
   supervisesChains?: SupervisesChain[];
   persons?: PersonData[];
+  officials?: OfficialListItem[];
+  connectionCounts?: Map<string, number>;
 }
 
 const REL_COLORS: Record<string, string> = {
@@ -30,9 +34,17 @@ const REL_COLORS: Record<string, string> = {
   PARENT_OF: 'var(--sg-amber)',
 };
 
+interface KeyFinding {
+  icon: string;
+  text: string;
+  name: string | null;
+  color: string;
+}
+
 export function StatsOverview({
   stats, topHolders, loading, onSelectOfficial,
   relationships, hierarchy, supervisesChains, persons,
+  officials, connectionCounts,
 }: StatsOverviewProps) {
   if (loading) {
     return (
@@ -44,17 +56,146 @@ export function StatsOverview({
     );
   }
 
+  // Compute KEY FINDINGS from available data
+  const keyFindings = useMemo(() => {
+    const findings: KeyFinding[] = [];
+
+    // Richest official
+    if (topHolders.length > 0) {
+      const richest = topHolders[0];
+      findings.push({
+        icon: '\u{1F4B0}',
+        text: `Richest official: ${formatRupiah(richest.total_assets)}`,
+        name: richest.name,
+        color: 'var(--sg-copper)',
+      });
+    }
+
+    // Biggest anomaly from relationships delta data
+    if (relationships && relationships.length > 0) {
+      // We look for high-delta anomalies - these come from the data we can infer
+      const supervisesCount = relationships.filter((r) => r.type === 'SUPERVISES').length;
+      const familyCount = relationships.filter((r) => r.type === 'FAMILY_OF').length;
+      const metWithCount = relationships.filter((r) => r.type === 'MET_WITH').length;
+
+      if (metWithCount > 0) {
+        findings.push({
+          icon: '\u{1F91D}',
+          text: `${metWithCount} documented meetings between officials`,
+          name: null,
+          color: 'var(--sg-periwinkle)',
+        });
+      }
+
+      if (familyCount > 0) {
+        findings.push({
+          icon: '\u{1F46A}',
+          text: `${familyCount} family relationship${familyCount === 1 ? '' : 's'} mapped`,
+          name: null,
+          color: 'var(--sg-amber)',
+        });
+      }
+
+      if (supervisesCount > 0) {
+        findings.push({
+          icon: '\u{1F3DB}',
+          text: `${supervisesCount} command chain${supervisesCount === 1 ? '' : 's'} identified`,
+          name: null,
+          color: 'var(--sg-copper)',
+        });
+      }
+    }
+
+    // Densest network
+    if (connectionCounts && connectionCounts.size > 0) {
+      let maxName = '';
+      let maxCount = 0;
+      for (const [name, count] of connectionCounts) {
+        if (count > maxCount) {
+          maxName = name;
+          maxCount = count;
+        }
+      }
+      if (maxCount > 0) {
+        findings.push({
+          icon: '\u{1F578}',
+          text: `Densest network: ${maxCount} connections`,
+          name: maxName,
+          color: 'var(--sg-periwinkle)',
+        });
+      }
+    }
+
+    // Most properties
+    if (officials && officials.length > 0) {
+      const withLhkpn = officials.filter((o) => o.has_lhkpn);
+      if (withLhkpn.length > 0) {
+        findings.push({
+          icon: '\u{1F4C8}',
+          text: `${withLhkpn.length} of ${officials.length} officials have LHKPN data`,
+          name: null,
+          color: 'var(--sg-clean)',
+        });
+      }
+    }
+
+    // Persons of interest
+    if (persons && persons.length > 0) {
+      findings.push({
+        icon: '\u{1F50D}',
+        text: `${persons.length} person${persons.length === 1 ? '' : 's'} of interest identified`,
+        name: null,
+        color: 'var(--sg-amber)',
+      });
+    }
+
+    return findings;
+  }, [topHolders, relationships, connectionCounts, officials, persons]);
+
   return (
-    <div className="p-6 space-y-8 overflow-y-auto h-full">
+    <div className="p-6 space-y-6 overflow-y-auto h-full">
       {/* Header */}
       <div>
         <h2 className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-1">
           INTELLIGENCE OVERVIEW
         </h2>
         <p className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)]">
-          Select an official from the directory to view their full profile
+          Select an official from the directory to view their full dossier
         </p>
       </div>
+
+      {/* KEY FINDINGS — intelligence briefing */}
+      {keyFindings.length > 0 && (
+        <div className="p-4 rounded border border-[var(--sg-copper)] bg-[rgba(186,135,89,0.06)]">
+          <div className="font-[family-name:var(--font-display)] text-[11px] font-bold tracking-[0.15em] uppercase text-[var(--sg-copper)] mb-3">
+            KEY FINDINGS
+          </div>
+          <div className="space-y-2">
+            {keyFindings.map((finding, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <span className="text-[13px] shrink-0 leading-[20px]">{finding.icon}</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className="font-[family-name:var(--font-mono)] text-[11px] leading-[20px]"
+                    style={{ color: finding.color }}
+                  >
+                    {finding.text}
+                  </span>
+                  {finding.name && onSelectOfficial && (
+                    <button
+                      onClick={() => onSelectOfficial(finding.name!)}
+                      className="font-[family-name:var(--font-mono)] text-[10px] underline cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ color: finding.color }}
+                    >
+                      {finding.name}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Primary stats */}
       {stats && (
@@ -63,6 +204,76 @@ export function StatsOverview({
           <StatCard label="Relationships" value={formatNumber(stats.relationships)} icon="R" />
           <StatCard label="Officials" value={formatNumber(stats.officials)} icon="O" />
           <StatCard label="LHKPN Reports" value={formatNumber(stats.lhkpn_reports)} icon="L" />
+        </div>
+      )}
+
+      {/* Top 10 Holders — moved up for prominence */}
+      {topHolders.length > 0 && (
+        <div>
+          <h3 className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
+            TOP ASSET HOLDERS
+          </h3>
+          <div className="space-y-1.5">
+            {topHolders.map((h, i) => (
+              <button
+                key={h.name}
+                onClick={() => onSelectOfficial?.(h.name)}
+                className="w-full flex items-center gap-3 p-2.5 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)] hover:bg-[var(--sg-surface-hover)] transition-colors text-left"
+              >
+                <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] w-5 shrink-0">
+                  #{i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-[family-name:var(--font-display)] text-[12px] font-semibold text-[var(--sg-text-primary)] truncate">
+                    {h.name}
+                  </div>
+                  <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] truncate">
+                    {h.jabatan}
+                  </div>
+                </div>
+                <span className="font-[family-name:var(--font-mono)] text-[12px] font-medium text-[var(--sg-copper)] shrink-0">
+                  {formatRupiah(h.total_assets)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SUPERVISES Chains */}
+      {supervisesChains && supervisesChains.length > 0 && (
+        <div>
+          <h3 className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
+            COMMAND CHAINS
+          </h3>
+          <div className="space-y-2">
+            {supervisesChains.map((chain, idx) => (
+              <div key={idx} className="p-3 rounded border border-[var(--sg-border-copper)] bg-[var(--sg-copper-dim)]">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {chain.chain.map((node, ni) => (
+                    <span key={ni} className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => onSelectOfficial?.(node.name)}
+                        className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-copper)] hover:underline cursor-pointer"
+                      >
+                        {node.name}
+                      </button>
+                      {node.jabatan && (
+                        <span className="font-[family-name:var(--font-mono)] text-[8px] text-[var(--sg-text-ghost)]">
+                          ({node.jabatan})
+                        </span>
+                      )}
+                      {ni < chain.chain.length - 1 && (
+                        <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] mx-0.5">
+                          &rarr;
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -110,43 +321,6 @@ export function StatsOverview({
                   </span>
                 </div>
               ))}
-          </div>
-        </div>
-      )}
-
-      {/* SUPERVISES Chains */}
-      {supervisesChains && supervisesChains.length > 0 && (
-        <div>
-          <h3 className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
-            COMMAND CHAINS
-          </h3>
-          <div className="space-y-2">
-            {supervisesChains.map((chain, idx) => (
-              <div key={idx} className="p-3 rounded border border-[var(--sg-border-copper)] bg-[var(--sg-copper-dim)]">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {chain.chain.map((node, ni) => (
-                    <span key={ni} className="inline-flex items-center gap-1">
-                      <button
-                        onClick={() => onSelectOfficial?.(node.name)}
-                        className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-copper)] hover:underline cursor-pointer"
-                      >
-                        {node.name}
-                      </button>
-                      {node.jabatan && (
-                        <span className="font-[family-name:var(--font-mono)] text-[8px] text-[var(--sg-text-ghost)]">
-                          ({node.jabatan})
-                        </span>
-                      )}
-                      {ni < chain.chain.length - 1 && (
-                        <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] mx-0.5">
-                          &rarr;
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}
@@ -220,7 +394,6 @@ export function StatsOverview({
                       {rel.to}
                     </button>
                   </div>
-                  {/* Context — KEY intel */}
                   {rel.context && (
                     <div className="font-[family-name:var(--font-mono)] text-[10px] mt-1" style={{ color, opacity: 0.8 }}>
                       &ldquo;{rel.context}&rdquo;
@@ -286,39 +459,6 @@ export function StatsOverview({
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top 10 Holders */}
-      {topHolders.length > 0 && (
-        <div>
-          <h3 className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
-            TOP ASSET HOLDERS
-          </h3>
-          <div className="space-y-2">
-            {topHolders.map((h, i) => (
-              <button
-                key={h.name}
-                onClick={() => onSelectOfficial?.(h.name)}
-                className="w-full flex items-center gap-3 p-3 rounded border border-[var(--sg-border)] bg-[var(--sg-base-deep)] hover:bg-[var(--sg-surface-hover)] transition-colors text-left"
-              >
-                <span className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] w-5 shrink-0">
-                  #{i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-[family-name:var(--font-display)] text-[13px] font-semibold text-[var(--sg-text-primary)] truncate">
-                    {h.name}
-                  </div>
-                  <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-text-ghost)] truncate">
-                    {h.jabatan}
-                  </div>
-                </div>
-                <span className="font-[family-name:var(--font-mono)] text-[13px] font-medium text-[var(--sg-copper)] shrink-0">
-                  {formatRupiah(h.total_assets)}
-                </span>
-              </button>
             ))}
           </div>
         </div>
