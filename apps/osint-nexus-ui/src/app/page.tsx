@@ -8,6 +8,13 @@ import { TopBar } from '@/components/hud/TopBar';
 import { StatusBar } from '@/components/hud/StatusBar';
 import { LevelContext, useLevelReducer } from '@/hooks/useLevel';
 
+/** Background color per drill level — progressively darker */
+const LEVEL_BG: Record<string, string> = {
+  orbital: 'var(--sg-base)',
+  provincial: 'var(--sg-base-deep)',
+  authority: 'var(--sg-base-void)',
+};
+
 export default function Home() {
   const levelCtx = useLevelReducer();
   const { level } = levelCtx.state;
@@ -27,7 +34,13 @@ export default function Home() {
 
   return (
     <LevelContext.Provider value={levelCtx}>
-      <div className={`relative w-screen h-screen overflow-hidden bg-[var(--sg-base)] ${transitioning ? 'transition-dive' : ''}`}>
+      <div
+        className={`relative w-screen h-screen overflow-hidden ${transitioning ? 'transition-dive' : ''}`}
+        style={{
+          background: LEVEL_BG[level] ?? 'var(--sg-base)',
+          transition: 'background 1.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
         <TopBar />
         <OrbitalMap />
         {(level === 'provincial' || level === 'authority') && <ProvincialMap />}

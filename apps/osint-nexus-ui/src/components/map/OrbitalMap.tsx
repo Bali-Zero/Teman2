@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Script from 'next/script';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
-import { ORBITAL_CAMERA } from '@/lib/geo';
 import { formatRupiah } from '@/lib/format';
 import type { ProvinceData } from '@/lib/types';
 
@@ -25,87 +23,28 @@ function sphereSize(count: number): number {
   return Math.max(32, Math.log2(count + 1) * 28);
 }
 
+/** Project lat/lng to screen pixel coordinates for Indonesia overview */
+function geoToScreen(lat: number, lng: number, width: number, height: number) {
+  // Indonesia spans roughly lat -11 to 6, lng 95 to 141
+  const x = ((lng - 95) / (141 - 95)) * width;
+  const y = ((lat - 6) / (-11 - 6)) * height;
+  return { x, y };
+}
+
 export function OrbitalMap() {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [mapReady, setMapReady] = useState(false);
   const { state, dispatch } = useLevel();
   const { data } = useNeo4j<{ provinces: ProvinceData[] }>(
     state.level === 'orbital' ? '/api/graph/provinces' : null
   );
-  const [spherePositions, setSpherePositions] = useState<
-    Map<string, { x: number; y: number }>
-  >(new Map());
+  const [dimensions, setDimensions] = useState({ width: 1440, height: 900 });
 
-  // Init map when script loads — matching PrimeMap3D pattern exactly
   useEffect(() => {
-    if (!isLoaded || !mapContainerRef.current || mapRef.current) return;
-
-    const initMap = async () => {
-      try {
-        const { Map3DElement } = await (window as any).google.maps.importLibrary(
-          'maps3d'
-        );
-
-        const map = new Map3DElement({
-          center: {
-            lat: ORBITAL_CAMERA.center.lat,
-            lng: ORBITAL_CAMERA.center.lng,
-            altitude: 0,
-          },
-          tilt: ORBITAL_CAMERA.tilt,
-          range: ORBITAL_CAMERA.range,
-          heading: ORBITAL_CAMERA.heading,
-          defaultLabelsDisabled: true,
-        });
-
-        mapContainerRef.current!.appendChild(map);
-        mapRef.current = map;
-
-        // Give the map a moment to render before marking ready
-        setTimeout(() => setMapReady(true), 1000);
-      } catch (err) {
-        console.error('Map3D init failed:', err);
-      }
-    };
-
-    initMap();
-  }, [isLoaded]);
-
-  // Project province centroids to screen coordinates
-  useEffect(() => {
-    if (!mapReady || !mapRef.current || !data?.provinces) return;
-
-    const updatePositions = () => {
-      const map = mapRef.current;
-      // convertLocationToScreenPoint may not exist in all API versions
-      if (!map || typeof map.convertLocationToScreenPoint !== 'function') return;
-
-      const newPositions = new Map<string, { x: number; y: number }>();
-      for (const prov of data.provinces) {
-        try {
-          const point = map.convertLocationToScreenPoint({
-            lat: prov.centroid.lat,
-            lng: prov.centroid.lng,
-            altitude: 50000,
-          });
-          if (point) {
-            newPositions.set(prov.name, { x: point.x, y: point.y });
-          }
-        } catch {
-          // off-screen or API not available
-        }
-      }
-      if (newPositions.size > 0) {
-        setSpherePositions(newPositions);
-      }
-    };
-
-    updatePositions();
-    const interval = setInterval(updatePositions, 500);
-    return () => clearInterval(interval);
-  }, [mapReady, data]);
+    const update = () =>
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   const handleProvinceDive = useCallback(
     (province: string) => {
@@ -114,46 +53,48 @@ export function OrbitalMap() {
     [dispatch]
   );
 
-  // If convertLocationToScreenPoint isn't available, show spheres at fixed CSS positions
-  // based on rough viewport mapping. This is the fallback for L1.
-  const hasDynamicPositions = spherePositions.size > 0;
-
   return (
     <>
-      <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d`}
-        strategy="afterInteractive"
-        onLoad={() => setIsLoaded(true)}
-      />
+      {/* Dark surveillance background with subtle grid */}
+      <div className="absolute inset-0" style={{ background: 'var(--sg-base)' }}>
+        {/* Grid lines */}
+        <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="orbital-grid" width="100" height="100" patternUnits="userSpaceOnUse">
+              <path
+                d="M 100 0 L 0 0 0 100"
+                fill="none"
+                stroke="rgba(255,255,255,0.03)"
+                strokeWidth="1"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#orbital-grid)" />
+        </svg>
 
-      <div
-        ref={mapContainerRef}
-        className="absolute inset-0"
-        style={{ width: '100%', height: '100%' }}
-      />
+        {/* Ambient radial glow */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(139,156,247,0.05), transparent 70%)',
+          }}
+        />
+      </div>
 
       {/* Province spheres overlay */}
       <AnimatePresence>
         {state.level === 'orbital' &&
-          mapReady &&
           data?.provinces.map((prov, idx) => {
-            let x: number, y: number;
+            const { x, y } = geoToScreen(
+              prov.centroid.lat,
+              prov.centroid.lng,
+              dimensions.width,
+              dimensions.height
+            );
 
-            if (hasDynamicPositions) {
-              const pos = spherePositions.get(prov.name);
-              if (!pos) return null;
-              x = pos.x;
-              y = pos.y;
-            } else {
-              // Fallback: estimate screen position from lat/lng relative to orbital camera
-              // Orbital camera center: -2.5, 118.0, viewport ~60° lon, ~30° lat
-              const vw = typeof window !== 'undefined' ? window.innerWidth : 1440;
-              const vh = typeof window !== 'undefined' ? window.innerHeight : 900;
-              x = ((prov.centroid.lng - 95) / 50) * vw;
-              y = ((prov.centroid.lat + 12) / -20) * vh;
-              // Clamp to viewport
-              if (x < 0 || x > vw || y < 0 || y > vh) return null;
-            }
+            // Clamp to viewport
+            if (x < 0 || x > dimensions.width || y < 0 || y > dimensions.height) return null;
 
             const size = sphereSize(prov.official_count);
             const color = sphereColor(prov.official_count);
