@@ -21,6 +21,7 @@ import httpx
 from aiohttp import web
 
 from acp_client import ACPGeminiClient
+from claude_client import stream_claude_cli
 from config import GatewayConfig, load_config
 from mcp_client import MCPToolClient
 
@@ -369,8 +370,26 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     streamed = False
 
     try:
+        # ── Path 0: Claude CLI for admin (Sonnet 4.6) ──
+        if config.role == "admin" and shutil.which("claude"):
+            try:
+                heartbeat_task = asyncio.create_task(_send_heartbeats(response))
+                try:
+                    async for sse_line in stream_claude_cli(
+                        query, model="sonnet", timeout=config.gemini_timeout
+                    ):
+                        await response.write(sse_line.encode("utf-8"))
+                        streamed = True
+                finally:
+                    heartbeat_task.cancel()
+                if streamed:
+                    await response.write_eof()
+                    return response
+            except Exception as e:
+                logger.warning("Claude CLI failed (%s), trying Gemini", e)
+
         # ── Path 1: ACP persistent (instant, no cold start) ──
-        if acp.is_ready():
+        if not streamed and acp.is_ready():
             try:
                 async for sse_line in acp.prompt_stream(query):
                     await response.write(sse_line.encode("utf-8"))
