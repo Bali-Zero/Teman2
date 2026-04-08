@@ -370,37 +370,8 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     streamed = False
 
     try:
-        # ── Path 0: Claude CLI for admin (Sonnet 4.6) ──
-        if config.role == "admin" and shutil.which("claude"):
-            try:
-                heartbeat_task = asyncio.create_task(_send_heartbeats(response))
-                try:
-                    async for sse_line in stream_claude_cli(
-                        query,
-                        model="sonnet",
-                        timeout=config.gemini_timeout,
-                        cwd=str(Path.home() / "Desktop" / "nuzantara"),
-                        system_prompt=(
-                            "You are Zantara, the AI assistant for Zero (founder of Bali Zero). "
-                            "Zero is Italian, living in Bali. Bali Zero is a business services company "
-                            "(visa, company setup, tax, property) with 5000+ clients. "
-                            "You have access to MCP tools for CRM, content, intel, and communications. "
-                            "Respond in the user's language. Be concise and direct. "
-                            "Use tools for real data — never guess."
-                        ),
-                    ):
-                        await response.write(sse_line.encode("utf-8"))
-                        streamed = True
-                finally:
-                    heartbeat_task.cancel()
-                if streamed:
-                    await response.write_eof()
-                    return response
-            except Exception as e:
-                logger.warning("Claude CLI failed (%s), trying Gemini", e)
-
         # ── Path 1: ACP persistent (instant, no cold start) ──
-        if not streamed and acp.is_ready():
+        if acp.is_ready():
             try:
                 async for sse_line in acp.prompt_stream(query):
                     await response.write(sse_line.encode("utf-8"))
