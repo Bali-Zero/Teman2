@@ -93,6 +93,31 @@ ROLE_TOOLS: dict[str, set[str]] = {
 }
 
 
+def _get_all_tool_names() -> set[str]:
+    """Get all registered tool names (compatible with FastMCP 3.0–3.2+)."""
+    # FastMCP <= 3.1: sync access via _tool_manager
+    if hasattr(mcp, "_tool_manager"):
+        return {t.name for t in mcp._tool_manager._tools.values()}
+
+    # FastMCP >= 3.2: list_tools() is async, but we can use the internal provider
+    if hasattr(mcp, "local_provider") and hasattr(mcp.local_provider, "_tools"):
+        return set(mcp.local_provider._tools.keys())
+
+    # Fallback: run async list_tools()
+    import asyncio
+    tools = asyncio.get_event_loop().run_until_complete(mcp.list_tools())
+    return {t.name for t in tools}
+
+
+def _remove_tool(name: str) -> None:
+    """Remove a tool (compatible with FastMCP 3.0–3.2+)."""
+    # FastMCP >= 3.2: prefer local_provider.remove_tool()
+    if hasattr(mcp, "local_provider") and hasattr(mcp.local_provider, "remove_tool"):
+        mcp.local_provider.remove_tool(name)
+    else:
+        mcp.remove_tool(name)
+
+
 def filter_tools_for_role(role: str) -> int:
     """
     Remove tools not allowed for the given role.
@@ -112,17 +137,14 @@ def filter_tools_for_role(role: str) -> int:
         logger.error(f"Unknown role '{role}'. Available: {list(ROLE_TOOLS.keys()) + ['admin']}")
         sys.exit(1)
 
-    # Get all registered tool names
-    all_tools = set()
-    for tool in mcp._tool_manager._tools.values():
-        all_tools.add(tool.name)
+    all_tools = _get_all_tool_names()
 
     # Remove tools not in allowed set
     removed = 0
     for tool_name in all_tools:
         if tool_name not in allowed:
             try:
-                mcp.remove_tool(tool_name)
+                _remove_tool(tool_name)
                 removed += 1
             except Exception:
                 pass
