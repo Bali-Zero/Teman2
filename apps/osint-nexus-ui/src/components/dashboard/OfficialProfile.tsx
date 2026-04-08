@@ -1,6 +1,9 @@
 'use client';
 
-import type { OfficialDetail } from '@/lib/types';
+import type {
+  OfficialDetail, FamilyConnection, MetWithConnection,
+  SupervisionConnection, AlumniConnection, WorkplaceConnection,
+} from '@/lib/types';
 import { formatRupiah } from '@/lib/format';
 import { PropertyCards, VehicleCards } from '@/components/timeline/PropertyCard';
 
@@ -50,11 +53,15 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
   if (profile.agama) personalTags.push({ label: 'Agama', value: profile.agama });
   if (profile.ttl) personalTags.push({ label: 'TTL', value: profile.ttl });
 
-  // Connections
-  const hasConnections = connections &&
-    ((connections.family?.length ?? 0) > 0 ||
-     (connections.met_with?.length ?? 0) > 0 ||
-     (connections.supervises?.length ?? 0) > 0);
+  // Connections availability
+  const hasFamily = (connections.family?.length ?? 0) > 0;
+  const hasMetWith = (connections.met_with?.length ?? 0) > 0;
+  const hasSubordinates = (connections.subordinates?.length ?? 0) > 0;
+  const hasSupervisors = (connections.supervisors?.length ?? 0) > 0;
+  const hasAlumni = (connections.alumni?.length ?? 0) > 0;
+  const hasChildren = (connections.children?.length ?? 0) > 0;
+  const hasWorkplaces = (connections.workplaces?.length ?? 0) > 0;
+  const hasConnections = hasFamily || hasMetWith || hasSubordinates || hasSupervisors || hasAlumni || hasChildren || hasWorkplaces;
 
   return (
     <div className="p-6 space-y-6 overflow-y-auto h-full">
@@ -105,25 +112,74 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
           <div className="font-[family-name:var(--font-display)] text-[13px] font-semibold tracking-[0.12em] uppercase text-[var(--sg-text-secondary)] mb-3">
             CONNECTIONS
           </div>
-          <div className="space-y-3">
-            {connections.family && connections.family.length > 0 && (
-              <ConnectionGroup
-                label="FAMILY"
-                items={connections.family.map((f) => ({ name: f.name, badge: f.type }))}
+          <div className="space-y-4">
+            {/* Supervisors (who supervises this official) */}
+            {hasSupervisors && (
+              <SupervisionGroup
+                label="SUPERVISED BY"
+                items={connections.supervisors}
+                color="copper"
                 onSelect={onSelectOfficial}
               />
             )}
-            {connections.met_with && connections.met_with.length > 0 && (
-              <ConnectionGroup
-                label="MET WITH"
-                items={connections.met_with.map((m) => ({ name: m.name, badge: m.type }))}
-                onSelect={onSelectOfficial}
-              />
-            )}
-            {connections.supervises && connections.supervises.length > 0 && (
-              <ConnectionGroup
+
+            {/* Subordinates */}
+            {hasSubordinates && (
+              <SupervisionGroup
                 label="SUPERVISES"
-                items={connections.supervises.map((s) => ({ name: s.name, badge: 'Official' }))}
+                items={connections.subordinates}
+                color="copper"
+                onSelect={onSelectOfficial}
+              />
+            )}
+
+            {/* Family */}
+            {hasFamily && (
+              <FamilyGroup
+                items={connections.family}
+                onSelect={onSelectOfficial}
+              />
+            )}
+
+            {/* Children */}
+            {hasChildren && (
+              <div>
+                <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
+                  PARENT OF
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {connections.children.map((c) => (
+                    <span
+                      key={c.name}
+                      className="inline-flex items-center px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)]"
+                    >
+                      {c.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Met With — context is KEY intel */}
+            {hasMetWith && (
+              <MetWithGroup
+                items={connections.met_with}
+                onSelect={onSelectOfficial}
+              />
+            )}
+
+            {/* Alumni */}
+            {hasAlumni && (
+              <AlumniGroup
+                items={connections.alumni}
+                onSelect={onSelectOfficial}
+              />
+            )}
+
+            {/* Workplaces */}
+            {hasWorkplaces && (
+              <WorkplacesGroup
+                items={connections.workplaces}
                 onSelect={onSelectOfficial}
               />
             )}
@@ -195,39 +251,222 @@ export function OfficialProfile({ detail, loading, onSelectOfficial }: OfficialP
   );
 }
 
-function ConnectionGroup({
-  label,
+/* ─── Family Group ─── */
+function FamilyGroup({
   items,
   onSelect,
 }: {
-  label: string;
-  items: { name: string; badge: string }[];
+  items: FamilyConnection[];
   onSelect?: (name: string) => void;
 }) {
+  return (
+    <div>
+      <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
+        FAMILY
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item) => {
+          const isOfficial = item.type === 'Official';
+          return (
+            <div key={item.name} className="flex flex-col gap-0.5">
+              <button
+                onClick={() => isOfficial && onSelect?.(item.name)}
+                disabled={!isOfficial || !onSelect}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border transition-colors self-start ${
+                  isOfficial
+                    ? 'border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)] hover:bg-[rgba(232,168,73,0.12)] cursor-pointer'
+                    : 'border-[rgba(232,168,73,0.15)] bg-[rgba(232,168,73,0.06)] text-[var(--sg-amber)] cursor-default'
+                }`}
+              >
+                {item.name}
+                <span className="text-[8px] opacity-60 uppercase">{item.type}</span>
+                {item.person_type && (
+                  <span className="text-[8px] opacity-50">({item.person_type})</span>
+                )}
+              </button>
+              {item.notes && (
+                <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] ml-2 italic">
+                  {item.notes}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Met With Group — context prominently displayed ─── */
+function MetWithGroup({
+  items,
+  onSelect,
+}: {
+  items: MetWithConnection[];
+  onSelect?: (name: string) => void;
+}) {
+  return (
+    <div>
+      <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
+        MET WITH
+      </div>
+      <div className="space-y-2">
+        {items.map((item) => {
+          const isOfficial = item.type === 'Official';
+          return (
+            <div
+              key={`${item.name}-${item.context ?? ''}`}
+              className="p-2 rounded border border-[rgba(139,156,247,0.12)] bg-[rgba(139,156,247,0.04)]"
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => isOfficial && onSelect?.(item.name)}
+                  disabled={!isOfficial || !onSelect}
+                  className={`font-[family-name:var(--font-mono)] text-[11px] font-medium transition-colors ${
+                    isOfficial
+                      ? 'text-[var(--sg-periwinkle)] hover:underline cursor-pointer'
+                      : 'text-[var(--sg-periwinkle)] cursor-default'
+                  }`}
+                >
+                  {item.name}
+                </button>
+                <span className="text-[8px] font-[family-name:var(--font-mono)] text-[var(--sg-text-ghost)] uppercase">
+                  {item.type}
+                </span>
+              </div>
+              {/* Context is KEY intel — display prominently */}
+              {item.context && (
+                <div className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--sg-periwinkle)] mt-1 opacity-80">
+                  &ldquo;{item.context}&rdquo;
+                </div>
+              )}
+              {item.predicate && (
+                <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] mt-0.5">
+                  {item.predicate}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Supervision Group ─── */
+function SupervisionGroup({
+  label,
+  items,
+  color,
+  onSelect,
+}: {
+  label: string;
+  items: SupervisionConnection[];
+  color: 'copper' | 'periwinkle';
+  onSelect?: (name: string) => void;
+}) {
+  const borderColor = color === 'copper' ? 'var(--sg-border-copper)' : 'rgba(139,156,247,0.12)';
+  const bgColor = color === 'copper' ? 'var(--sg-copper-dim)' : 'rgba(139,156,247,0.04)';
+  const textColor = color === 'copper' ? 'var(--sg-copper)' : 'var(--sg-periwinkle)';
+
   return (
     <div>
       <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
         {label}
       </div>
       <div className="flex gap-1.5 flex-wrap">
-        {items.map((item) => {
-          const isOfficial = item.badge === 'Official';
-          return (
-            <button
-              key={item.name}
-              onClick={() => isOfficial && onSelect?.(item.name)}
-              disabled={!isOfficial || !onSelect}
-              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border transition-colors ${
-                isOfficial
-                  ? 'border-[var(--sg-border-copper)] bg-[var(--sg-copper-dim)] text-[var(--sg-copper)] hover:bg-[rgba(186,135,89,0.15)] cursor-pointer'
-                  : 'border-[var(--sg-border)] bg-[var(--sg-base)] text-[var(--sg-text-secondary)] cursor-default'
-              }`}
-            >
-              {item.name}
-              <span className="text-[8px] opacity-60 uppercase">{item.badge}</span>
-            </button>
-          );
-        })}
+        {items.map((item) => (
+          <button
+            key={item.name}
+            onClick={() => onSelect?.(item.name)}
+            className="inline-flex flex-col items-start px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border transition-colors cursor-pointer hover:opacity-80"
+            style={{ borderColor, backgroundColor: bgColor, color: textColor }}
+          >
+            <span>{item.name}</span>
+            {item.jabatan && (
+              <span className="text-[8px] opacity-60">{item.jabatan}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Alumni Group ─── */
+function AlumniGroup({
+  items,
+  onSelect,
+}: {
+  items: AlumniConnection[];
+  onSelect?: (name: string) => void;
+}) {
+  return (
+    <div>
+      <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
+        ALUMNI
+      </div>
+      <div className="flex gap-1.5 flex-wrap">
+        {items.map((item) => (
+          <button
+            key={item.name}
+            onClick={() => onSelect?.(item.name)}
+            className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-[family-name:var(--font-mono)] border border-[rgba(94,196,144,0.15)] bg-[rgba(94,196,144,0.06)] text-[var(--sg-clean)] hover:bg-[rgba(94,196,144,0.12)] cursor-pointer transition-colors"
+          >
+            {item.name}
+            {item.angkatan && (
+              <span className="text-[8px] opacity-60">Angk. {item.angkatan}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Workplaces Group ─── */
+function WorkplacesGroup({
+  items,
+  onSelect,
+}: {
+  items: WorkplaceConnection[];
+  onSelect?: (name: string) => void;
+}) {
+  // Filter out Kanim_Office type items since those are already shown in header as kantors
+  const orgItems = items.filter((w) => w.type !== 'Kanim_Office');
+  if (orgItems.length === 0) return null;
+
+  return (
+    <div>
+      <div className="font-[family-name:var(--font-mono)] text-[9px] uppercase tracking-[0.08em] text-[var(--sg-text-ghost)] mb-1.5">
+        ORGANIZATIONS
+      </div>
+      <div className="space-y-1.5">
+        {orgItems.map((item) => (
+          <div
+            key={item.name}
+            className="p-2 rounded border border-[var(--sg-border)] bg-[var(--sg-base)]"
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-secondary)]">
+                {item.name}
+              </span>
+              <span className="text-[8px] font-[family-name:var(--font-mono)] text-[var(--sg-text-ghost)] uppercase">
+                {item.type}
+              </span>
+            </div>
+            {item.jabatan && (
+              <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] mt-0.5">
+                Jabatan: {item.jabatan}
+              </div>
+            )}
+            {item.context && (
+              <div className="font-[family-name:var(--font-mono)] text-[9px] text-[var(--sg-text-ghost)] mt-0.5 italic">
+                {item.context}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

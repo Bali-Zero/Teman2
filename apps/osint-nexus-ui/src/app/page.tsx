@@ -3,14 +3,21 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNeo4j } from '@/hooks/useNeo4j';
 import { OfficialsList, type OfficialListItem } from '@/components/dashboard/OfficialsList';
+import { OrganizationsList } from '@/components/dashboard/OrganizationsList';
 import { OfficialProfile } from '@/components/dashboard/OfficialProfile';
 import { AssetTimeline } from '@/components/dashboard/AssetTimeline';
 import { StatsOverview } from '@/components/dashboard/StatsOverview';
-import type { GraphStats, OfficialDetail } from '@/lib/types';
+import type {
+  GraphStats, OfficialDetail, OrganizationData,
+  RelationshipIntel, HierarchyChain, SupervisesChain, PersonData,
+} from '@/lib/types';
 import { formatNumber } from '@/lib/format';
+
+type LeftTab = 'officials' | 'organizations';
 
 export default function Home() {
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [leftTab, setLeftTab] = useState<LeftTab>('officials');
 
   // Fetch all officials
   const { data: officialsData, loading: officialsLoading } = useNeo4j<{ officials: OfficialListItem[] }>(
@@ -19,6 +26,27 @@ export default function Home() {
 
   // Fetch graph stats
   const { data: stats } = useNeo4j<GraphStats>('/api/graph/stats');
+
+  // Fetch organizations
+  const { data: orgsData } = useNeo4j<{ organizations: OrganizationData[] }>(
+    '/api/graph/organizations'
+  );
+
+  // Fetch relationships intel
+  const { data: relsData } = useNeo4j<{ relationships: RelationshipIntel[] }>(
+    '/api/graph/relationships'
+  );
+
+  // Fetch hierarchy chains
+  const { data: hierarchyData } = useNeo4j<{
+    part_of: HierarchyChain[];
+    supervises: SupervisesChain[];
+  }>('/api/graph/hierarchy');
+
+  // Fetch persons
+  const { data: personsData } = useNeo4j<{ persons: PersonData[] }>(
+    '/api/graph/persons'
+  );
 
   // Fetch selected official detail
   const officialUrl = selectedName ? `/api/graph/official/${encodeURIComponent(selectedName)}` : null;
@@ -43,6 +71,7 @@ export default function Home() {
   }, [officialDetail, selectedName]);
 
   const officials = officialsData?.officials ?? [];
+  const organizations = orgsData?.organizations ?? [];
 
   // Top 10 holders for overview
   const topHolders = useMemo(() => {
@@ -58,7 +87,7 @@ export default function Home() {
 
   // Header stats text
   const headerText = stats
-    ? `${formatNumber(stats.officials)} Officials \u00b7 ${formatNumber(stats.lhkpn_reports)} LHKPN \u00b7 ${formatNumber(stats.nodes)} Nodes`
+    ? `${formatNumber(stats.officials)} Officials \u00b7 ${formatNumber(stats.lhkpn_reports)} LHKPN \u00b7 ${formatNumber(stats.nodes)} Nodes \u00b7 ${formatNumber(organizations.length)} Orgs`
     : 'Loading...';
 
   return (
@@ -77,22 +106,56 @@ export default function Home() {
 
       {/* Three-column layout */}
       <div className="flex flex-1 min-h-0">
-        {/* Left Panel: Officials Directory */}
+        {/* Left Panel: Directory with tab switch */}
         <div className="w-[280px] shrink-0 border-r border-[var(--sg-border)] bg-[var(--sg-base-deep)] flex flex-col">
-          {officialsLoading ? (
-            <div className="flex items-center justify-center flex-1">
-              <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-ghost)] animate-pulse">
-                Loading directory...
-              </span>
-            </div>
-          ) : (
-            <OfficialsList
-              officials={officials}
-              selected={selectedName}
-              anomalyNames={anomalyNames}
-              onSelect={handleSelect}
-            />
-          )}
+          {/* Tab switcher */}
+          <div className="flex border-b border-[var(--sg-border)]">
+            <button
+              onClick={() => setLeftTab('officials')}
+              className={`flex-1 py-2 text-center font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                leftTab === 'officials'
+                  ? 'text-[var(--sg-copper)] border-b-2 border-b-[var(--sg-copper)] bg-[var(--sg-copper-dim)]'
+                  : 'text-[var(--sg-text-ghost)] hover:text-[var(--sg-text-secondary)]'
+              }`}
+            >
+              Officials ({officials.length})
+            </button>
+            <button
+              onClick={() => setLeftTab('organizations')}
+              className={`flex-1 py-2 text-center font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.08em] transition-colors ${
+                leftTab === 'organizations'
+                  ? 'text-[var(--sg-periwinkle)] border-b-2 border-b-[var(--sg-periwinkle)] bg-[var(--sg-periwinkle-dim)]'
+                  : 'text-[var(--sg-text-ghost)] hover:text-[var(--sg-text-secondary)]'
+              }`}
+            >
+              Orgs ({organizations.length})
+            </button>
+          </div>
+
+          {/* Tab content */}
+          <div className="flex-1 min-h-0">
+            {leftTab === 'officials' ? (
+              officialsLoading ? (
+                <div className="flex items-center justify-center flex-1 h-full">
+                  <span className="font-[family-name:var(--font-mono)] text-[11px] text-[var(--sg-text-ghost)] animate-pulse">
+                    Loading directory...
+                  </span>
+                </div>
+              ) : (
+                <OfficialsList
+                  officials={officials}
+                  selected={selectedName}
+                  anomalyNames={anomalyNames}
+                  onSelect={handleSelect}
+                />
+              )
+            ) : (
+              <OrganizationsList
+                organizations={organizations}
+                onSelectOfficial={handleSelect}
+              />
+            )}
+          </div>
         </div>
 
         {/* Center Panel: Profile or Overview */}
@@ -103,7 +166,7 @@ export default function Home() {
             <OfficialProfile
               detail={{
                 profile: { name: selectedName, jabatan: '', nip: null, kantor: '', pangkat: null, angkatan: null, asal: null, agama: null, ttl: null, kantors: [] },
-                connections: { family: [], met_with: [], supervises: [] },
+                connections: { family: [], met_with: [], subordinates: [], supervisors: [], alumni: [], children: [], workplaces: [] },
                 lhkpn_years: [],
                 assets_by_year: {},
                 delta: [],
@@ -111,7 +174,16 @@ export default function Home() {
               loading={true}
             />
           ) : (
-            <StatsOverview stats={stats} topHolders={topHolders} loading={officialsLoading} onSelectOfficial={handleSelect} />
+            <StatsOverview
+              stats={stats}
+              topHolders={topHolders}
+              loading={officialsLoading}
+              onSelectOfficial={handleSelect}
+              relationships={relsData?.relationships}
+              hierarchy={hierarchyData?.part_of}
+              supervisesChains={hierarchyData?.supervises}
+              persons={personsData?.persons}
+            />
           )}
         </div>
 
@@ -140,7 +212,7 @@ export default function Home() {
       {/* Footer status bar */}
       <footer className="flex items-center justify-between px-6 py-2 border-t border-[var(--sg-border)] bg-[var(--sg-base-deep)] shrink-0">
         <span className="font-[family-name:var(--font-mono)] text-[10px] tracking-[0.08em] uppercase text-[var(--sg-text-ghost)]">
-          SISMOGRAFO DEL POTERE v0.1
+          SISMOGRAFO DEL POTERE v0.2
         </span>
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--sg-clean)]" />
