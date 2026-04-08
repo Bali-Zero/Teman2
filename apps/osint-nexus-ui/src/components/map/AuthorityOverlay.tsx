@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLevel } from '@/hooks/useLevel';
 import { useNeo4j } from '@/hooks/useNeo4j';
 import type { OfficialDetail } from '@/lib/types';
@@ -40,8 +41,17 @@ export function AuthorityOverlay() {
     <div className="absolute inset-0 z-25">
       <NeuralWeb />
 
+      <AnimatePresence>
       {officialDetail && state.selectedOfficial && (
-        <div className="absolute right-4 top-16 bottom-12" style={{ width: 400, zIndex: 35 }}>
+        <motion.div
+          key="official-detail"
+          initial={{ x: 420, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 420, opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="absolute right-4 top-16 bottom-12"
+          style={{ width: 400, zIndex: 35 }}
+        >
           <ObsidianPanel className="h-full overflow-y-auto p-5">
             <div className="mb-5">
               <div className="font-[family-name:var(--font-display)] text-[16px] font-semibold text-[var(--sg-text-primary)]">
@@ -109,8 +119,9 @@ export function AuthorityOverlay() {
               </div>
             )}
           </ObsidianPanel>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
