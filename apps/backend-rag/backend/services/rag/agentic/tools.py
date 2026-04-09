@@ -1000,14 +1000,16 @@ class CRMTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "Query the CRM database for real-time client and practice data.\n\n"
-            "**USE THIS TOOL** for questions about:\n"
-            "- Client counts: 'How many active clients?'\n"
-            "- Client search: 'Find client Marco Rossi'\n"
-            "- Practice status: 'Which practices are in progress?'\n"
-            "- Expiring documents: 'Clients with visas expiring this month'\n"
-            "- Service breakdown: 'How many PT PMA setups this quarter?'\n\n"
-            "Returns live data from the PostgreSQL CRM database."
+            "REQUIRED for ANY question about clients, practices, or business data. "
+            "Queries the LIVE CRM database (PostgreSQL) and returns real numbers.\n\n"
+            "ALWAYS use this tool FIRST when the user asks:\n"
+            "- 'How many clients?' → use query_type='client_stats'\n"
+            "- 'Find client X' → use query_type='search_clients'\n"
+            "- 'Expiring visas/KITAS' → use query_type='expiring_documents'\n"
+            "- 'Breakdown by service' → use query_type='practice_stats'\n"
+            "- 'Recent/new clients' → use query_type='recent_clients'\n\n"
+            "This is the ONLY tool that can give real client counts and practice data. "
+            "Do NOT answer client questions without calling this tool first."
         )
 
     @property
