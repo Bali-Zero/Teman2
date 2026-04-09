@@ -90,9 +90,8 @@ async def stream_gemini_api(
                     if resp.status_code != 200:
                         body = await resp.aread()
                         logger.error("Gemini API %d: %s", resp.status_code, body.decode()[:300])
-                        yield f'data: {json.dumps({"type":"error","data":f"API error {resp.status_code}"})}\n\n'
-                        yield "data: [DONE]\n\n"
-                        return
+                        # Raise exception so gateway falls back to CLI spawn
+                        raise RuntimeError(f"Gemini API {resp.status_code}: rate limit or overloaded")
 
                     function_calls: list[dict] = []
                     text_parts: list[str] = []
@@ -166,9 +165,7 @@ async def stream_gemini_api(
                 resp = await client.post(url, json=payload)
                 if resp.status_code != 200:
                     logger.error("Gemini API %d: %s", resp.status_code, resp.text[:300])
-                    yield f'data: {json.dumps({"type":"error","data":f"API error {resp.status_code}"})}\n\n'
-                    yield "data: [DONE]\n\n"
-                    return
+                    raise RuntimeError(f"Gemini API {resp.status_code}: rate limit or overloaded")
 
                 data = resp.json()
                 function_calls: list[dict] = []
