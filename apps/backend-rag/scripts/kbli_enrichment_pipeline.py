@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -495,31 +496,77 @@ CLAUDE_CLI = "claude"
 CLAUDE_MODEL_CLASSIFY = "claude-haiku-4-5-20251001"
 
 
+_KBLI_RATE_LIMIT_RE = re.compile(
+    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    re.IGNORECASE,
+)
+_KBLI_EXHAUSTED: dict[str, str] = {}
+
+
+def _kbli_token_chain() -> list[tuple[str, str]]:
+    chain: list[tuple[str, str]] = []
+    for i in (1, 2, 3):
+        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
+        if tok:
+            chain.append((f"token_{i}", tok))
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and not any(t == legacy for _, t in chain):
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
+
+
 def call_claude_cli(prompt: str, timeout: int = 30) -> str:
     """
     Call Claude CLI (subscription, zero API cost) for classify.
     Model: claude-haiku-4-5-20251001 — fast, structured JSON output.
-    Raises RuntimeError if not logged in.
+    Multi-account fallback: TOKEN_1→2→3→legacy→keychain.
+    Raises RuntimeError if not logged in or all tokens exhausted.
     """
-    result = subprocess.run(
-        [CLAUDE_CLI, "--model", CLAUDE_MODEL_CLASSIFY, "-p", prompt],
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    if result.returncode != 0:
-        err = result.stderr[:300]
-        if "Not logged in" in err or "login" in err.lower():
-            raise RuntimeError("Claude CLI not logged in — run: claude /login")
-        raise RuntimeError(f"Claude CLI error (rc={result.returncode}): {err}")
-    # Strip any CLI noise lines
-    lines = result.stdout.splitlines()
-    clean = "\n".join(
-        line for line in lines
-        if not line.startswith("Not logged") and not line.startswith("Using") and
-           not line.startswith("Loaded")
-    ).strip()
-    return clean
+    for label, token in _kbli_token_chain():
+        if label in _KBLI_EXHAUSTED:
+            continue
+
+        env = os.environ.copy()
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+        try:
+            result = subprocess.run(
+                [CLAUDE_CLI, "--model", CLAUDE_MODEL_CLASSIFY, "-p", prompt],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            _KBLI_EXHAUSTED[label] = "timeout"
+            continue
+
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 and _KBLI_RATE_LIMIT_RE.search(combined):
+            _KBLI_EXHAUSTED[label] = "rate_limit"
+            continue
+
+        if result.returncode != 0:
+            err = result.stderr[:300]
+            if "Not logged in" in err or "login" in err.lower():
+                raise RuntimeError("Claude CLI not logged in — run: claude /login")
+            raise RuntimeError(f"Claude CLI error ({label}, rc={result.returncode}): {err}")
+
+        # Strip CLI noise lines
+        lines = result.stdout.splitlines()
+        clean = "\n".join(
+            line for line in lines
+            if not line.startswith("Not logged") and not line.startswith("Using") and
+               not line.startswith("Loaded")
+        ).strip()
+        return clean
+
+    raise RuntimeError("All Claude tokens exhausted")
 
 
 def call_gemini_cli(system: str, user_prompt: str, timeout: int = 120) -> str:

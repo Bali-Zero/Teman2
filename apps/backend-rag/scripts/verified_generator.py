@@ -254,6 +254,27 @@ def step_deepseek_reasoning(
     return ""
 
 
+_GEN_RATE_LIMIT_RE = re.compile(
+    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    re.IGNORECASE,
+)
+_GEN_EXHAUSTED: dict[str, str] = {}
+
+
+def _gen_token_chain() -> list[tuple[str, str]]:
+    chain: list[tuple[str, str]] = []
+    for i in (1, 2, 3):
+        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
+        if tok:
+            chain.append((f"token_{i}", tok))
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and not any(t == legacy for _, t in chain):
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
+
+
 def generate_document(
     domain: str,
     topic: str,
@@ -263,10 +284,10 @@ def generate_document(
     reasoning_context: str,
     existing_text: str | None = None,
 ) -> str:
-    """Step 6: Generate T2 document via claude CLI (Max subscription)."""
+    """Step 6: Generate T2 document via claude CLI (Max subscription).
+    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
     claims_summary = build_claims_summary(claims_db)
 
-    # Truncate contexts to avoid hitting token limits
     research_ctx = (research_context[:2000] if research_context else "Not available — proceed from claims_db only")
     oracolo_ctx = (oracolo_context[:3000] if oracolo_context else "Not available — proceed from claims_db only")
     reasoning_ctx = (reasoning_context[:2000] if reasoning_context else "Not available")
@@ -290,14 +311,40 @@ def generate_document(
             claims_summary=claims_summary,
         )
 
-    result = subprocess.run(
-        ["claude", "--print", "--dangerously-skip-permissions"],
-        input=prompt, capture_output=True, text=True, timeout=300,
-    )
-    if result.returncode != 0:
-        logger.error("claude CLI error: %s", result.stderr[:500])
-        sys.exit(1)
-    return result.stdout.strip()
+    for label, token in _gen_token_chain():
+        if label in _GEN_EXHAUSTED:
+            continue
+
+        env = os.environ.copy()
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", "--dangerously-skip-permissions"],
+                input=prompt, capture_output=True, text=True, timeout=300, env=env,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning("generate_document: %s timed out", label)
+            _GEN_EXHAUSTED[label] = "timeout"
+            continue
+
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 and _GEN_RATE_LIMIT_RE.search(combined):
+            logger.warning("generate_document: %s rate-limited", label)
+            _GEN_EXHAUSTED[label] = "rate_limit"
+            continue
+
+        if result.returncode != 0:
+            logger.error("claude CLI error (%s): %s", label, result.stderr[:500])
+            sys.exit(1)
+
+        return result.stdout.strip()
+
+    logger.error("generate_document: all Claude tokens exhausted")
+    sys.exit(1)
 
 
 def validate_markers(document_text: str, claims_db: dict[str, dict[str, Any]]) -> tuple[list[str], list[str]]:

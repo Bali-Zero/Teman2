@@ -20,6 +20,7 @@ import argparse
 import json
 import logging
 import re
+import os
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
@@ -81,23 +82,71 @@ VERDICT: <FAITHFUL|UNFAITHFUL|UNCERTAIN>
 REASON: <one sentence>"""
 
 
+_VERIFIER_RATE_LIMIT_RE = re.compile(
+    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    re.IGNORECASE,
+)
+_VERIFIER_EXHAUSTED: dict[str, str] = {}
+
+
+def _verifier_token_chain() -> list[tuple[str, str]]:
+    chain: list[tuple[str, str]] = []
+    for i in (1, 2, 3):
+        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
+        if tok:
+            chain.append((f"token_{i}", tok))
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and not any(t == legacy for _, t in chain):
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
+
+
 def call_claude_verifier(
     claim_id: str, claim_text: str, document_excerpt: str
 ) -> ClaimVerificationResult:
-    """Verify a single claim via claude CLI (Max subscription)."""
+    """Verify a single claim via claude CLI (Max subscription).
+    Multi-account fallback: TOKEN_1→2→3→legacy→keychain."""
     prompt = build_haiku_verification_prompt(claim_text, document_excerpt)
-    result = subprocess.run(
-        ["claude", "--print", "--dangerously-skip-permissions"],
-        input=prompt, capture_output=True, text=True, timeout=60,
+
+    for label, token in _verifier_token_chain():
+        if label in _VERIFIER_EXHAUSTED:
+            continue
+
+        env = os.environ.copy()
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", "--dangerously-skip-permissions"],
+                input=prompt, capture_output=True, text=True, timeout=60, env=env,
+            )
+        except subprocess.TimeoutExpired:
+            _VERIFIER_EXHAUSTED[label] = "timeout"
+            continue
+
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 and _VERIFIER_RATE_LIMIT_RE.search(combined):
+            _VERIFIER_EXHAUSTED[label] = "rate_limit"
+            continue
+
+        text = result.stdout.strip() if result.returncode == 0 else ""
+        verdict, reason = "UNCERTAIN", text
+        for line in text.split("\n"):
+            if line.startswith("VERDICT:"):
+                verdict = line.split(":", 1)[1].strip()
+            elif line.startswith("REASON:"):
+                reason = line.split(":", 1)[1].strip()
+        return ClaimVerificationResult(claim_id=claim_id, verdict=verdict, reason=reason)
+
+    # All tokens exhausted
+    return ClaimVerificationResult(
+        claim_id=claim_id, verdict="UNCERTAIN", reason="All Claude tokens exhausted"
     )
-    text = result.stdout.strip() if result.returncode == 0 else ""
-    verdict, reason = "UNCERTAIN", text
-    for line in text.split("\n"):
-        if line.startswith("VERDICT:"):
-            verdict = line.split(":", 1)[1].strip()
-        elif line.startswith("REASON:"):
-            reason = line.split(":", 1)[1].strip()
-    return ClaimVerificationResult(claim_id=claim_id, verdict=verdict, reason=reason)
 
 
 def verify_document(document_text: str, claims_db_path: str) -> VerificationReport:
