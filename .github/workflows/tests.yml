@@ -87,7 +87,7 @@ jobs:
           PYTHONPATH=. pytest backend/tests/ -v \
             --ignore=backend/tests/e2e \
             --cov=backend \
-            --cov-report=xml:coverage-unit.xml \
+            --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
             --junit-xml=test-results-unit.xml \
             --tb=short -x
@@ -95,7 +95,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. coverage report --fail-under=40 || echo "⚠️ Coverage below 40% — CRITICAL: check report"
+          PYTHONPATH=. coverage report --fail-under=40
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -111,7 +111,7 @@ jobs:
           name: backend-test-results
           path: |
             apps/backend-rag/test-results-*.xml
-            apps/backend-rag/coverage-unit.xml
+            apps/backend-rag/coverage.xml
 
   mcp-tests:
     name: MCP Server Tests
