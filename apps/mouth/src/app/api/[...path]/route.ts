@@ -22,7 +22,9 @@ async function proxy(req: NextRequest): Promise<Response> {
 
   // Extract correlation ID for logging
   const correlationId = req.headers.get("X-Correlation-ID") || "unknown";
-  const isStreamingEndpoint = url.pathname.includes("/agentic-rag/stream");
+  const isStreamingEndpoint =
+    url.pathname.includes("/agentic-rag/stream") ||
+    url.pathname.includes("/agentic-rag/workspace-stream");
 
   // Log requests in development
   if (process.env.NODE_ENV !== "production") {
