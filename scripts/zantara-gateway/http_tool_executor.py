@@ -26,8 +26,11 @@ TOOL_ROUTES: dict[str, tuple[str, str]] = {
     "get_client_timeline": ("GET", "/api/crm/interactions/client/{client_id}/timeline"),
     "list_practices": ("GET", "/api/crm/practices/"),
     "get_practice": ("GET", "/api/crm/practices/{practice_id}"),
+    "get_client_timeline": ("GET", "/api/crm/interactions/client/{client_id}/timeline"),
     "get_expiry_alerts": ("GET", "/api/crm/expiry-alerts"),
     "get_compliance_alerts": ("GET", "/api/crm/compliance-alerts"),
+    "create_client": ("POST", "/api/crm/clients/"),
+    "create_practice": ("POST", "/api/crm/practices/"),
     "update_practice_status": ("PATCH", "/api/crm/practices/{practice_id}"),
     "log_interaction": ("POST", "/api/crm/interactions"),
     # Visa & Knowledge
@@ -82,17 +85,34 @@ class HTTPToolExecutor:
     def is_ready(self) -> bool:
         return self._client is not None and not self._client.is_closed
 
-    # Top 10 tools for Gemini API (free tier can't handle 31 declarations)
+    # Priority tools for Gemini API (free tier can't handle 31+ declarations)
+    # Split into READ (always) + WRITE (for daily operations)
     PRIORITY_TOOLS: dict[str, str] = {
-        "list_clients": "List CRM clients with optional search/filter. Returns array of client objects.",
-        "get_client": "Get full details of a single client by ID. Args: client_id (string).",
-        "get_client_stats": "Get client statistics: total count, by status, by team member.",
-        "list_practices": "List active practices/cases. Optional filter by status or assigned_to.",
-        "get_practice": "Get full details of a practice by ID. Args: practice_id (string).",
-        "get_expiry_alerts": "Get documents and visas expiring soon. Args: days_ahead (int, default 90).",
-        "calculate_pricing": "Calculate service pricing. Args: service_type (string).",
-        "get_all_prices": "Get complete pricing catalog for all Bali Zero services.",
-        "search_intel": "Search intelligence database for news and regulations. Args: query (string).",
+        # READ — CRM
+        "list_clients": "List CRM clients. Optional: search (string), limit (int, default 20).",
+        "get_client": "Get client details. Args: client_id (string, required).",
+        "get_client_stats": "Get statistics: total clients, by status, by team member.",
+        "get_client_timeline": "Get interaction history for a client. Args: client_id (string).",
+        "list_practices": "List practices/cases. Optional: status, assigned_to.",
+        "get_practice": "Get practice details. Args: practice_id (string).",
+        "get_expiry_alerts": "Get visas/documents expiring soon. Args: days_ahead (int, default 90).",
+        "get_compliance_alerts": "Get compliance alerts for the team.",
+        # READ — Pricing & Knowledge
+        "calculate_pricing": "Calculate service price. Args: service_type (string).",
+        "get_all_prices": "Get full pricing catalog for all Bali Zero services.",
+        "list_visa_types": "List all available visa types in Indonesia.",
+        "get_visa_details": "Get details of a specific visa. Args: visa_code (string).",
+        # WRITE — CRM Operations
+        "create_client": "Create a new client. Args: full_name, email, phone, nationality.",
+        "create_practice": "Create a new practice/case. Args: client_id, service_type, notes.",
+        "update_practice_status": "Update practice status. Args: practice_id, status, notes.",
+        "log_interaction": "Log an interaction with a client. Args: client_id, type, notes.",
+        # WRITE — Comms
+        "send_email": "Send email. Args: to (email), subject, body.",
+        "send_whatsapp": "Send WhatsApp message. Args: phone (string), message (string).",
+        "send_portal_message": "Send message to client portal. Args: client_id, message.",
+        # READ — Content & Intel
+        "search_intel": "Search news and regulations. Args: query (string).",
         "list_articles": "List published articles on the website.",
     }
 
