@@ -1,8 +1,13 @@
 """Tests for owner cashout sync service (upsert_week + run_sync)."""
+import os
 from datetime import date
 
 import asyncpg
 import pytest
+
+pytestmark = [
+    pytest.mark.integration,
+]
 
 from backend.services.hr.owner_cashout.parser import CashoutRow
 from backend.services.hr.owner_cashout.sync_service import upsert_week
@@ -10,11 +15,11 @@ from backend.services.hr.owner_cashout.sync_service import upsert_week
 
 @pytest.fixture
 async def db_pool(monkeypatch):
-    import os
-    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/nuzantara_dev"
-    )
-    pool = await asyncpg.create_pool(url)
+    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    try:
+        pool = await asyncpg.create_pool(url)
+    except Exception:
+        pytest.skip("PostgreSQL not reachable — skipping integration test")
     # Clean slate for this test run
     async with pool.acquire() as c:
         await c.execute("DELETE FROM owner_weekly_cashout_rows")
