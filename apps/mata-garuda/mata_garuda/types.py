@@ -57,3 +57,19 @@ class Result(BaseModel):
     agent: Optional[Agent] = None  # se settato, switch a questo agente
     context_variables: dict = Field(default_factory=dict)
     image: Optional[str] = None  # base64 encoded, per multimodal output
+
+
+class RunOutcome(BaseModel):
+    """Rich outcome of a single agent run, for multi-dimensional fitness."""
+
+    agent_name: str
+    success: bool
+    tokens_used: Optional[int] = None
+    duration_ms: Optional[int] = None
+
+    @property
+    def efficiency(self) -> Optional[float]:
+        """Tokens per millisecond — lower is more efficient."""
+        if self.tokens_used and self.duration_ms and self.duration_ms > 0:
+            return self.tokens_used / self.duration_ms
+        return None

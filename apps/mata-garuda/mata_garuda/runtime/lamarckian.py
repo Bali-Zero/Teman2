@@ -27,7 +27,14 @@ from mata_garuda.runtime.genome import (
     log_feedback,
     read_genome,
 )
+from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.runtime.loop import run_agent_loop
+from mata_garuda.runtime.reflection import (
+    build_reflection_context,
+    build_reflection_prompt,
+    parse_reflection,
+    store_reflection_in_kb,
+)
 from mata_garuda.types import Agent, Response
 
 logger = logging.getLogger("mata_garuda.runtime")
@@ -66,27 +73,71 @@ def _parse_case_status(output: str) -> tuple[Optional[str], Optional[dict]]:
     return None, None
 
 
+def _run_post_reflection(
+    agent: Agent,
+    query: str,
+    success: bool,
+    messages: list[dict],
+    kb: Optional[KnowledgeBase] = None,
+) -> None:
+    """Run post-run reflection and store in KB. Non-blocking — failures logged, not raised."""
+    if kb is None:
+        return
+
+    try:
+        genome = read_genome(agent.name) or ""
+        genome_snippet = genome[:500] if genome else "No GENOME"
+
+        messages_summary = ""
+        for msg in messages[-5:]:
+            content = msg.get("content", "")[:200]
+            messages_summary += f"[{msg.get('role', '?')}] {content}\n"
+
+        prompt = build_reflection_prompt(
+            agent_name=agent.name,
+            query=query,
+            outcome_success=success,
+            messages_summary=messages_summary,
+            genome_snippet=genome_snippet,
+        )
+
+        runtime = CLIRuntime(model="claude")
+        result = runtime.invoke(prompt=prompt, system_prompt="Output only JSON.")
+
+        if result.success:
+            parsed = parse_reflection(result.output)
+            store_reflection_in_kb(kb, agent.name, parsed)
+            logger.info(f"[lamarckian] Reflection stored for {agent.name}")
+        else:
+            logger.warning(f"[lamarckian] Reflection CLI failed: {result.stderr[:100]}")
+    except Exception as e:
+        logger.warning(f"[lamarckian] Reflection failed (non-blocking): {e}")
+
+
 def run_with_lamarckian_feedback(
     agent: Agent,
     query: str,
     context_variables: Optional[dict] = None,
     max_retry: int = MAX_RETRY,
+    kb: Optional[KnowledgeBase] = None,
 ) -> Response:
     """
-    Run an agent with Lamarckian feedback loop.
+    Run an agent with Lamarckian feedback loop + Reflexion.
 
     Flow:
-    1. Run agent via MetaChain loop
-    2. Check for case_resolved/case_not_resolved in output
-    3. On resolved → record success, return
-    4. On not_resolved → log feedback, retry with hint
-    5. After max retries → escalate to meta-agent
+    1. Inject recent reflections from KB into prompt
+    2. Run agent via MetaChain loop
+    3. Check for case_resolved/case_not_resolved in output
+    4. On resolved → record success, run reflection, return
+    5. On not_resolved → log feedback, run reflection, retry with hint
+    6. After max retries → escalate to meta-agent
 
     Args:
         agent: Agent instance to run
         query: User query
         context_variables: Shared state
         max_retry: Maximum retry attempts
+        kb: Optional KnowledgeBase instance for reflection storage
 
     Returns:
         Response with all messages
@@ -94,8 +145,18 @@ def run_with_lamarckian_feedback(
     if context_variables is None:
         context_variables = {}
 
+    # Inject KB into context_variables for knowledge tools
+    if kb is not None:
+        context_variables["kb"] = kb
+        context_variables["agent_name"] = agent.name
+
     mutation_version = get_mutation_version(agent.name)
     all_messages: list[dict] = []
+
+    # Inject recent reflections into the first query
+    reflection_context = ""
+    if kb is not None:
+        reflection_context = build_reflection_context(kb, agent.name, n=5)
 
     for attempt in range(max_retry):
         logger.info(
@@ -109,12 +170,11 @@ def run_with_lamarckian_feedback(
                 f"[RETRY {attempt + 1}/{max_retry}] "
                 f"{RETRY_HINTS[attempt - 1]}"
             )
-            # Include GENOME.md content in retry hint
             genome = read_genome(agent.name)
             if genome:
                 current_query += f"\n\nYour GENOME.md:\n{genome}"
         else:
-            current_query = query
+            current_query = query + reflection_context
 
         # Run agent
         response = run_agent_loop(
@@ -139,9 +199,9 @@ def run_with_lamarckian_feedback(
         status, details = _parse_case_status(last_content)
 
         if status == "resolved":
-            # Success — record and return
             record_run(agent.name, success=True, mutation_version=mutation_version)
             logger.info(f"[lamarckian] {agent.name} resolved on attempt {attempt + 1}")
+            _run_post_reflection(agent, query, True, all_messages, kb)
             return Response(
                 messages=all_messages,
                 agent=agent,
@@ -149,7 +209,6 @@ def run_with_lamarckian_feedback(
             )
 
         if status == "not_resolved":
-            # Failure — log feedback
             details = details or {}
             feedback_path = log_feedback(
                 agent_name=agent.name,
@@ -165,11 +224,11 @@ def run_with_lamarckian_feedback(
             )
 
             if attempt >= max_retry - 1:
-                # Last attempt — escalate
                 logger.warning(
                     f"[lamarckian] {agent.name} exhausted retries. "
                     f"Escalating to meta-agent."
                 )
+                _run_post_reflection(agent, query, False, all_messages, kb)
                 escalation_msg = {
                     "role": "system",
                     "content": (
@@ -190,6 +249,7 @@ def run_with_lamarckian_feedback(
             f"[lamarckian] {agent.name} finished without explicit case status "
             f"on attempt {attempt + 1} — treating as resolved"
         )
+        _run_post_reflection(agent, query, True, all_messages, kb)
         return Response(
             messages=all_messages,
             agent=agent,
