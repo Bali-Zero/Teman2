@@ -389,8 +389,9 @@ class TestTelegramAdapter:
     ) -> None:
         adapter.bot_service.send_message = AsyncMock(side_effect=Exception("Network down"))
 
-        # Should not raise
-        await adapter.send_response("123", simple_response)
+        # Adapter re-raises exceptions for DLQ routing via send_response_safe()
+        with pytest.raises(Exception, match="Network down"):
+            await adapter.send_response("123", simple_response)
 
     async def test_send_response_truncates(
         self, adapter: TelegramChannelAdapter, long_response: ChannelResponse,

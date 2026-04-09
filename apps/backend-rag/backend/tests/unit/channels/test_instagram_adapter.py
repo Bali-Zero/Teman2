@@ -222,8 +222,9 @@ class TestInstagramAdapter:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(side_effect=Exception("API down"))
 
-        # Should not raise, just log error
-        await adapter.send_response("123", simple_response)
+        # Adapter re-raises exceptions for DLQ routing via send_response_safe()
+        with pytest.raises(Exception, match="API down"):
+            await adapter.send_response("123", simple_response)
 
     async def test_send_status_update_noop(
         self, adapter: InstagramChannelAdapter,
