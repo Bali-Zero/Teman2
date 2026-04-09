@@ -371,9 +371,19 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     streamed = False
 
     try:
-        # ── Path 0: Gemini API direct (zero cold start, ~2s) ──
+        # ── Path 0: Gemini API direct (zero cold start, ~2-3s) ──
         if config.gemini_api_key:
             try:
+                # Get MCP tools if available
+                api_tools = []
+                api_execute = None
+                if mcp_client.is_ready():
+                    try:
+                        api_tools = await mcp_client.get_tool_definitions()
+                        api_execute = mcp_client.execute_tool
+                    except Exception:
+                        pass
+
                 async for sse_line in stream_gemini_api(
                     query,
                     api_key=config.gemini_api_key,
@@ -383,6 +393,8 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                         "Bali Zero is a business services company in Bali (visa, company setup, tax, property) with 5000+ clients. "
                         "Always introduce yourself as Zantara. Respond in the user's language. Be concise. Use tools for real data."
                     ),
+                    mcp_tools=api_tools,
+                    mcp_execute=api_execute,
                 ):
                     await response.write(sse_line.encode("utf-8"))
                     streamed = True
