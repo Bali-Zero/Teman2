@@ -33,4 +33,6 @@ async def get_db_pool() -> asyncpg.Pool:
         max_size=5,
         command_timeout=60,
         init=init_db_connection,
+        # Required for PgBouncer transaction mode — prevents prepared statement leak
+        statement_cache_size=0,
     )
