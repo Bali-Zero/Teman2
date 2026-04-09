@@ -160,13 +160,38 @@ def send_telegram(message: str) -> None:
         pass
 
 
+# ── Claude CLI token chain (multi-account fallback) ──────────────────────────
+
+_RATE_LIMIT_RE = re.compile(
+    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    re.IGNORECASE,
+)
+_EXHAUSTED_TOKENS: dict[str, str] = {}  # label → reason (per-process latch)
+
+
+def _load_token_chain() -> list[tuple[str, str]]:
+    """Load ordered list of (label, oauth_token) to try."""
+    chain: list[tuple[str, str]] = []
+    for i in (1, 2, 3):
+        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
+        if tok:
+            chain.append((f"token_{i}", tok))
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and not any(t == legacy for _, t in chain):
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
+
+
 # ── Claude CLI reasoning ───────────────────────────────────────────────────────
 
 def claude_reason(entry: dict) -> Optional[dict]:
     """
     Ask Claude CLI to reason about a DLQ entry.
     Returns {fix_type, fix_instruction, confidence, needs_code_change} or None.
-    Falls back gracefully on timeout, missing CLI, or JSON parse failure.
+    Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
+    Latches exhausted tokens per-process to avoid repeated timeouts.
     """
     job = entry["job"]
     error = entry.get("error_summary", "")
@@ -194,48 +219,68 @@ Rules:
 - If error is empty or ambiguous, set confidence <= 0.5
 - Do not fabricate fixes for empty errors"""
 
-    try:
-        result = subprocess.run(
-            ["claude", "--print", prompt],
-            capture_output=True,
-            text=True,
-            timeout=REASONING_TIMEOUT_S,
-            env={**os.environ, "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"},
-        )
-        if result.returncode != 0:
-            logger.warning(f"{job}: claude --print exit {result.returncode}")
+    chain = _load_token_chain()
+
+    for label, token in chain:
+        if label in _EXHAUSTED_TOKENS:
+            logger.info(f"{job}: skip {label} (exhausted: {_EXHAUSTED_TOKENS[label]})")
+            continue
+
+        env = {**os.environ, "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"}
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", prompt],
+                capture_output=True,
+                text=True,
+                timeout=REASONING_TIMEOUT_S,
+                env=env,
+            )
+        except subprocess.TimeoutExpired:
+            logger.warning(f"{job}: {label} timed out after {REASONING_TIMEOUT_S}s")
+            _EXHAUSTED_TOKENS[label] = "timeout"
+            continue
+        except FileNotFoundError:
+            logger.error("claude CLI not found — check PATH")
             return None
 
-        # Strip ANSI codes and extract first JSON object (handles nested braces correctly)
+        combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 and _RATE_LIMIT_RE.search(combined):
+            logger.warning(f"{job}: {label} rate-limited — trying next token")
+            _EXHAUSTED_TOKENS[label] = "rate_limit"
+            continue
+
+        if result.returncode != 0:
+            logger.warning(f"{job}: {label} exit {result.returncode}")
+            return None
+
+        # Parse JSON from output
         clean = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
         start = clean.find("{")
         if start == -1:
-            logger.warning(f"{job}: no JSON in claude output")
+            logger.warning(f"{job}: no JSON in claude output ({label})")
             return None
 
         try:
             data, _ = json.JSONDecoder().raw_decode(clean, start)
         except json.JSONDecodeError:
-            logger.warning(f"{job}: no JSON in claude output")
+            logger.warning(f"{job}: no JSON in claude output ({label})")
             return None
         required = {"fix_type", "fix_instruction", "confidence", "needs_code_change"}
         if not required.issubset(data.keys()):
             logger.warning(f"{job}: claude output missing required keys")
             return None
         data["confidence"] = float(data["confidence"])
-        # D4.2: LLM output is advisory only — mark so caller never acts on it directly
         data["llm_suggested_only"] = True
+        data["_token_used"] = label
         return data
 
-    except subprocess.TimeoutExpired:
-        logger.warning(f"{job}: claude --print timed out after {REASONING_TIMEOUT_S}s")
-        return None
-    except (json.JSONDecodeError, ValueError) as e:
-        logger.warning(f"{job}: JSON parse error: {e}")
-        return None
-    except FileNotFoundError:
-        logger.error("claude CLI not found — check PATH")
-        return None
+    logger.warning(f"{job}: all Claude tokens exhausted")
+    return None
 
 
 # ── Aider dispatch ────────────────────────────────────────────────────────────
