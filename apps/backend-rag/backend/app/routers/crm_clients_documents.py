@@ -384,8 +384,11 @@ Use null for unclear fields. Return ONLY JSON."""
         extracted["nationality"] = normalize_nationality(extracted.get("nationality"))
         extracted["date_of_birth"] = normalize_date(extracted.get("date_of_birth"))
         extracted["expiry_date"] = normalize_date(extracted.get("expiry_date"))
-        if extracted.get("gender"):
-            extracted["gender"] = extracted["gender"][0].upper()
+        gender_raw = extracted.get("gender", "")
+        if gender_raw and len(gender_raw) > 0:
+            extracted["gender"] = gender_raw[0].upper()
+        else:
+            extracted["gender"] = None
 
         # Build warnings
         warnings: list[str] = []
@@ -413,7 +416,7 @@ Use null for unclear fields. Return ONLY JSON."""
                 gender=extracted.get("gender") if extracted else None,
                 passport_number=extracted.get("passport_number") if extracted else None,
                 passport_expiry=extracted.get("expiry_date") if extracted else None,
-                issuing_country=extracted.get("nationality") if extracted else None,
+                issuing_country=extracted.get("issuing_country") or extracted.get("nationality") if extracted else None,
                 birthplace=extracted.get("birthplace") if extracted else None,
                 mrz_line1=extracted.get("mrz_line1") if extracted else None,
                 mrz_line2=extracted.get("mrz_line2") if extracted else None,
@@ -439,7 +442,7 @@ Use null for unclear fields. Return ONLY JSON."""
         # Prepare OCR data for storage
         ocr_data = {
             "extracted_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
-            "raw_response": extracted,
+            "fields_extracted": [k for k, v in extracted.items() if v is not None],
             "confidence": extracted.get("confidence", 0.0),
             "name_match_ratio": ratio if name_match is not None else None,
         }
@@ -463,11 +466,11 @@ Use null for unclear fields. Return ONLY JSON."""
                     params.append(expiry_date)
                     param_idx += 1
                 except ValueError:
-                    logger.warning(f"Invalid expiry_date format: {extracted['expiry_date']}")
+                    logger.warning("Passport OCR: invalid expiry_date format in persist mode")
 
             if extracted.get("gender"):
                 update_parts.append(f"gender = ${param_idx}")
-                params.append(extracted["gender"][0].upper())  # M or F
+                params.append(extracted["gender"])  # Already normalized to M or F
                 param_idx += 1
 
             if extracted.get("date_of_birth"):
@@ -477,7 +480,7 @@ Use null for unclear fields. Return ONLY JSON."""
                     params.append(dob)
                     param_idx += 1
                 except ValueError:
-                    logger.warning(f"Invalid date_of_birth format: {extracted['date_of_birth']}")
+                    logger.warning("Passport OCR: invalid date_of_birth format in persist mode")
 
             if extracted.get("birthplace"):
                 update_parts.append(f"birthplace = ${param_idx}")
