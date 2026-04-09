@@ -1,4 +1,9 @@
-"""OlympusGuardian — The Immortal Database Custodian."""
+"""Olympus v2 — Guardian orchestrator.
+
+Wires heartbeat, pulse, rules, and alerts together. Closes the feedback loop:
+- record_applied() on every successful rule-governed action
+- lower_confidence() on every failed rule-governed action
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,6 @@ from typing import Any
 
 import asyncpg
 
-from backend.services.monitoring.alert_service import AlertLevel, AlertService
 from backend.services.olympus.alerts import OlympusAlerts
 from backend.services.olympus.heartbeat import Heartbeat
 from backend.services.olympus.models import PulseAction
@@ -20,9 +24,7 @@ logger = logging.getLogger("olympus.guardian")
 
 
 class OlympusGuardian:
-    """Orchestrates heartbeat and pulse rhythms with alert integration."""
-
-    def __init__(self, db_pool: asyncpg.Pool, alert_service: AlertService) -> None:
+    def __init__(self, db_pool: asyncpg.Pool, alert_service: Any | None) -> None:
         self._pool = db_pool
         self.alerts = OlympusAlerts(alert_service)
         self.rules_engine: RulesEngine | None = None
@@ -32,113 +34,88 @@ class OlympusGuardian:
         self._tasks: list[asyncio.Task[None]] = []
 
     async def initialize(self) -> None:
-        """Create sub-components and load rules from the database."""
         self.rules_engine = RulesEngine(self._pool)
         await self.rules_engine.load_rules()
-
         self.heartbeat = Heartbeat(self._pool, self.rules_engine)
         self.heartbeat.on_alert(self.alerts.send_alert)
-
         self.pulse = Pulse(self._pool, self.rules_engine)
-
-        logger.info("OlympusGuardian initialized — %d rules loaded", len(self.rules_engine.rules))
-
-    # ------------------------------------------------------------------
-    # Single-shot executions
-    # ------------------------------------------------------------------
+        logger.info("OlympusGuardian initialized — %d rules", len(self.rules_engine.rules))
 
     async def run_heartbeat_once(self) -> None:
-        """Collect metrics, evaluate alerts, persist snapshot."""
-        assert self.heartbeat is not None, "Call initialize() first"
+        assert self.heartbeat is not None
         snapshot = await self.heartbeat.collect_metrics()
         await self.heartbeat.check_alerts(snapshot)
         await self.heartbeat.persist(snapshot)
 
     async def run_pulse_once(self) -> list[PulseAction]:
-        """Run full pulse, persist actions, send summary, return actions."""
-        assert self.pulse is not None, "Call initialize() first"
-        assert self.rules_engine is not None, "Call initialize() first"
+        assert self.pulse is not None
+        assert self.rules_engine is not None
 
         actions = await self.pulse.run_full_pulse()
 
-        # Persist each action to olympus_actions
         for action in actions:
             await self._persist_action(action)
 
-        # Record rules that were applied
+        # --- FEEDBACK LOOP ---
         applied_rules: set[str] = set()
-        for action in actions:
-            if action.rule_applied and action.rule_applied not in applied_rules:
-                await self.rules_engine.record_applied(action.rule_applied)
-                applied_rules.add(action.rule_applied)
+        failed_rules: set[str] = set()
 
-        # Send summary via alerts
-        failures = sum(1 for a in actions if a.outcome == "error")
+        for action in actions:
+            if action.rule_applied:
+                if action.outcome == "failure":
+                    failed_rules.add(action.rule_applied)
+                elif action.outcome == "success":
+                    applied_rules.add(action.rule_applied)
+
+        for rule_name in applied_rules:
+            await self.rules_engine.record_applied(rule_name)
+
+        for rule_name in failed_rules:
+            await self.rules_engine.lower_confidence(rule_name)
+
+        failures = sum(1 for a in actions if a.outcome == "failure")
         await self.alerts.send_pulse_summary(len(actions), failures)
 
-        logger.info(
-            "Pulse complete: %d actions, %d failures",
-            len(actions), failures,
-        )
+        logger.info("Pulse complete: %d actions, %d failures", len(actions), failures)
         return actions
 
-    # ------------------------------------------------------------------
-    # Background loops
-    # ------------------------------------------------------------------
-
     async def _heartbeat_loop(self) -> None:
-        """Run heartbeat on interval until stopped."""
         while self._running:
             try:
                 await self.run_heartbeat_once()
             except Exception:
                 logger.exception("Heartbeat cycle failed")
-            interval = self._get_heartbeat_interval()
-            await asyncio.sleep(interval)
+            await asyncio.sleep(self._get_heartbeat_interval())
 
     async def _pulse_loop(self) -> None:
-        """Run pulse on interval (with initial delay) until stopped."""
-        await asyncio.sleep(60)  # initial delay
+        await asyncio.sleep(60)
         while self._running:
             try:
                 await self.run_pulse_once()
             except Exception:
                 logger.exception("Pulse cycle failed")
-                try:
-                    await self.alerts.send_alert(
-                        "Pulse cycle failed — check logs", AlertLevel.ERROR,
-                    )
-                except Exception:
-                    logger.exception("Failed to send pulse failure alert")
-            interval_hours = self._get_pulse_interval_hours()
-            await asyncio.sleep(interval_hours * 3600)
+                await self.alerts.send_alert("Pulse cycle failed — check logs")
+            await asyncio.sleep(self._get_pulse_interval_hours() * 3600)
 
     async def start(self) -> None:
-        """Start background heartbeat and pulse loops."""
         self._running = True
         self._tasks = [
             asyncio.create_task(self._heartbeat_loop()),
             asyncio.create_task(self._pulse_loop()),
         ]
-        logger.info("OlympusGuardian started — heartbeat and pulse loops running")
+        logger.info("OlympusGuardian started")
 
     async def stop(self) -> None:
-        """Stop background loops and cancel tasks."""
         self._running = False
         for task in self._tasks:
             task.cancel()
         self._tasks.clear()
         logger.info("OlympusGuardian stopped")
 
-    # ------------------------------------------------------------------
-    # Health summary
-    # ------------------------------------------------------------------
-
     async def get_health_summary(self) -> dict[str, Any]:
-        """Return current health status: last heartbeat, recent actions, rules count."""
         last_heartbeat: dict[str, Any] | None = None
         recent_actions: list[dict[str, Any]] = []
-        rules_count: int = 0
+        rules_count = len(self.rules_engine.rules) if self.rules_engine else 0
 
         try:
             async with self._pool.acquire() as conn:
@@ -147,16 +124,12 @@ class OlympusGuardian:
                 )
                 if hb_row:
                     last_heartbeat = dict(hb_row)
-
                 action_rows = await conn.fetch(
                     "SELECT * FROM olympus_actions ORDER BY executed_at DESC LIMIT 10",
                 )
                 recent_actions = [dict(r) for r in action_rows]
         except Exception:
             logger.exception("Failed to query health summary")
-
-        if self.rules_engine is not None:
-            rules_count = len(self.rules_engine.rules)
 
         return {
             "status": "alive",
@@ -166,12 +139,7 @@ class OlympusGuardian:
             "recent_actions": recent_actions,
         }
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     async def _persist_action(self, action: PulseAction) -> None:
-        """INSERT a PulseAction into olympus_actions."""
         query = """
             INSERT INTO olympus_actions (
                 rhythm, action_type, target, detail, outcome,
@@ -181,28 +149,19 @@ class OlympusGuardian:
         try:
             async with self._pool.acquire() as conn:
                 await conn.execute(
-                    query,
-                    action.rhythm,
-                    action.action_type,
-                    action.target,
-                    json.dumps(action.detail),
-                    action.outcome,
-                    action.duration_ms,
-                    action.rule_applied,
-                    action.reflection,
-                    action.executed_at,
+                    query, action.rhythm, action.action_type, action.target,
+                    json.dumps(action.detail), action.outcome, action.duration_ms,
+                    action.rule_applied, action.reflection, action.executed_at,
                 )
         except Exception:
             logger.exception("Failed to persist action: %s", action.action_type)
 
     def _get_heartbeat_interval(self) -> int:
-        """Return heartbeat interval in seconds from rules, default 300."""
         if self.rules_engine is None:
             return 300
         return int(self.rules_engine.get_threshold("heartbeat_interval_seconds", default=300))
 
     def _get_pulse_interval_hours(self) -> int:
-        """Return pulse interval in hours from rules, default 6."""
         if self.rules_engine is None:
             return 6
         return int(self.rules_engine.get_threshold("pulse_interval_hours", default=6))
