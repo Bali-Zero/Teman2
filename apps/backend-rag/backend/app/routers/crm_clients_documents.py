@@ -11,7 +11,7 @@ from typing import Any
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.services.crm.metrics import metrics_collector
@@ -247,119 +247,93 @@ IMPORTANT: Return ONLY the JSON object, no additional text."""
 # ================================================
 
 
-class PassportEnhancedRequest(BaseModel):
-    """Request model for enhanced passport OCR"""
+class PassportPreviewRequest(BaseModel):
+    """Passport OCR — preview mode (client_id=None) or persist mode (client_id=int).
 
-    client_id: int
-    file_id: str  # Google Drive file ID
+    Preview: stateless OCR, returns extracted fields, no DB write.
+    Persist: OCR + DB update (existing behavior).
+    """
+
+    image_base64: str = Field(..., max_length=14_000_000)  # ~10MB after base64 overhead
+    mime_type: str = "image/jpeg"
+    client_id: int | None = None
 
 
-class PassportEnhancedResponse(BaseModel):
-    """Response model for enhanced passport OCR"""
+class PassportPreviewResponse(BaseModel):
+    """Response model for passport OCR (preview + persist modes)"""
 
     success: bool
-    passport_number: str | None = None
-    expiry_date: str | None = None
+    confidence: float = 0.0
     full_name: str | None = None
-    gender: str | None = None
-    date_of_birth: str | None = None
-    birthplace: str | None = None
     nationality: str | None = None
+    date_of_birth: str | None = None
+    gender: str | None = None
+    passport_number: str | None = None
+    passport_expiry: str | None = None
+    issuing_country: str | None = None
+    birthplace: str | None = None
     mrz_line1: str | None = None
     mrz_line2: str | None = None
-    confidence: float = 0.0
     name_match: bool | None = None
+    warnings: list[str] = []
     message: str | None = None
 
 
-@router.post("/extract-passport-enhanced", response_model=PassportEnhancedResponse)
+@router.post("/extract-passport-enhanced", response_model=PassportPreviewResponse)
 async def extract_passport_enhanced(
-    request: PassportEnhancedRequest,
+    request: PassportPreviewRequest,
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
-) -> PassportEnhancedResponse:
+) -> PassportPreviewResponse:
     """
-    Enhanced passport OCR using Gemini Vision.
-    Extracts all visible data from passport and updates client record.
+    Passport OCR using Gemini Vision — preview or persist mode.
 
-    Returns:
-        - passport_number
-        - expiry_date (linked to alert)
-        - full_name (with fuzzy match verification)
-        - gender (M/F)
-        - date_of_birth
-        - birthplace (for enrichment)
-        - nationality
-        - MRZ lines (if visible)
-        - confidence score
+    Preview mode (client_id=None): stateless OCR, returns extracted fields, no DB write.
+    Persist mode (client_id=int): OCR + DB update + name match verification.
+
+    Accepts base64 image data directly (no Drive download).
     """
     import base64
     import json
     from difflib import SequenceMatcher
 
     from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
-    from backend.services.integrations.google_drive_service import GoogleDriveService
+    from backend.utils.passport_normalize import normalize_date, normalize_nationality, title_case_name
 
     try:
         if not GENAI_AVAILABLE:
-            return PassportEnhancedResponse(success=False, message="Vision service not available")
+            return PassportPreviewResponse(success=False, message="Vision service not available")
 
         genai_client = get_genai_client()
         if not genai_client.is_available:
-            return PassportEnhancedResponse(success=False, message="Gemini Vision not configured")
+            return PassportPreviewResponse(success=False, message="Gemini Vision not configured")
 
-        # Get current client data for name verification
-        async with db_pool.acquire() as conn:
-            # RBAC: verify user has access to this specific client
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+        # Persist mode: RBAC check + client lookup
+        existing_name: str | None = None
+        if request.client_id is not None:
+            async with db_pool.acquire() as conn:
+                # RBAC: verify user has access to this specific client
+                await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
-            client = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", request.client_id,
-            )
-            if not client:
-                return PassportEnhancedResponse(
-                    success=False, message=f"Client {request.client_id} not found",
+                client = await conn.fetchrow(
+                    "SELECT full_name FROM clients WHERE id = $1", request.client_id,
                 )
-            existing_name = client["full_name"]
+                if not client:
+                    return PassportPreviewResponse(
+                        success=False, message=f"Client {request.client_id} not found",
+                    )
+                existing_name = client["full_name"]
 
-        # Download image via Google Drive API (SYSTEM OAuth token)
-        drive_service = GoogleDriveService(db_pool)
-        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        # Decode base64 image
+        raw_b64 = request.image_base64
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]  # Strip data URI prefix
+        try:
+            image_data = base64.b64decode(raw_b64, validate=True)
+        except Exception:
+            return PassportPreviewResponse(success=False, message="Invalid base64 image data")
 
-        if not access_token:
-            return PassportEnhancedResponse(
-                success=False, message="Google Drive not connected. Please connect via Settings.",
-            )
-
-        import httpx
-
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            # Get file metadata
-            meta_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{request.file_id}",
-                params={"fields": "mimeType,name"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if meta_response.status_code != 200:
-                return PassportEnhancedResponse(
-                    success=False,
-                    message=f"Failed to get file metadata: {meta_response.status_code}",
-                )
-            metadata = meta_response.json()
-            mime_type = metadata.get("mimeType", "image/jpeg")
-
-            # Download file
-            download_response = await http_client.get(
-                f"https://www.googleapis.com/drive/v3/files/{request.file_id}",
-                params={"alt": "media"},
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            if download_response.status_code != 200:
-                return PassportEnhancedResponse(
-                    success=False,
-                    message=f"Failed to download file: {download_response.status_code}",
-                )
-            image_data = download_response.content
+        mime_type = request.mime_type
 
         # Build enhanced OCR prompt - simplified to avoid token truncation
         ocr_prompt = """Extract passport data. Return ONLY this JSON:
@@ -397,13 +371,57 @@ Use null for unclear fields. Return ONLY JSON."""
         )
 
         response_text = result.get("text", "")
-        logger.info(f"Enhanced OCR response: {response_text[:300]}...")
+        logger.info(f"Passport OCR: success={bool(response_text)}, len={len(response_text)}")
 
         # Parse JSON response (handles code fences and chain-of-thought)
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"OCR JSON parsing failed. Raw response: {response_text[:500]}")
-            return PassportEnhancedResponse(success=False, message="Could not parse OCR response")
+            logger.error("Passport OCR: JSON parsing failed")
+            return PassportPreviewResponse(success=False, message="Could not parse OCR response")
+
+        # Normalize extracted fields
+        extracted["full_name"] = title_case_name(extracted.get("full_name"))
+        extracted["nationality"] = normalize_nationality(extracted.get("nationality"))
+        extracted["date_of_birth"] = normalize_date(extracted.get("date_of_birth"))
+        extracted["expiry_date"] = normalize_date(extracted.get("expiry_date"))
+        if extracted.get("gender"):
+            extracted["gender"] = extracted["gender"][0].upper()
+
+        # Build warnings
+        warnings: list[str] = []
+        confidence = extracted.get("confidence", 0.0)
+        if isinstance(confidence, (int, float)) and confidence < 0.7:
+            warnings.append("Low image quality — verify extracted fields")
+        expiry = extracted.get("expiry_date")
+        if expiry:
+            try:
+                from datetime import date
+
+                if datetime.strptime(expiry, "%Y-%m-%d").date() < date.today():
+                    warnings.append("Passport is expired")
+            except ValueError:
+                pass
+
+        # Preview mode — return without persisting
+        if request.client_id is None:
+            return PassportPreviewResponse(
+                success=bool(extracted),
+                confidence=extracted.get("confidence", 0.0) if extracted else 0.0,
+                full_name=extracted.get("full_name") if extracted else None,
+                nationality=extracted.get("nationality") if extracted else None,
+                date_of_birth=extracted.get("date_of_birth") if extracted else None,
+                gender=extracted.get("gender") if extracted else None,
+                passport_number=extracted.get("passport_number") if extracted else None,
+                passport_expiry=extracted.get("expiry_date") if extracted else None,
+                issuing_country=extracted.get("nationality") if extracted else None,
+                birthplace=extracted.get("birthplace") if extracted else None,
+                mrz_line1=extracted.get("mrz_line1") if extracted else None,
+                mrz_line2=extracted.get("mrz_line2") if extracted else None,
+                warnings=warnings if extracted else ["OCR extraction failed"],
+                message="Preview — fields extracted but not saved" if extracted else "Could not extract passport data",
+            )
+
+        # --- Persist mode (client_id is not None) ---
 
         # Verify name match
         name_match = None
@@ -422,7 +440,6 @@ Use null for unclear fields. Return ONLY JSON."""
         ocr_data = {
             "extracted_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
             "raw_response": extracted,
-            "file_id": request.file_id,
             "confidence": extracted.get("confidence", 0.0),
             "name_match_ratio": ratio if name_match is not None else None,
         }
@@ -480,19 +497,21 @@ Use null for unclear fields. Return ONLY JSON."""
             await conn.execute(update_sql, *params)
             logger.info(f"Updated client {request.client_id} with enhanced OCR data")
 
-        return PassportEnhancedResponse(
+        return PassportPreviewResponse(
             success=True,
-            passport_number=extracted.get("passport_number"),
-            expiry_date=extracted.get("expiry_date"),
+            confidence=extracted.get("confidence", 0.0),
             full_name=extracted.get("full_name"),
-            gender=extracted.get("gender"),
-            date_of_birth=extracted.get("date_of_birth"),
-            birthplace=extracted.get("birthplace"),
             nationality=extracted.get("nationality"),
+            date_of_birth=extracted.get("date_of_birth"),
+            gender=extracted.get("gender"),
+            passport_number=extracted.get("passport_number"),
+            passport_expiry=extracted.get("expiry_date"),
+            issuing_country=extracted.get("nationality"),
+            birthplace=extracted.get("birthplace"),
             mrz_line1=extracted.get("mrz_line1"),
             mrz_line2=extracted.get("mrz_line2"),
-            confidence=extracted.get("confidence", 0.0),
             name_match=name_match,
+            warnings=warnings,
             message="Passport data extracted and saved successfully",
         )
 
@@ -500,10 +519,10 @@ Use null for unclear fields. Return ONLY JSON."""
         raise
     except json.JSONDecodeError as e:
         logger.warning(f"Enhanced OCR JSON parse error: {e}")
-        return PassportEnhancedResponse(success=False, message="Failed to parse OCR response")
+        return PassportPreviewResponse(success=False, message="Failed to parse OCR response")
     except Exception as e:
         logger.error(f"Enhanced passport OCR failed: {e}")
-        return PassportEnhancedResponse(success=False, message=str(e))
+        return PassportPreviewResponse(success=False, message=str(e))
 
 
 # ================================================
