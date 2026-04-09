@@ -4,7 +4,7 @@ Primary MCP server for Zantara AI assistant. FastMCP, stdio transport.
 
 ## Capabilities
 
-- **131 Tools** (118 Nuzantara + 13 Advanced via federation bridge)
+- **115 Tools** (primary MCP server) + **14 Advanced** (nuzantara-mcp-advanced, separate server)
 - **10 Prompts** for guided workflows
 - **5 Resources** for knowledge base access
 - **8 Workflow Chains** (daily_ops_autopilot, new_client_onboarding, etc.)

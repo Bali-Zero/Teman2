@@ -32,7 +32,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 
 - `apps/mouth/` - Next.js frontend (Vercel) — kita/my/prime.balizero.com
 - `apps/backend-rag/` - Python FastAPI RAG backend (Fly.io)
-- `apps/nuzantara-mcp/` - MCP server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp/` - MCP server v2.1 (115 tools, 10 prompts, 5 resources, 8 chains)
 - `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics, 14 tools)
 - `apps/nuzantara-mcp-browser/` - Browser automation MCP
 - `apps/bali-intel-scraper/` - Intel pipeline (runs LOCALLY on Pro via OpenClaw, NOT Fly)
@@ -225,7 +225,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 ## 7. MCP Servers
 
-- **Primary:** `apps/nuzantara-mcp/` (v2.1, 131 tools, 10 prompts, 5 resources, 8 chains)
+- **Primary:** `apps/nuzantara-mcp/` (v2.1, 115 tools, 10 prompts, 5 resources, 8 chains)
 - **Advanced:** `apps/nuzantara-mcp-advanced/` (Fly.io ops, 14 tools)
 - **Browser:** `apps/nuzantara-mcp-browser/` (FastMCP, 6 tools over shared `packages/browser-core` stealth manager -- default remains `mcp__claude-in-chrome__*`; use `mcp__nuzantara-browser__*` only from non-interactive contexts or when explicitly ordered)
 - **GA4:** property 505466833 (G-S3H2M6VXWT)
@@ -404,18 +404,18 @@ Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 
 ### Cron Air
 
-| Job               | Schedule    | Script                               |
-| ----------------- | ----------- | ------------------------------------ |
-| Ollama start/stop | 01:00/06:05 | `ollama_cron_window.sh`              |
-| Auto test         | 02:15       | `auto_test.sh`                       |
-| Sentinel          | 03:00       | `auto_sentinel.sh`                   |
-| KB Ingest         | 05:00       | `auto_kb_ingest.sh`                  |
-| RAG Canary        | \*/6h :30   | `rag_canary.py`                      |
-| System Doctor     | 08:00       | `system_doctor.py --notify-telegram` |
-| Drive Watchdog    | \*/6h :00   | `drive_token_watchdog.py`            |
-| Judgement Day     | Sun 16:00   | `auto_judgement_day.sh`              |
-| RAGAS Eval        | Sun 06:00   | `ragas_eval.py`                      |
-| KG Quality        | \*/48h 04:00| `auto_kg_quality.sh`                 |
+| Job               | Schedule     | Script                               |
+| ----------------- | ------------ | ------------------------------------ |
+| Ollama start/stop | 01:00/06:05  | `ollama_cron_window.sh`              |
+| Auto test         | 02:15        | `auto_test.sh`                       |
+| Sentinel          | 03:00        | `auto_sentinel.sh`                   |
+| KB Ingest         | 05:00        | `auto_kb_ingest.sh`                  |
+| RAG Canary        | \*/6h :30    | `rag_canary.py`                      |
+| System Doctor     | 08:00        | `system_doctor.py --notify-telegram` |
+| Drive Watchdog    | \*/6h :00    | `drive_token_watchdog.py`            |
+| Judgement Day     | Sun 16:00    | `auto_judgement_day.sh`              |
+| RAGAS Eval        | Sun 06:00    | `ragas_eval.py`                      |
+| KG Quality        | \*/48h 04:00 | `auto_kg_quality.sh`                 |
 
 ### GitHub Secrets
 

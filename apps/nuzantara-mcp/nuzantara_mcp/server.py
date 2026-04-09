@@ -2,7 +2,7 @@
 Nuzantara MCP Server v2.1
 Full-spectrum business automation for Bali Zero.
 
-109 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
+115 tools | 10 prompts | 5 resources | 8 deterministic workflow chains
 
 Transport: stdio (for Claude Code / Cowork / OpenClaw local integration)
 """
