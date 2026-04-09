@@ -1376,7 +1376,20 @@ async def initialize_services_light(app: FastAPI) -> None:
         app.state.ts_service = None
         app.state.attendance_monitor = None
 
-    # 4. Mark RAG services as intentionally not-initialized (light mode)
+    # 4. Olympus DB Guardian (non-critical, uses only db_pool)
+    try:
+        from backend.services.olympus.guardian import OlympusGuardian
+
+        olympus = OlympusGuardian(db_pool=db_pool, alert_service=None)
+        await olympus.initialize()
+        await olympus.start()
+        app.state.olympus = olympus
+        logger.info("✅ Olympus DB Guardian initialized (light)")
+    except Exception as e:
+        logger.warning(f"⚠️ Olympus Guardian failed (non-critical): {e}")
+        app.state.olympus = None
+
+    # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None
     app.state.ai_client = None
     app.state.orchestrator = None
