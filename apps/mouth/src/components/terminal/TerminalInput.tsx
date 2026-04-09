@@ -78,8 +78,8 @@ export const TerminalInput = forwardRef<TerminalInputHandle, TerminalInputProps>
 
     const handleKeyDown = useCallback(
       (e: KeyboardEvent<HTMLTextAreaElement>) => {
-        // Cmd/Ctrl + Enter: submit.
-        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        // Enter: submit (Shift+Enter for newline).
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           if (!isStreaming && value.trim().length > 0) {
             onSubmit();
@@ -169,8 +169,8 @@ export const TerminalInput = forwardRef<TerminalInputHandle, TerminalInputProps>
                 type="submit"
                 disabled={!canSubmit}
                 className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[var(--bz-accent)]/90 hover:bg-[var(--bz-accent)] disabled:opacity-30 disabled:cursor-not-allowed text-white transition-colors"
-                aria-label="Send message (Cmd+Enter)"
-                title="Send (Cmd+Enter)"
+                aria-label="Send message (Enter)"
+                title="Send (Enter)"
               >
                 <Send size={11} />
                 <span className="font-mono text-[10.5px] uppercase tracking-[0.5px]">
@@ -183,7 +183,7 @@ export const TerminalInput = forwardRef<TerminalInputHandle, TerminalInputProps>
             <div className="font-mono text-[9.5px] text-white/30 uppercase tracking-[0.5px]">
               {isStreaming
                 ? "streaming · esc to stop"
-                : "cmd+enter to send · ↑↓ history"}
+                : "enter to send · shift+enter newline · ↑↓ history"}
             </div>
             <div className="font-mono text-[9.5px] text-white/30 tabular-nums">
               {charCount} chars

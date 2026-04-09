@@ -88,7 +88,7 @@ export function TerminalWelcome({ userName, onSelectSuggestion }: TerminalWelcom
       </div>
 
       <div className="mt-8 font-mono text-[10px] text-white/30 uppercase tracking-[1.2px]">
-        Cmd+Enter to send · ↑↓ for history · Esc to cancel
+        Enter to send · Shift+Enter for newline · ↑↓ for history · Esc to cancel
       </div>
     </motion.div>
   );
