@@ -113,7 +113,11 @@ def register_shutdown_handlers(app: FastAPI) -> None:
                 await db_health_check_task
             logger.info("✅ Database Health Check Loop stopped")
 
-        # Plugin System shutdown not needed
+        # Shutdown Olympus Guardian
+        olympus = getattr(app.state, "olympus", None)
+        if olympus:
+            await olympus.stop()
+            logger.info("✅ Olympus Guardian stopped")
 
         # Close HTTP clients
         # HandlerProxyService removed - no cleanup needed
