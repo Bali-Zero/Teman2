@@ -41,6 +41,7 @@ import {
 } from '@/lib/api/crm/crm.schemas';
 import { cropToSquare } from '@/lib/utils/imageResize';
 import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
+import PassportScanSection from './components/PassportScanSection';
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -49,6 +50,8 @@ export default function NewClientPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
+  const [passportFile, setPassportFile] = useState<string | null>(null);
+  const [ocrApplied, setOcrApplied] = useState(false);
   const [formData, setFormData] = useState<CreateClientInput>({
     full_name: '',
     email: '',
@@ -59,6 +62,7 @@ export default function NewClientPage() {
     passport_number: '',
     passport_expiry: '',
     date_of_birth: '',
+    gender: undefined,
     notes: '',
     status: 'lead',
     client_type: 'individual',
@@ -121,8 +125,20 @@ export default function NewClientPage() {
           ? result.data.service_interest
           : undefined,
       };
-      await api.crm.createClient(cleanData, user.email);
-      router.push('/clients');
+      const newClient = await api.crm.createClient(cleanData, user.email);
+
+      // Upload passport scan if OCR was used
+      if (passportFile) {
+        const uploaded = await uploadPassportWithRetry(newClient.id);
+        if (!uploaded) {
+          toastError(
+            'Passport upload failed',
+            'Client created but passport scan could not be uploaded. You can upload it later from the client page.'
+          );
+        }
+      }
+
+      router.push(`/clients/${newClient.id}`);
     } catch (error) {
       logger.error(
         'Failed to create client',
@@ -216,6 +232,51 @@ export default function NewClientPage() {
     setFormData((prev) => ({ ...prev, avatar_url: '' }));
   };
 
+  const handleOcrFieldsConfirmed = (fields: Partial<CreateClientInput>, file: string) => {
+    setFormData((prev) => ({ ...prev, ...fields }));
+    setPassportFile(file);
+    setOcrApplied(true);
+    // Clear field errors for OCR-filled fields
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(fields)) {
+        delete next[key];
+      }
+      return next;
+    });
+  };
+
+  const handleOcrDiscarded = () => {
+    setPassportFile(null);
+    setOcrApplied(false);
+  };
+
+  const uploadPassportWithRetry = async (clientId: number): Promise<boolean> => {
+    if (!passportFile) return true;
+
+    const delays = [2000, 4000, 8000];
+    for (let i = 0; i < delays.length; i++) {
+      await new Promise((r) => setTimeout(r, delays[i]));
+      try {
+        await api.crm.uploadDocumentBase64(clientId, {
+          file: passportFile,
+          file_name: `passport_${formData.full_name?.replace(/\s/g, '_') || 'scan'}.jpg`,
+          document_type: 'passport',
+          document_category: 'personal',
+          expiry_date: formData.passport_expiry || undefined,
+        });
+        return true;
+      } catch (err) {
+        logger.warn('Passport upload attempt failed', {
+          component: 'NewClientPage',
+          metadata: { attempt: i + 1 },
+        });
+        if (i === delays.length - 1) return false;
+      }
+    }
+    return false;
+  };
+
   const FieldError = ({ field }: { field: string }) => {
     const msg = fieldErrors[field];
     if (!msg) return null;
@@ -264,6 +325,9 @@ export default function NewClientPage() {
           >
             <Icon className="w-4 h-4" />
             {label}
+            {key === 'basic' && ocrApplied && (
+              <span className="ml-1 text-xs text-green-400 font-normal">*</span>
+            )}
           </button>
         ))}
       </div>
@@ -467,6 +531,11 @@ export default function NewClientPage() {
               <CreditCard className="w-5 h-5 text-[var(--accent)]" />
               Personal Details
             </h3>
+
+            <PassportScanSection
+              onFieldsConfirmed={handleOcrFieldsConfirmed}
+              onDiscarded={handleOcrDiscarded}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Nationality */}
