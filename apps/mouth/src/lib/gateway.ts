@@ -73,9 +73,19 @@ export async function sendChat(req: ChatRequest): Promise<Response> {
     }
   }
 
+  // Read JWT from localStorage (same source as ApiClientBase) for Authorization header.
+  // The httpOnly cookie alone is unreliable through Vercel Edge proxy.
+  const authHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  if (typeof window !== "undefined") {
+    const authToken = localStorage.getItem("auth_token");
+    if (authToken) {
+      authHeaders["Authorization"] = `Bearer ${authToken}`;
+    }
+  }
+
   return fetch(`${CLOUD_BACKEND}/api/agentic-rag/workspace-stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders,
     credentials: "include",
     body: JSON.stringify({
       query: req.query,
