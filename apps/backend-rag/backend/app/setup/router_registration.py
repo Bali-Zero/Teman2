@@ -127,7 +127,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(auth.router)
     api.include_router(health.router)
     api.include_router(nusantara_health.router)  # Admin-only archipelago health map
-    api.include_router(olympus.router)  # [OLYMPUS] /health/db endpoint
+    # [OLYMPUS] /health/db is now in health.py; internal routes remain separate
     api.include_router(olympus.internal_router)  # [OLYMPUS] /internal/olympus/*
     api.include_router(handlers.router)
 

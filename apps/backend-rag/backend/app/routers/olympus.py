@@ -9,18 +9,6 @@ from fastapi import APIRouter, Request
 
 logger = logging.getLogger("olympus.router")
 
-router = APIRouter(tags=["olympus"])
-
-
-@router.get("/health/db")
-async def db_health(request: Request) -> dict[str, Any]:
-    """Database health summary from Olympus Guardian."""
-    olympus = getattr(request.app.state, "olympus", None)
-    if olympus is None:
-        return {"status": "not_initialized", "detail": "Olympus Guardian not running"}
-    return await olympus.get_health_summary()
-
-
 internal_router = APIRouter(prefix="/internal/olympus", tags=["olympus-internal"])
 
 
