@@ -571,7 +571,7 @@ Use null for unclear fields. Return ONLY JSON."""
             resp = await http.post(f"{config.ollama_url}/api/generate", json=ollama_payload)
 
         if resp.status_code != 200:
-            logger.error("OCR Ollama failed: HTTP %d", resp.status_code)
+            logger.error("OCR Ollama failed: HTTP %d — %s", resp.status_code, resp.text[:200])
             return web.json_response({
                 "success": False, "message": "Vision model unavailable",
                 "warnings": [], "confidence": 0.0,
@@ -630,11 +630,22 @@ Use null for unclear fields. Return ONLY JSON."""
         gender_raw = extracted.get("gender", "")
         gender = gender_raw[0].upper() if gender_raw and len(gender_raw) > 0 else None
 
+        # Normalize nationality (ISO3 → adjective for frontend dropdown)
+        _NAT_MAP = {
+            "AUS": "Australian", "USA": "American", "GBR": "British", "CAN": "Canadian",
+            "CHN": "Chinese", "NLD": "Dutch", "FRA": "French", "DEU": "German",
+            "IND": "Indian", "IDN": "Indonesian", "ITA": "Italian", "JPN": "Japanese",
+            "KOR": "Korean", "MYS": "Malaysian", "RUS": "Russian", "SGP": "Singaporean",
+            "ESP": "Spanish", "SWE": "Swedish", "CHE": "Swiss", "UKR": "Ukrainian",
+        }
+        raw_nat = (extracted.get("nationality") or "").upper().strip()
+        nationality = _NAT_MAP.get(raw_nat, extracted.get("nationality"))
+
         return web.json_response({
             "success": True,
             "confidence": confidence,
             "full_name": _title_case(extracted.get("full_name")),
-            "nationality": extracted.get("nationality"),
+            "nationality": nationality,
             "date_of_birth": extracted.get("date_of_birth"),
             "gender": gender,
             "passport_number": extracted.get("passport_number"),
