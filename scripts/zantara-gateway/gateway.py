@@ -670,6 +670,108 @@ Use null for unclear fields. Return ONLY JSON."""
         })
 
 
+async def handle_ocr_npwp(request: web.Request) -> web.Response:
+    """POST /v1/ocr/npwp — Extract NPWP fields via local Ollama vision."""
+    return await _ocr_document(request, "npwp", """Extract NPWP (Indonesian Tax ID) information from this image.
+
+Return ONLY this JSON format:
+{
+  "npwp": "12.345.678.9-012.345" or "123456789012345",
+  "address": "Full street address",
+  "city": "City name",
+  "confidence": 0.95
+}
+
+Rules:
+- NPWP is a 15-digit number, usually formatted as XX.XXX.XXX.X-XXX.XXX
+- Address should be the complete registered address
+- City should be just the city name
+- Use null for fields that are not visible or unclear
+- Return ONLY valid JSON""")
+
+
+async def handle_ocr_nib(request: web.Request) -> web.Response:
+    """POST /v1/ocr/nib — Extract NIB fields via local Ollama vision."""
+    return await _ocr_document(request, "nib", """Extract NIB (Nomor Induk Berusaha) information from this Indonesian business document.
+
+Return ONLY this JSON format:
+{
+  "nib": "13 digit NIB number",
+  "company_name": "Full company name as written",
+  "kbli_code": "5 digit KBLI code",
+  "confidence": 0.95
+}
+
+Rules:
+- NIB is a 13-digit number
+- Company name should be the full legal name
+- KBLI code is usually a 5-digit number
+- Use null for fields that are not visible or unclear
+- Return ONLY valid JSON""")
+
+
+async def _ocr_document(request: web.Request, doc_type: str, prompt: str) -> web.Response:
+    """Generic OCR handler for any document type via Ollama vision."""
+    config: GatewayConfig = request.app["config"]
+
+    token = request.headers.get("X-Gateway-Token", "")
+    if not verify_gateway_token(config.gateway_token, token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    image_base64 = body.get("image_base64", "")
+    if not image_base64:
+        return web.json_response({"error": "image_base64 is required"}, status=400)
+
+    import base64 as b64mod
+    raw_b64 = image_base64.split(",", 1)[1] if "," in image_base64 else image_base64
+    try:
+        image_data = b64mod.b64decode(raw_b64, validate=True)
+        if len(image_data) > 10 * 1024 * 1024:
+            return web.json_response({"error": "Image too large (max 10MB)"}, status=400)
+    except Exception:
+        return web.json_response({"error": "Invalid base64"}, status=400)
+
+    vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as http:
+            resp = await http.post(f"{config.ollama_url}/api/generate", json={
+                "model": vision_model,
+                "prompt": prompt,
+                "images": [b64mod.b64encode(image_data).decode()],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": 2000},
+            })
+
+        if resp.status_code != 200:
+            logger.error("OCR %s: Ollama HTTP %d", doc_type, resp.status_code)
+            return web.json_response({"success": False, "message": "Vision model unavailable"})
+
+        response_text = resp.json().get("response", "")
+        logger.info("OCR %s: response_len=%d", doc_type, len(response_text))
+
+        import re
+        json_match = re.search(r"\{[\s\S]*\}", response_text)
+        if not json_match:
+            return web.json_response({"success": False, "message": "Could not parse OCR response"})
+
+        extracted = json.loads(json_match.group())
+        extracted["success"] = True
+        extracted["message"] = f"{doc_type.upper()} extracted via local vision model"
+        return web.json_response(extracted)
+
+    except httpx.ConnectError:
+        return web.json_response({"success": False, "message": "Local vision model not running"})
+    except Exception as e:
+        logger.error("OCR %s failed: %s", doc_type, e)
+        return web.json_response({"success": False, "message": str(e)})
+
+
 async def handle_config_endpoint(request: web.Request) -> web.Response:
     """GET /v1/config — Return gateway configuration info."""
     config: GatewayConfig = request.app["config"]
@@ -828,6 +930,8 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
 
     app.router.add_post("/v1/chat", handle_chat)
     app.router.add_post("/v1/ocr/passport", handle_ocr_passport)
+    app.router.add_post("/v1/ocr/npwp", handle_ocr_npwp)
+    app.router.add_post("/v1/ocr/nib", handle_ocr_nib)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/v1/config", handle_config_endpoint)
 
