@@ -86,6 +86,7 @@ def include_routers(api: FastAPI) -> None:
         news,
         newsletter,
         nusantara_health,
+        olympus,  # [OLYMPUS] DB Guardian health + internal management
         omnichannel,  # [NEW] Unified inbox for cross-channel conversations
         oracle_ingest,
         oracle_universal,
@@ -126,6 +127,8 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(auth.router)
     api.include_router(health.router)
     api.include_router(nusantara_health.router)  # Admin-only archipelago health map
+    api.include_router(olympus.router)  # [OLYMPUS] /health/db endpoint
+    api.include_router(olympus.internal_router)  # [OLYMPUS] /internal/olympus/*
     api.include_router(handlers.router)
 
     # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
