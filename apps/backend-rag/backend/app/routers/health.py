@@ -845,6 +845,15 @@ def _format_uptime(seconds: float) -> str:
     return f"{minutes}m"
 
 
+@router.get("/db")
+async def db_health(request: Request) -> dict:
+    """Database health summary from Olympus Guardian."""
+    olympus = getattr(request.app.state, "olympus", None)
+    if olympus is None:
+        return {"status": "not_initialized", "detail": "Olympus Guardian not running"}
+    return await olympus.get_health_summary()
+
+
 @router.get("/metrics/prometheus", include_in_schema=False)
 async def prometheus_metrics():
     """Prometheus text format metrics for external scraping (Grafana Cloud, Prometheus)."""
