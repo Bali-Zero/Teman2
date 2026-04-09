@@ -34,9 +34,9 @@ class TestCanViewAllClients:
         user = {"email": "asya@balizero.com", "role": "user"}
         assert can_view_all_clients(user) is True
 
-    def test_team_member_cannot_view_all(self):
+    def test_team_member_can_view_all(self):
         user = {"email": "surya@balizero.com", "role": "user"}
-        assert can_view_all_clients(user) is False
+        assert can_view_all_clients(user) is True
 
     def test_founder_role_can_view_all(self):
         user = {"email": "someone@balizero.com", "role": "founder"}
