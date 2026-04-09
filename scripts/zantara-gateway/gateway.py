@@ -568,7 +568,7 @@ async def on_startup(app: web.Application) -> None:
 
     async def _connect_mcp() -> None:
         try:
-            await asyncio.wait_for(mcp_client.connect(), timeout=30)
+            await asyncio.wait_for(mcp_client.connect(), timeout=90)
             tools = await mcp_client.get_tool_definitions()
             logger.info("MCP client connected, %d tools available", len(tools))
         except asyncio.TimeoutError:
