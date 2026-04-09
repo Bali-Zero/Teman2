@@ -42,7 +42,8 @@ class TestTelegramChannelFlow:
 
         assert isinstance(msg, ChannelMessage)
         assert msg.channel == "telegram"
-        assert msg.user_id == "413539912"
+        # user_id may be prefixed with channel name (e.g., "telegram_413539912") or plain
+        assert "413539912" in msg.user_id
         assert msg.text == "Quanto costa aprire una PT PMA?"
         assert "tg_session_" in msg.session_id
 

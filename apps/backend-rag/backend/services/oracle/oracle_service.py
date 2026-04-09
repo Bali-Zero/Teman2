@@ -229,7 +229,7 @@ class OracleService:
         return self._clarification_service
 
     @property
-    def personality_service(self):
+    def personality_service(self) -> None:
         return None
 
     @property

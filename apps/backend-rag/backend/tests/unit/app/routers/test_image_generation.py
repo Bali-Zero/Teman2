@@ -1,19 +1,14 @@
 """
 Unit tests for image generation router
 Target: >95% coverage
-"""
 
-import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+Updated 2026-04-10: Router redesigned to use Pollinations.ai (free, no API key).
+Previous tests mocked google_imagen/httpx — replaced with Pollinations-based tests.
+"""
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
 
 from backend.app.routers.image_generation import router
 
@@ -33,88 +28,90 @@ def client(app):
 
 
 class TestImageGenerationRouter:
-    """Tests for image generation router"""
+    """Tests for image generation router (Pollinations.ai backend)"""
 
-    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
-    @patch("backend.app.routers.image_generation.settings")
-    def test_generate_image_success(self, mock_settings, mock_client_class, client):
-        """Test generating image successfully"""
-        mock_settings.google_imagen_api_key = "test-key"
-
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "generatedImages": [
-                {"bytesBase64Encoded": "base64data1"},
-                {"bytesBase64Encoded": "base64data2"},
-            ],
-        }
-        mock_response.raise_for_status = MagicMock()
-        mock_client.post = AsyncMock(return_value=mock_response)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_class.return_value = mock_client
-
+    def test_generate_image_success(self, client):
+        """Test generating image successfully — Pollinations returns URL list."""
         response = client.post(
-            "/api/v1/image/generate", json={"prompt": "test prompt", "number_of_images": 2},
+            "/api/v1/image/generate",
+            json={"prompt": "test prompt", "number_of_images": 2},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert len(data["images"]) == 2
+        # Each URL should be a Pollinations URL
+        for url in data["images"]:
+            assert "pollinations.ai" in url
 
-    @patch("backend.app.routers.image_generation.settings")
-    def test_generate_image_no_api_key(self, mock_settings, client):
-        """Test generating image without API key"""
-        mock_settings.google_imagen_api_key = None
-        mock_settings.google_ai_studio_key = None
-        mock_settings.google_api_key = None
+    def test_generate_image_single(self, client):
+        """Test generating a single image (default)."""
+        response = client.post(
+            "/api/v1/image/generate",
+            json={"prompt": "a beautiful sunset"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert len(data["images"]) == 1
 
+    def test_generate_image_no_api_key(self, client):
+        """Pollinations requires no API key — always succeeds."""
         response = client.post("/api/v1/image/generate", json={"prompt": "test"})
-        assert response.status_code == 500
+        # Pollinations is free, no API key needed — should succeed (not 500)
+        assert response.status_code == 200
+        assert response.json()["success"] is True
 
-    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
-    @patch("backend.app.routers.image_generation.settings")
-    def test_generate_image_403_error(self, mock_settings, mock_client_class, client):
-        """Test generating image with 403 error"""
-        mock_settings.google_imagen_api_key = "test-key"
+    def test_generate_image_aspect_ratio_16_9(self, client):
+        """Test 16:9 aspect ratio maps to correct dimensions."""
+        response = client.post(
+            "/api/v1/image/generate",
+            json={"prompt": "landscape", "aspect_ratio": "16:9"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "width=1024" in data["images"][0]
+        assert "height=576" in data["images"][0]
 
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.text = "Forbidden"
-
-        # httpx.HTTPStatusError is raised when status_code is not 2xx
-        import httpx
-
-        error = httpx.HTTPStatusError("Forbidden", request=MagicMock(), response=mock_response)
-        mock_client.post = AsyncMock(side_effect=error)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_class.return_value = mock_client
-
-        response = client.post("/api/v1/image/generate", json={"prompt": "test"})
-        # The router checks for 403 specifically and raises HTTPException with 403
-        assert response.status_code == 403
-
-    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
-    @patch("backend.app.routers.image_generation.settings")
-    def test_generate_image_no_images(self, mock_settings, mock_client_class, client):
-        """Test generating image with no images returned"""
-        mock_settings.google_imagen_api_key = "test-key"
-
-        mock_client = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"generatedImages": []}
-        mock_response.raise_for_status = MagicMock()
-        mock_client.post = AsyncMock(return_value=mock_response)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client_class.return_value = mock_client
-
-        response = client.post("/api/v1/image/generate", json={"prompt": "test"})
+    def test_generate_image_no_images(self, client):
+        """Test generating zero images — empty prompt fails."""
+        response = client.post("/api/v1/image/generate", json={"prompt": ""})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
+        assert len(data["images"]) == 0
+
+    def test_generate_image_empty_prompt(self, client):
+        """Empty prompt returns success=False, no images."""
+        response = client.post(
+            "/api/v1/image/generate",
+            json={"prompt": "   "},  # whitespace-only
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+
+    def test_generate_image_prompt_encoded_in_url(self, client):
+        """Prompt is URL-encoded in the returned Pollinations URL."""
+        response = client.post(
+            "/api/v1/image/generate",
+            json={"prompt": "beautiful Bali temple"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # URL should contain the encoded prompt
+        assert data["images"][0].startswith("https://image.pollinations.ai/prompt/")
+
+    def test_generate_multiple_images_have_different_seeds(self, client):
+        """Multiple images should have different seed params."""
+        response = client.post(
+            "/api/v1/image/generate",
+            json={"prompt": "test", "number_of_images": 3},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["images"]) == 3
+        # Seeds should differ
+        seeds = [url.split("seed=")[1].split("&")[0] for url in data["images"]]
+        assert len(set(seeds)) == 3  # All unique

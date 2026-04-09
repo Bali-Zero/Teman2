@@ -71,12 +71,13 @@ async def test_crc_config() -> dict:
             "hint": "Set via: fly secrets set X_CONSUMER_SECRET=<value>",
         }
 
-    test_token = "test_crc_token_nuzantara"
-    response_token = _compute_crc_response(test_token, consumer_secret)
+    # Sample CRC challenge value used only for manual validation (not a secret)
+    sample_crc_challenge = "test_crc_token_nuzantara"
+    response_token = _compute_crc_response(sample_crc_challenge, consumer_secret)
     return {
         "status": "ok",
         "secret_configured": True,
-        "test_token": test_token,
+        "test_token": sample_crc_challenge,
         "response_token": response_token,
     }
 

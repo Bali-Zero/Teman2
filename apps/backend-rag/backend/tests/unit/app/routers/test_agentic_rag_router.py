@@ -84,14 +84,14 @@ class TestAgenticRagRouter:
 
     @pytest.mark.asyncio
     async def test_get_orchestrator_reuses_existing(self, mock_request):
-        """Test orchestrator reuse"""
+        """Test orchestrator reuse — get_orchestrator is async, must be awaited."""
         existing = MagicMock()
         import backend.app.deps.orchestrator as orch_mod
 
         original = orch_mod._agentic_rag_orchestrator
         orch_mod._agentic_rag_orchestrator = existing
         try:
-            orchestrator = get_orchestrator(mock_request)
+            orchestrator = await get_orchestrator(mock_request)
             assert orchestrator == existing
         finally:
             orch_mod._agentic_rag_orchestrator = original

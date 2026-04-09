@@ -12,6 +12,13 @@ def mock_db_pool() -> tuple:
     """Create mocked DB pool and connection."""
     pool = MagicMock()
     conn = AsyncMock()
+
+    # Mock transaction() as async context manager (not a coroutine)
+    tx_cm = MagicMock()
+    tx_cm.__aenter__ = AsyncMock(return_value=None)
+    tx_cm.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=tx_cm)
+
     cm = AsyncMock()
     cm.__aenter__ = AsyncMock(return_value=conn)
     cm.__aexit__ = AsyncMock(return_value=False)
