@@ -527,7 +527,7 @@ async def on_startup(app: web.Application) -> None:
 
     async def _connect_acp() -> None:
         try:
-            await asyncio.wait_for(acp.connect(), timeout=30)
+            await asyncio.wait_for(acp.connect(), timeout=90)
             logger.info("ACP persistent Gemini CLI connected (pid=%d)", acp._proc.pid)
         except Exception as e:
             logger.warning("ACP connect failed: %s — will use CLI spawn fallback", e)
