@@ -130,12 +130,20 @@ def run_scorer(kb: KnowledgeBase, max_items: int = 20) -> dict:
         weight = RELEVANCE_WEIGHTS.get(topic, 1)
         weighted_score = min(5, score + (weight - 3) * 0.5)  # Slight bonus for high-weight topics
 
-        # Store in KB
+        # Store scored item in KB with FULL content for digest agent
         if weighted_score >= 2:
+            content_preview = content[:400] if content else ""
             kb.store(
                 agent="scorer",
                 entry_type="scored_item",
-                content=f"[{topic}] (score:{weighted_score:.1f}) {title}: {reason}",
+                content=(
+                    f"TITLE: {title}\n"
+                    f"SCORE: {weighted_score:.1f}/5 | TOPIC: {topic}\n"
+                    f"REASON: {reason}\n"
+                    f"URL: {data.get('url', '')}\n"
+                    f"SOURCE: {source}\n"
+                    f"CONTENT: {content_preview}"
+                ),
                 source=data.get("url", source),
                 confidence=weighted_score / 5.0,
             )
