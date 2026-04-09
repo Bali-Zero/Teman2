@@ -115,6 +115,7 @@ export default function ClientDetailPage() {
   const [isLogging, setIsLogging] = useState(false);
   const [logSaved, setLogSaved] = useState(false);
   const logTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   const submitLog = async () => {
     if (!logSummary.trim()) return;
@@ -202,6 +203,10 @@ export default function ClientDetailPage() {
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });
+    // Keep tabs visible after content height changes
+    requestAnimationFrame(() => {
+      tabsRef.current?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -778,7 +783,7 @@ export default function ClientDetailPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
+      <div ref={tabsRef} className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
         {[
           { key: "overview", label: "Overview", icon: User },
           {
