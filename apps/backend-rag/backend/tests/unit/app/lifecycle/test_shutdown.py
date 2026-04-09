@@ -33,6 +33,7 @@ def mock_app():
     app.state.weekly_reporter = None
     app.state.ts_service = None
     app.state.db_health_check_task = None
+    app.state.attendance_monitor = None
     app.on_event = MagicMock()
     return app
 

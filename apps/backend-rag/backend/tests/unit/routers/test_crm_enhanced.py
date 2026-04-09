@@ -116,7 +116,7 @@ class TestUpdateClientProfile:
     def test_update_profile_success(self, client, mock_db_pool):
         """Update client profile fields."""
         conn = mock_db_pool._mock_conn
-        conn.fetchrow.return_value = {"id": 42}  # Client exists
+        conn.fetchrow.return_value = {"id": 42, "assigned_to": "test@balizero.com"}  # Client exists
         conn.execute.return_value = "UPDATE 1"
 
         response = client.patch(
@@ -134,7 +134,7 @@ class TestUpdateClientProfile:
     def test_update_profile_no_fields(self, client, mock_db_pool):
         """No fields provided should still work (empty update)."""
         conn = mock_db_pool._mock_conn
-        conn.fetchrow.return_value = {"id": 42}
+        conn.fetchrow.return_value = {"id": 42, "assigned_to": "test@balizero.com"}
 
         response = client.patch(
             "/api/crm/clients/42/profile",
@@ -156,6 +156,7 @@ class TestCompaniesByClient:
     def test_companies_by_client_success(self, client, mock_db_pool):
         """List companies linked to a client."""
         conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = {"id": 42, "assigned_to": "test@balizero.com"}
         conn.fetch.return_value = [
             {
                 "id": 1,
@@ -176,6 +177,7 @@ class TestCompaniesByClient:
     def test_companies_by_client_empty(self, client, mock_db_pool):
         """Client with no companies returns empty list."""
         conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = {"id": 42, "assigned_to": "test@balizero.com"}
         conn.fetch.return_value = []
 
         response = client.get("/api/crm/companies/by-client/42")
@@ -223,6 +225,7 @@ class TestFamilyMembers:
     def test_list_family_members_success(self, client, mock_db_pool):
         """List family members for a client."""
         conn = mock_db_pool._mock_conn
+        conn.fetchrow.return_value = {"id": 42, "assigned_to": "test@balizero.com"}
         conn.fetch.return_value = [
             {
                 "id": 1,
@@ -280,7 +283,7 @@ class TestFamilyMembers:
     def test_update_family_member_success(self, client, mock_db_pool):
         """Update existing family member."""
         conn = mock_db_pool._mock_conn
-        conn.fetchrow.return_value = {"id": 1}  # Member exists
+        conn.fetchrow.return_value = {"id": 1, "assigned_to": "test@balizero.com"}  # Member exists
         conn.execute.return_value = "UPDATE 1"
 
         response = client.patch(
@@ -310,7 +313,7 @@ class TestFamilyMembers:
     def test_delete_family_member_success(self, client, mock_db_pool):
         """Delete family member."""
         conn = mock_db_pool._mock_conn
-        conn.fetchrow.return_value = {"id": 1}
+        conn.fetchrow.return_value = {"id": 1, "assigned_to": "test@balizero.com"}
         conn.execute.return_value = "DELETE 1"
 
         response = client.delete("/api/crm/clients/42/family/1")
