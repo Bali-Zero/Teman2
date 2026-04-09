@@ -22,6 +22,8 @@ import {
   Check,
   X,
   Upload,
+  Camera,
+  PenLine,
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -47,6 +49,7 @@ export default function NewClientPage() {
   const router = useRouter();
   const { error: toastError } = useToast();
   const { options: teamMemberOptions } = useTeamMemberOptions();
+  const [entryMode, setEntryMode] = useState<'choosing' | 'scan' | 'form'>('choosing');
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
@@ -244,11 +247,16 @@ export default function NewClientPage() {
       }
       return next;
     });
+    // Move to form — start at Basic Info so user sees pre-filled name
+    setEntryMode('form');
+    setActiveSection('basic');
   };
 
   const handleOcrDiscarded = () => {
     setPassportFile(null);
     setOcrApplied(false);
+    setEntryMode('form');
+    setActiveSection('basic');
   };
 
   const uploadPassportWithRetry = async (clientId: number): Promise<boolean> => {
@@ -306,34 +314,82 @@ export default function NewClientPage() {
         </div>
       </div>
 
-      {/* Section Tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)] pb-2">
-        {[
-          { key: 'basic', label: 'Basic Info', icon: User },
-          { key: 'personal', label: 'Personal Details', icon: CreditCard },
-          { key: 'crm', label: 'CRM Settings', icon: Briefcase },
-        ].map(({ key, label, icon: Icon }) => (
+      {/* Step 0: Entry Mode Chooser */}
+      {entryMode === 'choosing' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <button
-            key={key}
             type="button"
-            onClick={() => setActiveSection(key as typeof activeSection)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeSection === key
-                ? 'bg-[var(--accent)] text-white'
-                : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
-            }`}
+            onClick={() => setEntryMode('scan')}
+            className="group rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-8 text-center hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all"
           >
-            <Icon className="w-4 h-4" />
-            {label}
-            {key === 'basic' && ocrApplied && (
-              <span className="ml-1 text-xs text-green-400 font-normal">*</span>
-            )}
+            <Camera className="w-12 h-12 mx-auto mb-4 text-[var(--accent)] group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Scan Passport</h3>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              Upload a passport photo and auto-fill client details with AI
+            </p>
+            <span className="inline-block mt-4 text-xs text-[var(--accent)] font-medium px-3 py-1 rounded-full bg-[var(--accent)]/10">
+              Recommended
+            </span>
           </button>
-        ))}
-      </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+          <button
+            type="button"
+            onClick={() => { setEntryMode('form'); setActiveSection('basic'); }}
+            className="group rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-8 text-center hover:border-[var(--foreground-muted)] hover:bg-[var(--background-elevated)] transition-all"
+          >
+            <PenLine className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)] group-hover:scale-110 transition-transform" />
+            <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Manual Entry</h3>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              Fill in client details step by step
+            </p>
+            <span className="inline-block mt-4 text-xs text-[var(--foreground-muted)] font-medium px-3 py-1 rounded-full bg-[var(--background-elevated)]">
+              Classic
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Step 0b: Passport Scan Mode (full screen) */}
+      {entryMode === 'scan' && (
+        <div className="mt-4">
+          <PassportScanSection
+            onFieldsConfirmed={handleOcrFieldsConfirmed}
+            onDiscarded={handleOcrDiscarded}
+          />
+        </div>
+      )}
+
+      {/* Step 1+: Form (after choosing entry mode) */}
+      {entryMode === 'form' && (
+        <>
+          {/* Section Tabs */}
+          <div className="flex gap-2 border-b border-[var(--border)] pb-2">
+            {[
+              { key: 'basic', label: 'Basic Info', icon: User },
+              { key: 'personal', label: 'Personal Details', icon: CreditCard },
+              { key: 'crm', label: 'CRM Settings', icon: Briefcase },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveSection(key as typeof activeSection)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeSection === key
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+                {key === 'basic' && ocrApplied && (
+                  <span className="ml-1 text-xs text-green-400 font-normal">*</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
         {/* Form-level error */}
         {fieldErrors._form && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
@@ -531,11 +587,6 @@ export default function NewClientPage() {
               <CreditCard className="w-5 h-5 text-[var(--accent)]" />
               Personal Details
             </h3>
-
-            <PassportScanSection
-              onFieldsConfirmed={handleOcrFieldsConfirmed}
-              onDiscarded={handleOcrDiscarded}
-            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Nationality */}
@@ -821,7 +872,9 @@ export default function NewClientPage() {
             )}
           </div>
         </div>
-      </form>
+          </form>
+        </>
+      )}
     </div>
   );
 }
