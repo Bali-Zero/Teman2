@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 
+// Use Node.js runtime (not Edge) for long-running SSE streams.
+// Edge has a 30s timeout which kills workspace-stream responses.
+export const runtime = "nodejs";
+export const maxDuration = 300; // 5 minutes max for agentic RAG
+
 function normalizeBackendBaseUrl(url: string): string {
   return url.replace(/\/+$/, "").replace(/\/api$/, "");
 }
