@@ -779,10 +779,10 @@ class TestSearchService:
         if hasattr(search_service, "_reranker"):
             delattr(search_service, "_reranker")
 
-        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
+        # Default reranker_backend is "cross-encoder" → CrossEncoderReranker is used
+        with patch("backend.services.rag.reranker.CrossEncoderReranker") as mock_reranker_class:
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
-            mock_reranker.api_url = "http://test"
             mock_reranker_class.return_value = mock_reranker
 
             result = search_service._init_reranker()
@@ -902,7 +902,8 @@ class TestSearchService:
             query="test", user_level=1, limit=2,
         )
         assert result["reranked"] is True
-        assert result["pipeline"] == "hybrid_bm25_rrf_zerank2"
+        # pipeline label comes from settings.reranker_backend (default: "cross-encoder")
+        assert result["pipeline"].startswith("hybrid_bm25_rrf_")
 
     @pytest.mark.asyncio
     async def test_hybrid_search_with_reranking_disabled(self, search_service):
@@ -932,40 +933,65 @@ class TestSearchService:
         mock_reranker.enabled = False
         search_service._reranker = mock_reranker
 
-        result = await search_service.hybrid_search_with_reranking(
-            query="test", user_level=1, limit=2,
-        )
+        # Bypass Redis/memory cache to avoid pollution from earlier tests with same key
+        with patch("backend.core.cache.get_cache_service") as mock_cache_svc:
+            mock_cache = MagicMock()
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            mock_cache._generate_key = MagicMock(return_value="test_key_disabled")
+            mock_cache_svc.return_value = mock_cache
+
+            result = await search_service.hybrid_search_with_reranking(
+                query="test", user_level=1, limit=2,
+            )
         assert result["reranked"] is False
         assert result["early_exit"] is False
 
     @pytest.mark.asyncio
     async def test_hybrid_search_error_fallback(self, search_service):
         """Test hybrid_search falls back to regular search on error"""
-        # Make _prepare_search_context raise an exception
-
-        def failing_prepare(*args, **kwargs):
+        # _prepare_search_context is async — use AsyncMock so the coroutine raises properly
+        async def failing_prepare(*args, **kwargs):
             raise RuntimeError("Prepare failed")
 
-        with patch.object(search_service, "_prepare_search_context", failing_prepare):
-            # This should catch the error and fallback to regular search
-            # Restore prepare for fallback
-            with patch.object(search_service, "search") as mock_search:
-                mock_search.return_value = {"results": [], "query": "test"}
+        # Bypass cache so the try-block is entered (not short-circuited by a cache hit)
+        with patch("backend.core.cache.get_cache_service") as mock_cache_svc:
+            mock_cache = MagicMock()
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            mock_cache._generate_key = MagicMock(return_value="test_key_fallback")
+            mock_cache_svc.return_value = mock_cache
 
-                await search_service.hybrid_search(query="test", user_level=1, limit=5)
-                mock_search.assert_called_once()
+            with patch.object(search_service, "_prepare_search_context", failing_prepare):
+                # search() is the fallback — must be AsyncMock so it can be awaited
+                with patch.object(
+                    search_service, "search", new_callable=AsyncMock,
+                ) as mock_search:
+                    mock_search.return_value = {"results": [], "query": "test"}
+
+                    await search_service.hybrid_search(query="test", user_level=1, limit=5)
+                    mock_search.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_hybrid_search_dense_fallback_no_bm25(self, search_service):
-        """Test hybrid_search falls back to regular search when BM25 unavailable"""
+        """Test hybrid_search falls back to dense-only when BM25 unavailable"""
         # Disable BM25
         search_service._bm25_vectorizer = None
         search_service._bm25_enabled = False
 
-        result = await search_service.hybrid_search(query="test", user_level=1, limit=5)
-        # Should still return results via fallback to regular search
+        # Bypass cache to prevent pollution from earlier tests that cached "hybrid_rrf"
+        with patch("backend.core.cache.get_cache_service") as mock_cache_svc:
+            mock_cache = MagicMock()
+            mock_cache.get = AsyncMock(return_value=None)
+            mock_cache.set = AsyncMock()
+            mock_cache._generate_key = MagicMock(return_value="test_key_no_bm25")
+            mock_cache_svc.return_value = mock_cache
+
+            result = await search_service.hybrid_search(query="test", user_level=1, limit=5)
+
+        # Should still return results via dense-only path
         assert result is not None
-        # When BM25 is unavailable, it falls back to dense-only
+        # When BM25 is unavailable, query_sparse is None → dense_only branch
         assert result.get("search_type") == "dense_only" or result.get("bm25_enabled") is False
 
     @pytest.mark.asyncio
