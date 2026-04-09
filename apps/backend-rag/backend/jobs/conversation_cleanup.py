@@ -6,7 +6,7 @@ Daily cron job to cleanup old conversations and anonymize user data
 import asyncio
 from datetime import datetime, timezone
 
-from backend.app.dependencies import get_database_pool_direct
+from backend.app.core.database import get_db_pool
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
 from backend.db.repositories.conversation_repository import ConversationRepository
 
@@ -29,7 +29,7 @@ async def cleanup_conversations(
     """
     db_pool = None
     try:
-        db_pool = await get_database_pool_direct()
+        db_pool = await get_db_pool()
 
         if not db_pool:
             log_error(logger, "Database pool unavailable for cleanup job")

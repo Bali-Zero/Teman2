@@ -806,11 +806,11 @@ async def sync_company_drive_folder(
         all_files: list[dict] = []
         page_token = None
         while True:
-            kwargs: dict = dict(
-                q=f"'{fid}' in parents and trashed=false",
-                fields="nextPageToken, files(id, name, mimeType, webViewLink)",
-                pageSize=100,
-            )
+            kwargs: dict = {
+                "q": f"'{fid}' in parents and trashed=false",
+                "fields": "nextPageToken, files(id, name, mimeType, webViewLink)",
+                "pageSize": 100,
+            }
             if page_token:
                 kwargs["pageToken"] = page_token
             resp = service.files().list(**kwargs).execute()
@@ -884,9 +884,8 @@ async def sync_company_drive_folder(
         async def _run_ocr_tasks() -> None:
             try:
                 from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
-                from backend.app.dependencies import get_app_database_pool
-                ocr_pool = get_app_database_pool()
-                for fid, fname, dtype, did in ocr_tasks:
+                ocr_pool = db
+                for fid, fname, dtype, _did in ocr_tasks:
                     try:
                         await _dispatch_ocr_by_folder(
                             db_pool=ocr_pool,
