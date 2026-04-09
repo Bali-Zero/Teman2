@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AppSidebar } from '@/components/workspace/AppSidebar';
 import { Header } from '@/components/workspace/Header';
 import { ToastProvider } from '@/components/ui/toast';
@@ -18,6 +18,8 @@ interface WorkspaceLayoutProps {
 
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isTerminalPage = pathname === '/terminal';
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
@@ -249,8 +251,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           </main>
         </div>
       </div>
-      <CellWidget />
-      <WorkspaceAssistant />
+      {!isTerminalPage && <CellWidget />}
+      {!isTerminalPage && <WorkspaceAssistant />}
     </ToastProvider>
   );
 }
