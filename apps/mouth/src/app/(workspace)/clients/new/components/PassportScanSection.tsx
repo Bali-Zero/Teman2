@@ -92,6 +92,11 @@ function scanReducer(state: ScanState, action: ScanAction): ScanState {
           checked[key] = true;
         }
       }
+      // Uncheck nationality if not in COMMON_NATIONALITIES dropdown
+      const nat = action.result.nationality;
+      if (nat && !(COMMON_NATIONALITIES as readonly string[]).includes(nat)) {
+        checked['nationality'] = false;
+      }
       return { step: 'preview', result: action.result, file: action.file, checked };
     }
     case 'OCR_FAIL':
@@ -403,6 +408,9 @@ export function PassportScanSection({ onFieldsConfirmed, onDiscarded }: Passport
               <span className="text-sm text-[var(--foreground)] font-medium">
                 {getDisplayValue(key, result)}
               </span>
+              {key === 'nationality' && !checked[key] && result.nationality && (
+                <span className="text-xs text-amber-400 ml-1">(not in dropdown — fill manually)</span>
+              )}
             </label>
           ))}
         </div>
