@@ -51,6 +51,12 @@ class Heartbeat:
             long_queries = await self._count_long_queries(conn, long_query_threshold)
             lock_waits = await self._count_lock_waits(conn)
 
+            # v3 extended metrics
+            cache_hit_ratio = await self._get_cache_hit_ratio(conn)
+            top_tables = await self._get_top_tables_by_size(conn)
+            idx_scan_ratio = await self._get_idx_scan_ratio(conn)
+            dead_tuple_ratio = await self._get_dead_tuple_ratio(conn)
+
         snapshot = HeartbeatSnapshot(
             pool_size=pool_size,
             pool_idle=pool_idle,
@@ -60,7 +66,11 @@ class Heartbeat:
             bloat_top3=bloat_top3,
             long_queries=long_queries,
             lock_waits=lock_waits,
+            cache_hit_ratio=cache_hit_ratio,
+            top_tables_by_size=top_tables,
+            idx_scan_ratio=idx_scan_ratio,
         )
+        snapshot.health_score = snapshot.compute_health_score(dead_tuple_ratio)
         logger.info(
             "Heartbeat: pool=%d/%d active=%d/%d long=%d locks=%d",
             pool_size - pool_idle, pool_size,
@@ -91,6 +101,12 @@ class Heartbeat:
             await self.alert(msg)
             messages.append(msg)
 
+        health_threshold: int = self._rules.get_threshold("health_score_alert_threshold", default=60)
+        if snapshot.health_score is not None and snapshot.health_score < health_threshold:
+            msg = f"Health score {snapshot.health_score} below threshold {health_threshold}"
+            await self.alert(msg)
+            messages.append(msg)
+
         snapshot.alerts_sent = len(messages)
         return messages
 
@@ -100,8 +116,9 @@ class Heartbeat:
             INSERT INTO olympus_heartbeats (
                 pool_size, pool_idle, active_connections, max_connections,
                 db_size_bytes, bloat_top3, long_queries, lock_waits,
-                alerts_sent, recorded_at, pool_utilization
-            ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11)
+                alerts_sent, recorded_at, pool_utilization,
+                cache_hit_ratio, top_tables_by_size, idx_scan_ratio, health_score
+            ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15)
         """
         async with self._pool.acquire() as conn:
             await conn.execute(
@@ -112,7 +129,45 @@ class Heartbeat:
                 snapshot.long_queries, snapshot.lock_waits,
                 snapshot.alerts_sent, snapshot.recorded_at,
                 snapshot.pool_utilization,
+                snapshot.cache_hit_ratio,
+                json.dumps(snapshot.top_tables_by_size),
+                snapshot.idx_scan_ratio,
+                snapshot.health_score,
             )
+
+    @staticmethod
+    async def _get_cache_hit_ratio(conn: asyncpg.Connection) -> float | None:
+        row = await conn.fetchrow(
+            "SELECT round(100.0 * sum(blks_hit) / nullif(sum(blks_hit + blks_read), 0), 2) AS ratio "
+            "FROM pg_stat_database WHERE datname = current_database()",
+        )
+        return float(row["ratio"]) if row and row["ratio"] is not None else None
+
+    @staticmethod
+    async def _get_top_tables_by_size(conn: asyncpg.Connection) -> list[dict[str, Any]]:
+        rows = await conn.fetch(
+            "SELECT relname, pg_total_relation_size(relid) AS total_bytes "
+            "FROM pg_stat_user_tables "
+            "ORDER BY pg_total_relation_size(relid) DESC LIMIT 5",
+        )
+        return [{"table": r["relname"], "bytes": r["total_bytes"]} for r in rows]
+
+    @staticmethod
+    async def _get_idx_scan_ratio(conn: asyncpg.Connection) -> float | None:
+        val = await conn.fetchval(
+            "SELECT round(100.0 * sum(idx_scan) / nullif(sum(seq_scan + idx_scan), 0), 2) "
+            "FROM pg_stat_user_tables WHERE seq_scan + idx_scan > 0",
+        )
+        return float(val) if val is not None else None
+
+    @staticmethod
+    async def _get_dead_tuple_ratio(conn: asyncpg.Connection) -> float:
+        val = await conn.fetchval(
+            "SELECT COALESCE(round(100.0 * sum(n_dead_tup) / "
+            "nullif(sum(n_live_tup + n_dead_tup), 0), 2), 0) "
+            "FROM pg_stat_user_tables",
+        )
+        return float(val) if val is not None else 0.0
 
     @staticmethod
     async def _count_active_connections(conn: asyncpg.Connection) -> int:
