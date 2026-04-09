@@ -90,3 +90,35 @@ class TestGuardianFeedbackLoop:
         await guardian.run_pulse_once()
 
         guardian.alerts.send_pulse_summary.assert_called_once_with(3, 2)
+
+
+class TestGuardianV3Insights:
+    @pytest.mark.asyncio
+    async def test_pulse_runs_insights(self):
+        """v3: pulse runs InsightsCollector and persists actions."""
+        pool = AsyncMock()
+        guardian = OlympusGuardian(db_pool=pool, alert_service=None)
+        guardian.rules_engine = MagicMock()
+        guardian.rules_engine.record_applied = AsyncMock()
+        guardian.rules_engine.lower_confidence = AsyncMock()
+        guardian.pulse = MagicMock()
+        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
+            PulseAction(action_type="vacuum", target="t1", outcome="success", rule_applied="vacuum_dead_pct_threshold"),
+        ])
+        guardian.insights = MagicMock()
+        guardian.insights.collect_query_insights = AsyncMock(return_value=[
+            PulseAction(action_type="query_intelligence", target="pg_stat_statements", outcome="success"),
+        ])
+        guardian.insights.collect_bloat_insights = AsyncMock(return_value=[
+            PulseAction(action_type="unused_index", target="idx_old", outcome="proposed"),
+        ])
+        guardian.alerts = MagicMock()
+        guardian.alerts.send_pulse_summary = AsyncMock()
+        guardian._persist_action = AsyncMock()
+
+        actions = await guardian.run_pulse_once()
+
+        assert len(actions) == 3
+        guardian.insights.collect_query_insights.assert_called_once()
+        guardian.insights.collect_bloat_insights.assert_called_once()
+        assert guardian._persist_action.call_count == 3
