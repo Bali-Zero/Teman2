@@ -147,7 +147,7 @@ nav {
 .brand-left {
   display: flex; align-items: center; gap: 16px;
 }
-.brand-text { display: flex; flex-direction: column; gap: 12px; }
+.brand-text { display: flex; flex-direction: column; gap: 20px; }
 .brand-tagline {
   font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
   font-weight: 900;
