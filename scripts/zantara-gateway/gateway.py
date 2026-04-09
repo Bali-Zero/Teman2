@@ -511,7 +511,8 @@ async def handle_ocr_passport(request: web.Request) -> web.Response:
     config: GatewayConfig = request.app["config"]
 
     # Auth
-    if not verify_gateway_token(request, config):
+    token = request.headers.get("X-Gateway-Token", "")
+    if not verify_gateway_token(config.gateway_token, token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     try:
