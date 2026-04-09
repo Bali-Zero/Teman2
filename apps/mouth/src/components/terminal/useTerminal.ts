@@ -290,7 +290,18 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
         });
 
         if (!res.ok || !res.body) {
-          throw new Error(`HTTP ${res.status}`);
+          if (res.status === 401) {
+            throw new Error(
+              "Not authenticated. Please log in at https://kita.balizero.com/login or configure the local gateway token."
+            );
+          }
+          if (res.status === 403) {
+            throw new Error("Access denied. Your account is not a registered team member.");
+          }
+          if (res.status >= 500) {
+            throw new Error(`Server error (${res.status}). Try again in a moment.`);
+          }
+          throw new Error(`Request failed with HTTP ${res.status}`);
         }
 
         const reader = res.body.getReader();
