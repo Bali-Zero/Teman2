@@ -694,3 +694,41 @@ class TestExtractNibRBAC:
         assert "UPDATE clients SET nib" in call_args[0][0]
         assert call_args[0][1] == "1234567890123"
         assert call_args[0][2] == 42
+
+
+class TestExtractPassportPreviewMode:
+    """Tests for preview mode (client_id=None) on extract-passport-enhanced"""
+
+    def test_preview_mode_accepts_base64_without_client_id(self):
+        """Preview mode should accept image_base64 and return fields without DB access."""
+        from backend.app.routers.crm_clients_documents import PassportPreviewRequest
+
+        req = PassportPreviewRequest(
+            image_base64="data:image/jpeg;base64,/9j/4AAQ",
+            mime_type="image/jpeg",
+            client_id=None,
+        )
+        assert req.client_id is None
+        assert req.image_base64.startswith("data:")
+
+    def test_preview_request_rejects_oversized_base64(self):
+        """Base64 field must reject payloads over 14MB."""
+        from pydantic import ValidationError
+
+        from backend.app.routers.crm_clients_documents import PassportPreviewRequest
+
+        with pytest.raises(ValidationError):
+            PassportPreviewRequest(
+                image_base64="x" * 15_000_000,
+                mime_type="image/jpeg",
+            )
+
+    def test_persist_mode_requires_client_id_as_int(self):
+        """Persist mode should accept client_id as int."""
+        from backend.app.routers.crm_clients_documents import PassportPreviewRequest
+
+        req = PassportPreviewRequest(
+            image_base64="data:image/jpeg;base64,/9j/test",
+            client_id=99,
+        )
+        assert req.client_id == 99
