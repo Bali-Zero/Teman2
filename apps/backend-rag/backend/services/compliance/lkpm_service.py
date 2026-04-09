@@ -65,6 +65,7 @@ class LKPMService:
 
         return LKPMClientConfig(
             client_id=row["client_id"],
+            company_id=row.get("company_id"),
             company_name=row["company_name"],
             npwp=row["npwp"],
             nib=row["nib"],
@@ -92,7 +93,7 @@ class LKPMService:
             row = await conn.fetchrow(
                 """
                 INSERT INTO lkpm_client_config (
-                    client_id, company_name, npwp, nib, kbli_codes,
+                    client_id, company_id, company_name, npwp, nib, kbli_codes,
                     planned_equipment_domestic, planned_equipment_import,
                     planned_building_domestic, planned_building_import,
                     planned_vehicle_domestic, planned_vehicle_import,
@@ -101,12 +102,12 @@ class LKPMService:
                     jurnal_api_key, jurnal_company_id,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5,
-                    $6, $7, $8, $9, $10, $11,
-                    $12, $13, $14,
-                    $15, $16, $17, $18, NOW()
+                    $1, $2, $3, $4, $5, $6,
+                    $7, $8, $9, $10, $11, $12,
+                    $13, $14, $15,
+                    $16, $17, $18, $19, NOW()
                 )
-                ON CONFLICT (client_id) DO UPDATE SET
+                ON CONFLICT (client_id, company_id) DO UPDATE SET
                     company_name = EXCLUDED.company_name,
                     npwp = EXCLUDED.npwp,
                     nib = EXCLUDED.nib,
@@ -128,6 +129,7 @@ class LKPMService:
                 RETURNING id
                 """,
                 config.client_id,
+                config.company_id,
                 config.company_name,
                 config.npwp,
                 config.nib,
@@ -199,7 +201,7 @@ class LKPMService:
             # Resolve company from CRM
             row = await conn.fetchrow(
                 """
-                SELECT c.company_name, c.npwp_company, c.nib, c.kbli_code
+                SELECT c.id AS company_id, c.company_name, c.npwp_company, c.nib, c.kbli_code
                 FROM client_company_links ccl
                 JOIN companies c ON c.id = ccl.company_id
                 WHERE ccl.client_id = $1 AND ccl.status = 'active'
@@ -213,11 +215,12 @@ class LKPMService:
                 kbli = row["kbli_code"] or ""
                 await conn.execute(
                     """
-                    INSERT INTO lkpm_client_config (client_id, company_name, npwp, nib, kbli_codes)
-                    VALUES ($1, $2, $3, $4, ARRAY[$5])
-                    ON CONFLICT (client_id) DO NOTHING
+                    INSERT INTO lkpm_client_config (client_id, company_id, company_name, npwp, nib, kbli_codes)
+                    VALUES ($1, $2, $3, $4, $5, ARRAY[$6])
+                    ON CONFLICT (client_id, company_id) DO NOTHING
                 """,
                     client_id,
+                    row.get("company_id"),
                     row["company_name"],
                     row["npwp_company"],
                     row["nib"],
@@ -241,6 +244,7 @@ class LKPMService:
                 SELECT DISTINCT r.*, c.company_name
                 FROM lkpm_reports r
                 JOIN lkpm_client_config c ON r.client_id = c.client_id
+                    AND COALESCE(r.company_id, 0) = COALESCE(c.company_id, 0)
                 WHERE r.client_id IN (
                     SELECT DISTINCT ccl2.client_id
                     FROM client_company_links ccl1
@@ -487,6 +491,7 @@ class LKPMService:
                 SELECT r.*, c.company_name
                 FROM lkpm_reports r
                 JOIN lkpm_client_config c ON r.client_id = c.client_id
+                    AND COALESCE(r.company_id, 0) = COALESCE(c.company_id, 0)
                 WHERE r.client_id = $1
                 ORDER BY r.year DESC, r.quarter DESC
                 """,
@@ -502,6 +507,7 @@ class LKPMService:
                 SELECT r.*, c.company_name
                 FROM lkpm_reports r
                 JOIN lkpm_client_config c ON r.client_id = c.client_id
+                    AND COALESCE(r.company_id, 0) = COALESCE(c.company_id, 0)
                 WHERE r.quarter = $1 AND r.year = $2
                 ORDER BY c.company_name
                 """,
@@ -515,10 +521,11 @@ class LKPMService:
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT r.id, r.client_id, c.company_name, r.quarter, r.year,
+                SELECT r.id, r.client_id, r.company_id, c.company_name, r.quarter, r.year,
                        r.validation_alerts, r.status
                 FROM lkpm_reports r
                 JOIN lkpm_client_config c ON r.client_id = c.client_id
+                    AND COALESCE(r.company_id, 0) = COALESCE(c.company_id, 0)
                 WHERE r.validation_status = 'invalid'
                   AND r.status NOT IN ('submitted', 'archived')
                 ORDER BY r.year DESC, r.quarter DESC
@@ -611,7 +618,7 @@ class LKPMService:
             row = await conn.fetchrow(
                 """
                 INSERT INTO lkpm_reports (
-                    client_id, quarter, year, status,
+                    client_id, company_id, quarter, year, status,
                     realized_equipment_domestic, realized_equipment_import,
                     realized_building_domestic, realized_building_import,
                     realized_vehicle_domestic, realized_vehicle_import,
@@ -626,16 +633,16 @@ class LKPMService:
                     data_source, has_ai_categorized_items, ai_categorized_count,
                     updated_at
                 ) VALUES (
-                    $1, $2, $3, $4,
-                    $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                    $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24,
-                    $25, $26,
-                    $27, $28,
-                    $29, $30, $31,
+                    $1, $2, $3, $4, $5,
+                    $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                    $15, $16, $17, $18, $19, $20, $21, $22, $23,
+                    $24, $25,
+                    $26, $27,
+                    $28, $29,
+                    $30, $31, $32,
                     NOW()
                 )
-                ON CONFLICT (client_id, quarter, year) DO UPDATE SET
+                ON CONFLICT (client_id, company_id, quarter, year) DO UPDATE SET
                     status = EXCLUDED.status,
                     realized_equipment_domestic = EXCLUDED.realized_equipment_domestic,
                     realized_equipment_import = EXCLUDED.realized_equipment_import,
@@ -668,6 +675,7 @@ class LKPMService:
                 RETURNING id
                 """,
                 draft.client_id,
+                draft.company_id,
                 draft.quarter,
                 draft.year,
                 draft.status.value,
@@ -765,6 +773,7 @@ class LKPMService:
         return LKPMDraft(
             id=row["id"],
             client_id=row["client_id"],
+            company_id=row.get("company_id"),
             quarter=row["quarter"],
             year=row["year"],
             status=LKPMStatus(row["status"]),
@@ -852,6 +861,7 @@ class LKPMService:
         return LKPMBatchItem(
             id=row["id"],
             client_id=row["client_id"],
+            company_id=row.get("company_id"),
             company_name=row["company_name"],
             quarter=row["quarter"],
             year=row["year"],
