@@ -59,10 +59,11 @@ AI_YOUTUBE_CHANNELS = [
 # AI Intel Sentinel — arXiv categories
 ARXIV_CATEGORIES = ["cs.AI", "cs.CL", "cs.LG", "cs.IR"]
 
-# AI Intel Sentinel — RSS feeds
+# AI Intel Sentinel — RSS feeds (verified 2026-04-10)
 AI_RSS_FEEDS = [
-    "https://www.deeplearning.ai/the-batch/feed/",       # The Batch
     "https://jack-clark.net/feed/",                        # Import AI
-    "https://tldr.tech/ai/rss",                           # TLDR AI
-    "https://paperswithcode.com/latest/feed",             # Papers With Code
+    "https://huggingface.co/blog/feed.xml",               # Hugging Face Blog
+    "https://www.technologyreview.com/feed/",             # MIT Technology Review
+    "https://magazine.sebastianraschka.com/feed",         # Sebastian Raschka AI
+    "https://thegradient.pub/rss/",                       # The Gradient
 ]
