@@ -159,7 +159,7 @@ def run_coverage() -> float | None:
                 "HOME": os.environ.get("HOME", ""),
                 "PYTHONPATH": ".",
                 "ENVIRONMENT": "test",
-                "VIRTUAL_ENV": str(BACKEND_DIR / ".venv"),
+                "VIRTUAL_ENV": str(VENV_PYTHON.parent.parent),  # dynamic: .venv or venv
             },
         )
         if not cov_json.exists():
