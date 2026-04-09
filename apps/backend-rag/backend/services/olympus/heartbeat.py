@@ -95,6 +95,7 @@ class Heartbeat:
         return messages
 
     async def persist(self, snapshot: HeartbeatSnapshot) -> None:
+        import json
         query = """
             INSERT INTO olympus_heartbeats (
                 pool_size, pool_idle, active_connections, max_connections,
@@ -107,7 +108,7 @@ class Heartbeat:
                 query,
                 snapshot.pool_size, snapshot.pool_idle,
                 snapshot.active_connections, snapshot.max_connections,
-                snapshot.db_size_bytes, snapshot.bloat_top3,
+                snapshot.db_size_bytes, json.dumps(snapshot.bloat_top3),
                 snapshot.long_queries, snapshot.lock_waits,
                 snapshot.alerts_sent, snapshot.recorded_at,
                 snapshot.pool_utilization,
