@@ -22,6 +22,7 @@ import type {
   CompanyDocument,
   TaxRecord,
   PortalMessageThread,
+  PassportOcrResult,
 } from "./crm.types";
 import type {
   RequiredDocument,
@@ -293,6 +294,26 @@ export class CrmApi {
         body: JSON.stringify(data),
       },
       60000, // 60 second timeout for creation
+    );
+  }
+
+  /**
+   * Extract passport data from image via OCR (preview mode — no DB write).
+   */
+  async extractPassportPreview(
+    imageBase64: string,
+    mimeType: string = "image/jpeg",
+  ): Promise<PassportOcrResult> {
+    return this.client.request<PassportOcrResult>(
+      "/api/crm/clients/extract-passport-enhanced",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          image_base64: imageBase64,
+          mime_type: mimeType,
+        }),
+      },
+      30000,
     );
   }
 
