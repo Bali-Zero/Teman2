@@ -1174,7 +1174,7 @@ async def analyze_investment(req: AnalyzeInvestmentRequest) -> dict[str, Any]:
             f"KBLI {k.get('code', '?')} {k.get('title', '')} "
             f"{k.get('state', '?')} per {'PMA' if req.is_pma else 'locale'}",
         )
-    roi_gs = result.get("roi", {}).get("golden_strategy", {})
+    roi_gs = (result.get("roi") or {}).get("golden_strategy", {})
     if roi_gs.get("roi"):
         parts.append(f"ROI stimato {roi_gs['roi']:.1f}%, break-even {roi_gs.get('bey', '?')} anni")
 
