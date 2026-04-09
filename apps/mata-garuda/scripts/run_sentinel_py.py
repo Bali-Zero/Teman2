@@ -26,6 +26,7 @@ from mata_garuda.tools.youtube_tools import fetch_youtube_transcript
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.normalizer import run_normalizer
 from mata_garuda.workers.scorer import run_scorer
+from mata_garuda.workers.nlm_feeder import run_nlm_feeder
 from mata_garuda.config import AI_RSS_FEEDS, AI_YOUTUBE_CHANNELS
 
 
@@ -109,13 +110,18 @@ def main():
         print("  No items harvested. Exiting.")
         return
 
-    # 2. Normalize + Score
+    # 2. Normalize + Score + NLM Feed
     print("\n[PROCESS]")
     kb = KnowledgeBase()
     n_stats = run_normalizer(kb, max_items=50)
     print(f"  Normalizer: {n_stats}")
     s_stats = run_scorer(kb, max_items=50)
     print(f"  Scorer: {s_stats}")
+
+    # 3. Feed to NLM (grows the brain over time)
+    print("\n[NLM FEED]")
+    nlm_stats = run_nlm_feeder(kb, max_items=30)
+    print(f"  NLM Feeder: {nlm_stats}")
     kb.close()
 
     # 3. Digest
