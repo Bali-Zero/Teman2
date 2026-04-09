@@ -63,6 +63,7 @@ from .pipeline import (
     create_default_pipeline,
 )
 from .tools import (
+    CRMTool,
     CalculatorTool,
     ImageGenerationTool,
     PricingTool,
@@ -83,6 +84,7 @@ __all__ = [
     "create_agentic_rag",
     "create_kg_agentic_rag",
     # Tools
+    "CRMTool",
     "TimeSheetTool",
     "VectorSearchTool",
     "CalculatorTool",
@@ -145,6 +147,8 @@ def create_agentic_rag(
         6. VisionTool (visual document analysis)
         7. ImageGenerationTool (AI image generation)
         8. WebSearchTool (web search for out-of-KB queries via Brave)
+        9. CRMTool (live client/practice database queries)
+        10. TimeSheetTool (team timesheet management)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
@@ -167,7 +171,8 @@ def create_agentic_rag(
         VisionTool(),  # SIXTH: Document analysis
         ImageGenerationTool(),  # SEVENTH: Image generation (Imagen)
         WebSearchTool(),  # EIGHTH: Web search for out-of-KB queries (Brave)
-        TimeSheetTool(),  # NINTH: Timesheet Management
+        CRMTool(db_pool),  # NINTH: CRM database queries (client stats, search, practices)
+        TimeSheetTool(),  # TENTH: Timesheet Management
     ]
     logger.debug("create_agentic_rag: Tools list created")
 
