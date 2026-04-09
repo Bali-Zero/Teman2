@@ -28,24 +28,53 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.tools.stream_tools import stream_publish, stream_read
-from mata_garuda.config import TG_ZERO_CHAT_ID
+from mata_garuda.config import TG_ZERO_CHAT_ID, NLM_NOTEBOOKS
+
+
+def query_nlm(question: str) -> str:
+    """Query NLM AI Research notebook for synthesis. Returns empty on failure."""
+    nb_id = NLM_NOTEBOOKS.get("ai_research", "")
+    if not nb_id:
+        return ""
+    try:
+        result = subprocess.run(
+            ["nlm", "notebook", "query", nb_id, "--question", question],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except Exception as e:
+        print(f"  [NLM] Query failed: {e}")
+    return ""
 
 
 def get_kb_data(kb: KnowledgeBase) -> dict:
-    """Gather all real data from KB."""
+    """Gather all real data from KB + NLM."""
     data = {
         "scored_items": kb.get_by_type("scored_item", limit=20),
         "harvested_arxiv": kb.search("arxiv", limit=10),
         "harvested_github": kb.search("github", limit=10),
         "harvested_rss": kb.search("rss", limit=10),
         "harvested_youtube": kb.search("youtube", limit=5),
+        "nlm_synthesis": "",
     }
     # Filter out hash entries
     for key in data:
-        data[key] = [
-            item for item in data[key]
-            if item.get("type") != "hash" and len(item.get("content", "")) > 30
-        ]
+        if isinstance(data[key], list):
+            data[key] = [
+                item for item in data[key]
+                if item.get("type") != "hash" and len(item.get("content", "")) > 30
+            ]
+
+    # Ask NLM for cross-source synthesis (if notebook has sources)
+    nlm_result = query_nlm(
+        "What are the most important AI research trends from the latest sources? "
+        "Focus on: RAG improvements, agent architectures, knowledge graphs, "
+        "and anything relevant to production AI systems. Be specific with paper names."
+    )
+    if nlm_result:
+        data["nlm_synthesis"] = nlm_result
+
     return data
 
 
@@ -83,8 +112,12 @@ def build_synthesis_prompt(data: dict) -> str:
             sections.append(f"- {item['content'][:200]}")
             sections.append(f"  URL: {item.get('source', 'N/A')}")
 
+    if data.get("nlm_synthesis"):
+        sections.append("\n## NLM CROSS-SOURCE SYNTHESIS (from 600-source brain)")
+        sections.append(data["nlm_synthesis"][:1000])
+
     raw_data = "\n".join(sections)
-    total = sum(len(v) for v in data.values())
+    total = sum(len(v) for v in data.values() if isinstance(v, list))
 
     if total == 0:
         return ""
