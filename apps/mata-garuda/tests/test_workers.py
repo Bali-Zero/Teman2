@@ -122,4 +122,5 @@ class TestConfig:
 
         assert len(AI_YOUTUBE_CHANNELS) >= 5
         assert "cs.AI" in ARXIV_CATEGORIES
-        assert len(AI_RSS_FEEDS) >= 3
+        assert len(AI_RSS_FEEDS) >= 4
+        assert any("huggingface" in f for f in AI_RSS_FEEDS)
