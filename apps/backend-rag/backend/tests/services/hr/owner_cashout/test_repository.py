@@ -1,8 +1,13 @@
 """Tests for owner cashout read-side repository."""
+import os
 from datetime import date
 
 import asyncpg
 import pytest
+
+pytestmark = [
+    pytest.mark.integration,
+]
 
 from backend.services.hr.owner_cashout.parser import CashoutRow
 from backend.services.hr.owner_cashout.repository import (
@@ -25,11 +30,11 @@ def _next_idx():
 
 @pytest.fixture
 async def populated_pool():
-    import os
-    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get(
-        "DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_dev"
-    )
-    pool = await asyncpg.create_pool(url)
+    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    try:
+        pool = await asyncpg.create_pool(url)
+    except Exception:
+        pytest.skip("PostgreSQL not reachable — skipping integration test")
     async with pool.acquire() as c:
         await c.execute("DELETE FROM owner_weekly_cashout_rows")
         await c.execute("DELETE FROM owner_weekly_cashout_weeks")
