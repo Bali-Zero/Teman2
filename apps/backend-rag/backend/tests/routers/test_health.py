@@ -66,7 +66,10 @@ class TestHealthEndpoints:
         )
         app.state.db_pool = MagicMock(get_size=lambda: 3, get_idle_size=lambda: 1)
 
-        with patch("backend.app.routers.health.get_qdrant_stats", AsyncMock(return_value={"collections": 2, "total_documents": 42})):
+        with (
+            patch("backend.app.routers.health.get_qdrant_stats", AsyncMock(return_value={"collections": 2, "total_documents": 42})),
+            patch("backend.app.routers.health._check_resource_thresholds", return_value=(None, None)),
+        ):
             response = client.get("/health")
 
         assert response.status_code == 200
