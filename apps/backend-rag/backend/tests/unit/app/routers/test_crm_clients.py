@@ -433,7 +433,7 @@ class TestExtractPassportEnhancedRBAC:
         ):
             response = test_client.post(
                 "/api/crm/clients/extract-passport-enhanced",
-                json={"client_id": 99, "file_id": "some-drive-file-id"},
+                json={"client_id": 99, "image_base64": "data:image/jpeg;base64,/9j/test"},
             )
 
         assert response.status_code == 403, (
