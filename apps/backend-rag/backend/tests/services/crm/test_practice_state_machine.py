@@ -69,15 +69,17 @@ class TestCancelledTransitions:
         assert validate_transition("cancelled", "inquiry", {"role": "admin"}) is True
 
     def test_reopen_cancelled_as_team(self) -> None:
-        # Team members (non-client) can reopen
-        assert validate_transition("cancelled", "inquiry", {"role": "team"}) is True
+        # cancelled -> inquiry is admin-only; team (non-admin) should be denied
+        with pytest.raises(InvalidTransitionError):
+            validate_transition("cancelled", "inquiry", {"role": "team"})
 
     def test_reopen_cancelled_without_user_raises(self) -> None:
         with pytest.raises(InvalidTransitionError, match="requires admin role"):
             validate_transition("cancelled", "inquiry")
 
     def test_reopen_cancelled_as_client_raises(self) -> None:
-        with pytest.raises(InvalidTransitionError, match="requires admin role"):
+        # Error message is "Admin-only transition: ..." for non-admin users
+        with pytest.raises(InvalidTransitionError, match="Admin-only transition|requires admin role"):
             validate_transition("cancelled", "inquiry", {"role": "client"})
 
 

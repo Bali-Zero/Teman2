@@ -17,7 +17,7 @@ init_sentry()
 logger = logging.getLogger("zantara.backend")
 
 
-def create_rag_app():
+def create_rag_app() -> "FastAPI":  # type: ignore[return]
     from fastapi import FastAPI, HTTPException
     from starlette.exceptions import HTTPException as StarletteHTTPException
 

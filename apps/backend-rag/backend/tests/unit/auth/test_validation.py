@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from jose import jwt
@@ -37,7 +37,7 @@ class TestAuthValidation:
     async def test_validate_api_key_invalid(self):
         """Test validating invalid API key"""
         with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
-            mock_auth.validate_api_key.return_value = None
+            mock_auth.validate_api_key_enhanced = AsyncMock(return_value=None)
             result = await validate_api_key("invalid_key")
             assert result is None
 
@@ -45,7 +45,9 @@ class TestAuthValidation:
     async def test_validate_api_key_valid(self):
         """Test validating valid API key"""
         with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
-            mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
+            mock_auth.validate_api_key_enhanced = AsyncMock(
+                return_value={"id": "user123", "email": "test@example.com"},
+            )
             result = await validate_api_key("valid_key")
             assert result is not None
             assert result["id"] == "user123"
@@ -129,7 +131,9 @@ class TestAuthValidation:
     async def test_validate_auth_mixed_api_key(self):
         """Test validating mixed auth with API key"""
         with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
-            mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
+            mock_auth.validate_api_key_enhanced = AsyncMock(
+                return_value={"id": "user123", "email": "test@example.com"},
+            )
             result = await validate_auth_mixed(x_api_key="valid_key")
             assert result is not None
             assert result["id"] == "user123"
