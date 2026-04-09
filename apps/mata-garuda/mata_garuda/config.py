@@ -18,13 +18,14 @@ STREAM_FEEDBACK = "garuda:feedback"
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 TG_ZERO_CHAT_ID = "1125336968"
 
-# NLM Notebook IDs (to be populated as notebooks are created)
+# NLM Notebook IDs
 NLM_NOTEBOOKS = {
-    "regulation": "",       # NB-INTEL-Regulation
-    "ai_research": "",      # NB-INTEL-AIResearch
-    "tax": "",              # NB-INTEL-Tax
-    "immigration": "",      # NB-INTEL-Immigration
-    "press": "",            # NB-INTEL-Press
+    "ai_research": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",  # NB-INTEL-AIResearch
+    "self_evolving": "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",  # Mata Garuda Self-Evolving Research
+    "regulation": "",       # NB-INTEL-Regulation (TBD)
+    "tax": "",              # NB-INTEL-Tax (TBD)
+    "immigration": "",      # NB-INTEL-Immigration (TBD)
+    "press": "",            # NB-INTEL-Press (TBD)
 }
 
 # Relevance scoring weights for business context
