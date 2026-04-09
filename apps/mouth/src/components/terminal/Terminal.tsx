@@ -94,10 +94,10 @@ export function Terminal() {
 
   const handleSelectSuggestion = useCallback(
     (text: string) => {
-      setInput(text);
+      void sendMessage(text);
       inputHandle.current?.focus();
     },
-    [setInput],
+    [sendMessage],
   );
 
   // Compute the most recent model / tokens for the status bar.
