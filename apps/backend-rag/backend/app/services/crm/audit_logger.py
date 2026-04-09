@@ -4,6 +4,7 @@ Tracks all state changes with user attribution and timestamps
 """
 
 import functools
+import inspect
 import json
 from datetime import datetime, timezone
 from typing import Any
@@ -280,26 +281,32 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
     def decorator(func: Any) -> Any:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract user and entity info from kwargs
-            # Priority: user_email kwarg > current_user dict > request.state.user
-            user_email = kwargs.get("user_email")
+            # Resolve positional args to named params so we can find
+            # FastAPI-injected dependencies (current_user, db_pool, etc.)
+            sig = inspect.signature(func)
+            bound = sig.bind_partial(*args, **kwargs)
+            bound.apply_defaults()
+            all_params = bound.arguments
+
+            # Extract user email — FastAPI injects current_user as positional arg
+            user_email = all_params.get("user_email")
             if not user_email:
-                current_user = kwargs.get("current_user", {})
+                current_user = all_params.get("current_user", {})
                 if isinstance(current_user, dict):
                     user_email = current_user.get("email")
             if not user_email:
-                request = kwargs.get("request")
+                request = all_params.get("request")
                 if request and hasattr(request, "state"):
                     user_email = getattr(request.state, "user", {}).get("email")
-            entity_id = kwargs.get("client_id") or kwargs.get("case_id") or kwargs.get("id")
+            entity_id = all_params.get("client_id") or all_params.get("case_id") or all_params.get("id")
 
             # Get old state before change
             old_state = {}
             if entity_id and entity_type == "client":
                 # Fetch current client state
                 try:
-                    # Get pool from kwargs or global instance
-                    pool = kwargs.get("db_pool") or audit_logger.pool
+                    # Get pool from resolved params or global instance
+                    pool = all_params.get("db_pool") or audit_logger.pool
                     if pool:
                         async with pool.acquire() as conn:
                             row = await conn.fetchrow(
@@ -319,14 +326,19 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
             result = await func(*args, **kwargs)
 
             # Log the change
-            if entity_id and user_email and old_state:
-                new_state = {}
-                if isinstance(result, dict):
-                    new_state = result
-                elif hasattr(result, "model_dump"):
-                    new_state = result.model_dump()
-                elif hasattr(result, "dict"):
-                    new_state = result.dict()
+            new_state = {}
+            if isinstance(result, dict):
+                new_state = result
+            elif hasattr(result, "model_dump"):
+                new_state = result.model_dump()
+            elif hasattr(result, "dict"):
+                new_state = result.dict()
+
+            # For CREATE: entity_id comes from result, old_state is empty
+            if not entity_id and change_type == "create" and new_state:
+                entity_id = new_state.get("id")
+
+            if entity_id and user_email:
                 await audit_logger.log_state_change(
                     entity_type=entity_type,
                     entity_id=entity_id,

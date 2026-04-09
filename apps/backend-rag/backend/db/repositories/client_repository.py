@@ -68,6 +68,7 @@ class ClientRepository(BaseRepository):
                         assigned_to, avatar_url, address, notes,
                         tags, custom_fields, created_by,
                         lead_source, service_interest, tax_id,
+                        passport_expiry, date_of_birth, company_name,
                         created_at, updated_at
                     ) VALUES (
                         $1, $2, $3, $4, $5,
@@ -75,6 +76,7 @@ class ClientRepository(BaseRepository):
                         $9, $10, $11, $12,
                         $13, $14, $15,
                         $16, $17, $18,
+                        $19, $20, $21,
                         NOW(), NOW()
                     )
                     RETURNING *
@@ -99,6 +101,9 @@ class ClientRepository(BaseRepository):
                     client_data.get("lead_source"),
                     client_data.get("service_interest", []),
                     client_data.get("tax_id"),
+                    client_data.get("passport_expiry"),
+                    client_data.get("date_of_birth"),
+                    client_data.get("company_name"),
                 )
 
                 # Inserimento opzionale della Compagnia e collegamento (Multi-tabella)

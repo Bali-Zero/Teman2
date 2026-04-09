@@ -50,6 +50,22 @@ class ClientValidator(BaseModel):
     whatsapp: str | None = Field(None, max_length=50)
     nationality: str | None = Field(None, max_length=100)
     passport_number: str | None = Field(None, max_length=100)
+    # Fields that were silently dropped by Pydantic extra="ignore" default
+    status: str = "active"
+    client_type: str = "individual"
+    assigned_to: str | None = None
+    created_by: str | None = None
+    avatar_url: str | None = None
+    address: str | None = None
+    notes: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
+    lead_source: str | None = None
+    service_interest: list[str] = Field(default_factory=list)
+    tax_id: str | None = None
+    passport_expiry: str | None = None
+    date_of_birth: str | None = None
+    company_name: str | None = None
 
     @field_validator("full_name")
     @classmethod

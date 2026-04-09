@@ -160,6 +160,13 @@ class ClientUpdate(BaseModel):
     lead_source: str | None = None
     service_interest: list[str] | None = None
     custom_fields: dict | None = None
+    gender: str | None = None
+    birthplace: str | None = None
+    tax_id: str | None = None
+    npwp: str | None = None
+    nib: str | None = None
+    current_visa_type: str | None = None
+    current_visa_sponsor: str | None = None
 
     @field_validator("status")
     @classmethod
@@ -263,6 +270,8 @@ class ClientResponse(BaseModel):
     tax_id: str | None = None
     npwp: str | None = None
     nib: str | None = None
+    current_visa_type: str | None = None
+    current_visa_sponsor: str | None = None
     created_at: datetime
     updated_at: datetime
     created_by: str | None = None
@@ -725,6 +734,11 @@ async def update_client(
                 "service_interest": "service_interest",
                 "gender": "gender",
                 "birthplace": "birthplace",
+                "tax_id": "tax_id",
+                "npwp": "npwp",
+                "nib": "nib",
+                "current_visa_type": "current_visa_type",
+                "current_visa_sponsor": "current_visa_sponsor",
             }
 
             # Date fields that need empty string → None conversion
