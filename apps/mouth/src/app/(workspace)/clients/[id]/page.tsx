@@ -201,11 +201,12 @@ export default function ClientDetailPage() {
   }, [searchParams]);
 
   const handleTabChange = (tab: TabType) => {
+    const scrollY = window.scrollY;
     setActiveTab(tab);
     router.replace(`/clients/${params.id}?tab=${tab}`, { scroll: false });
-    // Keep tabs visible after content height changes
+    // Restore scroll position after React re-render settles
     requestAnimationFrame(() => {
-      tabsRef.current?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+      window.scrollTo(0, scrollY);
     });
   };
 
