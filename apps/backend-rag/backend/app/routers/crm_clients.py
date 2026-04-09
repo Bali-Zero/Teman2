@@ -205,6 +205,16 @@ class ClientUpdate(BaseModel):
             return None
         return v
 
+    @field_validator("gender", mode="before")
+    @classmethod
+    def normalize_gender(cls, v: str | None) -> str | None:
+        """Normalize gender values: M→male, F→female, O→other."""
+        if not v:
+            return None
+        normalized = v.strip().lower()
+        mapping = {"m": "male", "f": "female", "o": "other"}
+        return mapping.get(normalized, normalized)
+
     @field_validator("full_name")
     @classmethod
     def validate_full_name(cls, v: str | None) -> str | None:
