@@ -9,10 +9,10 @@ from fastapi import APIRouter, Request
 
 logger = logging.getLogger("olympus.router")
 
-router = APIRouter(prefix="/health", tags=["olympus"])
+router = APIRouter(tags=["olympus"])
 
 
-@router.get("/db")
+@router.get("/health/db")
 async def db_health(request: Request) -> dict[str, Any]:
     """Database health summary from Olympus Guardian."""
     olympus = getattr(request.app.state, "olympus", None)
