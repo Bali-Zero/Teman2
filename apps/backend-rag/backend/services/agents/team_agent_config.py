@@ -108,6 +108,7 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "get_admin_logs",
     ],
     client_scope="assigned",
+    requires_confirmation=["image_generation"],
 )
 
 ROLE_EXECUTIVE_CONSULTANT = AgentRole(
@@ -165,6 +166,7 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "get_admin_logs",
     ],
     client_scope="assigned",
+    requires_confirmation=["image_generation"],
 )
 
 ROLE_ADMIN = AgentRole(

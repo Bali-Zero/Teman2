@@ -105,14 +105,17 @@ def mock_client_user() -> dict:
 
 
 @pytest.fixture
-def mock_db_pool() -> AsyncMock:
-    """Mock asyncpg connection pool with context manager support."""
-    pool = AsyncMock()
+def mock_db_pool() -> MagicMock:
+    """Mock asyncpg connection pool with async context manager support."""
+    pool = MagicMock()
     conn = AsyncMock()
 
-    # Make pool.acquire() work as async context manager
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    # Make pool.acquire() work as async context manager:
+    # pool.acquire() must return an object that supports __aenter__/__aexit__
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=acquire_cm)
 
     # Store conn reference for easy access in tests
     pool._mock_conn = conn
