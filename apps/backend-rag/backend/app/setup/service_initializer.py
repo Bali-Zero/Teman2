@@ -357,6 +357,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 # handler in exception_handlers.py → full stale connection coverage.
                 "max_inactive_connection_lifetime": 30.0,
                 "init": init_db_connection,
+                # Required for PgBouncer transaction mode — prevents prepared statement leak
+                "statement_cache_size": 0,
             }
 
             # Add ssl parameter if explicitly determined
@@ -1337,6 +1339,8 @@ async def initialize_services_light(app: FastAPI) -> None:
             "command_timeout": 60,
             "max_inactive_connection_lifetime": 30.0,
             "init": _light_init_connection,
+            # Required for PgBouncer transaction mode — prevents prepared statement leak
+            "statement_cache_size": 0,
         }
         if ssl_ctx is not None:
             pool_kwargs["ssl"] = ssl_ctx
