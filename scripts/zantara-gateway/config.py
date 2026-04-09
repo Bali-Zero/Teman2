@@ -27,6 +27,9 @@ class GatewayConfig:
     # Gemini CLI
     gemini_timeout: int = 60
     gemini_allowed_mcp: list[str] = field(default_factory=lambda: ["nuzantara"])
+    # Gemini API direct (bypasses CLI for zero cold start)
+    gemini_api_key: str = ""
+    gemini_api_model: str = "gemini-2.5-flash"
     # Ollama fallback
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = ""  # auto-detected from RAM
@@ -76,6 +79,10 @@ def load_config() -> GatewayConfig:
             cfg.gemini_allowed_mcp = gemini.get(
                 "allowed_mcp_servers", cfg.gemini_allowed_mcp
             )
+
+            gemini_api = raw.get("gemini_api", {})
+            cfg.gemini_api_key = gemini_api.get("api_key", cfg.gemini_api_key)
+            cfg.gemini_api_model = gemini_api.get("model", cfg.gemini_api_model)
 
             ollama = raw.get("ollama", {})
             cfg.ollama_url = ollama.get("url", cfg.ollama_url)
