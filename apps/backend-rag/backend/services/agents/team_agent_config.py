@@ -81,6 +81,7 @@ ROLE_VISA_SPECIALIST = AgentRole(
         "calculator",
         "vision",
         "web_search",
+        "crm_query",
     ],
     allowed_write_tools=[
         # CRM
@@ -144,6 +145,7 @@ ROLE_EXECUTIVE_CONSULTANT = AgentRole(
         "calculator",
         "vision",
         "web_search",
+        "crm_query",
     ],
     allowed_write_tools=[
         "log_interaction",
