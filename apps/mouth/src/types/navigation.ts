@@ -38,10 +38,10 @@ export const navigation: NavSection[] = [
     // Block 1: Core
     items: [
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
+      { title: "Zantara Terminal", href: "/terminal", icon: "Terminal" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
-      { title: "Terminal", href: "/terminal", icon: "Terminal" },
       {
-        title: "Zantara AI",
+        title: "Zantara Public",
         href: "https://zantara.balizero.com",
         icon: "MessageSquare",
         external: true,
@@ -131,7 +131,7 @@ export const routeTitles: Record<string, string> = {
   "/intelligence/visa-oracle": "Visa Oracle",
   "/intelligence/news-room": "News Room",
   "/intelligence/system-pulse": "System Pulse",
-  "/terminal": "Terminal",
+  "/terminal": "Zantara Terminal",
   "/chat": "Zantara AI",
   "/whatsapp": "WhatsApp",
   "/clients": "Clients",
