@@ -30,7 +30,7 @@ def check_permission(user: dict[str, Any], required: str) -> bool:
     return required in permissions
 
 
-def require_permission(required: str):
+def require_permission(required: str) -> Any:
     """
     FastAPI dependency factory for permission-gated endpoints.
 
