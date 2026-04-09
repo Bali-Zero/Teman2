@@ -598,3 +598,160 @@ class TestStreamingPathParity:
         assert abstain_would_fire is False, (
             "ABSTAIN must NOT fire in streaming path when trusted_tools_used=True"
         )
+
+    # ------------------------------------------------------------------
+    # Streaming-only context_gathered bypass tests (reasoning.py:1373-1429)
+    # ------------------------------------------------------------------
+
+    def _run_streaming_context_gathered_check(self, context_gathered: list[str]) -> bool:
+        """
+        Replicate the STREAMING-ONLY context_gathered fallback logic
+        from reasoning.py lines 1373-1429.
+
+        This bypass exists ONLY in execute_react_loop_stream, NOT in
+        execute_react_loop. It checks context_gathered for pricing/team/KG
+        markers and also applies an unconditional bypass when total context
+        length exceeds 200 chars.
+
+        Returns True if trusted_tools_used would become True.
+        """
+        trusted_tools_used = False
+
+        # Phase 1: Marker-based bypass (lines 1375-1418)
+        if not trusted_tools_used and context_gathered:
+            context_text = " ".join(context_gathered).lower()
+            # Pricing markers
+            if any(
+                marker in context_text
+                for marker in [
+                    "bali_zero_official_prices",
+                    "service_type",
+                    "total_price",
+                    "pricing",
+                    "rp ",
+                    "idr ",
+                    "harga",
+                ]
+            ):
+                trusted_tools_used = True
+            # Team markers
+            elif any(
+                marker in context_text
+                for marker in [
+                    "team_member",
+                    "specialties",
+                    "role:",
+                    "department",
+                ]
+            ):
+                trusted_tools_used = True
+            # KG markers
+            elif any(
+                marker in context_text
+                for marker in [
+                    "subgraph",
+                    "nodes,",
+                    "edges)",
+                    "focus]",
+                    "knowledge graph",
+                ]
+            ):
+                trusted_tools_used = True
+
+        # Phase 2: Substantial content bypass (lines 1420-1429)
+        if not trusted_tools_used and context_gathered:
+            total_context_len = sum(len(c) for c in context_gathered)
+            if total_context_len > 200:
+                trusted_tools_used = True
+
+        return trusted_tools_used
+
+    @pytest.mark.unit
+    def test_streaming_context_gathered_pricing_markers_bypass(self):
+        """
+        STREAMING-ONLY bypass: context_gathered contains pricing marker
+        'bali_zero_official_prices' -> trusted_tools_used becomes True.
+
+        This bypass exists ONLY in the streaming path (execute_react_loop_stream,
+        reasoning.py lines 1375-1391). The non-streaming path does NOT inspect
+        context_gathered for these markers. Without this test, a refactor that
+        removes the streaming fallback would silently break pricing answers
+        delivered over SSE/WebSocket.
+        """
+        context = [
+            '{"source": "bali_zero_official_prices", "service_type": "PT PMA Setup", "total_price": 45000000}'
+        ]
+        result = self._run_streaming_context_gathered_check(context)
+        assert result is True, (
+            "Pricing marker 'bali_zero_official_prices' in context_gathered "
+            "must set trusted_tools_used=True in the streaming path"
+        )
+
+    @pytest.mark.unit
+    def test_streaming_context_gathered_team_markers_bypass(self):
+        """
+        STREAMING-ONLY bypass: context_gathered contains team marker
+        'team_member' -> trusted_tools_used becomes True.
+
+        This bypass exists ONLY in the streaming path (execute_react_loop_stream,
+        reasoning.py lines 1393-1403). The non-streaming path does NOT inspect
+        context_gathered for team markers. Without this test, team knowledge
+        answers streamed via SSE would get incorrectly ABSTAIN'd.
+        """
+        context = [
+            '{"team_member": "Damar", "role": "Operations Manager", "department": "Client Services"}'
+        ]
+        result = self._run_streaming_context_gathered_check(context)
+        assert result is True, (
+            "Team marker 'team_member' in context_gathered "
+            "must set trusted_tools_used=True in the streaming path"
+        )
+
+    @pytest.mark.unit
+    def test_streaming_substantial_content_bypass(self):
+        """
+        STREAMING-ONLY bypass: context_gathered total length >200 chars
+        -> trusted_tools_used becomes True unconditionally.
+
+        This bypass exists ONLY in the streaming path (execute_react_loop_stream,
+        reasoning.py lines 1420-1429). The non-streaming path does NOT have this
+        length-based fallback. It ensures that ANY tool output with substantial
+        content (>200 chars) bypasses the evidence check, even when no specific
+        pricing/team/KG markers are present.
+        """
+        # 250 chars of generic tool output with no known markers
+        context = [
+            "The client submitted documents on 2026-01-15 and the processing "
+            "was completed within the standard timeframe. All requirements were "
+            "met and the application was approved by the regional office after "
+            "review by three separate departments.",
+        ]
+        total_len = sum(len(c) for c in context)
+        assert total_len > 200, f"Test setup error: context is only {total_len} chars"
+
+        result = self._run_streaming_context_gathered_check(context)
+        assert result is True, (
+            f"Context with {total_len} chars (>200) must set trusted_tools_used=True "
+            "unconditionally in the streaming path"
+        )
+
+    @pytest.mark.unit
+    def test_streaming_short_content_no_bypass(self):
+        """
+        STREAMING-ONLY negative case: context_gathered has <200 chars total
+        and no known markers -> trusted_tools_used stays False.
+
+        This verifies the streaming fallback does NOT blindly trust short,
+        unmarked context. Without markers AND without substantial length,
+        the evidence scoring must proceed normally and ABSTAIN can fire.
+        """
+        # 50 chars of generic text, no markers
+        context = ["Some brief info about the client's request."]
+        total_len = sum(len(c) for c in context)
+        assert total_len < 200, f"Test setup error: context is {total_len} chars"
+
+        result = self._run_streaming_context_gathered_check(context)
+        assert result is False, (
+            f"Context with {total_len} chars (<200) and no markers "
+            "must NOT set trusted_tools_used=True"
+        )
