@@ -126,6 +126,7 @@ class LKPMDraft(BaseModel):
 
     id: int | None = None
     client_id: int
+    company_id: int | None = None
     quarter: str  # "Q1", "Q2", "Q3", "Q4"
     year: int
     status: LKPMStatus = LKPMStatus.DRAFT
@@ -186,6 +187,7 @@ class LKPMClientConfig(BaseModel):
     """Client configuration for LKPM reporting."""
 
     client_id: int
+    company_id: int | None = None
     company_name: str
     npwp: str | None = None
     nib: str | None = None
@@ -214,6 +216,7 @@ class LKPMClientSubmission(BaseModel):
     """Data submitted by client via form."""
 
     client_id: int
+    company_id: int | None = None
     quarter: str
     year: int
 
@@ -298,6 +301,7 @@ class LKPMBatchItem(BaseModel):
 
     id: int
     client_id: int
+    company_id: int | None = None
     company_name: str
     quarter: str
     year: int

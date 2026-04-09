@@ -119,7 +119,6 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
-        # x_monitor,  # DISABLED: CRC broken (audit 2026-04-03)
         zoho_email,
     )
 
@@ -233,7 +232,6 @@ def include_routers(api: FastAPI) -> None:
     # DISABLED: Twitter/X broken (CRC fail, OAuth incomplete) — audit 2026-04-03
     # api.include_router(twitter.router)
     # api.include_router(twitter.webhook_router)
-    # api.include_router(x_monitor.router)
     api.include_router(
         whatsapp_chat.router,
     )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
@@ -435,7 +433,6 @@ def include_light_routers(api: FastAPI) -> None:
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
-        # x_monitor,  # DISABLED: CRC broken (audit 2026-04-03)
         zoho_email,
     )
 
@@ -514,7 +511,6 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(telegram_webhook.router)
     # api.include_router(twitter.router)  # DISABLED: CRC broken (audit 2026-04-03)
     # api.include_router(twitter.webhook_router)
-    # api.include_router(x_monitor.router)
     api.include_router(whatsapp_conversations.router)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)

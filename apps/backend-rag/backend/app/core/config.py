@@ -661,13 +661,6 @@ class Settings(BaseSettings):
     x_client_secret: str | None = None  # Set via X_CLIENT_SECRET env var
     x_webhook_secret: str | None = None  # Set via X_WEBHOOK_SECRET env var (CRC token)
 
-    # X/Twitter Social Listening Monitor
-    x_monitor_enabled: bool = False  # Set via X_MONITOR_ENABLED env var
-    x_monitor_interval_seconds: int = 300  # 5 minutes, set via X_MONITOR_INTERVAL_SECONDS
-    x_monitor_keywords: str = "PT PMA Bali,KITAS Bali,KITAS Indonesia,KITAP Indonesia,business in Bali,Bali visa,move to Bali,living in Bali,invest in Bali,open company Bali,company in Bali,work permit Bali,digital nomad Bali"
-    x_monitor_digest_interval_hours: int = 3  # Send Telegram digest every N hours
-    x_monitor_digest_enabled: bool = True  # Enable/disable digest on Telegram
-
     # ========================================
     # ZOHO EMAIL INTEGRATION
     # ========================================
