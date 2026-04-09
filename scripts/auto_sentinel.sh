@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Configuration
-PROJECT_DIR="/Users/antonellosiano/Projects/nuzantara"
+# Configuration — path dinamico, compatibile con Pro e Air
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOG_FILE="$PROJECT_DIR/logs/sentinel_nightly.log"
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
 
