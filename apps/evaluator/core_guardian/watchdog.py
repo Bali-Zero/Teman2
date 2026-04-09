@@ -157,7 +157,7 @@ def build_test_env() -> dict:
         "PYTHONPATH": ".",
         "ENVIRONMENT": "test",
         # Virtual env
-        "VIRTUAL_ENV": str(BACKEND_DIR / ".venv"),
+        "VIRTUAL_ENV": str(VENV_PYTHON.parent.parent),  # dynamic: .venv or venv
     }
     # Aggiungi LANG/LC per evitare encoding issues
     for key in ("LANG", "LC_ALL", "LC_CTYPE"):
