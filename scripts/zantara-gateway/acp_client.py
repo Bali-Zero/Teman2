@@ -47,9 +47,11 @@ class ACPGeminiClient:
         mcp_server_command: str = "",
         mcp_server_args: list[str] | None = None,
         mcp_server_env: dict[str, str] | None = None,
+        persona_primer: str = "",
     ):
         self._gemini_path = gemini_path
         self._cwd = cwd
+        self._persona_primer = persona_primer
         # MCP server config in ACP format
         self._mcp_servers: list[dict] = []
         if mcp_server_command:
@@ -112,6 +114,7 @@ class ACPGeminiClient:
         if not self._session_id:
             raise RuntimeError("No sessionId returned")
 
+        self._first_prompt_sent = False
         self._ready = True
         logger.info("ACP session ready: %s", self._session_id[:20])
 
@@ -231,6 +234,13 @@ class ACPGeminiClient:
 
     # ── Prompt streaming (for chat) ──
 
+    def _build_prompt(self, query: str) -> str:
+        """Prepend persona primer to the first prompt of a session."""
+        if not self._persona_primer or self._first_prompt_sent:
+            return query
+        self._first_prompt_sent = True
+        return f"{self._persona_primer}\n\n---\n\n{query}"
+
     async def prompt_stream(self, query: str) -> AsyncIterator[str]:
         """Send prompt and yield SSE lines as agent responds."""
         if not self.is_ready():
@@ -254,7 +264,7 @@ class ACPGeminiClient:
                 "method": "session/prompt",
                 "params": {
                     "sessionId": self._session_id,
-                    "prompt": [{"type": "text", "text": query}],
+                    "prompt": [{"type": "text", "text": self._build_prompt(query)}],
                 },
             }
             self._proc.stdin.write((json.dumps(msg) + "\n").encode())
