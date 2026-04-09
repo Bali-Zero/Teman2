@@ -1195,6 +1195,25 @@ async def initialize_services(app: FastAPI) -> None:
         )
         logger.error(f"❌ Failed to initialize Health Monitor: {e}")
 
+    # 10c. Olympus DB Guardian
+    if db_pool:
+        try:
+            from backend.services.olympus.guardian import OlympusGuardian
+
+            olympus = OlympusGuardian(db_pool=db_pool, alert_service=alert_service)
+            await olympus.initialize()
+            await olympus.start()
+            app.state.olympus = olympus
+            service_registry.register("olympus", ServiceStatus.HEALTHY, critical=False)
+            logger.info("✅ Olympus DB Guardian: Active (heartbeat + pulse)")
+        except Exception as e:
+            service_registry.register(
+                "olympus", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            )
+            logger.error(f"❌ Failed to initialize Olympus: {e}")
+    else:
+        logger.warning("⚠️ Olympus skipped: no db_pool")
+
     # 12. LangGraph Agent Layer - Inject services into workflow nodes
     logger.debug("Injecting services into LangGraph agent nodes...")
     try:
