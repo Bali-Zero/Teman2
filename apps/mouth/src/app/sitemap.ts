@@ -141,7 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 4. Blog articles (from local MDX content, excluding noIndex articles)
   try {
     const [{ articles }, noIndexSlugs] = await Promise.all([
-      getAllArticles({ limit: 500 }),
+      getAllArticles({ limit: 10000 }),
       getNoIndexSlugs(),
     ]);
 
@@ -149,11 +149,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((article) => !noIndexSlugs.has(article.slug))
       .map((article) => {
         const locales = getAvailableLocales(article.category, article.slug);
+        // Priority: featured editorial (0.9) > ai-enriched (0.8) > basic (0.6)
+        const priority = article.featured ? 0.9 : article.aiGenerated ? 0.8 : 0.6;
         const entry: MetadataRoute.Sitemap[number] = {
           url: `${baseUrl}/${article.category}/${article.slug}`,
           lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
-          changeFrequency: 'monthly' as const,
-          priority: 0.8,
+          changeFrequency: 'weekly' as const,
+          priority,
         };
 
         // Add hreflang alternates if translations exist
