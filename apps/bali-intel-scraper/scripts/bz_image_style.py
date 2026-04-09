@@ -403,33 +403,78 @@ def _build_llm_user_prompt(title: str, category: str, summary: str, mood: str) -
 
 # ── Core generation functions ────────────────────────────────────────────────
 
+_IMG_RATE_LIMIT_RE = re.compile(
+    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
+    r"timeout after 90s|possibly rate limit|capacity|overloaded",
+    re.IGNORECASE,
+)
+_IMG_EXHAUSTED_TOKENS: dict[str, str] = {}
+
+
+def _load_img_token_chain() -> list[tuple[str, str]]:
+    """Load ordered list of (label, oauth_token) for image prompt generation."""
+    chain: list[tuple[str, str]] = []
+    for i in (1, 2, 3):
+        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
+        if tok:
+            chain.append((f"token_{i}", tok))
+    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
+    if legacy and not any(t == legacy for _, t in chain):
+        chain.append(("token_legacy", legacy))
+    chain.append(("keychain", ""))
+    return chain
+
+
 def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> Optional[str]:
     """Call Claude Haiku via CLI subprocess to generate visual concept.
+    Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
     Returns the raw prompt string, or None if CLI unavailable/failed."""
     user_msg = _build_llm_user_prompt(title, category, summary, mood)
-
-    # Full message for claude --print (system + user combined)
     combined = f"{_VISUAL_DIRECTOR_SYSTEM}\n\n{user_msg}"
+    chain = _load_img_token_chain()
 
-    try:
+    for label, token in chain:
+        if label in _IMG_EXHAUSTED_TOKENS:
+            continue
+
         # Strip ANTHROPIC_API_KEY — claude CLI uses OAuth (Max subscription)
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
-        result = subprocess.run(
-            ["claude", "--print", "--model", "claude-haiku-4-5-20251001", combined],
-            capture_output=True, text=True, timeout=45, env=env,
-        )
+        if token:
+            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
+        else:
+            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
+
+        try:
+            result = subprocess.run(
+                ["claude", "--print", "--model", "claude-haiku-4-5-20251001", combined],
+                capture_output=True, text=True, timeout=45, env=env,
+            )
+        except subprocess.TimeoutExpired:
+            print(f"  claude CLI: {label} timeout after 45s", file=sys.stderr)
+            _IMG_EXHAUSTED_TOKENS[label] = "timeout"
+            continue
+        except FileNotFoundError:
+            print("  claude CLI: not found in PATH", file=sys.stderr)
+            return None
+        except Exception as e:
+            print(f"  claude CLI: {label} {e}", file=sys.stderr)
+            return None
+
+        output_combined = (result.stdout or "") + (result.stderr or "")
+        if result.returncode != 0 and _IMG_RATE_LIMIT_RE.search(output_combined):
+            print(f"  claude CLI: {label} rate-limited — trying next", file=sys.stderr)
+            _IMG_EXHAUSTED_TOKENS[label] = "rate_limit"
+            continue
+
         if result.returncode == 0:
             output = result.stdout.strip()
             if output and len(output) > 30:
                 return output
-        print(f"  claude CLI: returncode={result.returncode}, empty={not result.stdout.strip()}", file=sys.stderr)
-    except subprocess.TimeoutExpired:
-        print("  claude CLI: timeout after 45s", file=sys.stderr)
-    except FileNotFoundError:
-        print("  claude CLI: not found in PATH", file=sys.stderr)
-    except Exception as e:
-        print(f"  claude CLI: {e}", file=sys.stderr)
 
+        print(f"  claude CLI: {label} rc={result.returncode}", file=sys.stderr)
+        return None  # Non-rate-limit error — stop trying
+
+    print("  claude CLI: all tokens exhausted", file=sys.stderr)
     return None
 
 
