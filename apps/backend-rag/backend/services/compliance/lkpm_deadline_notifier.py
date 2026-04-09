@@ -65,6 +65,7 @@ SELECT
 FROM lkpm_reports r
 LEFT JOIN clients c ON c.id = r.client_id
 LEFT JOIN lkpm_client_config cfg ON cfg.client_id = r.client_id
+    AND COALESCE(cfg.company_id, 0) = COALESCE(r.company_id, 0)
 WHERE r.status NOT IN ('submitted', 'archived')
   AND r.oss_submitted = false
   AND c.deleted_at IS NULL
