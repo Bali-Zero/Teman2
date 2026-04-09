@@ -80,13 +80,22 @@ def run_normalizer(kb: KnowledgeBase, max_items: int = 50) -> dict:
                 stream_ack(STREAM_RAW, CONSUMER_GROUP, msg_id)
                 continue
 
-            # Store hash in KB to track dedup
+            # Store hash for dedup tracking
             kb.store(
                 agent="normalizer",
                 entry_type="hash",
                 content=normalized["content_hash"],
                 source=normalized["url"],
                 confidence=1.0,
+            )
+
+            # Store the FULL item in KB so downstream agents can search it
+            kb.store(
+                agent=normalized["agent"],
+                entry_type="harvested_item",
+                content=f"[{normalized['source_type']}] {normalized['title']}\n{normalized['content'][:800]}",
+                source=normalized["url"],
+                confidence=0.5,
             )
 
             # Publish to enriched stream
