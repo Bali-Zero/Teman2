@@ -410,7 +410,10 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                 logger.warning("Gemini API failed (%s), trying ACP", e)
 
         # ── Path 1: ACP persistent (instant, no cold start) ──
-        if not streamed and acp.is_ready():
+        # Skip ACP for now — it hangs on tool-heavy queries.
+        # CLI spawn (Path 2) handles tools reliably.
+        # TODO: re-enable when ACP prompt_stream timeout is fixed
+        if False and not streamed and acp.is_ready():
             try:
                 first_token_received = False
                 async for sse_line in acp.prompt_stream(query):
@@ -501,6 +504,158 @@ async def handle_health(request: web.Request) -> web.Response:
             "models_available": ollama_models,
         },
     })
+
+
+async def handle_ocr_passport(request: web.Request) -> web.Response:
+    """POST /v1/ocr/passport — Extract passport fields via local Ollama vision."""
+    config: GatewayConfig = request.app["config"]
+
+    # Auth
+    if not verify_gateway_token(request, config):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    image_base64 = body.get("image_base64", "")
+    mime_type = body.get("mime_type", "image/jpeg")
+
+    if not image_base64:
+        return web.json_response({"error": "image_base64 is required"}, status=400)
+
+    # Strip data URI prefix if present
+    raw_b64 = image_base64
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+
+    # Validate base64
+    import base64 as b64mod
+    try:
+        image_data = b64mod.b64decode(raw_b64, validate=True)
+        if len(image_data) > 10 * 1024 * 1024:
+            return web.json_response({"error": "Image too large (max 10MB)"}, status=400)
+    except Exception:
+        return web.json_response({"error": "Invalid base64 image data"}, status=400)
+
+    # OCR prompt
+    ocr_prompt = """Extract passport data. Return ONLY this JSON:
+
+{
+  "passport_number": "XX123456",
+  "expiry_date": "YYYY-MM-DD",
+  "full_name": "SURNAME GIVEN_NAMES",
+  "gender": "M or F",
+  "date_of_birth": "YYYY-MM-DD",
+  "birthplace": "city, country",
+  "nationality": "country code",
+  "confidence": 0.95
+}
+
+Use null for unclear fields. Return ONLY JSON."""
+
+    # Call Ollama vision (qwen2.5vl:7b) — local, zero API cost
+    vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
+    ollama_payload = {
+        "model": vision_model,
+        "prompt": ocr_prompt,
+        "images": [b64mod.b64encode(image_data).decode()],
+        "stream": False,
+        "options": {"temperature": 0.1, "num_predict": 2000},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as http:
+            resp = await http.post(f"{config.ollama_url}/api/generate", json=ollama_payload)
+
+        if resp.status_code != 200:
+            logger.error("OCR Ollama failed: HTTP %d", resp.status_code)
+            return web.json_response({
+                "success": False, "message": "Vision model unavailable",
+                "warnings": [], "confidence": 0.0,
+            })
+
+        response_text = resp.json().get("response", "")
+        logger.info("Passport OCR: response_len=%d", len(response_text))
+
+        # Parse JSON from response (handle markdown fences)
+        import re
+        json_match = re.search(r"\{[\s\S]*\}", response_text)
+        if not json_match:
+            return web.json_response({
+                "success": False, "message": "Could not parse OCR response",
+                "warnings": [], "confidence": 0.0,
+            })
+
+        extracted = json.loads(json_match.group())
+
+        # Normalize fields
+        def _title_case(name):
+            if not name:
+                return None
+            name = name.replace("<<", " ").replace("<", " ")
+            name = " ".join(name.split())
+            if not name:
+                return None
+            words = []
+            for w in name.split():
+                if "-" in w:
+                    words.append("-".join(p.capitalize() for p in w.split("-")))
+                elif "'" in w:
+                    words.append("'".join(p.capitalize() for p in w.split("'")))
+                else:
+                    words.append(w.capitalize())
+            return " ".join(words)
+
+        # Build response
+        confidence = extracted.get("confidence", 0.0)
+        if not isinstance(confidence, (int, float)):
+            confidence = 0.0
+
+        warnings = []
+        if confidence < 0.7:
+            warnings.append("Low image quality — verify extracted fields")
+
+        expiry = extracted.get("expiry_date")
+        if expiry:
+            try:
+                from datetime import date, datetime
+                if datetime.strptime(expiry, "%Y-%m-%d").date() < date.today():
+                    warnings.append("Passport is expired")
+            except ValueError:
+                pass
+
+        gender_raw = extracted.get("gender", "")
+        gender = gender_raw[0].upper() if gender_raw and len(gender_raw) > 0 else None
+
+        return web.json_response({
+            "success": True,
+            "confidence": confidence,
+            "full_name": _title_case(extracted.get("full_name")),
+            "nationality": extracted.get("nationality"),
+            "date_of_birth": extracted.get("date_of_birth"),
+            "gender": gender,
+            "passport_number": extracted.get("passport_number"),
+            "passport_expiry": extracted.get("expiry_date"),
+            "issuing_country": extracted.get("issuing_country"),
+            "birthplace": extracted.get("birthplace"),
+            "warnings": warnings,
+            "message": "Fields extracted via local vision model",
+        })
+
+    except httpx.ConnectError:
+        logger.error("OCR: Ollama not reachable at %s", config.ollama_url)
+        return web.json_response({
+            "success": False, "message": "Local vision model not running",
+            "warnings": [], "confidence": 0.0,
+        })
+    except Exception as e:
+        logger.error("OCR passport failed: %s", e)
+        return web.json_response({
+            "success": False, "message": str(e),
+            "warnings": [], "confidence": 0.0,
+        })
 
 
 async def handle_config_endpoint(request: web.Request) -> web.Response:
@@ -660,6 +815,7 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
     app["http_executor"] = http_executor
 
     app.router.add_post("/v1/chat", handle_chat)
+    app.router.add_post("/v1/ocr/passport", handle_ocr_passport)
     app.router.add_get("/health", handle_health)
     app.router.add_get("/v1/config", handle_config_endpoint)
 
