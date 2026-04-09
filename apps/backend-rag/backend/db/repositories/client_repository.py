@@ -1,4 +1,5 @@
 import logging
+from datetime import date, datetime
 from typing import Any
 
 import asyncpg
@@ -7,6 +8,18 @@ from backend.db.base_repository import BaseRepository
 from backend.utils.query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_date(value: str | date | None) -> date | None:
+    """Convert ISO date string to datetime.date for asyncpg DATE columns."""
+    if value is None:
+        return None
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
 
 
 class ClientRepository(BaseRepository):
@@ -101,8 +114,8 @@ class ClientRepository(BaseRepository):
                     client_data.get("lead_source"),
                     client_data.get("service_interest", []),
                     client_data.get("tax_id"),
-                    client_data.get("passport_expiry"),
-                    client_data.get("date_of_birth"),
+                    _parse_date(client_data.get("passport_expiry")),
+                    _parse_date(client_data.get("date_of_birth")),
                     client_data.get("company_name"),
                 )
 
