@@ -335,6 +335,22 @@ export interface CreateClientParams {
   avatar_url?: string;
 }
 
+/** Result from passport OCR preview endpoint */
+export interface PassportOcrResult {
+  success: boolean;
+  confidence: number;
+  full_name: string | null;
+  nationality: string | null;
+  date_of_birth: string | null;
+  gender: "M" | "F" | null;
+  passport_number: string | null;
+  passport_expiry: string | null;
+  issuing_country: string | null;
+  birthplace: string | null;
+  warnings: string[];
+  message: string | null;
+}
+
 // Common nationalities for dropdown
 export const COMMON_NATIONALITIES = [
   "Australian",
