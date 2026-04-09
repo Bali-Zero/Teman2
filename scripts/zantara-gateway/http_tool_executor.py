@@ -82,15 +82,29 @@ class HTTPToolExecutor:
     def is_ready(self) -> bool:
         return self._client is not None and not self._client.is_closed
 
+    # Top 10 tools for Gemini API (free tier can't handle 31 declarations)
+    PRIORITY_TOOLS: dict[str, str] = {
+        "list_clients": "List CRM clients with optional search/filter. Returns array of client objects.",
+        "get_client": "Get full details of a single client by ID. Args: client_id (string).",
+        "get_client_stats": "Get client statistics: total count, by status, by team member.",
+        "list_practices": "List active practices/cases. Optional filter by status or assigned_to.",
+        "get_practice": "Get full details of a practice by ID. Args: practice_id (string).",
+        "get_expiry_alerts": "Get documents and visas expiring soon. Args: days_ahead (int, default 90).",
+        "calculate_pricing": "Calculate service pricing. Args: service_type (string).",
+        "get_all_prices": "Get complete pricing catalog for all Bali Zero services.",
+        "search_intel": "Search intelligence database for news and regulations. Args: query (string).",
+        "list_articles": "List published articles on the website.",
+    }
+
     def get_tool_definitions(self) -> list[dict]:
-        """Return tool definitions in OpenAI/Gemini function calling format."""
+        """Return top 10 tool definitions for Gemini API free tier."""
         tools = []
-        for name in TOOL_ROUTES:
+        for name, desc in self.PRIORITY_TOOLS.items():
             tools.append({
                 "type": "function",
                 "function": {
                     "name": name,
-                    "description": name.replace("_", " ").title(),
+                    "description": desc,
                     "parameters": {"type": "object", "properties": {}},
                 },
             })
@@ -120,9 +134,10 @@ class HTTPToolExecutor:
         remaining = {k: v for k, v in args.items() if k not in used_keys}
 
         url = f"{self._backend_url}{path}"
-        headers = {}
+        headers = {"Content-Type": "application/json"}
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
+            headers["X-API-Key"] = self._api_key
 
         try:
             if method == "GET":
