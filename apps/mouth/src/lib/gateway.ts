@@ -7,8 +7,9 @@ const GATEWAY_URL_KEY = "zantara_gateway_url";
 const GATEWAY_TOKEN_KEY = "zantara_gateway_token";
 const DEFAULT_GATEWAY_URL = "https://127.0.0.1:8090";
 
-const CLOUD_BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev";
+// Cloud requests go through the Next.js API proxy (/api/[...path]) so httpOnly
+// cookies are forwarded to the backend automatically (same-origin request).
+const CLOUD_BACKEND = "";
 
 export function getGatewayUrl(): string {
   if (typeof window === "undefined") return DEFAULT_GATEWAY_URL;
