@@ -274,8 +274,9 @@ class TestTwitterAdapter:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(side_effect=Exception("Network error"))
 
-        # Should not raise
-        await adapter.send_response("123", simple_response)
+        # Adapter re-raises exceptions for DLQ routing via send_response_safe()
+        with pytest.raises(Exception, match="Network error"):
+            await adapter.send_response("123", simple_response)
 
     async def test_send_response_truncates(
         self, adapter: TwitterChannelAdapter, long_response: ChannelResponse,
