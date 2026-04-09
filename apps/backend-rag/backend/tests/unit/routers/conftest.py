@@ -126,3 +126,56 @@ def mock_db_pool() -> MagicMock:
 def mock_db_conn(mock_db_pool: AsyncMock) -> AsyncMock:
     """Direct access to the mock connection from the pool."""
     return mock_db_pool._mock_conn
+
+
+@pytest.fixture
+def disable_auth_middleware():
+    """
+    Disable HybridAuthMiddleware for tests that use main_cloud.app.
+
+    In the full test suite, backend.app.core.config may be loaded before the
+    unit/routers/conftest patches sys.modules, causing the real settings
+    (api_auth_enabled=True) to be used. This fixture:
+    1. Sets settings.api_auth_enabled = False temporarily
+    2. Resets app.middleware_stack = None so the middleware is re-instantiated
+       with auth disabled on the next request
+
+    Use this fixture in every fixture that uses `from backend.app.main_cloud import app`.
+    """
+    import sys
+
+    # Get the settings object (real or mocked, whichever is active)
+    config_module = sys.modules.get("backend.app.core.config")
+    if config_module is not None:
+        settings_obj = getattr(config_module, "settings", None)
+        original_auth = getattr(settings_obj, "api_auth_enabled", None) if settings_obj else None
+        if settings_obj is not None:
+            try:
+                settings_obj.api_auth_enabled = False
+            except Exception:
+                pass  # MagicMock or frozen pydantic model — skip
+    else:
+        settings_obj = None
+        original_auth = None
+
+    # Force middleware stack to rebuild so the new api_auth_enabled=False takes effect
+    main_cloud_module = sys.modules.get("backend.app.main_cloud")
+    if main_cloud_module is not None:
+        app_obj = getattr(main_cloud_module, "app", None)
+        if app_obj is not None:
+            app_obj.middleware_stack = None
+
+    yield
+
+    # Restore original api_auth_enabled
+    if settings_obj is not None and original_auth is not None:
+        try:
+            settings_obj.api_auth_enabled = original_auth
+        except Exception:
+            pass
+
+    # Reset middleware stack so other tests don't inherit our disabled auth
+    if main_cloud_module is not None:
+        app_obj = getattr(main_cloud_module, "app", None)
+        if app_obj is not None:
+            app_obj.middleware_stack = None

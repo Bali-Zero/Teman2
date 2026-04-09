@@ -29,7 +29,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture
-def client_fixture(mock_current_user, mock_db_pool):
+def client_fixture(mock_current_user, mock_db_pool, disable_auth_middleware):
     """Set up FastAPI app with auth + DB dependency overrides."""
     from backend.app.dependencies import get_current_user, get_database_pool
     from backend.app.main_cloud import app
@@ -539,7 +539,7 @@ class TestUpdatePractice:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_update_practice_non_admin_forbidden(self, mock_db_pool):
+    async def test_update_practice_non_admin_forbidden(self, mock_db_pool, disable_auth_middleware):
         """Non-admin user trying to update another's practice → 403."""
         from backend.app.dependencies import get_current_user, get_database_pool
         from backend.app.main_cloud import app
