@@ -5,10 +5,11 @@ Covers heartbeat snapshots, pulse actions, rules, insights, and skills.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -75,12 +76,19 @@ class OlympusRule(BaseModel):
     id: int
     rule_name: str
     category: str
-    config: dict[str, Any]
+    config: dict[str, Any]  # DB stores as JSON text — validator handles parsing
     source: str
     confidence: float = Field(default=1.0)
     applied_count: int = Field(default=0)
     last_applied: datetime | None = Field(default=None)
     superseded_by: int | None = Field(default=None)
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def _parse_json_config(cls, v: Any) -> dict[str, Any]:
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
     def get_value(self, key: str = "value") -> Any:
         """Extract a value from the rule config dict."""
