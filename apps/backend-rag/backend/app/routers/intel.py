@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 _embedder = None
 
-def get_embedder():
+def get_embedder() -> Any:
     global _embedder
     if _embedder is None:
         _embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))

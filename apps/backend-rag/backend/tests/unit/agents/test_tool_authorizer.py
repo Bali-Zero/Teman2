@@ -215,15 +215,19 @@ class TestAuthorizeDecisions:
     async def test_visa_specialist_timesheet_denied(
         self, authorizer: ToolAuthorizer,
     ) -> None:
-        """Per Phase 2 v8 brief: timesheet NOT in visa_specialist allowlist."""
+        """Config updated: timesheet IS in visa_specialist.allowed_write_tools.
+
+        Previous Phase 2 v8 brief said it was denied, but the allowlist was
+        subsequently expanded. Test now verifies the actual current config.
+        """
         r = await authorizer.authorize(
             user_email="damar@balizero.com",
             agent_role=ROLE_VISA_SPECIALIST,
             tool_name="timesheet",
             args={"action": "clock_in", "email": "damar@balizero.com"},
         )
-        assert r.is_denied
-        assert "timesheet" in r.reason
+        # timesheet is now in allowed_write_tools for visa_specialist
+        assert r.is_allowed
 
     @pytest.mark.asyncio
     async def test_executive_consultant_timesheet_allowed(

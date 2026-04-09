@@ -156,7 +156,7 @@ async def invoke_agent(
         )
 
         # Invoke the workflow
-        final_state = invoke_rag_workflow(
+        final_state = await invoke_rag_workflow(
             question=request.question,
             metadata=metadata,
         )

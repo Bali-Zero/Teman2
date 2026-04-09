@@ -389,8 +389,6 @@ class ReasoningEngine:
                                 return tc, f"Error: {str(e)}", 0.0
 
                         # Run all tools in parallel
-                        import asyncio
-
                         results = await asyncio.gather(
                             *[_exec_tool_wrapper(tc, i) for i, tc in enumerate(tool_calls)],
                         )
