@@ -1,8 +1,7 @@
 ---
 name: antigravity
-description: "Bridge to Google Antigravity IDE — open files in visual editor, launch browser subagent, trigger visual diff, delegate complex multi-file refactoring and architecture tasks. Use when task needs visual editing, browser automation, or multi-agent workspace coordination."
-metadata:
-  { "openclaw": { "emoji": "🚀", "requires": { "bins": ["antigravity"] } } }
+description: 'Bridge to Google Antigravity IDE — open files in visual editor, launch browser subagent, trigger visual diff, delegate complex multi-file refactoring and architecture tasks. Use when task needs visual editing, browser automation, or multi-agent workspace coordination.'
+metadata: { 'openclaw': { 'emoji': '🚀', 'requires': { 'bins': ['antigravity'] } } }
 ---
 
 # Antigravity IDE Bridge
@@ -71,7 +70,7 @@ This appends the task to `.antigravity/context.md` and plays a macOS notificatio
 
 ### MCP Servers (via `~/.gemini/antigravity/mcp_config.json`)
 
-- `nuzantara-rag` — 109 tools (CRM, portal, intel, KBLI, analytics)
+- `nuzantara-rag` — 115 tools (CRM, portal, intel, KBLI, analytics)
 - `nuzantara-ops` — Fly.io ops, deployment, diagnostics
 - `sequential-thinking` — Structured reasoning
 - `GitKraken` — Git operations via GitLens
