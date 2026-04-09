@@ -24,6 +24,7 @@ from acp_client import ACPGeminiClient
 from claude_client import stream_claude_cli
 from config import GatewayConfig, load_config
 from gemini_api_client import stream_gemini_api
+from http_tool_executor import HTTPToolExecutor
 from mcp_client import MCPToolClient
 
 logger = logging.getLogger("zantara-gateway")
@@ -374,15 +375,19 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         # ── Path 0: Gemini API direct (zero cold start, ~2-3s) ──
         if config.gemini_api_key:
             try:
-                # Get MCP tools if available
+                # Get tools: prefer MCP, fallback to HTTP executor
                 api_tools = []
                 api_execute = None
+                http_exec: HTTPToolExecutor = request.app["http_executor"]
                 if mcp_client.is_ready():
                     try:
                         api_tools = await mcp_client.get_tool_definitions()
                         api_execute = mcp_client.execute_tool
                     except Exception:
                         pass
+                if not api_tools and http_exec.is_ready():
+                    api_tools = http_exec.get_tool_definitions()
+                    api_execute = http_exec.execute_tool
 
                 async for sse_line in stream_gemini_api(
                     query,
@@ -407,7 +412,10 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         # ── Path 1: ACP persistent (instant, no cold start) ──
         if not streamed and acp.is_ready():
             try:
+                first_token_received = False
                 async for sse_line in acp.prompt_stream(query):
+                    if not first_token_received:
+                        first_token_received = True
                     await response.write(sse_line.encode("utf-8"))
                     streamed = True
                 if streamed:
@@ -415,6 +423,7 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
                     return response
             except Exception as e:
                 logger.warning("ACP failed (%s), trying CLI spawn", e)
+                streamed = False  # Reset so CLI spawn can take over
 
         # ── Path 2: Gemini CLI spawn (cold start ~10s, with heartbeat) ──
         if not streamed:
@@ -576,15 +585,24 @@ async def on_startup(app: web.Application) -> None:
         except Exception as e:
             logger.warning("MCP client failed: %s — Ollama fallback without tools", e)
 
-    # Launch both in background
+    # HTTP tool executor (instant, no subprocess)
+    http_exec: HTTPToolExecutor = app["http_executor"]
+    await http_exec.connect()
+
+    # Launch ACP + MCP in background
     asyncio.create_task(_connect_acp())
     asyncio.create_task(_connect_mcp())
 
 
 async def on_shutdown(app: web.Application) -> None:
-    """Stop ACP + MCP clients on app shutdown."""
+    """Stop ACP + MCP + HTTP clients on app shutdown."""
     acp: ACPGeminiClient = app["acp_client"]
     mcp_client: MCPToolClient = app["mcp_client"]
+    http_exec: HTTPToolExecutor = app["http_executor"]
+    try:
+        await http_exec.close()
+    except Exception:
+        pass
     try:
         await acp.close()
         logger.info("ACP client closed")
@@ -630,10 +648,16 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
         } if mcp_cmd else None,
     )
 
+    http_executor = HTTPToolExecutor(
+        backend_url="https://nuzantara-rag.fly.dev",
+        api_key=os.environ.get("NUZANTARA_API_KEY", "admin-key-2024"),
+    )
+
     app = web.Application(middlewares=[cors_middleware])
     app["config"] = config
     app["mcp_client"] = mcp_client
     app["acp_client"] = acp_client
+    app["http_executor"] = http_executor
 
     app.router.add_post("/v1/chat", handle_chat)
     app.router.add_get("/health", handle_health)
