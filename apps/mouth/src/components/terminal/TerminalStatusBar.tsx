@@ -56,12 +56,11 @@ export function TerminalStatusBar({
     return undefined;
   }, []);
 
+  // Green when connected (cloud or gateway), red when offline.
   const dotColour =
-    connection === "gateway"
-      ? "bg-[var(--bz-green)] shadow-[0_0_8px_rgba(77,184,122,0.6)]"
-      : connection === "cloud"
-        ? "bg-[var(--bz-amber)] shadow-[0_0_8px_rgba(212,146,58,0.5)]"
-        : "bg-[var(--bz-red)] shadow-[0_0_8px_rgba(217,95,90,0.6)]";
+    connection === "offline"
+      ? "bg-[var(--bz-red)] shadow-[0_0_8px_rgba(217,95,90,0.6)]"
+      : "bg-[var(--bz-green)] shadow-[0_0_8px_rgba(77,184,122,0.6)]";
 
   const dotLabel =
     connection === "gateway"
