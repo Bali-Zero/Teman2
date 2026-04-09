@@ -34,7 +34,7 @@ def mock_drive_service():
 
 
 @pytest.fixture
-def client(mock_current_user, mock_db_pool, mock_drive_service):
+def client(mock_current_user, mock_db_pool, mock_drive_service, disable_auth_middleware):
     """Override auth, DB pool, and drive service."""
     from backend.app.routers.team_drive import get_drive
 
@@ -46,7 +46,7 @@ def client(mock_current_user, mock_db_pool, mock_drive_service):
 
 
 @pytest.fixture
-def client_not_configured(mock_current_user, mock_db_pool):
+def client_not_configured(mock_current_user, mock_db_pool, disable_auth_middleware):
     """Drive service NOT configured → 503. Override get_drive to raise HTTPException directly."""
     from backend.app.routers.team_drive import get_drive
     from fastapi import HTTPException as FastAPIHTTPException

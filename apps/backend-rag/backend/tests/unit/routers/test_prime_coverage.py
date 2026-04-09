@@ -18,8 +18,10 @@ from backend.app.dependencies import get_current_user, get_database_pool
 
 
 @pytest.fixture(autouse=True)
-def reset_prime_cache():
-    """Reset module-level _embedder and _ZONES_GEOJSON_CACHE between tests."""
+def reset_prime_cache(disable_auth_middleware):
+    """Reset module-level _embedder and _ZONES_GEOJSON_CACHE between tests.
+    Also ensures HybridAuthMiddleware is disabled for isolation in full test suite.
+    """
     import backend.app.routers.prime as prime_module
     prime_module._embedder = None
     prime_module._ZONES_GEOJSON_CACHE = None
