@@ -264,6 +264,111 @@ class HybridSearchService:
 
         return fused_results
 
+    def reciprocal_rank_fusion_trimodal(
+        self,
+        dense_results: list[dict[str, Any]],
+        sparse_results: list[dict[str, Any]],
+        graph_results: list[dict[str, Any]],
+        weights: tuple[float, float, float] = (0.4, 0.3, 0.3),
+        k: int = RRF_K,
+    ) -> list[dict[str, Any]]:
+        """
+        Trimodal Reciprocal Rank Fusion combining dense, sparse, and graph signals.
+
+        Extends the standard bimodal RRF with a third graph-traversal signal,
+        enabling Knowledge-Graph-boosted retrieval (Vector + BM25 + Graph).
+
+        Args:
+            dense_results: Results from dense vector search, each with 'id' and optionally 'score'
+            sparse_results: Results from BM25/sparse search, each with 'id' and optionally 'score'
+            graph_results: Results from graph traversal, each with 'id' and optionally 'score'
+            weights: (dense_weight, sparse_weight, graph_weight), must sum to ~1.0
+            k: RRF constant (default 60); higher values reduce the impact of rank position
+
+        Returns:
+            Fused and re-ranked list of results with 'fusion_score', 'dense_rank',
+            'sparse_rank', and 'graph_rank' fields added.
+
+        Example:
+            >>> dense = [{"id": "1", "score": 0.9}]
+            >>> sparse = [{"id": "1", "score": 0.8}]
+            >>> graph = [{"id": "1", "score": 1.0}]
+            >>> fused = service.reciprocal_rank_fusion_trimodal(dense, sparse, graph)
+        """
+        w_dense, w_sparse, w_graph = weights
+
+        # Fall back to bimodal when graph results are absent
+        if not graph_results:
+            return self.reciprocal_rank_fusion(
+                dense_results,
+                sparse_results,
+                alpha=w_dense / (w_dense + w_sparse) if (w_dense + w_sparse) > 0 else 0.5,
+                k=k,
+            )
+
+        if not dense_results and not sparse_results and not graph_results:
+            return []
+
+        # Collect all unique doc ids and their original result dicts
+        ranks: dict[str, dict[str, Any]] = {}
+
+        for rank, result in enumerate(dense_results, start=1):
+            doc_id = str(result.get("id", result.get("_id", "")))
+            if doc_id:
+                if doc_id not in ranks:
+                    ranks[doc_id] = {"result": result}
+                ranks[doc_id]["dense_rank"] = rank
+
+        for rank, result in enumerate(sparse_results, start=1):
+            doc_id = str(result.get("id", result.get("_id", "")))
+            if doc_id:
+                if doc_id not in ranks:
+                    ranks[doc_id] = {"result": result}
+                ranks[doc_id]["sparse_rank"] = rank
+
+        for rank, result in enumerate(graph_results, start=1):
+            doc_id = str(result.get("id", result.get("_id", "")))
+            if doc_id:
+                if doc_id not in ranks:
+                    ranks[doc_id] = {"result": result}
+                ranks[doc_id]["graph_rank"] = rank
+
+        # Compute weighted RRF scores
+        fused_results = []
+        for doc_id, data in ranks.items():
+            dense_rank = data.get("dense_rank")
+            sparse_rank = data.get("sparse_rank")
+            graph_rank = data.get("graph_rank")
+            result = data["result"]
+
+            rrf_score = 0.0
+            if dense_rank is not None:
+                rrf_score += w_dense * (1.0 / (k + dense_rank))
+            if sparse_rank is not None:
+                rrf_score += w_sparse * (1.0 / (k + sparse_rank))
+            if graph_rank is not None:
+                rrf_score += w_graph * (1.0 / (k + graph_rank))
+
+            fused_results.append(
+                {
+                    **result,
+                    "id": doc_id,
+                    "fusion_score": round(rrf_score, 6),
+                    "dense_rank": dense_rank,
+                    "sparse_rank": sparse_rank,
+                    "graph_rank": graph_rank,
+                },
+            )
+
+        fused_results.sort(key=lambda x: x["fusion_score"], reverse=True)
+
+        logger.debug(
+            f"Trimodal RRF: {len(dense_results)} dense + {len(sparse_results)} sparse "
+            f"+ {len(graph_results)} graph = {len(fused_results)} fused results",
+        )
+
+        return fused_results
+
     @cached(ttl=300, prefix="hybrid_search")
     async def search_hybrid(
         self,
