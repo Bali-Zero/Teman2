@@ -61,7 +61,16 @@ BASELINE_FILE = AGENT_DIR / "baseline.json"
 STATE_FILE = AGENT_DIR / "state.json"
 UNSENT_ALERTS_FILE = AGENT_DIR / "unsent_alerts.log"
 LOCK_FILE = Path("/tmp/guardian.lock")
-VENV_PYTHON = BACKEND_DIR / ".venv" / "bin" / "python"
+def _find_venv_python(backend_dir: Path) -> Path:
+    """Trova il Python del venv, compatibile con Pro (.venv) e Air (venv)."""
+    for venv_name in (".venv", "venv"):
+        candidate = backend_dir / venv_name / "bin" / "python"
+        if candidate.exists():
+            return candidate
+    # Fallback: system python (non ideale ma non crashare)
+    return Path(sys.executable)
+
+VENV_PYTHON = _find_venv_python(BACKEND_DIR)
 
 # Telegram
 TELEGRAM_CHAT_ID = "1125336968"

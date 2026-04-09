@@ -44,7 +44,18 @@ def find_project_root() -> Path:
 
 PROJECT_ROOT = find_project_root()
 BACKEND_DIR = PROJECT_ROOT / "apps" / "backend-rag"
-VENV_PYTHON = BACKEND_DIR / ".venv" / "bin" / "python"
+
+
+def _find_venv_python(backend_dir: Path) -> Path:
+    """Trova il Python del venv, compatibile con Pro (.venv) e Air (venv)."""
+    for venv_name in (".venv", "venv"):
+        candidate = backend_dir / venv_name / "bin" / "python"
+        if candidate.exists():
+            return candidate
+    return Path(sys.executable)
+
+
+VENV_PYTHON = _find_venv_python(BACKEND_DIR)
 AGENT_DIR = PROJECT_ROOT / ".agent" / "decisions"
 HISTORY_FILE = AGENT_DIR / "coverage_history.json"
 STATE_DIR = AGENT_DIR / "state"
