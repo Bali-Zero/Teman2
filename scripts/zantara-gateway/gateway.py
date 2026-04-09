@@ -23,6 +23,7 @@ from aiohttp import web
 from acp_client import ACPGeminiClient
 from claude_client import stream_claude_cli
 from config import GatewayConfig, load_config
+from gemini_api_client import stream_gemini_api
 from mcp_client import MCPToolClient
 
 logger = logging.getLogger("zantara-gateway")
@@ -370,8 +371,29 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
     streamed = False
 
     try:
+        # ── Path 0: Gemini API direct (zero cold start, ~2s) ──
+        if config.gemini_api_key:
+            try:
+                async for sse_line in stream_gemini_api(
+                    query,
+                    api_key=config.gemini_api_key,
+                    model=config.gemini_api_model,
+                    system_prompt=(
+                        f"You are Zantara, the AI assistant for {config.agent_name} at Bali Zero. "
+                        "Bali Zero is a business services company in Bali (visa, company setup, tax, property) with 5000+ clients. "
+                        "Always introduce yourself as Zantara. Respond in the user's language. Be concise. Use tools for real data."
+                    ),
+                ):
+                    await response.write(sse_line.encode("utf-8"))
+                    streamed = True
+                if streamed:
+                    await response.write_eof()
+                    return response
+            except Exception as e:
+                logger.warning("Gemini API failed (%s), trying ACP", e)
+
         # ── Path 1: ACP persistent (instant, no cold start) ──
-        if acp.is_ready():
+        if not streamed and acp.is_ready():
             try:
                 async for sse_line in acp.prompt_stream(query):
                     await response.write(sse_line.encode("utf-8"))
