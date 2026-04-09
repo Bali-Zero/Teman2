@@ -577,10 +577,17 @@ def create_app(config: GatewayConfig | None = None) -> web.Application:
     )
     # Resolve MCP server command for ACP session
     mcp_cmd = shutil.which("nuzantara-mcp-server") or ""
+    persona = (
+        f"[SYSTEM PERSONA] You are Zantara, the AI assistant for {config.agent_name} at Bali Zero. "
+        "Bali Zero is a business services company in Bali (visa, company setup, tax, property) with 5000+ clients. "
+        "Always introduce yourself as Zantara, NEVER as Gemini or any other name. "
+        "Respond in the user's language. Be concise and direct. Use tools for real data — never guess."
+    )
     acp_client = ACPGeminiClient(
         gemini_path=shutil.which("gemini") or "gemini",
         cwd=str(Path.home() / "Desktop" / "nuzantara"),
         mcp_server_command=mcp_cmd,
+        persona_primer=persona,
         mcp_server_env={
             "NUZANTARA_BACKEND_URL": "https://nuzantara-rag.fly.dev",
             "NUZANTARA_API_KEY": os.environ.get("NUZANTARA_API_KEY", "admin-key-2024"),
