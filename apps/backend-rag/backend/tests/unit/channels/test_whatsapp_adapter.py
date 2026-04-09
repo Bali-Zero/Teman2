@@ -358,8 +358,9 @@ class TestWhatsAppAdapter:
             ),
         )
 
-        # Should not raise, just log
-        await adapter.send_response("123", simple_response)
+        # Adapter re-raises exceptions for DLQ routing via send_response_safe()
+        with pytest.raises(httpx.HTTPStatusError):
+            await adapter.send_response("123", simple_response)
 
     async def test_send_status_update_noop(
         self, adapter: WhatsAppChannelAdapter,
