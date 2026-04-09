@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
@@ -94,20 +94,53 @@ class Pulse:
 
     async def cleanup_audit_trail(self) -> PulseAction:
         retention: int = self._rules.get_threshold("audit_retention_days", default=90)
-        sql = f"DELETE FROM api_audit_trail WHERE created_at < NOW() - INTERVAL '{retention} days'"
         t0 = time.monotonic()
         try:
             async with self._pool.acquire() as conn:
-                result = await conn.execute(sql)
-            duration_ms = int((time.monotonic() - t0) * 1000)
-            deleted = int(result.split()[-1]) if result else 0
-            return PulseAction(
-                action_type="cleanup_audit_trail", target="api_audit_trail",
-                detail={"retention_days": retention, "rows_deleted": deleted},
-                outcome="success",
-                duration_ms=duration_ms,
-                rule_applied="audit_retention_days",
-            )
+                relkind = await conn.fetchval(
+                    "SELECT relkind FROM pg_class WHERE relname = 'api_audit_trail'",
+                )
+
+                if relkind == "p":
+                    old_parts = await conn.fetch(
+                        "SELECT c.relname AS child_name "
+                        "FROM pg_inherits i "
+                        "JOIN pg_class c ON c.oid = i.inhrelid "
+                        "JOIN pg_class p ON p.oid = i.inhparent "
+                        "WHERE p.relname = 'api_audit_trail' "
+                        "AND c.relname != 'api_audit_trail_default' "
+                        "AND to_date(right(c.relname, 7), 'YYYY_MM') < "
+                        "    date_trunc('month', NOW() - make_interval(days => $1))",
+                        retention,
+                    )
+                    dropped = []
+                    for part in old_parts:
+                        name = part["child_name"]
+                        await conn.execute(f"ALTER TABLE api_audit_trail DETACH PARTITION {name}")
+                        await conn.execute(f"DROP TABLE {name}")
+                        dropped.append(name)
+
+                    duration_ms = int((time.monotonic() - t0) * 1000)
+                    return PulseAction(
+                        action_type="cleanup_audit_trail", target="api_audit_trail",
+                        detail={"retention_days": retention, "method": "detach_drop",
+                                "partitions_dropped": dropped},
+                        outcome="success",
+                        duration_ms=duration_ms,
+                        rule_applied="audit_retention_days",
+                    )
+                else:
+                    sql = f"DELETE FROM api_audit_trail WHERE created_at < NOW() - INTERVAL '{retention} days'"
+                    result = await conn.execute(sql)
+                    duration_ms = int((time.monotonic() - t0) * 1000)
+                    deleted = int(result.split()[-1]) if result else 0
+                    return PulseAction(
+                        action_type="cleanup_audit_trail", target="api_audit_trail",
+                        detail={"retention_days": retention, "rows_deleted": deleted, "method": "delete"},
+                        outcome="success",
+                        duration_ms=duration_ms,
+                        rule_applied="audit_retention_days",
+                    )
         except Exception:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.exception("cleanup_audit_trail failed")
@@ -117,8 +150,48 @@ class Pulse:
                 outcome="failure",
                 duration_ms=duration_ms,
                 rule_applied="audit_retention_days",
-                reflection="DELETE failed",
+                reflection="Cleanup failed",
             )
+
+    async def autovacuum_advisor(self) -> list[PulseAction]:
+        query = """
+            SELECT c.relname, c.reloptions, s.n_dead_tup, s.n_tup_upd, s.n_tup_ins
+            FROM pg_class c
+            JOIN pg_stat_user_tables s ON s.relname = c.relname
+            WHERE c.relkind = 'r' AND s.schemaname = 'public'
+              AND s.n_dead_tup > 10000
+        """
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(query)
+
+        actions: list[PulseAction] = []
+        for row in rows:
+            reloptions = row["reloptions"] or []
+            has_custom = any("autovacuum" in str(opt) for opt in reloptions)
+            if has_custom:
+                continue
+
+            total_writes = (row["n_tup_upd"] or 0) + (row["n_tup_ins"] or 0)
+            update_ratio = (row["n_tup_upd"] or 0) / max(total_writes, 1)
+            suggest_fillfactor = update_ratio > 0.5
+
+            detail: dict[str, Any] = {
+                "n_dead_tup": row["n_dead_tup"],
+                "suggestion": "ALTER TABLE {t} SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02)".format(t=row["relname"]),
+            }
+            if suggest_fillfactor:
+                detail["fillfactor_suggestion"] = f"ALTER TABLE {row['relname']} SET (fillfactor = 85)"
+
+            actions.append(PulseAction(
+                action_type="autovacuum_tuning",
+                target=row["relname"],
+                detail=detail,
+                outcome="proposed",
+                reflection=f"No custom autovacuum, {row['n_dead_tup']} dead tuples",
+            ))
+            logger.info("Proposed autovacuum tuning for %s (%d dead tuples)", row["relname"], row["n_dead_tup"])
+
+        return actions
 
     async def repair_sequences(self) -> list[PulseAction]:
         query = """
@@ -326,5 +399,6 @@ class Pulse:
         partition = await self.ensure_next_partition()
         if partition is not None:
             actions.append(partition)
+        actions.extend(await self.autovacuum_advisor())
         logger.info("Full pulse: %d actions", len(actions))
         return actions
