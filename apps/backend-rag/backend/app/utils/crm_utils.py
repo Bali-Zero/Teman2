@@ -72,14 +72,15 @@ def can_view_all_practices(user: dict) -> bool:
 
 
 def can_view_all_clients(user: dict) -> bool:
-    """Check if user can see ALL clients. Same logic as practices full view."""
+    """All authenticated team members can see the full client list.
+
+    Client visibility is separated from ownership (assigned_to).
+    Everyone sees all clients; assigned_to determines responsibility,
+    notifications, and write permissions — not read access.
+    """
     if not user:
         return False
-    email = (user.get("email") or "").lower().strip()
-    if email in PRACTICES_FULL_VIEW_EMAILS:
-        return True
-    role = (user.get("role") or "").lower().strip()
-    return role in ("admin", "board member", "ceo", "founder")
+    return True
 
 
 def is_super_admin(user: dict) -> bool:
