@@ -177,7 +177,12 @@ export default function NewClientPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Prevent double "+" prefix on phone/whatsapp fields
+    const cleanValue =
+      (name === 'phone' || name === 'whatsapp') && value.startsWith('++')
+        ? '+' + value.replace(/^\++/, '')
+        : value;
+    setFormData((prev) => ({ ...prev, [name]: cleanValue }));
     // Clear error for this field on change
     if (fieldErrors[name]) {
       setFieldErrors((prev) => {
