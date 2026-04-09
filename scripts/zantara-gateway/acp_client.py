@@ -213,7 +213,7 @@ class ACPGeminiClient:
 
     # ── RPC (for init/auth/session) ──
 
-    async def _rpc(self, method: str, params: dict, timeout: float = 15) -> dict | None:
+    async def _rpc(self, method: str, params: dict, timeout: float = 30) -> dict | None:
         """Send JSON-RPC request and wait for response via future."""
         rid = _get_id()
         fut: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
