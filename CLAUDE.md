@@ -4,8 +4,8 @@
 
 | Machine | User             | Hostname      | Role                       |
 | ------- | ---------------- | ------------- | -------------------------- |
-| **Pro** | `nuzantara`      | `Nuzantara`   | Development (48GB, M4 Pro) |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)      |
+| **Pro** | `nuzantara`      | `Nuzantara`   | Server H24 + Dev (48GB, M4 Pro) |
+| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)           |
 
 **At every session start, run:**
 
