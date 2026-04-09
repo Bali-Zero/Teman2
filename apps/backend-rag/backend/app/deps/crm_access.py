@@ -33,23 +33,17 @@ __all__ = [
 
 
 def can_view_all_clients(user: dict) -> bool:
-    """Check if a user can see ALL clients (admin, super admin, accounting).
+    """All authenticated team members can see the full client list.
 
-    Mirror of can_view_all_practices — same email/role whitelist.
+    Client visibility is separated from ownership (assigned_to).
+    Everyone sees all clients; assigned_to determines responsibility,
+    notifications, and write permissions — not read access.
+
+    Practices, channels, and omnichannel remain filtered by assigned_to.
     """
     if not user:
         return False
-
-    email = user.get("email", "").lower()
-    role = user.get("role", "").lower()
-
-    if email in CLIENTS_FULL_VIEW_EMAILS:
-        return True
-
-    if role in ("admin", "board member", "ceo", "founder"):
-        return True
-
-    return False
+    return True
 
 
 def require_crm_admin(
