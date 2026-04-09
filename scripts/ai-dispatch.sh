@@ -373,25 +373,57 @@ run_claude() {
     local allowed_tools="${4:-Read,Grep,Glob}"
     require_claude
     check_safety "$prompt"
-    log "Claude Code (Opus 4.6) → $mode [read-only, tools=$allowed_tools]"
 
-    local start_time exit_code output
-    start_time=$(date +%s)
-    output=$(run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
-    local duration=$(( $(date +%s) - start_time ))
+    # Multi-account fallback: try each CLAUDE_CODE_OAUTH_TOKEN_N, then keychain
+    local token_vars=("CLAUDE_CODE_OAUTH_TOKEN_1" "CLAUDE_CODE_OAUTH_TOKEN_2" "CLAUDE_CODE_OAUTH_TOKEN_3")
+    local tried=0
 
-    save_output "claude-$mode" "$output" "$duration"
+    for tv in "${token_vars[@]}" "keychain"; do
+        local token_val=""
+        local label="$tv"
+        if [ "$tv" != "keychain" ]; then
+            token_val="${!tv}"
+            [ -z "$token_val" ] && continue
+        fi
+        tried=$((tried + 1))
 
-    if [ "$exit_code" -eq 0 ]; then
+        log "Claude Code (Opus 4.6) → $mode [token=$label, tools=$allowed_tools]"
+
+        local start_time exit_code output
+        start_time=$(date +%s)
+        if [ -n "$token_val" ]; then
+            output=$(CLAUDE_CODE_OAUTH_TOKEN="$token_val" run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+        else
+            output=$(unset CLAUDE_CODE_OAUTH_TOKEN; run_with_timeout "$timeout" command claude -p "$prompt" --allowedTools "$allowed_tools" 2>&1) && exit_code=0 || exit_code=$?
+        fi
+        local duration=$(( $(date +%s) - start_time ))
+
+        save_output "claude-$mode" "$output" "$duration"
+
+        if [ "$exit_code" -eq 0 ]; then
+            echo "$output"
+            return 0
+        fi
+
+        # Check for rate limit — try next token
+        if echo "$output" | grep -qiE "rate.?limit|too many requests|429|exhausted|quota|hit your limit"; then
+            warn "$label rate-limited — trying next token"
+            continue
+        fi
+
+        if [ "$exit_code" -eq 124 ]; then
+            warn "$label timed out after ${timeout}s — trying next token"
+            continue
+        fi
+
+        # Non-rate-limit error — stop trying
+        err "Claude failed ($label, exit $exit_code) after ${duration}s"
         echo "$output"
-    elif [ "$exit_code" -eq 124 ]; then
-        err "TIMEOUT: Claude did not respond in ${timeout}s"
         return 1
-    else
-        err "Claude failed (exit $exit_code) after ${duration}s"
-        echo "$output"
-        return 1
-    fi
+    done
+
+    err "All Claude tokens exhausted ($tried tried)"
+    return 1
 }
 
 # ═══════════════════════════════════════════════════════
