@@ -97,149 +97,21 @@ class PassportExtractResponse(BaseModel):
     message: str | None = None
 
 
-@router.post("/extract-passport", response_model=PassportExtractResponse)
+@router.post("/extract-passport", response_model=PassportExtractResponse, deprecated=True)
 async def extract_passport_data(
     request: PassportExtractRequest,
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> PassportExtractResponse:
     """
-    Extract passport number and expiry date from passport image using Gemini Vision.
-    Updates the client record with extracted data.
+    DEPRECATED — Use /extract-passport-enhanced instead.
+    This endpoint only extracts 2 fields and requires a Drive URL.
+    Kept for backward compatibility with existing callers.
     """
-    import base64
-
-    import httpx
-
-    try:
-        # RBAC: verify caller has access to this client before reading/writing
-        async with db_pool.acquire() as conn:
-            await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
-
-        from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
-
-        if not GENAI_AVAILABLE:
-            return PassportExtractResponse(success=False, message="Vision service not available")
-
-        # Get singleton Gemini client
-        genai_client = get_genai_client()
-        if not genai_client.is_available:
-            return PassportExtractResponse(success=False, message="Gemini Vision not configured")
-
-        # Download image from Google Drive
-        image_url = request.image_url
-        if "/view" in image_url:
-            # Convert view URL to direct download URL
-            import re
-
-            match = re.search(r"/d/([^/]+)", image_url)
-            if match:
-                file_id = match.group(1)
-                image_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-
-        logger.info(f"Downloading passport image from: {image_url[:50]}...")
-
-        async with httpx.AsyncClient(follow_redirects=True) as http_client:
-            response = await http_client.get(image_url, timeout=30.0)
-            if response.status_code != 200:
-                return PassportExtractResponse(
-                    success=False, message=f"Failed to download image: HTTP {response.status_code}",
-                )
-            image_data = response.content
-
-        # Convert to base64
-        image_base64 = base64.b64encode(image_data).decode()
-
-        # Determine MIME type
-        mime_type = "image/jpeg"
-        if image_data[:4] == b"\x89PNG":
-            mime_type = "image/png"
-        elif image_data[:4] == b"%PDF":
-            mime_type = "application/pdf"
-
-        # Build multimodal content for Gemini Vision
-        ocr_prompt = """Analyze this passport image and extract the following information.
-Return ONLY a JSON object with these fields:
-{
-  "passport_number": "the passport number or null if not found",
-  "expiry_date": "expiry date in YYYY-MM-DD format or null if not found"
-}
-
-Look for:
-- The passport number (usually alphanumeric, 8-9 characters)
-- The expiry date or date of expiration field
-
-IMPORTANT: Return ONLY the JSON object, no additional text."""
-
-        contents = [
-            {"text": ocr_prompt},
-            {"inline_data": {"mime_type": mime_type, "data": image_base64}},
-        ]
-
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash-lite",
-            max_output_tokens=500,
-        )
-
-        response_text = result.get("text", "")
-        logger.info(f"Gemini OCR response: {response_text[:200]}...")
-
-        # Parse JSON response
-        import json
-        import re as regex
-
-        # Extract JSON from response (handle markdown code blocks)
-        json_match = regex.search(r"\{[^}]+\}", response_text, regex.DOTALL)
-        if not json_match:
-            return PassportExtractResponse(success=False, message="Could not parse OCR response")
-
-        extracted_data = json.loads(json_match.group())
-        passport_number = extracted_data.get("passport_number")
-        expiry_date = extracted_data.get("expiry_date")
-
-        if not passport_number and not expiry_date:
-            return PassportExtractResponse(success=False, message="No passport data found in image")
-
-        # Update client record
-        async with db_pool.acquire() as conn:
-            update_fields = []
-            update_values = []
-            param_num = 1
-
-            if passport_number:
-                update_fields.append(f"passport_number = ${param_num}")
-                update_values.append(passport_number)
-                param_num += 1
-
-            if expiry_date:
-                update_fields.append(f"passport_expiry = ${param_num}")
-                update_values.append(expiry_date)
-                param_num += 1
-
-            if update_fields:
-                update_values.append(request.client_id)
-                await conn.execute(
-                    f"UPDATE clients SET {', '.join(update_fields)}, updated_at = NOW() WHERE id = ${param_num}",
-                    *update_values,
-                )
-                logger.info(f"Updated client {request.client_id} with extracted passport data")
-
-        return PassportExtractResponse(
-            success=True,
-            passport_number=passport_number,
-            passport_expiry=expiry_date,
-            message="Passport data extracted successfully",
-        )
-
-    except HTTPException:
-        raise
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse OCR JSON: {e}")
-        return PassportExtractResponse(success=False, message="Failed to parse extracted data")
-    except Exception as e:
-        logger.error(f"Passport OCR extraction failed: {e}")
-        return PassportExtractResponse(success=False, message=str(e))
+    return PassportExtractResponse(
+        success=False,
+        message="This endpoint is deprecated. Use /extract-passport-enhanced with base64 image instead.",
+    )
 
 
 # ================================================
@@ -297,17 +169,15 @@ async def extract_passport_enhanced(
     import json
     from difflib import SequenceMatcher
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
+    import httpx
+
     from backend.utils.passport_normalize import normalize_date, normalize_nationality, title_case_name
 
+    # Ollama URL: local Pro (H24) or configurable via env
+    OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    OLLAMA_VISION_MODEL = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
+
     try:
-        if not GENAI_AVAILABLE:
-            return PassportPreviewResponse(success=False, message="Vision service not available")
-
-        genai_client = get_genai_client()
-        if not genai_client.is_available:
-            return PassportPreviewResponse(success=False, message="Gemini Vision not configured")
-
         # Persist mode: RBAC check + client lookup
         existing_name: str | None = None
         if request.client_id is not None:
@@ -333,9 +203,7 @@ async def extract_passport_enhanced(
         except Exception:
             return PassportPreviewResponse(success=False, message="Invalid base64 image data")
 
-        mime_type = request.mime_type
-
-        # Build enhanced OCR prompt - simplified to avoid token truncation
+        # Build OCR prompt
         ocr_prompt = """Extract passport data. Return ONLY this JSON:
 
 {
@@ -353,24 +221,29 @@ async def extract_passport_enhanced(
 
 Use null for unclear fields. Return ONLY JSON."""
 
-        # Call Gemini Vision
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(image_data).decode(),
-                },
-            },
-        ]
+        # Call Ollama Vision (qwen2.5vl:7b) — local, zero API cost
+        ollama_payload = {
+            "model": OLLAMA_VISION_MODEL,
+            "prompt": ocr_prompt,
+            "images": [base64.b64encode(image_data).decode()],
+            "stream": False,
+            "options": {"temperature": 0.1, "num_predict": 2000},
+        }
 
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash-lite",
-            max_output_tokens=4000,  # Increased further to prevent JSON truncation
-        )
+        async with httpx.AsyncClient(timeout=120.0) as http:
+            ollama_response = await http.post(
+                f"{OLLAMA_URL}/api/generate",
+                json=ollama_payload,
+            )
 
-        response_text = result.get("text", "")
+        if ollama_response.status_code != 200:
+            logger.error(f"Ollama OCR failed: HTTP {ollama_response.status_code}")
+            return PassportPreviewResponse(
+                success=False,
+                message="Vision OCR service unavailable",
+            )
+
+        response_text = ollama_response.json().get("response", "")
         logger.info(f"Passport OCR: success={bool(response_text)}, len={len(response_text)}")
 
         # Parse JSON response (handles code fences and chain-of-thought)
@@ -641,45 +514,22 @@ async def extract_npwp(
     - City
     """
     import base64
+    import os
     import re
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
+    import httpx
 
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
             await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
-        if not GENAI_AVAILABLE:
-            return NpwpExtractResponse(success=False, message="Vision service not available")
-
-        genai_client = get_genai_client()
-        if not genai_client.is_available:
-            return NpwpExtractResponse(success=False, message="Gemini Vision not configured")
-
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file
         try:
-            base64.b64decode(raw, validate=True)
+            file_data = base64.b64decode(raw, validate=True)
         except Exception:
             return NpwpExtractResponse(success=False, message="Invalid base64 data")
-
-        # Decode base64 file
-        try:
-            file_data = base64.b64decode(raw)
-        except Exception as e:
-            logger.error(f"Failed to decode base64 file: {e}")
-            return NpwpExtractResponse(success=False, message="Invalid file format")
-
-        # Determine mime type from file extension
-        file_ext = request.file_name.lower().split(".")[-1] if "." in request.file_name else "jpg"
-        mime_type_map = {
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-            "png": "image/png",
-            "pdf": "application/pdf",
-        }
-        mime_type = mime_type_map.get(file_ext, "image/jpeg")
 
         # OCR Prompt for NPWP
         ocr_prompt = """Extract NPWP (Indonesian Tax ID) information from this image.
@@ -699,30 +549,30 @@ Rules:
 - Use null for fields that are not visible or unclear
 - Return ONLY valid JSON, no markdown, no explanations"""
 
-        # Call Gemini Vision
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(file_data).decode(),
-                },
-            },
-        ]
+        # Call Ollama Vision (local, zero API cost)
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+        vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash-lite",
-            max_output_tokens=2000,
-        )
+        async with httpx.AsyncClient(timeout=120.0) as http:
+            resp = await http.post(f"{ollama_url}/api/generate", json={
+                "model": vision_model,
+                "prompt": ocr_prompt,
+                "images": [base64.b64encode(file_data).decode()],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": 2000},
+            })
 
-        response_text = result.get("text", "")
-        logger.info(f"NPWP OCR response: {response_text[:300]}...")
+        if resp.status_code != 200:
+            logger.error("NPWP OCR: Ollama HTTP %d", resp.status_code)
+            return NpwpExtractResponse(success=False, message="Vision OCR service unavailable")
+
+        response_text = resp.json().get("response", "")
+        logger.info("NPWP OCR: response_len=%d", len(response_text))
 
         # Parse JSON response
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"NPWP OCR JSON parsing failed. Raw: {response_text[:500]}")
+            logger.error("NPWP OCR: JSON parsing failed")
             return NpwpExtractResponse(success=False, message="Could not parse OCR response")
 
         # Clean NPWP (remove dots, keep only digits)
@@ -731,7 +581,7 @@ Rules:
             npwp_clean = re.sub(r"\D", "", npwp)
             # Validate 15 digits
             if len(npwp_clean) != 15:
-                logger.warning(f"NPWP doesn't have 15 digits: {npwp_clean}")
+                logger.warning("NPWP OCR: extracted value doesn't have 15 digits")
                 npwp = npwp_clean  # Keep original but cleaned
             else:
                 npwp = npwp_clean
@@ -795,45 +645,22 @@ async def extract_nib(
     - KBLI code
     """
     import base64
+    import os
     import re
 
-    from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
+    import httpx
 
     try:
         # RBAC check: verify caller has access to this client
         async with db_pool.acquire() as conn:
             await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
 
-        if not GENAI_AVAILABLE:
-            return NibExtractResponse(success=False, message="Vision service not available")
-
-        genai_client = get_genai_client()
-        if not genai_client.is_available:
-            return NibExtractResponse(success=False, message="Gemini Vision not configured")
-
         # Validate base64 before decoding
         raw = request.file.split(",")[-1] if "," in request.file else request.file
         try:
-            base64.b64decode(raw, validate=True)
+            file_data = base64.b64decode(raw, validate=True)
         except Exception:
             return NibExtractResponse(success=False, message="Invalid base64 data")
-
-        # Decode base64 file
-        try:
-            file_data = base64.b64decode(raw)
-        except Exception as e:
-            logger.error(f"Failed to decode base64 file: {e}")
-            return NibExtractResponse(success=False, message="Invalid file format")
-
-        # Determine mime type from file extension
-        file_ext = request.file_name.lower().split(".")[-1] if "." in request.file_name else "jpg"
-        mime_type_map = {
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-            "png": "image/png",
-            "pdf": "application/pdf",
-        }
-        mime_type = mime_type_map.get(file_ext, "image/jpeg")
 
         # OCR Prompt for NIB
         ocr_prompt = """Extract NIB (Nomor Induk Berusaha) information from this Indonesian business document.
@@ -853,30 +680,30 @@ Rules:
 - Use null for fields that are not visible or unclear
 - Return ONLY valid JSON, no markdown, no explanations"""
 
-        # Call Gemini Vision
-        contents = [
-            ocr_prompt,
-            {
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": base64.b64encode(file_data).decode(),
-                },
-            },
-        ]
+        # Call Ollama Vision (local, zero API cost)
+        ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+        vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
-        result = await genai_client.generate_content(
-            contents=contents,
-            model="gemini-2.5-flash-lite",
-            max_output_tokens=2000,
-        )
+        async with httpx.AsyncClient(timeout=120.0) as http:
+            resp = await http.post(f"{ollama_url}/api/generate", json={
+                "model": vision_model,
+                "prompt": ocr_prompt,
+                "images": [base64.b64encode(file_data).decode()],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": 2000},
+            })
 
-        response_text = result.get("text", "")
-        logger.info(f"NIB OCR response: {response_text[:300]}...")
+        if resp.status_code != 200:
+            logger.error("NIB OCR: Ollama HTTP %d", resp.status_code)
+            return NibExtractResponse(success=False, message="Vision OCR service unavailable")
+
+        response_text = resp.json().get("response", "")
+        logger.info("NIB OCR: response_len=%d", len(response_text))
 
         # Parse JSON response
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"NIB OCR JSON parsing failed. Raw: {response_text[:500]}")
+            logger.error("NIB OCR: JSON parsing failed")
             return NibExtractResponse(success=False, message="Could not parse OCR response")
 
         # Clean NIB (keep only digits)
@@ -885,7 +712,7 @@ Rules:
             nib_clean = re.sub(r"\D", "", nib)
             # Validate 13 digits
             if len(nib_clean) != 13:
-                logger.warning(f"NIB doesn't have 13 digits: {nib_clean}")
+                logger.warning("NIB OCR: extracted value doesn't have 13 digits")
                 nib = nib_clean
             else:
                 nib = nib_clean
