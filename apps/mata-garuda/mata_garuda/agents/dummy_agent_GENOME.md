@@ -35,6 +35,7 @@ canonico Mata Garuda.
 ## Failure protocol
 
 Se un fallimento accade:
+
 1. Loggare in `feedback/dummy_agent.md` con timestamp + reason + insight
 2. Dopo 3 fallimenti consecutivi: escalation al meta-agent
 3. Meta-agent legge feedback.md e propone mutazione qui sotto in "Mutable rules"

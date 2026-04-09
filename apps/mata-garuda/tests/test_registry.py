@@ -107,3 +107,26 @@ def test_dummy_agent_instructions_callable():
     result = agent.instructions({"user_name": "Zero"})
     assert "Zero" in result
     assert "case_resolved" in result
+
+
+def test_run_outcome_model():
+    from mata_garuda.types import RunOutcome
+
+    outcome = RunOutcome(
+        agent_name="Regulation Watcher",
+        success=True,
+        tokens_used=1500,
+        duration_ms=4200,
+    )
+    assert outcome.success is True
+    assert outcome.tokens_used == 1500
+    assert outcome.efficiency == pytest.approx(1500 / 4200, rel=0.01)
+
+
+def test_run_outcome_defaults():
+    from mata_garuda.types import RunOutcome
+
+    outcome = RunOutcome(agent_name="test", success=False)
+    assert outcome.tokens_used is None
+    assert outcome.duration_ms is None
+    assert outcome.efficiency is None
