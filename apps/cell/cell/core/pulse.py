@@ -57,6 +57,8 @@ class PulseEngine:
         attention: Any = None,
         maturation: Any = None,
         cortex: Any = None,
+        ai_intel_sensor: Any = None,
+        nlm_effector: Any = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -87,6 +89,8 @@ class PulseEngine:
         self._attention = attention
         self._maturation = maturation
         self._cortex = cortex
+        self._ai_intel_sensor = ai_intel_sensor
+        self._nlm_effector = nlm_effector
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
@@ -188,6 +192,29 @@ class PulseEngine:
         if self._error_rate_sensor is not None:
             sensor_statuses.append(error_reading.status)  # type: ignore[possibly-undefined]
         sensor_statuses.extend([ollama_status, backup_status, cron_status, vercel_status])
+
+        # AI Intel Sensor — daily harvest (24h cooldown)
+        ai_intel_items: list[dict] = []
+        if self._ai_intel_sensor is not None:
+            try:
+                ai_reading = await self._ai_intel_sensor.read()
+                sensor_metadata["ai_intel"] = ai_reading.metadata
+                sensor_statuses.append(ai_reading.status)
+                if ai_reading.harvested and ai_reading.items:
+                    ai_intel_items = ai_reading.items
+                    logger.info(f"AI Intel harvest: {len(ai_intel_items)} items")
+                    # Feed to NLM + write report
+                    if self._nlm_effector is not None:
+                        try:
+                            nlm_result = await self._nlm_effector.execute("feed_nlm", ai_intel_items)
+                            logger.info(f"NLM feed: {nlm_result.detail}")
+                            report_result = await self._nlm_effector.execute("write_report", ai_intel_items)
+                            logger.info(f"Report: {report_result.detail}")
+                        except Exception as e:
+                            logger.warning(f"NLM effector failed: {e}")
+            except Exception as e:
+                logger.warning(f"AI Intel sensor failed: {e}")
+                sensor_statuses.append("yellow")
 
         _severity = {"green": 0, "yellow": 1, "red": 2}
         worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
