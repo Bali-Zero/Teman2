@@ -18,7 +18,7 @@ from cell_core.identity import SelfModelManager
 
 from mata_garuda.cell.actor import MetaChainActor
 from mata_garuda.cell.memory_bridge import BridgeSTM, KnowledgeBridgeLTM, ReflectionEpisodicStore
-from mata_garuda.cell.sensors import FitnessSensor, RegulationSensor
+from mata_garuda.cell.sensors import FitnessSensor, GapStreamSensor, RegulationSensor
 from mata_garuda.cell.thinker import PassthroughThinker
 from mata_garuda.runtime.knowledge import KnowledgeBase
 
@@ -57,6 +57,7 @@ def build_pulse_loop(
         sensors=[
             RegulationSensor(),
             FitnessSensor(agent_name="Regulation Watcher"),
+            GapStreamSensor(),
         ],
         thinker=PassthroughThinker(),
         actor=MetaChainActor(kb=kb),
