@@ -659,3 +659,95 @@ async def export_messages(
     except Exception as e:
         logger.error(f"Failed to export messages: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# =============================================================================
+# CRM Activity Log
+# =============================================================================
+
+
+@router.get("/crm-activity")
+async def get_crm_activity(
+    from_time: str | None = Query(None, description="HH:MM or ISO timestamp"),
+    to_time: str | None = Query(None, description="HH:MM or ISO timestamp"),
+    user: str | None = Query(None, description="Partial email match"),
+    method: str | None = Query(None, description="HTTP method filter (GET, POST, etc.)"),
+    limit: int = Query(100, ge=1, le=500),
+    _admin: dict = Depends(verify_admin),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Query api_audit_trail for CRM endpoint activity.
+    Filters: time range (HH:MM today or ISO), partial user email, HTTP method.
+    """
+    try:
+        today = datetime.now(tz=timezone.utc).date().isoformat()
+
+        def _parse_time(value: str) -> str:
+            """Convert HH:MM to ISO timestamp for today, pass ISO through."""
+            if len(value) <= 5 and ":" in value:
+                return f"{today}T{value}:00+00:00"
+            return value
+
+        conditions = ["endpoint ILIKE '/api/crm/%' OR endpoint ILIKE '/crm/%'"]
+        params: list[Any] = []
+        idx = 1
+
+        if from_time:
+            conditions.append(f"timestamp >= ${idx}::timestamptz")
+            params.append(_parse_time(from_time))
+            idx += 1
+
+        if to_time:
+            conditions.append(f"timestamp <= ${idx}::timestamptz")
+            params.append(_parse_time(to_time))
+            idx += 1
+
+        if user:
+            conditions.append(f"user_email ILIKE ${idx}")
+            params.append(f"%{user}%")
+            idx += 1
+
+        if method:
+            conditions.append(f"method = ${idx}")
+            params.append(method.upper())
+            idx += 1
+
+        where = " AND ".join(conditions)
+
+        async with db_pool.acquire() as conn:
+            total: int = await conn.fetchval(
+                f"SELECT COUNT(*) FROM api_audit_trail WHERE {where}", *params,
+            )
+
+            rows = await conn.fetch(
+                f"""
+                SELECT timestamp, user_email, method, endpoint,
+                       response_status, response_time_ms, ip_address
+                FROM api_audit_trail
+                WHERE {where}
+                ORDER BY timestamp DESC
+                LIMIT ${idx}
+                """,
+                *params,
+                limit,
+            )
+
+        items = [
+            {
+                "timestamp": str(row["timestamp"]),
+                "user_email": row["user_email"],
+                "method": row["method"],
+                "endpoint": row["endpoint"],
+                "response_status": row["response_status"],
+                "response_time_ms": row["response_time_ms"],
+                "ip_address": row["ip_address"],
+            }
+            for row in rows
+        ]
+
+        return {"success": True, "total": total, "items": items}
+
+    except Exception as e:
+        logger.error(f"Failed to query CRM activity: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
