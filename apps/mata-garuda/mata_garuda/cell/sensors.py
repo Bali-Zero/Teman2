@@ -75,3 +75,41 @@ class RegulationSensor:
                 sensor_name=self.name, status="red",
                 metadata={"error": str(e)},
             )
+
+
+class GapStreamSensor:
+    """Checks pending gap requests in nexus:gaps Redis stream."""
+
+    STREAM_KEY = "nexus:gaps"
+
+    def __init__(self) -> None:
+        self.name = "gap_stream"
+
+    async def read(self, **context) -> SensorReading:
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                ["redis-cli", "XLEN", self.STREAM_KEY],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode != 0:
+                return SensorReading(
+                    sensor_name=self.name, status="yellow",
+                    metadata={"error": "redis-cli failed"},
+                )
+            count = int(result.stdout.strip())
+            if count == 0:
+                status = "green"
+            elif count < 10:
+                status = "yellow"
+            else:
+                status = "red"
+            return SensorReading(
+                sensor_name=self.name, status=status,
+                value=count, metadata={"stream": self.STREAM_KEY},
+            )
+        except Exception as e:
+            return SensorReading(
+                sensor_name=self.name, status="yellow",
+                metadata={"error": str(e)},
+            )
