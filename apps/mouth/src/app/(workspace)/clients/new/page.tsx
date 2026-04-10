@@ -56,6 +56,12 @@ export default function NewClientPage() {
   const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
   const [passportFile, setPassportFile] = useState<string | null>(null);
   const [ocrApplied, setOcrApplied] = useState(false);
+  const [gatewayReady, setGatewayReady] = useState(false);
+
+  // Check gateway config after mount (localStorage not available during SSR)
+  useEffect(() => {
+    setGatewayReady(isGatewayConfigured());
+  }, []);
   const [formData, setFormData] = useState<CreateClientInput>({
     full_name: '',
     email: '',
@@ -321,9 +327,7 @@ export default function NewClientPage() {
       </div>
 
       {/* Step 0: Entry Mode Chooser */}
-      {entryMode === 'choosing' && (() => {
-        const gatewayReady = isGatewayConfigured();
-        return (
+      {entryMode === 'choosing' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <button
             type="button"
@@ -372,8 +376,7 @@ export default function NewClientPage() {
             </span>
           </button>
         </div>
-        );
-      })()}
+      )}
 
       {/* Step 0b: Passport Scan Mode (full screen) */}
       {entryMode === 'scan' && (
