@@ -87,7 +87,12 @@ async def main(once: bool = False) -> None:
 
     if once:
         result = await pl.single_pulse()
-        logger.info(f"Pulse #{result.pulse_number}: status={result.health_status} action={result.action_taken}")
+        if result.halted:
+            logger.warning(f"Pulse #{result.pulse_number}: HALTED reason={result.halt_reason}")
+        elif result.skipped:
+            logger.info(f"Pulse #{result.pulse_number}: SKIPPED reason={result.skip_reason}")
+        else:
+            logger.info(f"Pulse #{result.pulse_number}: status={result.health_status} action={result.action_taken}")
     else:
         logger.info("Starting PulseLoop (Ctrl+C to stop)...")
         await pl.run()
