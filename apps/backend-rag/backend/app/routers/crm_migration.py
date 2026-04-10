@@ -10,7 +10,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.crm_access import require_crm_admin
+from backend.app.dependencies import get_database_pool
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 @router.get("/migration/status")
 async def get_migration_status(
     pool=Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_crm_admin),
 ) -> dict[str, Any]:
     """
     Get comprehensive migration status and statistics.
@@ -148,7 +149,7 @@ async def get_migration_status(
 @router.get("/migration/clients-summary")
 async def get_clients_migration_summary(
     pool=Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_crm_admin),
 ) -> dict[str, Any]:
     """
     Get detailed summary of client migration status.
@@ -244,7 +245,7 @@ async def get_clients_migration_summary(
 async def get_client_documents_summary(
     client_id: int,
     pool=Depends(get_database_pool),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_crm_admin),
 ) -> dict[str, Any]:
     """
     Get detailed document summary for a specific client.

@@ -20,7 +20,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.utils.crm_utils import is_crm_admin, verify_client_access
+from backend.app.deps.crm_access import get_crm_user_filter
+from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.services.portal import InviteService, PortalService
 
@@ -110,19 +111,8 @@ async def get_portal_status(
     - Portal user details if exists
     - Pending invitation status
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with db_pool.acquire() as conn:
-        # RBAC Check
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(
-                status_code=403, detail="You don't have access to this client's portal status",
-            )
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
         # Check for portal user
         portal_user = await conn.fetchrow(
@@ -208,19 +198,8 @@ async def send_portal_invite(
 
     If email not provided, uses client's email from the clients table.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with db_pool.acquire() as conn:
-        # RBAC Check
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(
-                status_code=403, detail="You don't have access to send invites to this client",
-            )
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
     try:
         # Get client email if not provided
@@ -282,19 +261,8 @@ async def get_portal_preview(
 
     Returns the same data the client would see in their portal dashboard.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with db_pool.acquire() as conn:
-        # RBAC Check
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(
-                status_code=403, detail="You don't have access to preview this client's portal",
-            )
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
     try:
         dashboard = await portal_service.get_dashboard(client_id)
@@ -392,19 +360,8 @@ async def get_client_messages(
 
     Same messages as client sees, but from team perspective.
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with db_pool.acquire() as conn:
-        # RBAC Check
-        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
-        if not check:
-            raise HTTPException(status_code=404, detail="Client not found")
-
-        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
-            raise HTTPException(
-                status_code=403, detail="You don't have access to this client's messages",
-            )
+        await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
     try:
         data = await portal_service.get_messages(client_id, limit=limit, offset=offset)
@@ -515,7 +472,8 @@ async def mark_client_message_read(
 @router.get("/activity/recent")
 async def get_recent_portal_activity(
     limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(require_team_auth),
+    _current_user: dict = Depends(require_team_auth),
+    assigned_filter: str | None = Depends(get_crm_user_filter),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
@@ -526,9 +484,6 @@ async def get_recent_portal_activity(
     - Document uploads
     - Login activity
     """
-    user_email = current_user.get("email", "").lower()
-    user_is_admin = is_crm_admin(current_user)
-
     async with db_pool.acquire() as conn:
         # Recent messages from clients (Filtered by access)
         query = """
@@ -544,11 +499,11 @@ async def get_recent_portal_activity(
             JOIN clients c ON c.id = pm.client_id
             WHERE pm.direction = 'client_to_team'
         """
-        params = [limit]
+        params: list[int | str] = [limit]
 
-        if not user_is_admin:
+        if assigned_filter is not None:
             query += " AND LOWER(c.assigned_to) = $2"
-            params.append(user_email)
+            params.append(assigned_filter)
 
         query += " ORDER BY pm.created_at DESC LIMIT $1"
 

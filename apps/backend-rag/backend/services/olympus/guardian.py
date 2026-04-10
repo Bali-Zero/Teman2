@@ -15,6 +15,7 @@ from typing import Any
 import asyncpg
 
 from backend.services.olympus.alerts import OlympusAlerts
+from backend.services.olympus.insights import InsightsCollector
 from backend.services.olympus.heartbeat import Heartbeat
 from backend.services.olympus.models import PulseAction
 from backend.services.olympus.pulse import Pulse
@@ -32,6 +33,7 @@ class OlympusGuardian:
         self.pulse: Pulse | None = None
         self._running: bool = False
         self._tasks: list[asyncio.Task[None]] = []
+        self.insights: InsightsCollector | None = None
 
     async def initialize(self) -> None:
         self.rules_engine = RulesEngine(self._pool)
@@ -39,6 +41,8 @@ class OlympusGuardian:
         self.heartbeat = Heartbeat(self._pool, self.rules_engine)
         self.heartbeat.on_alert(self.alerts.send_alert)
         self.pulse = Pulse(self._pool, self.rules_engine)
+        self.insights = InsightsCollector(self._pool, self.rules_engine)
+        self.insights.set_alert_callback(self.alerts.send_alert)
         logger.info("OlympusGuardian initialized — %d rules", len(self.rules_engine.rules))
 
     async def run_heartbeat_once(self) -> None:
@@ -52,6 +56,14 @@ class OlympusGuardian:
         assert self.rules_engine is not None
 
         actions = await self.pulse.run_full_pulse()
+
+        # v3: Insights collection
+        if self.insights is not None:
+            try:
+                actions.extend(await self.insights.collect_query_insights())
+                actions.extend(await self.insights.collect_bloat_insights())
+            except Exception:
+                logger.exception("Insights collection failed")
 
         for action in actions:
             await self._persist_action(action)
@@ -75,6 +87,9 @@ class OlympusGuardian:
 
         failures = sum(1 for a in actions if a.outcome == "failure")
         await self.alerts.send_pulse_summary(len(actions), failures)
+
+        # v4 readiness check: enough insights to activate Voyager skills?
+        await self._check_v4_readiness()
 
         logger.info("Pulse complete: %d actions, %d failures", len(actions), failures)
         return actions
@@ -155,6 +170,21 @@ class OlympusGuardian:
                 )
         except Exception:
             logger.exception("Failed to persist action: %s", action.action_type)
+
+    _V4_INSIGHTS_THRESHOLD = 500
+
+    async def _check_v4_readiness(self) -> None:
+        """Check if enough insights have accumulated to activate v4 Voyager skills."""
+        try:
+            async with self._pool.acquire() as conn:
+                count = await conn.fetchval("SELECT COUNT(*) FROM olympus_insights")
+            if count and count >= self._V4_INSIGHTS_THRESHOLD:
+                logger.info(
+                    "v4 READY: %d insights accumulated (threshold: %d) — Voyager skills activatable",
+                    count, self._V4_INSIGHTS_THRESHOLD,
+                )
+        except Exception:
+            pass  # non-critical
 
     def _get_heartbeat_interval(self) -> int:
         if self.rules_engine is None:

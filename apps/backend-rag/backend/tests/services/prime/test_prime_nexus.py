@@ -14,6 +14,8 @@ from backend.services.prime.prime_nexus_service import (
     PrimeNexusService,
     calculate_building_yield,
     calculate_investment_score,
+    calculate_property_eligibility,
+    calculate_property_tax,
     calculate_zone_kbli_fit,
     classify_activity,
     encode_geohash,
@@ -946,3 +948,267 @@ class TestIntelligencePoolError:
         )
         assert result["type"] == "FeatureCollection"
         assert result["features"] == []
+
+
+# =============================================================================
+# F1: COASTLINE DISTANCE TESTS
+# =============================================================================
+
+
+class TestCoastlineDistance:
+    """Tests for sea_distance_m query and scoring integration."""
+
+    @pytest.fixture
+    def service(self) -> PrimeNexusService:
+        cache = AsyncMock()
+        cache.get = AsyncMock(return_value=None)
+        cache.set = AsyncMock()
+        return PrimeNexusService(cache_service=cache)
+
+    @pytest.mark.asyncio
+    async def test_sea_distance_near_coast(self, service: PrimeNexusService) -> None:
+        """Mock DB returning 150m — should get tourism premium."""
+        from contextlib import asynccontextmanager
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value={"dist_m": 150.0})
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        dist = await service._query_sea_distance(-8.72, 115.17)
+        assert dist is not None
+        assert dist == 150.0
+
+    @pytest.mark.asyncio
+    async def test_sea_distance_inland(self, service: PrimeNexusService) -> None:
+        """Mock DB returning 5000m — no modifier expected."""
+        from contextlib import asynccontextmanager
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow = AsyncMock(return_value={"dist_m": 5000.0})
+
+        @asynccontextmanager
+        async def _acquire():
+            yield mock_conn
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = _acquire
+        service._db_pool = mock_pool
+
+        dist = await service._query_sea_distance(-8.519, 115.263)
+        assert dist is not None
+        assert dist == 5000.0
+
+    @pytest.mark.asyncio
+    async def test_sea_distance_no_coastline_data(self, service: PrimeNexusService) -> None:
+        """No DB pool, no DATABASE_URL — returns None gracefully."""
+        service._db_pool = None
+        dist = await service._query_sea_distance(-8.72, 115.17)
+        assert dist is None
+
+    @pytest.mark.asyncio
+    async def test_sea_distance_cache_hit(self, service: PrimeNexusService) -> None:
+        """Redis cache returns pre-computed distance."""
+        service._cache.get = AsyncMock(return_value="250.5")
+        dist = await service._query_sea_distance(-8.72, 115.17)
+        assert dist == 250.5
+
+    def test_sea_distance_scoring_modifier_near(self) -> None:
+        """Scoring engine applies +5/-3 for sea_distance < 200m."""
+        geo_data = {"sea_distance_m": 150.0}
+        zone_data = {"code": "W-1", "source": "batara_live", "overlays": {},
+                     "klb": "2.0", "tb": "15 Meter"}
+        result = calculate_investment_score(
+            zone_data=zone_data, kbli_state="APPROVED",
+            kbli_code="55111", roi_data=None, geo_data=geo_data,
+        )
+        modifiers_text = " ".join(result["modifiers"])
+        assert "premium" in modifiers_text.lower() or "costa" in modifiers_text.lower()
+        assert "tsunami" in modifiers_text.lower()
+
+    def test_sea_distance_scoring_no_modifier_inland(self) -> None:
+        """No sea modifier when distance > 1000m."""
+        geo_data = {"sea_distance_m": 5000.0}
+        zone_data = {"code": "K-1", "source": "batara_live", "overlays": {},
+                     "klb": "2.0"}
+        result = calculate_investment_score(
+            zone_data=zone_data, kbli_state="APPROVED",
+            kbli_code="56111", roi_data=None, geo_data=geo_data,
+        )
+        modifiers_text = " ".join(result["modifiers"])
+        assert "costa" not in modifiers_text.lower()
+        assert "tsunami" not in modifiers_text.lower()
+
+
+# =============================================================================
+# F2: PROPERTY TAX CALCULATOR TESTS
+# =============================================================================
+
+
+class TestPropertyTax:
+    """Tests for PBB + BPHTB calculation."""
+
+    def test_pbb_low_njop(self) -> None:
+        """NJOP 500M → 0.1% rate."""
+        result = calculate_property_tax(500_000_000, "Badung")
+        assert result["pbb_rate_pct"] == 0.1
+        assert result["annual_pbb"] == 500_000
+
+    def test_pbb_medium_njop(self) -> None:
+        """NJOP 3B → 0.2% rate."""
+        result = calculate_property_tax(3_000_000_000, "Denpasar")
+        assert result["pbb_rate_pct"] == 0.2
+        assert result["annual_pbb"] == 6_000_000
+
+    def test_pbb_high_njop(self) -> None:
+        """NJOP 15B → 0.3% rate."""
+        result = calculate_property_tax(15_000_000_000, "Gianyar")
+        assert result["pbb_rate_pct"] == 0.3
+        assert result["annual_pbb"] == 45_000_000
+
+    def test_bphtb_calculation(self) -> None:
+        """BPHTB = 5% * (NJOP - NPOPTKP)."""
+        result = calculate_property_tax(5_000_000_000, "Badung")
+        # NPOPTKP Badung = 80M, so BPHTB = 5% * (5B - 80M) = 246M
+        assert result["acquisition_bphtb"] == 246_000_000
+        assert result["npoptkp_applied"] == 80_000_000
+
+    def test_bphtb_negative_base(self) -> None:
+        """NJOP < NPOPTKP → BPHTB = 0."""
+        result = calculate_property_tax(50_000_000, "Badung")
+        assert result["acquisition_bphtb"] == 0
+
+    def test_unknown_kabupaten_uses_default(self) -> None:
+        """Unknown kabupaten → default NPOPTKP (60M)."""
+        result = calculate_property_tax(1_000_000_000, "Unknown Place")
+        assert result["npoptkp_applied"] == 60_000_000
+        assert len(result["notes"]) == 1
+        assert "non riconosciuto" in result["notes"][0]
+
+
+# =============================================================================
+# F3: PROPERTY ELIGIBILITY TESTS
+# =============================================================================
+
+
+class TestPropertyEligibility:
+    """Tests for foreigner property eligibility."""
+
+    def test_wna_allowed_types(self) -> None:
+        """Foreigner gets hak_pakai, hgb_via_pma, rental."""
+        result = calculate_property_eligibility("WNA", "K-1", 5_000_000_000)
+        types = [t["type"] for t in result["allowed_types"]]
+        assert "hak_pakai" in types
+        assert "hgb_via_pma" in types
+        assert "rental" in types
+        assert result["nationality_class"] == "WNA"
+
+    def test_wna_blocked_hak_milik(self) -> None:
+        """Hak Milik blocked for foreigners."""
+        result = calculate_property_eligibility("WNA")
+        blocked = [t["type"] for t in result["blocked_types"]]
+        assert "hak_milik" in blocked
+
+    def test_wni_all_types(self) -> None:
+        """Indonesian gets all property types."""
+        result = calculate_property_eligibility("WNI", "K-1")
+        types = [t["type"] for t in result["allowed_types"]]
+        assert "hak_milik" in types
+        assert "hak_pakai" in types
+        assert "hgb" in types
+        assert "rental" in types
+        assert len(result["blocked_types"]) == 0
+
+    def test_no_nationality_skips(self) -> None:
+        """Empty nationality still returns a result (WNI path)."""
+        result = calculate_property_eligibility("WNI")
+        assert result["nationality_class"] == "WNI"
+
+    def test_restricted_zone_warning(self) -> None:
+        """Restricted zone adds warning."""
+        result = calculate_property_eligibility("WNA", "HL")
+        assert "zone_warning" in result
+        assert "restricted" in result["zone_warning"].lower()
+
+    def test_non_buildable_zone_warning(self) -> None:
+        """Non-buildable zone adds specific warning."""
+        result = calculate_property_eligibility("WNA", "BA")
+        assert "zone_warning" in result
+        assert "non-buildable" in result["zone_warning"].lower()
+
+    def test_wna_cross_domain_note(self) -> None:
+        """WNA result includes cross-domain note about PMA."""
+        result = calculate_property_eligibility("WNA")
+        assert "cross_domain_note" in result
+        assert "PT PMA" in result["cross_domain_note"]
+
+    def test_bphtb_estimate_in_costs(self) -> None:
+        """When NJOP provided, BPHTB estimate appears in costs."""
+        result = calculate_property_eligibility("WNA", "K-1", 2_000_000_000)
+        hak_pakai = next(t for t in result["allowed_types"] if t["type"] == "hak_pakai")
+        assert hak_pakai["estimated_costs"]["bphtb_5pct"] == 100_000_000  # 5% of 2B
+
+
+# =============================================================================
+# F4: RISK SCORE DIFFERENTIATION TESTS
+# =============================================================================
+
+
+class TestRiskScore:
+    """Tests for numeric risk_score in scoring engine."""
+
+    def test_risk_score_low_value(self) -> None:
+        """risk_score < 0.2 → 10 points (safest)."""
+        result = calculate_investment_score(
+            zone_data={"code": "K-1", "source": "postgis_cache", "overlays": {}, "klb": "2.0"},
+            kbli_state="APPROVED", kbli_code="56111",
+            roi_data=None,
+            geo_data={"risk_score": 0.1},
+        )
+        assert result["breakdown"]["risk"]["score"] == 10
+
+    def test_risk_score_high_value(self) -> None:
+        """risk_score >= 0.8 → 0 points (highest risk)."""
+        result = calculate_investment_score(
+            zone_data={"code": "W-1", "source": "batara_live", "overlays": {}, "klb": "1.5"},
+            kbli_state="APPROVED", kbli_code="55111",
+            roi_data=None,
+            geo_data={"risk_score": 0.85},
+        )
+        assert result["breakdown"]["risk"]["score"] == 0
+
+    def test_risk_score_medium_value(self) -> None:
+        """risk_score 0.4-0.6 → 5 points."""
+        result = calculate_investment_score(
+            zone_data={"code": "K-2", "source": "batara_live", "overlays": {}, "klb": "1.0"},
+            kbli_state="APPROVED", kbli_code="47111",
+            roi_data=None,
+            geo_data={"risk_score": 0.5},
+        )
+        assert result["breakdown"]["risk"]["score"] == 5
+
+    def test_risk_score_backward_compat_flood_string(self) -> None:
+        """Old flood_risk string still works when risk_score absent."""
+        result = calculate_investment_score(
+            zone_data={"code": "K-1", "source": "batara_live", "overlays": {}, "klb": "2.0"},
+            kbli_state="APPROVED", kbli_code="56111",
+            roi_data=None,
+            geo_data={"flood_risk": "safe"},
+        )
+        assert result["breakdown"]["risk"]["score"] == 10
+
+    def test_risk_score_no_geo_data(self) -> None:
+        """No geo_data at all → default 7 points."""
+        result = calculate_investment_score(
+            zone_data={"code": "K-1", "source": "batara_live", "overlays": {}, "klb": "2.0"},
+            kbli_state="APPROVED", kbli_code="56111",
+            roi_data=None,
+            geo_data=None,
+        )
+        assert result["breakdown"]["risk"]["score"] == 7

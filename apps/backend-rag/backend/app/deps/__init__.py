@@ -9,4 +9,5 @@ Sub-modules:
 - database:    asyncpg pool access (strict + graceful)
 - services:    Service locators (Search, AI, Router, Memory, Cache, Retriever, Channel)
 - orchestrator: AgenticRAGOrchestrator lazy singleton
+- crm_access:   CRM RBAC guards and user filters
 """
