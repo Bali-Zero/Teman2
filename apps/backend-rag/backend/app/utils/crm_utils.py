@@ -107,11 +107,12 @@ async def verify_client_access(
         client_id: The client ID to check
         current_user: User dictionary from authentication
         conn: Database connection
-        allow_assigned: If True, allows access to assigned team members (not just admins)
+        allow_assigned: If True, all authenticated users can access the client
+                        (consistent with can_view_all_clients policy).
+                        If False, only admins can access.
 
     Returns:
         tuple: (has_access, assigned_to_email or None)
-               has_access is True if user is admin OR (allow_assigned AND is the assigned user)
 
     Raises:
         HTTPException: 403 if access denied, 404 if client not found
