@@ -540,12 +540,9 @@ async def list_clients(
                 params.append(assigned_to)
                 param_index += 1
 
-            # RBAC: non-admin users see only their assigned clients
-            if not can_view_all_clients(current_user):
-                current_email = current_user.get("email", "").lower()
-                query_parts.append(f" AND c.assigned_to = ${param_index}")
-                params.append(current_email)
-                param_index += 1
+            # NOTE: can_view_all_clients() returns True for all authenticated
+            # users — everyone sees the full client list. The RBAC filter from
+            # get_crm_user_filter() above already handles this correctly.
 
             if search:
                 search_pattern = f"%{search}%"
