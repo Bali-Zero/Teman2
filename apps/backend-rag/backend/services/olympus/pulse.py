@@ -199,11 +199,17 @@ class Pulse:
                    pg_get_serial_sequence(t.relname::text, a.attname::text) AS seq
             FROM pg_class t
             JOIN pg_attribute a ON a.attrelid = t.oid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
             WHERE t.relkind = 'r' AND a.attnum > 0 AND NOT a.attisdropped
+              AND n.nspname = 'public'
               AND pg_get_serial_sequence(t.relname::text, a.attname::text) IS NOT NULL
         """
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(query)
+        try:
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(query)
+        except Exception:
+            logger.exception("repair_sequences: failed to discover sequences")
+            return []
 
         actions: list[PulseAction] = []
         for row in rows:
