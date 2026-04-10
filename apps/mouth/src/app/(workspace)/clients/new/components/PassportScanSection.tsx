@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { PassportOcrResult } from '@/lib/api/crm/crm.types';
-import { getGatewayUrl, getGatewayToken } from '@/lib/gateway';
+import { api } from '@/lib/api';
 import type { CreateClientInput } from '@/lib/api/crm/crm.schemas';
 import { COMMON_NATIONALITIES } from '@/lib/api/crm/crm.types';
 import { logger } from '@/lib/logger';
@@ -213,35 +213,8 @@ export function PassportScanSection({ onFieldsConfirmed, onDiscarded }: Passport
     dispatch({ type: 'PROCESSING' });
 
     try {
-      // Call local gateway OCR (Ollama vision — zero API cost)
-      const gatewayUrl = getGatewayUrl();
-      const gatewayToken = getGatewayToken();
-
-      if (!gatewayToken) {
-        dispatch({
-          type: 'OCR_FAIL',
-          message: 'Local gateway not configured. Set up gateway token in Settings.',
-        });
-        return;
-      }
-
-      const ocrResponse = await fetch(`${gatewayUrl}/v1/ocr/passport`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gateway-Token': gatewayToken,
-        },
-        body: JSON.stringify({
-          image_base64: data.file,
-          mime_type: data.mimeType,
-        }),
-      });
-
-      if (!ocrResponse.ok) {
-        throw new Error(`OCR request failed: ${ocrResponse.status}`);
-      }
-
-      const result: PassportOcrResult = await ocrResponse.json();
+      // Call backend API (Ollama → Gemini fallback, works everywhere)
+      const result = await api.crm.extractPassportPreview(data.file, data.mimeType);
 
       if (result.success && result.confidence >= 0.7) {
         dispatch({ type: 'OCR_SUCCESS', result, file: data.file });
