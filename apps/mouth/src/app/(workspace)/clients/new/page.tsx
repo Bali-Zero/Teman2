@@ -43,7 +43,6 @@ import {
 } from '@/lib/api/crm/crm.schemas';
 import { cropToSquare } from '@/lib/utils/imageResize';
 import { useTeamMemberOptions } from '@/hooks/useTeamMembers';
-import { isGatewayConfigured } from '@/lib/gateway';
 import PassportScanSection from './components/PassportScanSection';
 
 export default function NewClientPage() {
@@ -56,12 +55,6 @@ export default function NewClientPage() {
   const [activeSection, setActiveSection] = useState<'basic' | 'personal' | 'crm'>('basic');
   const [passportFile, setPassportFile] = useState<string | null>(null);
   const [ocrApplied, setOcrApplied] = useState(false);
-  const [gatewayReady, setGatewayReady] = useState(false);
-
-  // Check gateway config after mount (localStorage not available during SSR)
-  useEffect(() => {
-    setGatewayReady(isGatewayConfigured());
-  }, []);
   const [formData, setFormData] = useState<CreateClientInput>({
     full_name: '',
     email: '',
@@ -331,48 +324,31 @@ export default function NewClientPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <button
             type="button"
-            onClick={() => gatewayReady && setEntryMode('scan')}
-            disabled={!gatewayReady}
-            className={`group rounded-2xl border-2 border-dashed p-8 text-center transition-all ${
-              gatewayReady
-                ? 'border-[var(--border)] bg-[var(--background-secondary)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 cursor-pointer'
-                : 'border-[var(--border)]/50 bg-[var(--background-secondary)]/50 opacity-50 cursor-not-allowed'
-            }`}
+            onClick={() => setEntryMode('scan')}
+            className="group rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-8 text-center hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all"
           >
-            <Camera className={`w-12 h-12 mx-auto mb-4 ${gatewayReady ? 'text-[var(--accent)] group-hover:scale-110' : 'text-[var(--foreground-muted)]'} transition-transform`} />
+            <Camera className="w-12 h-12 mx-auto mb-4 text-[var(--accent)] group-hover:scale-110 transition-transform" />
             <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Scan Passport</h3>
             <p className="text-sm text-[var(--foreground-muted)]">
-              {gatewayReady
-                ? 'Upload a passport photo and auto-fill client details with AI'
-                : 'Requires local gateway — use Manual Entry instead'}
+              Upload a passport photo and auto-fill client details with AI
             </p>
-            {gatewayReady && (
-              <span className="inline-block mt-4 text-xs text-[var(--accent)] font-medium px-3 py-1 rounded-full bg-[var(--accent)]/10">
-                Recommended
-              </span>
-            )}
+            <span className="inline-block mt-4 text-xs text-[var(--accent)] font-medium px-3 py-1 rounded-full bg-[var(--accent)]/10">
+              Recommended
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => { setEntryMode('form'); setActiveSection('basic'); }}
-            className={`group rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-8 text-center transition-all ${
-              !gatewayReady
-                ? 'hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 ring-2 ring-[var(--accent)]/30'
-                : 'hover:border-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
-            }`}
+            className="group rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background-secondary)] p-8 text-center hover:border-[var(--foreground-muted)] hover:bg-[var(--background-elevated)] transition-all"
           >
-            <PenLine className={`w-12 h-12 mx-auto mb-4 ${!gatewayReady ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'} group-hover:scale-110 transition-transform`} />
+            <PenLine className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)] group-hover:scale-110 transition-transform" />
             <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">Manual Entry</h3>
             <p className="text-sm text-[var(--foreground-muted)]">
               Fill in client details step by step
             </p>
-            <span className={`inline-block mt-4 text-xs font-medium px-3 py-1 rounded-full ${
-              !gatewayReady
-                ? 'text-[var(--accent)] bg-[var(--accent)]/10'
-                : 'text-[var(--foreground-muted)] bg-[var(--background-elevated)]'
-            }`}>
-              {!gatewayReady ? 'Recommended' : 'Classic'}
+            <span className="inline-block mt-4 text-xs text-[var(--foreground-muted)] font-medium px-3 py-1 rounded-full bg-[var(--background-elevated)]">
+              Classic
             </span>
           </button>
         </div>

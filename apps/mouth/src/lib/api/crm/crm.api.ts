@@ -313,7 +313,7 @@ export class CrmApi {
           mime_type: mimeType,
         }),
       },
-      30000,
+      120000, // Gemini Vision OCR can take up to ~60s
     );
   }
 
