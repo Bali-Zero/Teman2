@@ -1,6 +1,6 @@
-"""Tests for Olympus v2 models."""
+"""Tests for Olympus v3 models."""
 import pytest
-from backend.services.olympus.models import HeartbeatSnapshot, PulseAction, OlympusRule
+from backend.services.olympus.models import HeartbeatSnapshot, PulseAction, OlympusRule, InsightRecord
 
 
 class TestHeartbeatSnapshot:
@@ -68,3 +68,66 @@ class TestOlympusRule:
         assert r.applied_count == 0
         assert r.last_applied is None
         assert r.superseded_by is None
+
+
+class TestInsightRecord:
+    def test_defaults(self):
+        r = InsightRecord(
+            insight_type="pattern",
+            title="Top query",
+            content="SELECT * FROM clients",
+            evidence={"total_ms": 1234},
+            source="query_intelligence",
+        )
+        assert r.confidence == 1.0
+        assert r.applicable_to == []
+
+    def test_all_types_accepted(self):
+        for t in ("pattern", "anomaly", "recommendation"):
+            r = InsightRecord(
+                insight_type=t, title="t", content="c",
+                evidence={}, source="test",
+            )
+            assert r.insight_type == t
+
+
+class TestHeartbeatSnapshotV3:
+    def test_v3_fields_default_none(self):
+        s = HeartbeatSnapshot(
+            pool_size=5, pool_idle=3, active_connections=2,
+            max_connections=100, db_size_bytes=1000,
+        )
+        assert s.cache_hit_ratio is None
+        assert s.top_tables_by_size == []
+        assert s.idx_scan_ratio is None
+        assert s.health_score is None
+
+    def test_health_score_perfect(self):
+        s = HeartbeatSnapshot(
+            pool_size=10, pool_idle=8, active_connections=2,
+            max_connections=100, db_size_bytes=1000,
+            cache_hit_ratio=99.0, idx_scan_ratio=95.0,
+        )
+        score = s.compute_health_score(dead_tuple_ratio=0.5)
+        assert score == 100
+
+    def test_health_score_degraded(self):
+        s = HeartbeatSnapshot(
+            pool_size=10, pool_idle=1, active_connections=8,
+            max_connections=100, db_size_bytes=1000,
+            long_queries=3, lock_waits=1,
+            cache_hit_ratio=85.0, idx_scan_ratio=40.0,
+        )
+        score = s.compute_health_score(dead_tuple_ratio=10.0)
+        assert 0 <= score <= 100
+        assert score < 60  # degraded (formula: cache 22 + pool 4 + dead 12 + idx 7 + lq 4 + lw 5 = ~55)
+
+    def test_health_score_zero_floor(self):
+        s = HeartbeatSnapshot(
+            pool_size=10, pool_idle=0, active_connections=10,
+            max_connections=10, db_size_bytes=1000,
+            long_queries=20, lock_waits=10,
+            cache_hit_ratio=50.0, idx_scan_ratio=10.0,
+        )
+        score = s.compute_health_score(dead_tuple_ratio=50.0)
+        assert score >= 0

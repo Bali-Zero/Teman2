@@ -987,6 +987,160 @@ class TimeSheetTool(BaseTool):
             return json.dumps({"error": str(e)})
 
 
+class CRMTool(BaseTool):
+    """Tool for querying the CRM database — client counts, search, practice status."""
+
+    def __init__(self, db_pool=None) -> None:
+        self.db_pool = db_pool
+
+    @property
+    def name(self) -> str:
+        return "crm_query"
+
+    @property
+    def description(self) -> str:
+        return (
+            "REQUIRED for ANY question about clients, practices, or business data. "
+            "Queries the LIVE CRM database (PostgreSQL) and returns real numbers.\n\n"
+            "ALWAYS use this tool FIRST when the user asks:\n"
+            "- 'How many clients?' → use query_type='client_stats'\n"
+            "- 'Find client X' → use query_type='search_clients'\n"
+            "- 'Expiring visas/KITAS' → use query_type='expiring_documents'\n"
+            "- 'Breakdown by service' → use query_type='practice_stats'\n"
+            "- 'Recent/new clients' → use query_type='recent_clients'\n\n"
+            "This is the ONLY tool that can give real client counts and practice data. "
+            "Do NOT answer client questions without calling this tool first."
+        )
+
+    @property
+    def parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query_type": {
+                    "type": "string",
+                    "enum": [
+                        "client_stats",
+                        "search_clients",
+                        "expiring_documents",
+                        "practice_stats",
+                        "recent_clients",
+                    ],
+                    "description": "Type of CRM query to run.",
+                },
+                "search_term": {
+                    "type": "string",
+                    "description": "Search term for client name, email, or passport (used with search_clients).",
+                },
+                "days_ahead": {
+                    "type": "integer",
+                    "description": "Number of days ahead to check for expirations (default 30).",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max results to return (default 20).",
+                },
+            },
+            "required": ["query_type"],
+        }
+
+    async def execute(
+        self,
+        query_type: str = "client_stats",
+        search_term: str = "",
+        days_ahead: int = 30,
+        limit: int = 20,
+        **kwargs,
+    ) -> str:
+        if not self.db_pool:
+            return json.dumps({"error": "CRM database not available"})
+
+        try:
+            async with self.db_pool.acquire() as conn:
+                if query_type == "client_stats":
+                    row = await conn.fetchrow("""
+                        SELECT
+                            COUNT(*) FILTER (WHERE status = 'active') AS active_clients,
+                            COUNT(*) FILTER (WHERE status = 'lead') AS leads,
+                            COUNT(*) FILTER (WHERE status = 'inactive') AS inactive,
+                            COUNT(*) AS total
+                        FROM clients
+                    """)
+                    practice_row = await conn.fetchrow("""
+                        SELECT
+                            COUNT(*) FILTER (WHERE status = 'in_progress') AS in_progress,
+                            COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+                            COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+                            COUNT(*) AS total
+                        FROM practices
+                    """)
+                    return json.dumps({
+                        "clients": dict(row) if row else {},
+                        "practices": dict(practice_row) if practice_row else {},
+                    }, default=str)
+
+                elif query_type == "search_clients":
+                    if not search_term:
+                        return json.dumps({"error": "search_term required"})
+                    rows = await conn.fetch("""
+                        SELECT id, full_name, email, nationality, status, phone
+                        FROM clients
+                        WHERE full_name ILIKE $1 OR email ILIKE $1 OR passport_number ILIKE $1
+                        ORDER BY updated_at DESC
+                        LIMIT $2
+                    """, f"%{search_term}%", limit)
+                    return json.dumps([dict(r) for r in rows], default=str)
+
+                elif query_type == "expiring_documents":
+                    rows = await conn.fetch("""
+                        SELECT c.full_name, c.email, c.nationality,
+                               p.practice_type_id, p.status, p.notes,
+                               p.updated_at
+                        FROM practices p
+                        JOIN clients c ON c.id = p.client_id
+                        WHERE p.status IN ('in_progress', 'active', 'pending')
+                          AND p.practice_type_id IN (
+                              SELECT id FROM practice_types
+                              WHERE name ILIKE '%kitas%' OR name ILIKE '%visa%' OR name ILIKE '%kitap%'
+                          )
+                        ORDER BY p.updated_at DESC
+                        LIMIT $1
+                    """, limit)
+                    return json.dumps([dict(r) for r in rows], default=str)
+
+                elif query_type == "practice_stats":
+                    rows = await conn.fetch("""
+                        SELECT
+                            COALESCE(pt.name, 'Unknown') AS service_type,
+                            COUNT(*) AS count,
+                            COUNT(*) FILTER (WHERE p.status = 'in_progress') AS in_progress,
+                            COUNT(*) FILTER (WHERE p.status = 'completed') AS completed
+                        FROM practices p
+                        LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
+                        GROUP BY pt.name
+                        ORDER BY count DESC
+                        LIMIT $1
+                    """, limit)
+                    return json.dumps([dict(r) for r in rows], default=str)
+
+                elif query_type == "recent_clients":
+                    rows = await conn.fetch("""
+                        SELECT id, full_name, email, nationality, status, created_at
+                        FROM clients
+                        WHERE status = 'active'
+                        ORDER BY created_at DESC
+                        LIMIT $1
+                    """, limit)
+                    return json.dumps([dict(r) for r in rows], default=str)
+
+                else:
+                    return json.dumps({"error": f"Unknown query_type: {query_type}"})
+
+        except Exception as e:
+            logger.error(f"[CRMTool] Query failed: {e}")
+            return json.dumps({"error": f"CRM query failed: {str(e)}"})
+
+
 def create_default_tools(search_service: Any = None) -> list[BaseTool]:
     """
     Create default tool set for AgenticRAGOrchestrator.

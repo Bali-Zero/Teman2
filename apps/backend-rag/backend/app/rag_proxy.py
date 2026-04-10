@@ -85,7 +85,7 @@ async def get_proxy_client() -> httpx.AsyncClient:
             if _proxy_client is None or _proxy_client.is_closed:
                 _proxy_client = httpx.AsyncClient(
                     base_url=get_rag_worker_url(),
-                    timeout=httpx.Timeout(120.0, connect=5.0),
+                    timeout=httpx.Timeout(300.0, connect=10.0),  # 5min for agentic RAG with tool calls
                     limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
                 )
     return _proxy_client

@@ -203,3 +203,87 @@ class TestAuthDependencies:
         user = {"email": "test@balizero.com", "role": "admin"}
         result = get_current_user_email(user)
         assert result == "test@balizero.com"
+
+
+# --- Import Chain Guard: ALL deps/ sub-modules (P0 Critical) ---
+
+
+class TestAllDepsTypingGuards:
+    """Guard against rogue AI agents silently removing 'Any' from typing imports.
+
+    Feb 2026 outage: missing Any in deps sub-module crashed prod at startup.
+    dependencies.py is imported by 77+ routers — one missing import = total failure.
+    """
+
+    def test_all_deps_modules_have_typing_any(self):
+        """ALL deps/ sub-modules must retain `from typing import ... Any`.
+
+        Policy: Rogue AI agents (Gemini, Windsurf, Cursor) silently remove
+        unused-looking imports. Feb 2026 outage: missing Any crashed prod.
+        This test covers ALL 7 modules, not just services+orchestrator.
+        """
+        import inspect
+
+        from backend.app.deps import (
+            auth,
+            crm_access,
+            database,
+            orchestrator,
+            owner,
+            permissions,
+            services,
+        )
+
+        for module in [auth, database, services, orchestrator, owner, permissions, crm_access]:
+            source = inspect.getsource(module)
+            assert "Any" in source, (
+                f"{module.__name__} missing 'Any' — rogue AI removal detected. "
+                f"Restore: from typing import Any"
+            )
+
+    def test_dependencies_getattr_exposes_orchestrator(self):
+        """dependencies.__getattr__ must expose _agentic_rag_orchestrator.
+
+        health.py accesses this directly. Removing __getattr__ breaks health endpoint.
+        """
+        from backend.app import dependencies
+
+        val = getattr(dependencies, "_agentic_rag_orchestrator", "MISSING")
+        assert val != "MISSING", "__getattr__ not forwarding _agentic_rag_orchestrator"
+
+    def test_dependencies_reexports_all_expected_functions(self):
+        """Verify dependencies.py re-exports all DI functions used by 77+ routers.
+
+        If a new deps/ function is added but not re-exported,
+        routers importing from dependencies.py will break at import time.
+        """
+        from backend.app import dependencies
+
+        expected = [
+            # From deps/auth.py
+            "get_current_user",
+            "get_current_user_optional",
+            "get_current_user_email",
+            "require_team_member",
+            "security",
+            "get_current_portal_client",
+            # From deps/database.py
+            "get_database_pool",
+            "get_database",
+            "get_db",
+            "get_optional_database_pool",
+            # From deps/services.py
+            "get_search_service",
+            "get_ai_client",
+            "get_intelligent_router",
+            "get_memory_service",
+            "get_cache",
+            "get_channel_router",
+            # From deps/orchestrator.py
+            "get_orchestrator",
+            # From deps/owner.py
+            "require_owner",
+            "OWNER_EMAILS",
+        ]
+        for name in expected:
+            assert hasattr(dependencies, name), f"dependencies.py missing re-export: {name}"

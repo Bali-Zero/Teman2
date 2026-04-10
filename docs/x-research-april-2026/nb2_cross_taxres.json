@@ -1,0 +1,75 @@
+{
+  "value": {
+    "answer": "In qualità di esperto di diritto dell'immigrazione indonesiano, rispondo alle tue domande basandomi rigorosamente sulla normativa nazionale e sulle disposizioni operative attuali, chiarendo i limiti delle mie fonti.\n\n**1) Il possesso del visto E33G (Remote Worker) rende automaticamente residenti fiscali?**\nNo, il semplice possesso del KITAS E33G non conferisce automaticamente lo status di residente fiscale. Tuttavia, la normativa stabilisce che il titolare di E33G diventa legalmente residente fiscale indonesiano se risiede nel Paese per più di 183 giorni all'interno di un anno fiscale [1]. Al superamento di tale soglia, scatta l'obbligo di registrare un codice fiscale personale (NPWP) e di presentare la dichiarazione dei redditi annuale (SPT Tahunan), con la potenziale esposizione dei redditi esteri alla tassazione indonesiana [1].\n\n**2) Essere titolari di KITAS equivale automaticamente a essere residenti fiscali?**\nDipende dalla categoria specifica del KITAS e dall'intento del soggiorno:\n*   **KITAS E23 (Lavoratori Dipendenti / TKA):** Sì. I titolari di KITAS E23 diventano automaticamente residenti fiscali in Indonesia fin dall'inizio, avendo l'obbligo immediato di registrare il proprio NPWP e di subire la trattenuta fiscale mensile (PPh 21) dal datore di lavoro locale [2].\n*   **KITAS E28A (Investitori):** Non è automatico al giorno zero. L'investitore diventa residente fiscale se soggiorna per più di 183 giorni in un periodo di 12 mesi, oppure se dimostra l'intento di risiedere stabilmente nel Paese [3]. \n*   *Nota aggiuntiva:* Per i titolari di KITAP (Permesso di Soggiorno Permanente), la residenza fiscale indonesiana è invece automatica per l'intera durata del soggiorno [4].\n\n**3) È possibile diventare residenti fiscali con un visto B211A (ora C1) se si superano i 183 giorni?**\nDa un punto di vista strettamente immigratorio, un visto di visita C1 (ex B211A) ha una durata massima e invalicabile di 180 giorni consecutivi per singolo ingresso [5]. Rimanere oltre i 180 giorni costituisce un reato di *overstay*, sanzionato con la deportazione e l'inserimento in blacklist al superamento dei 60 giorni di ritardo [6]. \nTuttavia, se lo straniero accumula più di 183 giorni nell'anno solare attraverso uscite e rientri continui (*border run*), si espone al rischio fiscale. A livello nazionale, la Direzione delle Entrate (DJP) sta effettuando controlli e un rigoroso *enforcement* fiscale mirato a chi opera come nomade digitale in Indonesia; superare i 183 giorni all'anno, anche con visti non di residenza, rende il soggetto un potenziale residente fiscale [7].\n\n**4) Come traccia i giorni l'Immigrazione per la DJP (Ufficio delle Entrate)? Condividono i dati?**\nA livello di quadro normativo, l'Articolo 175 comma 3 del PP 31/2013 stabilisce esplicitamente che i dati e le informazioni contenuti nel Sistema Informativo di Gestione dell'Immigrazione (SIMKIM) devono essere accessibili alle agenzie e istituzioni governative competenti [8]. I dati di tutti gli stranieri soggiornanti sono elaborati per tali fini [6]. Sappiamo anche che i sistemi dell'immigrazione effettuano già una rigorosa verifica incrociata automatizzata con altri enti statali (come Kemnaker, BPJS e i registri aziendali NIB) [9]. \nTuttavia, **devo dichiarare esplicitamente che le mie fonti attuali non contengono dettagli sui meccanismi tecnici esatti** di condivisione dei dati tra Imigrasi e DJP. I documenti confermano l'esistenza di un *enforcement* da parte della DJP [7] e l'obbligo legale per l'Immigrazione di rendere accessibile il SIMKIM [8], ma non spiegano operativamente come i giorni di presenza vengano trasmessi agli uffici fiscali per calcolare la soglia dei 183 giorni. Non posso quindi speculare sulle specifiche API o procedure interne tra queste due agenzie.",
+    "conversation_id": "3e8fe6db-8873-4689-9bff-226ee875c09d",
+    "sources_used": [
+      "09d6e396-bb18-467e-ab71-ae89bfe44177",
+      "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+      "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+      "7f8b680d-8c56-45ee-8a76-f75b15b5e7c8",
+      "a0c84a55-5da0-44b7-8ad6-891ad348502e",
+      "13b705f1-95a0-4a04-872c-bfa223ac8125",
+      "147e332b-7d12-400e-b222-8c587efa7ef9",
+      "c5e5b5c0-14f4-45a8-84fa-e735dc517680",
+      "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54"
+    ],
+    "citations": {
+      "1": "09d6e396-bb18-467e-ab71-ae89bfe44177",
+      "2": "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+      "3": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+      "4": "7f8b680d-8c56-45ee-8a76-f75b15b5e7c8",
+      "5": "a0c84a55-5da0-44b7-8ad6-891ad348502e",
+      "6": "13b705f1-95a0-4a04-872c-bfa223ac8125",
+      "7": "147e332b-7d12-400e-b222-8c587efa7ef9",
+      "8": "c5e5b5c0-14f4-45a8-84fa-e735dc517680",
+      "9": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54"
+    },
+    "references": [
+      {
+        "source_id": "09d6e396-bb18-467e-ab71-ae89bfe44177",
+        "citation_number": 1,
+        "cited_text": "Attenzione: il titolare di E33G che risiede in Indonesia per più di 183 giorni/anno fiscale diventa RESIDENTE FISCALE indonesiano. Conseguenze: Obbligo di registrazione NPWP personale Presentazione SPT Tahunan annuale I redditi esteri POSSONO essere soggetti a tassazione indonesiana (applicazione del principio di residenza fiscale globale dal 2025) Verificare eventuali trattati fiscali bilaterali (tax treaty) con il Paese di origine Questa è un'area normativa in evoluzione — consultare sempre un consulente fiscale."
+      },
+      {
+        "source_id": "723bfcd6-a1e5-4b3e-a8bf-aec92473027d",
+        "citation_number": 2,
+        "cited_text": "Cambio di status KITAS → KITAP: Lo straniero che risiede continuativamente in Indonesia per almeno 3 anni consecutivi con KITAS può richiedere il cambio di status a KITAP. [IMM-076] La richiesta deve essere presentata all'Ufficio Imigrasi di competenza. [IMM-075] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ OBBLIGHI FISCALI DEL TITOLARE E23 Il titolare di KITAS E23 diventa automaticamente residente fiscale indonesiano ed è obbligato a: Registrare il proprio NPWP (Nomor Pokok Wajib Pajak) personale Presentare la dichiarazione dei redditi annuale (SPT Tahunan) entro il 31 marzo dell'anno successivo Pagare PPh 21 (ritenuta alla fonte) mensilmente, trattenuta dal datore di lavoro"
+      },
+      {
+        "source_id": "d76e6c78-7925-47b8-a545-c6ec37b9fb9b",
+        "citation_number": 3,
+        "cited_text": "L'investitore straniero titolare di KITAS E28A è considerato residente fiscale in Indonesia se soggiorna per più di 183 giorni in un periodo di 12 mesi, oppure se intende risiedere stabilmente nel Paese. Principali obblighi: — Registrazione presso la Direzione delle Entrate (DJP) e ottenimento del Nomor Pokok Wajib Pajak (NPWP) entro 1 mese dall'arrivo — Dichiarazione dei redditi annuale (SPT Tahunan) per la quota di redditi prodotti in Indonesia — I dividendi percepiti da società indonesiane sono soggetti alla ritenuta d'acconto (PPh Pasal 26) per i non-residenti, o alla tassazione ordinaria per i residenti fiscali — I titolari E28A NON producono reddito da lavoro dipendente: non è richiesta l'approvazione RPTKA né il pagamento DKP-TKA [IMM-360] — Obbligo di rispettare le normative fiscali previste dalla legge come condizione per il mantenimento del permesso di soggiorno"
+      },
+      {
+        "source_id": "7f8b680d-8c56-45ee-8a76-f75b15b5e7c8",
+        "citation_number": 4,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ KITAP E RESIDENZA FISCALE Il titolare di KITAP è automaticamente residente fiscale indonesiano per la piena durata del soggiorno. Obblighi fiscali: Registrazione NPWP (Nomor Pokok Wajib Pajak) obbligatoria Presentazione SPT Tahunan (dichiarazione redditi) entro 31 marzo ogni anno I redditi prodotti in Indonesia sono soggetti a PPh (imposta sul reddito) Per redditi all'estero: applicazione delle regole di residenza fiscale indonesiana"
+      },
+      {
+        "source_id": "a0c84a55-5da0-44b7-8ad6-891ad348502e",
+        "citation_number": 5,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CARATTERISTICHE E VALIDITA' ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Il Visto C1 (ex B211A) ha le seguenti caratteristiche principali: Tipo:             Visto di visita a singolo ingresso (kunjungan sekali) Finalita':        Turismo Durata iniziale:  60 giorni dal primo ingresso Proroga:          Fino a 60 giorni aggiuntivi per rinnovo [IMM-333] Permanenza max:   180 giorni totali [IMM-333] [IMM-370] Formato:          Adesivo (se richiesto in ambasciata) [IMM-279] Elettronico/e-visa (se richiesto online o al confine) [IMM-281] Utilizzo:         Entro 90 giorni dall'emissione [IMM-275]"
+      },
+      {
+        "source_id": "13b705f1-95a0-4a04-872c-bfa223ac8125",
+        "citation_number": 6,
+        "cited_text": "I dati di tutti gli stranieri soggiornanti vengono elaborati e resi accessibili alle agenzie competenti tramite il sistema informativo immigrazione. [IMM-089] I proprietari e gestori di alloggi (hotel, guest house, villa, affitti privati) hanno l'obbligo di comunicare i dati degli ospiti stranieri all'ufficio immigrazione. [IMM-099] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SEZIONE 6 — TABELLA RIEPILOGATIVA Misura          | Quando                          | Durata        | Base Normativa ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Cekal (uscita)  | Solo durante penyidikan formale | Temporanea    | UU 63/2024 [IMM-367] Respingimento   | Divieto ingresso (immigrazione) | Permanente    | PP 31/2013 [IMM-021] Deportazione    | Violazione soggiorno / penale   | Definitiva    | PP 31/2013 [IMM-022] Detenzione Adm. | In attesa esecuzione provved.   | Fino a 10 anni| Permenkumham-29-2021 [IMM-019] Timbro rimpatrio| Rigetto rinnovo / segnalazione  | 7 giorni      | Permenkumham-29-2021 [IMM-189]"
+      },
+      {
+        "source_id": "147e332b-7d12-400e-b222-8c587efa7ef9",
+        "citation_number": 7,
+        "cited_text": "Differenza E33G vs C5A (Visit Visa Content Creator): E33G: KITAS (residence permit), 1 anno, include MERP C5A: Visit Visa (non residenza), 60-180 giorni, no MERP E33G: più stabile, per chi vuole base permanente a Bali C5A: più flessibile, per chi va e viene Punto critico 2024-2025: Enforcement fiscale in corso: DJP Indonesia controlla i \"digital nomad\" Se trascorri 183+ giorni/anno: potenziale resident fiscale Indonesia Consulenza fiscale internazionale raccomandata per E33G ============================================================ PARTE 7: PERCORSO VERSO KITAP"
+      },
+      {
+        "source_id": "c5e5b5c0-14f4-45a8-84fa-e735dc517680",
+        "citation_number": 8,
+        "cited_text": "Verbatim : penyusunan daftar nama warga negara Indonesia yang dikenai Pencegahan keluar Wilayah Indonesia Riferimento : PP-31-2013 Pasal 175 Ayat 1 Huruf b [IMM-089] — rule Claim : I dati della sorveglianza amministrativa devono essere accessibili alle agenzie competenti secondo le loro funzioni attraverso il Sistema Informativo di Gestione dell'Immigrazione. Verbatim : Data dan informasi yang tercantum dalam Sistem Informasi Manajemen Keimigrasian harus dapat di akses oleh instansi dan/atau lembaga pemerintahan terkait"
+      },
+      {
+        "source_id": "8abf1fe6-c884-4bc2-aa7d-6fd509c5ec54",
+        "citation_number": 9,
+        "cited_text": "[CONTEXT: Kemnaker Circular 2026 - Alih Status TKA - Verifikasi Compliance] SE No. 3/836/PK.04/I/2026 - Verifikasi BPJS, WLKP, NIB Verifikasi Compliance: BPJS, WLKP, NIB Selain Kesamaan Sponsor, sistem SIAPKerja dan Imigrasi juga melakukan verifikasi silang (cross-check) terhadap: 1. BPJS Data Matching Data BPJS Ketenagakerjaan TKA harus cocok dengan RPTKA Nama TKA, nomor paspor, dan perusahaan sponsor harus identik Ketidakcocokan = penolakan otomatis 2. WLKP (Wajib Lapor Ketenagakerjaan Perusahaan)"
+      }
+    ]
+  }
+}

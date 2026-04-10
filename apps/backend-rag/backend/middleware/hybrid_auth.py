@@ -303,216 +303,106 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         # Removed sensitive debug logging - headers contain auth tokens
         logger.debug(f"Middleware dispatching: {request.url.path}")
 
-        try:
-            # Step 0: Allow CORS preflight requests (OPTIONS) to pass through
-            # This is essential for browser-based clients to work with CORS
-            if request.method == "OPTIONS":
-                logger.debug(f"CORS preflight request: {request.url.path}")
-                return await call_next(request)
+        # Step 0: Allow CORS preflight requests (OPTIONS) to pass through
+        if request.method == "OPTIONS":
+            logger.debug(f"CORS preflight request: {request.url.path}")
+            return await call_next(request)
 
-            # Step 1: Check if this is a public endpoint
-            if self.is_public_endpoint(request):
-                path = request.url.path
-                if path in ("/health", "/api/health"):
-                    # Skip verbose logging for health check (called every 15s by Fly)
-                    response = await call_next(request)
-                    response.headers["X-Auth-Type"] = "public"
-                    return response
-
-                # Log structured access to public endpoints for security audit
-                correlation_id = _get_correlation_id(request)
-                client_ip = request.client.host if request.client else "unknown"
-                user_agent = request.headers.get("user-agent", "unknown")
-
-                logger.info(
-                    "Public endpoint accessed",
-                    extra={
-                        "event_type": "public_endpoint_access",
-                        "endpoint": path,
-                        "method": request.method,
-                        "client_ip": client_ip,
-                        "user_agent": user_agent[:200],
-                        "correlation_id": correlation_id,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-
-                # Record metrics for public endpoint access
-                try:
-                    from backend.app.metrics import (
-                        public_endpoint_access_by_ip,
-                        public_endpoint_access_total,
-                    )
-
-                    # Record total access
-                    public_endpoint_access_total.labels(
-                        endpoint=request.url.path, method=request.method,
-                    ).inc()
-
-                    # Record access by IP (for abuse detection)
-                    public_endpoint_access_by_ip.labels(
-                        endpoint=request.url.path, client_ip=client_ip,
-                    ).inc()
-                except (ImportError, AttributeError):
-                    # Metrics not available, continue without metrics
-                    logger.debug("Metrics not available for public endpoint tracking")
-
+        # Step 1: Check if this is a public endpoint
+        if self.is_public_endpoint(request):
+            path = request.url.path
+            if path in ("/health", "/api/health"):
                 response = await call_next(request)
                 response.headers["X-Auth-Type"] = "public"
                 return response
 
-            # Step 2: Apply authentication if enabled (all non-public endpoints)
-            if self.api_auth_enabled:
-                auth_result = await self.authenticate_request(request)
+            correlation_id = _get_correlation_id(request)
+            client_ip = request.client.host if request.client else "unknown"
+            user_agent = request.headers.get("user-agent", "unknown")
 
-                # Fail-Closed: authentication required for non-public endpoints
-                if not auth_result:
-                    logger.debug(
-                        f"Authentication failed for: {request.url.path} from {request.client.host}",
-                    )
-                    from fastapi.responses import JSONResponse
+            logger.info(
+                "Public endpoint accessed",
+                extra={
+                    "event_type": "public_endpoint_access",
+                    "endpoint": path,
+                    "method": request.method,
+                    "client_ip": client_ip,
+                    "user_agent": user_agent[:200],
+                    "correlation_id": correlation_id,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
+            )
 
-                    cors_headers = self._cors_headers_for_request(request)
-                    return JSONResponse(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        content={"detail": "Authentication required"},
-                        headers={"WWW-Authenticate": "Bearer", **cors_headers},
-                    )
-
-                # Inject authenticated user context into request state
-                request.state.user = auth_result
-                request.state.auth_type = auth_result.get("auth_method", "unknown")
-
-                user_email = auth_result.get("email", "unknown")
-                logger.debug(
-                    f"Request authenticated: {request.url.path} - "
-                    f"User: {user_email} via {request.state.auth_type}",
+            try:
+                from backend.app.metrics import (
+                    public_endpoint_access_by_ip,
+                    public_endpoint_access_total,
                 )
+                public_endpoint_access_total.labels(
+                    endpoint=request.url.path, method=request.method,
+                ).inc()
+                public_endpoint_access_by_ip.labels(
+                    endpoint=request.url.path, client_ip=client_ip,
+                ).inc()
+            except (ImportError, AttributeError):
+                pass
 
-            # Step 3: Process the authenticated request
             response = await call_next(request)
-
-            # Step 4: Add auth metadata to response headers for monitoring
-            if hasattr(request.state, "auth_type"):
-                response.headers["X-Auth-Type"] = request.state.auth_type
-
+            response.headers["X-Auth-Type"] = "public"
             return response
 
-        except HTTPException as exc:
-            # HTTPException from dependency injection (e.g., get_database_pool) or endpoint handlers
-            # Extract correlation ID for better tracing
-            correlation_id = _get_correlation_id(request)
-            client_host = request.client.host if request.client else "unknown"
-
-            logger.warning(
-                f"[{correlation_id}] HTTPException during request processing: "
-                f"{exc.status_code} - {request.method} {request.url.path} from {client_host}. "
-                f"Detail: {exc.detail if isinstance(exc.detail, str) else 'See detail object'}",
-            )
-
-            from fastapi.responses import JSONResponse
-
-            # Sanitize exc.detail to avoid JSON serialization errors (e.g., Pool objects)
-            sanitized_detail = exc.detail
-            if isinstance(exc.detail, dict):
-                # Create a copy and sanitize any non-serializable values
-                sanitized_detail = {}
-                for key, value in exc.detail.items():
-                    if isinstance(value, (str, int, float, bool, type(None))):
-                        sanitized_detail[key] = value
-                    elif isinstance(value, (list, tuple)):
-                        # Recursively sanitize list items
-                        sanitized_detail[key] = [
-                            str(item)
-                            if not isinstance(item, (str, int, float, bool, type(None)))
-                            else item
-                            for item in value
-                        ]
-                    else:
-                        # Convert non-serializable objects to string
-                        sanitized_detail[key] = str(value)
-            elif not isinstance(exc.detail, (str, int, float, bool, type(None))):
-                # If detail is not a basic type, convert to string
-                sanitized_detail = str(exc.detail)
-
-            cors_headers = self._cors_headers_for_request(request)
+        # Step 2: Authenticate (isolated try/except — auth errors → 503)
+        if self.api_auth_enabled:
             try:
-                return JSONResponse(
-                    status_code=exc.status_code,
-                    content={"detail": sanitized_detail},
-                    headers={**(exc.headers or {}), **cors_headers},
+                auth_result = await self.authenticate_request(request)
+            except Exception as auth_exc:
+                # Auth system failure → fail-closed 503
+                correlation_id = _get_correlation_id(request)
+                client_host = request.client.host if request.client else "unknown"
+                error_type = type(auth_exc).__name__
+
+                logger.critical(
+                    f"[{correlation_id}] Auth system failure — ACCESS DENIED: "
+                    f"Type={error_type}, "
+                    f"Request={request.method} {request.url.path} from {client_host}",
+                    exc_info=True,
                 )
-            except (TypeError, ValueError) as serialization_error:
-                # If sanitization failed, fallback to string representation
-                logger.error(
-                    f"[{correlation_id}] Failed to serialize HTTPException detail: {serialization_error}. "
-                    f"Original detail type: {type(exc.detail)}",
-                )
+
+                from fastapi.responses import JSONResponse
+                cors_headers = self._cors_headers_for_request(request)
                 return JSONResponse(
-                    status_code=exc.status_code,
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
                     content={
-                        "detail": "Service unavailable (error serializing response)",
+                        "detail": f"Authentication service temporarily unavailable",
                         "correlation_id": correlation_id,
-                        "error_type": type(serialization_error).__name__,
+                        "error_type": error_type,
                     },
-                    headers={**(exc.headers or {}), **cors_headers},
+                    headers={**cors_headers, "X-Correlation-ID": correlation_id},
                 )
-        except Exception as e:
-            # FAIL-CLOSED: Any system error = deny access for security
-            correlation_id = _get_correlation_id(request)
-            client_host = request.client.host if request.client else "unknown"
 
-            # Log detailed exception info BEFORE sanitization for debugging
-            error_type = type(e).__name__
-            error_module = getattr(type(e), "__module__", "unknown")
-            error_repr = repr(e) if len(repr(e)) < 500 else repr(e)[:500] + "..."
+            if not auth_result:
+                logger.debug(
+                    f"Authentication failed for: {request.url.path} from {request.client.host}",
+                )
+                from fastapi.responses import JSONResponse
 
-            logger.critical(
-                f"[{correlation_id}] Authentication system failure - ACCESS DENIED: "
-                f"Type={error_type}, Module={error_module}, "
-                f"Request={request.method} {request.url.path} from {client_host}, "
-                f"Error={error_repr}",
-                exc_info=True,
-            )
+                cors_headers = self._cors_headers_for_request(request)
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "Authentication required"},
+                    headers={"WWW-Authenticate": "Bearer", **cors_headers},
+                )
 
-            from fastapi.responses import JSONResponse
+            request.state.user = auth_result
+            request.state.auth_type = auth_result.get("auth_method", "unknown")
 
-            # Safe error message extraction (avoid serializing non-serializable objects)
-            # Extract only exception type and a generic message to avoid Pool serialization
-            try:
-                # Check if error might involve database/Pool without trying to serialize it
-                if (
-                    "Pool" in error_type
-                    or "asyncpg" in error_type.lower()
-                    or "database" in error_type.lower()
-                    or "Database" in error_type
-                ):
-                    error_msg = "Database connection error during authentication"
-                else:
-                    # Try to get message safely, but fallback to type if it fails
-                    try:
-                        error_msg = str(e)
-                        # Sanitize message to remove any Pool references
-                        if "Pool" in error_msg or "asyncpg" in error_msg.lower():
-                            error_msg = "Database connection error during authentication"
-                        elif len(error_msg) > 200:
-                            error_msg = f"{error_type}: {error_msg[:200]}..."
-                    except (TypeError, ValueError, AttributeError):
-                        error_msg = f"{error_type} error during authentication"
-            except Exception as e:
-                logger.error(f"Error sanitizing authentication exception: {e}", exc_info=True)
-                error_msg = "Authentication service error"
+        # Step 3: Process the request (route handler errors propagate normally)
+        response = await call_next(request)
 
-            cors_headers = self._cors_headers_for_request(request)
-            return JSONResponse(
-                status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                content={
-                    "detail": f"Authentication service temporarily unavailable: {error_msg}",
-                    "correlation_id": correlation_id,
-                    "error_type": error_type,
-                },
-                headers={**cors_headers, "X-Correlation-ID": correlation_id},
-            )
+        if hasattr(request.state, "auth_type"):
+            response.headers["X-Auth-Type"] = request.state.auth_type
+
+        return response
 
     def _cors_headers_for_request(self, request: Request) -> dict[str, str]:
         origin = request.headers.get("origin")
