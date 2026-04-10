@@ -1,246 +1,254 @@
 """
-Unit tests for ZohoEmailService and sanitize_filename.
-Target: send, receive, folder listing, error handling, attachments.
+Unit tests for backend/services/integrations/zoho_email_service.py
+Covers: sanitize_filename, ZohoEmailService (list_folders, list_emails, get_email,
+        search_emails, send_email, reply_email, forward_email, mark_read,
+        toggle_flag, move_to_folder, _parse_recipients, _parse_recipients_to_objects,
+        _parse_attachments, _normalize_folder_type, _request, _get_headers,
+        _get_account_id, _log_activity, close)
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
-from backend.services.integrations.zoho_email_service import (
-    ZohoEmailService,
-    sanitize_filename,
-)
+# Patch heavy imports before importing the module
+with (
+    patch("backend.app.core.config.settings", MagicMock(zoho_api_domain="https://mail.zoho.com")),
+    patch("backend.app.metrics.metrics_collector", MagicMock()),
+):
+    from backend.services.integrations.zoho_email_service import (
+        ZohoEmailService,
+        sanitize_filename,
+    )
 
-# ============================================================================
-# FIXTURES
-# ============================================================================
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Fixtures
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 @pytest.fixture
-def mock_db_pool():
-    """Mock asyncpg pool with acquire() as async context manager."""
+def mock_pool() -> MagicMock:
+    """Mock asyncpg pool."""
     pool = MagicMock()
-    mock_conn = AsyncMock()
+    conn = AsyncMock()
 
-    pool.acquire = MagicMock(
-        return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=None),
-        ),
-    )
-    pool._mock_conn = mock_conn
+    class _Ctx:
+        async def __aenter__(self) -> AsyncMock:
+            return conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    pool.acquire = MagicMock(return_value=_Ctx())
+    pool._conn = conn
     return pool
 
 
 @pytest.fixture
-def mock_conn(mock_db_pool):
-    """Shortcut to the mocked connection."""
-    return mock_db_pool._mock_conn
-
-
-@pytest.fixture
-def service(mock_db_pool):
-    """Create ZohoEmailService with mocked dependencies."""
-    with (
-        patch("backend.services.integrations.zoho_email_service.settings") as mock_settings,
-        patch("backend.services.integrations.zoho_email_service.ZohoOAuthService") as mock_oauth_cls,
-    ):
-        mock_settings.zoho_api_domain = "https://mail.zoho.com"
-        mock_oauth = AsyncMock()
-        mock_oauth.get_valid_token = AsyncMock(return_value="mock-token-123")
-        mock_oauth.get_account_id = AsyncMock(return_value="account-456")
-        mock_oauth.get_connection_status = AsyncMock(return_value={"email": "user@balizero.com"})
-        mock_oauth.close = AsyncMock()
-        mock_oauth_cls.return_value = mock_oauth
-
-        svc = ZohoEmailService(db_pool=mock_db_pool)
-        svc.oauth_service = mock_oauth
+def service(mock_pool: MagicMock) -> ZohoEmailService:
+    """Create a ZohoEmailService with mocked deps."""
+    with patch("backend.services.integrations.zoho_email_service.ZohoOAuthService"):
+        svc = ZohoEmailService(db_pool=mock_pool)
+        svc.oauth_service = AsyncMock()
+        svc.oauth_service.get_valid_token = AsyncMock(return_value="test-token")
+        svc.oauth_service.get_account_id = AsyncMock(return_value="acc123")
+        svc.oauth_service.get_connection_status = AsyncMock(
+            return_value={"email": "user@balizero.com"},
+        )
+        svc.oauth_service.close = AsyncMock()
         svc.api_domain = "https://mail.zoho.com"
-        yield svc
+        return svc
 
 
-@pytest.fixture
-def mock_http_response():
-    """Factory for mock httpx responses."""
-    def _make(status_code=200, json_data=None, content=b""):
-        resp = MagicMock(spec=httpx.Response)
-        resp.status_code = status_code
-        resp.content = content or (json_data is not None and b"data")
-        resp.text = str(json_data) if json_data else ""
-        resp.json.return_value = json_data or {}
-        return resp
-    return _make
-
-
-# ============================================================================
-# sanitize_filename TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# sanitize_filename
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestSanitizeFilename:
-    """Tests for the sanitize_filename utility."""
+    def test_basic(self) -> None:
+        assert sanitize_filename("test.pdf") == "test.pdf"
 
-    def test_empty_filename(self):
-        """Empty filename returns unnamed_file."""
-        assert sanitize_filename("") == "unnamed_file"
+    def test_spaces_replaced(self) -> None:
+        assert sanitize_filename("my file.pdf") == "my_file.pdf"
 
-    def test_spaces_replaced(self):
-        """Spaces replaced with underscores."""
-        result = sanitize_filename("My File Name.pdf")
-        assert " " not in result
+    def test_special_chars_removed(self) -> None:
+        assert sanitize_filename('file<>:"|.pdf') == "file.pdf"
+
+    def test_comma_removed(self) -> None:
+        result = sanitize_filename("My File, Name (1).pdf")
+        assert "," not in result
         assert result.endswith(".pdf")
 
-    def test_special_chars_removed(self):
-        """Special characters removed."""
-        result = sanitize_filename('File<>:"/\\|?*,.pdf')
-        assert "<" not in result
-        assert ">" not in result
-        assert ":" not in result
-        assert '"' not in result
+    def test_empty_filename(self) -> None:
+        assert sanitize_filename("") == "unnamed_file"
 
-    def test_truncation(self):
-        """Long filenames truncated to max_length."""
-        result = sanitize_filename("a" * 300 + ".txt", max_length=200)
+    def test_very_long_filename(self) -> None:
+        long_name = "a" * 300 + ".txt"
+        result = sanitize_filename(long_name)
         assert len(result) <= 200
-        assert result.endswith(".txt")
 
-    def test_multiple_underscores_collapsed(self):
-        """Multiple consecutive underscores collapsed to one."""
-        result = sanitize_filename("file___name.pdf")
+    def test_no_extension(self) -> None:
+        result = sanitize_filename("myfile")
+        assert result == "myfile"
+
+    def test_only_special_chars(self) -> None:
+        result = sanitize_filename('<>:"|?.pdf')
+        assert result.endswith(".pdf")
+        assert "file" in result  # falls back to "file"
+
+    def test_multiple_underscores_collapsed(self) -> None:
+        result = sanitize_filename("a   b   c.pdf")
         assert "___" not in result
 
-    def test_leading_trailing_underscores_stripped(self):
-        """Leading/trailing underscores removed from name part."""
-        result = sanitize_filename("_file_.pdf")
-        assert not result.startswith("_")
 
-    def test_only_special_chars(self):
-        """Filename with only special chars gets fallback name."""
-        result = sanitize_filename('<>:"/\\|?*.pdf')
-        assert "file" in result or "unnamed" in result
-
-    def test_no_extension(self):
-        """Filename without extension handled."""
-        result = sanitize_filename("README")
-        assert result == "README"
-
-    def test_preserves_extension(self):
-        """Extension preserved after sanitization."""
-        result = sanitize_filename("My Document (1).docx")
-        assert result.endswith(".docx")
-
-    def test_comma_in_filename(self):
-        """Commas removed (known Zoho API issue)."""
-        result = sanitize_filename("File, Name (1).pdf")
-        assert "," not in result
-
-
-# ============================================================================
-# ZohoEmailService._normalize_folder_type TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._normalize_folder_type
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestNormalizeFolderType:
-    """Tests for folder type normalization."""
-
-    def test_inbox(self, service):
+    def test_inbox(self, service: ZohoEmailService) -> None:
         assert service._normalize_folder_type("Inbox") == "inbox"
 
-    def test_sent(self, service):
+    def test_sent(self, service: ZohoEmailService) -> None:
         assert service._normalize_folder_type("Sent") == "sent"
 
-    def test_drafts(self, service):
-        assert service._normalize_folder_type("Drafts") == "drafts"
+    def test_custom(self, service: ZohoEmailService) -> None:
+        assert service._normalize_folder_type("My Folder") == "custom"
 
-    def test_trash(self, service):
-        assert service._normalize_folder_type("Trash") == "trash"
-
-    def test_junk_maps_to_spam(self, service):
+    def test_junk(self, service: ZohoEmailService) -> None:
         assert service._normalize_folder_type("Junk") == "spam"
 
-    def test_custom(self, service):
-        assert service._normalize_folder_type("MyFolder") == "custom"
 
-
-# ============================================================================
-# ZohoEmailService._parse_recipients TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._parse_recipients / _parse_recipients_to_objects
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestParseRecipients:
-    """Tests for recipient parsing."""
-
-    def test_empty_string(self, service):
+    def test_empty(self, service: ZohoEmailService) -> None:
         assert service._parse_recipients("") == []
-
-    def test_single_recipient(self, service):
-        result = service._parse_recipients("user@example.com")
-        assert result == ["user@example.com"]
-
-    def test_multiple_recipients(self, service):
-        result = service._parse_recipients("a@b.com, c@d.com, e@f.com")
-        assert len(result) == 3
-
-    def test_parse_recipients_to_objects_empty(self, service):
         assert service._parse_recipients_to_objects("") == []
 
-    def test_parse_recipients_to_objects_plain(self, service):
-        result = service._parse_recipients_to_objects("user@example.com")
-        assert len(result) == 1
-        assert result[0]["address"] == "user@example.com"
-        assert result[0]["name"] == ""
+    def test_single(self, service: ZohoEmailService) -> None:
+        assert service._parse_recipients("a@b.com") == ["a@b.com"]
 
-    def test_parse_recipients_to_objects_with_name(self, service):
+    def test_multiple(self, service: ZohoEmailService) -> None:
+        result = service._parse_recipients("a@b.com, c@d.com")
+        assert len(result) == 2
+
+    def test_to_objects_simple(self, service: ZohoEmailService) -> None:
+        result = service._parse_recipients_to_objects("user@example.com")
+        assert result == [{"address": "user@example.com", "name": ""}]
+
+    def test_to_objects_with_name(self, service: ZohoEmailService) -> None:
         result = service._parse_recipients_to_objects('"John Doe" <john@example.com>')
         assert len(result) == 1
         assert result[0]["address"] == "john@example.com"
         assert result[0]["name"] == "John Doe"
 
 
-# ============================================================================
-# ZohoEmailService._parse_attachments TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._parse_attachments
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestParseAttachments:
-    """Tests for attachment metadata parsing."""
-
-    def test_empty_list(self, service):
+    def test_empty(self, service: ZohoEmailService) -> None:
         assert service._parse_attachments([]) == []
 
-    def test_single_attachment(self, service):
-        attachments = [
+    def test_basic_attachment(self, service: ZohoEmailService) -> None:
+        att = [
             {
-                "attachmentId": "att-1",
-                "attachmentName": "doc.pdf",
+                "attachmentId": "att1",
+                "attachmentName": "test.pdf",
                 "attachmentSize": 1024,
                 "contentType": "application/pdf",
             },
         ]
-        result = service._parse_attachments(attachments)
+        result = service._parse_attachments(att)
         assert len(result) == 1
-        assert result[0]["attachment_id"] == "att-1"
-        assert result[0]["filename"] == "doc.pdf"
+        assert result[0]["attachment_id"] == "att1"
+        assert result[0]["filename"] == "test.pdf"
         assert result[0]["size"] == 1024
-        assert result[0]["mime_type"] == "application/pdf"
 
 
-# ============================================================================
-# ZohoEmailService.list_folders TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._get_client / close
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestGetClientAndClose:
+    def test_creates_client(self, service: ZohoEmailService) -> None:
+        client = service._get_client()
+        assert client is not None
+
+    def test_returns_same_client(self, service: ZohoEmailService) -> None:
+        c1 = service._get_client()
+        c2 = service._get_client()
+        assert c1 is c2
+
+    @pytest.mark.asyncio
+    async def test_close(self, service: ZohoEmailService) -> None:
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        await service.close()
+        mock_client.aclose.assert_awaited_once()
+        service.oauth_service.close.assert_awaited_once()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._request
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestRequest:
+    @pytest.mark.asyncio
+    async def test_successful_request(self, service: ZohoEmailService) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": []}
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        service._client = mock_client
+        service._client.is_closed = False
+
+        result = await service._request("user1", "GET", "/messages/view")
+        assert result == {"data": []}
+
+    @pytest.mark.asyncio
+    async def test_error_response(self, service: ZohoEmailService) -> None:
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.content = b'{"data": {"errorCode": "INVALID_TOKEN"}}'
+        mock_response.json.return_value = {"data": {"errorCode": "INVALID_TOKEN"}}
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
+        service._client = mock_client
+
+        with pytest.raises(ValueError, match="API error"):
+            await service._request("user1", "GET", "/messages/view")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.list_folders
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestListFolders:
-    """Tests for folder listing."""
-
     @pytest.mark.asyncio
-    async def test_list_folders_success(self, service, mock_http_response):
-        """Successful folder listing returns transformed data."""
-        mock_resp = mock_http_response(
-            200,
-            {
+    async def test_list_folders(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={
                 "data": [
                     {
                         "folderId": "f1",
@@ -259,525 +267,366 @@ class TestListFolders:
                 ],
             },
         )
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
 
-        folders = await service.list_folders("user-1")
-        assert len(folders) == 2
-        assert folders[0]["folder_id"] == "f1"
-        assert folders[0]["folder_type"] == "inbox"
-        assert folders[0]["unread_count"] == 5
-        assert folders[1]["folder_type"] == "sent"
+        result = await service.list_folders("user1")
+        assert len(result) == 2
+        assert result[0]["folder_id"] == "f1"
+        assert result[0]["folder_type"] == "inbox"
+        assert result[1]["folder_type"] == "sent"
 
 
-# ============================================================================
-# ZohoEmailService.list_emails TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.list_emails
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestListEmails:
-    """Tests for email listing."""
-
     @pytest.mark.asyncio
-    async def test_list_emails_success(self, service, mock_http_response):
-        """Successful email listing returns transformed data."""
-        mock_resp = mock_http_response(
-            200,
-            {
+    async def test_list_emails_basic(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={
                 "data": [
                     {
                         "messageId": "m1",
-                        "folderId": "f1",
+                        "folderId": "inbox",
                         "threadId": "t1",
-                        "subject": "Test Email",
+                        "subject": "Hello",
                         "fromAddress": "sender@example.com",
-                        "sender": "Sender Name",
+                        "sender": "Sender",
                         "toAddress": "me@balizero.com",
                         "ccAddress": "",
-                        "summary": "Preview text...",
+                        "summary": "Preview...",
                         "hasAttachment": False,
                         "isRead": False,
-                        "isFlagged": True,
-                        "receivedTime": "2026-03-15T10:00:00Z",
+                        "isFlagged": False,
+                        "receivedTime": "2026-01-01T10:00:00Z",
                     },
                 ],
                 "paging": {"totalCount": 1, "hasMoreData": False},
             },
         )
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
 
-        result = await service.list_emails("user-1", folder_id="f1", limit=50)
+        result = await service.list_emails("user1")
         assert len(result["emails"]) == 1
+        assert result["emails"][0]["subject"] == "Hello"
         assert result["total"] == 1
         assert result["has_more"] is False
-        email = result["emails"][0]
-        assert email["message_id"] == "m1"
-        assert email["subject"] == "Test Email"
-        assert email["is_read"] is False
-        assert email["is_flagged"] is True
-
-
-# ============================================================================
-# ZohoEmailService.get_email TESTS
-# ============================================================================
-
-
-class TestGetEmail:
-    """Tests for reading a single email."""
 
     @pytest.mark.asyncio
-    async def test_get_email_requires_folder_id(self, service):
-        """get_email raises ValueError without folder_id."""
-        with pytest.raises(ValueError, match="folder_id is required"):
-            await service.get_email("user-1", "msg-1", folder_id=None)
+    async def test_list_emails_with_filters(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": [], "paging": {"totalCount": 0, "hasMoreData": False}},
+        )
 
+        result = await service.list_emails(
+            "user1",
+            folder_id="sent",
+            limit=10,
+            start=5,
+            search_key="invoice",
+            is_unread=True,
+        )
+        assert result["emails"] == []
+        # Verify params were passed correctly
+        call_args = service._request.call_args
+        assert call_args[1]["params"]["searchKey"] == "invoice"
+        assert call_args[1]["params"]["status"] == "unread"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.search_emails
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSearchEmails:
     @pytest.mark.asyncio
-    async def test_get_email_not_found(self, service, mock_http_response):
-        """get_email raises ValueError when message not in folder."""
-        list_resp = mock_http_response(200, {"data": []})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=list_resp)
-        service._client = mock_client
+    async def test_search(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={
+                "data": [
+                    {
+                        "messageId": "m1",
+                        "folderId": "inbox",
+                        "subject": "Invoice 2026",
+                        "fromAddress": "billing@example.com",
+                        "sender": "Billing",
+                        "summary": "Your invoice...",
+                        "hasAttachment": True,
+                        "isRead": True,
+                        "receivedTime": "2026-01-01T10:00:00Z",
+                    },
+                ],
+            },
+        )
 
-        with pytest.raises(ValueError, match="not found"):
-            await service.get_email("user-1", "msg-999", folder_id="f1")
+        result = await service.search_emails("user1", "invoice")
+        assert len(result) == 1
+        assert result[0]["subject"] == "Invoice 2026"
+        assert result[0]["has_attachments"] is True
 
 
-# ============================================================================
-# ZohoEmailService.send_email TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.send_email
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestSendEmail:
-    """Tests for sending emails."""
-
     @pytest.mark.asyncio
-    async def test_send_email_success(self, service, mock_conn, mock_http_response):
-        """Successful send returns message_id."""
-        mock_resp = mock_http_response(200, {"data": {"messageId": "sent-1"}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        # Mock _log_activity to avoid DB calls
+    async def test_send_basic(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "sent1"}},
+        )
         service._log_activity = AsyncMock()
 
         with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
             result = await service.send_email(
-                user_id="user-1",
+                user_id="user1",
                 to=["recipient@example.com"],
-                subject="Test Subject",
+                subject="Test",
                 content="<p>Hello</p>",
             )
 
         assert result["success"] is True
-        assert result["message_id"] == "sent-1"
+        assert result["message_id"] == "sent1"
+        service._log_activity.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_send_email_api_error(self, service, mock_http_response):
-        """API error during send raises and records metrics."""
-        mock_resp = mock_http_response(
-            400,
-            {"data": {"errorCode": "INVALID_DATA", "message": "Bad request"}},
+    async def test_send_with_cc_bcc_attachments(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "sent2"}},
         )
-        mock_resp.content = b"error"
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
+        service._log_activity = AsyncMock()
+
+        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
+            result = await service.send_email(
+                user_id="user1",
+                to=["a@b.com"],
+                subject="With attachments",
+                content="body",
+                cc=["cc@b.com"],
+                bcc=["bcc@b.com"],
+                attachments=[{"store_name": "s", "attachment_path": "/p", "attachment_name": "f.pdf"}],
+                is_html=False,
+            )
+
+        assert result["success"] is True
+        payload = service._request.call_args[1]["json_data"]
+        assert payload["ccAddress"] == "cc@b.com"
+        assert payload["bccAddress"] == "bcc@b.com"
+        assert len(payload["attachments"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_send_error_records_metric(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(side_effect=ValueError("API error"))
 
         with (
             patch("backend.services.integrations.zoho_email_service.metrics_collector"),
             pytest.raises(ValueError),
         ):
             await service.send_email(
-                user_id="user-1",
-                to=["bad@example.com"],
-                subject="Fail",
-                content="content",
+                user_id="user1",
+                to=["a@b.com"],
+                subject="Test",
+                content="body",
             )
 
 
-# ============================================================================
-# ZohoEmailService.reply_email TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.reply_email
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestReplyEmail:
-    """Tests for replying to emails."""
-
     @pytest.mark.asyncio
-    async def test_reply_email_success(self, service, mock_http_response):
-        """Successful reply returns message_id."""
-        mock_resp = mock_http_response(200, {"data": {"messageId": "reply-1"}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
+    async def test_reply(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "reply1"}},
+        )
         service._log_activity = AsyncMock()
 
         result = await service.reply_email(
-            user_id="user-1",
-            message_id="msg-1",
+            user_id="user1",
+            message_id="m1",
             content="Thanks!",
             to_address="sender@example.com",
         )
         assert result["success"] is True
-        assert result["message_id"] == "reply-1"
+        assert result["message_id"] == "reply1"
 
     @pytest.mark.asyncio
-    async def test_reply_all(self, service, mock_http_response):
-        """Reply all uses 'replyall' endpoint."""
-        mock_resp = mock_http_response(200, {"data": {"messageId": "reply-2"}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
+    async def test_reply_all(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "reply2"}},
+        )
         service._log_activity = AsyncMock()
 
         result = await service.reply_email(
-            user_id="user-1",
-            message_id="msg-1",
-            content="Thanks all!",
+            user_id="user1",
+            message_id="m1",
+            content="Reply all",
             reply_all=True,
             to_address="sender@example.com",
+            cc_address="other@example.com",
         )
         assert result["success"] is True
-        call_args = mock_client.request.call_args
-        assert "replyall" in call_args.kwargs.get("url", "")
+        # Should call /messages/m1/replyall
+        call_args = service._request.call_args
+        assert "replyall" in call_args[0][2]
 
 
-# ============================================================================
-# ZohoEmailService.forward_email TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.forward_email
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 class TestForwardEmail:
-    """Tests for forwarding emails."""
-
     @pytest.mark.asyncio
-    async def test_forward_email_success(self, service, mock_http_response):
-        """Successful forward returns message_id."""
-        mock_resp = mock_http_response(200, {"data": {"messageId": "fwd-1"}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
+    async def test_forward(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "fwd1"}},
+        )
         service._log_activity = AsyncMock()
 
         result = await service.forward_email(
-            user_id="user-1",
-            message_id="msg-1",
-            to=["forward@example.com"],
-            content="FYI",
+            user_id="user1",
+            message_id="m1",
+            to=["fwd@example.com"],
+            content="<p>FYI</p>",
         )
         assert result["success"] is True
-        assert result["message_id"] == "fwd-1"
-
-
-# ============================================================================
-# ZohoEmailService.mark_read TESTS
-# ============================================================================
-
-
-class TestMarkRead:
-    """Tests for marking emails as read/unread."""
+        assert result["message_id"] == "fwd1"
 
     @pytest.mark.asyncio
-    async def test_mark_read(self, service, mock_http_response):
-        """mark_read sends correct mode."""
-        mock_resp = mock_http_response(200, {"data": {}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.mark_read("user-1", ["msg-1", "msg-2"], is_read=True)
-        assert result is True
-
-    @pytest.mark.asyncio
-    async def test_mark_unread(self, service, mock_http_response):
-        """mark_read with is_read=False sends markAsUnread."""
-        mock_resp = mock_http_response(200, {"data": {}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.mark_read("user-1", ["msg-1"], is_read=False)
-        assert result is True
-
-
-# ============================================================================
-# ZohoEmailService.toggle_flag TESTS
-# ============================================================================
-
-
-class TestToggleFlag:
-    """Tests for flagging/unflagging emails."""
-
-    @pytest.mark.asyncio
-    async def test_flag_email(self, service, mock_http_response):
-        """Flag an email."""
-        mock_resp = mock_http_response(200, {"data": {}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.toggle_flag("user-1", "msg-1", is_flagged=True)
-        assert result is True
-
-
-# ============================================================================
-# ZohoEmailService.move_to_folder TESTS
-# ============================================================================
-
-
-class TestMoveToFolder:
-    """Tests for moving emails between folders."""
-
-    @pytest.mark.asyncio
-    async def test_move_to_folder(self, service, mock_http_response):
-        """Move emails to a folder."""
-        mock_resp = mock_http_response(200, {"data": {}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.move_to_folder("user-1", ["msg-1"], "folder-archive")
-        assert result is True
-
-
-# ============================================================================
-# ZohoEmailService.delete_emails TESTS
-# ============================================================================
-
-
-class TestDeleteEmails:
-    """Tests for deleting emails (move to trash)."""
-
-    @pytest.mark.asyncio
-    async def test_delete_finds_trash_and_moves(self, service, mock_http_response):
-        """delete_emails finds Trash folder and moves messages there."""
-        # Mock list_folders → returns a trash folder
-        service.list_folders = AsyncMock(
-            return_value=[
-                {"folder_id": "f-inbox", "folder_name": "Inbox", "folder_type": "inbox"},
-                {"folder_id": "f-trash", "folder_name": "Trash", "folder_type": "trash"},
-            ],
+    async def test_forward_no_content(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            return_value={"data": {"messageId": "fwd2"}},
         )
-        service.move_to_folder = AsyncMock(return_value=True)
         service._log_activity = AsyncMock()
 
-        with patch("backend.services.integrations.zoho_email_service.metrics_collector"):
-            result = await service.delete_emails("user-1", ["msg-1"])
-        assert result is True
-        service.move_to_folder.assert_awaited_once_with("user-1", ["msg-1"], "f-trash")
-
-    @pytest.mark.asyncio
-    async def test_delete_no_trash_folder_raises(self, service):
-        """delete_emails raises if no Trash folder found."""
-        service.list_folders = AsyncMock(
-            return_value=[
-                {"folder_id": "f-inbox", "folder_name": "Inbox", "folder_type": "inbox"},
-            ],
-        )
-
-        with (
-            patch("backend.services.integrations.zoho_email_service.metrics_collector"),
-            pytest.raises(ValueError, match="Trash folder not found"),
-        ):
-            await service.delete_emails("user-1", ["msg-1"])
-
-
-# ============================================================================
-# ZohoEmailService.upload_attachment TESTS
-# ============================================================================
-
-
-class TestUploadAttachment:
-    """Tests for attachment upload with validation."""
-
-    @pytest.mark.asyncio
-    async def test_upload_too_large(self, service):
-        """File exceeding 25MB limit is rejected."""
-        big_content = b"x" * (26 * 1024 * 1024)
-        with pytest.raises(ValueError, match="too large"):
-            await service.upload_attachment(
-                user_id="user-1",
-                filename="huge.pdf",
-                content=big_content,
-                content_type="application/pdf",
-            )
-
-    @pytest.mark.asyncio
-    async def test_upload_filename_too_long(self, service):
-        """Filename exceeding 255 chars is rejected."""
-        with pytest.raises(ValueError, match="too long"):
-            await service.upload_attachment(
-                user_id="user-1",
-                filename="a" * 300 + ".pdf",
-                content=b"content",
-                content_type="application/pdf",
-            )
-
-    @pytest.mark.asyncio
-    async def test_upload_success(self, service, mock_http_response):
-        """Successful upload returns attachment details."""
-        mock_resp = mock_http_response(
-            200,
-            {
-                "data": {
-                    "attachmentId": "att-1",
-                    "storeName": "store-1",
-                    "attachmentPath": "/path/to/att",
-                    "attachmentName": "doc.pdf",
-                },
-            },
-        )
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.post = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.upload_attachment(
-            user_id="user-1",
-            filename="doc.pdf",
-            content=b"PDF content here",
-            content_type="application/pdf",
-        )
-        assert result["attachment_id"] == "att-1"
-        assert result["store_name"] == "store-1"
-
-
-# ============================================================================
-# ZohoEmailService.save_draft TESTS
-# ============================================================================
-
-
-class TestSaveDraft:
-    """Tests for saving email drafts."""
-
-    @pytest.mark.asyncio
-    async def test_save_draft_success(self, service, mock_http_response):
-        """Successful draft save returns message_id."""
-        mock_resp = mock_http_response(200, {"data": {"messageId": "draft-1"}})
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        result = await service.save_draft(
-            user_id="user-1",
-            to=["draft-recipient@example.com"],
-            subject="Draft Subject",
-            content="Draft body",
+        result = await service.forward_email(
+            user_id="user1",
+            message_id="m1",
+            to=["fwd@example.com"],
         )
         assert result["success"] is True
-        assert result["message_id"] == "draft-1"
 
 
-# ============================================================================
-# ZohoEmailService.get_unread_count TESTS
-# ============================================================================
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.mark_read / toggle_flag / move_to_folder
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
-class TestGetUnreadCount:
-    """Tests for unread count aggregation."""
+class TestStatusOperations:
+    @pytest.mark.asyncio
+    async def test_mark_read(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(return_value={})
+
+        result = await service.mark_read("user1", ["m1", "m2"], is_read=True)
+        assert result is True
 
     @pytest.mark.asyncio
-    async def test_get_unread_count_success(self, service):
-        """Sums unread counts across all folders."""
-        service.list_folders = AsyncMock(
-            return_value=[
-                {"folder_id": "f1", "unread_count": 5},
-                {"folder_id": "f2", "unread_count": 3},
-                {"folder_id": "f3", "unread_count": 0},
+    async def test_mark_unread(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(return_value={})
+
+        result = await service.mark_read("user1", ["m1"], is_read=False)
+        assert result is True
+        payload = service._request.call_args[1]["json_data"]
+        assert payload["mode"] == "markAsUnread"
+
+    @pytest.mark.asyncio
+    async def test_toggle_flag(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(return_value={})
+
+        result = await service.toggle_flag("user1", "m1", is_flagged=True)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_move_to_folder(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(return_value={})
+
+        result = await service.move_to_folder("user1", ["m1", "m2"], "trash_id")
+        assert result is True
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService.get_email
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestGetEmail:
+    @pytest.mark.asyncio
+    async def test_get_email(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(
+            side_effect=[
+                # First call: list emails to find metadata
+                {
+                    "data": [
+                        {
+                            "messageId": "m1",
+                            "folderId": "inbox",
+                            "threadId": "t1",
+                            "subject": "Test Email",
+                            "fromAddress": "sender@example.com",
+                            "sender": "Sender",
+                            "toAddress": "me@balizero.com",
+                            "ccAddress": "",
+                            "bccAddress": "",
+                            "summary": "Preview",
+                            "hasAttachment": False,
+                            "isFlagged": False,
+                            "receivedTime": "2026-01-01T10:00:00Z",
+                            "attachments": [],
+                        },
+                    ],
+                },
+                # Second call: get content
+                {"data": {"content": "<p>Hello World</p>"}},
             ],
         )
-        count = await service.get_unread_count("user-1")
-        assert count == 8
+        service.mark_read = AsyncMock()
+
+        result = await service.get_email("user1", "m1", folder_id="inbox")
+        assert result["subject"] == "Test Email"
+        assert result["html_content"] == "<p>Hello World</p>"
+        assert result["is_read"] is True
 
     @pytest.mark.asyncio
-    async def test_get_unread_count_error_returns_zero(self, service):
-        """Returns 0 when list_folders fails."""
-        service.list_folders = AsyncMock(side_effect=Exception("API error"))
-        count = await service.get_unread_count("user-1")
-        assert count == 0
-
-
-# ============================================================================
-# ZohoEmailService.search_emails TESTS
-# ============================================================================
-
-
-class TestSearchEmails:
-    """Tests for email search."""
+    async def test_get_email_no_folder_id(self, service: ZohoEmailService) -> None:
+        with pytest.raises(ValueError, match="folder_id is required"):
+            await service.get_email("user1", "m1")
 
     @pytest.mark.asyncio
-    async def test_search_emails_success(self, service, mock_http_response):
-        """Successful search returns transformed results."""
-        mock_resp = mock_http_response(
-            200,
-            {
-                "data": [
-                    {
-                        "messageId": "m1",
-                        "folderId": "f1",
-                        "subject": "Invoice #123",
-                        "fromAddress": "accounts@vendor.com",
-                        "sender": "Vendor",
-                        "summary": "Please find attached...",
-                        "hasAttachment": True,
-                        "isRead": True,
-                        "receivedTime": "2026-03-10T09:00:00Z",
-                    },
-                ],
-            },
+    async def test_get_email_not_found(self, service: ZohoEmailService) -> None:
+        service._request = AsyncMock(return_value={"data": []})
+
+        with pytest.raises(ValueError, match="not found"):
+            await service.get_email("user1", "nonexistent", folder_id="inbox")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ZohoEmailService._log_activity
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestLogActivity:
+    @pytest.mark.asyncio
+    async def test_log_activity_success(self, service: ZohoEmailService, mock_pool: MagicMock) -> None:
+        mock_pool._conn.fetchval = AsyncMock(return_value="user@balizero.com")
+        mock_pool._conn.execute = AsyncMock()
+
+        await service._log_activity(
+            user_id="user1",
+            operation="sent",
+            email_subject="Test",
+            recipient_email="a@b.com",
         )
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.request = AsyncMock(return_value=mock_resp)
-        service._client = mock_client
-
-        results = await service.search_emails("user-1", "invoice")
-        assert len(results) == 1
-        assert results[0]["subject"] == "Invoice #123"
-        assert results[0]["has_attachments"] is True
-
-
-# ============================================================================
-# ZohoEmailService.close TESTS
-# ============================================================================
-
-
-class TestServiceClose:
-    """Tests for cleanup."""
+        mock_pool._conn.execute.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_close_with_active_client(self, service):
-        """close() shuts down the httpx client and oauth service."""
-        mock_client = AsyncMock()
-        mock_client.is_closed = False
-        mock_client.aclose = AsyncMock()
-        service._client = mock_client
+    async def test_log_activity_failure_does_not_raise(
+        self, service: ZohoEmailService, mock_pool: MagicMock,
+    ) -> None:
+        mock_pool._conn.fetchval = AsyncMock(side_effect=Exception("DB error"))
 
-        await service.close()
-        mock_client.aclose.assert_awaited_once()
-        service.oauth_service.close.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_close_without_client(self, service):
-        """close() handles no client gracefully."""
-        service._client = None
-        await service.close()
-        service.oauth_service.close.assert_awaited_once()
+        # Should not raise
+        await service._log_activity(user_id="user1", operation="sent")

@@ -364,12 +364,24 @@ class TestHybridSearch:
         assert results["bm25_enabled"] is True
 
     @pytest.mark.asyncio
-    async def test_hybrid_search_without_bm25(self, search_service):
+    async def test_hybrid_search_without_bm25(
+        self, mock_collection_manager, mock_query_router, mock_embedder,
+    ):
         """Test hybrid search without BM25 vectorizer"""
-        search_service._bm25_vectorizer = None
+        # Create a fresh SearchService to avoid state pollution from other tests
+        mock_manager, _ = mock_collection_manager
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
+            mock_create.return_value = mock_embedder
+            fresh_service = SearchService(
+                collection_manager=mock_manager,
+                query_router=mock_query_router,
+            )
+            fresh_service.embedder = mock_embedder
 
-        results = await search_service.hybrid_search(
-            query="test query",
+        fresh_service._bm25_vectorizer = None
+
+        results = await fresh_service.hybrid_search(
+            query="test query no bm25",
             user_level=1,
             limit=5,
         )
@@ -378,10 +390,22 @@ class TestHybridSearch:
         assert results["bm25_enabled"] is False
 
     @pytest.mark.asyncio
-    async def test_hybrid_search_fallback_on_error(self, search_service):
+    async def test_hybrid_search_fallback_on_error(
+        self, mock_collection_manager, mock_query_router, mock_embedder,
+    ):
         """Test hybrid search falls back to regular search on error"""
-        search_service._bm25_vectorizer = MagicMock()
-        search_service._bm25_vectorizer.generate_query_sparse_vector = MagicMock(
+        # Create a fresh SearchService to avoid state pollution from other tests
+        mock_manager, _ = mock_collection_manager
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
+            mock_create.return_value = mock_embedder
+            fresh_service = SearchService(
+                collection_manager=mock_manager,
+                query_router=mock_query_router,
+            )
+            fresh_service.embedder = mock_embedder
+
+        fresh_service._bm25_vectorizer = MagicMock()
+        fresh_service._bm25_vectorizer.generate_query_sparse_vector = MagicMock(
             side_effect=Exception("BM25 error")
         )
 
@@ -392,16 +416,16 @@ class TestHybridSearch:
                 "collection": "test",
             }
 
-        search_service.search = AsyncMock(side_effect=mock_search)
+        fresh_service.search = AsyncMock(side_effect=mock_search)
 
-        await search_service.hybrid_search(
-            query="test query",
+        await fresh_service.hybrid_search(
+            query="test query fallback error",
             user_level=1,
             limit=5,
         )
 
         # Should have called regular search as fallback
-        assert search_service.search.called
+        assert fresh_service.search.called
 
 
 class TestSearchCollection:
