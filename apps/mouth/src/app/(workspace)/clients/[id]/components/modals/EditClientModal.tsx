@@ -236,9 +236,9 @@ export function EditClientModal({
                   phone: e.target.value + localNumber,
                 });
               }}
-              className={`${inputClass} w-[130px] flex-shrink-0`}
+              className={`${inputClass} !w-[90px] flex-shrink-0`}
             >
-              {COUNTRY_CODES.map(({ code, country, flag }) => (
+              {COUNTRY_CODES.map(({ code, flag }) => (
                 <option key={code} value={code}>
                   {flag} {code}
                 </option>
@@ -253,7 +253,7 @@ export function EditClientModal({
                 const digits = e.target.value.replace(/[^\d]/g, "");
                 setFormData({ ...formData, phone: countryCode + digits });
               }}
-              className={`${inputClass} flex-1 min-w-0`}
+              className={`${inputClass} flex-1 min-w-[100px]`}
               placeholder="Phone number"
             />
           </div>
