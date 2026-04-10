@@ -29,9 +29,8 @@ def fetch_arxiv_papers(
         categories: Comma-separated arXiv categories
         max_results: Maximum papers to fetch
     """
-    cats = " OR ".join(f"cat:{c.strip()}" for c in categories.split(","))
-    query = f"search_query={cats}&sortBy=submittedDate&sortOrder=descending&max_results={max_results}"
-    url = f"{ARXIV_API}?{query}"
+    cats = "+OR+".join(f"cat:{c.strip()}" for c in categories.split(","))
+    url = f"{ARXIV_API}?search_query={cats}&sortBy=submittedDate&sortOrder=descending&max_results={max_results}"
 
     try:
         result = subprocess.run(

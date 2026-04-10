@@ -80,14 +80,26 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"[Mata Garuda] Query: {query}")
     print()
 
+    # Always provide KB in context for knowledge tools
+    from mata_garuda.runtime.knowledge import KnowledgeBase
+
+    kb = KnowledgeBase()
+    context_variables = {"kb": kb, "agent_name": agent_name}
+
     # Run with Lamarckian feedback if requested
     if getattr(args, "lamarckian", False):
         from mata_garuda.runtime.lamarckian import run_with_lamarckian_feedback
 
         print("[Mata Garuda] Lamarckian feedback loop ACTIVE")
-        response = run_with_lamarckian_feedback(agent=agent, query=query)
+        response = run_with_lamarckian_feedback(
+            agent=agent, query=query, kb=kb, context_variables=context_variables,
+        )
     else:
-        response = run_agent_loop(agent=agent, query=query)
+        response = run_agent_loop(
+            agent=agent, query=query, context_variables=context_variables,
+        )
+
+    kb.close()
 
     # Print final messages
     for msg in response.messages:
