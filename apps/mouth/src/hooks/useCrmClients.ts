@@ -263,32 +263,42 @@ export function useCrmStats() {
   return useQuery({
     queryKey: ["crm", "stats"],
     queryFn: async () => {
-      const [clientStats, practiceStats, interactionStats] = await Promise.all([
-        api.crm.request<{
-          total: number;
-          by_status: Record<string, number>;
-          by_team_member: Array<{ assigned_to: string; count: number }>;
-          passport_expired: number;
-          passport_expiring_soon: number;
-          silent_30d: number;
-        }>("/api/crm/clients/stats/overview"),
-        api.crm.getPracticeStats(),
-        api.crm.getInteractionStats(),
-      ]);
+      const [clientResult, practiceResult, interactionResult] =
+        await Promise.allSettled([
+          api.crm.request<{
+            total: number;
+            by_status: Record<string, number>;
+            by_team_member: Array<{ assigned_to: string; count: number }>;
+            passport_expired: number;
+            passport_expiring_soon: number;
+            silent_30d: number;
+          }>("/api/crm/clients/stats/overview"),
+          api.crm.getPracticeStats(),
+          api.crm.getInteractionStats(),
+        ]);
+
+      const clientStats =
+        clientResult.status === "fulfilled" ? clientResult.value : null;
+      const practiceStats =
+        practiceResult.status === "fulfilled" ? practiceResult.value : null;
+      const interactionStats =
+        interactionResult.status === "fulfilled"
+          ? interactionResult.value
+          : null;
 
       return {
-        totalClients: clientStats.total,
-        activePractices: practiceStats.active_practices,
+        totalClients: clientStats?.total ?? 0,
+        activePractices: practiceStats?.active_practices ?? 0,
         revenue: {
-          total: practiceStats.revenue.total_revenue,
-          paid: practiceStats.revenue.paid_revenue,
-          outstanding: practiceStats.revenue.outstanding_revenue,
+          total: practiceStats?.revenue?.total_revenue ?? 0,
+          paid: practiceStats?.revenue?.paid_revenue ?? 0,
+          outstanding: practiceStats?.revenue?.outstanding_revenue ?? 0,
         },
-        byStatus: clientStats.by_status,
+        byStatus: clientStats?.by_status ?? {},
         interactions: interactionStats,
-        passportExpired: clientStats.passport_expired ?? 0,
-        passportExpiringSoon: clientStats.passport_expiring_soon ?? 0,
-        silent30d: clientStats.silent_30d ?? 0,
+        passportExpired: clientStats?.passport_expired ?? 0,
+        passportExpiringSoon: clientStats?.passport_expiring_soon ?? 0,
+        silent30d: clientStats?.silent_30d ?? 0,
       };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

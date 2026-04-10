@@ -274,7 +274,7 @@ export class CrmApi {
     const queryString = queryParams.toString();
     const url = `/api/crm/clients${queryString ? `?${queryString}` : ""}`;
 
-    return this.client.request<Client[]>(url, undefined, 10000);
+    return this.client.request<Client[]>(url, undefined, 30000);
   }
 
   /**
