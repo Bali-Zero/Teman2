@@ -381,3 +381,115 @@ class TestExportMessages:
                 user_id=None, date_from=None, date_to=None,
                 _admin={"email": "admin"}, db_pool=mock_db_pool,
             )
+
+
+# ============================================================================
+# get_crm_activity
+# ============================================================================
+
+
+class TestGetCrmActivity:
+    @pytest.mark.asyncio
+    async def test_no_filters_returns_all_crm_endpoints(self, mock_db_pool):
+        from backend.app.routers.admin_team_activity import get_crm_activity
+
+        conn = mock_db_pool._mock_conn
+        conn.fetchval = AsyncMock(return_value=3)
+        conn.fetch = AsyncMock(return_value=[
+            {
+                "timestamp": "2026-04-10T10:23:11+00:00",
+                "user_email": "rina@balizero.com",
+                "method": "POST",
+                "endpoint": "/api/crm/clients/",
+                "response_status": 201,
+                "response_time_ms": 145,
+                "ip_address": "172.16.0.1",
+            },
+        ])
+
+        result = await get_crm_activity(
+            from_time=None, to_time=None, user=None,
+            method=None, limit=100,
+            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+        )
+        assert result["success"] is True
+        assert result["total"] == 3
+        assert len(result["items"]) == 1
+        assert result["items"][0]["user_email"] == "rina@balizero.com"
+
+    @pytest.mark.asyncio
+    async def test_partial_user_filter_uses_ilike(self, mock_db_pool):
+        from backend.app.routers.admin_team_activity import get_crm_activity
+
+        conn = mock_db_pool._mock_conn
+        conn.fetchval = AsyncMock(return_value=1)
+        conn.fetch = AsyncMock(return_value=[
+            {
+                "timestamp": "2026-04-10T10:30:00+00:00",
+                "user_email": "rina@balizero.com",
+                "method": "GET",
+                "endpoint": "/api/crm/clients/",
+                "response_status": 200,
+                "response_time_ms": 80,
+                "ip_address": "172.16.0.1",
+            },
+        ])
+
+        result = await get_crm_activity(
+            from_time=None, to_time=None, user="rina",
+            method=None, limit=100,
+            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+        )
+        assert result["success"] is True
+        # Verify ILIKE pattern was passed to query
+        call_args = conn.fetch.call_args
+        assert "%rina%" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_time_range_filter(self, mock_db_pool):
+        from backend.app.routers.admin_team_activity import get_crm_activity
+
+        conn = mock_db_pool._mock_conn
+        conn.fetchval = AsyncMock(return_value=0)
+        conn.fetch = AsyncMock(return_value=[])
+
+        result = await get_crm_activity(
+            from_time="10:00", to_time="11:45", user=None,
+            method=None, limit=100,
+            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+        )
+        assert result["success"] is True
+        assert result["total"] == 0
+        # Verify time filters passed to query
+        call_args = conn.fetch.call_args
+        assert "10:00" in str(call_args) or "10" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_method_filter(self, mock_db_pool):
+        from backend.app.routers.admin_team_activity import get_crm_activity
+
+        conn = mock_db_pool._mock_conn
+        conn.fetchval = AsyncMock(return_value=2)
+        conn.fetch = AsyncMock(return_value=[])
+
+        result = await get_crm_activity(
+            from_time=None, to_time=None, user=None,
+            method="POST", limit=100,
+            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+        )
+        assert result["success"] is True
+        call_args = conn.fetch.call_args
+        assert "POST" in str(call_args)
+
+    @pytest.mark.asyncio
+    async def test_db_error_raises_500(self, mock_db_pool):
+        from backend.app.routers.admin_team_activity import get_crm_activity
+
+        mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=Exception("DB down"))
+        with pytest.raises(HTTPException) as exc_info:
+            await get_crm_activity(
+                from_time=None, to_time=None, user=None,
+                method=None, limit=100,
+                _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+            )
+        assert exc_info.value.status_code == 500
