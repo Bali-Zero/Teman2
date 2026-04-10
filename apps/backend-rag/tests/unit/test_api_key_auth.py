@@ -236,12 +236,12 @@ def test_validate_api_key_invalid_does_not_increment_stats(api_key_auth):
 
 
 def test_validate_api_key_truncates_key_in_log(api_key_auth):
-    """Test that invalid API key is truncated in log"""
+    """Test that invalid API key logs generic warning (no key value leaked)"""
     with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key("very-long-invalid-key-that-should-be-truncated")
         mock_logger.warning.assert_called_once()
-        # Should only show first 10 chars
-        assert "very-long-..." in mock_logger.warning.call_args[0][0]
+        # Current implementation logs generic message without key value (secure)
+        assert "Invalid API key provided" in mock_logger.warning.call_args[0][0]
 
 
 # ============================================================================
@@ -768,15 +768,16 @@ def test_service_up_is_always_true(api_key_auth):
 
 
 def test_log_truncates_long_keys(api_key_auth):
-    """Test that logs truncate long keys for security"""
+    """Test that logs do not leak long invalid keys"""
     long_key = "a" * 50
 
     with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key(long_key)
-        # Should log with truncation
+        # Current implementation logs generic message without key value (secure)
         log_message = mock_logger.warning.call_args[0][0]
-        assert "..." in log_message
-        assert len(long_key) > len(log_message)
+        assert "Invalid API key provided" in log_message
+        # Key value must NOT appear in log message
+        assert long_key not in log_message
 
 
 def test_added_key_has_all_required_fields(api_key_auth):
