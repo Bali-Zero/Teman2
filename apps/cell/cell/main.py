@@ -203,6 +203,14 @@ async def main() -> None:
         except Exception as e:
             logger.warning(f"Cortex init failed (non-fatal, CELL runs Phase 1+2 only): {e}")
 
+        # AI Intel Sensor — perceives the AI research world (24h cooldown)
+        from cell.sensors.ai_intel_sensor import AIIntelSensor
+        from cell.effectors.nlm_effector import NLMEffector
+
+        ai_intel_sensor = AIIntelSensor()
+        nlm_effector = NLMEffector()
+        logger.info("AI Intel Sensor + NLM Effector initialized")
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -233,6 +241,8 @@ async def main() -> None:
             attention=attention,
             maturation=maturation,
             cortex=cortex,
+            ai_intel_sensor=ai_intel_sensor,
+            nlm_effector=nlm_effector,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")
