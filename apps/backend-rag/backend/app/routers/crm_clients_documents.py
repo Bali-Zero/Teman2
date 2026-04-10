@@ -6,6 +6,7 @@ Provides: CRM metrics (summary, refresh), Passport OCR (basic + enhanced),
 Document soft-delete, NPWP OCR, NIB OCR, Required documents for portal.
 """
 
+import os
 from datetime import datetime, timezone
 from typing import Any
 
