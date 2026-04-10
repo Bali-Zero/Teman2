@@ -5,11 +5,15 @@ Three independent kill switches that CELL cannot modify:
 3. File on disk: /tmp/cell.disabled
 
 If Redis is unavailable, CELL continues (fail-open) — file kill switch still works.
+
+SafetyCheckResult imported from cell-core (shared type).
+SafetyGate stays CELL-specific (Redis key format: cell:disabled, not cell:cell:disabled).
 """
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from cell_core.types import SafetyCheckResult
 
 logger = logging.getLogger("cell.safety")
 
@@ -20,13 +24,6 @@ class CellDisabledError(Exception):
 
 class CellMaintenanceError(Exception):
     pass
-
-
-@dataclass
-class SafetyCheckResult:
-    can_proceed: bool
-    reason: str = ""
-    detail: str = ""
 
 
 class SafetyGate:
