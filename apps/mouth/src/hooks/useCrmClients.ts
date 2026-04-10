@@ -295,7 +295,7 @@ export function useCrmStats() {
           outstanding: practiceStats?.revenue?.outstanding_revenue ?? 0,
         },
         byStatus: clientStats?.by_status ?? {},
-        interactions: interactionStats,
+        interactions: interactionStats ?? null,
         passportExpired: clientStats?.passport_expired ?? 0,
         passportExpiringSoon: clientStats?.passport_expiring_soon ?? 0,
         silent30d: clientStats?.silent_30d ?? 0,
