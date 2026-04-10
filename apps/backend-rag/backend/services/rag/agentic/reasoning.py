@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
     {
         "calculator",
+        "crm_query",
         "get_pricing",
         "team_knowledge",
         "timesheet",
@@ -1302,6 +1303,11 @@ Do not invent information. If the context is insufficient, admit it.
                     and not is_complex_query  # Allow complex queries to continue
                 ):
                     logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
+                    break
+                elif tool_call.tool_name == "crm_query" and len(tool_result) > 10:
+                    # CRM returns structured JSON data — one call is always enough
+                    logger.info("🚀 [Stream Early Exit] CRM data retrieved, skipping extra steps.")
+                    state.trusted_tools_used = True
                     break
                 elif is_complex_query and tool_call.tool_name == "vector_search":
                     logger.info(
