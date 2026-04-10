@@ -181,8 +181,11 @@ async def main() -> None:
             f"pulses={self_model.model.total_pulses} actions={self_model.model.total_actions}"
         )
 
-        # Maturation — lifecycle phase gate
-        maturation = Maturation(age_days=self_model.model.age_days)
+        # Maturation — lifecycle phase gate (uses birth_date from self-model)
+        from datetime import datetime
+        maturation = Maturation(
+            birth_date=datetime.fromisoformat(self_model.model.birth_date)
+        )
         maturation.log_phase()
 
         # Cortex — Phase 3+4 (optional, best-effort)
