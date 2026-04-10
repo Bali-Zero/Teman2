@@ -22,7 +22,7 @@ from backend.app.dependencies import get_current_user, get_database_pool
 
 
 @pytest.fixture
-def client(mock_current_user, mock_db_pool):
+def client(mock_current_user, mock_db_pool, disable_auth_middleware):
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
     yield
@@ -30,7 +30,7 @@ def client(mock_current_user, mock_db_pool):
 
 
 @pytest.fixture
-def client_client_user(mock_client_user, mock_db_pool):
+def client_client_user(mock_client_user, mock_db_pool, disable_auth_middleware):
     """Client-role user fixture."""
     app.dependency_overrides[get_current_user] = lambda: mock_client_user
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool

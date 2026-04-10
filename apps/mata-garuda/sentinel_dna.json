@@ -1,0 +1,18 @@
+{
+  "rules": [
+    {"text": "NEVER fabricate papers, repos, or URLs. Only report what sensors actually found.", "priority": 1},
+    {"text": "NEVER export OSINT data outside Mata Garuda.", "priority": 1},
+    {"text": "ALL harvested URLs must be fed to NLM notebook NB-INTEL-AIResearch.", "priority": 2},
+    {"text": "Complete Markdown report includes EVERY item, not a selection.", "priority": 2},
+    {"text": "TG digest is a summary, not the full report. Reference the report file.", "priority": 3},
+    {"text": "CLI-only: no API HTTP calls to Anthropic/Google/OpenAI.", "priority": 1},
+    {"text": "Dedup by content hash before storing in KB.", "priority": 3},
+    {"text": "If a sensor fails, continue with others. Never halt the full pulse.", "priority": 2}
+  ],
+  "constraints": {
+    "max_daily_budget_usd": 0.50,
+    "max_cost_per_investigation_usd": 0.10,
+    "max_items_per_pulse": 100,
+    "nlm_notebook_id": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"
+  }
+}
