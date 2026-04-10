@@ -6,6 +6,7 @@ Template updated: 2026-03-02 — PT BAYU BALI NOL layout.
 """
 
 import io
+import os
 from datetime import datetime, timedelta, timezone
 
 try:
@@ -13,7 +14,7 @@ try:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     _REPORTLAB_AVAILABLE = True
 except ImportError:
@@ -41,6 +42,11 @@ class InvoiceGenerator:
     BANK_NAME = "CIMB NIAGA"
     BANK_BRANCH = "JL MELATI NO 29, DANGIN PURI KANGIN, DENPASAR, BALI, 80236"
     BANK_SWIFT = "BNIAIDJA"
+
+    # ── Logo ─────────────────────────────────────────────────────────────────
+    LOGO_PATH = os.path.join(os.path.dirname(__file__), "balizero_logo.png")
+    LOGO_WIDTH = 2.5 * cm
+    LOGO_HEIGHT = 2.5 * cm
 
     # ── Invoice Settings ────────────────────────────────────────────────────
     PAYMENT_TERMS_DAYS = 7
@@ -77,6 +83,7 @@ class InvoiceGenerator:
                 fontSize=13,
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_TEXT,
+                spaceAfter=8,
             ),
         )
         self.styles.add(
@@ -163,10 +170,31 @@ class InvoiceGenerator:
 
         elements = []
 
-        # ── HEADER: Company (left) + INVOICE title (right) ──────────────────
+        # ── HEADER: Logo top-left + Company name below logo | INVOICE right ──
+        if _REPORTLAB_AVAILABLE and os.path.exists(self.LOGO_PATH):
+            logo_img = Image(self.LOGO_PATH, width=self.LOGO_WIDTH, height=self.LOGO_HEIGHT)
+            left_cell = Table(
+                [[logo_img], [Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"])]],
+                colWidths=[10 * cm],
+            )
+            left_cell.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("TOPPADDING", (0, 0), (-1, -1), 0),
+                        ("BOTTOMPADDING", (0, 0), (0, 0), 8),
+                        ("BOTTOMPADDING", (0, 1), (0, 1), 0),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ],
+                ),
+            )
+        else:
+            left_cell = Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"])
+
         header_data = [
             [
-                Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"]),
+                left_cell,
                 Paragraph("INVOICE", self.styles["InvoiceTitle"]),
             ],
         ]
