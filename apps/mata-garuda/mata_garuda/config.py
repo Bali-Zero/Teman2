@@ -18,13 +18,14 @@ STREAM_FEEDBACK = "garuda:feedback"
 TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 TG_ZERO_CHAT_ID = "1125336968"
 
-# NLM Notebook IDs (to be populated as notebooks are created)
+# NLM Notebook IDs
 NLM_NOTEBOOKS = {
-    "regulation": "",       # NB-INTEL-Regulation
-    "ai_research": "",      # NB-INTEL-AIResearch
-    "tax": "",              # NB-INTEL-Tax
-    "immigration": "",      # NB-INTEL-Immigration
-    "press": "",            # NB-INTEL-Press
+    "ai_research": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",  # NB-INTEL-AIResearch
+    "self_evolving": "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",  # Mata Garuda Self-Evolving Research
+    "regulation": "",       # NB-INTEL-Regulation (TBD)
+    "tax": "",              # NB-INTEL-Tax (TBD)
+    "immigration": "",      # NB-INTEL-Immigration (TBD)
+    "press": "",            # NB-INTEL-Press (TBD)
 }
 
 # Relevance scoring weights for business context
@@ -59,10 +60,11 @@ AI_YOUTUBE_CHANNELS = [
 # AI Intel Sentinel — arXiv categories
 ARXIV_CATEGORIES = ["cs.AI", "cs.CL", "cs.LG", "cs.IR"]
 
-# AI Intel Sentinel — RSS feeds
+# AI Intel Sentinel — RSS feeds (verified 2026-04-10)
 AI_RSS_FEEDS = [
-    "https://www.deeplearning.ai/the-batch/feed/",       # The Batch
     "https://jack-clark.net/feed/",                        # Import AI
-    "https://tldr.tech/ai/rss",                           # TLDR AI
-    "https://paperswithcode.com/latest/feed",             # Papers With Code
+    "https://huggingface.co/blog/feed.xml",               # Hugging Face Blog
+    "https://www.technologyreview.com/feed/",             # MIT Technology Review
+    "https://magazine.sebastianraschka.com/feed",         # Sebastian Raschka AI
+    "https://thegradient.pub/rss/",                       # The Gradient
 ]

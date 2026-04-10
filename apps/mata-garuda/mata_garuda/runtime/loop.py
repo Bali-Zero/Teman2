@@ -143,18 +143,21 @@ def run_agent_loop(
         output = result.output
         messages.append({"role": "assistant", "content": output})
 
-        # Check for case resolution (terminal states)
-        if "Case resolved" in output or "case_resolved" in output.lower():
-            logger.info(f"[MetaChain] {agent.name} resolved the case")
-            break
-
-        if "Case not resolved" in output or "case_not_resolved" in output.lower():
-            logger.info(f"[MetaChain] {agent.name} could not resolve the case")
-            break
-
-        # Parse and execute tool calls
+        # Parse tool calls FIRST — they take priority over text-based case resolution.
+        # Without this, "case_resolved" inside a <tool_call> tag triggers
+        # early exit before the tool is actually executed.
         tool_calls = parse_tool_calls(output)
+
         if not tool_calls:
+            # No tool calls — check for case resolution in plain text
+            if "Case resolved" in output or "case_resolved" in output.lower():
+                logger.info(f"[MetaChain] {agent.name} resolved the case")
+                break
+
+            if "Case not resolved" in output or "case_not_resolved" in output.lower():
+                logger.info(f"[MetaChain] {agent.name} could not resolve the case")
+                break
+
             # No tool calls and no case resolution — done
             logger.info(f"[MetaChain] {agent.name} finished (no tool calls)")
             break

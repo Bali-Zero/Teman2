@@ -31,11 +31,14 @@ def fetch_github_trending(
         days: Look back N days for new/updated repos
         max_results: Maximum repos to return
     """
-    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
-    topic_query = " OR ".join(f"topic:{t.strip()}" for t in topics.split(","))
-    query = f"({topic_query}) pushed:>={since}"
+    from urllib.parse import quote
 
-    url = f"{GITHUB_API}?q={query}&sort=stars&order=desc&per_page={max_results}"
+    since = (datetime.now() - timedelta(days=max(days, 3))).strftime("%Y-%m-%d")
+    # Use first topic as primary search term — OR with parentheses breaks GitHub API
+    primary_topic = topics.split(",")[0].strip()
+    query = f"topic:{primary_topic} pushed:>={since} stars:>100"
+
+    url = f"{GITHUB_API}?q={quote(query)}&sort=stars&order=desc&per_page={max_results}"
 
     try:
         result = subprocess.run(
