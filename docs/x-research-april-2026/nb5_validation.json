@@ -1,0 +1,251 @@
+{
+  "value": {
+    "answer": "Ecco la validazione delle tue 7 affermazioni basata sulle attuali normative immobiliari indonesiane:\n\n**1. Gli stranieri non possono possedere Hak Milik sotto l'UUPA 1960 — CONFERMATO**\nL'Articolo 21 della Legge Agraria Fondamentale (UU 5/1960 o UUPA) stabilisce chiaramente che il titolo Hak Milik (Freehold/Proprietà Piena) è strettamente ed esclusivamente riservato ai soli cittadini indonesiani [1, 2]. \n\n**2. Hak Pakai max 30+20+30=80 anni — CONFERMATO**\nIl Regolamento Governativo PP 18/2021 stabilisce che l'Hak Pakai (Diritto d'Uso) per gli stranieri in possesso di un visto di residenza (KITAS/KITAP) ha una durata massima di 80 anni, strutturata in 30 anni iniziali, un'estensione di 20 anni e un rinnovo di 30 anni [3-5].\n\n**3. HGB tramite PT PMA 30+20+30 — CONFERMATO**\nSempre in base al PP 18/2021, l'Hak Guna Bangunan (Diritto di Costruire), che è il titolo utilizzato dalle società a capitale straniero (PT PMA) per gli investimenti commerciali, ha una durata massima identica di 80 anni (30+20+30) [3, 6, 7].\n\n**4. Le strutture Nominee sono illegali secondo l'Articolo 26 dell'UUPA — CONFERMATO**\nL'Articolo 26(2) dell'UUPA dichiara che qualsiasi tentativo di trasferire direttamente o indirettamente la proprietà (Hak Milik) a uno straniero è \"nullo di diritto\" (batal demi hukum) [8-10]. Ti ricordo categoricamente che **le strutture nominee sono ILEGAL!** Non offrono alcuna tutela legale in tribunale e, dal febbraio 2026, il Perda Bali No. 4/2026 le ha rese un reato penale punibile fino a 5 anni di carcere [11, 12]. Gli stranieri devono sempre optare per strutture legali: l'apertura di una **PT PMA con titolo HGB**, il titolo **Hak Pakai (HP)** registrato a proprio nome, o un regolare contratto notarile di **Leasehold (Hak Sewa)** [12, 13].\n\n**5. La \"Pink Zone\" è richiesta per gli affitti a breve termine — CONFERMATO**\nPer operare legalmente una villa in affitto turistico o commerciale tramite PT PMA (utilizzando la classificazione KBLI 55193 per le Ville), la proprietà deve essere obbligatoriamente situata in una Zona Rosa (Kawasan Pariwisata / Zona Turistica) [14, 15]. Le zone gialle (residenziali) non permettono il rilascio di questa licenza commerciale agli stranieri [15, 16]. **Verifica sempre la zonasi RTRW e RDTR** richiedendo l'approvazione KKPR tramite il sistema OSS o un certificato SITR (Surat Informasi Tata Ruang) prima di qualsiasi raccomandazione o acquisizione per evitare la chiusura dell'attività [17-19].\n\n**6. BPHTB 5% — ERRORE (Inesatto nel calcolo)**\nSebbene l'aliquota sia del 5%, **non** si applica all'intero valore della transazione. Il BPHTB (Tassa di Acquisizione a carico del compratore) è calcolato al 5% del Valore di Acquisizione (NPOP, che corrisponde al maggiore tra il prezzo di vendita reale e la valutazione governativa NJOP), ma solo **dopo aver sottratto la soglia esente da imposte (NPOPTKP)** [20]. A Bali, in aree come Badung o Denpasar, la soglia esente NPOPTKP è tipicamente fissata a Rp 60.000.000 [21].\n\n**7. Il Perda Bali criminalizza la conversione delle risaie LP2B — CONFERMATO**\nIl recente Perda Bali No. 4/2026 ha reso un reato penale la conversione di terreni agricoli produttivi e protetti (sawah / LSD / LP2B) e zone del sistema di irrigazione Subak in proprietà commerciali, come le ville. Le sanzioni per queste violazioni includono fino a 5 anni di carcere, multe fino a 1 miliardo di Rupie e la demolizione obbligatoria dell'edificio [11, 22-24].",
+    "conversation_id": "73bcd55c-d360-4f28-b112-dfbe44aef542",
+    "sources_used": [
+      "88241072-76ae-47c0-94a8-e13fe2d19a60",
+      "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+      "57602e5e-f190-4e95-8258-ea8831a4de71",
+      "0eaab2df-130f-4c50-9bc0-c2606a585727",
+      "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "c632960f-fc63-49b6-b527-15e31305cb9c",
+      "088d8f13-51d8-4802-9159-b3d2e70e0776",
+      "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "8cc763f2-85ed-4aa5-bae4-cb16524b5ca7",
+      "64fce84d-1f81-426f-bc67-863708b7e62d",
+      "6c6a4d57-2a80-475b-8afb-3baa736e6aef",
+      "125a56bd-67ea-47a0-944d-644ba6b17a82"
+    ],
+    "citations": {
+      "1": "88241072-76ae-47c0-94a8-e13fe2d19a60",
+      "2": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+      "3": "57602e5e-f190-4e95-8258-ea8831a4de71",
+      "4": "0eaab2df-130f-4c50-9bc0-c2606a585727",
+      "5": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+      "6": "0eaab2df-130f-4c50-9bc0-c2606a585727",
+      "7": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+      "8": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "9": "88241072-76ae-47c0-94a8-e13fe2d19a60",
+      "10": "c632960f-fc63-49b6-b527-15e31305cb9c",
+      "11": "088d8f13-51d8-4802-9159-b3d2e70e0776",
+      "12": "c632960f-fc63-49b6-b527-15e31305cb9c",
+      "13": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+      "14": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "15": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "16": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "17": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "18": "8cc763f2-85ed-4aa5-bae4-cb16524b5ca7",
+      "19": "8cc763f2-85ed-4aa5-bae4-cb16524b5ca7",
+      "20": "64fce84d-1f81-426f-bc67-863708b7e62d",
+      "21": "64fce84d-1f81-426f-bc67-863708b7e62d",
+      "22": "6c6a4d57-2a80-475b-8afb-3baa736e6aef",
+      "23": "6c6a4d57-2a80-475b-8afb-3baa736e6aef",
+      "24": "125a56bd-67ea-47a0-944d-644ba6b17a82"
+    },
+    "references": [
+      {
+        "source_id": "88241072-76ae-47c0-94a8-e13fe2d19a60",
+        "citation_number": 1,
+        "cited_text": "UU NOMOR 5 TAHUN 1960 — PERATURAN DASAR POKOK-POKOK AGRARIA (UUPA) Basic Agrarian Law — THE foundation of Indonesian land law. Status: ACTIVE (never revoked, foundation law since 1960) KEY PROVISIONS FOR NB-5 PROPERTY & REAL ESTATE: PASAL 20-27: HAK MILIK (Freehold) Pasal 20: Hak milik adalah hak turun-temurun, terkuat dan terpenuh Pasal 21(1): Hanya warganegara Indonesia dapat mempunyai hak milik Pasal 21(2): Badan hukum yang dapat mempunyai hak milik ditetapkan oleh Pemerintah (PP) CRITICAL: Foreigners (WNA) and PT PMA CANNOT hold Hak Milik"
+      },
+      {
+        "source_id": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+        "citation_number": 2,
+        "cited_text": "Per gli investitori stranieri, i titoli rilevanti sono HGB, HP e HS. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SHM — SERTIFIKAT HAK MILIK (PROPRIETÀ PIENA) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1 Caratteristiche DEFINIZIONE: Il diritto più forte e completo sul suolo indonesiano. Equivale alla piena proprietà nei sistemi occidentali. Non ha scadenza. BASE NORMATIVA: UUPA Pasal 20-27 (Hak Milik) SOGGETTI AMMESSI: [PROP-001] Warga Negara Indonesia (WNI) — ESCLUSIVAMENTE cittadini indonesiani Badan hukum tertentu (persone giuridiche specifiche definite per legge) solitamente fondazioni religiose o cooperative agrarie (Koperasi)"
+      },
+      {
+        "source_id": "57602e5e-f190-4e95-8258-ea8831a4de71",
+        "citation_number": 3,
+        "cited_text": "PERATURAN PEMERINTAH NOMOR 18 TAHUN 2021 tentang Hak Pengelolaan, Hak Atas Tanah, Satuan Rumah Susun, dan Pendaftaran Tanah Status: ACTIVE — THE key implementing regulation post-Cipta Kerja (UU 6/2023) REVOKED: PP 40/1996, PP 103/2015, parts of PP 24/1997 CRITICAL CHANGES FROM PP 18/2021: DURATION REFORM (Art 34-37, 49-58): HGB: 30 years + 20 extension + 30 renewal = 80 YEARS (was 30+20+20=70) Hak Pakai: 30 years + 20 extension + 30 renewal = 80 YEARS (was 30+20+20=70) HGU: 35 years + 25 extension + 35 renewal = 95 YEARS (was 35+25+25=85) IMPORTANT: \"Perpanjangan\" (extension) is BEFORE expiry, routine. \"Pembaharuan\" (renewal) is AFTER extension ends, NOT guaranteed. FOREIGN PROPERTY RIGHTS (absorbed from revoked PP 103/2015): WNA with KITAS/KITAP can hold Hak Pakai for residential purposes Limit: 1 residential property per WNA Minimum property value thresholds vary by province/zone Property must be used as residence (not commercial — need PT PMA for that) HAK MILIK TO HAK PAKAI CONVERSION FOR WNA (Art 59-76): When WNA acquires property, Hak Milik must be downgraded to Hak Pakai Process at BPN; PPAT handles deed If WNA no longer meets requirements (e.g., KITAS expires), must divest within 1 year STRATA TITLE / APARTMENT (HMSRS): Foreigners can hold HMSRS (Hak Milik Satuan Rumah Susun) on HGB or Hak Pakai land Legal uncertainty: ABNR flagged that foreigner holding HMSRS on HGB-land creates a paradox (WNA cannot hold HGB directly) ELECTRONIC LAND REGISTRATION (Art 85-87): Ministry pushing digitalization of land certificates E-certificates being rolled out nationally Paper certificates to be converted FORCED DIVESTMENT: If foreigner no longer eligible (visa expires, etc.), must transfer property within 1 year If not transferred: government will auction the property Proceeds go to former owner minus auction costs HAK PENGELOLAAN (HPL — Management Rights, Art 1-17): Government/SOE land management rights Third parties can be granted HGB/Hak Pakai on HPL land"
+      },
+      {
+        "source_id": "0eaab2df-130f-4c50-9bc0-c2606a585727",
+        "citation_number": 4,
+        "cited_text": "Hak Pakai is the most direct path to personal property ownership for foreigners in Bali. Your right is registered at BPN (the National Land Agency) and you receive a title certificate — providing legal certainty that private contracts cannot match. Eligibility Requirements To hold Hak Pakai, you must maintain a valid KITAS (temporary stay permit) or KITAP (permanent stay permit). This includes holders of the Second Home Visa. The property must be designated for residential use, and each foreigner or foreign family unit is limited to one Hak Pakai title."
+      },
+      {
+        "source_id": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+        "citation_number": 5,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ HP — HAK PAKAI (DIRITTO D'USO) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.1 Definizione e Durata BASE NORMATIVA: UUPA Pasal 41-43, PP 18/2021 [PROP-006] DEFINIZIONE: Hak untuk menggunakan dan/atau memungut hasil dari tanah (diritto di usare e/o raccogliere i frutti del terreno) di proprietà dello Stato o altrui, secondo le condizioni e i limiti posti dal BPN o dal proprietario del terreno. DURATA DOPO PP 18/2021: [PROP-006]"
+      },
+      {
+        "source_id": "0eaab2df-130f-4c50-9bc0-c2606a585727",
+        "citation_number": 6,
+        "cited_text": "12-Month Capital Lock-Up Article 27 of BKPM 5/2025 introduced a 12-month capital lock-up period. Paid-up capital cannot be withdrawn from the company for 12 months after deposit, unless it is used for assets, construction, or operational expenses. This prevents the practice of depositing capital briefly and then withdrawing it. HGB Duration HGB follows the same three-stage structure as Hak Pakai: 30 years initial + 20 years extension + 30 years renewal = 80 years maximum , as established by PP 18/2021 Article 37."
+      },
+      {
+        "source_id": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+        "citation_number": 7,
+        "cited_text": "3.1 Definizione e Durata BASE NORMATIVA: UUPA Pasal 35-40, PP 18/2021 [PROP-003] DEFINIZIONE: Diritto di mendirikan (costruire) e memiliki (possedere) bangunan (edifici) su tanah milik orang lain (terra altrui) o su tanah negara (terra dello Stato). DURATA DOPO PP 18/2021: Prima concessione: 30 anni Rinnovo: 20 anni (su richiesta entro 2 anni dalla scadenza) Perpanjangan (estensione definitiva): 30 anni ulteriori TOTALE MASSIMO: 80 anni (30 + 20 + 30) [PROP-003] Prima del PP 18/2021 (vecchio regime PP 40/1996):"
+      },
+      {
+        "source_id": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+        "citation_number": 8,
+        "cited_text": "On paper, this looks comprehensive. In practice, every one of these documents is legally unenforceable because they all serve the same purpose: circumventing Indonesian land ownership restrictions. And that purpose is explicitly prohibited by law. Why Nominee Agreements Are Void Under Indonesian Law Article 26(2) of the Basic Agrarian Law (UUPA No. 5/1960) states that any transfer of land that directly or indirectly circumvents foreign ownership restrictions is \"null and void by law\" (batal demi hukum). This is not a grey area — it is an explicit statutory prohibition."
+      },
+      {
+        "source_id": "88241072-76ae-47c0-94a8-e13fe2d19a60",
+        "citation_number": 9,
+        "cited_text": "PASAL 26: NOMINEE PROHIBITION Pasal 26(2): Segala pemindahan hak milik kepada orang asing dilarang. Jual beli, penukaran, penghibahan, pemberian dengan wasiat, dan perbuatan-perbuatan lain yang dimaksudkan untuk langsung atau tidak langsung memindahkan hak milik kepada orang asing = BATAL KARENA HUKUM (void by law). This is THE legal basis for nominee arrangement illegality. Reinforced by Perda Bali 4/2026 with criminal sanctions (up to 5 years imprisonment). PASAL 28-34: HAK GUNA USAHA (Cultivation Rights / HGU)"
+      },
+      {
+        "source_id": "c632960f-fc63-49b6-b527-15e31305cb9c",
+        "citation_number": 10,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.1 Perché il Nominee è Illegale La struttura NOMINEE consiste nell'intestare un SHM (proprietà piena) a un cittadino indonesiano (WNI) che funge da \"prestanome\" per conto di uno straniero (WNA), il quale finanzia l'acquisto ma non può detenere il titolo direttamente. [PROP-023] ILLEGALE PER LE SEGUENTI RAGIONI: UUPA Pasal 26 ayat (2): \"Setiap jual beli, penukaran, penghibahan, pemberian dengan wasiat dan perbuatan-perbuatan lain yang dimaksudkan untuk memindahkan hak milik serta pengawasannya [...] adalah batal karena hukum.\" (Qualsiasi atto volto ad aggirare il divieto di proprietà straniera è NULLO DI DIRITTO.) UU N. 25/2007 (Penanaman Modal) Pasal 33: Vieta espressamente accordi yang merugikan kepentingan nasional (lesivi dell'interesse nazionale) nel settore degli investimenti. UU N. 40/2007 (Perseroan Terbatas) Pasal 7: Il nominee nelle strutture societarie è considerato penyelundupan hukum (elusione fraudolenta della legge), non mere tax planning."
+      },
+      {
+        "source_id": "088d8f13-51d8-4802-9159-b3d2e70e0776",
+        "citation_number": 11,
+        "cited_text": "PERATURAN DAERAH PROVINSI BALI NOMOR 4 TAHUN 2026 tentang Pengendalian Alih Fungsi Lahan Signed: February 24, 2026, by Governor Wayan Koster Status: ACTIVE — brand new, critical for NB-5 KEY PROVISIONS: NOMINEE ARRANGEMENT CRIMINAL SANCTIONS: Criminal penalties for nominee land ownership transfers (pinjam nama) Sanctions: up to 5 YEARS imprisonment Fines: up to IDR 1 BILLION (Rp 1.000.000.000) References Indonesian Criminal Code for document manipulation and ownership fraud Targets both the foreigner AND the Indonesian nominee This is the FIRST provincial regulation to criminalize nominee arrangements AGRICULTURAL LAND CONVERSION BAN: Criminalizes conversion of agricultural land (sawah/rice paddy) to non-agricultural use Specifically targets: sawah → villa, sawah → commercial, subak land conversion Penalties aligned with nominee sanctions Protects Bali's subak irrigation system (UNESCO World Heritage) ENFORCEMENT: Provincial police (Satpol PP) authorized to investigate BPN coordination for certificate verification Coordination with national law enforcement RELATION TO NATIONAL LAW: Reinforces UU 5/1960 Pasal 26 (nominee prohibition) Adds provincial criminal sanctions on TOP of national void-by-law provision Combined effect: nominee arrangement = void (national) + criminal (Bali) IMPACT ON EXISTING ARRANGEMENTS: Existing nominee arrangements are at risk of prosecution No grandfathering provision found in the Perda Legal advice: restructure existing arrangements to legal alternatives (Hak Pakai, PT PMA+HGB, Lease)"
+      },
+      {
+        "source_id": "c632960f-fc63-49b6-b527-15e31305cb9c",
+        "citation_number": 12,
+        "cited_text": "SANZIONI CONCRETE: [PROP-023] Nullità del titolo (SHM è invalido, terreno ritorna allo Stato) Perseguimento penale per entrambe le parti (WNA + WNI prestanome) Nessun indennizzo o rimborso dell'investimento effettuato La giurisprudenza della Mahkamah Agung è coerente e severa 3.2 Il Leasehold Come Alternativa Legale Il Hak Sewa (leasehold) è l'alternativa LEGALE al nominee. [PROP-024] Il WNA paga un canone (o lump sum) al proprietario WNI per il diritto di usare il terreno per un periodo definito, senza mai pretendere la proprietà del suolo."
+      },
+      {
+        "source_id": "3eb94d12-a3da-4feb-b6ab-26f76d192be2",
+        "citation_number": 13,
+        "cited_text": "WNA solo con KITAS/KITAP, soglie di prezzo minimo, uso residenziale. PT PMA — TITOLI CONSIGLIATI: HGB su tanah negara: soluzione più sicura e diretta [PROP-010] HGB su SHM: ammesso, ma dipende da accordo con proprietario WNI HP: alternativa al HGB, stessa durata, meno comune per PT PMA WNA (individuale) — SOLUZIONE: HP residenziale (SHP): con KITAS/KITAP, prezzo minimo rispettato Hak Sewa: leasehold contrattuale, più flessibile (vedi guida HS) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 14,
+        "cited_text": "<cited_table> 6–12 months Typical licensing timeline from PT PMA setup to verified NIB — a 7-step sequential process where each step depends on the previous one What Zoning Does a Bali Villa Need for Licensing? A villa rental license (KBLI 55193) requires Pink (Tourism) zone classification. Many existing villas are in Yellow (Residential) zones where commercial tourism is prohibited. Verify your zone using the GISTARU portal or OSS RDTR Interaktif before purchasing or applying for a license.",
+        "cited_table": {
+          "num_columns": 2,
+          "rows": [
+            [
+              "To get this…",
+              "You must already have…"
+            ],
+            [
+              "NIB",
+              "A PT PMA or local PT"
+            ],
+            [
+              "KKPR (Zoning Approval)",
+              "An NIB"
+            ],
+            [
+              "PBG (Building Permit)",
+              "An NIB + KKPR"
+            ],
+            [
+              "SLF (Safety Certificate)",
+              "A PBG + a completed building"
+            ],
+            [
+              "Verified NIB (OTA compliance)",
+              "All of the above"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 15,
+        "cited_text": "<cited_table>",
+        "cited_table": {
+          "num_columns": 5,
+          "rows": [
+            [
+              "Zone Color",
+              "Zone Type",
+              "Villa License (KBLI 55193)",
+              "Pondok Wisata (KBLI 55130)",
+              "Notes"
+            ],
+            [
+              "Pink",
+              "Tourism",
+              "Permitted",
+              "Permitted",
+              "Required zone for foreign-owned rental operations via PT PMA"
+            ],
+            [
+              "Orange",
+              "Mixed-Use",
+              "Case-by-case",
+              "Possible",
+              "Depends on sub-zone classification"
+            ],
+            [
+              "Red",
+              "Commercial",
+              "Not automatic",
+              "Not automatic",
+              "Commercial zoning does not automatically permit tourism"
+            ],
+            [
+              "Yellow",
+              "Residential",
+              "Not permitted",
+              "Limited (Indonesian only)",
+              "Most common zone for existing villas"
+            ],
+            [
+              "Green",
+              "Agricultural",
+              "Not permitted",
+              "Not permitted",
+              "No tourism development"
+            ],
+            [
+              "Grey",
+              "Conservation",
+              "Not permitted",
+              "Not permitted",
+              "No development of any kind"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 16,
+        "cited_text": "Zoning is one of the biggest obstacles to villa licensing in Bali. A Villa license (KBLI 55193) requires your property to be in a Pink (Tourism) zone — and many existing villas were built in residential zones that cannot be legally converted for commercial tourism use. Bali's spatial plan divides land into zones based on permitted use. Understanding these zones is critical before purchasing or leasing any property for rental purposes. Here are the main categories: Yellow — Residential. Villa license (KBLI 55193) is NOT permitted. Pondok Wisata (KBLI 55130) may be possible in some cases, but this category is limited to Indonesian citizens. Orange — Mixed-Use. Limited tourism activities may be allowed depending on sub-zone classification. Requires individual assessment. Red — Commercial. Some tourism activities may be allowed, but commercial zoning does not automatically mean tourism is permitted. Pink — Tourism. Required for Villa license (KBLI 55193). Hotels, resorts, and commercial villas are permitted in this zone. Green — Agricultural. No commercial or tourism development. Building permits for tourism activities will not be issued. Conservation — Protected. No development of any kind. Building in conservation zones is illegal."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 17,
+        "cited_text": "Step 3: Verify Your Zoning (KKPR) The OSS system checks your property's coordinates against the Digital Spatial Plan (RDTR — Rencana Detail Tata Ruang). You need KKPR (Persetujuan Kesesuaian Kegiatan Pemanfaatan Ruang — Zoning Conformity Approval). Villa license (KBLI 55193) requires Pink (Tourism) zone. Properties in Yellow (Residential), Green (Agricultural), or Conservation zones cannot receive a villa license. Many existing villas were built in residential zones and cannot be legally licensed — verify zoning before purchasing or investing. You can check zoning online using the OSS RDTR Interaktif tool. If the zoning check fails, the licensing process stops here. See our due diligence checklist for pre-purchase verification steps."
+      },
+      {
+        "source_id": "8cc763f2-85ed-4aa5-bae4-cb16524b5ca7",
+        "citation_number": 18,
+        "cited_text": "Per micro-progetti (villa singola uso pribadi, rumah tinggal): Hanya surat pernyataan — tidak perlu analisis khusus. Dilampirkan in PBG application. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SEZIONE 8 — DUE DILIGENCE ZONAZIONE [PROP-064] 8.1 COME VERIFICARE LA ZONAZIONE STEP 1 — SITR (Surat Informasi Tata Ruang) Richiesta al DPMPTSP Kabupaten con: nomor sertifikat tanah + koordinat GPS. Risposta: indicazione zona RTRWK/RDTR e vincoli applicabili. Costo: gratis o simbolico (Rp 50.000-500.000)."
+      },
+      {
+        "source_id": "8cc763f2-85ed-4aa5-bae4-cb16524b5ca7",
+        "citation_number": 19,
+        "cited_text": "Rischio: PBG non concedibile, demolizione forzata. REGOLA: SITR prima, contratto dopo. Zonazione su Confine di Zona Alcune proprietà straddlano due zone (es. metà pariwisata, metà pertanian). Regola: ogni porzione è soggetta alla propria zona — non si \"contamina\" l'altra. Due diligence: mappa parcella + mappa zonazione sovrapposta da surveyor. RDTR Non Approvato Molti RDTR in Bali sono bozze non ancora approvate con Perda. Se usato come riferimento da un agente immobiliare → non vincolante. Solo RTRWK approvato con Perda è vincolante in assenza di RDTR."
+      },
+      {
+        "source_id": "64fce84d-1f81-426f-bc67-863708b7e62d",
+        "citation_number": 20,
+        "cited_text": "DEFINIZIONE: Il BPHTB è l'imposta sull'acquisizione di diritti fondiari (tanah e/o bangunan). È un'imposta REGIONALE (daerah), non statale (pusat). ALIQUOTA: 5% (fissa per legge, non variabile dai governi locali) FORMULA: BPHTB = 5% × (NPOP − NPOPTKP) Dove: NPOP = Nilai Perolehan Objek Pajak (valore dell'acquisizione) = prezzo jual-beli OPPURE NJOP (il maggiore) NPOPTKP = Nilai Perolehan Objek Pajak Tidak Kena Pajak = soglia esente da imposta (varia per regione — vedi 3.2) 3.2 NPOPTKP — Soglie Esenti per Regione"
+      },
+      {
+        "source_id": "64fce84d-1f81-426f-bc67-863708b7e62d",
+        "citation_number": 21,
+        "cited_text": "La NPOPTKP è fissata da ciascun Pemerintah Daerah. [PROP-038] Valori indicativi 2024 (soggetti ad aggiornamento regionale): DKI Jakarta: Rp 300.000.000 (300 juta) Kota Denpasar (Bali): Rp 60.000.000 (60 juta) Kabupaten Badung (Bali — Kuta, Seminyak, Nusa Dua): Rp 60.000.000 Kabupaten Gianyar (Ubud): Rp 60.000.000 Kota Surabaya: Rp 80.000.000 Province minori: Rp 60.000.000 (default nazionale) CASO SPECIALE — WARIS E HIBAH: BPHTB per warisan (eredità): NPOPTKP maggiorata (tipicamente Rp 300-600 juta) BPHTB per hibah antara keluarga sedarah (donazione a parente diretto): NPOPTKP normale"
+      },
+      {
+        "source_id": "6c6a4d57-2a80-475b-8afb-3baa736e6aef",
+        "citation_number": 22,
+        "cited_text": "Bali Criminalizes Rice Field Conversions: New Regulation Targets Illegal Villas and Nominee Agreements - Emerhub Markets Indonesia Philippines Malaysia Singapore Vietnam Bali Thailand Cambodia Saudi Arabia Qatar Oman About Blog Contact Contact us Emerhub » News » Bali Criminalizes Rice Field Conversions: New Regulation Targets Illegal Villas and Nominee Agreements Bali Criminalizes Rice Field Conversions: New Regulation Targets Illegal Villas and Nominee Agreements"
+      },
+      {
+        "source_id": "6c6a4d57-2a80-475b-8afb-3baa736e6aef",
+        "citation_number": 23,
+        "cited_text": "ew legal framework aims to protect Sustainable Food Agricultural Land (LP2B) by making the conversion of productive rice fields into commercial properties—such as villas—a criminal offense Bali | Property Investment March 2, 2026 Written by Sohaib Arshad Share on Facebook (Opens in new window) Facebook Share on LinkedIn (Opens in new window) LinkedIn Share on X (Opens in new window) X Share using Native tools Share Copied to clipboard In a decisive move to combat a looming food crisis and protect its cultural heritage, the Bali Provincial Government has officially enacted Regional Regulation No. 4 of 2026 ."
+      },
+      {
+        "source_id": "125a56bd-67ea-47a0-944d-644ba6b17a82",
+        "citation_number": 24,
+        "cited_text": "Perda Bali 4/2026 and Subak Protection: Lahan Sawah Dilindungi (LSD): rice fields in official LSD map cannot be converted — criminal offense LSD map: issued by Ministry of Agriculture, incorporated into Bali RTRW Subak land overlaps significantly with LSD — if it's a working sawah in a subak, presume LSD protection Criminal sanctions (Perda 4/2026): fines up to Rp 5 billion OR imprisonment up to 5 years for illegal conversion Identification — Is It Subak Land? GISTARU satellite view: check for terraced paddy pattern Check: is there an active irrigation channel (tembuku) at the land boundary? Ask local farmers/neighbors: is this sawah actively cultivated? Look for subak temple (Pura Ulun Carik or Pura Bedugul) within 500m Request keterangan from DPKP (Dinas Pertanian dan Ketahanan Pangan) regency for LSD status"
+      }
+    ]
+  }
+}

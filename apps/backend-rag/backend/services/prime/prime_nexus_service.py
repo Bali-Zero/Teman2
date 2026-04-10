@@ -415,9 +415,16 @@ def calculate_investment_score(
         bey_score = 15 if bey_val <= 5 else 12 if bey_val <= 8 else 6 if bey_val <= 12 else 0
     breakdown["break_even"] = {"score": bey_score, "max": 15, "value": bey_val}
 
+    # Risk score: prefer numeric risk_score (0-1), fallback to string flood_risk
+    risk_val = geo_data.get("risk_score") if geo_data else None
     flood = geo_data.get("flood_risk") if geo_data else None
-    flood_score = {"safe": 10, "check": 5, "high": 0}.get(str(flood), 7)
-    breakdown["flood_risk"] = {"score": flood_score, "max": 10, "value": flood}
+    if risk_val is not None:
+        risk_points = 10 if risk_val < 0.2 else 8 if risk_val < 0.4 else 5 if risk_val < 0.6 else 2 if risk_val < 0.8 else 0
+    elif flood is not None:
+        risk_points = {"safe": 10, "check": 5, "high": 0}.get(str(flood), 7)
+    else:
+        risk_points = 7
+    breakdown["risk"] = {"score": risk_points, "max": 10, "value": risk_val, "flood_risk": flood}
 
     density_1km = geo_data.get("densita_1km") if geo_data else None
     if density_1km is not None:
@@ -442,7 +449,7 @@ def calculate_investment_score(
     ws_score = 5 if ws is not None and ws >= 65 else 3 if ws is not None and ws >= 35 else 1 if ws is not None else 2
     breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
 
-    _all_scores = [roi_score, zone_kbli_score, klb_score, bey_score, flood_score, market_score, reg_score, ws_score]
+    _all_scores = [roi_score, zone_kbli_score, klb_score, bey_score, risk_points, market_score, reg_score, ws_score]
     _all_maxes = [30, 15, 10, 15, 10, 10, 10, 5]
     earned = sum(s for s in _all_scores if s is not None)
     available = sum(m for s, m in zip(_all_scores, _all_maxes, strict=True) if s is not None)
@@ -485,8 +492,19 @@ def calculate_investment_score(
         modifiers.append(f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB: {tb_raw}")
         score -= 3
 
+    # Sea distance modifiers (replaces boolean sea_view)
+    sea_dist = geo_data.get("sea_distance_m") if geo_data else None
     sea_view = geo_data.get("sea_view", False) if geo_data else False
-    if sea_view and score >= 55:
+    if sea_dist is not None:
+        if sea_dist < 200:
+            score += 5
+            modifiers.append(f"+5: premium prossimità mare ({sea_dist:.0f}m dalla costa)")
+            score -= 3
+            modifiers.append("-3: rischio tsunami (< 200m dalla costa)")
+        elif sea_dist < 1000:
+            score += 3
+            modifiers.append(f"+3: zona costiera ({sea_dist:.0f}m dalla costa)")
+    elif sea_view and score >= 55:
         score += 5
         modifiers.append("+5: potenziale premium vista mare")
 
@@ -509,6 +527,214 @@ def calculate_investment_score(
         "verdict": verdict, "can_invest": verdict != "RED", "score": score,
         "breakdown": breakdown, "modifiers": modifiers, "hard_blocks": [],
     }
+
+
+# =============================================================================
+# PROPERTY TAX CALCULATOR (PBB + BPHTB)
+# =============================================================================
+_NPOPTKP_BY_KABUPATEN: dict[str, int] = {
+    "Badung": 80_000_000,
+    "Denpasar": 80_000_000,
+    "Gianyar": 60_000_000,
+    "Tabanan": 60_000_000,
+    "Karangasem": 60_000_000,
+    "Klungkung": 60_000_000,
+    "Bangli": 60_000_000,
+    "Buleleng": 60_000_000,
+    "Jembrana": 60_000_000,
+}
+_DEFAULT_NPOPTKP = 60_000_000
+
+
+def calculate_property_tax(
+    njop_total_idr: float,
+    kabupaten: str | None = None,
+) -> dict[str, Any]:
+    """Calculate Indonesian property taxes (PBB annual + BPHTB acquisition).
+
+    PBB rates (Pajak Bumi dan Bangunan):
+      - NJOP < 1B IDR: 0.1%
+      - 1B <= NJOP < 10B: 0.2%
+      - NJOP >= 10B: 0.3%
+
+    BPHTB (Bea Perolehan Hak atas Tanah dan Bangunan):
+      - 5% of (NJOP - NPOPTKP)
+      - NPOPTKP varies by kabupaten (60-80M IDR)
+    """
+    notes: list[str] = []
+
+    # PBB rate tiers
+    if njop_total_idr < 1_000_000_000:
+        pbb_rate = 0.001  # 0.1%
+    elif njop_total_idr < 10_000_000_000:
+        pbb_rate = 0.002  # 0.2%
+    else:
+        pbb_rate = 0.003  # 0.3%
+
+    annual_pbb = njop_total_idr * pbb_rate
+
+    # BPHTB
+    kab_key = kabupaten.strip().title() if kabupaten else None
+    npoptkp = _NPOPTKP_BY_KABUPATEN.get(kab_key or "", _DEFAULT_NPOPTKP)
+    bphtb_base = max(0, njop_total_idr - npoptkp)
+    acquisition_bphtb = bphtb_base * 0.05
+
+    if kab_key and kab_key not in _NPOPTKP_BY_KABUPATEN:
+        notes.append(f"Kabupaten '{kabupaten}' non riconosciuto — usato NPOPTKP default {_DEFAULT_NPOPTKP:,.0f} IDR")
+
+    return {
+        "annual_pbb": round(annual_pbb),
+        "pbb_rate_pct": pbb_rate * 100,
+        "acquisition_bphtb": round(acquisition_bphtb),
+        "npoptkp_applied": npoptkp,
+        "njop_used": njop_total_idr,
+        "notes": notes,
+    }
+
+
+# =============================================================================
+# PROPERTY ELIGIBILITY FOR FOREIGNERS
+# =============================================================================
+def calculate_property_eligibility(
+    nationality: str,
+    zone_code: str | None = None,
+    njop_total_idr: float | None = None,
+) -> dict[str, Any]:
+    """Determine property ownership eligibility based on nationality.
+
+    Based on UUPA (Undang-Undang Pokok Agraria), PP 18/2021, and
+    the Knowledge Graph property subgraph rules.
+    """
+    nat = nationality.strip().upper()
+    is_foreigner = nat in ("WNA", "FOREIGNER", "FOREIGN", "ASING")
+
+    bphtb_estimate = round(njop_total_idr * 0.05) if njop_total_idr else None
+
+    if is_foreigner:
+        allowed_types = [
+            {
+                "type": "hak_pakai",
+                "label": "Hak Pakai (Right to Use)",
+                "duration": "30 years (renewable +20 +30 years)",
+                "requirements": [
+                    "Valid KITAS or KITAP residence permit",
+                    "Notary deed (Akta Notaris)",
+                    "BPN certificate verification",
+                    "BPHTB tax payment (5%)",
+                ],
+                "estimated_costs": {
+                    "bphtb_5pct": bphtb_estimate,
+                    "notary_fee_approx_idr": 5_000_000,
+                    "bpn_registration_idr": 1_000_000,
+                },
+                "notes": "Most common path for foreign property ownership in Bali",
+            },
+            {
+                "type": "hgb_via_pma",
+                "label": "HGB via PT PMA (Building Rights via Foreign Company)",
+                "duration": "30 years (renewable +20 +30 years)",
+                "requirements": [
+                    "Established PT PMA company",
+                    "Minimum investment 10B IDR (company-level)",
+                    "Company deed and KBLI registration",
+                    "BPN certificate verification",
+                    "BPHTB tax payment (5%)",
+                ],
+                "estimated_costs": {
+                    "bphtb_5pct": bphtb_estimate,
+                    "pma_setup_approx_idr": 50_000_000,
+                },
+                "notes": "For commercial property — requires PT PMA company (cross-domain: company setup)",
+            },
+            {
+                "type": "rental",
+                "label": "Rental / Leasehold (Sewa)",
+                "duration": "1-25 years (negotiable)",
+                "requirements": [
+                    "Rental agreement (Surat Perjanjian Sewa)",
+                    "Passport copy",
+                    "Security deposit (typically 1-3 months)",
+                ],
+                "estimated_costs": {
+                    "deposit_months": 3,
+                },
+                "notes": "Simplest option — no ownership transfer, no BPHTB",
+            },
+        ]
+        blocked_types = [
+            {
+                "type": "hak_milik",
+                "label": "Hak Milik (Full Ownership)",
+                "reason": "Reserved for Indonesian citizens only (UUPA Art. 21)",
+            },
+        ]
+        nationality_class = "WNA"
+    else:
+        allowed_types = [
+            {
+                "type": "hak_milik",
+                "label": "Hak Milik (Full Ownership)",
+                "duration": "Perpetual",
+                "requirements": ["Indonesian citizenship (WNI)", "Notary deed", "BPN registration"],
+                "estimated_costs": {
+                    "bphtb_5pct": bphtb_estimate,
+                    "notary_fee_approx_idr": 5_000_000,
+                },
+                "notes": "Strongest title — full ownership rights",
+            },
+            {
+                "type": "hak_pakai",
+                "label": "Hak Pakai (Right to Use)",
+                "duration": "30 years (renewable)",
+                "requirements": ["Notary deed", "BPN registration"],
+                "estimated_costs": {"bphtb_5pct": bphtb_estimate},
+                "notes": "Also available to Indonesian citizens",
+            },
+            {
+                "type": "hgb",
+                "label": "HGB (Building Rights)",
+                "duration": "30 years (renewable)",
+                "requirements": ["Notary deed", "BPN registration"],
+                "estimated_costs": {"bphtb_5pct": bphtb_estimate},
+                "notes": "For commercial/business property",
+            },
+            {
+                "type": "rental",
+                "label": "Rental / Leasehold (Sewa)",
+                "duration": "1-25 years",
+                "requirements": ["Rental agreement"],
+                "estimated_costs": {"deposit_months": 1},
+                "notes": "Simplest option",
+            },
+        ]
+        blocked_types = []
+        nationality_class = "WNI"
+
+    result: dict[str, Any] = {
+        "nationality_class": nationality_class,
+        "allowed_types": allowed_types,
+        "blocked_types": blocked_types,
+    }
+
+    # Zone-based warnings
+    if zone_code and zone_code in RESTRICTED_ZONES:
+        result["zone_warning"] = (
+            f"Zone {zone_code} is restricted — property acquisition may face "
+            "additional regulatory barriers or be prohibited entirely."
+        )
+    if zone_code and zone_code in NON_BUILDABLE_ZONES:
+        result["zone_warning"] = (
+            f"Zone {zone_code} is non-buildable — only land investment possible, "
+            "no construction permits (IMB/PBG) will be issued."
+        )
+
+    if is_foreigner:
+        result["cross_domain_note"] = (
+            "HGB via PT PMA requires company formation — "
+            "see company setup workflow for requirements and timeline."
+        )
+
+    return result
 
 
 # =============================================================================
@@ -601,6 +827,66 @@ class PrimeNexusService:
     def _record_gistaru_success(self) -> None:
         self._gistaru_failures = 0
 
+    # ── Coastline Distance Query ─────────────────────────────────────
+    async def _query_sea_distance(self, lat: float, lng: float) -> float | None:
+        """Calculate distance in meters from a point to the nearest coastline.
+
+        Uses bali_coastline table (populated by import_bali_coastline.py).
+        Results cached in Redis for 24h (coastline does not change).
+        """
+        # Check Redis cache
+        gh6 = encode_geohash(lat, lng, precision=6)
+        cache_key = f"prime:sea_dist:{gh6}"
+        if self._cache:
+            try:
+                cached = await self._cache.get(cache_key)
+                if cached is not None:
+                    return float(cached) if cached != "null" else None
+            except Exception:
+                pass
+
+        # PostGIS query
+        pool = self._db_pool
+        dist: float | None = None
+        sql = (
+            "SELECT ST_Distance("
+            "  ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,"
+            "  c.geom::geography"
+            ") AS dist_m "
+            "FROM bali_coastline c "
+            "WHERE c.name = 'bali_main' "
+            "LIMIT 1"
+        )
+        try:
+            if pool:
+                async with pool.acquire() as conn:
+                    row = await conn.fetchrow(sql, lng, lat)
+            else:
+                db_url = os.environ.get("DATABASE_URL", "")
+                if not db_url:
+                    return None
+                if db_url.startswith("postgres://"):
+                    db_url = db_url.replace("postgres://", "postgresql://", 1)
+                conn = await asyncpg.connect(db_url)
+                try:
+                    row = await conn.fetchrow(sql, lng, lat)
+                finally:
+                    await conn.close()
+
+            if row and row["dist_m"] is not None:
+                dist = round(float(row["dist_m"]), 1)
+        except Exception as exc:
+            logger.debug("[PrimeNexus] Sea distance query skipped: %s", exc)
+
+        # Cache result (24h)
+        if self._cache:
+            try:
+                await self._cache.set(cache_key, str(dist) if dist is not None else "null", ttl=86400)
+            except Exception:
+                pass
+
+        return dist
+
     # ── Layer 1: Spatial Resolution ──────────────────────────────────
     async def resolve(self, lat: float, lng: float) -> dict[str, Any]:
         """
@@ -628,6 +914,7 @@ class PrimeNexusService:
 
         if batara_result:
             response = self._build_resolve_response(lat, lng, batara_result, "batara_live", 1.0)
+            response = await self._enrich_resolve_response(response, lat, lng)
             await self._cache_zone(cache_key, response)
             return response
 
@@ -638,6 +925,7 @@ class PrimeNexusService:
 
         if gistaru_result:
             response = self._build_resolve_response_from_gistaru(lat, lng, gistaru_result)
+            response = await self._enrich_resolve_response(response, lat, lng)
             await self._cache_zone(cache_key, response)
             return response
 
@@ -645,6 +933,7 @@ class PrimeNexusService:
         postgis_result = await self._query_postgis(lat, lng)
         if postgis_result:
             response = self._build_resolve_response_from_postgis(lat, lng, postgis_result)
+            response = await self._enrich_resolve_response(response, lat, lng)
             await self._cache_zone(cache_key, response)
             return response
 
@@ -653,8 +942,19 @@ class PrimeNexusService:
             "lat": lat, "lng": lng,
             "zone": None,
             "cache_hit": False,
+            "sea_distance_m": None,
             "message": "Coordinates outside mapped RDTR coverage.",
         }
+
+    async def _enrich_resolve_response(
+        self, response: dict[str, Any], lat: float, lng: float,
+    ) -> dict[str, Any]:
+        """Enrich resolve response with sea_distance_m."""
+        sea_dist = await self._query_sea_distance(lat, lng)
+        response["sea_distance_m"] = sea_dist
+        if response.get("zone") and isinstance(response["zone"], dict):
+            response["zone"]["sea_distance_m"] = sea_dist
+        return response
 
     # ── BATARA query ─────────────────────────────────────────────────
     async def _query_batara(self, lat: float, lng: float) -> dict[str, Any] | None:
@@ -1146,6 +1446,17 @@ class PrimeNexusService:
             except Exception as e:
                 roi_data = {"error": str(e)}
 
+        # Step 3b: Enrich geo_data with sea_distance_m and risk_score from resolve
+        sea_dist = resolve_result.get("sea_distance_m")
+        if geo_data is None:
+            geo_data = {}
+        if sea_dist is not None:
+            geo_data["sea_distance_m"] = sea_dist
+        # Inject numeric risk_score from PostGIS (if available in resolve)
+        postgis_risk = resolve_result.get("risk_score")
+        if postgis_risk is not None and postgis_risk != 0.5:
+            geo_data["risk_score"] = postgis_risk
+
         # Step 4: Scoring engine
         scoring = calculate_investment_score(
             zone_data=zone_data,
@@ -1155,6 +1466,26 @@ class PrimeNexusService:
             geo_data=geo_data,
             oss_risk=kbli_oss_risk,
         )
+
+        # Step 4b: Property tax calculation
+        property_tax: dict[str, Any] | None = None
+        avg_price_per_are = resolve_result.get("avg_price_per_are", 0)
+        njop_proxy = price_idr or (
+            avg_price_per_are * (land_size_m2 / 100) if avg_price_per_are and land_size_m2 else None
+        )
+        if njop_proxy and njop_proxy > 0:
+            kabupaten = (zone_data.get("kecamatan", "") if zone_data else "") or resolve_result.get("district", "")
+            property_tax = calculate_property_tax(njop_proxy, kabupaten)
+
+        # Step 4c: Property eligibility (only if nationality provided)
+        property_eligibility: dict[str, Any] | None = None
+        nationality = (investor_profile or {}).get("nationality")
+        if nationality:
+            property_eligibility = calculate_property_eligibility(
+                nationality=nationality,
+                zone_code=zone_code,
+                njop_total_idr=njop_proxy,
+            )
 
         # Step 5: Intel articles (best-effort)
         intel_articles: list[dict[str, Any]] = []
@@ -1181,6 +1512,9 @@ class PrimeNexusService:
                 "modifiers": scoring["modifiers"],
                 "hard_blocks": scoring["hard_blocks"],
             },
+            "sea_distance_m": sea_dist,
+            "property_tax": property_tax,
+            "property_eligibility": property_eligibility,
             "opportunities": resolve_result.get("businesses", []),
             "intel_articles": intel_articles,
             "cache_hit": False,

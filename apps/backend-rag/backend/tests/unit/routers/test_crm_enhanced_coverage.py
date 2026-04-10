@@ -25,7 +25,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture
-def app_client(mock_current_user, mock_db_pool):
+def app_client(mock_current_user, mock_db_pool, disable_auth_middleware):
     """FastAPI app with dependency overrides for crm_enhanced router."""
     from backend.app.dependencies import get_current_user, get_database_pool
     from backend.app.main_cloud import app
@@ -705,7 +705,7 @@ class TestDeleteFamilyMember:
 
 class TestAccessControl:
     @pytest.mark.asyncio
-    async def test_profile_non_admin_no_access(self):
+    async def test_profile_non_admin_no_access(self, disable_auth_middleware):
         """Non-admin user without assignment to client gets 403/404."""
         from backend.app.dependencies import get_current_user, get_database_pool
         from backend.app.main_cloud import app
