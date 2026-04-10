@@ -305,28 +305,40 @@ export default function NewPracticePage() {
     try {
       const user = await api.getProfile();
 
-      const existingPractices = await api.crm.getClientPractices(
-        result.data.client_id,
-      );
-      const duplicateCheck = existingPractices.find(
-        (p) =>
-          p.practice_type_code === result.data.practice_type_code &&
-          !["completed", "cancelled"].includes(p.status),
-      );
+      // Duplicate check — may fail with 403 if RBAC denies access (non-admin
+      // creating process for a client assigned to someone else). Skip check
+      // on failure rather than blocking creation entirely.
+      try {
+        const existingPractices = await api.crm.getClientPractices(
+          result.data.client_id,
+        );
+        const duplicateCheck = existingPractices.find(
+          (p) =>
+            p.practice_type_code === result.data.practice_type_code &&
+            !["completed", "cancelled"].includes(p.status),
+        );
 
-      if (duplicateCheck) {
-        toast.error(
-          "Duplicate Process",
-          `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
-        );
-        casesMetrics.trackError(
-          "Duplicate Process Blocked",
-          `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
-          "CasesNewPage",
-          duplicateCheck.id,
-          user.email,
-        );
-        return;
+        if (duplicateCheck) {
+          toast.error(
+            "Duplicate Process",
+            `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
+          );
+          casesMetrics.trackError(
+            "Duplicate Process Blocked",
+            `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
+            "CasesNewPage",
+            duplicateCheck.id,
+            user.email,
+          );
+          return;
+        }
+      } catch {
+        // RBAC 403 or network error — skip duplicate check, proceed with creation
+        logger.warn("Duplicate check skipped — could not fetch client practices", {
+          component: "NewProcess",
+          action: "duplicateCheck",
+          itemId: String(result.data.client_id),
+        });
       }
 
       const backendData: CreatePracticeParams = {
