@@ -114,11 +114,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
 
             assert len(result) == 2
@@ -159,11 +159,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             assert len(result) == 2
             assert result[0]["score"] == 0.9
@@ -180,11 +180,11 @@ class TestReRankerEnabled:
         mock_response.status_code = 500
         mock_response.text = "Internal Server Error"
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             # Should return original documents on error
             assert result == documents[:2]
@@ -201,11 +201,11 @@ class TestReRankerEnabled:
         mock_response.status_code = 200
         mock_response.json.return_value = {"results": []}
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             # Should return original documents when no results
             assert result == documents[:2]
@@ -226,11 +226,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=1)
             assert result[0]["vector_score"] == 0.5
             assert result[0]["score"] == 0.9
@@ -252,11 +252,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             # Should be sorted by score descending
             assert result[0]["score"] == 0.9
@@ -281,11 +281,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             assert len(result) == 2
 
@@ -296,11 +296,11 @@ class TestReRankerEnabled:
             {"text": "Doc 1", "score": 0.5},
         ]
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                side_effect=Exception("Network error")
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(side_effect=Exception("Network error"))
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=1)
             # Should return original documents on exception
             assert result == documents[:1]
@@ -322,11 +322,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=2)
             # Should only include valid index
             assert len(result) == 1
@@ -347,11 +347,11 @@ class TestReRankerEnabled:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        mock_client = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.is_closed = False
 
+        with patch.object(reranker_enabled, "_get_client", return_value=mock_client):
             result = await reranker_enabled.rerank("test query", documents, top_k=1)
             # Should use default score of 0.0
             assert result[0]["score"] == 0.0

@@ -30,6 +30,7 @@ _SAFE_VACUUM_TABLES: set[str] = {
     "query_analytics", "activity_log", "workflow_analytics",
     "cell_episodes", "conversations", "episodic_memories",
     "olympus_heartbeats", "olympus_actions",
+    "news_items", "conversation_messages",
 }
 
 
