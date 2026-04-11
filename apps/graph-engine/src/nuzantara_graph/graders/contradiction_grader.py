@@ -29,6 +29,36 @@ _NUMBER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Word-form durations: ("two months", "one year", "three days", etc.)
+# Captures both cardinal words (one..twelve) and digit numbers, plus common
+# variants (half, couple). This is intentionally narrow — the goal is to
+# normalize durations, not to be a general NLP number parser.
+_WORD_NUMBER_MAP = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "a": 1, "an": 1, "half": 0,
+    # Indonesian cardinals (common in visa KB)
+    "satu": 1, "dua": 2, "tiga": 3, "empat": 4, "lima": 5,
+    "enam": 6, "tujuh": 7, "delapan": 8, "sembilan": 9, "sepuluh": 10,
+}
+_WORD_NUMBER_PATTERN = re.compile(
+    r"\b(" + "|".join(_WORD_NUMBER_MAP.keys()) + r")\s+"
+    r"(days?|months?|years?|hari|bulan|tahun)\b",
+    re.IGNORECASE,
+)
+
+# Normalize all durations to days so "60 days" and "two months" map to the
+# same canonical value. Months = 30 days, years = 365 days (both standard
+# heuristics; the grader only needs equality on normalized values).
+_UNIT_TO_DAYS = {
+    "day": 1,
+    "hari": 1,
+    "month": 30,
+    "bulan": 30,
+    "year": 365,
+    "tahun": 365,
+}
+
 _NEGATION_MARKERS = (
     "not ",
     "no ",
@@ -71,14 +101,55 @@ _COMMON_WORDS = {
 }
 
 
+def _normalize_unit(raw: str) -> str:
+    """Map a raw unit token to a canonical name, stripping plurals."""
+    u = raw.lower().rstrip("s")
+    # Map Indonesian to English for the canonical unit name
+    return {
+        "hari": "day",
+        "bulan": "month",
+        "tahun": "year",
+    }.get(u, u)
+
+
+def _normalize_value(value: int, unit: str) -> tuple[int, str]:
+    """Normalize a (value, unit) pair.
+
+    Durations are converted to days so "60 days" ≡ "2 months". Non-duration
+    units (usd, idr, eur) are returned unchanged.
+    """
+    if unit in _UNIT_TO_DAYS:
+        return (value * _UNIT_TO_DAYS[unit], "day")
+    return (value, unit)
+
+
 def _extract_numbers_with_unit(text: str) -> set[tuple[int, str]]:
-    """Return {(value, unit)} tuples found in text."""
+    """Return {(value, unit)} tuples found in text.
+
+    Durations are normalized to days. Word-form numbers like "two months"
+    are recognized. Each (value, unit) pair is the NORMALIZED canonical
+    form — the caller compares equality of normalized values directly.
+    """
     out: set[tuple[int, str]] = set()
+
+    # Digit + unit
     for m in _NUMBER_PATTERN.finditer(text):
         try:
-            out.add((int(m.group(1)), m.group(2).lower().rstrip("s")))
+            raw_value = int(m.group(1))
+            unit = _normalize_unit(m.group(2))
+            out.add(_normalize_value(raw_value, unit))
         except (ValueError, IndexError):
             continue
+
+    # Word + duration-unit ("two months", "satu tahun")
+    for m in _WORD_NUMBER_PATTERN.finditer(text):
+        word = m.group(1).lower()
+        unit = _normalize_unit(m.group(2))
+        value = _WORD_NUMBER_MAP.get(word)
+        if value is None:
+            continue
+        out.add(_normalize_value(value, unit))
+
     return out
 
 
@@ -105,6 +176,26 @@ def _has_negation_flip(a: str, b: str) -> bool:
     return overlap >= 2
 
 
+# Relative tolerance when comparing normalized durations. 12 months and
+# 1 year differ by ~1.4% under our 30-day/365-day approximation — they
+# are the same duration in practice. 2 months and 90 days differ by ~50%.
+# 5% tolerance cleanly separates the two cases.
+_DURATION_TOLERANCE = 0.05
+
+
+def _values_match(a: int, b: int, unit: str) -> bool:
+    """Return True if a and b are equivalent within the unit's tolerance."""
+    if a == b:
+        return True
+    if unit == "day":
+        # Durations: allow 5% slack to absorb month=30 vs year=365 rounding
+        larger = max(a, b)
+        if larger == 0:
+            return False
+        return abs(a - b) / larger <= _DURATION_TOLERANCE
+    return False
+
+
 def _number_disagreement_score(
     current: set[tuple[int, str]],
     prior: set[tuple[int, str]],
@@ -116,11 +207,11 @@ def _number_disagreement_score(
     disagreements = 0
     total = 0
     for c_val, c_unit in current:
-        prior_same_unit = {p_val for p_val, p_unit in prior if p_unit == c_unit}
+        prior_same_unit = [p_val for p_val, p_unit in prior if p_unit == c_unit]
         if not prior_same_unit:
             continue
         total += 1
-        if c_val not in prior_same_unit:
+        if not any(_values_match(c_val, p_val, c_unit) for p_val in prior_same_unit):
             disagreements += 1
 
     if total == 0:
