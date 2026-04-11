@@ -115,16 +115,78 @@ The B211 visit visa no longer exists. A pre-filter rewrites any match to
 `doc_id="SYSTEM:b211_rewrite"`. This guarantees the composer can cite the
 rewrite without needing knowledge-base evidence.
 
+## Post-review Improvements
+
+After the initial delivery landed, a review pass added four refinements
+that tighten the pipeline's honesty and efficiency:
+
+### 1. Skip LLM call on empty retrieval
+
+`plan_execute` previously always called `compose_fragment` per
+sub-question, even when `_retrieve_chunks` returned `[]`. That wasted a
+call per empty node and could only hallucinate (LLM composing from no
+sources). The loop now checks `if chunks:` before the LLM call. On
+empty retrieval the node produces an empty `NodeEvidence` without
+touching the budget — the composer's fallback handles the display.
+
+### 2. Direct edge SUBGRAPH_VISA → GRADE_HALLUCINATION
+
+The planner already produces a fully-cited, enforcer-linted answer.
+Running REASON + SYNTHESIZE on top of it is pure waste (2 extra LLM
+calls) and risks overwriting the carefully constructed citations. The
+main graph builder now has a conditional edge after `SUBGRAPH_VISA`:
+
+```
+route_after_visa_subgraph(state) →
+    "direct"  if state.answer is non-empty  → GRADE_HALLUCINATION
+    "reason"  otherwise (planner failed)    → REASON (legacy path)
+```
+
+The hallucination grader remains in place as a deterministic safety
+check. When the planner crashes or returns an empty answer, the
+fallback path sends flow through REASON + SYNTHESIZE so the user still
+gets a response.
+
+### 3. Duration normalization in the contradiction grader
+
+`ContradictionGrader` now recognizes word-form numbers ("two months",
+"satu tahun") and normalizes all durations to days before comparing.
+"60 days" ≡ "two months", "1 year" ≡ "12 months". A 5% relative
+tolerance absorbs the month=30 vs year=365 approximation mismatch, so
+the grader doesn't flag equivalent durations as contradictions.
+
+Indonesian cardinals (satu..sepuluh) and unit tokens (hari/bulan/
+tahun) are included because they appear in the visa KB.
+
+### 4. Hallucination grader short-circuits on system fallbacks
+
+The grader's keyword-overlap heuristic used to score system fallback
+strings like `_SYSTEM_FALLBACK` as a fake 1.0 PASS (generic words
+matching the source material by accident). Worse, the fail_fast
+rephrase messages were FAIL'd for the opposite reason (no sources to
+check).
+
+Both are wrong: escalation messages carry no factual claims and should
+be treated as neutral decisions. A new `_is_system_fallback()` check
+matches known prefixes and short-circuits to a clean PASS with the
+reason `"System fallback / escalation message — no claims to verify"`,
+making the grader decision intentional and debuggable.
+
 ## Known Limitations
 
 1. **Span offsets are approximate.** We default to `(0, len(content))`
    because the vector store does not expose character-level offsets. Real
    spans would require pipeline re-ingestion.
-2. **Contradiction detection is heuristic.** Number disagreement +
-   negation polarity flip catches obvious cases. Subtle semantic
-   contradictions (e.g. "60 days" vs "two months") are not detected.
-3. **No live-model tier in initial delivery.** All tests mock
-   `LLMGateway`. A `@pytest.mark.live` tier can be added when a gated
-   test fixture for Gemini exists.
+2. **Contradiction detection is still heuristic.** Duration
+   normalization helps, but subtle semantic contradictions (e.g.
+   "extendable once" vs "single extension only") are not detected.
+3. **Live-model tier exists but unverified.** A `@pytest.mark.live`
+   tier under `tests/live/` hits a real Gemini gateway when
+   `NUZANTARA_GOOGLE_API_KEY` is set; skipped by default. The prompts
+   have not been run against the real model during this review.
 4. **Language detection is naive.** The planner relies on the LLM to
    mirror the input language.
+5. **Fallback sentinel list is hand-maintained.** Adding a new fallback
+   path requires adding a prefix to `_FALLBACK_PREFIXES` in
+   `hallucination_grader.py`. A future refactor could centralize
+   fallback strings in a single module.
