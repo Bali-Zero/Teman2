@@ -55,14 +55,27 @@ class SemanticCache:
             ttl_seconds=settings.semantic_cache_ttl_seconds,
         )
 
-    async def _get_client(self) -> aioredis.Redis:
+    async def _get_client(self) -> aioredis.Redis | None:
+        """Return the Redis client, or ``None`` if no redis_url is configured.
+
+        The cache is opt-in: when running in test mode or local dev without
+        a Redis instance, ``redis_url`` is empty and every cache operation
+        should behave as a cache miss rather than crash with a ValueError
+        from ``aioredis.from_url``.
+        """
+        if not self.redis_url:
+            return None
         if self._client is None:
-            self._client = aioredis.from_url(
-                self.redis_url,
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5,
-            )
+            try:
+                self._client = aioredis.from_url(
+                    self.redis_url,
+                    decode_responses=True,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                )
+            except ValueError as e:
+                logger.warning("cache_disabled", reason=str(e))
+                return None
         return self._client
 
     # ------------------------------------------------------------------
@@ -72,6 +85,8 @@ class SemanticCache:
     async def get(self, query: str) -> dict[str, Any] | None:
         """Exact hash lookup — O(1), no LLM call."""
         client = await self._get_client()
+        if client is None:
+            return None
         key = self._make_key(query)
 
         try:
@@ -92,6 +107,8 @@ class SemanticCache:
     ) -> None:
         """Store response with exact hash key."""
         client = await self._get_client()
+        if client is None:
+            return
         key = self._make_key(query)
         effective_ttl = ttl or self.ttl_seconds
 
@@ -146,6 +163,8 @@ class SemanticCache:
 
             # Retrieve the actual response from Redis using the stored key
             client = await self._get_client()
+            if client is None:
+                return None
             raw = await client.get(cache_key)
             if raw is None:
                 return None
@@ -245,6 +264,8 @@ class SemanticCache:
     async def invalidate(self, query: str) -> None:
         """Remove a cached entry."""
         client = await self._get_client()
+        if client is None:
+            return
         key = self._make_key(query)
         await client.delete(key)
 
@@ -255,6 +276,8 @@ class SemanticCache:
     ) -> None:
         """Publish a graph node event to Redis Pub/Sub for SSE streaming."""
         client = await self._get_client()
+        if client is None:
+            return
         channel = f"{STREAM_PREFIX}{run_id}"
         try:
             await client.publish(channel, json.dumps(event))
@@ -269,6 +292,13 @@ class SemanticCache:
         """Verify Redis is reachable."""
         try:
             client = await self._get_client()
+            if client is None:
+                return {
+                    "status": "disabled",
+                    "url": self.redis_url,
+                    "reason": "redis_url not configured",
+                    "ok": True,
+                }
             pong = await client.ping()
             info = await client.info("server")
             return {

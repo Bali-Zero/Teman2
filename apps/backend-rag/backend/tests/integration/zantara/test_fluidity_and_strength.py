@@ -4,8 +4,6 @@ Tests fluidity (low ABSTAIN rate) and strength (proactive, helpful responses)
 """
 
 import os
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,16 +17,8 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/tes
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("ENVIRONMENT", "test")
 
-# Add backend to Python path
-backend_path = Path(__file__).parent.parent.parent.parent.parent
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-# Change to backend directory for imports
-os.chdir(str(backend_path / "backend"))
-
-from services.rag.agentic.orchestrator import AgenticRAGOrchestrator
-from services.rag.agentic.schema import CoreResult
+from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.schema import CoreResult
 
 
 @pytest.fixture
@@ -41,17 +31,17 @@ def mock_tools():
 def orchestrator(mock_tools):
     """Create orchestrator instance with mocked dependencies"""
     with (
-        patch("services.rag.agentic.orchestrator.SemanticCache"),
-        patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-        patch("services.rag.agentic.orchestrator.IntentClassifier"),
-        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-        patch("services.rag.agentic.orchestrator.ClarificationService"),
-        patch("services.rag.agentic.orchestrator.FollowupService") as mock_followup,
-        patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
-        patch("services.rag.agentic.orchestrator.MemoryHandler"),
-        patch("services.rag.agentic.orchestrator.QueryGates"),
-        patch("services.rag.agentic.orchestrator.LLMGateway") as mock_llm_gateway,
-        patch("services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
+        patch("backend.services.rag.agentic.orchestrator.SemanticCache"),
+        patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("backend.services.rag.agentic.orchestrator.ClarificationService"),
+        patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_followup,
+        patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
+        patch("backend.services.rag.agentic.orchestrator.MemoryHandler"),
+        patch("backend.services.rag.agentic.orchestrator.QueryGates"),
+        patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_llm_gateway,
+        patch("backend.services.rag.agentic.orchestrator.ReasoningEngine") as mock_reasoning,
     ):
         # Setup mock LLM Gateway
         mock_llm_gateway_instance = MagicMock()
@@ -89,7 +79,7 @@ class TestZantaraFluidity:
     @pytest.mark.asyncio
     async def test_low_abstain_threshold(self):
         """Test that ABSTAIN threshold is low (0.2) for fluidity"""
-        from app.core.constants import EvidenceScoreConstants
+        from backend.app.core.constants import EvidenceScoreConstants
 
         assert EvidenceScoreConstants.ABSTAIN_THRESHOLD == 0.15, (
             f"ABSTAIN threshold should be 0.15 (was {EvidenceScoreConstants.ABSTAIN_THRESHOLD})"
@@ -119,7 +109,7 @@ class TestZantaraFluidity:
     @pytest.mark.asyncio
     async def test_evidence_score_allows_responses(self):
         """Test that evidence score thresholds allow responses"""
-        from app.core.constants import EvidenceScoreConstants
+        from backend.app.core.constants import EvidenceScoreConstants
 
         # With threshold 0.2, responses with score >= 0.2 should be allowed
         test_scores = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
@@ -136,7 +126,7 @@ class TestZantaraStrength:
     @pytest.mark.asyncio
     async def test_prompt_includes_proactivity(self):
         """Test that system prompt includes proactivity rules"""
-        from services.rag.agentic.prompt_builder import ZANTARA_MASTER_TEMPLATE
+        from backend.services.rag.agentic.prompt_builder import ZANTARA_MASTER_TEMPLATE
 
         # Check for proactivity keywords in prompt
         assert (
@@ -170,8 +160,13 @@ class TestZantaraStrength:
     @pytest.mark.asyncio
     async def test_final_prompt_includes_suggestions(self):
         """Test that final answer prompt includes instruction to suggest next steps"""
-        # Read the reasoning.py file to verify prompt includes suggestions
-        reasoning_file = backend_path / "backend" / "services" / "rag" / "agentic" / "reasoning.py"
+        from pathlib import Path
+
+        # Read the reasoning.py file to verify prompt includes suggestions.
+        # __file__ = .../backend/tests/integration/zantara/test_fluidity_and_strength.py
+        # parents[0] = zantara, [1] = integration, [2] = tests, [3] = backend
+        backend_dir = Path(__file__).resolve().parents[3]
+        reasoning_file = backend_dir / "services" / "rag" / "agentic" / "reasoning.py"
         reasoning_content = reasoning_file.read_text()
 
         assert "suggest" in reasoning_content.lower() or "suggerire" in reasoning_content.lower()
@@ -184,7 +179,7 @@ class TestZantaraStrength:
     @pytest.mark.asyncio
     async def test_moderate_evidence_allows_response(self):
         """Test that moderate evidence (0.2-0.5) still allows response with warning"""
-        from app.core.constants import EvidenceScoreConstants
+        from backend.app.core.constants import EvidenceScoreConstants
 
         moderate_scores = [0.2, 0.3, 0.4, 0.5]
 
@@ -223,7 +218,7 @@ class TestZantaraIntegration:
     @pytest.mark.asyncio
     async def test_followup_generation_metrics(self):
         """Test that followup generation is tracked with metrics"""
-        from services.misc.followup_service import (
+        from backend.services.misc.followup_service import (
             followup_generation_duration,
             followup_requests_total,
         )
@@ -260,7 +255,7 @@ class TestZantaraPerformance:
     @pytest.mark.asyncio
     async def test_evidence_score_calculation_allows_responses(self):
         """Test that evidence score calculation allows most queries to get responses"""
-        from services.rag.agentic.reasoning import calculate_evidence_score
+        from backend.services.rag.agentic.reasoning import calculate_evidence_score
 
         # Simulate scenarios that should get responses
         test_cases = [
