@@ -1,0 +1,5 @@
+{"query_id": "Q1_kitas", "query": "What is KITAS and how to obtain it", "expected_keywords": ["kitas", "permit", "residence"]}
+{"query_id": "Q2_bpjs", "query": "How do expats register for BPJS Kesehatan", "expected_keywords": ["bpjs", "kesehatan", "expat"]}
+{"query_id": "Q3_ptpma", "query": "Requirements to establish a PT PMA in Indonesia", "expected_keywords": ["pma", "capital", "foreign"]}
+{"query_id": "Q4_visa", "query": "What is an E23 work visa", "expected_keywords": ["e23", "work", "visa"]}
+{"query_id": "Q5_pkwt", "query": "Rules for a fixed-term labor contract PKWT", "expected_keywords": ["pkwt", "contract", "fixed"]}
