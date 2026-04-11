@@ -69,3 +69,64 @@ class TestHallucinationGrader:
         result = self.grader.grade(state)
         # KG entities provide grounding for the answer
         assert result.score > 0.3
+
+    def test_system_fallback_answer_is_neutral_pass(self):
+        """When the planner emits a known system fallback string (e.g. the
+        visa planner's 'I cannot produce a fully-cited answer...'), the
+        hallucination grader should NOT run the keyword-overlap heuristic
+        at all. It should record a neutral PASS with a clear reason,
+        because the string is explicitly a non-answer escalation."""
+        state = GraphState(
+            query="Obscure query with no KB coverage",
+            answer=(
+                "I cannot produce a fully-cited answer for this query. "
+                "Please rephrase or contact support for visa assistance."
+            ),
+            retrieved_documents=[
+                RetrievedDocument(
+                    id="SYSTEM:b211_rewrite",
+                    content="The B211 visa was abolished...",
+                    score=1.0,
+                )
+            ],
+        )
+        result = self.grader.grade(state)
+        assert result.decision == GradeDecision.PASS
+        assert "system_fallback" in result.reason.lower() or "fallback" in result.reason.lower()
+
+    def test_rephrase_style_fallback_detected(self):
+        """The fail_fast node emits its own rephrase message — the grader
+        should recognize it as a non-answer too."""
+        state = GraphState(
+            query="Test",
+            answer=(
+                "I wasn't able to provide a reliable answer to your question. "
+                "Could you try rephrasing it with more specific details?"
+            ),
+            retrieved_documents=[],
+        )
+        result = self.grader.grade(state)
+        assert result.decision == GradeDecision.PASS
+        assert "fallback" in result.reason.lower()
+
+    def test_real_answer_with_same_keywords_still_evaluated(self):
+        """Safety check: a real answer that happens to contain the word
+        'rephrase' or 'cannot' should NOT be mistaken for a fallback.
+        The detector requires an exact prefix match, not keyword overlap."""
+        state = GraphState(
+            query="KITAS duration",
+            answer=(
+                "KITAS is valid for 12 months and cannot be issued without "
+                "a sponsoring company."
+            ),
+            retrieved_documents=[
+                RetrievedDocument(
+                    id="d1",
+                    content="KITAS duration is 12 months. A sponsor company is required.",
+                    score=0.9,
+                )
+            ],
+        )
+        result = self.grader.grade(state)
+        # Normal heuristic ran — not the fallback short-circuit
+        assert "fallback" not in result.reason.lower()
