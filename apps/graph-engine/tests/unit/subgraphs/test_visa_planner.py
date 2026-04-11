@@ -371,3 +371,149 @@ class TestContradictionGrader:
         grader = ContradictionGrader()
         score = grader.score(current, [prior])
         assert score > 0.4
+
+
+@pytest.mark.unit
+class TestExecute:
+    @pytest.mark.asyncio
+    async def test_single_sub_question_runs(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+        from nuzantara_schemas.state import RetrievedDocument
+
+        svc = make_mock_services(
+            documents=[
+                RetrievedDocument(id="kitas", content="KITAS permit info", score=0.9)
+            ],
+            llm_responses={"generate": "KITAS is a temporary permit."},
+        )
+        state = PlannerState(
+            query="What is KITAS?",
+            rewritten_query="What is KITAS?",
+            sub_questions=[
+                SubQuestion(idx=0, text="What is KITAS?", needs_kb=True, depends_on=[])
+            ],
+        )
+
+        new_state = await plan_execute(state, svc)
+        assert len(new_state.evidences) == 1
+        assert len(new_state.evidences[0].chunks) >= 1
+        assert new_state.llm_call_count >= 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_sub_questions_parallel(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+        from nuzantara_schemas.state import RetrievedDocument
+
+        svc = make_mock_services(
+            documents=[
+                RetrievedDocument(id="doc1", content="Investor KITAS info", score=0.9)
+            ],
+            llm_responses={"generate": "answer"},
+        )
+        state = PlannerState(
+            query="Compare investor vs working KITAS",
+            rewritten_query="Compare investor vs working KITAS",
+            sub_questions=[
+                SubQuestion(idx=0, text="What is investor KITAS?", needs_kb=True, depends_on=[]),
+                SubQuestion(idx=1, text="What is working KITAS?", needs_kb=True, depends_on=[]),
+            ],
+        )
+        new_state = await plan_execute(state, svc)
+        assert len(new_state.evidences) == 2
+
+    @pytest.mark.asyncio
+    async def test_empty_kb_graceful(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+
+        svc = make_mock_services(
+            documents=[],
+            llm_responses={"generate": "I don't know"},
+        )
+        state = PlannerState(
+            query="newborn visa",
+            rewritten_query="newborn visa",
+            sub_questions=[
+                SubQuestion(idx=0, text="newborn visa?", needs_kb=True, depends_on=[])
+            ],
+        )
+        new_state = await plan_execute(state, svc)
+        assert len(new_state.evidences) == 1
+        assert new_state.evidences[0].chunks == []
+
+    @pytest.mark.asyncio
+    async def test_llm_budget_enforced(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+
+        svc = make_mock_services(llm_responses={"generate": "x"})
+        state = PlannerState(
+            query="q",
+            rewritten_query="q",
+            sub_questions=[
+                SubQuestion(idx=i, text=f"sub {i}", needs_kb=True, depends_on=[])
+                for i in range(5)
+            ],
+            max_llm_calls=2,
+        )
+        new_state = await plan_execute(state, svc)
+        assert new_state.llm_call_count <= 2
+
+    @pytest.mark.asyncio
+    async def test_contradiction_retry_triggered(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+        from nuzantara_schemas.state import RetrievedDocument
+
+        # Two sub-qs whose first answers contain contradictory durations.
+        docs_first = [
+            RetrievedDocument(id="a", content="KITAS duration is 30 days", score=0.9),
+        ]
+        docs_second_round = [
+            RetrievedDocument(id="b", content="KITAS duration is 60 days", score=0.9),
+        ]
+
+        class AlternatingVectorStore:
+            def __init__(self):
+                self._call = 0
+
+            async def search_by_text(self, query, **kwargs):
+                self._call += 1
+                if self._call == 1:
+                    return docs_first
+                return docs_second_round
+
+            async def search(self, query_embedding, **kwargs):
+                return []
+
+        svc = make_mock_services(
+            llm_responses={
+                "generate": "KITAS duration info",
+            }
+        )
+        svc.vector_store = AlternatingVectorStore()  # type: ignore[assignment]
+
+        state = PlannerState(
+            query="KITAS duration",
+            rewritten_query="KITAS duration",
+            sub_questions=[
+                SubQuestion(idx=0, text="KITAS duration 30 days?", needs_kb=True, depends_on=[]),
+                SubQuestion(idx=1, text="KITAS duration 60 days?", needs_kb=True, depends_on=[]),
+            ],
+        )
+        new_state = await plan_execute(state, svc)
+        assert len(new_state.evidences) == 2
+        contradictory = [e for e in new_state.evidences if e.contradiction_score > 0.0]
+        assert len(contradictory) >= 1
