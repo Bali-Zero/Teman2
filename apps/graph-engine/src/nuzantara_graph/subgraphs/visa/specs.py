@@ -1,22 +1,16 @@
-"""Visa/immigration subgraph — KITAS, KITAP, B211A, VOA, etc.
+"""Visa specifications and legacy type identification.
 
-Identifies the visa type from extracted entities, checks RPTKA/work permit
-requirements, retrieves visa-specific documents and costs.
+Moved from the old subgraphs/visa.py. The multi-step planner still needs
+these for the initial "dominant visa" classification used by the composer.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-import structlog
-
-from nuzantara_graph.services import Services
 from nuzantara_schemas.domain.visa import VisaType
-from nuzantara_schemas.state import GraphState, RetrievedDocument
+from nuzantara_schemas.state import GraphState
 
-logger = structlog.get_logger()
-
-# Visa specifications — Indonesian immigration law
 VISA_SPECS: dict[str, dict[str, Any]] = {
     VisaType.KITAS: {
         "duration_months": 12,
@@ -67,6 +61,10 @@ VISA_SPECS: dict[str, dict[str, Any]] = {
             "Proof of funds",
             "Cannot work (social/business visit only)",
         ],
+        "note": (
+            "The B211 visit visa was abolished; replaced by C-series "
+            "e-visas (C1/C2/C7)."
+        ),
     },
     VisaType.VOA: {
         "duration_months": 1,
@@ -122,7 +120,6 @@ def _identify_visa_type(state: GraphState) -> VisaType:
     entities = state.extracted_entities
     query_lower = state.query.lower()
 
-    # Explicit entity
     if "visa_type" in entities:
         vt = str(entities["visa_type"]).lower()
         if "kitas" in vt:
@@ -136,7 +133,6 @@ def _identify_visa_type(state: GraphState) -> VisaType:
         if "second home" in vt:
             return VisaType.SECOND_HOME
 
-    # Query heuristics
     if "kitas" in query_lower or "work permit" in query_lower or "izin kerja" in query_lower:
         return VisaType.KITAS
     if "kitap" in query_lower or "permanent" in query_lower:
@@ -148,99 +144,4 @@ def _identify_visa_type(state: GraphState) -> VisaType:
     if "second home" in query_lower or "retire" in query_lower or "pensiun" in query_lower:
         return VisaType.SECOND_HOME
 
-    # Default for visa intent — most common question
     return VisaType.KITAS
-
-
-def make_visa_subgraph(services: Services):
-    """Factory that creates the visa subgraph node."""
-
-    async def visa_subgraph_node(state: GraphState) -> dict[str, Any]:
-        """Execute the visa/immigration subgraph."""
-        logger.info("subgraph_visa_start", query=state.query[:80])
-
-        visa_type = _identify_visa_type(state)
-        spec = VISA_SPECS.get(visa_type, {})
-
-        # Query KG for visa-related entities
-        kg_entities: list[dict[str, Any]] = []
-        kg_relationships: list[dict[str, Any]] = []
-
-        try:
-            kg_entities = await services.kg_store.get_entities(
-                entity_ids=[f"visa:{visa_type.value}"],
-            )
-            # Check for RPTKA requirement edges
-            if spec.get("work_permit_included"):
-                rptka_rels = await services.kg_store.get_relationships(
-                    entity_id=f"visa:{visa_type.value}",
-                    relationship_type="REQUIRES",
-                )
-                kg_relationships.extend(rptka_rels)
-        except Exception as e:
-            logger.warning("visa_kg_query_failed", error=str(e))
-
-        # Retrieve domain documents
-        docs: list[RetrievedDocument] = []
-        try:
-            search_query = (
-                f"{visa_type.value} visa Indonesia requirements "
-                f"processing {state.query}"
-            )
-            docs = await services.vector_store.search_by_text(
-                query=search_query,
-                top_k=5,
-            )
-        except Exception as e:
-            logger.warning("visa_vector_search_failed", error=str(e))
-
-        # Build domain context document
-        context_parts = [
-            f"Visa Type: {visa_type.value.upper()}",
-        ]
-        if spec:
-            context_parts.append(f"Duration: {spec.get('duration_months', '?')} months")
-            context_parts.append(f"Extendable: {'Yes' if spec.get('extendable') else 'No'}")
-            context_parts.append(
-                f"Sponsor Required: {'Yes' if spec.get('sponsor_required') else 'No'}"
-            )
-            context_parts.append(
-                f"Work Permit: {'Included' if spec.get('work_permit_included') else 'Not included'}"
-            )
-            if spec.get("costs_usd"):
-                total = sum(spec["costs_usd"].values())
-                cost_items = ", ".join(
-                    f"{k}: USD {v}" for k, v in spec["costs_usd"].items()
-                )
-                context_parts.append(f"Costs: {cost_items} (total ~USD {total})")
-            context_parts.append(f"Processing: ~{spec.get('processing_days', '?')} days")
-            context_parts.append("Requirements:")
-            for req in spec.get("requirements", []):
-                context_parts.append(f"  - {req}")
-
-        domain_doc = RetrievedDocument(
-            id=f"domain:visa:{visa_type.value}",
-            content="\n".join(context_parts),
-            score=0.95,
-            source="domain",
-            metadata={"visa_type": visa_type.value, "subgraph": "visa"},
-        )
-
-        all_docs = [domain_doc] + docs
-
-        logger.info(
-            "subgraph_visa_complete",
-            visa_type=visa_type.value,
-            doc_count=len(all_docs),
-            kg_count=len(kg_entities),
-        )
-
-        return {
-            "retrieved_documents": all_docs,
-            "kg_entities": kg_entities,
-            "kg_relationships": kg_relationships,
-            "domain": visa_type.value,
-            "current_node": "subgraph_visa",
-        }
-
-    return visa_subgraph_node

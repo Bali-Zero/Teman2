@@ -35,6 +35,23 @@ def route_after_understand(state: GraphState) -> RouteDecision:
     return RouteDecision.RETRIEVE
 
 
+def route_after_visa_subgraph(state: GraphState) -> str:
+    """Route after SUBGRAPH_VISA.
+
+    The visa multi-step planner produces a fully-cited answer of its own.
+    When that answer is present, skip REASON/SYNTHESIZE entirely and go
+    straight to the hallucination grader as a final safety check. If the
+    planner failed (empty answer), fall back to the normal REASON path.
+
+    Returns:
+        "direct"  — planner produced an answer, go to grade_hallucination
+        "reason"  — planner produced nothing, run the normal REASON pipeline
+    """
+    if state.answer and state.answer.strip():
+        return "direct"
+    return "reason"
+
+
 def route_after_grade(state: GraphState, retry_node: str, continue_node: str) -> str:
     """Route after a grader node with fail-fast support.
 
