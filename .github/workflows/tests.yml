@@ -44,7 +44,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -124,18 +124,18 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install MCP dependencies
         run: |
           cd apps/nuzantara-mcp
           pip install --upgrade pip
-          pip install -e ".[test]" 2>/dev/null || pip install fastmcp httpx pytest pytest-asyncio pytest-mock
+          pip install -e ".[test]" || pip install fastmcp httpx pytest pytest-asyncio pytest-mock
 
       - name: Run MCP tests
         run: |
           cd apps/nuzantara-mcp
-          pytest tests/ -v --tb=short --junit-xml=test-results-mcp.xml
+          python -m pytest tests/ -v --tb=short --junit-xml=test-results-mcp.xml
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -159,7 +159,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -204,7 +204,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         run: npm ci
