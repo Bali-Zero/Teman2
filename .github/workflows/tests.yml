@@ -199,6 +199,15 @@ jobs:
   e2e-tests:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Advisory-only: E2E tests require the full stack (backend-rag on
+    # :8000, Qdrant, PostgreSQL, Redis) to pass. CI currently only spins
+    # up the Next.js dev server via playwright.config.ts webServer —
+    # anything that touches CRM/RAG/streaming will fail with network
+    # errors. Surfacing the signal without blocking until a full-stack
+    # CI profile exists. Re-enable as blocking gate once the integration
+    # environment is available.
+    continue-on-error: true
 
     steps:
       - name: Checkout code
