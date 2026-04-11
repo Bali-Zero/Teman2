@@ -199,15 +199,32 @@ jobs:
   e2e-tests:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Advisory-only: E2E tests require the full stack (backend-rag on
-    # :8000, Qdrant, PostgreSQL, Redis) to pass. CI currently only spins
-    # up the Next.js dev server via playwright.config.ts webServer —
-    # anything that touches CRM/RAG/streaming will fail with network
-    # errors. Surfacing the signal without blocking until a full-stack
-    # CI profile exists. Re-enable as blocking gate once the integration
-    # environment is available.
-    continue-on-error: true
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     steps:
       - name: Checkout code
@@ -218,16 +235,74 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. alembic upgrade head
+
+      - name: Start backend (FastAPI on :8000)
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379/0
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          LANGCHAIN_TRACING_V2: "false"
+          ENVIRONMENT: test
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. uvicorn backend.app.main:app \
+            --host 0.0.0.0 --port 8000 \
+            --log-level warning &
+          # Wait for backend to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo "✅ Backend ready" && break
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+      - name: Install Node dependencies
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+        run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
+          NUZANTARA_API_URL: http://localhost:8000
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PIN: ${{ secrets.E2E_TEST_PIN }}
         run: |
           cd apps/mouth
-          npm run test:e2e
+          # smoke/smoke.spec.ts hardcodes kita.balizero.com/fly.dev (production smoke),
+          # excluded here via grep-invert on the describe block name.
+          # zantara/ and mission_simulation use process.env.PLAYWRIGHT_BASE_URL so
+          # they pick up localhost:3000 correctly.
+          npx playwright test \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --ignore-snapshots \
+            --reporter=list \
+            --grep-invert "Smoke Tests"
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
