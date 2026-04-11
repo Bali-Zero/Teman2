@@ -450,6 +450,34 @@ class TestExecute:
         assert new_state.evidences[0].chunks == []
 
     @pytest.mark.asyncio
+    async def test_empty_retrieval_skips_llm(self):
+        """When retrieval is empty, plan_execute must NOT spend an LLM call."""
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa.execute import plan_execute
+        from nuzantara_graph.subgraphs.visa.types import PlannerState, SubQuestion
+
+        svc = make_mock_services(
+            documents=[],
+            llm_responses={"generate": "wasted call"},
+        )
+        state = PlannerState(
+            query="pure legal no KB",
+            rewritten_query="pure legal no KB",
+            sub_questions=[
+                SubQuestion(idx=0, text="q0", needs_kb=True, depends_on=[]),
+                SubQuestion(idx=1, text="q1", needs_kb=True, depends_on=[]),
+                SubQuestion(idx=2, text="q2", needs_kb=True, depends_on=[]),
+            ],
+        )
+        new_state = await plan_execute(state, svc)
+        assert len(new_state.evidences) == 3
+        for ev in new_state.evidences:
+            assert ev.chunks == []
+            assert ev.answer_fragment == ""
+        assert new_state.llm_call_count == 0
+
+    @pytest.mark.asyncio
     async def test_llm_budget_enforced(self):
         from helpers.mocks import make_mock_services
 
