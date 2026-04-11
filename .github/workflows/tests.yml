@@ -247,13 +247,6 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Alembic migrations
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
-        run: |
-          cd apps/backend-rag
-          PYTHONPATH=. python -m alembic upgrade head
-
       - name: Start backend (FastAPI on :8000)
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
