@@ -148,7 +148,7 @@ describe("CrmApi", () => {
         expect(mockClient.request).toHaveBeenCalledWith(
           "/api/crm/clients",
           undefined,
-          10000,
+          30000,
         );
         expect(result).toEqual(mockClients);
       });
@@ -165,7 +165,7 @@ describe("CrmApi", () => {
         expect(mockClient.request).toHaveBeenCalledWith(
           "/api/crm/clients?search=John&limit=10",
           undefined,
-          10000,
+          30000,
         );
       });
     });
