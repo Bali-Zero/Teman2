@@ -1,247 +1,118 @@
-"""Centrality-jump detector — structural proxy for temporal centrality.
+"""Detector 1: Centrality Jump — nodes with sudden edge-mass increase.
 
-Justification
--------------
-Memory cite: ``project_osint_layer27_graph_analytics.md``, Centrality
-Algorithms section, and ``project_osint_layer9_power_topology.md``,
-"Temporal Power Mapping" / "Ciclo Pilkada: pre-elezioni regionali =
-mutasi massicce = rimescolamento".
+JUSTIFICATION (project_osint_layer27_graph_analytics.md):
+    Layer 27 specifies betweenness and PageRank as primary centrality
+    measures for detecting "broker di potere nascosto" (hidden power
+    brokers). A sudden jump in centrality indicates a node that has
+    rapidly acquired new connections — potentially a newly appointed
+    patron consolidating power (Layer 9: bapakisme pattern).
 
-The pure temporal-snapshot version of this detector (compare
-betweenness_t vs betweenness_t-1) is **not implementable today**
-because the graph schema has no history table — only
-``r.updated_at`` on each edge. We therefore use a structural proxy:
+PROXY DECISION:
+    No temporal graph snapshots exist. Instead, we use edge creation
+    timestamps (created_at / updated_at) as a structural proxy.
+    A node where a disproportionate fraction of edges were created
+    in the last N days (default: 30) signals a centrality jump.
+    This captures the same underlying signal: rapid importance growth.
 
-**Proxy**: treat the most recently written ``recent_fraction`` of
-edges (sorted by ``r.updated_at``) as a "today" layer and the rest as
-a "before" layer. For each node compute ``recent_degree /
-total_degree`` — the **recency ratio**. Nodes whose recency ratio is
-more than ``sigma_multiplier`` standard deviations above the
-population mean are flagged as candidates for centrality shift.
-
-Why degree and not betweenness? Betweenness on the projected graph
-is cheap but its timeline-aware version requires running it twice on
-two different projections, and that doubles cost + does not beat
-degree-based detection on real Kemenkumham data — where the primary
-signal is "suddenly a lot more people are connected to X". We
-document this limitation in ``anomaly-patterns.md``.
-
-False positive mitigation
--------------------------
-1. ``min_degree`` — skip nodes with very few total edges.
-2. Recency ratio is compared only to the *local* population's mean and
-   sigma, so batch ingestions (which boost everyone uniformly) do not
-   produce false positives.
-3. Score is normalized via a logistic squash so a 10-sigma outlier and
-   a 3-sigma outlier both end up in [0.6, 1.0] — the analyst still
-   sees the raw z in the alert rationale.
-4. ``min_score`` cut prevents borderline cases.
-
-Data precondition
------------------
-Same as ``temporal_burst``: we need at least ``min_history_days`` of
-temporal spread on ``r.updated_at`` for "recent" to differ
-meaningfully from "before". Below that threshold the recency ratio
-is uniformly 1 (or uniformly 0) across the whole graph and the z test
-produces zero-variance nonsense. The runner calls ``precheck()`` and
-emits one informational alert when blocked.
-
-Cypher strategy
----------------
-```cypher
-MATCH (n)
-WITH n, count { (n)-[r]-() } AS total_degree
-WHERE total_degree >= $min_degree
-CALL (n, total_degree) {
-  MATCH (n)-[r]-()
-  WHERE r.updated_at IS NOT NULL
-  WITH r ORDER BY datetime(r.updated_at) DESC
-  WITH collect(r) AS rels,
-       toInteger(ceil(total_degree * $recent_fraction)) AS k
-  RETURN size(rels[..k]) AS recent_degree
-}
-RETURN toString(elementId(n)) AS node_id, total_degree, recent_degree
-```
-
-Note on neighbor fetch: we fetch the top-K neighbors of alerted nodes
-for the evidence path (separate query), for analyst context.
+FALSE-POSITIVE MITIGATION:
+    - min_degree filter: ignores low-degree nodes (noise from data entry)
+    - min_recent_edges: requires at least 3 recent edges (not just 1 of 2)
+    - Confidence scaled by total degree: higher-degree nodes get higher
+      confidence because the signal is more statistically significant
 """
 
 from __future__ import annotations
 
-import math
-from statistics import mean, pstdev
 from typing import Any
 
+from neo4j import AsyncSession
+
 from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, PreconditionResult, SessionLike
-from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
+from osint_nexus.anomaly.base import Detector
 
 
 class CentralityJumpDetector(Detector):
-    name = "centrality_jump"
+    """Detect nodes with disproportionately many recently-created edges."""
 
-    @classmethod
-    def default_thresholds(cls) -> dict[str, Any]:
-        return dict(DEFAULT_THRESHOLDS["centrality_jump"])
+    pattern_name = "centrality_jump"
 
-    _PRECHECK_Q = """
-    // centrality_jump_precheck — observed history span
-    MATCH ()-[r]->()
-    WHERE r.updated_at IS NOT NULL
-    WITH datetime(r.updated_at) AS ts
-    RETURN min(ts) AS min_ts, max(ts) AS max_ts, count(*) AS total,
-           duration.inDays(min(ts), max(ts)).days AS spread_days
-    """
+    async def run(self, session: AsyncSession) -> list[Alert]:
+        """Scan for nodes whose recent edge fraction exceeds threshold.
 
-    # Query marker in comment so FakeSession can match by substring.
-    # Uses the scoped CALL (n, total_degree) { ... } form (Neo4j 5.23+)
-    # to silence the "CALL subquery without a variable scope" warning.
-    # Takes the first ceil(total * recent_fraction) edges ordered by
-    # r.updated_at DESC — the actual recent slice, not the buggy
-    # always-full / always-empty predicate the old query used.
-    _DEGREE_Q = """
-    // recent_degree — centrality_jump probe
-    MATCH (n)
-    WITH n, count { (n)-[]-() } AS total_degree
-    WHERE total_degree >= $min_degree
-    CALL (n, total_degree) {
-      MATCH (n)-[r]-()
-      WHERE r.updated_at IS NOT NULL
-      WITH r, datetime(r.updated_at) AS ts
-      ORDER BY ts DESC
-      WITH collect(r) AS rels,
-           toInteger(ceil(total_degree * $recent_fraction)) AS k
-      RETURN size(rels[..k]) AS recent_degree
-    }
-    RETURN toString(elementId(n)) AS node_id,
-           total_degree,
-           recent_degree
-    """
+        False-positive mitigation:
+        - min_degree filter prevents noise from sparse nodes
+        - min_recent_edges requires absolute minimum of new connections
+        - Confidence is scaled by degree (more edges = more reliable signal)
+        """
+        window_days: int = self._t("window_days", 30)
+        fraction_threshold: float = self._t("recent_edge_fraction_threshold", 0.40)
+        min_degree: int = self._t("min_degree", 5)
+        min_recent_edges: int = self._t("min_recent_edges", 3)
 
-    _NEIGHBORS_Q = """
-    // spike_neighbors — evidence fetch for centrality_jump
-    UNWIND $node_ids AS nid
-    MATCH (n) WHERE toString(elementId(n)) = nid
-    OPTIONAL MATCH (n)-[r]-(nbr)
-    WHERE r.updated_at IS NOT NULL
-    WITH nid AS node_id, r, nbr, datetime(r.updated_at) AS ts
-    ORDER BY ts DESC
-    WITH node_id, [x IN collect(DISTINCT nbr) WHERE x IS NOT NULL][..10] AS recent_neighbors
-    RETURN node_id,
-           [x IN recent_neighbors | toString(elementId(x))] AS neighbor_ids
-    """
-
-    def precheck(self, session: SessionLike) -> PreconditionResult:
-        """Verify the graph has enough r.updated_at spread for the recency proxy."""
-        if session is None:  # pragma: no cover - runner never passes None
-            return PreconditionResult.success()
-        min_days = int(self._thresholds.get("min_history_days", 30))
-        try:
-            records = list(session.run(self._PRECHECK_Q))
-        except Exception as exc:  # pragma: no cover - defensive
-            return PreconditionResult(
-                ok=False,
-                reason=f"precheck query failed: {type(exc).__name__}",
-                stat={"error": type(exc).__name__},
-            )
-        if not records:
-            return PreconditionResult(
-                ok=False,
-                reason="no edges with r.updated_at",
-                stat={"total_edges_with_ts": 0, "min_history_days": min_days},
-            )
-        rec = records[0]
-        total = int(rec.get("total") or 0)
-        spread = rec.get("spread_days")
-        spread_days = int(spread) if spread is not None else 0
-        stat = {
-            "total_edges_with_ts": total,
-            "spread_days": spread_days,
-            "min_history_days": min_days,
-        }
-        if total == 0:
-            return PreconditionResult(
-                ok=False,
-                reason="no edges with r.updated_at",
-                stat=stat,
-            )
-        if spread_days < min_days:
-            return PreconditionResult(
-                ok=False,
-                reason=f"temporal spread too narrow: {spread_days} days, need {min_days}",
-                stat=stat,
-            )
-        return PreconditionResult(ok=True, stat=stat)
-
-    def run(self, session: SessionLike) -> list[Alert]:
-        if session is None:
-            return []
-
-        th = self._thresholds
-        sigma_mult = float(th.get("sigma_multiplier", 2.5))
-        min_degree = int(th.get("min_degree", 3))
-        recent_fraction = float(th.get("recent_fraction", 0.2))
-        min_score = float(th.get("min_score", 0.55))
-
-        params = {"min_degree": min_degree, "recent_fraction": recent_fraction}
-        records = list(session.run(self._DEGREE_Q, params))
-        if not records:
-            return []
-
-        ratios: list[tuple[str, float, int, int]] = []
-        for rec in records:
-            total = int(rec["total_degree"])
-            recent = int(rec["recent_degree"])
-            if total < min_degree or total == 0:
-                continue
-            ratios.append((str(rec["node_id"]), recent / total, total, recent))
-
-        if len(ratios) < 3:
-            return []
-
-        values = [r[1] for r in ratios]
-        mu = mean(values)
-        sigma = pstdev(values) if len(values) > 1 else 0.0
-        if sigma == 0.0:
-            return []
-
-        candidates: list[tuple[str, float, float, int, int]] = []
-        for nid, ratio, total, recent in ratios:
-            z = (ratio - mu) / sigma
-            if z < sigma_mult:
-                continue
-            # Logistic squash to [0, 1]: 0 at z=sigma_mult, →1 as z grows
-            score = 1.0 / (1.0 + math.exp(-(z - sigma_mult)))
-            # Shift so z==sigma_mult → 0.5 and large z → ~1.0
-            score = 0.5 + score / 2.0
-            if score < min_score:
-                continue
-            candidates.append((nid, score, z, total, recent))
-
-        if not candidates:
-            return []
-
-        # Fetch neighbors for evidence
-        ids = [c[0] for c in candidates]
-        neigh_by_id: dict[str, list[str]] = {}
-        for rec in session.run(self._NEIGHBORS_Q, {"node_ids": ids}):
-            neigh_by_id[str(rec["node_id"])] = [
-                str(x) for x in rec.get("neighbor_ids", []) if x
-            ]
+        # Count total edges and recent edges per node.
+        # Uses relationship property `updated_at` or `created_at` or `date`
+        # as the temporal marker.
+        query = """
+        MATCH (n)-[r]-()
+        WHERE n:Official OR n:Person
+        WITH n,
+             count(r) AS total_degree,
+             sum(CASE
+                 WHEN coalesce(r.updated_at, r.created_at, r.date, '') <> ''
+                  AND date(coalesce(r.updated_at, r.created_at, r.date))
+                      >= date() - duration({days: $window_days})
+                 THEN 1 ELSE 0
+             END) AS recent_edges
+        WHERE total_degree >= $min_degree
+          AND recent_edges >= $min_recent_edges
+        WITH n, total_degree, recent_edges,
+             toFloat(recent_edges) / total_degree AS recent_fraction
+        WHERE recent_fraction >= $fraction_threshold
+        RETURN elementId(n) AS node_id,
+               labels(n) AS node_labels,
+               total_degree,
+               recent_edges,
+               recent_fraction
+        ORDER BY recent_fraction DESC
+        LIMIT 50
+        """
+        result = await session.run(
+            query,
+            {
+                "window_days": window_days,
+                "min_degree": min_degree,
+                "min_recent_edges": min_recent_edges,
+                "fraction_threshold": fraction_threshold,
+            },
+        )
 
         alerts: list[Alert] = []
-        for nid, score, z, total, recent in candidates:
-            neighbors = neigh_by_id.get(nid, [])
-            # Confidence: more data = more trust; cap at 1.0
+        async for record in result:
+            node_id = record["node_id"]
+            total = record["total_degree"]
+            recent = record["recent_edges"]
+            fraction = record["recent_fraction"]
+
+            # Confidence: higher degree = more reliable signal
             confidence = min(1.0, total / 20.0)
+
             alerts.append(
-                self._mk_alert(
-                    primary_entity_id=nid,
-                    score=score,
+                Alert(
+                    pattern=self.pattern_name,
+                    score=fraction,
+                    evidence_path=[f"node:{node_id}"],
+                    explanation_id_only=(
+                        f"Node {node_id} has {recent}/{total} edges "
+                        f"({fraction:.0%}) created in last {window_days}d"
+                    ),
                     confidence=confidence,
-                    evidence_path=[nid, *neighbors[:10]],
-                    rationale_id=f"CJ-DEGREE-DELTA-Z{z:.1f}",
+                    meta={
+                        "total_degree": total,
+                        "recent_edges": recent,
+                        "recent_fraction": round(fraction, 4),
+                        "window_days": window_days,
+                    },
                 )
             )
+
         return alerts

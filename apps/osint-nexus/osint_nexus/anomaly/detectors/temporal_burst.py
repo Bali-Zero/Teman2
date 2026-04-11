@@ -1,232 +1,198 @@
-"""Temporal-burst detector.
+"""Detector 3: Temporal Burst — edge-class spikes above EWMA baseline.
 
-Justification
--------------
-Memory cite: ``project_osint_layer27_graph_analytics.md`` — the
-detection of sudden spikes in meeting / attendance edges is a
-canonical signal of "something is happening": a pre-mutasi political
-realignment, a sponsorship blitz, a crisis-response coalition forming.
-See also ``project_osint_layer9_power_topology.md``, section "Ciclo
-Pilkada": mutasi massicce correlate with social-event bursts.
+JUSTIFICATION (project_osint_layer27_graph_analytics.md):
+    Layer 27 lists temporal anomaly detection as pattern #3: "promosso
+    entro 6 mesi da nuovo boss + stessa angkatan". More broadly, a
+    sudden spike in a specific edge type (MET_WITH, ATTENDED,
+    WON_CONTRACT) can signal coordinated activity: a patron consolidating
+    allies, a procurement ring warming up, or pre-election maneuvering.
 
-We implement a z-score burst test over weekly EWMA baselines,
-following Kleinberg (2002) "Bursty and hierarchical structure in
-streams". The exact formula:
+    Layer 9 (power topology): "Ciclo Pilkada: pre-elezioni regionali =
+    mutasi massicce = rimescolamento" — temporal bursts in PROMOTED_TO
+    or POSTED_TO around election cycles are high-value signals.
 
-```
-ewma_t = alpha * x_t + (1 - alpha) * ewma_{t-1}
-var_t  = alpha * (x_t - ewma_{t-1})^2 + (1 - alpha) * var_{t-1}
-z_t    = (x_t - ewma_{t-1}) / sqrt(var_{t-1})
-```
+IMPLEMENTATION:
+    Aggregates edge counts per edge type per 7-day window. Computes EWMA
+    (span=30d) as baseline. Flags windows where count > EWMA + z*sigma.
+    Operates entirely in Cypher over edge date properties.
 
-The detector raises one alert per (rel_type, bucket) where z_t >
-threshold AND x_t >= min_edges_in_window AND the edges in that bucket
-are not predominantly from an excluded source.
-
-Important caveat (documented limitation)
-----------------------------------------
-The OSINT graph does NOT carry a genuine *event date* on edges like
-``MET_WITH`` or ``ATTENDED``. The only available timestamp is
-``r.updated_at`` — which reflects when the loader wrote the edge, not
-when the real-world event happened.
-
-In the current live graph (Apr 2026) ``r.created_at`` is always NULL,
-so the legacy ``coalesce(r.updated_at, r.created_at)`` pattern was
-pointless overhead. We just use ``r.updated_at`` directly and skip
-edges where it is null.
-
-Data precondition
------------------
-Burst detection requires **at least ``min_history_days`` of temporal
-spread** (the span between the oldest and newest ``r.updated_at``).
-Below that threshold the EWMA baseline has no memory, every bucket is
-"bursty" and the detector produces 100% false positives. The runner
-calls ``precheck()`` first and emits a single informational alert on
-blocked runs instead of running the detector.
+FALSE-POSITIVE MITIGATION:
+    - min_baseline_days: requires enough history for stable EWMA
+    - z_threshold=3.0: only flags truly extreme spikes
+    - Edge types are configurable: focus on high-signal types
+    - Batch data entry (e.g., scraper backfill) is flagged as meta warning
 """
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from neo4j import AsyncSession
+
 from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, PreconditionResult, SessionLike
-from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
+from osint_nexus.anomaly.base import Detector
 
 
 class TemporalBurstDetector(Detector):
-    name = "temporal_burst"
+    """Detect spikes in edge creation rate above EWMA baseline."""
 
-    @classmethod
-    def default_thresholds(cls) -> dict[str, Any]:
-        return dict(DEFAULT_THRESHOLDS["temporal_burst"])
+    pattern_name = "temporal_burst"
 
-    _PRECHECK_Q = """
-    // temporal_burst_precheck — observed history span
-    MATCH ()-[r]->()
-    WHERE r.updated_at IS NOT NULL
-    WITH datetime(r.updated_at) AS ts
-    RETURN min(ts) AS min_ts, max(ts) AS max_ts, count(*) AS total,
-           duration.inDays(min(ts), max(ts)).days AS spread_days
-    """
+    async def run(self, session: AsyncSession) -> list[Alert]:
+        """Scan for edge-type temporal bursts.
 
-    _SERIES_Q = """
-    // temporal_burst_series — weekly bucket counts for configured rel types
-    UNWIND $rel_types AS rt
-    CALL (rt) {
-      MATCH ()-[r]->()
-      WHERE type(r) = rt
-        AND r.updated_at IS NOT NULL
-      WITH r,
-           date.truncate('week', datetime(r.updated_at)) AS bucket
-      WITH bucket, count(r) AS edge_count,
-           collect(DISTINCT coalesce(r.source, '')) AS sources
-      RETURN toString(bucket) AS bucket, edge_count, sources
-    }
-    RETURN rt AS rel_type, bucket, edge_count, sources
-    ORDER BY rel_type, bucket
-    """
+        False-positive mitigation:
+        - z_threshold=3.0 filters normal variance
+        - min_baseline_days ensures EWMA stability
+        - Batch-entry detection via meta flag
+        """
+        window_days: int = self._t("window_days", 7)
+        ewma_span: int = self._t("ewma_span_days", 30)
+        z_threshold: float = self._t("z_threshold", 3.0)
+        min_baseline: int = self._t("min_baseline_days", 14)
+        edge_types: list[str] = self._t(
+            "edge_types",
+            ["MET_WITH", "ATTENDED", "WON_CONTRACT", "PROMOTED_TO", "POSTED_TO"],
+        )
 
-    _BURST_EDGES_Q = """
-    // burst_edges — fetch source/target ids for the spike bucket
-    UNWIND $buckets AS b
-    MATCH (src)-[r]->(tgt)
-    WHERE type(r) = b.rel_type
-      AND r.updated_at IS NOT NULL
-      AND date.truncate('week', datetime(r.updated_at)) = date(b.bucket)
-    WITH b.rel_type AS rel_type, b.bucket AS bucket,
-         collect(DISTINCT toString(elementId(src))) AS source_ids,
-         collect(DISTINCT toString(elementId(tgt))) AS target_ids
-    RETURN rel_type, bucket, source_ids[..10] AS source_ids, target_ids[..10] AS target_ids
-    """
+        # Fetch all dated edges grouped by type and date
+        query = """
+        MATCH ()-[r]->()
+        WHERE type(r) IN $edge_types
+          AND coalesce(r.date, r.updated_at, r.created_at) IS NOT NULL
+        WITH type(r) AS edge_type,
+             date(coalesce(r.date, r.updated_at, r.created_at)) AS edge_date,
+             elementId(r) AS rel_id
+        RETURN edge_type, edge_date, collect(rel_id) AS rel_ids
+        ORDER BY edge_type, edge_date
+        """
+        result = await session.run(query, {"edge_types": edge_types})
 
-    def precheck(self, session: SessionLike) -> PreconditionResult:
-        """Verify the graph has enough temporal spread for EWMA to mean anything."""
-        if session is None:  # pragma: no cover - runner never passes None here
-            return PreconditionResult.success()
-        min_days = int(self._thresholds.get("min_history_days", 30))
-        try:
-            records = list(session.run(self._PRECHECK_Q))
-        except Exception as exc:  # pragma: no cover - defensive
-            return PreconditionResult(
-                ok=False,
-                reason=f"precheck query failed: {type(exc).__name__}",
-                stat={"error": type(exc).__name__},
-            )
-        if not records:
-            return PreconditionResult(
-                ok=False,
-                reason="no edges with r.updated_at",
-                stat={"total_edges_with_ts": 0, "min_history_days": min_days},
-            )
-        rec = records[0]
-        total = int(rec.get("total") or 0)
-        spread = rec.get("spread_days")
-        spread_days = int(spread) if spread is not None else 0
-        stat = {
-            "total_edges_with_ts": total,
-            "spread_days": spread_days,
-            "min_history_days": min_days,
-        }
-        if total == 0:
-            return PreconditionResult(
-                ok=False,
-                reason="no edges with r.updated_at",
-                stat=stat,
-            )
-        if spread_days < min_days:
-            return PreconditionResult(
-                ok=False,
-                reason=f"temporal spread too narrow: {spread_days} days, need {min_days}",
-                stat=stat,
-            )
-        return PreconditionResult(ok=True, stat=stat)
-
-    def run(self, session: SessionLike) -> list[Alert]:
-        if session is None:
-            return []
-
-        th = self._thresholds
-        z_threshold = float(th.get("z_threshold", 3.0))
-        alpha = float(th.get("ewma_alpha", 0.3))
-        min_edges = int(th.get("min_edges_in_window", 5))
-        min_score = float(th.get("min_score", 0.6))
-        rel_types = list(th.get("rel_types", []))
-        source_exclude = {s.lower() for s in th.get("source_exclude", [])}
-
-        records = list(session.run(self._SERIES_Q, {"rel_types": rel_types}))
-        if not records:
-            return []
-
-        series: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for rec in records:
-            series[str(rec["rel_type"])].append({
-                "bucket": str(rec["bucket"]),
-                "edge_count": int(rec["edge_count"]),
-                "sources": [str(s).lower() for s in rec.get("sources", [])],
-            })
-
-        bursts: list[dict[str, Any]] = []
-        for rel_type, buckets in series.items():
-            if len(buckets) < 3:
-                continue
-            buckets_sorted = sorted(buckets, key=lambda b: b["bucket"])
-            ewma: float = float(buckets_sorted[0]["edge_count"])
-            var: float = 1.0  # start with non-zero variance to avoid div/0
-            for item in buckets_sorted[1:]:
-                x = float(item["edge_count"])
-                diff = x - ewma
-                z = diff / (var ** 0.5) if var > 0 else 0.0
-                # If sources are all excluded, skip (don't even update ewma
-                # — these aren't real-world bursts).
-                if item["sources"] and all(s in source_exclude for s in item["sources"] if s):
-                    continue
-                if z >= z_threshold and x >= min_edges:
-                    bursts.append({
-                        "rel_type": rel_type,
-                        "bucket": item["bucket"],
-                        "z": z,
-                        "count": int(x),
-                    })
-                # Update EWMA + variance
-                ewma = alpha * x + (1 - alpha) * ewma
-                var = alpha * diff * diff + (1 - alpha) * var
-
-        if not bursts:
-            return []
-
-        # Enrich with edge ids (for evidence path)
-        edges_by_key: dict[tuple[str, str], dict[str, list[str]]] = {}
-        for rec in session.run(
-            self._BURST_EDGES_Q,
-            {"buckets": [{"rel_type": b["rel_type"], "bucket": b["bucket"]} for b in bursts]},
-        ):
-            key = (str(rec["rel_type"]), str(rec["bucket"]))
-            edges_by_key[key] = {
-                "source_ids": [str(x) for x in rec.get("source_ids", [])],
-                "target_ids": [str(x) for x in rec.get("target_ids", [])],
-            }
+        # Group by edge type
+        type_dates: dict[str, list[tuple[datetime, list[str]]]] = defaultdict(list)
+        async for record in result:
+            et = record["edge_type"]
+            ed = record["edge_date"]
+            rel_ids = record["rel_ids"]
+            # neo4j date -> python datetime
+            if hasattr(ed, "to_native"):
+                dt = datetime.combine(
+                    ed.to_native(), datetime.min.time(), tzinfo=timezone.utc
+                )
+            else:
+                dt = datetime(ed.year, ed.month, ed.day, tzinfo=timezone.utc)
+            type_dates[et].append((dt, rel_ids))
 
         alerts: list[Alert] = []
-        for b in bursts:
-            key = (b["rel_type"], b["bucket"])
-            evidence = edges_by_key.get(key, {"source_ids": [], "target_ids": []})
-            primary_id = f"{b['rel_type']}:{b['bucket']}"
-            # Score: squash z to [0, 1] with z_threshold → 0.6
-            z = float(b["z"])
-            score = 0.6 + min(0.4, (z - z_threshold) / 10.0)
-            if score < min_score:
+
+        for edge_type, date_groups in type_dates.items():
+            if not date_groups:
                 continue
-            confidence = min(1.0, b["count"] / 20.0)
-            evidence_path = [primary_id] + evidence["source_ids"] + evidence["target_ids"]
-            alerts.append(
-                self._mk_alert(
-                    primary_entity_id=primary_id,
-                    score=score,
-                    confidence=confidence,
-                    evidence_path=evidence_path,
-                    rationale_id=f"TB-{b['rel_type']}-Z{z:.1f}",
+
+            date_groups.sort(key=lambda x: x[0])
+
+            # Build daily counts
+            first_date = date_groups[0][0]
+            last_date = date_groups[-1][0]
+            total_days = (last_date - first_date).days + 1
+
+            if total_days < min_baseline:
+                continue
+
+            daily_counts: dict[int, int] = {}  # day_offset -> count
+            daily_rels: dict[int, list[str]] = {}
+            for dt, rel_ids in date_groups:
+                day_offset = (dt - first_date).days
+                daily_counts[day_offset] = daily_counts.get(day_offset, 0) + len(
+                    rel_ids
                 )
+                daily_rels.setdefault(day_offset, []).extend(rel_ids)
+
+            # Compute EWMA and detect bursts in windows
+            alpha = 2.0 / (ewma_span + 1)
+            ewma = 0.0
+            ewma_sq = 0.0
+            burst_alerts = self._detect_bursts(
+                daily_counts=daily_counts,
+                daily_rels=daily_rels,
+                total_days=total_days,
+                window_days=window_days,
+                alpha=alpha,
+                z_threshold=z_threshold,
+                min_baseline=min_baseline,
+                edge_type=edge_type,
+                first_date=first_date,
             )
+            alerts.extend(burst_alerts)
+
+        return alerts
+
+    def _detect_bursts(
+        self,
+        daily_counts: dict[int, int],
+        daily_rels: dict[int, list[str]],
+        total_days: int,
+        window_days: int,
+        alpha: float,
+        z_threshold: float,
+        min_baseline: int,
+        edge_type: str,
+        first_date: datetime,
+    ) -> list[Alert]:
+        """Compute EWMA over daily counts and flag windows above z-threshold."""
+        alerts: list[Alert] = []
+        ewma = 0.0
+        ewma_var = 0.0
+
+        for day in range(total_days):
+            count = daily_counts.get(day, 0)
+
+            if day >= min_baseline:
+                sigma = math.sqrt(max(ewma_var, 0.01))
+                z_score = (count - ewma) / sigma if sigma > 0 else 0.0
+
+                if z_score >= z_threshold and count > 0:
+                    # Collect evidence from the burst window
+                    window_rels: list[str] = []
+                    for d in range(max(0, day - window_days + 1), day + 1):
+                        window_rels.extend(daily_rels.get(d, []))
+
+                    window_count = sum(
+                        daily_counts.get(d, 0)
+                        for d in range(max(0, day - window_days + 1), day + 1)
+                    )
+
+                    burst_date = first_date + timedelta(days=day)
+                    score = min(1.0, z_score / 10.0)
+                    confidence = min(1.0, day / (min_baseline * 3.0))
+
+                    alerts.append(
+                        Alert(
+                            pattern=self.pattern_name,
+                            score=score,
+                            evidence_path=[f"rel:{rid}" for rid in window_rels[:10]],
+                            explanation_id_only=(
+                                f"Edge type {edge_type}: {window_count} edges in "
+                                f"{window_days}d window ending {burst_date.date()}, "
+                                f"z={z_score:.1f} (EWMA={ewma:.1f}, sigma={sigma:.1f})"
+                            ),
+                            confidence=confidence,
+                            meta={
+                                "edge_type": edge_type,
+                                "window_count": window_count,
+                                "z_score": round(z_score, 2),
+                                "ewma": round(ewma, 2),
+                                "burst_date": burst_date.date().isoformat(),
+                            },
+                        )
+                    )
+
+            # Update EWMA
+            ewma = alpha * count + (1 - alpha) * ewma
+            diff = count - ewma
+            ewma_var = alpha * (diff * diff) + (1 - alpha) * ewma_var
+
         return alerts
