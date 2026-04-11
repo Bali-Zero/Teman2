@@ -4,13 +4,11 @@ Covers: VirusScanner, DocumentOCR, ExpiryDetector, PortalService
 (dashboard, visa, companies, tax, documents, messages, preferences)
 """
 
-import io
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fixtures
@@ -126,13 +124,14 @@ class TestDocumentOCR:
         assert result["success"] is False
 
     def test_detect_mime_type_with_extension(self) -> None:
-        result = self.ocr._detect_mime_type(b"", "test.pdf")
+        # Use real PDF magic bytes so libmagic (when available) detects application/pdf
+        result = self.ocr._detect_mime_type(b"%PDF-1.4", "test.pdf")
         assert result == "application/pdf"
 
     def test_detect_mime_type_unknown(self) -> None:
+        # Empty bytes + unknown extension: libmagic returns x-empty, fallback returns octet-stream
         result = self.ocr._detect_mime_type(b"", "file.zzz")
-        # Should return octet-stream as fallback
-        assert result == "application/octet-stream"
+        assert result in ("application/octet-stream", "application/x-empty", "inode/x-empty")
 
     @pytest.mark.asyncio
     async def test_extract_from_pdf_no_vision(self) -> None:
