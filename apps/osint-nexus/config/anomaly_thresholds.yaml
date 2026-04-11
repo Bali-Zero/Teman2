@@ -1,0 +1,90 @@
+# OSINT Anomaly Detector Thresholds
+#
+# Override any default by mirroring the nested key. Deep-merge: scalars
+# replace, dicts merge. See osint_nexus/anomaly/thresholds.py for the
+# authoritative default values and calibration notes.
+#
+# IMPORTANT: these thresholds are tuned for PRECISION over recall. An
+# analyst reviews alerts by hand. Do not lower blindly.
+#
+# Precheck gates
+# --------------
+# Three detectors carry data-preconditions:
+#
+# * centrality_jump   — needs >= min_history_days of temporal spread
+# * temporal_burst    — needs >= min_history_days of temporal spread
+# * angkatan_disjoint — needs >= 2 distinct Official.angkatan years
+#                       AND a spread >= min_angkatan_gap
+#
+# If the precondition fails the detector is skipped and the runner
+# emits a single informational alert so operators can tell
+# "zero anomalies" apart from "detector semantically blocked".
+
+centrality_jump:
+  sigma_multiplier: 2.5
+  min_degree: 3
+  recent_fraction: 0.2
+  min_score: 0.55
+  min_history_days: 30
+
+bridge_outlier:
+  min_communities: 2
+  min_community_size: 3
+  min_score: 0.6
+
+temporal_burst:
+  z_threshold: 3.0
+  window_days: 7
+  ewma_alpha: 0.3
+  min_edges_in_window: 5
+  rel_types:
+    - MET_WITH
+    - ATTENDED
+    - PARTICIPATED_IN
+  source_exclude:
+    - lhkpn
+    - lhkpn_batch
+    - ahu_batch
+  min_score: 0.6
+  min_history_days: 30
+
+angkatan_disjoint:
+  max_path_len: 3
+  # Real Kemenkumham schema (Apr 2026): FAMILY + SOCIAL families only.
+  # KNOWS / SIBLING_OF / FREQUENTS do NOT exist in the live graph.
+  non_official_rels:
+    - FAMILY_OF
+    - PARENT_OF
+    - MARRIED_TO
+    - DIVORCED_FROM
+    - FAMILY_ALLIANCE
+    - MET_WITH
+    - ALLY_OF
+    - ALUMNI
+    - SAME_PARTY
+    - RUNNING_MATE
+    - ENDORSES
+    - PARTNERS_WITH
+    - PUBLIC_CONFLICT
+  official_rels:
+    - WORKS_AT
+    - GOVERNED_DURING
+    - SUPERVISES
+    - PART_OF
+    - OPERATES
+    - OPERATED_BY
+    - COMMANDS
+    - UBO_OF
+    - LEGAL_OWNER_OF
+    - DE_FACTO_OWNER
+    - FOUNDED
+    - LISTED_AS
+  min_angkatan_gap: 3
+  min_score: 0.6
+
+eigenvector_reverse:
+  lone_hub_min_ratio: 0.75
+  hub_top_percentile: 0.90
+  neighbor_bottom_percentile: 0.25
+  min_neighbors: 4
+  min_score: 0.6
