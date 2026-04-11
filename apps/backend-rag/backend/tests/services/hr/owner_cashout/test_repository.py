@@ -18,7 +18,6 @@ from backend.services.hr.owner_cashout.repository import (
 )
 from backend.services.hr.owner_cashout.sync_service import upsert_week
 
-
 _row_idx = 100  # start at 100 to avoid collision with other tests
 
 
@@ -35,9 +34,13 @@ async def populated_pool():
         pool = await asyncpg.create_pool(url)
     except Exception:
         pytest.skip("PostgreSQL not reachable — skipping integration test")
-    async with pool.acquire() as c:
-        await c.execute("DELETE FROM owner_weekly_cashout_rows")
-        await c.execute("DELETE FROM owner_weekly_cashout_weeks")
+    try:
+        async with pool.acquire() as c:
+            await c.execute("DELETE FROM owner_weekly_cashout_rows")
+            await c.execute("DELETE FROM owner_weekly_cashout_weeks")
+    except asyncpg.exceptions.UndefinedTableError:
+        await pool.close()
+        pytest.skip("owner_cashout tables not migrated — skipping integration test")
 
     def bz(name, process, mbz, ti):
         return CashoutRow(
