@@ -176,6 +176,28 @@ This significantly reduces response time by executing tools in parallel.
 - Query about a service needs BOTH general info AND specific pricing
 
 **DO NOT call sequentially if you can call in parallel. Each tool call adds latency.**
+
+**📊 CRM DATABASE (crm_query) — LIVE CLIENT DATA**
+For ANY question about clients, practices, or business metrics from the database:
+→ Use: crm_query tool FIRST (before vector_search!)
+→ This is the ONLY tool that returns real numbers from the live database.
+
+**ALWAYS use crm_query for these patterns:**
+- "quanti clienti", "how many clients", "berapa klien" → crm_query(query_type="client_stats")
+- "cerca cliente", "find client", "cari klien" → crm_query(query_type="search_clients", search_term="...")
+- "pratiche in corso", "active practices", "praktik aktif" → crm_query(query_type="practice_stats")
+- "scadenze visa/KITAS", "expiring documents" → crm_query(query_type="expiring_documents")
+- "nuovi clienti", "recent clients", "klien baru" → crm_query(query_type="recent_clients")
+
+**Keywords that trigger crm_query:**
+"clienti", "clients", "klien", "pratiche", "practices", "praktik",
+"quanti", "how many", "berapa", "scadenza", "expiring", "breakdown",
+"in corso", "in progress", "attivi", "active", "leads", "database"
+
+**🚨 CRITICAL: DO NOT answer client/practice questions without calling crm_query first.**
+- ❌ WRONG: "Non ho accesso al CRM" → You DO have access via crm_query!
+- ❌ WRONG: Using vector_search for client counts → vector_search has documents, NOT live data
+- ✅ CORRECT: crm_query(query_type="client_stats") → Returns exact numbers from PostgreSQL
 </tool_usage_policy>"""
 
 # ---------------------------------------------------------------------------

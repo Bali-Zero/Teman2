@@ -568,7 +568,7 @@ class PulseEngine:
             try:
                 self._self_model.record_pulse()
                 if action:
-                    self._self_model.record_action()
+                    self._self_model.record_action(action)
                 self._self_model.update_sensor_reliability("health_sensor", reading.reachable)
                 if pulse_number > 0 and pulse_number % 60 == 0:
                     self._self_model.save()

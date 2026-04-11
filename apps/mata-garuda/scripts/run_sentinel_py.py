@@ -5,6 +5,11 @@ Mata Garuda — AI-Intel-Sentinel cell pulse.
 Single Python script for LaunchAgent cron.
 Runs one pulse of the SentinelCell (sense→think→act→reflect→dream→mature).
 
+Pipeline steps:
+  1. Harvest all sources → garuda:raw
+  2. Normalize + Score → garuda:enriched + KB
+  3. Digest (Claude synthesis) → garuda:digest + TG alert
+
 Designed for TCC-safe execution via venv python.
 """
 from __future__ import annotations

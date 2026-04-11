@@ -9,6 +9,7 @@ Orchestrates the complete invoice workflow:
 5. Update practice with invoice details
 """
 
+import base64
 import json
 import os
 from datetime import datetime, timezone
@@ -17,25 +18,24 @@ from typing import Any
 import asyncpg
 import httpx
 
-from backend.app.modules.notifications.service import SMTPProvider
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
-from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
 
 logger = get_logger(__name__)
 
-# System user for Zoho Email operations
-# Using zero@balizero.com which has Zoho OAuth token
-SYSTEM_EMAIL_USER_ID = "7dfe56b2-ff63-4d40-b78b-90c018127a02"
-SYSTEM_EMAIL_ADDRESS = "zero@balizero.com"
-
 # Accounting email for invoice notifications
 ACCOUNTING_EMAIL = "asya@balizero.com"
 
-# Fallback SMTP sender (Gmail)
-SMTP_SENDER_EMAIL = "zero@balizero.com"
-SMTP_SENDER_NAME = "Bali Zero AI"
+# CC on all invoice emails: owner + accounting
+INVOICE_CC_EMAILS = ["zero@balizero.com", "asya@balizero.com"]
+
+# Internal email API (sender is always zantara@balizero.com)
+_EMAIL_API_URL = os.getenv(
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+)
+_EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 
 class InvoiceAutomationService:
@@ -44,9 +44,7 @@ class InvoiceAutomationService:
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         self.drive_service = ServiceAccountDriveService()
-        self.zoho_email_service = ZohoEmailService(db_pool)
         self.invoice_generator = InvoiceGenerator()
-        self.smtp_provider = SMTPProvider()  # Fallback SMTP (Gmail)
 
     async def trigger_on_sending_invoice(
         self,
@@ -120,6 +118,7 @@ class InvoiceAutomationService:
                         pdf_bytes=pdf_bytes,
                         filename=filename,
                         amount=float(practice_data.get("quoted_price", 0)),
+                        triggered_by=triggered_by,
                     )
                     email_sent = True
                     logger.info(f"Invoice email sent to client {client_data['email']}")
@@ -204,86 +203,46 @@ class InvoiceAutomationService:
         pdf_bytes: bytes,
         filename: str,
         amount: float,
+        triggered_by: str | None = None,
     ) -> bool:
-        """Send invoice email to client with PDF attachment via Zoho or SMTP fallback."""
-        subject = f"[CLIENT] Invoice {invoice_number} from Zantara Indonesia"
+        """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
+        subject = f"Invoice {invoice_number} from Zantara Indonesia"
+        body_html = (
+            f"<p>Dear {client_name},</p>"
+            f"<p>Thank you for choosing Zantara Indonesia for your immigration services.</p>"
+            f"<p>Please find your invoice attached to this email.</p>"
+            f"<p><b>Invoice Details:</b><br>"
+            f"Invoice Number: {invoice_number}<br>"
+            f"Amount Due: IDR {amount:,.0f}<br>"
+            f"Payment Terms: Net 7 days</p>"
+            f"<p>Payment can be made via bank transfer to the details provided on the invoice.</p>"
+            f"<p>We look forward to serving you!</p>"
+            f"<p>Best regards,<br>Zantara Indonesia Team</p>"
+            f"<hr><small>For support: support@balizero.com | WhatsApp: +62 859 0436 9574</small>"
+        )
 
-        body_text = f"""Dear {client_name},
+        cc_emails = list(INVOICE_CC_EMAILS)
+        if triggered_by and triggered_by not in cc_emails and triggered_by != client_email:
+            cc_emails.append(triggered_by)
 
-Thank you for choosing Zantara Indonesia for your immigration services.
-
-Please find your invoice attached to this email.
-
-Invoice Details:
-- Invoice Number: {invoice_number}
-- Amount Due: IDR {amount:,.0f}
-- Payment Terms: Net 7 days
-
-Payment can be made via bank transfer. Please contact us for payment details or if you have any questions.
-
-We look forward to serving you!
-
-Best regards,
-Zantara Indonesia Team
-
----
-This is an automated email. Please do not reply to this email.
-For support: support@balizero.com | WhatsApp: +62 859 0436 9574
-"""
-
-        # Try Zoho Email first
-        try:
-            attachment = await self.zoho_email_service.upload_attachment(
-                user_id=SYSTEM_EMAIL_USER_ID,
-                filename=filename,
-                content=pdf_bytes,
-                content_type="application/pdf",
+        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+        payload: dict[str, Any] = {
+            "to": client_email,
+            "subject": subject,
+            "body": body_html,
+            "cc": ", ".join(cc_emails),
+            "attachments": [{"name": filename, "content": pdf_b64}],
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                _EMAIL_API_URL,
+                headers={"X-API-Key": _EMAIL_API_KEY},
+                json=payload,
             )
-            await self.zoho_email_service.send_email(
-                user_id=SYSTEM_EMAIL_USER_ID,
-                to=[client_email],
-                subject=subject,
-                content=body_text,
-                attachments=[attachment],
-                is_html=False,
-            )
-            logger.info(f"Invoice email sent to {client_email} via Zoho")
-            return True
-        except Exception as zoho_error:
-            logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
+            response.raise_for_status()
 
-            # Fallback to SMTP
-            try:
-                success = await self.smtp_provider.send_email(
-                    to_email=client_email,
-                    subject=subject,
-                    html_body=body_text.replace("\n", "<br>"),
-                    text_body=body_text,
-                    from_email=SMTP_SENDER_EMAIL,
-                    from_name=SMTP_SENDER_NAME,
-                    attachments=[
-                        {
-                            "filename": filename,
-                            "content": pdf_bytes,
-                            "content_type": "application/pdf",
-                        },
-                    ],
-                )
-                if success:
-                    logger.info(f"Invoice email sent to {client_email} via SMTP")
-                    return True
-                raise Exception("SMTP send failed")
-            except Exception as smtp_error:
-                logger.warning(f"SMTP also failed, trying Brevo (no attachment): {smtp_error}")
-
-            # Last resort: Brevo (text-only, no PDF attachment)
-            try:
-                await self._send_via_brevo(client_email, subject, body_text)
-                logger.info(f"Invoice notification sent to {client_email} via Brevo (no PDF)")
-                return True
-            except Exception as brevo_error:
-                logger.error(f"All email providers failed for invoice to {client_email}: {brevo_error}")
-                raise
+        logger.info(f"Invoice email sent to {client_email} from zantara@ (cc: {cc_emails})")
+        return True
 
     async def _send_accounting_notification(
         self,
@@ -293,112 +252,43 @@ For support: support@balizero.com | WhatsApp: +62 859 0436 9574
         pdf_bytes: bytes,
         filename: str,
     ) -> bool:
-        """Send notification email to accounting (Asya) via Zoho or SMTP fallback."""
-        subject = f"[TEAM] 🎉 New Invoice {invoice_number} - {client_data['full_name']}"
-
-        body_text = f"""Hi Asya!
-
-Hope you're having a great day! ☺️
-
-A new invoice has just been generated and sent to our client. Here's everything you need to know:
-
-👤 Client Details:
-   Name: {client_data["full_name"]}
-   Email: {client_data.get("email", "N/A")}
-   Practice ID: {practice_data["id"]}
-
-💰 Invoice Info:
-   Invoice Number: {invoice_number}
-   Amount: IDR {float(practice_data.get("quoted_price", 0)):,.0f}
-
-📎 PDF Attached to this email
-
-✨ Your Next Steps:
-1. Reach out to the client via WhatsApp for payment follow-up
-2. Keep an eye on our bank account
-3. Once payment comes through, update the status to "ON PROCESS"
-
-As always, you're doing an amazing job keeping everything running smoothly!
-
-If you need any help with this client or have questions, just give me a shout.
-
-Have a wonderful day!
-
-Warmly,
-Zantara CRM Assistant 🤖
-
-P.S. This is an automated email, but the appreciation for your hard work is 100% genuine! 😊
-"""
-
-        # Try Zoho Email first
-        try:
-            attachment = await self.zoho_email_service.upload_attachment(
-                user_id=SYSTEM_EMAIL_USER_ID,
-                filename=filename,
-                content=pdf_bytes,
-                content_type="application/pdf",
-            )
-            await self.zoho_email_service.send_email(
-                user_id=SYSTEM_EMAIL_USER_ID,
-                to=[ACCOUNTING_EMAIL],
-                subject=subject,
-                content=body_text,
-                attachments=[attachment],
-                is_html=False,
-            )
-            logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via Zoho")
-            return True
-        except Exception as zoho_error:
-            logger.warning(f"Zoho email failed, trying SMTP: {zoho_error}")
-
-            # Fallback to SMTP
-            try:
-                success = await self.smtp_provider.send_email(
-                    to_email=ACCOUNTING_EMAIL,
-                    subject=subject,
-                    html_body=body_text.replace("\n", "<br>"),
-                    text_body=body_text,
-                    from_email=SMTP_SENDER_EMAIL,
-                    from_name=SMTP_SENDER_NAME,
-                    attachments=[
-                        {
-                            "filename": filename,
-                            "content": pdf_bytes,
-                            "content_type": "application/pdf",
-                        },
-                    ],
-                )
-                if success:
-                    logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via SMTP")
-                    return True
-                raise Exception("SMTP send failed")
-            except Exception as smtp_error:
-                logger.warning(f"SMTP also failed for accounting, trying Brevo: {smtp_error}")
-
-            # Last resort: Brevo (text-only, no PDF attachment)
-            try:
-                await self._send_via_brevo(ACCOUNTING_EMAIL, subject, body_text)
-                logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} via Brevo (no PDF)")
-                return True
-            except Exception as brevo_error:
-                logger.error(f"All providers failed for accounting notification: {brevo_error}")
-                raise
-
-    async def _send_via_brevo(self, to_email: str, subject: str, body: str) -> None:
-        """Send text-only email via Brevo internal API (no attachments)."""
-        api_url = os.getenv(
-            "INTERNAL_EMAIL_API_URL",
-            "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+        """Send notification email to accounting (Asya) via internal email API."""
+        subject = f"[TEAM] New Invoice {invoice_number} - {client_data['full_name']}"
+        body_html = (
+            f"<p>Hi Asya!</p>"
+            f"<p>A new invoice has just been generated and sent to our client.</p>"
+            f"<p><b>Client Details:</b><br>"
+            f"Name: {client_data['full_name']}<br>"
+            f"Email: {client_data.get('email', 'N/A')}<br>"
+            f"Practice ID: {practice_data['id']}</p>"
+            f"<p><b>Invoice Info:</b><br>"
+            f"Invoice Number: {invoice_number}<br>"
+            f"Amount: IDR {float(practice_data.get('quoted_price', 0)):,.0f}</p>"
+            f"<p>PDF attached.</p>"
+            f"<p><b>Next Steps:</b><br>"
+            f"1. Reach out to the client via WhatsApp for payment follow-up<br>"
+            f"2. Keep an eye on our bank account<br>"
+            f"3. Once payment comes through, update the status to ON PROCESS</p>"
+            f"<p>Warmly,<br>Zantara CRM</p>"
         )
-        api_key = os.getenv("NUZANTARA_API_KEY", "")
-        html_body = body.replace("\n", "<br>")
+
+        pdf_b64 = base64.b64encode(pdf_bytes).decode()
+        payload: dict[str, Any] = {
+            "to": ACCOUNTING_EMAIL,
+            "subject": subject,
+            "body": body_html,
+            "attachments": [{"name": filename, "content": pdf_b64}],
+        }
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                api_url,
-                headers={"X-API-Key": api_key},
-                json={"to": to_email, "subject": subject, "body": html_body},
+                _EMAIL_API_URL,
+                headers={"X-API-Key": _EMAIL_API_KEY},
+                json=payload,
             )
             response.raise_for_status()
+
+        logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} from zantara@")
+        return True
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""

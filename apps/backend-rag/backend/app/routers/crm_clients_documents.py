@@ -6,6 +6,7 @@ Provides: CRM metrics (summary, refresh), Passport OCR (basic + enhanced),
 Document soft-delete, NPWP OCR, NIB OCR, Required documents for portal.
 """
 
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -221,30 +222,77 @@ async def extract_passport_enhanced(
 
 Use null for unclear fields. Return ONLY JSON."""
 
-        # Call Ollama Vision (qwen2.5vl:7b) — local, zero API cost
-        ollama_payload = {
-            "model": OLLAMA_VISION_MODEL,
-            "prompt": ocr_prompt,
-            "images": [base64.b64encode(image_data).decode()],
-            "stream": False,
-            "options": {"temperature": 0.1, "num_predict": 2000},
-        }
+        # Try Ollama Vision first (local, zero API cost), fallback to Gemini API
+        response_text = ""
+        ollama_ok = False
 
-        async with httpx.AsyncClient(timeout=120.0) as http:
-            ollama_response = await http.post(
-                f"{OLLAMA_URL}/api/generate",
-                json=ollama_payload,
+        try:
+            ollama_payload = {
+                "model": OLLAMA_VISION_MODEL,
+                "prompt": ocr_prompt,
+                "images": [base64.b64encode(image_data).decode()],
+                "stream": False,
+                "options": {"temperature": 0.1, "num_predict": 2000},
+            }
+
+            async with httpx.AsyncClient(timeout=30.0) as http:
+                ollama_response = await http.post(
+                    f"{OLLAMA_URL}/api/generate",
+                    json=ollama_payload,
+                )
+
+            if ollama_response.status_code == 200:
+                response_text = ollama_response.json().get("response", "")
+                if response_text:
+                    ollama_ok = True
+                    logger.info(f"Passport OCR via Ollama: len={len(response_text)}")
+                else:
+                    logger.warning("Ollama returned empty response, falling back to Gemini")
+            else:
+                logger.warning(f"Ollama OCR failed: HTTP {ollama_response.status_code}, falling back to Gemini")
+        except Exception as e:
+            logger.warning(f"Ollama unreachable ({e}), falling back to Gemini Vision")
+
+        # Fallback: Gemini API Vision
+        if not ollama_ok:
+            from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
+
+            if not GENAI_AVAILABLE:
+                return PassportPreviewResponse(
+                    success=False,
+                    message="Vision OCR service unavailable (no Ollama or Gemini configured)",
+                )
+
+            genai_client = get_genai_client()
+            if not genai_client.is_available:
+                return PassportPreviewResponse(
+                    success=False,
+                    message="Vision OCR service unavailable (Gemini not configured)",
+                )
+
+            contents = [
+                ocr_prompt,
+                {
+                    "inline_data": {
+                        "mime_type": request.mime_type,
+                        "data": base64.b64encode(image_data).decode(),
+                    },
+                },
+            ]
+
+            result = await genai_client.generate_content(
+                contents=contents,
+                model="gemini-2.5-flash",
+                max_output_tokens=4096,
             )
+            response_text = result.get("text", "")
+            logger.info(f"Passport OCR via Gemini API: len={len(response_text)}")
 
-        if ollama_response.status_code != 200:
-            logger.error(f"Ollama OCR failed: HTTP {ollama_response.status_code}")
+        if not response_text:
             return PassportPreviewResponse(
                 success=False,
-                message="Vision OCR service unavailable",
+                message="Vision OCR returned empty response",
             )
-
-        response_text = ollama_response.json().get("response", "")
-        logger.info(f"Passport OCR: success={bool(response_text)}, len={len(response_text)}")
 
         # Parse JSON response (handles code fences and chain-of-thought)
         extracted = extract_json_from_llm_response(response_text)

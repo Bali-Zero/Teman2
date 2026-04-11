@@ -180,7 +180,43 @@ class OrchestratorStreamingCore:
                 yield event
             return
 
+        # 2b. CRM Pre-call: if query is about clients/practices, call CRM tool
+        # directly and inject results into context. This avoids Gemini wasting
+        # 2-3 ReAct steps trying vector_search before discovering crm_query.
+        crm_precall_context = ""
+        _crm_keywords = {"clienti", "clients", "klien", "pratiche", "practices",
+                         "quanti", "how many", "berapa", "attivi", "active",
+                         "in corso", "in progress", "scadenza", "expiring",
+                         "leads", "breakdown", "database", "cerca cliente", "find client"}
+        query_lower = query.lower()
+        if any(kw in query_lower for kw in _crm_keywords):
+            crm_tool = self.core.tool_map.get("crm_query")
+            if crm_tool:
+                try:
+                    # Determine best query_type
+                    if any(w in query_lower for w in ("quanti", "how many", "berapa", "attivi", "active", "leads")):
+                        crm_result = await crm_tool.execute(query_type="client_stats")
+                    elif any(w in query_lower for w in ("pratiche", "practices", "in corso", "in progress", "breakdown")):
+                        crm_result = await crm_tool.execute(query_type="practice_stats")
+                    elif any(w in query_lower for w in ("scadenza", "expiring")):
+                        crm_result = await crm_tool.execute(query_type="expiring_documents")
+                    elif any(w in query_lower for w in ("cerca", "find", "search")):
+                        # Extract search term (naive: everything after the keyword)
+                        crm_result = await crm_tool.execute(query_type="search_clients", search_term=query)
+                    else:
+                        crm_result = await crm_tool.execute(query_type="client_stats")
+
+                    if crm_result and len(crm_result) > 10:
+                        crm_precall_context = f"\n\n[CRM DATABASE RESULTS — USE THESE NUMBERS IN YOUR ANSWER]\n{crm_result}\n"
+                        logger.info(f"🚀 [CRM Pre-call] Injected {len(crm_result)} bytes of CRM data into context")
+                except Exception as e:
+                    logger.warning(f"[CRM Pre-call] Failed: {e}")
+
         # 3. Prepare ReAct execution (common logic)
+        # If CRM pre-call returned data, mark as trusted (skip evidence check)
+        # This is applied AFTER prepare_react_execution via state mutation below.
+        _crm_precall_has_data = len(crm_precall_context) > 0
+
         model_tier, deep_think_mode, state, system_prompt = await self.core.prepare_react_execution(
             query=query,
             user_context=user_context,
@@ -191,6 +227,12 @@ class OrchestratorStreamingCore:
             channel=channel,
             agent_role=agent_role,  # VASSAL Phase 2 — stamps state.agent_role
         )
+
+        # If CRM pre-call has data, mark state so evidence check is skipped
+        if _crm_precall_has_data:
+            state.trusted_tools_used = True
+            state.skip_rag = True
+            state.context_gathered.append(crm_precall_context)
 
         # 4. Create chat session
         chat = self.core.llm_gateway.create_chat_with_history(
@@ -256,7 +298,7 @@ class OrchestratorStreamingCore:
                 state=state,
                 llm_gateway=self.core.llm_gateway,
                 chat=chat,
-                initial_prompt=wrap_query_with_language_instruction(query),
+                initial_prompt=wrap_query_with_language_instruction(query) + crm_precall_context,
                 system_prompt=system_prompt,
                 query=query,
                 user_id=user_id or "anonymous",
