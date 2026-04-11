@@ -18,7 +18,7 @@ class _FakeDetector(Detector):
         return list(self._alerts)
 
 
-def _mk(pattern: str, eid: str, score: float) -> Alert:
+def _mk(pattern: str, eid: str, score: float, *, informational: bool = False) -> Alert:
     return Alert(
         alert_id=make_alert_id(pattern, eid, day_bucket="2026-04-11"),
         pattern=pattern,
@@ -28,6 +28,7 @@ def _mk(pattern: str, eid: str, score: float) -> Alert:
         evidence_path=[eid],
         rationale_id="R",
         created_at="2026-04-11T00:00:00+00:00",
+        informational=informational,
     )
 
 
@@ -96,3 +97,31 @@ def test_runner_survives_detector_exception():
     result = runner.run(session=None)
     assert len(result) == 1
     assert result[0].pattern == "p1"
+
+
+def test_runner_ranks_informational_after_real_regardless_of_score():
+    """Even a high-score informational alert is ranked below a low-score real one."""
+    real_low = _mk("real", "a", 0.1)
+    info_high = _mk("info", "b", 0.9, informational=True)
+    d = _FakeDetector("p1", [real_low, info_high])
+    runner = AnomalyRunner(detectors=[d])
+    result = runner.run(session=None)
+    assert len(result) == 2
+    assert result[0].informational is False
+    assert result[0].score == 0.1
+    assert result[1].informational is True
+    assert result[1].score == 0.9
+
+
+def test_runner_dedupes_real_and_informational_independently():
+    """Same alert_id between real and informational: real wins."""
+    # Same alert_id — dedupe keeps the higher-scored entry (real one).
+    real = _mk("p1", "a", 0.2)
+    info = _mk("p1", "a", 0.0, informational=True)
+    d = _FakeDetector("p1", [info, real])
+    runner = AnomalyRunner(detectors=[d])
+    result = runner.run(session=None)
+    # Dedupe on alert_id (same pattern+entity+day) keeps the higher
+    # score. Real one has score 0.2 > 0.0, so it wins.
+    assert len(result) == 1
+    assert result[0].informational is False

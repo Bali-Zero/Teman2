@@ -59,12 +59,15 @@ def test_alert_contains_no_names_in_repr():
     assert set(d.keys()) == {
         "alert_id", "pattern", "primary_entity_id", "score",
         "confidence", "evidence_path", "rationale_id", "created_at",
+        "informational",
     }
     # JSON round-trip works
     blob = json.dumps(d)
     assert "official-hashed-id-only" in blob
     # And nothing else we care about
     assert "name" not in d
+    # Default informational flag is False (real alert)
+    assert d["informational"] is False
 
 
 def test_alert_score_is_bounded_0_to_1():

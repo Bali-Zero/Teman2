@@ -35,7 +35,15 @@ def make_alert_id(pattern: str, primary_entity_id: str, day_bucket: str | None =
 
 @dataclass(frozen=True)
 class Alert:
-    """Frozen anomaly alert. Names NEVER appear in any field."""
+    """Frozen anomaly alert. Names NEVER appear in any field.
+
+    Field notes
+    -----------
+    ``informational`` flags an alert that was NOT produced from real
+    detector findings — it is a precondition-block placeholder telling
+    the operator "detector skipped, here's why". Informational alerts
+    must be ranked AFTER real alerts (see ``AnomalyRunner._rank``).
+    """
 
     alert_id: str
     pattern: str
@@ -45,6 +53,7 @@ class Alert:
     evidence_path: list[str] = field(default_factory=list)
     rationale_id: str = ""
     created_at: str = ""
+    informational: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-safe dict. evidence_path copied so callers can't mutate."""
