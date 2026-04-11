@@ -1,0 +1,42 @@
+# Anomaly Detection Thresholds
+# Copy and modify this file, then pass with: --config path/to/thresholds.yaml
+# Values shown are the defaults.
+
+centrality_jump:
+  window_days: 30
+  recent_edge_fraction_threshold: 0.40
+  min_degree: 5
+  min_recent_edges: 3
+
+bridge_outlier:
+  min_community_size: 3
+  bridge_score_threshold: 0.5
+
+temporal_burst:
+  window_days: 7
+  ewma_span_days: 30
+  z_threshold: 3.0
+  min_baseline_days: 14
+  edge_types:
+    - MET_WITH
+    - ATTENDED
+    - WON_CONTRACT
+    - PROMOTED_TO
+    - POSTED_TO
+
+angkatan_disjoint_alliance:
+  max_path_length: 3
+  min_angkatan_gap: 1
+  non_official_edge_types:
+    - MARRIED_TO
+    - PARENT_OF
+    - SIBLING_OF
+    - PATRON_OF
+    - KNOWS
+    - FREQUENTS
+    - MEMBER_OF
+
+eigenvector_reverse:
+  top_percentile: 0.10
+  neighbor_max_percentile: 0.25
+  min_neighbors: 2
