@@ -1,213 +1,276 @@
-"""Eigenvector-reverse detector.
+"""Detector 5: Eigenvector Reverse — lone hubs with low-centrality neighbors.
 
-Justification
--------------
-Memory cite: ``project_osint_layer27_graph_analytics.md``, Centrality
-Algorithms section — "PageRank: Chi è DAVVERO importante" and the
-general principle that in legitimate power structures high-eigenvector
-nodes sit on top of *other* high-eigenvector nodes.
+JUSTIFICATION (project_osint_layer27_graph_analytics.md):
+    Layer 27 lists eigenvector centrality as a measure of being
+    "referenziato da nodi importanti" (referenced by important nodes).
+    A node with HIGH eigenvector centrality whose 1-hop neighbors ALL
+    have LOW eigenvector scores is structurally anomalous: it is important
+    not because of WHO it connects to, but despite connecting only to
+    unimportant nodes.
 
-A node with high eigenvector centrality but whose 1-hop neighbors are
-all in the bottom quartile is a **compartmentalized hub** — the
-classic cut-out / handler / proxy pattern in which a single actor
-mediates flows between otherwise-disconnected peripheries. In OSINT
-terms: a facilitator who never lets their contacts meet each other.
+    This signals deliberate compartmentalization — the node is a "lone
+    hub" that may be:
+    - A handler controlling low-level operatives
+    - A cutout designed to limit exposure
+    - A patron whose clients are deliberately kept invisible
 
-False positive mitigation
--------------------------
-1. ``min_neighbors``: nodes with fewer than N neighbors are skipped
-   (a 2-person handler is not interesting; it's just an acquaintance).
-2. ``hub_top_percentile``: the hub must itself be in the top decile so
-   we're talking about a *real* hub, not a random disconnected pair.
-3. Result ranking uses the ratio of low-centrality neighbors to total
-   neighbors, so a "3 low out of 4" case scores lower than "all 10 low".
-4. We return only node IDs in the alert — the analyst resolves names
-   in a separate step.
+    Layer 9: "bapakisme" patrons sometimes operate through intermediaries
+    who themselves have no visible power (low centrality), making the
+    patron appear isolated in the graph while actually controlling
+    significant resources.
 
-GDS API version
----------------
-Migrated to GDS 2.13+ ``gds.graph.project`` aggregation function
-(Cypher projection). The legacy ``gds.graph.project.cypher`` procedure
-is deprecated and will be removed. ``undirectedRelationshipTypes`` is
-set so the projection matches what Louvain / articulation points /
-eigenvector expect.
+IMPLEMENTATION:
+    Uses GDS eigenvector centrality (Cypher projection). Falls back to
+    PageRank if eigenvector is unavailable. Identifies nodes in the top
+    percentile whose ALL 1-hop neighbors fall below the low percentile.
 
-Data requirements
------------------
-Any graph. No timestamps needed. Runs on a read-only projection.
+FALSE-POSITIVE MITIGATION:
+    - min_neighbors: requires at least 2 neighbors (isolates ignored)
+    - top_percentile: only examines truly high-eigenvector nodes
+    - neighbor_max_percentile: "all neighbors low" is a strict criterion
+    - Confidence scaled by neighbor count: more isolated neighbors =
+      stronger signal
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, SessionLike
-from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
+from neo4j import AsyncSession
 
-# Projection graph name — kept constant per detector so repeated runs
-# don't spawn dangling projections. The runbook cleans this up.
-_PROJECTION_NAME = "anomaly_eigenvector"
+from osint_nexus.anomaly.alert import Alert
+from osint_nexus.anomaly.base import Detector
 
 
 class EigenvectorReverseDetector(Detector):
-    name = "eigenvector_reverse"
+    """Detect high-eigenvector nodes surrounded by low-eigenvector neighbors."""
 
-    @classmethod
-    def default_thresholds(cls) -> dict[str, Any]:
-        return dict(DEFAULT_THRESHOLDS["eigenvector_reverse"])
+    pattern_name = "eigenvector_reverse"
 
-    # ------------------------------------------------------------------
-    # Cypher queries — kept as class constants for easy test matching
-    # ------------------------------------------------------------------
+    async def run(self, session: AsyncSession) -> list[Alert]:
+        """Find lone hubs: high eigenvector, all neighbors low.
 
-    _DROP_Q = f"""
-    CALL gds.graph.drop('{_PROJECTION_NAME}', false)
-    YIELD graphName
-    RETURN graphName
-    """
+        False-positive mitigation:
+        - min_neighbors filter avoids leaf/isolated nodes
+        - Strict "all neighbors below threshold" criterion
+        - Confidence scales with how isolated the hub is
+        """
+        top_pct: float = self._t("top_percentile", 0.10)
+        neighbor_max_pct: float = self._t("neighbor_max_percentile", 0.25)
+        min_neighbors: int = self._t("min_neighbors", 2)
 
-    _PROJECT_Q = f"""
-    MATCH (source)
-    OPTIONAL MATCH (source)-[r]-(target)
-    WITH source, target WHERE target IS NOT NULL
-    WITH gds.graph.project(
-      '{_PROJECTION_NAME}',
-      source,
-      target,
-      {{}},
-      {{undirectedRelationshipTypes: ['*']}}
-    ) AS g
-    RETURN g.graphName AS graphName,
-           g.nodeCount AS nodeCount,
-           g.relationshipCount AS relCount
-    """
+        has_gds = await self.check_gds_available(session)
 
-    # GDS stream returns INTEGER ``nodeId`` — we unwrap via
-    # ``gds.util.asNode(nodeId)`` to get the modern elementId so the
-    # neighbor fetch below can re-match. Without this the neighbor
-    # map would be empty and the detector silently returns zero.
-    _EIGENVECTOR_Q = f"""
-    CALL gds.eigenvector.stream('{_PROJECTION_NAME}',
-      {{maxIterations: 100, tolerance: 0.0001}}
-    )
-    YIELD nodeId, score
-    WITH elementId(gds.util.asNode(nodeId)) AS node_id, score
-    WITH collect({{id: node_id, score: score}}) AS nodes
-    UNWIND range(0, size(nodes) - 1) AS i
-    WITH nodes, i, nodes[i] AS n
-    WITH n.id AS node_id, n.score AS score,
-         1.0 * i / size(nodes) AS rank_fraction
-    RETURN node_id, score,
-           1.0 - rank_fraction AS percentile
-    ORDER BY score DESC
-    """
+        if has_gds:
+            return await self._run_with_gds(
+                session, top_pct, neighbor_max_pct, min_neighbors
+            )
+        return await self._run_with_pagerank_proxy(
+            session, top_pct, neighbor_max_pct, min_neighbors
+        )
 
-    _NEIGHBORS_Q = """
-    UNWIND $hub_ids AS hid
-    MATCH (hub) WHERE toString(elementId(hub)) = hid
-    OPTIONAL MATCH (hub)-[]-(neighbor)
-    WITH hid AS hub_id,
-         [n IN collect(DISTINCT neighbor) WHERE n IS NOT NULL
-             | toString(elementId(n))] AS neighbor_ids
-    RETURN hub_id, neighbor_ids
-    """
-
-    _CLEANUP_Q = f"CALL gds.graph.drop('{_PROJECTION_NAME}', false) YIELD graphName"
-
-    # ------------------------------------------------------------------
-
-    def run(self, session: SessionLike) -> list[Alert]:
-        if session is None:
-            return []
-
-        th = self._thresholds
-        hub_top = float(th.get("hub_top_percentile", 0.90))
-        neigh_bottom = float(th.get("neighbor_bottom_percentile", 0.25))
-        lone_ratio = float(th.get("lone_hub_min_ratio", 0.75))
-        min_neighbors = int(th.get("min_neighbors", 4))
-        min_score = float(th.get("min_score", 0.6))
-
-        # Drop stale projection, then build fresh (idempotent).
+    async def _run_with_gds(
+        self,
+        session: AsyncSession,
+        top_pct: float,
+        neighbor_max_pct: float,
+        min_neighbors: int,
+    ) -> list[Alert]:
+        """Use GDS eigenvector centrality."""
+        # Project and compute
         try:
-            session.run(self._DROP_Q)
-        except Exception:  # pragma: no cover
-            pass
-        try:
-            session.run(self._PROJECT_Q)
-        except Exception:  # pragma: no cover - exercised against live GDS
+            await session.run("CALL gds.graph.drop('anomaly_eigen', false)")
+        except Exception:
             pass
 
-        # Step 2 — pull eigenvector stream with per-node percentiles
-        eigen_records = list(session.run(self._EIGENVECTOR_Q))
-        if not eigen_records:
-            self._safe_drop(session)
+        await session.run("""
+            CALL gds.graph.project.cypher(
+                'anomaly_eigen',
+                'MATCH (n) WHERE n:Official OR n:Person RETURN id(n) AS id',
+                'MATCH (a)-[r]-(b)
+                 WHERE (a:Official OR a:Person) AND (b:Official OR b:Person)
+                 RETURN id(a) AS source, id(b) AS target'
+            )
+        """)
+
+        await session.run("""
+            CALL gds.eigenvector.write('anomaly_eigen', {
+                writeProperty: '_anomaly_eigen',
+                maxIterations: 50
+            })
+        """)
+
+        alerts = await self._analyze_centrality(
+            session,
+            property_name="_anomaly_eigen",
+            top_pct=top_pct,
+            neighbor_max_pct=neighbor_max_pct,
+            min_neighbors=min_neighbors,
+        )
+
+        # Cleanup
+        try:
+            await session.run("CALL gds.graph.drop('anomaly_eigen', false)")
+            await session.run(
+                "MATCH (n) WHERE n._anomaly_eigen IS NOT NULL "
+                "REMOVE n._anomaly_eigen"
+            )
+        except Exception:
+            pass
+
+        return alerts
+
+    async def _run_with_pagerank_proxy(
+        self,
+        session: AsyncSession,
+        top_pct: float,
+        neighbor_max_pct: float,
+        min_neighbors: int,
+    ) -> list[Alert]:
+        """Fallback: approximate with degree-based centrality score.
+
+        Without GDS, we compute a simple centrality proxy:
+        score = degree / max_degree. This approximates eigenvector for
+        small graphs.
+        """
+        # Compute degree-based centrality proxy
+        await session.run("""
+            MATCH (n)
+            WHERE n:Official OR n:Person
+            OPTIONAL MATCH (n)-[r]-()
+            WITH n, count(r) AS deg
+            WITH max(deg) AS max_deg
+            MATCH (n)
+            WHERE n:Official OR n:Person
+            OPTIONAL MATCH (n)-[r]-()
+            WITH n, count(r) AS deg, max_deg
+            SET n._anomaly_eigen = CASE
+                WHEN max_deg > 0 THEN toFloat(deg) / max_deg
+                ELSE 0.0
+            END
+        """)
+
+        alerts = await self._analyze_centrality(
+            session,
+            property_name="_anomaly_eigen",
+            top_pct=top_pct,
+            neighbor_max_pct=neighbor_max_pct,
+            min_neighbors=min_neighbors,
+        )
+
+        # Cleanup
+        try:
+            await session.run(
+                "MATCH (n) WHERE n._anomaly_eigen IS NOT NULL "
+                "REMOVE n._anomaly_eigen"
+            )
+        except Exception:
+            pass
+
+        return alerts
+
+    async def _analyze_centrality(
+        self,
+        session: AsyncSession,
+        property_name: str,
+        top_pct: float,
+        neighbor_max_pct: float,
+        min_neighbors: int,
+    ) -> list[Alert]:
+        """Common analysis logic: find high-centrality nodes with all-low neighbors."""
+        # Get percentile thresholds
+        threshold_query = f"""
+        MATCH (n)
+        WHERE (n:Official OR n:Person) AND n.{property_name} IS NOT NULL
+        WITH n.{property_name} AS score
+        ORDER BY score ASC
+        WITH collect(score) AS scores
+        WITH scores,
+             scores[toInteger(size(scores) * (1.0 - $top_pct))] AS high_threshold,
+             scores[toInteger(size(scores) * $neighbor_max_pct)] AS low_threshold
+        RETURN high_threshold, low_threshold
+        """
+        thresh_result = await session.run(
+            threshold_query,
+            {"top_pct": top_pct, "neighbor_max_pct": neighbor_max_pct},
+        )
+        thresh_record = await thresh_result.single()
+        if not thresh_record:
             return []
 
-        # Index: id -> percentile, id -> score
-        score_by_id: dict[str, float] = {}
-        percentile_by_id: dict[str, float] = {}
-        for rec in eigen_records:
-            nid = str(rec["node_id"])
-            score_by_id[nid] = float(rec["score"])
-            percentile_by_id[nid] = float(rec["percentile"])
+        high_threshold = thresh_record["high_threshold"]
+        low_threshold = thresh_record["low_threshold"]
 
-        hub_ids = [
-            nid for nid, p in percentile_by_id.items() if p >= hub_top
-        ]
-        if not hub_ids:
-            self._safe_drop(session)
+        if high_threshold is None or low_threshold is None:
             return []
 
-        # Step 3 — fetch 1-hop neighborhoods for hubs
-        neighbor_map: dict[str, list[str]] = {}
-        for rec in session.run(self._NEIGHBORS_Q, {"hub_ids": hub_ids}):
-            neighbor_map[str(rec["hub_id"])] = [
-                str(n) for n in rec.get("neighbor_ids", []) if n
-            ]
+        # Find lone hubs
+        query = f"""
+        MATCH (n)
+        WHERE (n:Official OR n:Person)
+          AND n.{property_name} >= $high_threshold
+        MATCH (n)--(neighbor)
+        WHERE (neighbor:Official OR neighbor:Person)
+          AND neighbor.{property_name} IS NOT NULL
+        WITH n,
+             n.{property_name} AS node_score,
+             collect(neighbor.{property_name}) AS neighbor_scores,
+             collect(elementId(neighbor)) AS neighbor_ids,
+             count(neighbor) AS num_neighbors
+        WHERE num_neighbors >= $min_neighbors
+          AND all(s IN neighbor_scores WHERE s <= $low_threshold)
+        RETURN elementId(n) AS node_id,
+               node_score,
+               num_neighbors,
+               reduce(acc = 0.0, s IN neighbor_scores | acc + s) / num_neighbors
+                   AS avg_neighbor_score,
+               neighbor_ids
+        ORDER BY node_score DESC
+        LIMIT 30
+        """
+        result = await session.run(
+            query,
+            {
+                "high_threshold": high_threshold,
+                "low_threshold": low_threshold,
+                "min_neighbors": min_neighbors,
+            },
+        )
 
         alerts: list[Alert] = []
-        for hid in hub_ids:
-            neighbors = neighbor_map.get(hid, [])
-            if len(neighbors) < min_neighbors:
-                continue
+        async for record in result:
+            node_id = record["node_id"]
+            node_score = record["node_score"]
+            num_neighbors = record["num_neighbors"]
+            avg_neighbor = record["avg_neighbor_score"]
+            neighbor_ids = record["neighbor_ids"]
 
-            low_count = sum(
-                1
-                for n in neighbors
-                if percentile_by_id.get(n, 0.5) <= neigh_bottom
-            )
-            ratio = low_count / len(neighbors)
-            if ratio < lone_ratio:
-                continue
+            # Score: ratio between node's centrality and neighbor mean
+            ratio = node_score / max(avg_neighbor, 0.001)
+            score = min(1.0, ratio / 100.0)
 
-            # Score: combine hub percentile and lone-ratio. Both are
-            # in [0, 1]; geometric mean punishes either-low cases.
-            hub_p = percentile_by_id[hid]
-            score = (hub_p * ratio) ** 0.5
-            # Confidence reflects data density — more neighbors = more
-            # trustworthy ratio signal.
-            confidence = min(1.0, len(neighbors) / 10.0)
-
-            if score < min_score:
-                continue
+            # Confidence: more neighbors all being low = stronger signal
+            confidence = min(1.0, num_neighbors / 10.0)
 
             alerts.append(
-                self._mk_alert(
-                    primary_entity_id=hid,
+                Alert(
+                    pattern=self.pattern_name,
                     score=score,
+                    evidence_path=[f"node:{node_id}"]
+                    + [f"node:{nid}" for nid in neighbor_ids[:5]],
+                    explanation_id_only=(
+                        f"Node {node_id} has eigenvector {node_score:.4f} but "
+                        f"{num_neighbors} neighbors average {avg_neighbor:.4f} "
+                        f"(ratio={ratio:.0f}x)"
+                    ),
                     confidence=confidence,
-                    evidence_path=[hid, *neighbors],
-                    rationale_id="ER-LONE-HUB",
+                    meta={
+                        "node_score": round(node_score, 6),
+                        "avg_neighbor_score": round(avg_neighbor, 6),
+                        "ratio": round(ratio, 2),
+                        "num_neighbors": num_neighbors,
+                    },
                 )
             )
 
-        self._safe_drop(session)
         return alerts
-
-    @staticmethod
-    def _safe_drop(session: SessionLike) -> None:
-        try:
-            session.run(EigenvectorReverseDetector._CLEANUP_Q)
-        except Exception:  # pragma: no cover
-            pass
