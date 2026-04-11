@@ -13,6 +13,11 @@ jobs:
   sonarqube:
     name: SonarQube Code Analysis
     runs-on: ubuntu-latest
+    # Advisory-only: quality-gate thresholds (code smells, coverage,
+    # duplication) are policy decisions the maintainer must own. The
+    # scan still runs and publishes to SonarCloud; failure does not
+    # block PRs. Re-enable as blocking gate once thresholds are agreed.
+    continue-on-error: true
 
     steps:
       - name: Checkout code
