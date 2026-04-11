@@ -55,7 +55,13 @@ Output ONLY a JSON object:
 
 
 def score_with_ollama(title: str, content: str, source: str) -> dict:
-    """Score an item using local Ollama (qwen3.5:9b). Returns {score, topic, reason}."""
+    """Score an item using local Ollama (gemma4:26b — MoE, always hot on Pro).
+
+    gemma4:26b is preferred over qwen3.5:9b because:
+    - MoE architecture = fast inference even at 26B params
+    - Always loaded in memory on Pro (H24)
+    - qwen3.5:9b requires cold start at 02:00 and has think-mode latency
+    """
     prompt = SCORE_PROMPT_TEMPLATE.format(
         title=title,
         content=content[:500],
@@ -67,16 +73,15 @@ def score_with_ollama(title: str, content: str, source: str) -> dict:
             [
                 "curl", "-s", "http://localhost:11434/api/generate",
                 "-d", json.dumps({
-                    "model": "qwen3.5:9b",
+                    "model": "gemma4:26b",
                     "prompt": prompt,
                     "stream": False,
                     "options": {"temperature": 0.1, "num_predict": 100},
-                    "think": False,
                 }),
             ],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=60,
         )
 
         if result.returncode == 0:
