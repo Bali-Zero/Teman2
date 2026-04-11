@@ -676,3 +676,195 @@ class TestMakeVisaSubgraph:
 
         doc_ids = {d.id for d in result["retrieved_documents"]}
         assert "SYSTEM:b211_rewrite" in doc_ids
+
+
+async def _run_planner(
+    query: str,
+    decompose_response: dict,
+    fragment: str,
+    docs=None,
+):
+    from helpers.mocks import make_mock_services
+
+    from nuzantara_graph.subgraphs.visa import make_visa_subgraph
+    from nuzantara_schemas.state import GraphState, RetrievedDocument
+
+    svc = make_mock_services(
+        documents=docs
+        or [
+            RetrievedDocument(
+                id="doc_a",
+                content="KITAS is valid for 12 months with a fine of 1000000 IDR per day",
+                score=0.85,
+            )
+        ],
+        llm_responses={
+            "generate_json": decompose_response,
+            "generate": fragment,
+        },
+    )
+    node = make_visa_subgraph(svc)
+    return await node(GraphState(query=query, intent="visa"))
+
+
+@pytest.mark.unit
+class TestScenarios:
+    """Real-world scenario coverage per spec."""
+
+    @pytest.mark.asyncio
+    async def test_overstay_fine(self):
+        result = await _run_planner(
+            query="How much is the overstay fine for 3 days?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "overstay fine 3 days",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    }
+                ]
+            },
+            fragment="Fine is 1 million IDR per day [doc_a:0-80].",
+        )
+        assert result["current_node"] == "subgraph_visa"
+        all_content = " ".join(d.content for d in result["retrieved_documents"])
+        assert "IDR" in all_content or "fine" in all_content.lower()
+
+    @pytest.mark.asyncio
+    async def test_kitas_to_kitap_transition(self):
+        result = await _run_planner(
+            query="How do I go from KITAS to KITAP?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "KITAS duration",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    },
+                    {
+                        "idx": 1,
+                        "text": "KITAP eligibility after KITAS",
+                        "needs_kb": True,
+                        "depends_on": [0],
+                    },
+                ]
+            },
+            fragment="KITAS 1 year then KITAP [doc_a:0-80].",
+        )
+        trace = result["visa_planner_trace"]
+        assert len(trace["sub_questions"]) == 2
+        assert trace["sub_questions"][1]["depends_on"] == [0]
+
+    @pytest.mark.asyncio
+    async def test_investor_vs_working_kitas_parallel(self):
+        result = await _run_planner(
+            query="Investor KITAS vs working KITAS?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "investor KITAS requirements",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    },
+                    {
+                        "idx": 1,
+                        "text": "working KITAS requirements",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    },
+                ]
+            },
+            fragment="Both types require sponsorship [doc_a:0-80].",
+        )
+        trace = result["visa_planner_trace"]
+        assert len(trace["sub_questions"]) == 2
+        for sq in trace["sub_questions"]:
+            assert sq["depends_on"] == []
+
+    @pytest.mark.asyncio
+    async def test_evisa_eu_eligibility(self):
+        result = await _run_planner(
+            query="Can EU citizens get an Indonesian e-visa?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "e-visa eligible countries",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    }
+                ]
+            },
+            fragment="EU citizens are eligible [doc_a:0-80].",
+        )
+        assert result["current_node"] == "subgraph_visa"
+        assert len(result["retrieved_documents"]) >= 1
+
+    @pytest.mark.asyncio
+    async def test_newborn_child_visa(self):
+        result = await _run_planner(
+            query="Visa for newborn child of Indonesian-foreigner couple",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "newborn KITAS sponsorship",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    }
+                ]
+            },
+            fragment=(
+                "Newborn children of mixed couples get KITAS under family sponsorship "
+                "[doc_a:0-80]."
+            ),
+        )
+        assert "retrieved_documents" in result
+        assert len(result["retrieved_documents"]) >= 1
+
+    @pytest.mark.asyncio
+    async def test_multi_hop_overstay_re_entry(self):
+        result = await _run_planner(
+            query="I overstayed 3 days, then left, can I come back on e-visa?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "overstay penalty",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    },
+                    {
+                        "idx": 1,
+                        "text": "re-entry eligibility after overstay",
+                        "needs_kb": True,
+                        "depends_on": [0],
+                    },
+                ]
+            },
+            fragment="Overstay is fined, re-entry allowed after payment [doc_a:0-80].",
+        )
+        trace = result["visa_planner_trace"]
+        assert len(trace["sub_questions"]) == 2
+        assert trace["sub_questions"][1]["depends_on"] == [0]
+
+    @pytest.mark.asyncio
+    async def test_indonesian_language_query(self):
+        result = await _run_planner(
+            query="Apa itu KITAS dan bagaimana cara mendapatkannya?",
+            decompose_response={
+                "sub_questions": [
+                    {
+                        "idx": 0,
+                        "text": "definisi KITAS",
+                        "needs_kb": True,
+                        "depends_on": [],
+                    }
+                ]
+            },
+            fragment="KITAS adalah izin tinggal sementara [doc_a:0-80].",
+        )
+        assert result["current_node"] == "subgraph_visa"
