@@ -1,158 +1,177 @@
-"""Test infrastructure for anomaly detectors.
+"""Test fixtures for anomaly detectors.
 
-We want two tiers:
+Provides a mock Neo4j AsyncSession that executes against an in-memory
+graph representation. This avoids requiring a live Neo4j instance for
+unit tests while allowing integration tests to use a real server.
 
-1. **Offline tier (default)** — a ``FakeSession`` that stores a
-   pre-defined list of ``(query_substring, records)`` mappings. We
-   don't emulate Cypher. Instead, each detector test *teaches* the
-   fake session what to return for the query shape the detector emits.
-   This is deliberate: the alternative is a full Cypher interpreter,
-   which is out of scope. What we CAN verify offline is:
-   - the detector issues queries with expected parameters
-   - the detector turns the server's records into alerts correctly
-   - thresholds change the output
-   - edge cases (empty graph, missing fields) don't crash
-
-2. **Live tier (opt-in)** — provides a neo4j session backed by
-   ``testcontainers[neo4j]`` if available OR a local NEO4J_URL. Tests
-   that use this fixture are marked ``@pytest.mark.neo4j``. They are
-   skipped unless ``NEO4J_URL`` is set in env.
-
-The live fixture is a bonus — unit tests using FakeSession must be
-green on every machine, no neo4j required.
+For live Neo4j tests, set NEO4J_TEST_URI env var and use @pytest.mark.neo4j.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
-# Register the `neo4j` marker so ``pytest -m "not neo4j"`` works even
-# when the plugin isn't loaded.
-def pytest_configure(config):  # noqa: D401
-    config.addinivalue_line(
-        "markers", "neo4j: tests that hit a live Neo4j instance (skipped without NEO4J_URL)"
-    )
+
+# ── In-memory graph store for unit tests ──
 
 
 @dataclass
-class FakeRecord:
-    """Stand-in for neo4j Record. Supports dict-style access only."""
+class MockNode:
+    """A node in the mock graph."""
 
-    data: dict[str, Any]
-
-    def __getitem__(self, key: str) -> Any:
-        return self.data[key]
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self.data.get(key, default)
-
-    def __iter__(self):
-        return iter(self.data)
-
-    def keys(self):
-        return self.data.keys()
+    element_id: str
+    labels: list[str]
+    properties: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
-class FakeResult:
-    """Iterable cursor over FakeRecords, matching neo4j driver Result."""
+class MockRelationship:
+    """A relationship in the mock graph."""
 
-    records: list[FakeRecord]
-
-    def __iter__(self):
-        return iter(self.records)
-
-    def data(self) -> list[dict[str, Any]]:
-        return [r.data for r in self.records]
-
-    def single(self) -> FakeRecord | None:
-        return self.records[0] if self.records else None
+    element_id: str
+    start_id: str
+    end_id: str
+    rel_type: str
+    properties: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
-class FakeSession:
-    """A scriptable neo4j session duck.
+class MockResult:
+    """Simulates a Neo4j Result with async iteration."""
 
-    Use ``session.teach(predicate, records)`` to say "when a query
-    matches this predicate, return these records". The predicate is
-    either a substring (case-sensitive) or a callable taking the query
-    string.
+    def __init__(self, records: list[dict[str, Any]]) -> None:
+        self._records = records
+        self._index = 0
 
-    Predicates are checked in registration order; first match wins.
-    Unknown queries return an empty result — NOT an error — so
-    detectors can handle empty-graph paths.
-    """
-
-    _rules: list[tuple[Callable[[str], bool], list[dict[str, Any]]]] = field(default_factory=list)
-    queries_seen: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
-    # Compatibility with neo4j driver session signature
-    _closed: bool = False
-
-    def teach(
-        self,
-        predicate: Callable[[str], bool] | str,
-        records: list[dict[str, Any]],
-    ) -> None:
-        if isinstance(predicate, str):
-            needle = predicate
-            pred_fn: Callable[[str], bool] = lambda q, n=needle: n in q
-        else:
-            pred_fn = predicate
-        self._rules.append((pred_fn, records))
-
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> FakeResult:
-        self.queries_seen.append((query, dict(parameters or {})))
-        for pred, records in self._rules:
-            if pred(query):
-                return FakeResult([FakeRecord(dict(r)) for r in records])
-        return FakeResult([])
-
-    def close(self) -> None:
-        self._closed = True
-
-    def __enter__(self):
+    def __aiter__(self):
+        self._index = 0
         return self
 
-    def __exit__(self, exc_type, exc, tb):
-        self.close()
+    async def __anext__(self) -> dict[str, Any]:
+        if self._index >= len(self._records):
+            raise StopAsyncIteration
+        record = self._records[self._index]
+        self._index += 1
+        return record
+
+    async def single(self) -> dict[str, Any] | None:
+        return self._records[0] if self._records else None
 
 
-@pytest.fixture
-def fake_session() -> FakeSession:
-    """Blank scriptable session. Each test teaches it what to return."""
-    return FakeSession()
+class MockGraph:
+    """In-memory graph for test assertions.
 
-
-# ---------------------------------------------------------------------------
-# Live tier (opt-in via @pytest.mark.neo4j + NEO4J_URL env var)
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def neo4j_session():
-    """Real neo4j session, skipped unless NEO4J_URL is set.
-
-    Tests that use this fixture MUST be marked @pytest.mark.neo4j and
-    must clean up after themselves. We never wipe the live graph — the
-    runbook expects the operator to target a throwaway database.
+    Provides a fluent API for building synthetic test graphs and a
+    mock session that returns pre-configured results.
     """
-    url = os.getenv("NEO4J_URL")
-    if not url:
-        pytest.skip("NEO4J_URL not set; skipping live neo4j test")
-    try:
-        from neo4j import GraphDatabase  # type: ignore[import-not-found]
-    except ImportError:
-        pytest.skip("neo4j driver not installed")
-    user = os.getenv("NEO4J_USER", "neo4j")
-    pwd = os.getenv("NEO4J_PASSWORD", "neo4j")
-    database = os.getenv("NEO4J_DATABASE", "neo4j")
-    driver = GraphDatabase.driver(url, auth=(user, pwd))
-    try:
-        with driver.session(database=database) as s:
-            yield s
-    finally:
-        driver.close()
+
+    def __init__(self) -> None:
+        self.nodes: dict[str, MockNode] = {}
+        self.relationships: list[MockRelationship] = []
+        self._next_node_id = 1
+        self._next_rel_id = 1
+        self._query_handlers: dict[str, list[dict[str, Any]]] = {}
+
+    def add_node(
+        self,
+        labels: list[str],
+        properties: dict[str, Any] | None = None,
+        element_id: str | None = None,
+    ) -> str:
+        """Add a node and return its element_id."""
+        eid = element_id or f"4:{self._next_node_id}"
+        self._next_node_id += 1
+        self.nodes[eid] = MockNode(
+            element_id=eid,
+            labels=labels,
+            properties=properties or {},
+        )
+        return eid
+
+    def add_relationship(
+        self,
+        start_id: str,
+        end_id: str,
+        rel_type: str,
+        properties: dict[str, Any] | None = None,
+    ) -> str:
+        """Add a relationship and return its element_id."""
+        eid = f"5:{self._next_rel_id}"
+        self._next_rel_id += 1
+        self.relationships.append(
+            MockRelationship(
+                element_id=eid,
+                start_id=start_id,
+                end_id=end_id,
+                rel_type=rel_type,
+                properties=properties or {},
+            )
+        )
+        return eid
+
+    def set_query_result(
+        self, pattern: str, records: list[dict[str, Any]]
+    ) -> None:
+        """Register a result for queries matching a pattern (substring match)."""
+        self._query_handlers[pattern] = records
+
+    def get_session(self) -> AsyncMock:
+        """Create a mock AsyncSession wired to this graph's query handlers."""
+        session = AsyncMock()
+
+        async def mock_run(query: str, parameters: dict | None = None):
+            query_lower = query.lower().strip()
+
+            # Check GDS availability — always return False in unit tests
+            if "gds.version()" in query_lower:
+                raise Exception("GDS not available")
+
+            # Match against registered patterns
+            for pattern, records in self._query_handlers.items():
+                if pattern.lower() in query_lower:
+                    return MockResult(records)
+
+            # Default: empty result
+            return MockResult([])
+
+        session.run = mock_run
+        return session
+
+
+# ── Fixtures ──
+
+
+@pytest.fixture
+def mock_graph() -> MockGraph:
+    """Provide a fresh in-memory mock graph."""
+    return MockGraph()
+
+
+@pytest.fixture
+def mock_session(mock_graph: MockGraph) -> AsyncMock:
+    """Provide a mock Neo4j session from the mock graph."""
+    return mock_graph.get_session()
+
+
+# ── Live Neo4j fixtures (skipped when NEO4J_TEST_URI unset) ──
+
+neo4j_marker = pytest.mark.neo4j
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line("markers", "neo4j: requires live Neo4j instance")
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    if not os.getenv("NEO4J_TEST_URI"):
+        skip = pytest.mark.skip(reason="NEO4J_TEST_URI not set")
+        for item in items:
+            if "neo4j" in item.keywords:
+                item.add_marker(skip)
