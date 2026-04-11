@@ -181,3 +181,67 @@ class TestDecompose:
         sub_qs = await decompose("q", llm)
         assert len(sub_qs) == 1
         assert sub_qs[0].text == "q"
+
+
+@pytest.mark.unit
+class TestTopoSort:
+    def test_simple_linear_chain(self):
+        from nuzantara_graph.subgraphs.visa.execute import topo_sort
+        from nuzantara_graph.subgraphs.visa.types import SubQuestion
+
+        sqs = [
+            SubQuestion(idx=0, text="a", depends_on=[]),
+            SubQuestion(idx=1, text="b", depends_on=[0]),
+            SubQuestion(idx=2, text="c", depends_on=[1]),
+        ]
+        ordered, broken_edges = topo_sort(sqs, max_depth=3)
+        assert [s.idx for s in ordered] == [0, 1, 2]
+        assert broken_edges == []
+
+    def test_cycle_broken(self):
+        from nuzantara_graph.subgraphs.visa.execute import topo_sort
+        from nuzantara_graph.subgraphs.visa.types import SubQuestion
+
+        sqs = [
+            SubQuestion(idx=0, text="a", depends_on=[1]),
+            SubQuestion(idx=1, text="b", depends_on=[0]),
+        ]
+        ordered, broken_edges = topo_sort(sqs, max_depth=3)
+        assert len(ordered) == 2
+        assert len(broken_edges) >= 1
+
+    def test_depth_clamped(self):
+        from nuzantara_graph.subgraphs.visa.execute import topo_sort
+        from nuzantara_graph.subgraphs.visa.types import SubQuestion
+
+        sqs = [
+            SubQuestion(idx=0, text="a", depends_on=[]),
+            SubQuestion(idx=1, text="b", depends_on=[0]),
+            SubQuestion(idx=2, text="c", depends_on=[1]),
+            SubQuestion(idx=3, text="d", depends_on=[2]),
+            SubQuestion(idx=4, text="e", depends_on=[3]),
+        ]
+        ordered, _ = topo_sort(sqs, max_depth=3)
+        assert len(ordered) == 5
+        # Compute depth of each node after clamping
+        depths: dict[int, int] = {}
+        for s in ordered:
+            d = 0
+            if s.depends_on:
+                d = 1 + max(depths.get(p, 0) for p in s.depends_on)
+            depths[s.idx] = d
+        # max_depth=3 means allowed depths are {0, 1, 2}
+        assert max(depths.values()) <= 2
+
+    def test_parallel_branches(self):
+        from nuzantara_graph.subgraphs.visa.execute import topo_sort
+        from nuzantara_graph.subgraphs.visa.types import SubQuestion
+
+        sqs = [
+            SubQuestion(idx=0, text="root", depends_on=[]),
+            SubQuestion(idx=1, text="left", depends_on=[0]),
+            SubQuestion(idx=2, text="right", depends_on=[0]),
+        ]
+        ordered, _ = topo_sort(sqs, max_depth=3)
+        assert ordered[0].idx == 0
+        assert {s.idx for s in ordered[1:]} == {1, 2}
