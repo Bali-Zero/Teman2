@@ -40,12 +40,13 @@ class Chunk:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
-def _deterministic_id(source_path: str, record_id: str, chunk_type: str, offset: int) -> str:
+def _deterministic_id(record_id: str, chunk_type: str, index: int = 0) -> str:
     """Generate a deterministic chunk ID from content identifiers.
 
-    Ensures idempotent ingest: re-running produces the same vector IDs.
+    Uses record_id + chunk_type + index (NOT source_path or line offset)
+    so that IDs remain stable if files are reorganized or records reordered.
     """
-    raw = f"{source_path}|{record_id}|{chunk_type}|{offset}"
+    raw = f"{record_id}|{chunk_type}|{index}"
     return md5(raw.encode("utf-8")).hexdigest()
 
 
@@ -104,7 +105,7 @@ class HierarchicalChunker:
 
         language = _detect_language(parent_text)
 
-        parent_id = _deterministic_id(source_path, record_id, "parent", line_offset)
+        parent_id = _deterministic_id(record_id, "parent")
         parent = Chunk(
             id=parent_id,
             text=parent_text,
@@ -122,7 +123,7 @@ class HierarchicalChunker:
         claims = self._extractor.extract_claims(record)
         children: list[Chunk] = []
         for i, claim_text in enumerate(claims):
-            child_id = _deterministic_id(source_path, record_id, f"child:{i}", line_offset)
+            child_id = _deterministic_id(record_id, "child", i)
             children.append(Chunk(
                 id=child_id,
                 text=claim_text,
