@@ -213,12 +213,16 @@ def make_visa_subgraph(services: Services):
             sub_questions=len(final.sub_questions),
         )
 
+        sources = _extract_sources(final)
+
         return {
             "retrieved_documents": docs,
             "kg_entities": kg_entities,
             "kg_relationships": kg_relationships,
             "domain": _dominant_visa(state),
             "current_node": "subgraph_visa",
+            "answer": final.final_answer,
+            "sources": sources,
             "visa_planner_trace": {
                 "llm_calls": final.llm_call_count,
                 "sub_questions": [sq.model_dump() for sq in final.sub_questions],
@@ -228,3 +232,40 @@ def make_visa_subgraph(services: Services):
         }
 
     return visa_planner_node
+
+
+def _extract_sources(state: PlannerState) -> list[dict[str, Any]]:
+    """Collapse planner evidence chunks into a deduped sources list."""
+    seen: set[str] = set()
+    sources: list[dict[str, Any]] = []
+
+    for note in state.system_notes:
+        if note.doc_id in seen:
+            continue
+        seen.add(note.doc_id)
+        sources.append(
+            {
+                "id": note.doc_id,
+                "title": note.doc_id,
+                "snippet": note.content[:200],
+                "source": "system_note",
+            }
+        )
+
+    for ev in state.evidences:
+        for c in ev.chunks:
+            if c.doc_id in seen:
+                continue
+            seen.add(c.doc_id)
+            sources.append(
+                {
+                    "id": c.doc_id,
+                    "title": c.doc_id,
+                    "span": f"{c.span_start}-{c.span_end}",
+                    "snippet": c.content[:200],
+                    "score": round(c.score, 3),
+                    "source": "vector",
+                }
+            )
+
+    return sources
