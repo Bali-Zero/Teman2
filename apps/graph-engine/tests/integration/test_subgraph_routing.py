@@ -134,6 +134,170 @@ class TestVisaSubgraphRouting:
         assert "KITAS" in answer or "visa_kitas" in answer or "[" in answer
 
 
+class TestVisaFallbackRoute:
+    """When the visa planner cannot cite anything, it emits a system
+    fallback answer. That answer is still non-empty, so the direct edge
+    fires → GRADE_HALLUCINATION → END. Verify the end state carries the
+    fallback string and the hallucination grader does not mutate it."""
+
+    @pytest.mark.asyncio
+    async def test_fallback_answer_reaches_end_via_direct_edge(self):
+        """Given zero retrieval docs + empty compose output, the planner
+        should emit _SYSTEM_FALLBACK and route through the direct edge to
+        the hallucination grader without crashing."""
+
+        def _visa_llm(prompt, system):
+            lower_system = system.lower()
+            # understand node — classify as visa
+            if "query analyzer" in lower_system:
+                return {
+                    "intent": "visa",
+                    "domain": "kitas",
+                    "entities": {},
+                    "language": "en",
+                    "is_followup": False,
+                }
+            # visa decompose — single sub-question
+            if "visa/immigration query planner" in lower_system:
+                return {
+                    "sub_questions": [
+                        {"idx": 0, "text": "q", "needs_kb": True, "depends_on": []}
+                    ]
+                }
+            return {}
+
+        # Empty vector store → retrieval returns [] → plan_execute skips
+        # LLM call → compose() sees no chunks → returns _SYSTEM_FALLBACK.
+        svc = make_mock_services(
+            llm_responses={
+                "generate_json": _visa_llm,
+                "generate": "should not be reached",
+            },
+            documents=[],
+        )
+        graph = build_graph(services=svc)
+        compiled = graph.compile()
+
+        result = await compiled.ainvoke(
+            GraphState(query="Very obscure visa question with no KB coverage")
+        )
+
+        assert result["intent"] == IntentType.VISA
+        assert result["answer"], "Fallback answer should be non-empty"
+        # The direct edge took effect — the answer is the planner's
+        # fallback, not a REASON+SYNTHESIZE output.
+        assert (
+            "cannot produce a fully-cited answer" in result["answer"]
+            or "rephrase" in result["answer"].lower()
+        ), f"Expected fallback string, got: {result['answer'][:200]}"
+        # Hallucination grader should have run as final safety check.
+        grader_names = [g.grader for g in result["grades"]]
+        assert "hallucination" in grader_names, (
+            f"Expected hallucination grader to run on the direct edge, "
+            f"got graders: {grader_names}"
+        )
+        # The direct edge path means REASON+SYNTHESIZE did NOT run —
+        # so there should be no reasoning steps and no answer grader run.
+        assert len(result["reasoning_steps"]) == 0, (
+            "Reason node should not have run on the direct edge path"
+        )
+        assert "answer" not in grader_names, (
+            "Answer grader should not have run on the direct edge path"
+        )
+
+    @pytest.mark.asyncio
+    async def test_planner_failure_falls_back_to_reason_path(self):
+        """If the planner graph crashes and yields an empty answer, the
+        router should route to REASON instead of direct-edge, so the
+        legacy path still produces a user-facing answer."""
+
+        def _visa_llm(prompt, system):
+            lower_system = system.lower()
+            if "query analyzer" in lower_system:
+                return {
+                    "intent": "visa",
+                    "domain": "kitas",
+                    "entities": {},
+                    "language": "en",
+                    "is_followup": False,
+                }
+            if "visa/immigration query planner" in lower_system:
+                return {
+                    "sub_questions": [
+                        {"idx": 0, "text": "q", "needs_kb": True, "depends_on": []}
+                    ]
+                }
+            # Normal synthesize path — mimic the legacy shape
+            if "reasoning engine" in lower_system:
+                return {
+                    "steps": [
+                        {"step_type": "thought", "content": "Thinking about KITAS"},
+                        {"step_type": "observation", "content": "KITAS requires RPTKA"},
+                    ]
+                }
+            if "zantara" in lower_system:
+                return {
+                    "answer": "KITAS requires RPTKA and a sponsoring company.",
+                    "sources": [{"title": "Legacy Guide", "id": "legacy_doc"}],
+                    "confidence": {
+                        "retrieval_relevance": 0.85,
+                        "source_authority": 0.8,
+                        "reasoning_coherence": 0.85,
+                        "factual_grounding": 0.9,
+                        "domain_coverage": 0.8,
+                        "answer_completeness": 0.75,
+                    },
+                }
+            return {}
+
+        # Return actual documents but force the planner to produce an
+        # empty answer by patching its return. We do that indirectly by
+        # monkey-patching the visa subgraph factory in the Services
+        # container after the graph is built.
+        from nuzantara_schemas.state import RetrievedDocument
+
+        svc = make_mock_services(
+            llm_responses={
+                "generate_json": _visa_llm,
+                "generate": "KITAS info [doc_a:0-20].",
+            },
+            documents=[
+                RetrievedDocument(id="doc_a", content="KITAS info", score=0.9)
+            ],
+        )
+        graph = build_graph(services=svc)
+
+        # Override SUBGRAPH_VISA with a custom node that returns an
+        # empty answer, simulating planner failure. langgraph exposes
+        # the node map via the graph object.
+        from nuzantara_graph.graph.constants import NodeName
+
+        async def _failing_visa_node(state):
+            return {
+                "retrieved_documents": [
+                    RetrievedDocument(id="doc_a", content="KITAS info", score=0.9)
+                ],
+                "kg_entities": [],
+                "kg_relationships": [],
+                "domain": "kitas",
+                "current_node": "subgraph_visa",
+                "answer": "",  # Empty — forces the fallback route
+                "sources": [],
+            }
+
+        graph.nodes[NodeName.SUBGRAPH_VISA].runnable = _failing_visa_node
+        compiled = graph.compile()
+
+        result = await compiled.ainvoke(GraphState(query="KITAS requirements?"))
+        assert result["intent"] == IntentType.VISA
+        # Because planner answer was empty, router sent flow through
+        # REASON → SYNTHESIZE, which produced the legacy-shape answer.
+        assert result["answer"], "Fallback path should still produce an answer"
+        assert "KITAS" in result["answer"] or "RPTKA" in result["answer"]
+        # REASON path ran — check for reasoning steps
+        assert len(result["reasoning_steps"]) >= 1
+
+
 class TestPropertySubgraphRouting:
     @pytest.mark.asyncio
     async def test_property_routes_through_property_subgraph(self):
