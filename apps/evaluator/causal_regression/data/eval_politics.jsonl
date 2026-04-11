@@ -1,0 +1,5 @@
+{"query_id": "P01_megawati", "query": "Who was Megawati Soekarnoputri", "expected_keywords": ["megawati", "soekarnoputri", "presiden"]}
+{"query_id": "P02_pdip_party", "query": "What is PDI-P", "expected_keywords": ["pdip", "party"]}
+{"query_id": "P03_elections_2024", "query": "Indonesian presidential election 2024", "expected_keywords": ["election", "presiden"]}
+{"query_id": "P04_jokowi", "query": "President Joko Widodo biography", "expected_keywords": ["jokowi", "widodo"]}
+{"query_id": "P05_gerindra", "query": "Gerindra political party leadership", "expected_keywords": ["gerindra", "party"]}
