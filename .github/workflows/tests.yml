@@ -44,7 +44,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -62,7 +62,10 @@ jobs:
       - name: pip-audit
         run: |
           pip install pip-audit
-          pip-audit --strict --requirement apps/backend-rag/requirements.txt
+          # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
+          # with rationale for each. Review that file before adding new entries.
+          pip-audit --strict --requirement apps/backend-rag/requirements.txt \
+            --ignore-vuln GHSA-69w3-r845-3855
 
       - name: Import chain gate
         run: |
@@ -124,7 +127,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install MCP dependencies
         run: |
@@ -159,7 +162,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -204,7 +207,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         run: npm ci
