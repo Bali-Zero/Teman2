@@ -94,3 +94,90 @@ class TestB211Rewrite:
         rewritten, note = rewrite_legacy_visa_terms("KITAS for investor")
         assert rewritten == "KITAS for investor"
         assert note is None
+
+
+@pytest.mark.unit
+class TestDecompose:
+    @pytest.mark.asyncio
+    async def test_decompose_returns_sub_questions(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.decompose import decompose
+
+        llm = MockLLMGateway(
+            responses={
+                "generate_json": {
+                    "sub_questions": [
+                        {"idx": 0, "text": "What is a KITAS?", "needs_kb": True, "depends_on": []},
+                        {"idx": 1, "text": "How to apply?", "needs_kb": True, "depends_on": [0]},
+                    ]
+                }
+            }
+        )
+
+        sub_qs = await decompose("Tell me about KITAS application", llm)
+        assert len(sub_qs) == 2
+        assert sub_qs[0].text == "What is a KITAS?"
+        assert sub_qs[1].depends_on == [0]
+
+    @pytest.mark.asyncio
+    async def test_decompose_truncates_to_max_5(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.decompose import decompose
+
+        llm = MockLLMGateway(
+            responses={
+                "generate_json": {
+                    "sub_questions": [
+                        {"idx": i, "text": f"Q{i}", "needs_kb": True, "depends_on": []}
+                        for i in range(10)
+                    ]
+                }
+            }
+        )
+
+        sub_qs = await decompose("x", llm)
+        assert len(sub_qs) == 5
+
+    @pytest.mark.asyncio
+    async def test_decompose_fallback_on_bad_json(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.decompose import decompose
+
+        class BadJSONLLM(MockLLMGateway):
+            async def generate_json(self, prompt, system="", **kw):
+                self._call_count += 1
+                raise ValueError("invalid JSON")
+
+        llm = BadJSONLLM()
+        sub_qs = await decompose("How to get KITAS?", llm)
+        assert len(sub_qs) == 1
+        assert sub_qs[0].text == "How to get KITAS?"
+        assert sub_qs[0].needs_kb is True
+
+    @pytest.mark.asyncio
+    async def test_decompose_fallback_on_missing_api_key(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.decompose import decompose
+
+        class NoKeyLLM(MockLLMGateway):
+            async def generate_json(self, prompt, system="", **kw):
+                self._call_count += 1
+                raise ValueError("NUZANTARA_GOOGLE_API_KEY is required for LLM calls")
+
+        sub_qs = await decompose("Can I overstay?", NoKeyLLM())
+        assert len(sub_qs) == 1
+
+    @pytest.mark.asyncio
+    async def test_decompose_rejects_empty(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.decompose import decompose
+
+        llm = MockLLMGateway(responses={"generate_json": {"sub_questions": []}})
+        sub_qs = await decompose("q", llm)
+        assert len(sub_qs) == 1
+        assert sub_qs[0].text == "q"
