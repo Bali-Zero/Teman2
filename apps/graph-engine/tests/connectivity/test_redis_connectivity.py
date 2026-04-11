@@ -1,34 +1,21 @@
 """Redis connectivity test — verifies SemanticCache can reach Redis."""
 
-import socket
-
 import pytest
 
 from nuzantara_graph.config import Settings
 from nuzantara_graph.services.cache import SemanticCache
-
-
-def _redis_available() -> tuple[bool, int]:
-    """Check if Redis is available on port 6379 or 6380."""
-    for port in (6379, 6380):
-        try:
-            s = socket.create_connection(("localhost", port), timeout=1)
-            s.close()
-            return True, port
-        except (OSError, ConnectionRefusedError):
-            continue
-    return False, 0
-
-
-_available, _redis_port = _redis_available()
+from tests.connectivity.conftest import LOCAL_REDIS_URL, REDIS_AVAILABLE
 
 
 @pytest.fixture(scope="module")
 def redis_settings():
-    return Settings(redis_url=f"redis://localhost:{_redis_port}/0")
+    return Settings(redis_url=LOCAL_REDIS_URL)
 
 
-@pytest.mark.skipif(not _available, reason="Redis not running on :6379 or :6380")
+@pytest.mark.skipif(
+    not REDIS_AVAILABLE,
+    reason="Redis not reachable at redis://localhost:6379/0 or redis://localhost:6380/0",
+)
 class TestRedisConnectivity:
 
     @pytest.mark.asyncio
