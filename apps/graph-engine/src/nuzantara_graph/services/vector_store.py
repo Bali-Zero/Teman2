@@ -57,6 +57,23 @@ class VectorStore:
             )
         return self._client
 
+    @property
+    def client(self) -> AsyncQdrantClient:
+        """Synchronous accessor for the underlying qdrant client.
+
+        Lazily initializes on first access. This property exists because
+        ``main.py`` and ``api/routes.py`` pass ``services.vector_store.client``
+        directly to the semantic cache, which needs the concrete qdrant
+        client rather than an async accessor.
+        """
+        if self._client is None:
+            self._client = AsyncQdrantClient(
+                url=self.qdrant_url,
+                api_key=self.qdrant_api_key or None,
+                timeout=30,
+            )
+        return self._client
+
     async def search(
         self,
         query_embedding: list[float],

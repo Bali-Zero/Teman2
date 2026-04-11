@@ -15,7 +15,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
@@ -373,7 +373,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=HTTP_503_SERVICE_UNAVAILABLE,
                     content={
-                        "detail": f"Authentication service temporarily unavailable",
+                        "detail": "Authentication service temporarily unavailable",
                         "correlation_id": correlation_id,
                         "error_type": error_type,
                     },
@@ -396,8 +396,37 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             request.state.user = auth_result
             request.state.auth_type = auth_result.get("auth_method", "unknown")
 
-        # Step 3: Process the request (route handler errors propagate normally)
-        response = await call_next(request)
+        # Step 3: Process the request. HTTPException is caught here and
+        # converted to a JSONResponse so middleware unit tests that bypass
+        # FastAPI's global exception handlers can still observe the HTTP
+        # status code. In a real request flow, FastAPI's global handler
+        # would do the same conversion if we let the exception propagate,
+        # so this catch is behaviourally equivalent in production.
+        from fastapi import HTTPException as _HTTPException
+        from fastapi.responses import JSONResponse as _JSONResponse
+
+        try:
+            response = await call_next(request)
+        except _HTTPException as http_exc:
+            detail = http_exc.detail
+            try:
+                content = {"detail": detail}
+                cors_headers = self._cors_headers_for_request(request)
+                headers = {**cors_headers, **(http_exc.headers or {})}
+                return _JSONResponse(
+                    status_code=http_exc.status_code,
+                    content=content,
+                    headers=headers,
+                )
+            except (TypeError, ValueError):
+                # Detail may contain non-serializable objects — coerce to str
+                cors_headers = self._cors_headers_for_request(request)
+                headers = {**cors_headers, **(http_exc.headers or {})}
+                return _JSONResponse(
+                    status_code=http_exc.status_code,
+                    content={"detail": str(detail)},
+                    headers=headers,
+                )
 
         if hasattr(request.state, "auth_type"):
             response.headers["X-Auth-Type"] = request.state.auth_type
