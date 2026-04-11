@@ -1,46 +1,36 @@
 /* =============================================================
-   KBLI Navigator Theme — God Tier Anthracite
-   Used by globals.css and KBLI components
+   KBLI Navigator Theme
+   Depends on bz-tokens.css (imported first in globals.css).
+   Only defines tokens that are SPECIFIC to KBLI domain — PMA
+   status colors, risk levels, Zantara purple accent, KBLI-specific
+   shadows and radii. All base/surface/text/border tokens come from
+   the core design system via the --kbli-* aliases in bz-tokens.css.
    ============================================================= */
 
 :root {
-  /* Base backgrounds — God Tier Anthracite */
-  --kbli-bg-base: #1d273b;
-  --kbli-bg-elevated: #243047;
-  --kbli-bg-surface: #2a3655;
-  --kbli-bg-surface-hover: #2f3d5e;
-  --kbli-bg-card: rgba(29, 39, 59, 0.85);
-  --kbli-bg-card-hover: rgba(36, 48, 71, 0.9);
-  --kbli-bg-input: rgba(29, 39, 59, 0.8);
-  --kbli-bg-primary: #1d273b;
-  --kbli-bg-secondary: #243047;
+  /* Card backgrounds with slight transparency for glass effect */
+  --kbli-bg-card: rgba(10, 10, 10, 0.85);
+  --kbli-bg-card-hover: rgba(20, 20, 20, 0.9);
+  --kbli-bg-input: rgba(10, 10, 10, 0.8);
+  --kbli-bg-primary: var(--bz-base);
+  --kbli-bg-secondary: var(--bz-surface);
 
-  /* Accent — warm terracotta/copper */
-  --kbli-accent: #d4845a;
-  --kbli-accent-hover: #c07348;
-  --kbli-accent-glow: rgba(212, 132, 90, 0.3);
-  --kbli-accent-subtle: rgba(212, 132, 90, 0.1);
-  --kbli-accent-muted: rgba(212, 132, 90, 0.15);
+  /* Accent glow effects (signal red based) */
+  --kbli-accent-glow: var(--bz-primary-glow);
+  --kbli-accent-subtle: var(--bz-primary-subtle);
+  --kbli-accent-muted: var(--bz-primary-muted);
 
-  /* Secondary accent — periwinkle */
+  /* Secondary accent — periwinkle (used for Zantara AI highlights) */
   --kbli-accent2: #8b9cf7;
   --kbli-accent2-glow: rgba(139, 156, 247, 0.25);
 
-  /* Amber for highlights */
-  --kbli-amber: #e8a849;
-  --kbli-amber-glow: rgba(232, 168, 73, 0.3);
+  /* Amber for highlights (KBLI warning badges) */
+  --kbli-amber-glow: rgba(245, 158, 11, 0.3);
 
-  /* Text */
-  --kbli-text-primary: #ececec;
-  --kbli-text-secondary: #a8a8a8;
-  --kbli-text-muted: #8a8a8a;
+  /* Border accent — signal red */
+  --kbli-border-accent: rgba(255, 45, 76, 0.25);
 
-  /* Borders */
-  --kbli-border: rgba(255, 255, 255, 0.08);
-  --kbli-border-hover: rgba(255, 255, 255, 0.15);
-  --kbli-border-accent: rgba(212, 132, 90, 0.25);
-
-  /* PMA status colors */
+  /* PMA status colors — semantic for business categories */
   --kbli-pma-open: #5ec490;
   --kbli-pma-open-bg: rgba(94, 196, 144, 0.1);
   --kbli-pma-restricted: #e8a849;
@@ -48,32 +38,34 @@
   --kbli-pma-closed: #e8716c;
   --kbli-pma-closed-bg: rgba(232, 113, 108, 0.1);
 
-  /* Risk level colors */
+  /* Risk level colors — semantic for KBLI risk ladder */
   --kbli-risk-low: #5ec490;
   --kbli-risk-medium-low: #6ba3e8;
   --kbli-risk-medium-high: #e8a849;
   --kbli-risk-high: #e8716c;
 
-  /* Zantara AI accent */
+  /* Zantara AI accent — periwinkle (subtle distinction in KBLI chat) */
   --kbli-zantara: #8b9cf7;
   --kbli-zantara-bg: rgba(139, 156, 247, 0.1);
   --kbli-zantara-glow: 0 0 20px rgba(139, 156, 247, 0.15);
 
-  /* Transition mapping colors */
+  /* Transition mapping colors (KBLI code evolution tracking) */
   --kbli-map-unchanged: #6b7280;
   --kbli-map-renamed: #6ba3e8;
   --kbli-map-merged: #e8a849;
   --kbli-map-new: #5ec490;
 
-  /* Shadows */
+  /* KBLI-specific shadows (use signal red glow instead of copper) */
   --kbli-shadow-card:
-    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--kbli-border);
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12),
+    0 0 0 1px var(--kbli-border);
   --kbli-shadow-card-hover:
     0 4px 12px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.15),
-    0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(212, 132, 90, 0.04);
-  --kbli-shadow-glow: 0 0 20px rgba(212, 132, 90, 0.15), 0 0 60px rgba(212, 132, 90, 0.05);
+    0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(255, 45, 76, 0.04);
+  --kbli-shadow-glow:
+    0 0 20px rgba(255, 45, 76, 0.15), 0 0 60px rgba(255, 45, 76, 0.05);
 
-  /* Radii */
+  /* KBLI-specific radii */
   --kbli-radius-sm: 6px;
   --kbli-radius-md: 10px;
   --kbli-radius-lg: 14px;
@@ -142,6 +134,7 @@
 
 /* =============================================================
    Indonesian Flag Title Animation — white ↔ red dynamic sweep
+   Already aligned with Palette D signal red family
    ============================================================= */
 
 .kbli-flag-title {
