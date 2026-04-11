@@ -223,8 +223,13 @@ async def plan_execute(state: PlannerState, services: Any) -> PlannerState:
 
         chunks = await _retrieve_chunks(sq, services)
 
-        fragment = await _compose_fragment(sq, chunks, evidences, services)
-        llm_calls += 1
+        # Skip the fragment LLM call when retrieval produced nothing:
+        # wasting a call on an empty source list can only hallucinate.
+        if chunks:
+            fragment = await _compose_fragment(sq, chunks, evidences, services)
+            llm_calls += 1
+        else:
+            fragment = ""
 
         ev = NodeEvidence(
             sub_question=sq,
