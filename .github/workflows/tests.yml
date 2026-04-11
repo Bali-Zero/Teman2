@@ -271,7 +271,10 @@ jobs:
           done
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install --no-fund
+        env:
+          npm_config_fetch_retry_mintimeout: 20000
+          npm_config_fetch_retries: 3
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
