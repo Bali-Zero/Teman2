@@ -12,11 +12,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-
 # Pre-inject `os` into the crm_clients_documents module namespace
 # because the module uses os.environ.get() inside function bodies
 # but doesn't import os at the top level.
 import backend.app.routers.crm_clients_documents as _ccd_module
+
 if not hasattr(_ccd_module, "os"):
     _ccd_module.os = os
 
@@ -258,6 +258,15 @@ async def test_extract_passport_enhanced_invalid_base64(mock_db_pool, mock_curre
 
 @pytest.mark.asyncio
 async def test_extract_passport_enhanced_ollama_error(mock_db_pool, mock_current_user):
+    """When Ollama returns HTTP 500 AND Gemini Vision is unavailable, the
+    endpoint should return a graceful 'service unavailable' response.
+
+    We patch GENAI_AVAILABLE explicitly because it is a module-level flag
+    set at import time — leaving it alone creates a test-order dependency:
+    when running the whole routers folder, another test has already
+    warmed up the genai client, GENAI_AVAILABLE is True, and this test
+    ends up making a real call to the Gemini API.
+    """
     from backend.app.routers.crm_clients_documents import (
         PassportPreviewRequest,
         extract_passport_enhanced,
@@ -269,7 +278,10 @@ async def test_extract_passport_enhanced_ollama_error(mock_db_pool, mock_current
     mock_resp = MagicMock()
     mock_resp.status_code = 500
 
-    with patch("httpx.AsyncClient") as mock_cls:
+    with (
+        patch("httpx.AsyncClient") as mock_cls,
+        patch("backend.llm.genai_client.GENAI_AVAILABLE", False),
+    ):
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_resp)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
