@@ -252,7 +252,7 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. alembic upgrade head
+          PYTHONPATH=. python -m alembic upgrade head
 
       - name: Start backend (FastAPI on :8000)
         env:
