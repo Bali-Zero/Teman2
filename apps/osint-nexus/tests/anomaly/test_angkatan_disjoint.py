@@ -1,120 +1,115 @@
-"""Angkatan-disjoint: two officials from different cohorts linked via
-a short non-official path (family / patron / social)."""
+"""Tests for angkatan_disjoint_alliance detector."""
+
 from __future__ import annotations
 
+import pytest
+
 from osint_nexus.anomaly.detectors.angkatan_disjoint import AngkatanDisjointDetector
+from tests.anomaly.conftest import MockGraph
 
 
-def test_fires_on_cross_angkatan_short_non_official_path(fake_session):
-    det = AngkatanDisjointDetector(
-        thresholds={
-            "max_path_len": 3,
-            "min_angkatan_gap": 3,
-            "min_score": 0.5,
-        }
-    )
-    # Detector query returns pairs of officials (a, b) with angkatan A
-    # and B, gap years, and the path metadata.
-    fake_session.teach(
-        "angkatan_disjoint_pairs",
+@pytest.fixture
+def detector() -> AngkatanDisjointDetector:
+    return AngkatanDisjointDetector({
+        "max_path_length": 3,
+        "non_official_edge_types": [
+            "MARRIED_TO",
+            "PARENT_OF",
+            "SIBLING_OF",
+            "PATRON_OF",
+        ],
+        "min_angkatan_gap": 1,
+    })
+
+
+@pytest.fixture
+def graph_with_alliance(mock_graph: MockGraph) -> MockGraph:
+    """Two officials from angkatan 2001 and 2010 connected by 2-hop family path."""
+    mock_graph.set_query_result(
+        "shortestpath",
         [
             {
-                "a_id": "off-1",
-                "b_id": "off-2",
-                "a_angkatan": 2001,
-                "b_angkatan": 2015,
-                "gap": 14,
-                "path_len": 2,
-                "path_rel_types": ["MARRIED_TO", "PARENT_OF"],
-                "path_node_ids": ["off-1", "mid-1", "off-2"],
-            }
+                "node_a_id": "4:off1",
+                "angkatan_a": "2001",
+                "node_b_id": "4:off2",
+                "angkatan_b": "2010",
+                "path_length": 2,
+                "edge_types": ["MARRIED_TO", "PARENT_OF"],
+                "path_node_ids": ["4:off1", "4:bridge", "4:off2"],
+            },
         ],
     )
-    alerts = det.run(fake_session)
+    return mock_graph
+
+
+@pytest.fixture
+def graph_without_alliance(mock_graph: MockGraph) -> MockGraph:
+    """No cross-angkatan short paths exist."""
+    mock_graph.set_query_result("shortestpath", [])
+    return mock_graph
+
+
+async def test_detects_cross_angkatan_alliance(
+    detector: AngkatanDisjointDetector,
+    graph_with_alliance: MockGraph,
+) -> None:
+    session = graph_with_alliance.get_session()
+    alerts = await detector.run(session)
+
     assert len(alerts) == 1
     alert = alerts[0]
-    assert alert.pattern == "angkatan_disjoint"
-    # primary_entity_id is a composite key (sorted pair) for dedupe
-    assert "off-1" in alert.evidence_path
-    assert "off-2" in alert.evidence_path
-    assert "mid-1" in alert.evidence_path
+    assert alert.pattern == "angkatan_disjoint_alliance"
+    assert alert.score == 0.5  # 1/path_length = 1/2
+    assert len(alert.evidence_path) == 3  # 3 nodes in path
+    assert alert.meta["angkatan_a"] == "2001"
+    assert alert.meta["angkatan_b"] == "2010"
+    assert alert.meta["angkatan_gap"] == 9
+    # OPSEC: only IDs in explanation
+    assert "4:off1" in alert.explanation_id_only
+    assert "4:off2" in alert.explanation_id_only
 
 
-def test_silent_when_same_angkatan(fake_session):
-    det = AngkatanDisjointDetector()
-    fake_session.teach(
-        "angkatan_disjoint_pairs",
+async def test_no_false_positive_clean_graph(
+    detector: AngkatanDisjointDetector,
+    graph_without_alliance: MockGraph,
+) -> None:
+    session = graph_without_alliance.get_session()
+    alerts = await detector.run(session)
+    assert len(alerts) == 0
+
+
+async def test_confidence_higher_for_bigger_gap(
+    detector: AngkatanDisjointDetector,
+    mock_graph: MockGraph,
+) -> None:
+    """Wider angkatan gap should produce higher confidence."""
+    mock_graph.set_query_result(
+        "shortestpath",
         [
             {
-                "a_id": "a",
-                "b_id": "b",
-                "a_angkatan": 2001,
-                "b_angkatan": 2001,
-                "gap": 0,
-                "path_len": 2,
-                "path_rel_types": ["KNOWS", "KNOWS"],
-                "path_node_ids": ["a", "m", "b"],
-            }
-        ],
-    )
-    alerts = det.run(fake_session)
-    assert alerts == []
-
-
-def test_silent_when_path_too_long(fake_session):
-    det = AngkatanDisjointDetector(thresholds={"max_path_len": 2})
-    fake_session.teach(
-        "angkatan_disjoint_pairs",
-        [
-            {
-                "a_id": "a",
-                "b_id": "b",
-                "a_angkatan": 2001,
-                "b_angkatan": 2015,
-                "gap": 14,
-                "path_len": 5,  # above threshold
-                "path_rel_types": ["KNOWS"] * 5,
-                "path_node_ids": ["a", "m1", "m2", "m3", "m4", "b"],
-            }
-        ],
-    )
-    alerts = det.run(fake_session)
-    assert alerts == []
-
-
-def test_silent_on_empty(fake_session):
-    det = AngkatanDisjointDetector()
-    alerts = det.run(fake_session)
-    assert alerts == []
-
-
-def test_dedupes_symmetric_pairs(fake_session):
-    """If the query returns (a, b) and (b, a), only one alert fires."""
-    det = AngkatanDisjointDetector(thresholds={"min_score": 0.5})
-    fake_session.teach(
-        "angkatan_disjoint_pairs",
-        [
-            {
-                "a_id": "x",
-                "b_id": "y",
-                "a_angkatan": 2000,
-                "b_angkatan": 2010,
-                "gap": 10,
-                "path_len": 2,
-                "path_rel_types": ["MET_WITH", "KNOWS"],
-                "path_node_ids": ["x", "m", "y"],
+                "node_a_id": "4:a",
+                "angkatan_a": "2001",
+                "node_b_id": "4:b",
+                "angkatan_b": "2003",
+                "path_length": 2,
+                "edge_types": ["MARRIED_TO", "SIBLING_OF"],
+                "path_node_ids": ["4:a", "4:x", "4:b"],
             },
             {
-                "a_id": "y",
-                "b_id": "x",
-                "a_angkatan": 2010,
-                "b_angkatan": 2000,
-                "gap": 10,
-                "path_len": 2,
-                "path_rel_types": ["KNOWS", "MET_WITH"],
-                "path_node_ids": ["y", "m", "x"],
+                "node_a_id": "4:c",
+                "angkatan_a": "1995",
+                "node_b_id": "4:d",
+                "angkatan_b": "2015",
+                "path_length": 2,
+                "edge_types": ["PATRON_OF", "PARENT_OF"],
+                "path_node_ids": ["4:c", "4:y", "4:d"],
             },
         ],
     )
-    alerts = det.run(fake_session)
-    assert len(alerts) == 1
+    session = mock_graph.get_session()
+    alerts = await detector.run(session)
+
+    assert len(alerts) == 2
+    small_gap = next(a for a in alerts if a.meta["angkatan_gap"] == 2)
+    large_gap = next(a for a in alerts if a.meta["angkatan_gap"] == 20)
+    assert large_gap.confidence > small_gap.confidence
