@@ -245,3 +245,129 @@ class TestTopoSort:
         ordered, _ = topo_sort(sqs, max_depth=3)
         assert ordered[0].idx == 0
         assert {s.idx for s in ordered[1:]} == {1, 2}
+
+
+@pytest.mark.unit
+class TestContradictionGrader:
+    def test_no_prior_evidence_returns_zero(self):
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        grader = ContradictionGrader()
+        ev = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="KITAS lasts 30 days",
+                )
+            ],
+            answer_fragment="KITAS lasts 30 days",
+        )
+        score = grader.score(ev, prior_evidence=[])
+        assert score == 0.0
+
+    def test_number_disagreement_detected(self):
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        prior = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="p", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="KITAS duration is 30 days",
+                )
+            ],
+            answer_fragment="KITAS duration is 30 days",
+        )
+        current = NodeEvidence(
+            sub_question=SubQuestion(idx=1, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="b",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="KITAS duration is 60 days",
+                )
+            ],
+            answer_fragment="KITAS duration is 60 days",
+        )
+        grader = ContradictionGrader()
+        score = grader.score(current, [prior])
+        assert score > 0.4
+
+    def test_agreeing_evidence_low_score(self):
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        prior = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="p", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="RPTKA is required from the Ministry",
+                )
+            ],
+            answer_fragment="RPTKA is required from the Ministry",
+        )
+        current = NodeEvidence(
+            sub_question=SubQuestion(idx=1, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="b",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="RPTKA must be obtained from the Ministry of Labor",
+                )
+            ],
+            answer_fragment="RPTKA must be obtained from the Ministry of Labor",
+        )
+        grader = ContradictionGrader()
+        score = grader.score(current, [prior])
+        assert score < 0.4
+
+    def test_negation_overlap_detected(self):
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        prior = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="p", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="The KITAS permit is extendable annually",
+                )
+            ],
+            answer_fragment="The KITAS permit is extendable annually",
+        )
+        current = NodeEvidence(
+            sub_question=SubQuestion(idx=1, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="b",
+                    span_start=0,
+                    span_end=10,
+                    score=0.9,
+                    content="The KITAS permit is not extendable annually",
+                )
+            ],
+            answer_fragment="The KITAS permit is not extendable annually",
+        )
+        grader = ContradictionGrader()
+        score = grader.score(current, [prior])
+        assert score > 0.4
