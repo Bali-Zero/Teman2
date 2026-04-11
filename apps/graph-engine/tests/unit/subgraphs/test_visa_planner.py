@@ -705,6 +705,39 @@ class TestMakeVisaSubgraph:
         doc_ids = {d.id for d in result["retrieved_documents"]}
         assert "SYSTEM:b211_rewrite" in doc_ids
 
+    @pytest.mark.asyncio
+    async def test_planner_sets_answer_and_sources(self):
+        """Planner must populate state.answer/state.sources so the main graph
+        can route around REASON/SYNTHESIZE on the direct edge."""
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa import make_visa_subgraph
+        from nuzantara_schemas.state import GraphState, RetrievedDocument
+
+        svc = make_mock_services(
+            documents=[
+                RetrievedDocument(id="kitas_doc", content="KITAS is 12 months", score=0.9)
+            ],
+            llm_responses={
+                "generate_json": {
+                    "sub_questions": [
+                        {"idx": 0, "text": "KITAS duration", "needs_kb": True, "depends_on": []}
+                    ]
+                },
+                "generate": "KITAS lasts 12 months [kitas_doc:0-20].",
+            },
+        )
+        node = make_visa_subgraph(svc)
+        state = GraphState(query="How long is KITAS?", intent="visa")
+        result = await node(state)
+
+        assert "answer" in result
+        assert result["answer"]
+        assert "kitas_doc" in result["answer"]
+        assert "sources" in result
+        assert isinstance(result["sources"], list)
+        assert len(result["sources"]) >= 1
+
 
 async def _run_planner(
     query: str,
