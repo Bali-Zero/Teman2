@@ -21,10 +21,14 @@ async def db_pool(monkeypatch):
     except Exception:
         pytest.skip("PostgreSQL not reachable — skipping integration test")
     # Clean slate for this test run
-    async with pool.acquire() as c:
-        await c.execute("DELETE FROM owner_weekly_cashout_rows")
-        await c.execute("DELETE FROM owner_weekly_cashout_weeks")
-        await c.execute("DELETE FROM owner_cashout_sync_log")
+    try:
+        async with pool.acquire() as c:
+            await c.execute("DELETE FROM owner_weekly_cashout_rows")
+            await c.execute("DELETE FROM owner_weekly_cashout_weeks")
+            await c.execute("DELETE FROM owner_cashout_sync_log")
+    except asyncpg.exceptions.UndefinedTableError:
+        await pool.close()
+        pytest.skip("owner_cashout tables not migrated — skipping integration test")
     yield pool
     await pool.close()
 
