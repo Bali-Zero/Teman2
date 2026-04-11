@@ -103,7 +103,7 @@
     "@types/ws": "^8.18.1",
     "@vercel/analytics": "^1.6.1",
     "@vercel/toolbar": "^0.2.2",
-    "axios": "^1.12.2",
+    "axios": "^1.15.0",
     "bcryptjs": "^3.0.2",
     "botid": "^1.5.10",
     "cheerio": "^1.1.2",
@@ -136,17 +136,19 @@
   "license": "ISC",
   "resolutions": {
     "path-to-regexp": "^8.0.0",
-    "hono": ">=4.11.7",
+    "hono": ">=4.12.12",
+    "@hono/node-server": ">=1.19.13",
     "@isaacs/brace-expansion": ">=5.0.1",
     "undici": ">=7.24.0",
-    "next": ">=15.3.3"
+    "next": ">=16.2.3"
   },
   "overrides": {
     "path-to-regexp": "^8.0.0",
-    "hono": ">=4.11.7",
+    "hono": ">=4.12.12",
+    "@hono/node-server": ">=1.19.13",
     "@isaacs/brace-expansion": ">=5.0.1",
     "undici": ">=7.24.0",
-    "next": ">=15.3.3",
+    "next": ">=16.2.3",
     "flatted": ">=3.4.2",
     "minimatch": ">=9.0.5",
     "rollup": ">=4.60.0",
