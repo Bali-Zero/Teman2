@@ -517,3 +517,94 @@ class TestExecute:
         assert len(new_state.evidences) == 2
         contradictory = [e for e in new_state.evidences if e.contradiction_score > 0.0]
         assert len(contradictory) >= 1
+
+
+@pytest.mark.unit
+class TestCompose:
+    @pytest.mark.asyncio
+    async def test_compose_cites_chunks(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.compose import compose
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        chunk = Chunk(
+            doc_id="kitas_2024",
+            span_start=0,
+            span_end=50,
+            score=0.9,
+            content="KITAS is valid for 12 months.",
+        )
+        ev = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="q", depends_on=[]),
+            chunks=[chunk],
+            answer_fragment="KITAS is valid for 12 months.",
+        )
+        llm = MockLLMGateway(
+            responses={"generate": "KITAS is valid for 12 months [kitas_2024:0-50]."}
+        )
+        answer = await compose("How long is KITAS valid?", [ev], [], llm)
+        assert "kitas_2024" in answer
+
+    @pytest.mark.asyncio
+    async def test_enforcer_refuses_uncitable_sentence(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.compose import compose
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        chunk = Chunk(
+            doc_id="doc_a",
+            span_start=0,
+            span_end=20,
+            score=0.9,
+            content="The KITAS fee is 250 USD.",
+        )
+        ev = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="q", depends_on=[]),
+            chunks=[chunk],
+            answer_fragment="The KITAS fee is 250 USD.",
+        )
+        llm = MockLLMGateway(
+            responses={"generate": "The renewal cost is 500000 IDR total."}
+        )
+        answer = await compose("What is the fee?", [ev], [], llm)
+        assert (
+            "unable to cite" in answer.lower()
+            or "[doc_a" in answer
+            or "cannot produce" in answer.lower()
+        )
+
+    @pytest.mark.asyncio
+    async def test_compose_includes_system_notes(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.compose import compose
+        from nuzantara_graph.subgraphs.visa.types import Chunk
+
+        note = Chunk(
+            doc_id="SYSTEM:b211_rewrite",
+            span_start=0,
+            span_end=100,
+            score=1.0,
+            content="The B211 visa was abolished and replaced by e-visas.",
+        )
+        llm = MockLLMGateway(
+            responses={
+                "generate": (
+                    "The B211 visa has been abolished [SYSTEM:b211_rewrite:0-100]."
+                )
+            }
+        )
+        answer = await compose("Can I still use B211?", [], [note], llm)
+        assert "SYSTEM:b211_rewrite" in answer
+
+    @pytest.mark.asyncio
+    async def test_empty_evidences_returns_fallback(self):
+        from helpers.mocks import MockLLMGateway
+
+        from nuzantara_graph.subgraphs.visa.compose import compose
+
+        llm = MockLLMGateway(responses={"generate": "I don't know anything."})
+        answer = await compose("q", [], [], llm)
+        assert "cannot produce" in answer.lower() or "rephrase" in answer.lower()
