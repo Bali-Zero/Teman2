@@ -53,3 +53,22 @@ class TestGraphBuilder:
         graph = build_graph(services=svc)
         compiled = graph.compile()
         assert compiled is not None
+
+
+class TestVisaDirectEdge:
+    """The visa subgraph produces its own cited answer — the main graph
+    should bypass REASON/SYNTHESIZE when state.answer is already set."""
+
+    def test_route_after_visa_skips_reason_when_answer_present(self):
+        from nuzantara_graph.graph.router import route_after_visa_subgraph
+        from nuzantara_schemas.state import GraphState
+
+        state = GraphState(query="visa q", answer="cited answer [doc_a:0-10].")
+        assert route_after_visa_subgraph(state) == "direct"
+
+    def test_route_after_visa_falls_back_to_reason_when_empty(self):
+        from nuzantara_graph.graph.router import route_after_visa_subgraph
+        from nuzantara_schemas.state import GraphState
+
+        state = GraphState(query="visa q", answer="")
+        assert route_after_visa_subgraph(state) == "reason"
