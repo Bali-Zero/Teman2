@@ -57,3 +57,40 @@ class TestPlannerTypes:
 
         s2 = PlannerState(query="q", max_llm_calls=5, llm_call_count=5)
         assert s2.can_call_llm() is False
+
+
+@pytest.mark.unit
+class TestB211Rewrite:
+    def test_b211_substring_rewritten(self):
+        from nuzantara_graph.subgraphs.visa.decompose import rewrite_legacy_visa_terms
+
+        rewritten, note = rewrite_legacy_visa_terms("Is the B211 visa still valid?")
+        assert "B211" not in rewritten
+        assert "KITAS" in rewritten or "e-visa" in rewritten
+        assert note is not None
+        assert note.doc_id == "SYSTEM:b211_rewrite"
+
+    def test_b211a_variant_rewritten(self):
+        from nuzantara_graph.subgraphs.visa.decompose import rewrite_legacy_visa_terms
+
+        rewritten, note = rewrite_legacy_visa_terms("Requirements for B211A")
+        assert "B211A" not in rewritten
+        assert note is not None
+
+    def test_social_visit_visa_rewritten(self):
+        from nuzantara_graph.subgraphs.visa.decompose import rewrite_legacy_visa_terms
+
+        rewritten, note = rewrite_legacy_visa_terms(
+            "I want a social visit visa for 30 days"
+        )
+        assert note is not None
+        lower = rewritten.lower()
+        # either the phrase was replaced or the replacement tokens are present
+        assert "social visit visa" not in lower or "e-visa" in lower or "kitas" in lower
+
+    def test_no_match_pass_through(self):
+        from nuzantara_graph.subgraphs.visa.decompose import rewrite_legacy_visa_terms
+
+        rewritten, note = rewrite_legacy_visa_terms("KITAS for investor")
+        assert rewritten == "KITAS for investor"
+        assert note is None
