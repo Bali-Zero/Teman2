@@ -380,7 +380,12 @@ def _run_cli(argv: list[str], repo: Path) -> subprocess.CompletedProcess:
 
 
 def test_e2e_cli_on_real_repo(tmp_path: Path) -> None:
-    """End-to-end: invoke the CLI against the real worktree HEAD~5..HEAD."""
+    """End-to-end: invoke the CLI against the real worktree.
+
+    Uses `--path-filter=""` so the test is robust to whichever subset of
+    recent commits touch backend-rag — it simply walks the last five
+    commits unconditionally and runs the full pipeline.
+    """
     out_dir = tmp_path / "out"
     eval_set = FIXTURES / "eval_tiny.jsonl"
     result = _run_cli(
@@ -393,6 +398,8 @@ def test_e2e_cli_on_real_repo(tmp_path: Path) -> None:
             str(out_dir),
             "--kb-root",
             "apps/backend-rag/backend/kb",
+            "--path-filter",
+            "",
             "--quiet",
         ],
         REPO_ROOT,
@@ -418,6 +425,8 @@ def test_e2e_determinism_two_runs(tmp_path: Path) -> None:
         str(eval_set),
         "--kb-root",
         "apps/backend-rag/backend/kb",
+        "--path-filter",
+        "",
         "--quiet",
     ]
     r1 = _run_cli([*common, "--out", str(out1)], REPO_ROOT)
