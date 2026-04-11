@@ -27,32 +27,22 @@ Important caveat (documented limitation)
 ----------------------------------------
 The OSINT graph does NOT carry a genuine *event date* on edges like
 ``MET_WITH`` or ``ATTENDED``. The only available timestamp is
-``r.updated_at`` / ``r.created_at`` — which reflects when the loader
-wrote the edge, not when the real-world event happened. This means:
+``r.updated_at`` — which reflects when the loader wrote the edge, not
+when the real-world event happened.
 
-* If two meetings happened on the same real date but were scraped
-  days apart, they land in different buckets.
-* If an operator re-runs a loader, many edges appear to "happen
-  today" when they are in fact backfills.
+In the current live graph (Apr 2026) ``r.created_at`` is always NULL,
+so the legacy ``coalesce(r.updated_at, r.created_at)`` pattern was
+pointless overhead. We just use ``r.updated_at`` directly and skip
+edges where it is null.
 
-To mitigate the latter we offer ``source_exclude`` so operators can
-silence known batch sources (`lhkpn`, `ahu_batch`, etc.). To mitigate
-the former we recommend (runbook) running the detector on a cadence
-that matches the scrape cadence, so the scraper "freezes" a week into
-a single bucket before we look.
-
-The detector still produces value because sudden activity FROM A
-specific loader signals our own intake pattern — which is itself
-intelligence about what we've been scraping (meta-ops awareness).
-
-False positive mitigation
--------------------------
-1. ``source_exclude`` — drop buckets dominated by batch sources.
-2. ``min_edges_in_window`` — tiny bursts are ignored.
-3. z>3 default is the Kleinberg threshold, not the 1.96 "statistical
-   significance" level.
-4. Evidence path contains only the top-K source/target node IDs
-   contributing to the spike, keeping alerts compact.
+Data precondition
+-----------------
+Burst detection requires **at least ``min_history_days`` of temporal
+spread** (the span between the oldest and newest ``r.updated_at``).
+Below that threshold the EWMA baseline has no memory, every bucket is
+"bursty" and the detector produces 100% false positives. The runner
+calls ``precheck()`` first and emits a single informational alert on
+blocked runs instead of running the detector.
 """
 
 from __future__ import annotations
@@ -61,7 +51,7 @@ from collections import defaultdict
 from typing import Any
 
 from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, SessionLike
+from osint_nexus.anomaly.base import Detector, PreconditionResult, SessionLike
 from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
 
 
@@ -72,22 +62,29 @@ class TemporalBurstDetector(Detector):
     def default_thresholds(cls) -> dict[str, Any]:
         return dict(DEFAULT_THRESHOLDS["temporal_burst"])
 
+    _PRECHECK_Q = """
+    // temporal_burst_precheck — observed history span
+    MATCH ()-[r]->()
+    WHERE r.updated_at IS NOT NULL
+    WITH datetime(r.updated_at) AS ts
+    RETURN min(ts) AS min_ts, max(ts) AS max_ts, count(*) AS total,
+           duration.inDays(min(ts), max(ts)).days AS spread_days
+    """
+
     _SERIES_Q = """
     // temporal_burst_series — weekly bucket counts for configured rel types
     UNWIND $rel_types AS rt
-    CALL {
-      WITH rt
+    CALL (rt) {
       MATCH ()-[r]->()
       WHERE type(r) = rt
-        AND coalesce(r.updated_at, r.created_at) IS NOT NULL
-      WITH rt, r,
-           date.truncate('week', date(coalesce(r.updated_at, r.created_at))) AS bucket
-      WITH rt, bucket, count(r) AS edge_count,
+        AND r.updated_at IS NOT NULL
+      WITH r,
+           date.truncate('week', datetime(r.updated_at)) AS bucket
+      WITH bucket, count(r) AS edge_count,
            collect(DISTINCT coalesce(r.source, '')) AS sources
-      RETURN rt AS rel_type, toString(bucket) AS bucket,
-             edge_count, sources
+      RETURN toString(bucket) AS bucket, edge_count, sources
     }
-    RETURN rel_type, bucket, edge_count, sources
+    RETURN rt AS rel_type, bucket, edge_count, sources
     ORDER BY rel_type, bucket
     """
 
@@ -96,13 +93,55 @@ class TemporalBurstDetector(Detector):
     UNWIND $buckets AS b
     MATCH (src)-[r]->(tgt)
     WHERE type(r) = b.rel_type
-      AND date.truncate('week', date(coalesce(r.updated_at, r.created_at))) =
-          date(b.bucket)
+      AND r.updated_at IS NOT NULL
+      AND date.truncate('week', datetime(r.updated_at)) = date(b.bucket)
     WITH b.rel_type AS rel_type, b.bucket AS bucket,
-         collect(DISTINCT coalesce(toString(elementId(src)), toString(id(src)))) AS source_ids,
-         collect(DISTINCT coalesce(toString(elementId(tgt)), toString(id(tgt)))) AS target_ids
+         collect(DISTINCT toString(elementId(src))) AS source_ids,
+         collect(DISTINCT toString(elementId(tgt))) AS target_ids
     RETURN rel_type, bucket, source_ids[..10] AS source_ids, target_ids[..10] AS target_ids
     """
+
+    def precheck(self, session: SessionLike) -> PreconditionResult:
+        """Verify the graph has enough temporal spread for EWMA to mean anything."""
+        if session is None:  # pragma: no cover - runner never passes None here
+            return PreconditionResult.success()
+        min_days = int(self._thresholds.get("min_history_days", 30))
+        try:
+            records = list(session.run(self._PRECHECK_Q))
+        except Exception as exc:  # pragma: no cover - defensive
+            return PreconditionResult(
+                ok=False,
+                reason=f"precheck query failed: {type(exc).__name__}",
+                stat={"error": type(exc).__name__},
+            )
+        if not records:
+            return PreconditionResult(
+                ok=False,
+                reason="no edges with r.updated_at",
+                stat={"total_edges_with_ts": 0, "min_history_days": min_days},
+            )
+        rec = records[0]
+        total = int(rec.get("total") or 0)
+        spread = rec.get("spread_days")
+        spread_days = int(spread) if spread is not None else 0
+        stat = {
+            "total_edges_with_ts": total,
+            "spread_days": spread_days,
+            "min_history_days": min_days,
+        }
+        if total == 0:
+            return PreconditionResult(
+                ok=False,
+                reason="no edges with r.updated_at",
+                stat=stat,
+            )
+        if spread_days < min_days:
+            return PreconditionResult(
+                ok=False,
+                reason=f"temporal spread too narrow: {spread_days} days, need {min_days}",
+                stat=stat,
+            )
+        return PreconditionResult(ok=True, stat=stat)
 
     def run(self, session: SessionLike) -> list[Alert]:
         if session is None:

@@ -25,13 +25,17 @@ Before the first run:
    ```
 
 3. **Confirm GDS plugin is installed.** The detectors use
-   `gds.graph.project.cypher`, `gds.louvain`, `gds.articulationPoints`,
-   and `gds.eigenvector`. All require GDS 2.5+.
+   `gds.graph.project` (Cypher-aggregation form, GDS 2.13+),
+   `gds.louvain`, `gds.articulationPoints`, and `gds.eigenvector`.
+   We have migrated off the legacy `gds.graph.project.cypher`
+   procedure. Minimum GDS version: **2.13**.
 
    ```
    cypher-shell -a $NEO4J_URI -u $NEO4J_USER -p $NEO4J_PASSWORD \
      "RETURN gds.version() AS version"
    ```
+
+   Verified production version as of Apr 2026: Neo4j 5.26.24 + GDS 2.13.9.
 
 ## Running a scan
 
@@ -73,7 +77,7 @@ PYTHONPATH=. python scripts/run_anomaly_scan.py \
 
 ```json
 {
-  "count": 3,
+  "count": 10,
   "alerts": [
     {
       "alert_id": "a1b2c3d4e5f60718",
@@ -83,15 +87,42 @@ PYTHONPATH=. python scripts/run_anomaly_scan.py \
       "confidence": 0.7,
       "evidence_path": ["4:abc123:42", "4:abc123:13", "4:abc123:55"],
       "rationale_id": "BO-CUT-BETWEEN-COMMUNITIES",
-      "created_at": "2026-04-11T12:34:56+00:00"
+      "created_at": "2026-04-11T12:34:56+00:00",
+      "informational": false
+    },
+    {
+      "alert_id": "388eea4a1dd5beac",
+      "pattern": "temporal_burst",
+      "primary_entity_id": "precondition:temporal_burst",
+      "score": 0.0,
+      "confidence": 0.0,
+      "evidence_path": ["min_history_days=30", "spread_days=3", "total_edges_with_ts=2233"],
+      "rationale_id": "PRECHECK-BLOCKED:temporal spread too narrow: 3 days, need 30",
+      "created_at": "2026-04-11T12:34:56+00:00",
+      "informational": true
     }
   ]
 }
 ```
 
-**Ranking.** Alerts are sorted by `score` descending, tie-broken by
-`alert_id` ascending. Same-day re-runs produce identical IDs so
-downstream systems can dedupe trivially.
+**Ranking.** Alerts are ordered by:
+
+1. `informational=False` before `informational=True` (informational
+   always LAST, regardless of score — otherwise a zero-score
+   placeholder would bury real findings),
+2. `score` descending,
+3. `alert_id` ascending (stable tiebreak).
+
+Same-day re-runs produce identical IDs so downstream systems can
+dedupe trivially.
+
+**Informational alerts.** Three detectors (`centrality_jump`,
+`temporal_burst`, `angkatan_disjoint`) carry data preconditions that
+the live graph may not meet yet. Each emits exactly ONE informational
+alert per blocked run, carrying the precondition stats in
+`evidence_path` as `key=value` strings. See `anomaly-patterns.md` →
+"Data preconditions & informational alerts" for the full precondition
+table.
 
 **No names.** The output contains only opaque Neo4j element IDs. To
 resolve names, run the Zero-only resolver in a separate process:
@@ -187,8 +218,25 @@ needed.
   GDS plugin missing / no edges with `updated_at`. Check each detector
   in isolation via `--detector NAME`.
 
+**"detector X blocked: ..." in the INFO log**
+→ A detector's `precheck` found the live graph doesn't meet the
+  precondition (temporal spread, angkatan variance). This is NOT a
+  bug — it's the intended signal that the detector cannot run
+  meaningfully yet. The output carries a single informational alert
+  per blocked detector. Once the upstream scraper populates enough
+  history / variance, the detector unblocks automatically.
+
 **GDS error "graph already exists"**
-→ A previous scan crashed. Run the cleanup Cypher above and retry.
+→ A previous scan crashed. The current detectors drop the projection
+  at the start of each run (idempotent), so repeat scans should be
+  fine. If you see this error from a foreign projection (`bali_*` or
+  anything not `anomaly_*`), use the cleanup Cypher above.
+
+**CypherSyntaxError "Text cannot be parsed to a Date"**
+→ Your Neo4j stores `r.updated_at` as a datetime string (not a
+  `date`). Make sure any Cypher you write for this module wraps it in
+  `datetime(r.updated_at)` before calling `date.truncate(...)`. The
+  old detector had exactly this bug — fixed as of Apr 2026.
 
 ## Testing
 

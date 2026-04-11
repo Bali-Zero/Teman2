@@ -45,6 +45,26 @@ except ImportError:  # pragma: no cover - graceful fallback
     yaml = None  # type: ignore[assignment]
 
 
+#: Relationship-type lists derived from the REAL live Kemenkumham /
+#: OSINT schema (Neo4j 5.26 + GDS 2.13, 45 rel types, Apr 2026). The
+#: angkatan_disjoint detector restricts its path match to FAMILY +
+#: SOCIAL edges; it excludes the OFFICIAL edges at query time. Any
+#: new rel type added to the graph should be classified here.
+_OFFICIAL_REL_TYPES = [
+    "WORKS_AT", "GOVERNED_DURING", "SUPERVISES", "PART_OF", "OPERATES",
+    "OPERATED_BY", "COMMANDS", "UBO_OF", "LEGAL_OWNER_OF",
+    "DE_FACTO_OWNER", "FOUNDED", "LISTED_AS",
+]
+_FAMILY_REL_TYPES = [
+    "FAMILY_OF", "PARENT_OF", "MARRIED_TO", "DIVORCED_FROM",
+    "FAMILY_ALLIANCE",
+]
+_SOCIAL_REL_TYPES = [
+    "MET_WITH", "ALLY_OF", "ALUMNI", "SAME_PARTY", "RUNNING_MATE",
+    "ENDORSES", "PARTNERS_WITH", "PUBLIC_CONFLICT",
+]
+
+
 DEFAULT_THRESHOLDS: dict[str, dict[str, Any]] = {
     "centrality_jump": {
         # k in "k * sigma over mean" for flagging a node's centrality delta
@@ -55,6 +75,11 @@ DEFAULT_THRESHOLDS: dict[str, dict[str, Any]] = {
         "recent_fraction": 0.2,
         # Score floor — below this we don't emit an alert
         "min_score": 0.55,
+        # PRECHECK: minimum temporal spread (days between oldest and
+        # newest r.updated_at) for the recency-ratio proxy to be
+        # meaningful. Below this, the "recent" slice is just the whole
+        # history and the detector signals on noise.
+        "min_history_days": 30,
     },
     "bridge_outlier": {
         "min_communities": 2,
@@ -69,19 +94,30 @@ DEFAULT_THRESHOLDS: dict[str, dict[str, Any]] = {
         "ewma_alpha": 0.3,
         # Minimum absolute edge count per window to even consider a burst
         "min_edges_in_window": 5,
-        # Relationship types that are eligible for burst detection
+        # Relationship types that are eligible for burst detection.
+        # MET_WITH is the only live "social event" rel present today;
+        # ATTENDED / PARTICIPATED_IN are still declared in the detector
+        # so that future scrapers populating those edges are picked up
+        # automatically with no code change.
         "rel_types": ["MET_WITH", "ATTENDED", "PARTICIPATED_IN"],
         # Sources to EXCLUDE (batch ingestion spikes)
         "source_exclude": ["lhkpn", "lhkpn_batch", "ahu_batch"],
         "min_score": 0.6,
+        # PRECHECK: minimum days of history required to compute an EWMA
+        # baseline. Kleinberg burst detection on a series that spans
+        # a single ingestion window produces 100% false positives.
+        "min_history_days": 30,
     },
     "angkatan_disjoint": {
         "max_path_len": 3,
-        # Relationship types considered "non-official" bridges
-        "non_official_rels": [
-            "KNOWS", "MET_WITH", "MARRIED_TO", "PARENT_OF",
-            "SIBLING_OF", "FREQUENTS",
-        ],
+        # Relationship types considered "non-official" bridges. These
+        # are the FAMILY and SOCIAL families from the real live schema
+        # (see thresholds._FAMILY_REL_TYPES / _SOCIAL_REL_TYPES). The
+        # old default list (KNOWS, SIBLING_OF, FREQUENTS) referenced rel
+        # types that do not exist in the OSINT graph — dead code.
+        "non_official_rels": _FAMILY_REL_TYPES + _SOCIAL_REL_TYPES,
+        # Rel types to EXCLUDE from any path (formal hierarchy edges).
+        "official_rels": _OFFICIAL_REL_TYPES,
         # Minimum angkatan distance to be suspicious (years apart)
         "min_angkatan_gap": 3,
         "min_score": 0.6,

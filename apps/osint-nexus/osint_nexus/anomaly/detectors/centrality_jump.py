@@ -10,8 +10,7 @@ mutasi massicce = rimescolamento".
 The pure temporal-snapshot version of this detector (compare
 betweenness_t vs betweenness_t-1) is **not implementable today**
 because the graph schema has no history table — only
-``created_at`` / ``updated_at`` on each edge. We therefore use a
-structural proxy:
+``r.updated_at`` on each edge. We therefore use a structural proxy:
 
 **Proxy**: treat the most recently written ``recent_fraction`` of
 edges (sorted by ``r.updated_at``) as a "today" layer and the rest as
@@ -38,20 +37,30 @@ False positive mitigation
    sees the raw z in the alert rationale.
 4. ``min_score`` cut prevents borderline cases.
 
+Data precondition
+-----------------
+Same as ``temporal_burst``: we need at least ``min_history_days`` of
+temporal spread on ``r.updated_at`` for "recent" to differ
+meaningfully from "before". Below that threshold the recency ratio
+is uniformly 1 (or uniformly 0) across the whole graph and the z test
+produces zero-variance nonsense. The runner calls ``precheck()`` and
+emits one informational alert when blocked.
+
 Cypher strategy
 ---------------
 ```cypher
-// recent_degree — marker for FakeSession rule matching
 MATCH (n)
 WITH n, count { (n)-[r]-() } AS total_degree
 WHERE total_degree >= $min_degree
-MATCH (n)-[r]-()
-WITH n, total_degree, r
-ORDER BY coalesce(r.updated_at, r.created_at) DESC
-WITH n, total_degree, collect(r)[..toInteger(total_degree * $recent_fraction)] AS recent_rels
-RETURN toString(elementId(n)) AS node_id,
-       total_degree,
-       size(recent_rels) AS recent_degree
+CALL (n, total_degree) {
+  MATCH (n)-[r]-()
+  WHERE r.updated_at IS NOT NULL
+  WITH r ORDER BY datetime(r.updated_at) DESC
+  WITH collect(r) AS rels,
+       toInteger(ceil(total_degree * $recent_fraction)) AS k
+  RETURN size(rels[..k]) AS recent_degree
+}
+RETURN toString(elementId(n)) AS node_id, total_degree, recent_degree
 ```
 
 Note on neighbor fetch: we fetch the top-K neighbors of alerted nodes
@@ -65,7 +74,7 @@ from statistics import mean, pstdev
 from typing import Any
 
 from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, SessionLike
+from osint_nexus.anomaly.base import Detector, PreconditionResult, SessionLike
 from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
 
 
@@ -76,19 +85,34 @@ class CentralityJumpDetector(Detector):
     def default_thresholds(cls) -> dict[str, Any]:
         return dict(DEFAULT_THRESHOLDS["centrality_jump"])
 
-    # Query marker in comment so FakeSession can match by substring
+    _PRECHECK_Q = """
+    // centrality_jump_precheck — observed history span
+    MATCH ()-[r]->()
+    WHERE r.updated_at IS NOT NULL
+    WITH datetime(r.updated_at) AS ts
+    RETURN min(ts) AS min_ts, max(ts) AS max_ts, count(*) AS total,
+           duration.inDays(min(ts), max(ts)).days AS spread_days
+    """
+
+    # Query marker in comment so FakeSession can match by substring.
+    # Uses the scoped CALL (n, total_degree) { ... } form (Neo4j 5.23+)
+    # to silence the "CALL subquery without a variable scope" warning.
+    # Takes the first ceil(total * recent_fraction) edges ordered by
+    # r.updated_at DESC — the actual recent slice, not the buggy
+    # always-full / always-empty predicate the old query used.
     _DEGREE_Q = """
     // recent_degree — centrality_jump probe
     MATCH (n)
     WITH n, count { (n)-[]-() } AS total_degree
     WHERE total_degree >= $min_degree
-    CALL {
-      WITH n, total_degree
+    CALL (n, total_degree) {
       MATCH (n)-[r]-()
-      WITH r
-      ORDER BY coalesce(r.updated_at, r.created_at) DESC
-      WITH collect(r) AS rels
-      RETURN size([x IN rels WHERE toInteger(size(rels) * $recent_fraction) > 0]) AS recent_degree
+      WHERE r.updated_at IS NOT NULL
+      WITH r, datetime(r.updated_at) AS ts
+      ORDER BY ts DESC
+      WITH collect(r) AS rels,
+           toInteger(ceil(total_degree * $recent_fraction)) AS k
+      RETURN size(rels[..k]) AS recent_degree
     }
     RETURN toString(elementId(n)) AS node_id,
            total_degree,
@@ -98,14 +122,57 @@ class CentralityJumpDetector(Detector):
     _NEIGHBORS_Q = """
     // spike_neighbors — evidence fetch for centrality_jump
     UNWIND $node_ids AS nid
-    MATCH (n) WHERE toString(elementId(n)) = nid OR toString(id(n)) = nid
+    MATCH (n) WHERE toString(elementId(n)) = nid
     OPTIONAL MATCH (n)-[r]-(nbr)
-    WITH nid AS node_id, r, nbr
-    ORDER BY coalesce(r.updated_at, r.created_at) DESC
-    WITH node_id, collect(DISTINCT nbr)[..10] AS recent_neighbors
+    WHERE r.updated_at IS NOT NULL
+    WITH nid AS node_id, r, nbr, datetime(r.updated_at) AS ts
+    ORDER BY ts DESC
+    WITH node_id, [x IN collect(DISTINCT nbr) WHERE x IS NOT NULL][..10] AS recent_neighbors
     RETURN node_id,
-           [x IN recent_neighbors | coalesce(toString(elementId(x)), toString(id(x)))] AS neighbor_ids
+           [x IN recent_neighbors | toString(elementId(x))] AS neighbor_ids
     """
+
+    def precheck(self, session: SessionLike) -> PreconditionResult:
+        """Verify the graph has enough r.updated_at spread for the recency proxy."""
+        if session is None:  # pragma: no cover - runner never passes None
+            return PreconditionResult.success()
+        min_days = int(self._thresholds.get("min_history_days", 30))
+        try:
+            records = list(session.run(self._PRECHECK_Q))
+        except Exception as exc:  # pragma: no cover - defensive
+            return PreconditionResult(
+                ok=False,
+                reason=f"precheck query failed: {type(exc).__name__}",
+                stat={"error": type(exc).__name__},
+            )
+        if not records:
+            return PreconditionResult(
+                ok=False,
+                reason="no edges with r.updated_at",
+                stat={"total_edges_with_ts": 0, "min_history_days": min_days},
+            )
+        rec = records[0]
+        total = int(rec.get("total") or 0)
+        spread = rec.get("spread_days")
+        spread_days = int(spread) if spread is not None else 0
+        stat = {
+            "total_edges_with_ts": total,
+            "spread_days": spread_days,
+            "min_history_days": min_days,
+        }
+        if total == 0:
+            return PreconditionResult(
+                ok=False,
+                reason="no edges with r.updated_at",
+                stat=stat,
+            )
+        if spread_days < min_days:
+            return PreconditionResult(
+                ok=False,
+                reason=f"temporal spread too narrow: {spread_days} days, need {min_days}",
+                stat=stat,
+            )
+        return PreconditionResult(ok=True, stat=stat)
 
     def run(self, session: SessionLike) -> list[Alert]:
         if session is None:

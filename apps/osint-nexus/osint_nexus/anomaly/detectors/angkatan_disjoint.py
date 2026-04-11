@@ -10,11 +10,12 @@ SK mutasi post-mutasi Kakanwil, chi si muove entro 6 mesi = kelompok".
 
 Corollary: because the angkatan cohort is the primary loyalty unit,
 short links between officials from *different* cohorts are expected
-to exist only via the formal hierarchy (POSTED_TO / PROMOTED_TO /
-WORKS_AT). If two officials from different angkatan appear to be
-linked in ≤3 hops via **non-official** edges (family ties, social
-events, mutual acquaintances), this is statistically unusual and
-worth flagging — it's either:
+to exist only via the formal hierarchy (WORKS_AT / GOVERNED_DURING /
+SUPERVISES / COMMANDS / ...). If two officials from different
+angkatan appear to be linked in <= max_path_len hops via
+**non-official** edges (family ties, social events, mutual
+acquaintances), this is statistically unusual and worth flagging —
+it's either:
 
 * a family-based alliance bridging cohorts (strong tie),
 * a patron-client arrangement hidden in social edges, or
@@ -28,42 +29,43 @@ False positive mitigation
 1. ``min_angkatan_gap`` — ignore near-cohorts (gap < 3 years) because
    those effectively share a cohort for loyalty purposes.
 2. ``max_path_len`` — longer paths are too weak a signal.
-3. The non-official rel list excludes WORKS_AT/POSTED_TO/PROMOTED_TO
-   at query time so the whole path must traverse "human" edges.
+3. The non-official rel list excludes the OFFICIAL family of rel
+   types at query time so the whole path must traverse "human" edges.
 4. Symmetric-pair dedupe on (min, max) of the pair ID.
 5. Evidence path shows the full path node IDs so the analyst can
    judge whether the bridge is meaningful.
 
-Data requirements
+Data precondition
 -----------------
-* ``Official.angkatan`` must be set (scraped from bio / pelantikan
-  news). Officials without angkatan are skipped.
-* At least one non-official edge must exist in the graph between
-  them. The detector is silent on a graph that only has formal
-  hierarchy edges.
+The live Kemenkumham schema as of Apr 2026 has 170 :Official nodes
+with ``angkatan`` set — all to the same integer (2000). With
+``min_angkatan_gap >= 3`` the pair query is empty by construction, so
+the detector produces zero alerts not because no cross-cohort ties
+exist, but because the cohort data simply hasn't been scraped yet.
+We surface this as an informational alert via ``precheck`` so the
+operator can tell the two states apart.
+
+Relationship-type families
+--------------------------
+Derived from the REAL live graph (see ``thresholds._FAMILY_REL_TYPES``
+and ``thresholds._SOCIAL_REL_TYPES``). The OLD hard-coded list
+(``KNOWS``, ``SIBLING_OF``, ``FREQUENTS``) referenced rel types that
+do not exist in the graph — the detector silently matched nothing.
 
 Cypher strategy
 ---------------
 ```cypher
-// angkatan_disjoint_pairs — composite query
 MATCH (a:Official), (b:Official)
 WHERE a.angkatan IS NOT NULL AND a.angkatan <> ''
   AND b.angkatan IS NOT NULL AND b.angkatan <> ''
   AND toInteger(a.angkatan) < toInteger(b.angkatan)
   AND abs(toInteger(a.angkatan) - toInteger(b.angkatan)) >= $min_gap
 MATCH p = shortestPath(
-  (a)-[rels:KNOWS|MET_WITH|MARRIED_TO|PARENT_OF|SIBLING_OF|FREQUENTS*..$max]-(b)
+  (a)-[rels:<rel_union>*..$max]-(b)
 )
-WHERE none(r IN rels WHERE type(r) IN ['WORKS_AT','POSTED_TO','PROMOTED_TO'])
+WHERE none(r IN rels WHERE type(r) IN $official_rels)
 WITH a, b, p
-RETURN toString(elementId(a)) AS a_id,
-       toString(elementId(b)) AS b_id,
-       toInteger(a.angkatan) AS a_angkatan,
-       toInteger(b.angkatan) AS b_angkatan,
-       abs(toInteger(a.angkatan) - toInteger(b.angkatan)) AS gap,
-       length(p) AS path_len,
-       [r IN relationships(p) | type(r)] AS path_rel_types,
-       [n IN nodes(p) | toString(elementId(n))] AS path_node_ids
+RETURN ...
 ```
 """
 
@@ -72,7 +74,7 @@ from __future__ import annotations
 from typing import Any
 
 from osint_nexus.anomaly.alert import Alert
-from osint_nexus.anomaly.base import Detector, SessionLike
+from osint_nexus.anomaly.base import Detector, PreconditionResult, SessionLike
 from osint_nexus.anomaly.thresholds import DEFAULT_THRESHOLDS
 
 
@@ -82,6 +84,15 @@ class AngkatanDisjointDetector(Detector):
     @classmethod
     def default_thresholds(cls) -> dict[str, Any]:
         return dict(DEFAULT_THRESHOLDS["angkatan_disjoint"])
+
+    _PRECHECK_Q = """
+    // angkatan_disjoint_precheck — distinct cohorts + spread
+    MATCH (n:Official) WHERE n.angkatan IS NOT NULL
+    RETURN count(DISTINCT toInteger(n.angkatan)) AS distinct_years,
+           min(toInteger(n.angkatan)) AS min_y,
+           max(toInteger(n.angkatan)) AS max_y,
+           count(n) AS total_officials
+    """
 
     _PAIR_Q_TEMPLATE = """
     // angkatan_disjoint_pairs — composite query
@@ -95,7 +106,7 @@ class AngkatanDisjointDetector(Detector):
     MATCH p = shortestPath(
       (a)-[rels:{rel_union}*..{max_hops}]-(b)
     )
-    WHERE none(r IN relationships(p) WHERE type(r) IN ['WORKS_AT','POSTED_TO','PROMOTED_TO'])
+    WHERE none(r IN relationships(p) WHERE type(r) IN $official_rels)
     RETURN toString(elementId(a)) AS a_id,
            toString(elementId(b)) AS b_id,
            toInteger(a.angkatan) AS a_angkatan,
@@ -108,9 +119,68 @@ class AngkatanDisjointDetector(Detector):
 
     def _build_query(self) -> str:
         rels: list[str] = list(self._thresholds.get("non_official_rels", []))
-        rel_union = "|".join(rels) if rels else "KNOWS|MET_WITH"
+        rel_union = "|".join(rels) if rels else "MET_WITH|MARRIED_TO"
         max_hops = int(self._thresholds.get("max_path_len", 3))
         return self._PAIR_Q_TEMPLATE.format(rel_union=rel_union, max_hops=max_hops)
+
+    def precheck(self, session: SessionLike) -> PreconditionResult:
+        """Verify there is enough angkatan variance to run the pair query."""
+        if session is None:  # pragma: no cover - runner never passes None here
+            return PreconditionResult.success()
+        min_gap = int(self._thresholds.get("min_angkatan_gap", 3))
+        try:
+            records = list(session.run(self._PRECHECK_Q))
+        except Exception as exc:  # pragma: no cover - defensive
+            return PreconditionResult(
+                ok=False,
+                reason=f"precheck query failed: {type(exc).__name__}",
+                stat={"error": type(exc).__name__},
+            )
+        if not records:
+            return PreconditionResult(
+                ok=False,
+                reason="no Official nodes with angkatan",
+                stat={
+                    "distinct_years": 0,
+                    "total_officials": 0,
+                    "min_angkatan_gap": min_gap,
+                },
+            )
+        rec = records[0]
+        distinct_years = int(rec.get("distinct_years") or 0)
+        total_officials = int(rec.get("total_officials") or 0)
+        min_y = rec.get("min_y")
+        max_y = rec.get("max_y")
+        spread = 0
+        if min_y is not None and max_y is not None:
+            spread = int(max_y) - int(min_y)
+        stat = {
+            "distinct_years": distinct_years,
+            "total_officials": total_officials,
+            "min_y": int(min_y) if min_y is not None else None,
+            "max_y": int(max_y) if max_y is not None else None,
+            "spread": spread,
+            "min_angkatan_gap": min_gap,
+        }
+        if distinct_years < 2:
+            return PreconditionResult(
+                ok=False,
+                reason=(
+                    f"angkatan variance too low: {distinct_years} distinct years, "
+                    f"spread {spread}"
+                ),
+                stat=stat,
+            )
+        if spread < min_gap:
+            return PreconditionResult(
+                ok=False,
+                reason=(
+                    f"angkatan variance too low: {distinct_years} distinct years, "
+                    f"spread {spread}"
+                ),
+                stat=stat,
+            )
+        return PreconditionResult(ok=True, stat=stat)
 
     def run(self, session: SessionLike) -> list[Alert]:
         if session is None:
@@ -120,9 +190,13 @@ class AngkatanDisjointDetector(Detector):
         min_gap = int(th.get("min_angkatan_gap", 3))
         max_path = int(th.get("max_path_len", 3))
         min_score = float(th.get("min_score", 0.6))
+        official_rels = list(th.get("official_rels", []))
 
         query = self._build_query()
-        records = list(session.run(query, {"min_gap": min_gap}))
+        records = list(session.run(
+            query,
+            {"min_gap": min_gap, "official_rels": official_rels},
+        ))
         if not records:
             return []
 

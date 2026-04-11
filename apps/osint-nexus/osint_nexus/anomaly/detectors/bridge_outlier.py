@@ -28,14 +28,16 @@ False positive mitigation
 4. Evidence path contains only the cut vertex plus up to 10 neighbors
    — no community-wide dumps, to keep the alert compact.
 
-Cypher strategy
+GDS API version
 ---------------
-1. Project the undirected graph via cypher projection.
-2. Run ``gds.louvain.stream`` to label each node with a community id.
-3. Run ``gds.articulationPoints.stream`` for cut vertices.
-4. For each cut, compute neighbor community diversity via a plain
-   Cypher match.
-5. Emit one alert per cut vertex that meets size + diversity thresholds.
+This detector uses the GDS 2.13+ ``gds.graph.project`` aggregation
+function (Cypher projection). The legacy ``gds.graph.project.cypher``
+procedure is deprecated and its future removal would break us — we
+have migrated off it already.
+
+We declare ``undirectedRelationshipTypes: ['*']`` because
+``gds.articulationPoints`` REQUIRES an undirected projection and
+raises ``IllegalArgumentException`` on directed projections.
 """
 
 from __future__ import annotations
@@ -58,36 +60,68 @@ class BridgeOutlierDetector(Detector):
         return dict(DEFAULT_THRESHOLDS["bridge_outlier"])
 
     # ------------------------------------------------------------------
-    _PROJECT_Q = f"""
-    CALL gds.graph.project.cypher(
-      '{_PROJECTION_NAME}',
-      'MATCH (n) RETURN id(n) AS id',
-      'MATCH (a)-[r]-(b) RETURN id(a) AS source, id(b) AS target'
-    )
+    # GDS 2.13+ Cypher-aggregation projection (REQUIRED for our Neo4j).
+    # Key points:
+    #  * ``WHERE target IS NOT NULL`` drops isolated nodes so they don't
+    #    pollute the projection with zero-edge artefacts
+    #  * ``undirectedRelationshipTypes: ['*']`` is MANDATORY for
+    #    gds.articulationPoints, which rejects directed projections
+    #  * We drop the projection first to make the detector idempotent;
+    #    a crashed prior run would otherwise block us forever
+    # ------------------------------------------------------------------
+
+    _DROP_Q = f"""
+    CALL gds.graph.drop('{_PROJECTION_NAME}', false)
     YIELD graphName
     RETURN graphName
     """
 
+    _PROJECT_Q = f"""
+    MATCH (source)
+    OPTIONAL MATCH (source)-[r]-(target)
+    WITH source, target WHERE target IS NOT NULL
+    WITH gds.graph.project(
+      '{_PROJECTION_NAME}',
+      source,
+      target,
+      {{}},
+      {{undirectedRelationshipTypes: ['*']}}
+    ) AS g
+    RETURN g.graphName AS graphName,
+           g.nodeCount AS nodeCount,
+           g.relationshipCount AS relCount
+    """
+
+    # IMPORTANT: GDS stream procedures return ``nodeId`` as Neo4j's
+    # internal INTEGER id, NOT the element id. We unwrap it via
+    # ``gds.util.asNode(nodeId)`` so the downstream _NEIGHBORS_Q can
+    # re-match on ``elementId``. Without this step the neighbor
+    # fetch silently matches zero rows.
     _LOUVAIN_Q = f"""
     CALL gds.louvain.stream('{_PROJECTION_NAME}')
     YIELD nodeId, communityId
-    RETURN toString(nodeId) AS node_id, communityId AS community_id
+    RETURN elementId(gds.util.asNode(nodeId)) AS node_id,
+           communityId AS community_id
     """
 
     _ARTICULATION_Q = f"""
     CALL gds.articulationPoints.stream('{_PROJECTION_NAME}')
     YIELD nodeId
-    RETURN toString(nodeId) AS node_id
+    RETURN elementId(gds.util.asNode(nodeId)) AS node_id
     """
 
+    # Neighbor fetch. Louvain is STREAMED (nothing is written back to
+    # nodes), so we intentionally do NOT SELECT ``n.community_id`` —
+    # Neo4j would warn "property key does not exist" every call.
+    # The runner falls back to the in-memory ``community_of`` map.
     _NEIGHBORS_Q = """
     UNWIND $cut_ids AS cid
-    MATCH (cut) WHERE toString(elementId(cut)) = cid OR toString(id(cut)) = cid
+    MATCH (cut) WHERE toString(elementId(cut)) = cid
     OPTIONAL MATCH (cut)-[]-(nbr)
     WITH cid AS cut_id, collect(DISTINCT nbr) AS neighbors
     RETURN cut_id,
-           [n IN neighbors | coalesce(toString(elementId(n)), toString(id(n)))] AS neighbor_ids,
-           [n IN neighbors | n.community_id] AS neighbor_communities
+           [n IN neighbors WHERE n IS NOT NULL | toString(elementId(n))] AS neighbor_ids,
+           [] AS neighbor_communities
     """
 
     _CLEANUP_Q = f"CALL gds.graph.drop('{_PROJECTION_NAME}', false) YIELD graphName"
@@ -102,6 +136,12 @@ class BridgeOutlierDetector(Detector):
         min_community_size = int(th.get("min_community_size", 3))
         min_score = float(th.get("min_score", 0.6))
 
+        # Drop any stale projection from a prior crashed run, then
+        # create a fresh one.
+        try:
+            session.run(self._DROP_Q)
+        except Exception:  # pragma: no cover
+            pass
         try:
             session.run(self._PROJECT_Q)
         except Exception:  # pragma: no cover

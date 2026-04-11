@@ -24,11 +24,13 @@ False positive mitigation
 4. We return only node IDs in the alert — the analyst resolves names
    in a separate step.
 
-Cypher strategy
+GDS API version
 ---------------
-We use ``gds.graph.project.cypher`` so we don't have to know node
-labels ahead of time, then ``gds.eigenvector.stream`` for centrality,
-and a final Cypher neighborhood query to compute the ratio.
+Migrated to GDS 2.13+ ``gds.graph.project`` aggregation function
+(Cypher projection). The legacy ``gds.graph.project.cypher`` procedure
+is deprecated and will be removed. ``undirectedRelationshipTypes`` is
+set so the projection matches what Louvain / articulation points /
+eigenvector expect.
 
 Data requirements
 -----------------
@@ -59,39 +61,55 @@ class EigenvectorReverseDetector(Detector):
     # Cypher queries — kept as class constants for easy test matching
     # ------------------------------------------------------------------
 
-    _PROJECT_Q = f"""
-    CALL gds.graph.project.cypher(
-      '{_PROJECTION_NAME}',
-      'MATCH (n) RETURN id(n) AS id',
-      'MATCH (a)-[r]-(b) RETURN id(a) AS source, id(b) AS target'
-    )
-    YIELD graphName, nodeCount, relationshipCount
+    _DROP_Q = f"""
+    CALL gds.graph.drop('{_PROJECTION_NAME}', false)
+    YIELD graphName
     RETURN graphName
     """
 
+    _PROJECT_Q = f"""
+    MATCH (source)
+    OPTIONAL MATCH (source)-[r]-(target)
+    WITH source, target WHERE target IS NOT NULL
+    WITH gds.graph.project(
+      '{_PROJECTION_NAME}',
+      source,
+      target,
+      {{}},
+      {{undirectedRelationshipTypes: ['*']}}
+    ) AS g
+    RETURN g.graphName AS graphName,
+           g.nodeCount AS nodeCount,
+           g.relationshipCount AS relCount
+    """
+
+    # GDS stream returns INTEGER ``nodeId`` — we unwrap via
+    # ``gds.util.asNode(nodeId)`` to get the modern elementId so the
+    # neighbor fetch below can re-match. Without this the neighbor
+    # map would be empty and the detector silently returns zero.
     _EIGENVECTOR_Q = f"""
     CALL gds.eigenvector.stream('{_PROJECTION_NAME}',
       {{maxIterations: 100, tolerance: 0.0001}}
     )
     YIELD nodeId, score
-    WITH nodeId, score
-    WITH collect({{id: nodeId, score: score}}) AS nodes
+    WITH elementId(gds.util.asNode(nodeId)) AS node_id, score
+    WITH collect({{id: node_id, score: score}}) AS nodes
     UNWIND range(0, size(nodes) - 1) AS i
     WITH nodes, i, nodes[i] AS n
     WITH n.id AS node_id, n.score AS score,
          1.0 * i / size(nodes) AS rank_fraction
-    RETURN toString(node_id) AS node_id, score,
+    RETURN node_id, score,
            1.0 - rank_fraction AS percentile
     ORDER BY score DESC
     """
 
     _NEIGHBORS_Q = """
     UNWIND $hub_ids AS hid
-    MATCH (hub) WHERE toString(elementId(hub)) = hid OR toString(id(hub)) = hid
+    MATCH (hub) WHERE toString(elementId(hub)) = hid
     OPTIONAL MATCH (hub)-[]-(neighbor)
     WITH hid AS hub_id,
-         [n IN collect(DISTINCT neighbor)
-             | coalesce(toString(elementId(n)), toString(id(n)))] AS neighbor_ids
+         [n IN collect(DISTINCT neighbor) WHERE n IS NOT NULL
+             | toString(elementId(n))] AS neighbor_ids
     RETURN hub_id, neighbor_ids
     """
 
@@ -110,9 +128,11 @@ class EigenvectorReverseDetector(Detector):
         min_neighbors = int(th.get("min_neighbors", 4))
         min_score = float(th.get("min_score", 0.6))
 
-        # Step 1 — (best-effort) build the projection. On fake sessions
-        # this does nothing. On a live session it's a no-op if the
-        # projection already exists (we catch the error and continue).
+        # Drop stale projection, then build fresh (idempotent).
+        try:
+            session.run(self._DROP_Q)
+        except Exception:  # pragma: no cover
+            pass
         try:
             session.run(self._PROJECT_Q)
         except Exception:  # pragma: no cover - exercised against live GDS

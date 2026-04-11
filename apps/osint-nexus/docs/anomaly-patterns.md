@@ -9,6 +9,48 @@ resolution is handled in a separate, Zero-only step.
 All cipher examples below are **redacted** of real IDs. `$param` tokens
 are Neo4j parameters the detector passes.
 
+## Data preconditions & informational alerts
+
+Three of the five detectors are **semantically blocked** on a fresh
+OSINT graph with no history / no variance. Running them would produce
+100% false positives. Each detector carries a `precheck(session)`
+method that inspects the live graph and returns `ok=False` with a
+human-readable reason if the preconditions fail. The runner surfaces
+these blocks as **informational alerts** — one per blocked detector,
+marked `informational=True`, score 0, ranked AFTER real alerts — so
+operators can tell "zero anomalies" apart from "detector skipped
+because the graph is too young".
+
+| Detector            | Precondition                                         |
+| ------------------- | ---------------------------------------------------- |
+| `centrality_jump`   | `max(updated_at) - min(updated_at) >= min_history_days` (default 30) |
+| `temporal_burst`    | `max(updated_at) - min(updated_at) >= min_history_days` (default 30) |
+| `angkatan_disjoint` | `>= 2` distinct `Official.angkatan` years AND spread `>= min_angkatan_gap` |
+
+`bridge_outlier` and `eigenvector_reverse` have no semantic
+precondition — they run on any graph with nodes and edges.
+
+## GDS API version
+
+All GDS queries target **Neo4j GDS 2.13+**. The `bridge_outlier` and
+`eigenvector_reverse` detectors use the current
+`gds.graph.project` Cypher-aggregation function (projection returned
+from a Cypher query via `WITH gds.graph.project(...) AS g`). The
+legacy `gds.graph.project.cypher` procedure is deprecated and will be
+removed; we migrated off it so the detectors do not break on future
+GDS upgrades.
+
+Projections explicitly declare `undirectedRelationshipTypes: ['*']`
+because `gds.articulationPoints` rejects directed projections with
+`IllegalArgumentException: Articulation Points algorithm requires
+relationship projections to be UNDIRECTED`.
+
+GDS stream procedures return an INTEGER `nodeId` (Neo4j's internal
+id), not the modern `elementId` string. The detectors unwrap them via
+`gds.util.asNode(nodeId)` and return `elementId(...)` so downstream
+parameterized `MATCH ... WHERE elementId(n) = $id` queries can match
+reliably.
+
 ---
 
 ## 1. `centrality_jump` — sudden edge mass into a node
@@ -24,21 +66,39 @@ becomes public.
 `recent_fraction` of edges (by `r.updated_at`) as "today" and compare
 each node's recency ratio to the population mean ± sigma.
 
+**Data precondition.** Needs at least `min_history_days` (default 30)
+of temporal spread on `r.updated_at`. Below that threshold the
+"recent" slice is effectively the whole history and the z-test has
+zero variance. The detector returns a single informational alert
+instead of running in this state. On the current Kemenkumham graph
+(spread = 3 days, Apr 2026) the detector is BLOCKED; once the scraper
+runs for a month of real history, it will unblock automatically. The
+legacy `coalesce(r.updated_at, r.created_at)` fallback was removed
+because `r.created_at` is always NULL in the live graph — dead code.
+
 **Cypher (redacted).**
 
 ```cypher
 MATCH (n)
 WITH n, count { (n)-[]-() } AS total_degree
 WHERE total_degree >= $min_degree
-CALL {
-  WITH n
+CALL (n, total_degree) {
   MATCH (n)-[r]-()
-  WITH r ORDER BY coalesce(r.updated_at, r.created_at) DESC
-  WITH collect(r) AS rels
-  RETURN size([x IN rels WHERE toInteger(size(rels) * $recent_fraction) > 0]) AS recent_degree
+  WHERE r.updated_at IS NOT NULL
+  WITH r, datetime(r.updated_at) AS ts
+  ORDER BY ts DESC
+  WITH collect(r) AS rels,
+       toInteger(ceil(total_degree * $recent_fraction)) AS k
+  RETURN size(rels[..k]) AS recent_degree
 }
 RETURN toString(elementId(n)) AS node_id, total_degree, recent_degree
 ```
+
+The `CALL (n, total_degree) { ... }` form is the scoped-subquery
+syntax required by Neo4j 5.23+ (the unscoped `CALL { ... }` is
+deprecated). The recent slice is a real `rels[..k]` top-k, not the
+nonsensical always-empty / always-full predicate the previous
+version used.
 
 **False positive modes.**
 
@@ -70,29 +130,50 @@ An articulation point sitting between two Louvain communities is a
 single point of failure in factional communication — the classic
 "broker" who knows both sides.
 
+**GDS API version.** Uses `gds.graph.project` aggregation function
+(GDS 2.13+), NOT the deprecated `gds.graph.project.cypher` procedure.
+`undirectedRelationshipTypes: ['*']` is MANDATORY — the GDS
+`articulationPoints` algorithm rejects directed projections.
+
 **Cypher (redacted).**
 
 ```cypher
-// Step 1 — cypher projection
-CALL gds.graph.project.cypher(
-  'anomaly_bridge',
-  'MATCH (n) RETURN id(n) AS id',
-  'MATCH (a)-[]-(b) RETURN id(a) AS source, id(b) AS target'
-) YIELD graphName;
+// Step 0 — idempotent drop (a crashed prior run would leave the
+// projection behind otherwise, blocking the next scan forever)
+CALL gds.graph.drop('anomaly_bridge', false) YIELD graphName;
 
-// Step 2 — Louvain
+// Step 1 — aggregation-function projection, undirected
+MATCH (source)
+OPTIONAL MATCH (source)-[r]-(target)
+WITH source, target WHERE target IS NOT NULL
+WITH gds.graph.project(
+  'anomaly_bridge',
+  source,
+  target,
+  {},
+  {undirectedRelationshipTypes: ['*']}
+) AS g
+RETURN g.graphName, g.nodeCount, g.relationshipCount;
+
+// Step 2 — Louvain. gds.util.asNode(nodeId) unwraps the integer
+// GDS nodeId back to an element id the rest of the pipeline can match.
 CALL gds.louvain.stream('anomaly_bridge')
-YIELD nodeId, communityId;
+YIELD nodeId, communityId
+RETURN elementId(gds.util.asNode(nodeId)) AS node_id, communityId;
 
 // Step 3 — articulation points (GDS 2.5+)
 CALL gds.articulationPoints.stream('anomaly_bridge')
-YIELD nodeId;
+YIELD nodeId
+RETURN elementId(gds.util.asNode(nodeId)) AS node_id;
 
-// Step 4 — per-cut neighbor community counts
+// Step 4 — per-cut neighbors (community map is kept in-memory on
+// the client side; we do NOT query n.community_id because Louvain
+// is streamed — nothing is ever written back to the nodes)
 UNWIND $cut_ids AS cid
 MATCH (cut) WHERE toString(elementId(cut)) = cid
 OPTIONAL MATCH (cut)-[]-(nbr)
-RETURN cid, collect(DISTINCT nbr.community_id) AS comms;
+RETURN cid, [n IN collect(DISTINCT nbr) WHERE n IS NOT NULL
+             | toString(elementId(n))] AS neighbor_ids;
 ```
 
 **False positive modes.**
@@ -128,26 +209,46 @@ reflect *intake* patterns, not real-world events. We document this
 limitation and offer `source_exclude` so operators can silence known
 batch loaders.
 
+**Data precondition.** EWMA burst detection on a series shorter than
+`min_history_days` (default 30) produces 100% false positives — the
+baseline has no memory and every bucket is "bursty" by definition.
+The detector returns a single informational alert instead of running
+in this state. The legacy `coalesce(r.updated_at, r.created_at)`
+fallback was removed because `r.created_at` is always NULL in the
+live graph.
+
 **Cypher (redacted).**
 
 ```cypher
-// Step 1 — weekly bucket counts per rel type
+// Step 0 — precheck
+MATCH ()-[r]->() WHERE r.updated_at IS NOT NULL
+WITH datetime(r.updated_at) AS ts
+RETURN min(ts) AS min_ts, max(ts) AS max_ts, count(*) AS total,
+       duration.inDays(min(ts), max(ts)).days AS spread_days;
+
+// Step 1 — weekly bucket counts per rel type (scoped subquery)
+// Note datetime() around r.updated_at — it's an ISO string, not a date,
+// so date(...) would raise CypherSyntaxError "Text cannot be parsed to
+// a Date". The old query hit exactly that bug.
 UNWIND $rel_types AS rt
-MATCH ()-[r]->()
-WHERE type(r) = rt
-  AND coalesce(r.updated_at, r.created_at) IS NOT NULL
-WITH rt, r, date.truncate('week', date(coalesce(r.updated_at, r.created_at))) AS bucket
-RETURN rt AS rel_type, toString(bucket) AS bucket,
-       count(r) AS edge_count,
+CALL (rt) {
+  MATCH ()-[r]->()
+  WHERE type(r) = rt
+    AND r.updated_at IS NOT NULL
+  WITH r, date.truncate('week', datetime(r.updated_at)) AS bucket
+  WITH bucket, count(r) AS edge_count,
        collect(DISTINCT coalesce(r.source, '')) AS sources
-ORDER BY rt, bucket;
+  RETURN toString(bucket) AS bucket, edge_count, sources
+}
+RETURN rt AS rel_type, bucket, edge_count, sources
+ORDER BY rel_type, bucket;
 
 // Step 2 — for each burst bucket, fetch sample source/target IDs
 UNWIND $buckets AS b
 MATCH (src)-[r]->(tgt)
 WHERE type(r) = b.rel_type
-  AND date.truncate('week', date(coalesce(r.updated_at, r.created_at))) =
-      date(b.bucket)
+  AND r.updated_at IS NOT NULL
+  AND date.truncate('week', datetime(r.updated_at)) = date(b.bucket)
 RETURN b.rel_type, b.bucket,
        collect(DISTINCT toString(elementId(src)))[..10] AS source_ids,
        collect(DISTINCT toString(elementId(tgt)))[..10] AS target_ids;
@@ -184,15 +285,42 @@ shift. Change only with test-set feedback.
 (Polimigras Depok): stessa angkatan = fratellanza a vita, loyalty
 cross-ufficio". If two officials from *different* angkatan cohorts
 (gap ≥ 3 years) are ≤3 hops apart via *only* non-official edges
-(KNOWS / MET_WITH / MARRIED_TO / PARENT_OF / SIBLING_OF / FREQUENTS),
-this is not a coincidence. It is either a family-based alliance
-bridging cohorts, a hidden patron-client arrangement, or a covert
-alignment. The formal structure would route such ties via
-POSTED_TO / PROMOTED_TO; the absence of those edges is the tell.
+(family, social, political affiliation), this is not a coincidence.
+It is either a family-based alliance bridging cohorts, a hidden
+patron-client arrangement, or a covert alignment. The formal
+structure would route such ties via WORKS_AT / GOVERNED_DURING /
+SUPERVISES / COMMANDS / PART_OF / OPERATES / UBO_OF / LEGAL_OWNER_OF
+/ DE_FACTO_OWNER / FOUNDED / LISTED_AS / OPERATED_BY; the absence of
+those edges on the path is the tell.
+
+**Rel-type families.** Derived from the REAL live Kemenkumham schema
+(Apr 2026, 45 relationship types). The old default list (`KNOWS`,
+`SIBLING_OF`, `FREQUENTS`) referenced rel types that do not exist in
+the graph — the detector was matching the empty set. The new default
+list is `FAMILY_OF`, `PARENT_OF`, `MARRIED_TO`, `DIVORCED_FROM`,
+`FAMILY_ALLIANCE`, `MET_WITH`, `ALLY_OF`, `ALUMNI`, `SAME_PARTY`,
+`RUNNING_MATE`, `ENDORSES`, `PARTNERS_WITH`, `PUBLIC_CONFLICT`. Both
+lists are configurable via `thresholds.yaml` → `angkatan_disjoint`.
+
+**Data precondition.** Requires at least 2 distinct
+`Official.angkatan` values with spread `>= min_angkatan_gap` in the
+live graph. On the current Kemenkumham graph all 170 Officials have
+`angkatan = 2000` (single cohort), so the detector is BLOCKED by
+precheck. Once the scraper populates multi-cohort data (polimigras
+angkatan history), the detector will unblock automatically.
 
 **Cypher (redacted).**
 
 ```cypher
+// Step 0 — precheck
+MATCH (n:Official) WHERE n.angkatan IS NOT NULL
+RETURN count(DISTINCT toInteger(n.angkatan)) AS distinct_years,
+       min(toInteger(n.angkatan)) AS min_y,
+       max(toInteger(n.angkatan)) AS max_y;
+
+// Step 1 — pair query (rel union list is templated into the
+// variable-length relationship pattern; the official list is passed
+// as a Neo4j parameter via $official_rels for defence-in-depth)
 MATCH (a:Official), (b:Official)
 WHERE a.angkatan IS NOT NULL AND toString(a.angkatan) <> ''
   AND b.angkatan IS NOT NULL AND toString(b.angkatan) <> ''
@@ -200,9 +328,11 @@ WHERE a.angkatan IS NOT NULL AND toString(a.angkatan) <> ''
   AND abs(toInteger(a.angkatan) - toInteger(b.angkatan)) >= $min_gap
 WITH a, b LIMIT 500
 MATCH p = shortestPath(
-  (a)-[rels:KNOWS|MET_WITH|MARRIED_TO|PARENT_OF|SIBLING_OF|FREQUENTS*..3]-(b)
+  (a)-[rels:FAMILY_OF|PARENT_OF|MARRIED_TO|DIVORCED_FROM|FAMILY_ALLIANCE
+           |MET_WITH|ALLY_OF|ALUMNI|SAME_PARTY|RUNNING_MATE|ENDORSES
+           |PARTNERS_WITH|PUBLIC_CONFLICT*..3]-(b)
 )
-WHERE none(r IN relationships(p) WHERE type(r) IN ['WORKS_AT','POSTED_TO','PROMOTED_TO'])
+WHERE none(r IN relationships(p) WHERE type(r) IN $official_rels)
 RETURN toString(elementId(a)) AS a_id, toString(elementId(b)) AS b_id,
        toInteger(a.angkatan) AS a_angkatan, toInteger(b.angkatan) AS b_angkatan,
        abs(toInteger(a.angkatan) - toInteger(b.angkatan)) AS gap,
@@ -238,24 +368,41 @@ eigenvector score whose neighbors are ALL in the bottom quartile is a
 **compartmentalized dependency structure**: a handler who never lets
 their contacts meet each other. In OSINT terms: a cut-out or fixer.
 
+**GDS API version.** Uses `gds.graph.project` aggregation function
+(GDS 2.13+), NOT the deprecated `gds.graph.project.cypher` procedure.
+The projection is undirected so neighborhood counts are symmetric.
+
 **Cypher (redacted).**
 
 ```cypher
-// Step 1 — projection
-CALL gds.graph.project.cypher(
-  'anomaly_eigenvector',
-  'MATCH (n) RETURN id(n) AS id',
-  'MATCH (a)-[]-(b) RETURN id(a) AS source, id(b) AS target'
-) YIELD graphName;
+// Step 0 — idempotent drop
+CALL gds.graph.drop('anomaly_eigenvector', false) YIELD graphName;
 
-// Step 2 — eigenvector with percentiles
+// Step 1 — aggregation-function projection, undirected
+MATCH (source)
+OPTIONAL MATCH (source)-[r]-(target)
+WITH source, target WHERE target IS NOT NULL
+WITH gds.graph.project(
+  'anomaly_eigenvector',
+  source,
+  target,
+  {},
+  {undirectedRelationshipTypes: ['*']}
+) AS g
+RETURN g.graphName;
+
+// Step 2 — eigenvector stream with per-row percentiles.
+// gds.util.asNode(nodeId) unwraps the GDS integer id into a node
+// so elementId(...) produces the string id our downstream neighbor
+// query can match on.
 CALL gds.eigenvector.stream('anomaly_eigenvector',
   {maxIterations: 100, tolerance: 0.0001})
 YIELD nodeId, score
-WITH collect({id: nodeId, score: score}) AS nodes
+WITH elementId(gds.util.asNode(nodeId)) AS node_id, score
+WITH collect({id: node_id, score: score}) AS nodes
 UNWIND range(0, size(nodes) - 1) AS i
 WITH nodes[i] AS n, i, size(nodes) AS total
-RETURN toString(n.id) AS node_id, n.score AS score,
+RETURN n.id AS node_id, n.score AS score,
        1.0 - (1.0 * i / total) AS percentile
 ORDER BY score DESC;
 
@@ -263,7 +410,8 @@ ORDER BY score DESC;
 UNWIND $hub_ids AS hid
 MATCH (hub) WHERE toString(elementId(hub)) = hid
 OPTIONAL MATCH (hub)-[]-(neighbor)
-RETURN hid, [n IN collect(DISTINCT neighbor) | toString(elementId(n))] AS neighbor_ids;
+RETURN hid, [n IN collect(DISTINCT neighbor) WHERE n IS NOT NULL
+             | toString(elementId(n))] AS neighbor_ids;
 ```
 
 **False positive modes.**
