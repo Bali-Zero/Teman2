@@ -57,7 +57,7 @@ jobs:
           cd apps/backend-rag
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio pytest-mock
+          pip install pytest pytest-cov pytest-asyncio pytest-mock fakeredis
 
       - name: pip-audit
         run: |
@@ -133,7 +133,8 @@ jobs:
         run: |
           cd apps/nuzantara-mcp
           pip install --upgrade pip
-          pip install -e ".[test]" || pip install fastmcp httpx pytest pytest-asyncio pytest-mock
+          pip install -e ".[test]" 2>/dev/null || true
+          pip install fastmcp httpx pytest pytest-asyncio pytest-mock
 
       - name: Run MCP tests
         run: |
