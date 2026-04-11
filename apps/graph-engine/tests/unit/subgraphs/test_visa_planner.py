@@ -372,6 +372,105 @@ class TestContradictionGrader:
         score = grader.score(current, [prior])
         assert score > 0.4
 
+    def test_word_form_duration_not_flagged_as_contradiction(self):
+        """'60 days' and 'two months' refer to the same duration — the
+        grader must not flag them as contradictory."""
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        prior = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="p", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=30,
+                    score=0.9,
+                    content="KITAS duration is 60 days",
+                )
+            ],
+            answer_fragment="KITAS duration is 60 days",
+        )
+        current = NodeEvidence(
+            sub_question=SubQuestion(idx=1, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="b",
+                    span_start=0,
+                    span_end=30,
+                    score=0.9,
+                    content="KITAS duration is two months",
+                )
+            ],
+            answer_fragment="KITAS duration is two months",
+        )
+        grader = ContradictionGrader()
+        score = grader.score(current, [prior])
+        assert score < 0.4, f"False positive: 60 days ≡ two months, got {score}"
+
+    def test_word_form_duration_flagged_when_actually_different(self):
+        """'two months' and '90 days' are different durations — must flag."""
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        prior = NodeEvidence(
+            sub_question=SubQuestion(idx=0, text="p", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="a",
+                    span_start=0,
+                    span_end=30,
+                    score=0.9,
+                    content="KITAS duration is 90 days",
+                )
+            ],
+            answer_fragment="KITAS duration is 90 days",
+        )
+        current = NodeEvidence(
+            sub_question=SubQuestion(idx=1, text="q", depends_on=[]),
+            chunks=[
+                Chunk(
+                    doc_id="b",
+                    span_start=0,
+                    span_end=30,
+                    score=0.9,
+                    content="KITAS duration is two months",
+                )
+            ],
+            answer_fragment="KITAS duration is two months",
+        )
+        grader = ContradictionGrader()
+        score = grader.score(current, [prior])
+        assert score > 0.4, f"Should flag 90 days ≠ two months, got {score}"
+
+    def test_year_normalization(self):
+        """'1 year' should equal '12 months' and disagree with '2 years'."""
+        from nuzantara_graph.graders.contradiction_grader import ContradictionGrader
+        from nuzantara_graph.subgraphs.visa.types import Chunk, NodeEvidence, SubQuestion
+
+        def _ev(doc_id, content):
+            return NodeEvidence(
+                sub_question=SubQuestion(idx=0, text="q", depends_on=[]),
+                chunks=[
+                    Chunk(doc_id=doc_id, span_start=0, span_end=40, score=0.9, content=content)
+                ],
+                answer_fragment=content,
+            )
+
+        grader = ContradictionGrader()
+
+        equivalent = grader.score(
+            _ev("a", "KITAS is valid for 1 year"),
+            [_ev("b", "KITAS is valid for 12 months")],
+        )
+        assert equivalent < 0.4, f"1 year ≡ 12 months, got {equivalent}"
+
+        conflicting = grader.score(
+            _ev("a", "KITAS is valid for 2 years"),
+            [_ev("b", "KITAS is valid for 12 months")],
+        )
+        assert conflicting > 0.4, f"2 years ≠ 12 months, got {conflicting}"
+
 
 @pytest.mark.unit
 class TestExecute:
