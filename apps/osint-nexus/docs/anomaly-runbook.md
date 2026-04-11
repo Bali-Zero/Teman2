@@ -1,271 +1,163 @@
-# OSINT Anomaly Scan — Runbook
+# Anomaly Scan Runbook
 
-Operator-facing guide for running the anomaly scan, interpreting the
-output, and tuning the thresholds. This is local-only tooling — see
-`feedback_osint_blindato.md`.
+How to run, interpret, and tune the OSINT Nexus anomaly detection system.
 
-## Pre-flight
+## Prerequisites
 
-Before the first run:
+- Python 3.11+
+- `neo4j` driver installed (`pip install neo4j`)
+- Local Neo4j instance running (default: `bolt://localhost:17687`)
+- Optional: Neo4j GDS plugin for Louvain and eigenvector (detectors fall back to Cypher without it)
+- Optional: `pyyaml` for custom threshold config files
 
-1. **Confirm Neo4j is local.** The CLI refuses any non-local URI
-   unless you pass `--allow-remote`. Tailscale CGNAT (`100.x.x.x`) is
-   allowed; anything else is not.
+## Running a Scan
 
-   ```
-   echo $NEO4J_URI
-   # Expected: bolt://localhost:17687 (or bolt://100.x.x.x:7687 on Tailscale)
-   ```
-
-2. **Confirm the graph has data.** Run:
-
-   ```
-   cypher-shell -a $NEO4J_URI -u $NEO4J_USER -p $NEO4J_PASSWORD \
-     "MATCH (n) RETURN count(n) AS node_count"
-   ```
-
-3. **Confirm GDS plugin is installed.** The detectors use
-   `gds.graph.project` (Cypher-aggregation form, GDS 2.13+),
-   `gds.louvain`, `gds.articulationPoints`, and `gds.eigenvector`.
-   We have migrated off the legacy `gds.graph.project.cypher`
-   procedure. Minimum GDS version: **2.13**.
-
-   ```
-   cypher-shell -a $NEO4J_URI -u $NEO4J_USER -p $NEO4J_PASSWORD \
-     "RETURN gds.version() AS version"
-   ```
-
-   Verified production version as of Apr 2026: Neo4j 5.26.24 + GDS 2.13.9.
-
-## Running a scan
-
-**Default (all detectors, default thresholds):**
-
-```
+### Quick scan (all detectors, default thresholds)
+```bash
 cd apps/osint-nexus
-PYTHONPATH=. python scripts/run_anomaly_scan.py
+python scripts/run_anomaly_scan.py
 ```
 
-**With custom thresholds:**
-
-```
-PYTHONPATH=. python scripts/run_anomaly_scan.py \
-  --config config/anomaly_thresholds.yaml
+### With custom thresholds
+```bash
+python scripts/run_anomaly_scan.py --config path/to/thresholds.yaml
 ```
 
-**Single detector:**
-
-```
-PYTHONPATH=. python scripts/run_anomaly_scan.py \
-  --detector bridge_outlier
+### Output to file
+```bash
+python scripts/run_anomaly_scan.py --output alerts.json
 ```
 
-**Dry run (no session opened, good for CI):**
-
-```
-PYTHONPATH=. python scripts/run_anomaly_scan.py --dry-run
-```
-
-**Write output to a file:**
-
-```
-PYTHONPATH=. python scripts/run_anomaly_scan.py \
-  --output /tmp/anomaly-$(date +%F).json
+### Specific detectors only
+```bash
+python scripts/run_anomaly_scan.py --detectors centrality_jump,temporal_burst
 ```
 
-## Output shape
+### Custom Neo4j connection
+```bash
+NEO4J_URI=bolt://localhost:7687 \
+NEO4J_USER=neo4j \
+NEO4J_PASSWORD=secret \
+python scripts/run_anomaly_scan.py
+```
 
+## Interpreting Results
+
+### Alert Structure
 ```json
 {
-  "count": 10,
-  "alerts": [
-    {
-      "alert_id": "a1b2c3d4e5f60718",
-      "pattern": "bridge_outlier",
-      "primary_entity_id": "4:abc123:42",
-      "score": 0.87,
-      "confidence": 0.7,
-      "evidence_path": ["4:abc123:42", "4:abc123:13", "4:abc123:55"],
-      "rationale_id": "BO-CUT-BETWEEN-COMMUNITIES",
-      "created_at": "2026-04-11T12:34:56+00:00",
-      "informational": false
-    },
-    {
-      "alert_id": "388eea4a1dd5beac",
-      "pattern": "temporal_burst",
-      "primary_entity_id": "precondition:temporal_burst",
-      "score": 0.0,
-      "confidence": 0.0,
-      "evidence_path": ["min_history_days=30", "spread_days=3", "total_edges_with_ts=2233"],
-      "rationale_id": "PRECHECK-BLOCKED:temporal spread too narrow: 3 days, need 30",
-      "created_at": "2026-04-11T12:34:56+00:00",
-      "informational": true
+    "id": "a1b2c3d4e5f6",
+    "pattern": "centrality_jump",
+    "score": 0.82,
+    "confidence": 0.65,
+    "evidence_path": ["node:4:abc123"],
+    "explanation": "Node 4:abc123 has 8/10 edges (80%) created in last 30d",
+    "detected_at": "2026-04-11T08:30:00+00:00",
+    "meta": {
+        "total_degree": 10,
+        "recent_edges": 8,
+        "recent_fraction": 0.8,
+        "window_days": 30
     }
-  ]
 }
 ```
 
-**Ranking.** Alerts are ordered by:
+### Score × Confidence Matrix
+| Score | Confidence | Priority | Action |
+|-------|-----------|----------|--------|
+| >0.7 | >0.7 | **CRITICAL** | Investigate immediately |
+| >0.5 | >0.5 | HIGH | Review within 24h |
+| >0.3 | >0.3 | MEDIUM | Queue for analysis |
+| <0.3 | any | LOW | Log for pattern tracking |
 
-1. `informational=False` before `informational=True` (informational
-   always LAST, regardless of score — otherwise a zero-score
-   placeholder would bury real findings),
-2. `score` descending,
-3. `alert_id` ascending (stable tiebreak).
+### Per-Pattern Interpretation
 
-Same-day re-runs produce identical IDs so downstream systems can
-dedupe trivially.
+**centrality_jump**: Check if the node is a real person gaining influence or a data entry artifact. Cross-reference with recent scraper runs.
 
-**Informational alerts.** Three detectors (`centrality_jump`,
-`temporal_burst`, `angkatan_disjoint`) carry data preconditions that
-the live graph may not meet yet. Each emits exactly ONE informational
-alert per blocked run, carrying the precondition stats in
-`evidence_path` as `key=value` strings. See `anomaly-patterns.md` →
-"Data preconditions & informational alerts" for the full precondition
-table.
+**bridge_outlier**: Map the communities on each side. Are they different Kanim offices? Different angkatan clusters? The bridge type determines intelligence value.
 
-**No names.** The output contains only opaque Neo4j element IDs. To
-resolve names, run the Zero-only resolver in a separate process:
+**temporal_burst**: Check the burst date against known events (Pilkada, mutasi announcements, national holidays). Scraper backfills produce false positives.
 
+**angkatan_disjoint_alliance**: The highest-signal detector. A 2-hop path via MARRIED_TO between officials of different angkatan is almost certainly significant. Verify angkatan values are correct (data quality check).
+
+**eigenvector_reverse**: Map the hub's neighborhood. Are the low-centrality neighbors all in the same office? If yes, it may be a normal supervisor. If they span offices, it's worth investigating.
+
+## Tuning Thresholds
+
+### Config file format (YAML)
+```yaml
+centrality_jump:
+  window_days: 30
+  recent_edge_fraction_threshold: 0.40
+  min_degree: 5
+  min_recent_edges: 3
+
+bridge_outlier:
+  min_community_size: 3
+  bridge_score_threshold: 0.5
+
+temporal_burst:
+  window_days: 7
+  ewma_span_days: 30
+  z_threshold: 3.0
+  min_baseline_days: 14
+  edge_types:
+    - MET_WITH
+    - ATTENDED
+    - WON_CONTRACT
+    - PROMOTED_TO
+    - POSTED_TO
+
+angkatan_disjoint_alliance:
+  max_path_length: 3
+  min_angkatan_gap: 1
+  non_official_edge_types:
+    - MARRIED_TO
+    - PARENT_OF
+    - SIBLING_OF
+    - PATRON_OF
+    - KNOWS
+    - FREQUENTS
+    - MEMBER_OF
+
+eigenvector_reverse:
+  top_percentile: 0.10
+  neighbor_max_percentile: 0.25
+  min_neighbors: 2
 ```
-PYTHONPATH=. python osint_nexus/resolver/entity_resolver.py \
-  --from /tmp/anomaly-$(date +%F).json
-```
 
-(This resolver exists elsewhere in the codebase and is **not**
-invoked by `run_anomaly_scan.py` on purpose — separation of concerns
-keeps the scanner safe to log.)
+### Tuning Guidelines
 
-## Interpreting alerts
+1. **Too many alerts?** Raise thresholds:
+   - `recent_edge_fraction_threshold` → 0.60
+   - `z_threshold` → 4.0
+   - `bridge_score_threshold` → 0.8
+   - `min_angkatan_gap` → 3
 
-| `pattern`            | Read it as                                             |
-| -------------------- | ------------------------------------------------------ |
-| `centrality_jump`    | "This node's neighborhood grew unusually fast."        |
-| `bridge_outlier`     | "This node is the ONLY bridge between two factions."   |
-| `temporal_burst`     | "This edge class spiked above baseline in one week."   |
-| `angkatan_disjoint`  | "Two cross-cohort officials are suspiciously close."   |
-| `eigenvector_reverse`| "This hub knows nobody else important (lone handler)." |
+2. **Too few alerts?** Lower thresholds:
+   - `recent_edge_fraction_threshold` → 0.30
+   - `z_threshold` → 2.5
+   - `min_degree` → 3
 
-**Score bands** (across all patterns):
+3. **False positives from data entry?** Add scraper timestamps to edge properties and increase `min_baseline_days`.
 
-- **0.85 – 1.00** — Review same day. Probable real signal.
-- **0.70 – 0.85** — Review within the week.
-- **0.60 – 0.70** — Background noise unless correlated with another
-  detector on the same entity.
-- **< 0.60** — Default `min_score` gates suppress these.
+4. **Missing GDS?** Detectors automatically fall back to pure Cypher. Results may differ slightly from GDS-powered analysis.
 
-**Confidence** is separate from score. It reflects *data quality* for
-the alert:
+## Running Tests
 
-- High confidence (>0.8): large evidence path, dense local graph,
-  abundant historical data.
-- Low confidence (<0.4): sparse graph, few neighbors, short history.
-  Treat the alert as "interesting hypothesis, not actionable".
-
-## Tuning thresholds
-
-Edit `config/anomaly_thresholds.yaml`. Reload on next run — no restart
-needed.
-
-**Guidelines:**
-
-1. **Default to precision.** Lower thresholds produce more alerts but
-   mostly garbage. An analyst reviews every alert by hand.
-2. **Change one parameter at a time.** Run the scan, review 10 top
-   alerts, adjust, re-run. Do not batch-tune.
-3. **Never edit defaults in `thresholds.py`.** Put overrides in the
-   YAML. The defaults are a safe baseline for new machines.
-4. **For dev/test graphs**, lower `min_score` to 0.4 and
-   `min_community_size` / `min_neighbors` to 2 so the detectors fire
-   on synthetic data. DO NOT ship those settings to production.
-
-## Operational safety (OPSEC)
-
-1. **Never run with `--allow-remote` against a shared cloud Neo4j.**
-   OSINT data is Zero-only.
-2. **Never pipe the JSON output to a remote sink** (Telegram, Slack,
-   email, cloud). Write to a local file. Resolve to names on the same
-   machine, still locally. Publish nothing.
-3. **Never add `n.name` to a detector RETURN clause.** If you need
-   to, you are resolving, not detecting — use the separate resolver.
-4. **Never log the full `evidence_path`** at `INFO` level. Use
-   `DEBUG` only and strip it in aggregation sinks.
-5. **Clean up GDS projections** after a scan. The detectors do this
-   automatically on success, but crashed runs may leave stale
-   projections:
-
-   ```
-   cypher-shell -a $NEO4J_URI -u $NEO4J_USER -p $NEO4J_PASSWORD \
-     "CALL gds.graph.list() YIELD graphName RETURN graphName"
-   # For each anomaly_* projection:
-   cypher-shell ... "CALL gds.graph.drop('anomaly_bridge', false)"
-   ```
-
-## Troubleshooting
-
-**"refusing to run against non-local NEO4J_URI"**
-→ Set `NEO4J_URI=bolt://localhost:17687` or pass `--allow-remote`.
-
-**"neo4j driver not installed"**
-→ `pip install "neo4j>=5.20"` in the active venv.
-
-**"dry-run ok (session not opened)"**
-→ You passed `--dry-run`. Drop the flag to actually scan.
-
-**Empty alert list on a non-empty graph**
-→ Either the thresholds are too strict (try lowering `min_score` to
-  0.4 as a sanity check) or the graph has no `Official.angkatan` /
-  GDS plugin missing / no edges with `updated_at`. Check each detector
-  in isolation via `--detector NAME`.
-
-**"detector X blocked: ..." in the INFO log**
-→ A detector's `precheck` found the live graph doesn't meet the
-  precondition (temporal spread, angkatan variance). This is NOT a
-  bug — it's the intended signal that the detector cannot run
-  meaningfully yet. The output carries a single informational alert
-  per blocked detector. Once the upstream scraper populates enough
-  history / variance, the detector unblocks automatically.
-
-**GDS error "graph already exists"**
-→ A previous scan crashed. The current detectors drop the projection
-  at the start of each run (idempotent), so repeat scans should be
-  fine. If you see this error from a foreign projection (`bali_*` or
-  anything not `anomaly_*`), use the cleanup Cypher above.
-
-**CypherSyntaxError "Text cannot be parsed to a Date"**
-→ Your Neo4j stores `r.updated_at` as a datetime string (not a
-  `date`). Make sure any Cypher you write for this module wraps it in
-  `datetime(r.updated_at)` before calling `date.truncate(...)`. The
-  old detector had exactly this bug — fixed as of Apr 2026.
-
-## Testing
-
-```
+```bash
+# Unit tests (no Neo4j required)
 cd apps/osint-nexus
-PYTHONPATH=. pytest tests/anomaly -q
+python -m pytest tests/anomaly/ -v
+
+# Integration tests (requires live Neo4j)
+NEO4J_TEST_URI=bolt://localhost:17687 python -m pytest tests/anomaly/ -v -m neo4j
 ```
 
-All tests run against a hermetic `FakeSession` — no Neo4j required.
-Live-tier tests are marked `@pytest.mark.neo4j` and only run if
-`NEO4J_URL` is set.
+## OPSEC Reminders
 
-```
-NEO4J_URL=bolt://localhost:17687 \
-NEO4J_USER=neo4j \
-NEO4J_PASSWORD=osint-nexus-2026 \
-PYTHONPATH=. pytest tests/anomaly -q -m neo4j
-```
-
-## Follow-up
-
-The `centrality_jump` detector currently uses a structural proxy
-(recent-edge mass) because the graph has no true temporal snapshots.
-A proper implementation would require:
-
-1. Snapshot the graph on a cadence (daily projection dump into
-   SQLite or Parquet).
-2. Run Betweenness / PageRank on each snapshot.
-3. Compare per-node deltas across snapshots.
-
-This is a follow-up item; it would increase signal quality for
-`centrality_jump` without changing the other four detectors.
+- Alerts expose ONLY Neo4j element IDs — never entity names
+- Resolve IDs to names only through the separate access-controlled resolve step
+- Never log, export, or transmit alert data to external systems
+- Keep threshold configs local — they reveal intelligence priorities
+- All scans run locally on Pro/Air — never on cloud infrastructure
