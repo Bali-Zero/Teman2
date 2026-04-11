@@ -1,5 +1,6 @@
 # CLAUDE.md — Mata Garuda Project
 
+> **Read `SYMBIOSIS.md` (monorepo root) first.** Mata Garuda e' un organo dell'organismo Nuzantara. I principi SYMBIOSIS governano tutto.
 > Questo file OVERRIDE il CLAUDE.md root per tutto ciò che riguarda Mata Garuda.
 
 ## 0. Identità del progetto

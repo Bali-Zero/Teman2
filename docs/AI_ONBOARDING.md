@@ -1,7 +1,7 @@
 # AI ONBOARDING GUIDE - Nuzantara Project
 
-**Last Updated:** 2026-03-25
-**Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`.
+**Last Updated:** 2026-04-10
+**Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
 

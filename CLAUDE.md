@@ -1,5 +1,7 @@
 # CLAUDE.md - Nuzantara Project Context for Claude Code
 
+> **Read `SYMBIOSIS.md` first.** It defines the principles that govern this entire ecosystem. If what you're about to do contradicts a principle there, stop.
+
 ## 0. Machine Identification (IMPORTANT)
 
 | Machine | User             | Hostname      | Role                       |
