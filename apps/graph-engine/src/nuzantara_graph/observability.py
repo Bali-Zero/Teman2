@@ -148,9 +148,22 @@ def setup_structlog(log_level: str = "INFO") -> None:
     Call once at application startup in main.py.
     Produces lines like:
       {"event": "node_complete", "node": "retrieve", "duration_ms": 142.3, ...}
+
+    Uses stdlib LoggerFactory so structlog's ``add_logger_name`` processor
+    can resolve ``logger.name`` — ``PrintLoggerFactory`` omits ``.name`` and
+    crashes any ``logger.error(...)`` call with ``AttributeError``.
     """
     import logging
     import sys
+
+    # Configure stdlib logging as the underlying sink. JSON formatting is
+    # done by structlog's JSONRenderer, so the stdlib formatter just has
+    # to pass the message through unchanged.
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=getattr(logging, log_level.upper(), logging.INFO),
+    )
 
     structlog.configure(
         processors=[
@@ -162,10 +175,8 @@ def setup_structlog(log_level: str = "INFO") -> None:
             structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(
-            getattr(logging, log_level.upper(), logging.INFO)
-        ),
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
