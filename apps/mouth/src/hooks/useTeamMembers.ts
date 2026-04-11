@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -32,13 +33,18 @@ export function useTeamMembers() {
 
 export function useTeamMemberOptions() {
   const { data: members = [], ...rest } = useTeamMembers();
-  // Filter out portal "client" role — only show actual team members
-  const options = members
-    .filter((m) => m.role?.toLowerCase() !== "client")
-    .map((m) => ({
-      value: m.email,
-      label: m.full_name || m.name,
-      avatar: m.avatar_url ?? m.avatar ?? undefined,
-    }));
+  // Stabilize reference — without useMemo, filter+map creates a new array every render,
+  // causing infinite re-render loops in consumers that depend on this in useEffect deps
+  const options = useMemo(
+    () =>
+      members
+        .filter((m) => m.role?.toLowerCase() !== "client")
+        .map((m) => ({
+          value: m.email,
+          label: m.full_name || m.name,
+          avatar: m.avatar_url ?? m.avatar ?? undefined,
+        })),
+    [members],
+  );
   return { options, ...rest };
 }

@@ -24,6 +24,7 @@ import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
+import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
 interface ServiceItem {
   code: string;
@@ -58,22 +59,9 @@ export default function NewPracticePage() {
   const [catalog, setCatalog] = useState<ServiceCategory[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
 
-  // Team members for assignment dropdown
-  const ALL_TEAM_MEMBERS = [
-    { email: "zero@balizero.com", name: "Zero" },
-    { email: "asya@balizero.com", name: "Asya" },
-    { email: "adit@balizero.com", name: "Adit" },
-    { email: "ari.firda@balizero.com", name: "Ari" },
-    { email: "damar@balizero.com", name: "Damar" },
-    { email: "krisna@balizero.com", name: "Krishna" },
-    { email: "sahira@balizero.com", name: "Sahira" },
-    { email: "surya@balizero.com", name: "Surya" },
-    { email: "vino@balizero.com", name: "Vino" },
-    { email: "dea@balizero.com", name: "Dea" },
-    { email: "ruslana@balizero.com", name: "Ruslana" },
-  ];
-  const ADMIN_EMAILS = ["zero@balizero.com", "asya@balizero.com", "antonellosiano@gmail.com"];
-  const [assignableMembers, setAssignableMembers] = useState(ALL_TEAM_MEMBERS);
+  // Team members for assignment dropdown (loaded from API)
+  const { options: allTeamOptions } = useTeamMemberOptions();
+  const [assignableMembers, setAssignableMembers] = useState<{ email: string; name: string }[]>([]);
 
   // Form state
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -132,6 +120,12 @@ export default function NewPracticePage() {
     loadCatalog();
   }, []);
 
+  // Map API team options to the format used by the form
+  const allTeamMembers = useMemo(
+    () => allTeamOptions.map((o) => ({ email: o.value, name: o.label })),
+    [allTeamOptions],
+  );
+
   useEffect(() => {
     const initMetrics = async () => {
       try {
@@ -139,12 +133,14 @@ export default function NewPracticePage() {
         userEmail.current = user.email;
         casesMetrics.trackPageView("new", undefined, user.email);
         // Admin sees all team members, others see only themselves
-        if (ADMIN_EMAILS.includes(user.email)) {
-          setAssignableMembers(ALL_TEAM_MEMBERS);
+        if (api.isAdmin()) {
+          setAssignableMembers(allTeamMembers);
         } else {
-          const self = ALL_TEAM_MEMBERS.find((m) => m.email === user.email);
-          setAssignableMembers(self ? [self] : []);
-          setFormData((prev) => ({ ...prev, assigned_to: user.email }));
+          const self = allTeamMembers.find((m) => m.email === user.email);
+          setAssignableMembers(self ? [self] : allTeamMembers);
+          if (self) {
+            setFormData((prev) => ({ ...prev, assigned_to: user.email }));
+          }
         }
       } catch (err) {
         logger.error(
@@ -154,8 +150,10 @@ export default function NewPracticePage() {
         );
       }
     };
-    initMetrics();
-  }, []);
+    if (allTeamMembers.length > 0) {
+      initMetrics();
+    }
+  }, [allTeamMembers]);
 
   useEffect(() => {
     const preselectedId = searchParams?.get("client_id");
@@ -307,28 +305,40 @@ export default function NewPracticePage() {
     try {
       const user = await api.getProfile();
 
-      const existingPractices = await api.crm.getClientPractices(
-        result.data.client_id,
-      );
-      const duplicateCheck = existingPractices.find(
-        (p) =>
-          p.practice_type_code === result.data.practice_type_code &&
-          !["completed", "cancelled"].includes(p.status),
-      );
+      // Duplicate check — may fail with 403 if RBAC denies access (non-admin
+      // creating process for a client assigned to someone else). Skip check
+      // on failure rather than blocking creation entirely.
+      try {
+        const existingPractices = await api.crm.getClientPractices(
+          result.data.client_id,
+        );
+        const duplicateCheck = existingPractices.find(
+          (p) =>
+            p.practice_type_code === result.data.practice_type_code &&
+            !["completed", "cancelled"].includes(p.status),
+        );
 
-      if (duplicateCheck) {
-        toast.error(
-          "Duplicate Process",
-          `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
-        );
-        casesMetrics.trackError(
-          "Duplicate Process Blocked",
-          `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
-          "CasesNewPage",
-          duplicateCheck.id,
-          user.email,
-        );
-        return;
+        if (duplicateCheck) {
+          toast.error(
+            "Duplicate Process",
+            `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
+          );
+          casesMetrics.trackError(
+            "Duplicate Process Blocked",
+            `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
+            "CasesNewPage",
+            duplicateCheck.id,
+            user.email,
+          );
+          return;
+        }
+      } catch {
+        // RBAC 403 or network error — skip duplicate check, proceed with creation
+        logger.warn("Duplicate check skipped — could not fetch client practices", {
+          component: "NewProcess",
+          action: "duplicateCheck",
+          itemId: String(result.data.client_id),
+        });
       }
 
       const backendData: CreatePracticeParams = {

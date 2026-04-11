@@ -243,7 +243,7 @@ async def get_news_by_slug(
                 """
                 UPDATE news_items
                 SET view_count = view_count + 1
-                WHERE slug = $1
+                WHERE slug = $1 AND status = 'approved'
                 RETURNING id, title, slug, summary, content, source, source_url,
                           category, priority, status, image_url, view_count,
                           published_at, created_at, ai_summary, ai_tags

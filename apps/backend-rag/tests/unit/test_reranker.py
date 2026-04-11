@@ -70,24 +70,24 @@ async def test_rerank_logic():
             ]
         }
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.post.return_value = mock_response
-            # Support async context manager
-            MockClient.return_value.__aenter__.return_value = mock_client_instance
+        # Inject mock client directly into reranker (persistent client pattern)
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post.return_value = mock_response
+        mock_client_instance.is_closed = False
+        reranker._client = mock_client_instance
 
-            reranked = await reranker.rerank(query, docs, top_k=3)
+        reranked = await reranker.rerank(query, docs, top_k=3)
 
-            assert len(reranked) == 3
-            assert reranked[0]["id"] == 2
-            assert reranked[0]["score"] == 0.9
-            assert reranked[0]["rerank_score"] == 0.9
+        assert len(reranked) == 3
+        assert reranked[0]["id"] == 2
+        assert reranked[0]["score"] == 0.9
+        assert reranked[0]["rerank_score"] == 0.9
 
-            assert reranked[1]["id"] == 3
-            assert reranked[1]["score"] == 0.5
+        assert reranked[1]["id"] == 3
+        assert reranked[1]["score"] == 0.5
 
-            assert reranked[2]["id"] == 1
-            assert reranked[2]["score"] == 0.1
+        assert reranked[2]["id"] == 1
+        assert reranked[2]["score"] == 0.1
 
 
 @pytest.mark.asyncio
@@ -103,16 +103,18 @@ async def test_rerank_api_error():
         # Mock API error
         mock_response = MagicMock()
         mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.post.return_value = mock_response
-            MockClient.return_value.__aenter__.return_value = mock_client_instance
+        # Inject mock client directly into reranker (persistent client pattern)
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post.return_value = mock_response
+        mock_client_instance.is_closed = False
+        reranker._client = mock_client_instance
 
-            # Should return original docs
-            result = await reranker.rerank("query", docs)
-            assert len(result) == 2
-            assert result == docs
+        # Should return original docs
+        result = await reranker.rerank("query", docs)
+        assert len(result) == 2
+        assert result == docs
 
 
 @pytest.mark.asyncio
@@ -129,10 +131,11 @@ async def test_rerank_empty_results():
         mock_response.status_code = 200
         mock_response.json.return_value = {"results": []}
 
-        with patch("httpx.AsyncClient") as MockClient:
-            mock_client_instance = AsyncMock()
-            mock_client_instance.post.return_value = mock_response
-            MockClient.return_value.__aenter__.return_value = mock_client_instance
+        # Inject mock client directly into reranker (persistent client pattern)
+        mock_client_instance = AsyncMock()
+        mock_client_instance.post.return_value = mock_response
+        mock_client_instance.is_closed = False
+        reranker._client = mock_client_instance
 
-            result = await reranker.rerank("query", docs)
-            assert result == docs
+        result = await reranker.rerank("query", docs)
+        assert result == docs

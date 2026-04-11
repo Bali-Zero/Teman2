@@ -151,6 +151,24 @@ def register_workflow(name: Optional[str] = None, func_name: Optional[str] = Non
     return registry.register("workflow", name=name, func_name=func_name)
 
 
+def get_agent(display_name: str) -> Optional[object]:
+    """Retrieve an instantiated Agent by its display name.
+
+    Looks up the agent factory in the registry, calls it, and returns
+    the Agent instance. Returns None if not found.
+
+    Args:
+        display_name: The agent's display name (e.g. "Regulation Watcher")
+
+    Returns:
+        Agent instance or None
+    """
+    info = registry.agents_info.get(display_name)
+    if info is None:
+        return None
+    return info.func()
+
+
 # ─── Recursive auto-import (chiamato da agents/__init__.py) ──────────────────
 
 
