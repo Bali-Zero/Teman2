@@ -53,8 +53,10 @@ HierarchicalRetriever
 | Claim extraction | JSON field traversal | spaCy NLP | Data is structured JSONL, not free text. Avoids 30MB dep. Deterministic. |
 | Embedding model | paraphrase-multilingual-MiniLM-L12-v2 | all-MiniLM-L6-v2 | Better Indonesian support. 384 dims same as fallback. |
 | Collection | kb_politics_hier_v1 | Extend politics_id | Separate collection allows A/B comparison with flat baseline. |
-| ID generation | MD5(source_path\|record_id\|chunk_type\|offset) | UUID | Deterministic → idempotent ingest. |
+| ID generation | MD5(record_id\|chunk_type\|index) | UUID | Deterministic, path-independent → idempotent ingest even if files move. |
 | Score aggregation | Sum of child scores | Max, mean | Sum rewards records with multiple matching claims. |
+| Hybrid search | Dense + BM25 sparse + RRF | Dense only | BM25 fixes exact keyword matching for dates, abbreviations, names. |
+| Sparse encoder | BM25 (pure Python, no deps) | SPLADE, learned sparse | Zero dependency, deterministic, tiny vocab (165 terms for seed corpus). |
 
 ## Ingest
 
@@ -101,44 +103,44 @@ PYTHONPATH=. python scripts/run_hier_eval.py
 
 ### Results (2026-04-11)
 
-| Metric | All (20) | Hard labels (16) |
-|--------|----------|-------------------|
-| Mean nDCG@5 | 0.6775 | **0.7555** |
-| Mean Recall@5 | 0.7500 | **0.8125** |
+| Metric | Dense only | **Hybrid (Dense+BM25)** |
+|--------|:----------:|:-----------------------:|
+| Mean nDCG@5 (hard) | 0.7555 | **0.9410** |
+| Mean Recall@5 (hard) | 0.8125 | **0.9844** |
+| Mean nDCG@5 (all) | 0.6775 | **0.8353** |
+| Mean Recall@5 (all) | 0.7500 | **0.8875** |
 
-### Per-query breakdown
+### Per-query breakdown (hybrid)
 
-| Query | nDCG@5 | Recall@5 | Label |
-|-------|--------|----------|-------|
-| Siapa presiden Indonesia saat ini? | 0.500 | 1.000 | HARD |
-| Kapan Jokowi menjadi presiden? | 1.000 | 1.000 | HARD |
-| Partai apa yang didirikan Prabowo? | 0.920 | 1.000 | HARD |
-| Hasil pemilu presiden 2024 | 1.000 | 1.000 | HARD |
-| Siapa yang memimpin PDI-P? | 0.387 | 0.500 | HARD |
-| Megawati pernah menjabat apa? | 1.000 | 1.000 | HARD |
-| Pemilu presiden Indonesia 2014 | 0.000 | 0.000 | HARD |
-| SBY partai apa? | 0.920 | 1.000 | HARD |
-| Gubernur DKI Jakarta sebelum Anies | 0.387 | 0.500 | HARD |
-| Berapa persen suara Prabowo 2024? | 0.613 | 0.500 | HARD |
-| Partai Golkar didirikan tahun berapa? | 1.000 | 1.000 | HARD |
-| Who won the 2019 election? (EN) | 1.000 | 1.000 | HARD |
-| Daftar presiden sejak 2001 | 0.442 | 0.500 | HARD |
-| Jusuf Kalla menjabat sebagai apa? | 1.000 | 1.000 | HARD |
-| Perbandingan suara 2004 vs 2009 | 0.920 | 1.000 | HARD |
-| Ganjar Pranowo gubernur mana? | 1.000 | 1.000 | HARD |
+| Query | nDCG@5 | Recall@5 | Dense nDCG | Delta |
+|-------|--------|----------|:----------:|:-----:|
+| Siapa presiden Indonesia saat ini? | 0.631 | 1.000 | 0.500 | +0.13 |
+| Kapan Jokowi menjadi presiden? | 1.000 | 1.000 | 1.000 | = |
+| Partai apa yang didirikan Prabowo? | 1.000 | 1.000 | 0.920 | +0.08 |
+| Hasil pemilu presiden 2024 | 1.000 | 1.000 | 1.000 | = |
+| Siapa yang memimpin PDI-P? | 0.850 | 1.000 | 0.387 | **+0.46** |
+| Megawati pernah menjabat apa? | 1.000 | 1.000 | 1.000 | = |
+| Pemilu presiden Indonesia 2014 | 1.000 | 1.000 | 0.000 | **+1.00** |
+| SBY partai apa? | 1.000 | 1.000 | 0.920 | +0.08 |
+| Gubernur DKI Jakarta sebelum Anies | 0.920 | 1.000 | 0.387 | **+0.53** |
+| Berapa persen suara Prabowo 2024? | 0.850 | 1.000 | 0.613 | +0.24 |
+| Partai Golkar didirikan tahun berapa? | 1.000 | 1.000 | 1.000 | = |
+| Who won the 2019 election? (EN) | 1.000 | 1.000 | 1.000 | = |
+| Jusuf Kalla menjabat sebagai apa? | 1.000 | 1.000 | 1.000 | = |
+| Perbandingan suara 2004 vs 2009 | 1.000 | 1.000 | 0.920 | +0.08 |
+| Ganjar Pranowo gubernur mana? | 1.000 | 1.000 | 1.000 | = |
+| Daftar presiden sejak 2001 | 0.805 | 0.750 | 0.442 | +0.36 |
 
-**Caveat:** 4 weak-label queries (LHKPN, mutasi, jadwal, koalisi) have uncertain or empty ground truth. Their inclusion in "all" metrics drags down the average. Hard-label metrics are more reliable.
+**Key wins from hybrid:** Pemilu 2014 (0.0→1.0), PDI-P leadership (0.39→0.85), DKI governor (0.39→0.92). BM25 fixes exact keyword matching for dates and names that dense embeddings miss.
+
+**Caveat:** 4 weak-label queries (LHKPN, mutasi, jadwal, koalisi) have uncertain or empty ground truth. Hard-label metrics are more reliable.
 
 ## Known gaps
 
-1. **Pemilu 2014 query failure (nDCG=0.0):** The query "Pemilu presiden Indonesia 2014" retrieved persons (Jokowi, Prabowo) instead of the election record. This happens because child claims for persons mention "2014" in office dates, creating a stronger aggregate signal than the election's claim children. Fix: boost election record_type children when query contains "pemilu" keywords.
+1. **List queries degrade gracefully:** "Daftar presiden sejak 2001" retrieves 3/4 presidents (Recall=0.75). The fourth scores lower in aggregate because fewer claims match the broad query. Resolves naturally as corpus grows.
 
-2. **Small corpus bias:** With only 21 records and 86 vectors, cosine similarity has limited discriminating power. Precision will improve as the corpus grows. The hierarchical structure is designed to scale — the parent-child ratio (1:3.8) should hold as data grows.
+2. **Small corpus:** 21 records, 86 vectors. The parent-child ratio (1:3.8) and BM25 vocab (165 terms) will scale, but IDF weights become more meaningful with more documents.
 
 ## Follow-up
 
-1. **Cross-entity resolution:** Claims reference `party_id` and `person_id` as raw IDs (e.g., "party:id:pdip"). Resolving these to human names in claim text would improve semantic matching for queries that use party/person names.
-
-2. **Hybrid search (BM25 + dense):** Adding BM25 sparse vectors would help with exact keyword matching (e.g., specific dates, KBLI codes). The Qdrant collection could be upgraded to named vectors (`dense` + `sparse`) following the `_hybrid` pattern used by other collections.
-
-3. **Query-type routing:** Route queries containing "pemilu", "pilkada", "pilpres" keywords to election records with a filter boost, similar to how the RAG orchestrator handles intent classification.
+1. **Cross-entity resolution:** Claims reference `party_id` and `person_id` as raw IDs (e.g., "party:id:pdip"). Resolving to human names would improve semantic matching.
