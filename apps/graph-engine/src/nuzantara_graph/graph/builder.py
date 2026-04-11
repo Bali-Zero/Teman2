@@ -15,7 +15,11 @@ from __future__ import annotations
 from langgraph.graph import END, StateGraph
 
 from nuzantara_graph.graph.constants import NodeName, RouteDecision
-from nuzantara_graph.graph.router import route_after_understand, route_after_grade
+from nuzantara_graph.graph.router import (
+    route_after_grade,
+    route_after_understand,
+    route_after_visa_subgraph,
+)
 from nuzantara_graph.graders import (
     make_retrieval_grader,
     make_reasoning_grader,
@@ -134,9 +138,21 @@ def build_graph(services: Services | None = None) -> StateGraph:
 
     # --- Subgraph exits → reason ---
     graph.add_edge(NodeName.SUBGRAPH_COMPANY, NodeName.REASON)
-    graph.add_edge(NodeName.SUBGRAPH_VISA, NodeName.REASON)
     graph.add_edge(NodeName.SUBGRAPH_PROPERTY, NodeName.REASON)
     graph.add_edge(NodeName.SUBGRAPH_TAX, NodeName.REASON)
+
+    # --- Visa subgraph exit is conditional: the multi-step planner may
+    #     already have produced a fully-cited answer, in which case we
+    #     skip REASON/SYNTHESIZE and go straight to the hallucination
+    #     grader as the final safety check.
+    graph.add_conditional_edges(
+        NodeName.SUBGRAPH_VISA,
+        route_after_visa_subgraph,
+        {
+            "direct": NodeName.GRADE_HALLUCINATION,
+            "reason": NodeName.REASON,
+        },
+    )
 
     # --- Tools → reason ---
     graph.add_edge(NodeName.TOOLS, NodeName.REASON)

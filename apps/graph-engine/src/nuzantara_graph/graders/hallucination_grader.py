@@ -59,6 +59,29 @@ _COMMON_WORDS = {
     "yang", "dari", "this", "that", "have", "will", "from", "also",
 }
 
+# System-fallback sentinel prefixes. When an answer begins with one of
+# these, it is an explicit escalation message produced by a fail-fast or
+# planner fallback path — NOT a real answer that needs grounding. The
+# grader short-circuits to a neutral PASS so downstream consumers see a
+# clean decision instead of a fake 1.0 score (from keyword overlap on
+# generic words like "cannot" and "rephrase") or a fake FAIL (from the
+# no-sources-found branch).
+_FALLBACK_PREFIXES = (
+    "i cannot produce a fully-cited answer",
+    "i apologize, but i was unable to generate",
+    "i wasn't able to provide a reliable answer",
+    "i couldn't find relevant information",
+    "i found some information but couldn't put together",
+)
+
+
+def _is_system_fallback(answer: str) -> bool:
+    """True if the answer is a known fallback/escalation message."""
+    if not answer:
+        return False
+    normalized = answer.strip().lower()
+    return any(normalized.startswith(prefix) for prefix in _FALLBACK_PREFIXES)
+
 
 class HallucinationGrader(BaseGrader):
     grader_name = "hallucination"
@@ -76,6 +99,14 @@ class HallucinationGrader(BaseGrader):
 
         if not answer or not answer.strip():
             return 1.0, "No answer to check for hallucination", ""
+
+        # System-fallback short-circuit: explicit escalation messages are
+        # not real answers — they carry no factual claims, so there is
+        # nothing to hallucinate. Record a neutral PASS with a clear
+        # reason so downstream observability shows the decision was
+        # intentional, not a heuristic fluke.
+        if _is_system_fallback(answer):
+            return 1.0, "System fallback / escalation message — no claims to verify", ""
 
         if not docs and not kg_entities:
             return 0.1, "No source material to verify answer against", ""
