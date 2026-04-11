@@ -21,6 +21,7 @@ except ImportError:
     _REPORTLAB_AVAILABLE = False
     colors = None  # type: ignore[assignment]
     A4 = (595.27, 841.89)  # type: ignore[assignment]
+    cm = 28.346456692913385  # type: ignore[assignment]  # 1cm in points (reportlab value)
 
 from backend.app.utils.logging_utils import get_logger
 
