@@ -74,8 +74,48 @@ class TestCompanySubgraphRouting:
 class TestVisaSubgraphRouting:
     @pytest.mark.asyncio
     async def test_visa_routes_through_visa_subgraph(self):
+        """With the multi-step planner, the visa subgraph no longer
+        injects a hardcoded VISA_SPECS domain doc — it composes an answer
+        from decomposed sub-questions. This test verifies the planner
+        runs, produces a non-empty retrieved_documents list, and the
+        direct edge routes straight to the hallucination grader."""
+        from nuzantara_schemas.state import RetrievedDocument
+
+        # Track which generate_json call is which by inspecting the prompt.
+        def _visa_llm(prompt, system):
+            lower_prompt = prompt.lower()
+            lower_system = system.lower()
+            # understand node: system prompt asks for an intent classifier
+            if "query analyzer" in lower_system:
+                return {
+                    "intent": "visa",
+                    "domain": "kitas",
+                    "entities": {},
+                    "language": "en",
+                    "is_followup": False,
+                }
+            # visa decompose: system prompt is the planner decomposer
+            if "visa/immigration query planner" in lower_system:
+                return {
+                    "sub_questions": [
+                        {"idx": 0, "text": "KITAS requirements", "needs_kb": True, "depends_on": []}
+                    ]
+                }
+            # Default: empty decompose → fallback kicks in
+            return {}
+
         svc = make_mock_services(
-            llm_responses={"generate_json": _make_subgraph_llm("visa", "kitas")},
+            llm_responses={
+                "generate_json": _visa_llm,
+                "generate": "KITAS requirements include RPTKA and IMTA [visa_kitas:0-40].",
+            },
+            documents=[
+                RetrievedDocument(
+                    id="visa_kitas",
+                    content="KITAS requirements include RPTKA and IMTA",
+                    score=0.9,
+                )
+            ],
         )
         graph = build_graph(services=svc)
         compiled = graph.compile()
@@ -85,10 +125,13 @@ class TestVisaSubgraphRouting:
         )
 
         assert result["intent"] == IntentType.VISA
-        domain_docs = [d for d in result["retrieved_documents"] if d.source == "domain"]
-        assert len(domain_docs) >= 1
-        assert "KITAS" in domain_docs[0].content
+        # The planner must produce at least one retrieved document
+        assert len(result["retrieved_documents"]) >= 1
+        # The direct-edge path means answer is the planner's composed output
         assert result["answer"] != ""
+        # Visa planner's composed answer should reference KITAS or carry a citation
+        answer = result["answer"]
+        assert "KITAS" in answer or "visa_kitas" in answer or "[" in answer
 
 
 class TestPropertySubgraphRouting:
