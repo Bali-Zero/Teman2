@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 _TRUSTED_TOOL_NAMES: frozenset[str] = frozenset(
     {
         "calculator",
+        "crm_query",
         "get_pricing",
         "team_knowledge",
         "timesheet",
@@ -572,10 +573,11 @@ class ReasoningEngine:
             set_span_attribute("tools_executed", tool_execution_counter.get("count", 0))
 
         # ==================== TRUSTED TOOLS CHECK ====================
-        # Check if trusted tools (calculator, pricing, team) were used successfully
+        # Check if trusted tools (calculator, pricing, team, crm) were used successfully
         # These tools provide their own evidence and don't need KB sources
         # MOVED BEFORE EVIDENCE SCORE: If trusted tools used, skip keyword-based scoring
-        trusted_tools_used = False
+        # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM)
+        trusted_tools_used = getattr(state, "trusted_tools_used", False)
         trusted_tool_names = _TRUSTED_TOOL_NAMES
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):
@@ -1303,6 +1305,11 @@ Do not invent information. If the context is insufficient, admit it.
                 ):
                     logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
                     break
+                elif tool_call.tool_name == "crm_query" and len(tool_result) > 10:
+                    # CRM returns structured JSON data — one call is always enough
+                    logger.info("🚀 [Stream Early Exit] CRM data retrieved, skipping extra steps.")
+                    state.trusted_tools_used = True
+                    break
                 elif is_complex_query and tool_call.tool_name == "vector_search":
                     logger.info(
                         "🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)",
@@ -1328,7 +1335,8 @@ Do not invent information. If the context is insufficient, admit it.
         # ==================== TRUSTED TOOLS CHECK (BEFORE EVIDENCE) ====================
         # Check if trusted tools were used successfully BEFORE calculating evidence score
         # This ensures RAG-native behavior: tool success = high evidence
-        trusted_tools_used = False
+        # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM)
+        trusted_tools_used = getattr(state, "trusted_tools_used", False)
         trusted_tool_names = _TRUSTED_TOOL_NAMES
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):

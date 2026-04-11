@@ -107,11 +107,12 @@ async def verify_client_access(
         client_id: The client ID to check
         current_user: User dictionary from authentication
         conn: Database connection
-        allow_assigned: If True, allows access to assigned team members (not just admins)
+        allow_assigned: If True, all authenticated users can access the client
+                        (consistent with can_view_all_clients policy).
+                        If False, only admins can access.
 
     Returns:
         tuple: (has_access, assigned_to_email or None)
-               has_access is True if user is admin OR (allow_assigned AND is the assigned user)
 
     Raises:
         HTTPException: 403 if access denied, 404 if client not found
@@ -131,7 +132,7 @@ async def verify_client_access(
             raise HTTPException(status_code=404, detail="Client not found")
         return True, row["assigned_to"]
 
-    # Non-admins: fetch client and check assignment
+    # Non-admins: fetch client and check access
     row = await conn.fetchrow(
         "SELECT id, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
         client_id,
@@ -142,17 +143,19 @@ async def verify_client_access(
 
     assigned_to = row["assigned_to"]
 
-    # If allowing assigned access, check if user is the assigned team member
-    if allow_assigned and assigned_to and assigned_to.lower() == user_email:
+    # All authenticated team members can view any client (consistent with
+    # can_view_all_clients policy). Unassigned clients must be accessible
+    # so team members can self-assign.
+    if allow_assigned:
         return True, assigned_to
 
-    # Access denied
+    # Access denied (only reachable if allow_assigned=False)
     logger.warning(
         f"RBAC: User {user_email} denied access to client {client_id} (assigned_to: {assigned_to})",
     )
     raise HTTPException(
         status_code=403,
-        detail="You don't have permission to access this client. Only admins or the assigned team member can access it.",
+        detail="You don't have permission to access this client.",
     )
 
 

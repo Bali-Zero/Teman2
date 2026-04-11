@@ -1,47 +1,28 @@
-"""DNA loader with SHA-256 integrity verification.
+# cell/core/dna.py
+"""DNA loader — thin bridge to cell-core.
 
-The DNA is CELL's immutable core — rules that cannot be modified
-by CELL itself. Every pulse cycle verifies DNA integrity.
+Re-exports DNALoader and DNAIntegrityError from cell_core.safety,
+preserving CELL-specific behavior: default path from settings, load() returns dict.
 """
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+from cell_core.safety import DNAIntegrityError, DNALoader as _CoreLoader
+
 from cell.core.config import settings
 
 
-class DNAIntegrityError(Exception):
-    """Raised when DNA file has been tampered with."""
-
-
-class DNALoader:
-    """Loads and verifies the immutable DNA file."""
+class DNALoader(_CoreLoader):
+    """CELL-compatible DNALoader with default path and dict-returning load()."""
 
     def __init__(self, path: Path | None = None) -> None:
-        self._path = path or settings.dna_path
-
-    def raw_bytes(self) -> bytes:
-        """Read DNA file as raw bytes (for hashing)."""
-        return self._path.read_bytes()
+        resolved = str(path or settings.dna_path)
+        super().__init__(path=resolved)
 
     def load(self) -> dict[str, Any]:
-        """Load and parse DNA JSON."""
+        """Load and parse DNA JSON as a raw dict (CELL-specific)."""
         return json.loads(self.raw_bytes())
 
-    def compute_hash(self) -> str:
-        """Compute SHA-256 hash of DNA file."""
-        return hashlib.sha256(self.raw_bytes()).hexdigest()
 
-    def verify_integrity(self, expected_hash: str) -> bool:
-        """Verify DNA file has not been tampered with."""
-        return self.compute_hash() == expected_hash
-
-    def verify_or_raise(self, expected_hash: str) -> dict[str, Any]:
-        """Load DNA, verify integrity, raise if tampered."""
-        if not self.verify_integrity(expected_hash):
-            raise DNAIntegrityError(
-                f"DNA tampered! Expected {expected_hash[:16]}..., "
-                f"got {self.compute_hash()[:16]}..."
-            )
-        return self.load()
+__all__ = ["DNALoader", "DNAIntegrityError"]
