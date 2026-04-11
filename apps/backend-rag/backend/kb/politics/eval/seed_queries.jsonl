@@ -1,0 +1,20 @@
+{"query": "Siapa presiden Indonesia saat ini?", "relevant_doc_ids": ["person:id:prabowo_subianto"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Kapan Jokowi menjadi presiden?", "relevant_doc_ids": ["person:id:joko_widodo"], "weak_label": false, "query_type": "temporal", "language": "id"}
+{"query": "Partai apa yang didirikan Prabowo?", "relevant_doc_ids": ["party:id:gerindra", "person:id:prabowo_subianto"], "weak_label": false, "query_type": "relation", "language": "id"}
+{"query": "Hasil pemilu presiden 2024", "relevant_doc_ids": ["election:id-2024-presiden"], "weak_label": false, "query_type": "event", "language": "id"}
+{"query": "Siapa yang memimpin PDI-P?", "relevant_doc_ids": ["party:id:pdip", "person:id:megawati_soekarnoputri"], "weak_label": false, "query_type": "relation", "language": "id"}
+{"query": "Megawati pernah menjabat apa?", "relevant_doc_ids": ["person:id:megawati_soekarnoputri"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Pemilu presiden Indonesia 2014", "relevant_doc_ids": ["election:id-2014-presiden"], "weak_label": false, "query_type": "event", "language": "id"}
+{"query": "SBY partai apa?", "relevant_doc_ids": ["person:id:susilo_bambang_yudhoyono", "party:id:demokrat"], "weak_label": false, "query_type": "relation", "language": "id"}
+{"query": "Gubernur DKI Jakarta sebelum Anies", "relevant_doc_ids": ["person:id:joko_widodo", "person:id:anies_baswedan"], "weak_label": false, "query_type": "temporal", "language": "id"}
+{"query": "Berapa persen suara Prabowo di pemilu 2024?", "relevant_doc_ids": ["election:id-2024-presiden", "person:id:prabowo_subianto"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Partai Golkar didirikan tahun berapa?", "relevant_doc_ids": ["party:id:golkar"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Who won the 2019 Indonesian presidential election?", "relevant_doc_ids": ["election:id-2019-presiden"], "weak_label": false, "query_type": "event", "language": "en"}
+{"query": "Koalisi partai pendukung Jokowi", "relevant_doc_ids": ["person:id:joko_widodo", "party:id:pdip"], "weak_label": true, "query_type": "relation", "language": "id"}
+{"query": "Jusuf Kalla menjabat sebagai apa?", "relevant_doc_ids": ["person:id:jusuf_kalla"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Perbandingan suara pemilu 2004 dan 2009", "relevant_doc_ids": ["election:id-2004-presiden", "election:id-2009-presiden"], "weak_label": false, "query_type": "comparison", "language": "id"}
+{"query": "Ganjar Pranowo gubernur mana?", "relevant_doc_ids": ["person:id:ganjar_pranowo"], "weak_label": false, "query_type": "factual", "language": "id"}
+{"query": "Daftar presiden Indonesia sejak 2001", "relevant_doc_ids": ["person:id:megawati_soekarnoputri", "person:id:susilo_bambang_yudhoyono", "person:id:joko_widodo", "person:id:prabowo_subianto"], "weak_label": false, "query_type": "list", "language": "id"}
+{"query": "LHKPN pejabat tinggi negara", "relevant_doc_ids": [], "weak_label": true, "query_type": "compliance", "language": "id"}
+{"query": "Mutasi gubernur 2023", "relevant_doc_ids": [], "weak_label": true, "query_type": "mutation", "language": "id"}
+{"query": "Jadwal pelantikan presiden 2024", "relevant_doc_ids": ["person:id:prabowo_subianto", "election:id-2024-presiden"], "weak_label": true, "query_type": "schedule", "language": "id"}
