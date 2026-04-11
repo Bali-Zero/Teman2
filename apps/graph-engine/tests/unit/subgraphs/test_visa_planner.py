@@ -608,3 +608,71 @@ class TestCompose:
         llm = MockLLMGateway(responses={"generate": "I don't know anything."})
         answer = await compose("q", [], [], llm)
         assert "cannot produce" in answer.lower() or "rephrase" in answer.lower()
+
+
+@pytest.mark.unit
+class TestMakeVisaSubgraph:
+    @pytest.mark.asyncio
+    async def test_end_to_end_returns_contract(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa import make_visa_subgraph
+        from nuzantara_schemas.state import GraphState, RetrievedDocument
+
+        svc = make_mock_services(
+            documents=[
+                RetrievedDocument(id="kitas", content="KITAS duration info 12 months", score=0.9)
+            ],
+            llm_responses={
+                "generate_json": {
+                    "sub_questions": [
+                        {"idx": 0, "text": "What is KITAS?", "needs_kb": True, "depends_on": []}
+                    ]
+                },
+                "generate": "KITAS is valid for 12 months [kitas:0-30].",
+            },
+        )
+        node = make_visa_subgraph(svc)
+        state = GraphState(query="What is KITAS?", intent="visa")
+        result = await node(state)
+
+        assert result["current_node"] == "subgraph_visa"
+        assert "retrieved_documents" in result
+        assert "kg_entities" in result
+        assert "kg_relationships" in result
+        assert "domain" in result
+
+    @pytest.mark.asyncio
+    async def test_end_to_end_b211_rewrite_in_docs(self):
+        from helpers.mocks import make_mock_services
+
+        from nuzantara_graph.subgraphs.visa import make_visa_subgraph
+        from nuzantara_schemas.state import GraphState, RetrievedDocument
+
+        svc = make_mock_services(
+            documents=[
+                RetrievedDocument(id="visa_types", content="KITAS/ITAS info", score=0.9)
+            ],
+            llm_responses={
+                "generate_json": {
+                    "sub_questions": [
+                        {
+                            "idx": 0,
+                            "text": "What replaced the old visit visa?",
+                            "needs_kb": True,
+                            "depends_on": [],
+                        }
+                    ]
+                },
+                "generate": (
+                    "C-series e-visas replaced the old visit visa "
+                    "[SYSTEM:b211_rewrite:0-250]."
+                ),
+            },
+        )
+        node = make_visa_subgraph(svc)
+        state = GraphState(query="Can I still apply for a B211 visa?", intent="visa")
+        result = await node(state)
+
+        doc_ids = {d.id for d in result["retrieved_documents"]}
+        assert "SYSTEM:b211_rewrite" in doc_ids
