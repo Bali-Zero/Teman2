@@ -1,22 +1,15 @@
 """Qdrant connectivity test — verifies the VectorStore can reach Qdrant."""
 
-import socket
-
 import pytest
 
 from nuzantara_graph.services.vector_store import VectorStore
+from tests.connectivity.conftest import QDRANT_AVAILABLE
 
 
-def _port_open(host: str, port: int) -> bool:
-    try:
-        s = socket.create_connection((host, port), timeout=1)
-        s.close()
-        return True
-    except (OSError, ConnectionRefusedError):
-        return False
-
-
-@pytest.mark.skipif(not _port_open("localhost", 6333), reason="Qdrant not running on :6333")
+@pytest.mark.skipif(
+    not QDRANT_AVAILABLE,
+    reason="Qdrant not reachable at http://localhost:6333",
+)
 class TestQdrantConnectivity:
 
     @pytest.mark.asyncio

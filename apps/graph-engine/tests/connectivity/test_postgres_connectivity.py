@@ -1,22 +1,15 @@
 """PostgreSQL connectivity test — verifies the KGStore can reach PostgreSQL."""
 
-import socket
-
 import pytest
 
 from nuzantara_graph.services.kg_store import KGStore
+from tests.connectivity.conftest import POSTGRES_AVAILABLE
 
 
-def _port_open(host: str, port: int) -> bool:
-    try:
-        s = socket.create_connection((host, port), timeout=1)
-        s.close()
-        return True
-    except (OSError, ConnectionRefusedError):
-        return False
-
-
-@pytest.mark.skipif(not _port_open("localhost", 5432), reason="PostgreSQL not running on :5432")
+@pytest.mark.skipif(
+    not POSTGRES_AVAILABLE,
+    reason="PostgreSQL not reachable with test credentials at postgresql://postgres:postgres@localhost:5432/nuzantara_v6",
+)
 class TestPostgresConnectivity:
 
     @pytest.mark.asyncio
