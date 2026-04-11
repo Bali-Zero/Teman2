@@ -13,7 +13,7 @@ export default defineConfig({
     hookTimeout: 20000,
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html", "lcov"],
+      reporter: ["text", "json", "json-summary", "html", "lcov"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/test/**",
