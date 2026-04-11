@@ -1,11 +1,14 @@
-"""Tests for the visa/immigration subgraph."""
+"""Tests for the visa/immigration subgraph — legacy identification helpers.
+
+The heavy end-to-end planner behavior now lives in test_visa_planner.py.
+This file preserves only the _identify_visa_type regression tests.
+"""
 
 import pytest
 
-from nuzantara_graph.subgraphs.visa import make_visa_subgraph, _identify_visa_type
+from nuzantara_graph.subgraphs.visa.specs import VISA_SPECS, _identify_visa_type
 from nuzantara_schemas.domain.visa import VisaType
 from nuzantara_schemas.state import GraphState
-from helpers.mocks import make_mock_services
 
 
 class TestIdentifyVisaType:
@@ -37,50 +40,8 @@ class TestIdentifyVisaType:
         state = GraphState(query="What are the visa requirements?")
         assert _identify_visa_type(state) == VisaType.KITAS
 
-
-class TestVisaSubgraphNode:
-    @pytest.mark.asyncio
-    async def test_produces_domain_document(self):
-        svc = make_mock_services()
-        node = make_visa_subgraph(svc)
-        state = GraphState(
-            query="KITAS requirements for work",
-            intent="visa",
-            extracted_entities={"visa_type": "kitas"},
-        )
-        result = await node(state)
-
-        assert result["current_node"] == "subgraph_visa"
-        assert result["domain"] == "kitas"
-        assert len(result["retrieved_documents"]) >= 1
-
-        domain_doc = result["retrieved_documents"][0]
-        assert "KITAS" in domain_doc.content
-        assert "12 months" in domain_doc.content
-        assert "RPTKA" in domain_doc.content
-        assert domain_doc.source == "domain"
-
-    @pytest.mark.asyncio
-    async def test_voa_no_sponsor_required(self):
-        svc = make_mock_services()
-        node = make_visa_subgraph(svc)
-        state = GraphState(
-            query="Visa on arrival Indonesia",
-            extracted_entities={"visa_type": "voa"},
-        )
-        result = await node(state)
-        content = result["retrieved_documents"][0].content
-        assert "Sponsor Required: No" in content
-        assert "30 days" in content or "1 months" in content
-
-    @pytest.mark.asyncio
-    async def test_costs_included(self):
-        svc = make_mock_services()
-        node = make_visa_subgraph(svc)
-        state = GraphState(
-            query="KITAS cost",
-            extracted_entities={"visa_type": "kitas"},
-        )
-        result = await node(state)
-        content = result["retrieved_documents"][0].content
-        assert "USD" in content
+    def test_specs_contains_expected_types(self):
+        for vt in (VisaType.KITAS, VisaType.KITAP, VisaType.VOA,
+                   VisaType.SECOND_HOME, VisaType.E_VISA):
+            assert vt in VISA_SPECS
+            assert "requirements" in VISA_SPECS[vt]
