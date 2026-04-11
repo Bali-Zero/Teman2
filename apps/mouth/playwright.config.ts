@@ -72,15 +72,17 @@ export default defineConfig({
     },
   ],
 
-  // Web server config removed/commented out to rely on existing server for this run or external config
-  /*
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-    stdout: 'ignore',
-    stderr: 'pipe',
-  },
-*/
+  // In CI we always need the webServer (there is no pre-running dev server).
+  // Locally, opt out by setting PLAYWRIGHT_EXTERNAL_SERVER=1 so that the
+  // already-running `npm run dev` on :3000 is used instead.
+  webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER
+    ? undefined
+    : {
+        command: "npm run dev",
+        url: "http://127.0.0.1:3000",
+        reuseExistingServer: !process.env.CI,
+        timeout: 180 * 1000,
+        stdout: "pipe",
+        stderr: "pipe",
+      },
 });
