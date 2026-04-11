@@ -2,21 +2,18 @@
 """
 Standalone ingest + eval using qdrant-client in-memory mode.
 
-No external Qdrant server required. Runs the full pipeline:
-1. Chunk all KB files
-2. Embed with local sentence-transformers
-3. Upsert to in-memory Qdrant
-4. Run evaluation queries
-5. Report nDCG@5 + Recall@5
+Supports dense-only and hybrid (dense + BM25 sparse) modes.
+No external Qdrant server required.
 
 Usage:
     cd apps/backend-rag
-    PYTHONPATH=. python scripts/run_hier_eval.py
+    PYTHONPATH=. python scripts/run_hier_eval.py               # hybrid (default)
+    PYTHONPATH=. python scripts/run_hier_eval.py --dense-only   # dense only
 """
 
 from __future__ import annotations
 
-import json
+import argparse
 import logging
 import resource
 import sys
@@ -26,13 +23,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from qdrant_client import QdrantClient, models
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import Distance, PointStruct, SparseVector, VectorParams
 
 from backend.kb.politics.hierarchical.chunker import HierarchicalChunker
-from backend.kb.politics.hierarchical.embedder import LocalEmbedder
+from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder, LocalEmbedder
 from backend.kb.politics.hierarchical.eval import (
-    EvalQuery,
-    EvalResult,
     _ndcg_at_k,
     _recall_at_k,
     load_eval_queries,
@@ -56,6 +51,13 @@ def get_peak_ram_mb() -> float:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Run hierarchical eval")
+    parser.add_argument("--dense-only", action="store_true", help="Skip BM25 sparse vectors")
+    args = parser.parse_args()
+
+    hybrid = not args.dense_only
+    mode_str = "HYBRID (dense + BM25)" if hybrid else "DENSE-ONLY"
+
     script_dir = Path(__file__).resolve().parent.parent
     kb_root = script_dir / "backend" / "kb" / "politics" / "id"
     eval_path = script_dir / "backend" / "kb" / "politics" / "eval" / "seed_queries.jsonl"
@@ -63,31 +65,57 @@ def main() -> None:
     start = time.perf_counter()
 
     # 1. Chunk
+    logger.info(f"Mode: {mode_str}")
     logger.info(f"Chunking from {kb_root}")
     chunker = HierarchicalChunker()
     chunks = chunker.chunk_directory(kb_root)
     parents = [c for c in chunks if c.chunk_type == "parent"]
     children = [c for c in chunks if c.chunk_type == "child"]
-    logger.info(f"Chunked: {len(parents)} parents, {len(children)} children, {len(chunks)} total")
+    texts = [c.text for c in chunks]
 
-    # 2. Embed
+    # 2. Dense embed
     logger.info("Loading embedder...")
     embedder = LocalEmbedder()
-    logger.info("Embedding chunks...")
-    vectors = embedder.embed_chunks(chunks)
+    logger.info("Embedding chunks (dense)...")
+    dense_vecs = embedder.embed_chunks(chunks)
     dims = embedder.dimensions
-    logger.info(f"Embedded {len(vectors)} vectors ({dims} dims)")
 
-    # 3. Create in-memory Qdrant and upsert
+    # 3. Sparse embed (BM25)
+    sparse_encoder: BM25SparseEncoder | None = None
+    sparse_vecs: list[dict] | None = None
+    if hybrid:
+        logger.info("Building BM25 sparse vectors...")
+        sparse_encoder = BM25SparseEncoder()
+        sparse_encoder.fit(texts)
+        sparse_vecs = sparse_encoder.encode_documents(texts)
+        logger.info(f"BM25 vocab: {sparse_encoder.vocab_size} terms")
+
+    # 4. Create in-memory Qdrant
     logger.info("Creating in-memory Qdrant collection...")
     client = QdrantClient(":memory:")
+
+    vectors_config = {"dense": models.VectorParams(size=dims, distance=Distance.COSINE)}
+    sparse_config = {}
+    if hybrid:
+        sparse_config = {"sparse": models.SparseVectorParams()}
+
     client.create_collection(
         collection_name=COLLECTION,
-        vectors_config=VectorParams(size=dims, distance=Distance.COSINE),
+        vectors_config=vectors_config,
+        sparse_vectors_config=sparse_config if sparse_config else None,
     )
 
+    # 5. Upsert
     points = []
-    for chunk, vec in zip(chunks, vectors):
+    for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs)):
+        vector: dict = {"dense": dvec}
+        if hybrid and sparse_vecs:
+            sv = sparse_vecs[i]
+            if sv["indices"]:
+                vector["sparse"] = SparseVector(
+                    indices=sv["indices"], values=sv["values"],
+                )
+
         payload = {
             "text": chunk.text,
             "chunk_type": chunk.chunk_type,
@@ -104,33 +132,62 @@ def main() -> None:
             if k not in payload and v is not None:
                 payload[k] = v
 
-        points.append(PointStruct(id=chunk.id, vector=vec, payload=payload))
+        points.append(PointStruct(id=chunk.id, vector=vector, payload=payload))
 
     client.upsert(collection_name=COLLECTION, points=points)
     logger.info(f"Upserted {len(points)} points")
 
     embed_time = time.perf_counter() - start
 
-    # 4. Evaluate
+    # 6. Evaluate
     logger.info("Loading eval queries...")
     queries = load_eval_queries(eval_path)
     logger.info(f"Loaded {len(queries)} queries")
 
     per_query: list[dict] = []
     for eq in queries:
-        # Embed query
         qvec = embedder.embed_query(eq.query)
 
-        # Search children (qdrant-client v1.17+ uses query_points)
-        search_result = client.query_points(
-            collection_name=COLLECTION,
-            query=qvec,
-            query_filter=models.Filter(
-                must=[models.FieldCondition(key="chunk_type", match=models.MatchValue(value="child"))],
-            ),
-            limit=20,
-            with_payload=True,
+        # Build search depending on mode
+        child_filter = models.Filter(
+            must=[models.FieldCondition(key="chunk_type", match=models.MatchValue(value="child"))],
         )
+
+        if hybrid and sparse_encoder:
+            sq = sparse_encoder.encode_query(eq.query)
+
+            # Use prefetch + RRF fusion
+            search_result = client.query_points(
+                collection_name=COLLECTION,
+                prefetch=[
+                    models.Prefetch(
+                        query=qvec,
+                        using="dense",
+                        limit=20,
+                        filter=child_filter,
+                    ),
+                    models.Prefetch(
+                        query=models.SparseVector(
+                            indices=sq["indices"], values=sq["values"],
+                        ),
+                        using="sparse",
+                        limit=20,
+                        filter=child_filter,
+                    ),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                limit=20,
+                with_payload=True,
+            )
+        else:
+            search_result = client.query_points(
+                collection_name=COLLECTION,
+                query=qvec,
+                using="dense",
+                limit=20,
+                query_filter=child_filter,
+                with_payload=True,
+            )
 
         # Aggregate by parent
         parent_scores: dict[str, float] = {}
@@ -141,10 +198,7 @@ def main() -> None:
                 parent_scores[pid] = parent_scores.get(pid, 0.0) + hit.score
                 parent_records[pid] = hit.payload.get("record_id", "")
 
-        # Sort parents by aggregated score
         sorted_parents = sorted(parent_scores.items(), key=lambda x: x[1], reverse=True)
-
-        # Map parent_id → record_id for eval
         retrieved_record_ids = [parent_records.get(pid, "") for pid, _ in sorted_parents[:5]]
 
         relevant_set = set(eq.relevant_doc_ids)
@@ -163,35 +217,38 @@ def main() -> None:
 
     elapsed = time.perf_counter() - start
 
-    # 5. Report
+    # 7. Report
     all_ndcg = [r["ndcg_at_5"] for r in per_query]
     all_recall = [r["recall_at_5"] for r in per_query]
     hard = [r for r in per_query if not r["weak_label"]]
     hard_ndcg = [r["ndcg_at_5"] for r in hard]
     hard_recall = [r["recall_at_5"] for r in hard]
 
-    print("\n" + "=" * 70)
+    print(f"\n{'=' * 70}")
+    print(f"MODE: {mode_str}")
+    print(f"{'=' * 70}")
     print("INGEST STATS")
-    print("=" * 70)
     print(f"  Docs processed:    {len(parents)}")
     print(f"  Parents:           {len(parents)}")
     print(f"  Children:          {len(children)}")
     print(f"  Total vectors:     {len(chunks)}")
     print(f"  Embedding model:   {embedder.model_name}")
     print(f"  Embedding dims:    {dims}")
+    if sparse_encoder:
+        print(f"  BM25 vocab:        {sparse_encoder.vocab_size} terms")
     print(f"  Ingest runtime:    {embed_time:.2f}s")
     print(f"  Peak RAM:          {get_peak_ram_mb():.1f} MB")
 
-    print("\n" + "=" * 70)
+    print(f"\n{'=' * 70}")
     print("EVAL RESULTS")
-    print("=" * 70)
+    print(f"{'=' * 70}")
     print(f"  Total queries:     {len(per_query)}")
     print(f"  Hard labels:       {len(hard)}")
     print(f"  Weak labels:       {len(per_query) - len(hard)}")
-    print(f"  Mean nDCG@5 (all): {sum(all_ndcg)/len(all_ndcg):.4f}")
-    print(f"  Mean Recall@5 (all): {sum(all_recall)/len(all_recall):.4f}")
-    print(f"  Mean nDCG@5 (hard): {sum(hard_ndcg)/len(hard_ndcg):.4f}")
-    print(f"  Mean Recall@5 (hard): {sum(hard_recall)/len(hard_recall):.4f}")
+    print(f"  Mean nDCG@5 (all): {sum(all_ndcg) / len(all_ndcg):.4f}")
+    print(f"  Mean Recall@5 (all): {sum(all_recall) / len(all_recall):.4f}")
+    print(f"  Mean nDCG@5 (hard): {sum(hard_ndcg) / len(hard_ndcg):.4f}")
+    print(f"  Mean Recall@5 (hard): {sum(hard_recall) / len(hard_recall):.4f}")
 
     print(f"\n{'Query':<55} {'nDCG':>6} {'Rec':>6} {'Label':>6}")
     print("-" * 78)
@@ -200,7 +257,7 @@ def main() -> None:
         q = r["query"][:52] + "..." if len(r["query"]) > 55 else r["query"]
         print(f"  {q:<53} {r['ndcg_at_5']:>6.3f} {r['recall_at_5']:>6.3f}  {label}")
 
-    print("=" * 70)
+    print(f"{'=' * 70}")
     print(f"Total runtime: {elapsed:.2f}s | Peak RAM: {get_peak_ram_mb():.1f} MB")
 
 

@@ -334,14 +334,20 @@ class TestDeterminism:
     """Test that same input → same output."""
 
     def test_deterministic_ids(self) -> None:
-        id1 = _deterministic_id("test.jsonl", "person:id:x", "parent", 0)
-        id2 = _deterministic_id("test.jsonl", "person:id:x", "parent", 0)
+        id1 = _deterministic_id("person:id:x", "parent")
+        id2 = _deterministic_id("person:id:x", "parent")
         assert id1 == id2
 
     def test_different_inputs_different_ids(self) -> None:
-        id1 = _deterministic_id("a.jsonl", "person:id:x", "parent", 0)
-        id2 = _deterministic_id("b.jsonl", "person:id:x", "parent", 0)
+        id1 = _deterministic_id("person:id:x", "parent")
+        id2 = _deterministic_id("person:id:y", "parent")
         assert id1 != id2
+
+    def test_same_record_different_files_same_id(self) -> None:
+        """IDs are path-independent — moving files doesn't break idempotency."""
+        id1 = _deterministic_id("person:id:x", "child", 0)
+        id2 = _deterministic_id("person:id:x", "child", 0)
+        assert id1 == id2
 
     def test_chunker_deterministic(self) -> None:
         chunker = HierarchicalChunker()
@@ -395,6 +401,7 @@ class TestHierarchicalRetriever:
         retriever._child_limit = 10
         retriever._parent_limit = 5
         retriever._client = MagicMock()
+        retriever._sparse_encoder = None  # dense-only mode
 
         mock_embedder = MagicMock()
         mock_embedder.embed_query.return_value = [0.1] * 384
@@ -476,3 +483,65 @@ class TestEvalMetrics:
 
     def test_empty_relevant(self) -> None:
         assert _recall_at_k(["a"], set(), 5) == 0.0
+
+
+# ─── BM25 Sparse Encoder Tests ─────────────────────────────────────────────
+
+
+class TestBM25SparseEncoder:
+    """Test BM25 sparse vector encoding."""
+
+    def test_fit_builds_vocab(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder
+
+        enc = BM25SparseEncoder()
+        enc.fit(["Joko Widodo presiden", "Prabowo menteri pertahanan"])
+        assert enc.vocab_size > 0
+
+    def test_encode_document_returns_sparse_vector(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder
+
+        enc = BM25SparseEncoder()
+        enc.fit(["presiden Indonesia 2024", "gubernur Jakarta 2017"])
+        vec = enc.encode_document("presiden Indonesia 2024")
+        assert len(vec["indices"]) > 0
+        assert len(vec["indices"]) == len(vec["values"])
+        assert all(v > 0 for v in vec["values"])
+
+    def test_query_encoding_uses_idf_only(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder
+
+        enc = BM25SparseEncoder()
+        enc.fit(["presiden Indonesia", "gubernur Jakarta", "menteri pertahanan"])
+        qvec = enc.encode_query("presiden")
+        assert len(qvec["indices"]) >= 1
+
+    def test_unfitted_returns_empty(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder
+
+        enc = BM25SparseEncoder()
+        vec = enc.encode_document("test text")
+        assert vec == {"indices": [], "values": []}
+
+    def test_stopwords_filtered(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import _tokenize
+
+        tokens = _tokenize("yang dan di ke dari presiden Indonesia")
+        assert "presiden" in tokens
+        assert "indonesia" in tokens
+        assert "yang" not in tokens
+        assert "dan" not in tokens
+
+    def test_deterministic_encoding(self) -> None:
+        from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder
+
+        corpus = ["pemilu presiden 2024", "gubernur DKI Jakarta"]
+        enc1 = BM25SparseEncoder()
+        enc1.fit(corpus)
+        v1 = enc1.encode_document("pemilu presiden 2024")
+
+        enc2 = BM25SparseEncoder()
+        enc2.fit(corpus)
+        v2 = enc2.encode_document("pemilu presiden 2024")
+
+        assert v1 == v2
