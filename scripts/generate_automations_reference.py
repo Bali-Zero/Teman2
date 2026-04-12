@@ -567,6 +567,8 @@ def generate(dry_run: bool = False) -> str:
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(content)
+    # Applica prettier per rispettare le regole di formatting del monorepo
+    _run(f"npx prettier --write {OUTPUT_FILE} 2>/dev/null", timeout=30)
     print(f"Written: {OUTPUT_FILE} ({total} jobs, {len(lines)} lines)")
     return content
 
