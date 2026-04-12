@@ -434,6 +434,10 @@ def generate(dry_run: bool = False) -> str:
     _check_output_safety(OUTPUT_FILE)
     generated_at = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
 
+    # Carica sorgenti aggiuntive (graceful: se mancano, i campi restano None)
+    registry = _load_registry()
+    sentinel_status, circuit_breakers = _load_sentinel_state()
+
     pro_cron = _consolidate_cron(_parse_crontab(_run("crontab -l 2>/dev/null"), "Pro"))
     air_cron = _consolidate_cron(_parse_crontab(_ssh_air("crontab -l 2>/dev/null"), "Air"))
     pro_la = _parse_launchagents("Pro")
@@ -443,18 +447,31 @@ def generate(dry_run: bool = False) -> str:
     _check_log_health_pro(all_jobs)
     _check_log_health_air(all_jobs)
 
+    # Enrichment da registry e circuit breakers
+    for job in all_jobs:
+        _enrich_job_from_registry(job, registry)
+        _enrich_job_from_circuit_breaker(job, circuit_breakers)
+
     total = len(all_jobs)
     ok = sum(1 for j in all_jobs if "OK" in j.last_status)
     fail = sum(1 for j in all_jobs if "FAIL" in j.last_status)
     warn = sum(1 for j in all_jobs if "WARN" in j.last_status or "NO LOG" in j.last_status or "NOT LOADED" in j.last_status)
     run = sum(1 for j in all_jobs if "Running" in j.last_status)
+    critical_count = sum(1 for j in all_jobs if j.critical)
+
+    # Dati sentinel per la sezione overview
+    circuit_open = sentinel_status.get("jobs_circuit_open", "—")
+    circuit_terminal = sentinel_status.get("jobs_circuit_terminal", "—")
+    dlq_entries = sentinel_status.get("dlq_entries", "—")
+    sentinel_generated_at = sentinel_status.get("generated_at", "—")
+    dlq_phase_dist = sentinel_status.get("dlq_phase_distribution", {})
 
     lines = [
         "# NUZANTARA — AUTOMATIONS REFERENCE",
         "",
         "> **Auto-generated from live system state** — do not edit manually.",
         f"> Generated: {generated_at}",
-        "> Source: `crontab -l` (Pro+Air) + `launchctl list` (Pro+Air) + log health",
+        "> Source: `crontab -l` (Pro+Air) + `launchctl list` (Pro+Air) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`",
         "",
         "---",
         "",
@@ -472,6 +489,28 @@ def generate(dry_run: bool = False) -> str:
         "",
     ]
 
+    # Sezione Sentinel Overview (solo se sentinel_status disponibile)
+    if sentinel_status:
+        phase_str = " · ".join(
+            f"{phase}={count}" for phase, count in dlq_phase_dist.items() if count > 0
+        ) or "—"
+        lines += [
+            "## Sentinel Overview",
+            "",
+            f"> Ultimo aggiornamento sentinel: `{sentinel_generated_at}`",
+            "",
+            "| Metrica | Valore |",
+            "|---------|--------|",
+            f"| Circuit OPEN | **{circuit_open}** |",
+            f"| Circuit TERMINAL | **{circuit_terminal}** |",
+            f"| DLQ entries totali | **{dlq_entries}** |",
+            f"| DLQ phase distribution | `{phase_str}` |",
+            f"| Job critici (in registry) | **{critical_count}** |",
+            "",
+            "---",
+            "",
+        ]
+
     for machine, label in [
         ("Pro", "Pro (nuzantara@Nuzantara — M4 Pro 48GB)"),
         ("Air", "Air (antonellosiano@Nuzantara-9 — M4 16GB, H24)"),
@@ -484,21 +523,35 @@ def generate(dry_run: bool = False) -> str:
         lines += [f"## {label}", ""]
 
         if la:
-            lines += ["### LaunchAgents", "", "| Label | Status | Exit |", "|-------|--------|------|"]
+            lines += [
+                "### LaunchAgents", "",
+                "| Label | Status | Exit | Circuit | Scope | Critical |",
+                "|-------|--------|------|---------|-------|----------|",
+            ]
             for j in la:
-                lines.append(f"| `{j.plist_label}` | {j.last_status} | {j.exit_code} |")
+                circuit = _format_circuit_badge(j.circuit_state, j.dlq_phase)
+                scope = j.repair_scope or "—"
+                crit = "🔴" if j.critical else ""
+                lines.append(
+                    f"| `{j.plist_label}` | {j.last_status} | {j.exit_code} | {circuit} | {scope} | {crit} |"
+                )
             lines.append("")
 
         if cron:
             lines += [
                 "### Cron Jobs", "",
-                "| Job | Schedule | Last Run | Status | Notes |",
-                "|-----|----------|----------|--------|-------|",
+                "| Job | Schedule | Last Run | Status | Circuit | Scope | Critical | Notes |",
+                "|-----|----------|----------|--------|---------|-------|----------|-------|",
             ]
             for j in cron:
                 hs = _humanize_schedule(j.schedule)
-                n = j.notes.replace("|", "\\|")[:60] if j.notes else ""
-                lines.append(f"| `{j.name}` | {hs} | {j.last_run} | {j.last_status} | {n} |")
+                n = j.notes.replace("|", "\\|")[:50] if j.notes else ""
+                circuit = _format_circuit_badge(j.circuit_state, j.dlq_phase)
+                scope = j.repair_scope or "—"
+                crit = "🔴" if j.critical else ""
+                lines.append(
+                    f"| `{j.name}` | {hs} | {j.last_run} | {j.last_status} | {circuit} | {scope} | {crit} | {n} |"
+                )
             lines.append("")
 
         lines += ["---", ""]
