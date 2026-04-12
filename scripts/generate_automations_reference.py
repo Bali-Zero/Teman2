@@ -15,11 +15,12 @@ Run:  python scripts/generate_automations_reference.py [--dry-run]
 """
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 NUZANTARA_ROOT = Path(__file__).parent.parent
@@ -27,11 +28,74 @@ OUTPUT_FILE = NUZANTARA_ROOT / "docs" / "AUTOMATIONS_REFERENCE.md"
 
 WRITE_BLOCKLIST = {"CLAUDE.md", "zantara_core.py", "fly.toml", ".env", ".env.production", ".env.local"}
 
+REGISTRY_PATH = Path.home() / ".agent" / "decisions" / "job_registry.json"
+SENTINEL_STATUS_PATH = Path.home() / ".agent" / "decisions" / "sentinel_status.json"
+CIRCUIT_BREAKERS_PATH = Path.home() / ".agent" / "decisions" / "circuit_breakers.json"
+
 
 def _check_output_safety(path: Path) -> None:
     if path.name in WRITE_BLOCKLIST or ".env" in str(path):
         print(f"ERROR: {path} is in the doc generator write-blocklist (D3.1). Aborting.")
         sys.exit(1)
+
+
+def _load_registry(path: Path = REGISTRY_PATH) -> dict:
+    """Carica job_registry.json. Restituisce {} se mancante o malformato (graceful degradation)."""
+    try:
+        data = json.loads(path.read_text())
+        return data.get("jobs", {})
+    except (FileNotFoundError, json.JSONDecodeError, Exception):
+        return {}
+
+
+def _load_sentinel_state(
+    status_path: Path = SENTINEL_STATUS_PATH,
+    cb_path: Path = CIRCUIT_BREAKERS_PATH,
+) -> tuple[dict, dict]:
+    """Carica sentinel_status.json e circuit_breakers.json. Restituisce ({}, {}) se mancanti."""
+    status: dict = {}
+    cb: dict = {}
+    try:
+        status = json.loads(status_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, Exception):
+        pass
+    try:
+        cb = json.loads(cb_path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError, Exception):
+        pass
+    return status, cb
+
+
+def _enrich_job_from_registry(job: Job, registry: dict) -> None:
+    """Arricchisce un Job con i campi del registry (in-place). No-op se il job non e' nel registry."""
+    entry = registry.get(job.name, {})
+    if not entry:
+        return
+    job.is_idempotent = entry.get("is_idempotent")
+    job.repair_scope = entry.get("repair_scope")
+    job.critical = bool(entry.get("critical", False))
+    job.max_attempts = entry.get("max_attempts")
+
+
+def _enrich_job_from_circuit_breaker(job: Job, cb: dict) -> None:
+    """Arricchisce un Job con circuit state e DLQ phase (in-place). No-op se non in cb."""
+    entry = cb.get(job.name, {})
+    if not entry:
+        return
+    job.circuit_state = entry.get("state")
+    job.dlq_phase = entry.get("phase")
+
+
+def _format_circuit_badge(state: str | None, phase: str | None) -> str:
+    """Restituisce un badge leggibile per lo stato del circuit breaker."""
+    if state is None and phase is None:
+        return "—"
+    label = f"{state}/{phase}"
+    if phase == "TERMINAL":
+        return f"💀 {label}"
+    if state == "OPEN":
+        return f"🔴 {label}"
+    return f"✅ {label}"
 
 
 @dataclass
@@ -47,6 +111,13 @@ class Job:
     exit_code: str = ""
     plist_label: str = ""
     notes: str = ""
+    # Campi sentinel/registry (opzionali — None se non in registry)
+    is_idempotent: bool | None = None
+    repair_scope: str | None = None
+    critical: bool = False
+    max_attempts: int | None = None
+    circuit_state: str | None = None
+    dlq_phase: str | None = None
 
 
 def _run(cmd: str, timeout: int = 10) -> str:
