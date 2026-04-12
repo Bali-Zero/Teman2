@@ -289,6 +289,7 @@ PRO_LOG_MAP = {
     "launchagent_state_bridge": "/tmp/launchagent-bridge.log",
     "expiry_alerter": "~/logs/expiry_alerter.log",
     "fly_backup": "~/logs/fly-backup.log",
+    "automations_reference": "/tmp/cron-automations-reference.log",
 }
 
 AIR_LOG_MAP = {
