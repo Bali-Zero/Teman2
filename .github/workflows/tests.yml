@@ -200,8 +200,7 @@ jobs:
   e2e-tests:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    continue-on-error: true # advisory — chat tests need live LLM backend
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -295,12 +294,14 @@ jobs:
           # excluded here via grep-invert on the describe block name.
           # zantara/ and mission_simulation use process.env.PLAYWRIGHT_BASE_URL so
           # they pick up localhost:3000 correctly.
+          # Only run page-load tests in CI — chat/auth/websocket tests
+          # require a live LLM backend with Qdrant data, not available here.
           npx playwright test \
             --config=playwright.config.ts \
             --project=chromium \
             --ignore-snapshots \
             --reporter=list \
-            --grep-invert "Smoke Tests"
+            --grep "page Page"
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
