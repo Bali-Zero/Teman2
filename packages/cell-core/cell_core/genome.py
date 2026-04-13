@@ -332,6 +332,49 @@ class Genome:
         )
         return result
 
+    def apply_inherited_genome(
+        self,
+        parent_cell: str,
+        daughter_cell: str,
+        decay: float = 0.9,
+        min_confidence: float = 0.7,
+        fork_date: str | None = None,
+    ) -> list[dict]:
+        """Inherit from *parent_cell* and record each skill into *daughter_cell*.
+
+        Each inherited skill is stored with:
+        - id = ``inherited_{original_id}``
+        - confidence = original × *decay*
+        - inherited_from = original id
+
+        Returns the list of inherited skills (with decayed confidence).
+        """
+        inherited = self.inherit_genome(
+            parent_cell=parent_cell,
+            fork_date=fork_date,
+            min_confidence=min_confidence,
+        )
+        applied: list[dict] = []
+        for skill in inherited:
+            decayed_conf = round(skill["confidence"] * decay, 4)
+            self.record_skill(
+                cell=daughter_cell,
+                skill_id=f"inherited_{skill['id']}",
+                procedure=skill["procedure"],
+                precondition=skill.get("precondition") or "",
+                success_criterion=skill.get("success_criterion") or "",
+                confidence=decayed_conf,
+                scope=skill["scope"],
+                inherited_from=skill["id"],
+                entry_type=skill["type"],
+            )
+            applied.append({**skill, "confidence": decayed_conf})
+        logger.info(
+            f"[genome] applied {len(applied)} skills from '{parent_cell}' "
+            f"to '{daughter_cell}' (decay={decay})"
+        )
+        return applied
+
     def stats(self, cell: str | None = None) -> dict:
         """Summary statistics for monitoring."""
         today = datetime.now(timezone.utc).date().isoformat()
