@@ -98,7 +98,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. coverage report --fail-under=40
+          PYTHONPATH=. coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
