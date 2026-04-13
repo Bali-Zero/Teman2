@@ -99,13 +99,14 @@ const createMockTaxOverview = (
   overrides?: Partial<TaxOverview>,
 ): TaxOverview => ({
   summary: {
-    status: "compliant",
+    status: "ok",
     totalDue: 0,
     nextDeadline: null,
     daysToDeadline: null,
+    pendingCount: 0,
+    overdueCount: 0,
   },
   obligations: [],
-  history: [],
   ...overrides,
 });
 

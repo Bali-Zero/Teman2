@@ -55,7 +55,11 @@ export default function BlackBookModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6" role="dialog" aria-modal="true">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6"
+          role="dialog"
+          aria-modal="true"
+        >
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -191,7 +195,7 @@ export default function BlackBookModal({
                       Back to Explorer
                     </button>
                     <a
-                      href="https://wa.me/62812345678" // Example WhatsApp Link
+                      href="https://wa.me/628213107363?text=Hi%2C%20I%20found%20a%20KBLI%20code%20I%20need%20help%20with."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full py-3 text-[#D4B483] text-sm font-bold border border-[#D4B483]/20 rounded-lg hover:bg-[#D4B483]/5 transition-all"

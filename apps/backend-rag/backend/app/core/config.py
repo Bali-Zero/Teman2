@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     COMPANY_LOCATION: str = "Jalan Semer, Kerobokan, Bali"
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
-    SUPPORT_WHATSAPP: str = "+62 813 3805 1876"
+    SUPPORT_WHATSAPP: str = "+62 821 3107 363"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 
