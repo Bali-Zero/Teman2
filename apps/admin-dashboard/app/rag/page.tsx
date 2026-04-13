@@ -25,7 +25,7 @@ export default function RagPlayground() {
       .then((res) => res.json())
       .then((data) => {
         if (data.collections) {
-          setCollections(data.collections.map((c: any) => c.name));
+          setCollections(data.collections.map((c: { name: string }) => c.name));
         }
       });
   }, []);

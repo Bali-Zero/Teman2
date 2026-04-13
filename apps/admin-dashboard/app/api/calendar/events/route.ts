@@ -20,7 +20,18 @@ export async function GET(request: NextRequest) {
     );
 
     const data = JSON.parse(stdout || '{"events":[]}');
-    const events = (data.events || data || []).map((evt: any) => ({
+    interface CalendarEvent {
+      id: string;
+      summary: string;
+      start?: { dateTime?: string; date?: string };
+      end?: { dateTime?: string; date?: string };
+      description?: string;
+      location?: string;
+      hangoutLink?: string;
+      attendees?: { email: string }[];
+    }
+
+    const events = (data.events || data || []).map((evt: CalendarEvent) => ({
       id: evt.id,
       summary: evt.summary,
       start: evt.start?.dateTime || evt.start?.date,
@@ -28,7 +39,7 @@ export async function GET(request: NextRequest) {
       description: evt.description,
       location: evt.location,
       hangoutLink: evt.hangoutLink,
-      attendees: evt.attendees?.map((a: any) => a.email),
+      attendees: evt.attendees?.map((a) => a.email),
     }));
 
     return NextResponse.json({
@@ -36,9 +47,10 @@ export async function GET(request: NextRequest) {
       events,
       calendarId,
     });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     // If no events, return empty array
-    if (error.message?.includes("No events")) {
+    if (message?.includes("No events")) {
       return NextResponse.json({
         success: true,
         events: [],
@@ -48,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     console.error("Calendar API error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: message },
       { status: 500 },
     );
   }
@@ -88,10 +100,10 @@ export async function POST(request: NextRequest) {
     const event = JSON.parse(stdout || "{}");
 
     return NextResponse.json({ success: true, event });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Calendar create error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }
@@ -115,10 +127,10 @@ export async function DELETE(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Calendar delete error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }
