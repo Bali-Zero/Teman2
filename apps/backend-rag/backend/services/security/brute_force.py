@@ -9,6 +9,8 @@ Fail-open: Redis down = no blocking.
 import logging
 from typing import Any
 
+from redis.exceptions import RedisError
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAX_FAILURES = 5
@@ -41,8 +43,11 @@ class BruteForceDetector:
             return False
         try:
             return bool(await self._redis.exists(self._block_key(ip, email)))
-        except Exception as e:
+        except (RedisError, OSError) as e:
             logger.warning(f"S03: Brute force check failed (fail-open): {e}")
+            return False
+        except Exception:
+            logger.exception("S03: Brute force check unexpected error (fail-open)")
             return False
 
     async def record_failure(self, ip: str, email: str) -> None:
@@ -60,13 +65,17 @@ class BruteForceDetector:
                     f"brute_force:{count}_attempts",
                 )
                 logger.warning(f"S03: Brute force block ip={ip} email={email} attempts={count}")
-        except Exception as e:
+        except (RedisError, OSError) as e:
             logger.warning(f"S03: Brute force record failed: {e}")
+        except Exception:
+            logger.exception("S03: Brute force record unexpected error")
 
     async def clear_on_success(self, ip: str, email: str) -> None:
         if not self._redis:
             return
         try:
             await self._redis.delete(self._fail_key(ip, email), self._block_key(ip, email))
-        except Exception as e:
+        except (RedisError, OSError) as e:
             logger.warning(f"S03: Brute force clear failed: {e}")
+        except Exception:
+            logger.exception("S03: Brute force clear unexpected error")
