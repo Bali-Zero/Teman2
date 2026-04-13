@@ -57,7 +57,7 @@ class RateLimiter:
             logger.info("Rate limiter using Redis via RedisManager")
         else:
             manager.register_component("rate_limiter", "fallback_memory")
-            logger.info("Rate limiter using in-memory storage")
+            logger.warning("Rate limiter using in-memory storage — no Redis available, rate limits not shared across workers")
 
     def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
         """
