@@ -1,7 +1,10 @@
 """Tests for cell_core.genome — DNA recording."""
 import pytest
+import sqlite3
 import tempfile
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from cell_core.genome import Genome
@@ -14,7 +17,7 @@ def genome(tmp_path):
 
 
 def test_record_skill_insert(genome):
-    inserted = genome.record_skill(
+    action = genome.record_skill(
         cell="akta_archive",
         skill_id="proxy_detection_v1",
         procedure="Use Python regex for 'bertindak berdasarkan' before LLM.",
@@ -22,13 +25,18 @@ def test_record_skill_insert(genome):
         success_criterion="Zero procuratori in founders table.",
         confidence=0.94,
     )
-    assert inserted is True
+    assert action == "inserted"
 
 
-def test_record_skill_idempotent(genome):
-    genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X")
-    inserted_again = genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X")
-    assert inserted_again is False  # INSERT OR IGNORE
+def test_record_skill_upsert(genome):
+    """Re-recording the same skill_id updates procedure and keeps max confidence."""
+    genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X", confidence=0.8)
+    action = genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do Y", confidence=0.6)
+    assert action == "updated"
+    # procedure updated, confidence kept at max(0.8, 0.6) = 0.8
+    results = genome.get_active(cell="akta_archive")
+    assert results[0]["procedure"] == "do Y"
+    assert results[0]["confidence"] == 0.8
 
 
 def test_get_active_returns_inserted(genome):
@@ -50,7 +58,6 @@ def test_silence_does_not_delete(genome):
     genome.record_skill(cell="c1", skill_id="old_skill", procedure="old way")
     genome.silence_skill("old_skill")
     # Still in DB, just has valid_to set
-    import sqlite3
     conn = sqlite3.connect(genome._db_path)
     row = conn.execute("SELECT valid_to FROM genome WHERE id='old_skill'").fetchone()
     conn.close()
@@ -134,7 +141,6 @@ def test_stats(genome):
 def test_silence_stale_removes_low_confidence_old_skills(genome):
     genome.record_skill(cell="c1", skill_id="old_weak", procedure="x", confidence=0.3)
     # Manually set last_used to 60 days ago
-    import sqlite3, time
     sixty_days_ago = datetime.fromtimestamp(time.time() - 60 * 86400, tz=timezone.utc).date().isoformat()
     conn = sqlite3.connect(genome._db_path)
     conn.execute("UPDATE genome SET last_used = ? WHERE id = 'old_weak'", (sixty_days_ago,))
@@ -172,3 +178,276 @@ def test_daughter_cell_inherits_with_decay(genome):
     assert len(daughter_skills) == 1
     assert daughter_skills[0]["confidence"] == pytest.approx(0.95 * 0.9, abs=0.01)
     assert daughter_skills[0]["inherited_from"] == "chunking_v1"
+
+
+# ─── Issue 1: Thread Safety ────────────────────────────────────
+
+
+def test_concurrent_writes_10_threads(tmp_path):
+    """10 threads writing concurrently must not lose data or raise errors."""
+    db = str(tmp_path / "concurrent.db")
+    g = Genome(db_path=db)
+    errors: list[Exception] = []
+
+    def writer(thread_id: int) -> None:
+        try:
+            for i in range(10):
+                g.record_skill(
+                    cell=f"cell_{thread_id}",
+                    skill_id=f"skill_{thread_id}_{i}",
+                    procedure=f"Thread {thread_id} procedure {i}",
+                    confidence=0.5 + (i * 0.04),
+                )
+        except Exception as exc:
+            errors.append(exc)
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = [pool.submit(writer, tid) for tid in range(10)]
+        for f in as_completed(futures):
+            f.result()  # re-raise
+
+    assert errors == [], f"Thread errors: {errors}"
+    # 10 threads × 10 skills = 100 total
+    stats = g.stats()
+    assert stats["total"] == 100
+
+
+def test_concurrent_read_write(tmp_path):
+    """Reads while writes are in-flight should never raise."""
+    db = str(tmp_path / "rw.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c", skill_id="seed", procedure="base")
+    errors: list[Exception] = []
+
+    def reader() -> None:
+        try:
+            for _ in range(50):
+                g.get_active(cell="c")
+                g.stats()
+        except Exception as exc:
+            errors.append(exc)
+
+    def writer() -> None:
+        try:
+            for i in range(50):
+                g.record_skill(cell="c", skill_id=f"w_{i}", procedure=f"p{i}")
+        except Exception as exc:
+            errors.append(exc)
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = []
+        for _ in range(5):
+            futures.append(pool.submit(reader))
+            futures.append(pool.submit(writer))
+        for f in as_completed(futures):
+            f.result()
+
+    assert errors == []
+
+
+# ─── Issue 2: FTS Triggers (UPDATE / DELETE) ───────────────────
+
+
+def test_fts_finds_updated_content(genome):
+    """After upsert, FTS should find the new procedure, not the old one."""
+    genome.record_skill(
+        cell="c1", skill_id="evolving",
+        procedure="Parse documents using regex",
+        confidence=0.8,
+    )
+    assert len(genome.search("regex")) >= 1
+
+    # Upsert with new procedure
+    genome.record_skill(
+        cell="c1", skill_id="evolving",
+        procedure="Parse documents using tree-sitter AST",
+        confidence=0.7,
+    )
+    # Old term gone from FTS
+    assert len(genome.search("regex")) == 0
+    # New term found
+    results = genome.search("tree")
+    assert len(results) == 1
+    assert results[0]["id"] == "evolving"
+
+
+def test_fts_removes_deleted_rows(tmp_path):
+    """After DELETE, FTS should not return the deleted row."""
+    db = str(tmp_path / "fts_del.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c1", skill_id="doomed", procedure="ephemeral technique")
+    assert len(g.search("ephemeral")) == 1
+
+    # Direct DELETE (not exposed as API, but tests trigger integrity)
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM genome WHERE id = 'doomed'")
+    conn.commit()
+    conn.close()
+
+    assert len(g.search("ephemeral")) == 0
+
+
+# ─── Issue 4: apply_inherited_genome ──────────────────────────
+
+
+def test_apply_inherited_genome(genome):
+    """apply_inherited_genome should insert inherited skills into the daughter cell."""
+    # Parent has 2 Project skills and 1 Personal scar
+    genome.record_skill(
+        cell="parent", skill_id="skill_a",
+        procedure="technique A", confidence=0.95, scope="Project",
+    )
+    genome.record_skill(
+        cell="parent", skill_id="skill_b",
+        procedure="technique B", confidence=0.80, scope="Project",
+    )
+    genome.record_scar(
+        cell="parent", scar_id="scar_x", procedure="avoid this",
+    )
+
+    applied = genome.apply_inherited_genome(
+        parent_cell="parent",
+        daughter_cell="daughter",
+        decay=0.9,
+        min_confidence=0.7,
+    )
+
+    # Only 2 Project skills with confidence >= 0.7
+    assert len(applied) == 2
+
+    daughter_skills = genome.get_active(cell="daughter")
+    assert len(daughter_skills) == 2
+
+    ids = {s["id"] for s in daughter_skills}
+    assert ids == {"inherited_skill_a", "inherited_skill_b"}
+
+    for s in daughter_skills:
+        assert s["inherited_from"] in ("skill_a", "skill_b")
+        # Confidence should be original * 0.9
+        original = 0.95 if s["inherited_from"] == "skill_a" else 0.80
+        assert s["confidence"] == pytest.approx(original * 0.9, abs=0.01)
+
+
+def test_apply_inherited_genome_empty(genome):
+    """If parent has no eligible skills, daughter gets nothing."""
+    applied = genome.apply_inherited_genome(
+        parent_cell="ghost", daughter_cell="orphan",
+    )
+    assert applied == []
+    assert genome.get_active(cell="orphan") == []
+
+
+# ─── Issue 5: Compaction (vacuum, compact, db_file_size) ──────
+
+
+def test_vacuum_removes_old_silenced(tmp_path):
+    """vacuum() should permanently delete skills silenced > N days ago."""
+    db = str(tmp_path / "vacuum.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c1", skill_id="old_one", procedure="old", confidence=0.3)
+    g.record_skill(cell="c1", skill_id="fresh_one", procedure="fresh", confidence=0.9)
+
+    # Silence old_one and backdate its valid_to to 100 days ago
+    g.silence_skill("old_one")
+    hundred_days_ago = datetime.fromtimestamp(
+        time.time() - 100 * 86400, tz=timezone.utc
+    ).date().isoformat()
+    conn = sqlite3.connect(db)
+    conn.execute("UPDATE genome SET valid_to = ? WHERE id = 'old_one'", (hundred_days_ago,))
+    conn.commit()
+    conn.close()
+
+    assert g.stats()["total"] == 2
+
+    removed = g.vacuum(days_silenced=90)
+    assert removed == 1
+    assert g.stats()["total"] == 1
+    # The fresh one is untouched
+    active = g.get_active(cell="c1")
+    assert len(active) == 1
+    assert active[0]["id"] == "fresh_one"
+
+
+def test_vacuum_keeps_recently_silenced(genome):
+    """Skills silenced within the window should NOT be removed."""
+    genome.record_skill(cell="c1", skill_id="recent", procedure="x")
+    genome.silence_skill("recent")
+    removed = genome.vacuum(days_silenced=90)
+    assert removed == 0  # silenced today, not 90 days ago
+
+
+def test_compact_returns_bytes_freed(tmp_path):
+    """compact() should run VACUUM and not crash. May free 0 bytes on small DB."""
+    db = str(tmp_path / "compact.db")
+    g = Genome(db_path=db)
+    for i in range(50):
+        g.record_skill(cell="c1", skill_id=f"s_{i}", procedure=f"p{i}" * 100)
+    size_before = g.stats()["db_file_size"]
+    assert size_before > 0
+
+    # Delete many rows, then compact
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM genome WHERE id LIKE 's_%'")
+    conn.commit()
+    conn.close()
+
+    freed = g.compact()
+    assert isinstance(freed, int)
+    assert freed >= 0
+    # After compacting deleted rows, DB should be smaller
+    size_after = g.stats()["db_file_size"]
+    assert size_after <= size_before
+
+
+def test_stats_includes_db_file_size(genome):
+    genome.record_skill(cell="c1", skill_id="s1", procedure="a")
+    stats = genome.stats()
+    assert "db_file_size" in stats
+    assert stats["db_file_size"] > 0
+
+
+# ─── Bonus: export / import ───────────────────────────────────
+
+
+def test_export_import_roundtrip(tmp_path):
+    """Export from one Genome, import into another — full roundtrip."""
+    db_src = str(tmp_path / "source.db")
+    db_dst = str(tmp_path / "dest.db")
+    src = Genome(db_path=db_src)
+    dst = Genome(db_path=db_dst)
+
+    src.record_skill(cell="c1", skill_id="s1", procedure="proc A", confidence=0.9)
+    src.record_skill(cell="c1", skill_id="s2", procedure="proc B", confidence=0.7)
+    src.record_scar(cell="c1", scar_id="scar1", procedure="avoid this")
+
+    exported = src.export_genome(cell="c1")
+    assert len(exported) == 3
+
+    counts = dst.import_genome(exported)
+    assert counts["inserted"] == 3
+    assert counts["updated"] == 0
+
+    # Re-import is safe (upsert)
+    counts2 = dst.import_genome(exported)
+    assert counts2["updated"] == 3
+    assert counts2["inserted"] == 0
+
+    # Verify data integrity
+    dst_skills = dst.get_active(cell="c1")
+    assert len(dst_skills) == 3
+
+
+def test_import_with_target_cell_override(tmp_path):
+    """import_genome with target_cell overrides cell_origin."""
+    db_src = str(tmp_path / "src.db")
+    db_dst = str(tmp_path / "dst.db")
+    src = Genome(db_path=db_src)
+    dst = Genome(db_path=db_dst)
+
+    src.record_skill(cell="original_cell", skill_id="s1", procedure="p1", confidence=0.8)
+    exported = src.export_genome()
+
+    dst.import_genome(exported, target_cell="new_cell")
+    skills = dst.get_active(cell="new_cell")
+    assert len(skills) == 1
+    assert skills[0]["cell_origin"] == "new_cell"
