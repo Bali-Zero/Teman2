@@ -98,7 +98,7 @@ Mouth (Next.js) → Backend (FastAPI) → Data (Postgres + Qdrant + Redis)
                        ↓
               Agentic RAG + LangGraph KG
                        ↓
-              78 Routers, 244 Services, 46 Agents
+              90 Routers, 253 Services, 419 Test Files
 ```
 
 ### LangGraph KG Nodes
@@ -122,12 +122,12 @@ Mouth (Next.js) → Backend (FastAPI) → Data (Postgres + Qdrant + Redis)
 
 ## System Stats
 
-- Routers: 78
-- Services: 244
-- Tests: 922
-- KG Nodes: 56,113
-- KG Edges: 161,173
-- Vectors: 58,880
+- Routers: 90
+- Services: 253
+- Test Files: 419
+- KG Nodes: 108,068
+- KG Edges: 242,827
+- Vectors: 93,283
 
 ## Resources
 

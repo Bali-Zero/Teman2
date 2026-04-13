@@ -31,7 +31,7 @@ curl -X POST https://nuzantara-rag.fly.dev/api/notifications/send-email \
 | `@balizero.com` | Zoho SMTP       | Brevo     | Zoho rifiuta email intra-dominio da Brevo (554 policy violation) |
 | Tutti gli altri | Brevo HTTP API  | Zoho SMTP | Brevo ha migliore deliverability e tracking                      |
 
-**Sender sempre:** `zantara@balizero.com` (alias di `zero@balizero.com` in Zoho Mail)
+**Sender sempre:** `zantara@balizero.com` (alias di `damar@balizero.com` in Zoho Mail)
 **Display name:** "Zantara"
 
 ---
