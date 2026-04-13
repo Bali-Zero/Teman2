@@ -1,6 +1,6 @@
 {
   "_doc": "Human-verified catalog of all automations. Used by generate_automations_excel.py to enrich auto-detected entries.",
-  "_updated": "2026-04-13",
+  "_updated": "2026-04-14",
   "openclaw_pro": {
     "core-guardian": {
       "description": "Code quality auto-fix: ruff lint, import check, type annotations. Runs evaluator/core_guardian/cron_guardian.py in worktree.",
@@ -1116,6 +1116,390 @@
       "produces": "Real-time WebSocket messages to frontend",
       "consumes": "Redis pub/sub channels",
       "monitored_by": "Health Monitor"
+    },
+    "event_bus_client_changed": {
+      "description": "EventBus handler: reacts to PG NOTIFY client_changed. Invalidates CRM cache, stores cross-chain context, on INSERT creates Drive folder + logs CRM interaction.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY client_changed)",
+      "produces": "Cache invalidation, Drive folders, CRM interactions",
+      "consumes": "PG trigger on clients table (migration_076)"
+    },
+    "event_bus_practice_status_changed": {
+      "description": "EventBus handler: reacts to PG NOTIFY practice_changed. Invalidates practice cache, stores cross-chain context, on completion runs expiry check + predictive compliance scan.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY practice_changed)",
+      "produces": "Cache invalidation, expiry alerts, predictive compliance forecasts",
+      "consumes": "PG trigger on practices table (migration_075)"
+    },
+    "event_bus_compliance_alert": {
+      "description": "EventBus handler: reacts to PG NOTIFY compliance_alert. Stores cross-chain context, sends Telegram alert for high/critical severity, logs CRM interaction.",
+      "system": "Compliance",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY compliance_alert)",
+      "produces": "Telegram alerts, CRM interactions",
+      "consumes": "PG trigger on compliance checks (migration_076)"
+    },
+    "redis_reconnect_loop": {
+      "description": "Redis manager auto-reconnect loop: persistent asyncio task that reconnects to Redis after disconnections with exponential backoff.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (on disconnect)",
+      "produces": "Restored Redis connection",
+      "consumes": "Redis connection state"
+    },
+    "article_composer_cache_startup": {
+      "description": "Article composer cache initialization on FastAPI startup event. Loads cache for article composition pipeline.",
+      "system": "Content",
+      "machine": "Fly.io",
+      "type": "startup-hook",
+      "schedule": "once (at startup)"
+    },
+    "bali_intel_task_queue": {
+      "description": "Bali Intel Scraper distributed task queue: Celery-like async workers processing scraping, AI, cleanup, and report tasks. Multiple worker loops per instance.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)",
+      "produces": "Processed scrape/AI/report tasks",
+      "consumes": "Task queue submissions"
+    },
+    "bali_intel_proxy_health_check": {
+      "description": "Bali Intel Scraper proxy manager health check loop: persistent asyncio task monitoring proxy pool health and rotating proxies.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)"
+    },
+    "bali_intel_browser_pool_cleanup": {
+      "description": "Bali Intel Scraper browser pool cleanup loop: persistent asyncio task recycling stale browser contexts to prevent memory leaks.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)"
+    },
+    "bali_intel_ai_batch_flush": {
+      "description": "Bali Intel Scraper AI engine batch flush: asyncio task that flushes accumulated AI processing batches after delay or on threshold.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (batch threshold/delay)"
+    },
+    "bali_intel_webhook_receiver": {
+      "description": "Bali Intel Scraper webhook endpoint POST /api/v1/webhook/balizero: receives external scraping events/callbacks.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "webhook",
+      "schedule": "event-driven (incoming POST)"
+    },
+    "bg_crm_practice_email": {
+      "description": "FastAPI BackgroundTask in crm_practices router: sends emails on practice status changes (M4/M5 milestone emails, confirmation emails).",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (practice update)"
+    },
+    "bg_crm_client_welcome": {
+      "description": "FastAPI BackgroundTask in crm_clients router: sends welcome messages (WA + email) and schedules welcome email on new client creation.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (client creation)"
+    },
+    "bg_whatsapp_async_processing": {
+      "description": "FastAPI BackgroundTask in whatsapp_chat router: handles async message processing for WhatsApp conversations.",
+      "system": "Channels",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (incoming WA message)"
+    },
+    "bg_document_ocr": {
+      "description": "FastAPI BackgroundTask in crm_enhanced_documents router: runs OCR processing on uploaded client documents.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (document upload)"
+    }
+  },
+  "github_actions": {
+    "gh_docs_sync": {
+      "description": "GitHub Action: checks docs are in sync on push/PR. Validates documentation matches code state.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR"
+    },
+    "gh_fly_deploy": {
+      "description": "GitHub Action: deploys backend to Fly.io on push to main. Multi-stage: lint, test, build, deploy rolling.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push to main"
+    },
+    "gh_fly_secrets_check": {
+      "description": "GitHub Action: weekly Fly.io secrets health check. Verifies FLY_API_TOKEN validity, sends Telegram alert on failure.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "Monday 09:00 UTC (cron: 0 9 * * 1)"
+    },
+    "gh_intel_router_tests": {
+      "description": "GitHub Action: runs intel router tests on push/PR. Validates bali-intel-scraper API endpoints.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR"
+    },
+    "gh_security_scanning": {
+      "description": "GitHub Action: weekly Snyk security scan. Checks Python and Node.js dependencies for vulnerabilities.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "Sunday 00:00 UTC (cron: 0 0 * * 0)"
+    },
+    "gh_semgrep_sast": {
+      "description": "GitHub Action: Bandit + ESLint SAST (Static Application Security Testing). Blocks PR on HIGH/CRITICAL findings.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR"
+    },
+    "gh_sonarqube": {
+      "description": "GitHub Action: SonarQube code analysis. Python and Node.js quality gates.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR"
+    },
+    "gh_tests": {
+      "description": "GitHub Action: main test suite. Runs pytest backend tests on push/PR with coverage gate.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR"
+    }
+  },
+  "claude_code_hooks": {
+    "PostToolUse_edit_write_0": {
+      "description": "Claude Code hook: fires after Edit/Write tool. Post-processing on file modifications.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "PostToolUse_bash_1": {
+      "description": "Claude Code hook: fires after Bash tool execution. Post-processing on shell commands.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Bash)"
+    },
+    "PostToolUse_edit_write_2": {
+      "description": "Claude Code hook: second Edit/Write post-processor.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "PostToolUse_all_3": {
+      "description": "Claude Code hook: fires after all tool uses. Global post-processing.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after any tool)"
+    },
+    "PostToolUse_edit_write_4": {
+      "description": "Claude Code hook: third Edit/Write post-processor.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "Notification_0": {
+      "description": "Claude Code hook: fires on notification events.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on notification)"
+    },
+    "PreToolUse_edit_write_0": {
+      "description": "Claude Code hook: fires before Edit/Write. Pre-validation on file modifications.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (before Edit/Write)"
+    },
+    "PreToolUse_bash_1": {
+      "description": "Claude Code hook: fires before Bash tool. Pre-validation on shell commands.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (before Bash)"
+    },
+    "Stop_all_0": {
+      "description": "Claude Code hook: fires on session stop. Cleanup and final actions.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on stop)"
+    },
+    "SessionStart_compact_0": {
+      "description": "Claude Code hook: fires on session start with compact matcher. Context loading.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on session start)"
+    },
+    "SessionStart_all_1": {
+      "description": "Claude Code hook: fires on all session starts. Global initialization.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on session start)"
+    },
+    "UserPromptSubmit_0": {
+      "description": "Claude Code hook: fires on user prompt submission. Pre-processing user input.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on user prompt)"
+    }
+  },
+  "home_scripts": {
+    "ai-intel-sentinel.sh": {
+      "description": "TCC-safe bridge for LaunchAgent — calls venv python directly, bypassing macOS TCC /Desktop restriction for intel sentinel.",
+      "system": "Intel",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "cron-runner.sh": {
+      "description": "macOS Sequoia com.apple.provenance bypass — wrapper that strips provenance quarantine before running cron scripts.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-wrapper",
+      "location": "~/scripts/"
+    },
+    "deadman-heartbeat.sh": {
+      "description": "Dead Man's Switch: Pro writes heartbeat file every 30s via LaunchAgent, Air checks. Cross-machine health monitoring.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-monitor",
+      "schedule": "ogni 30s (LaunchAgent)",
+      "location": "~/scripts/"
+    },
+    "comfyui-server.sh": {
+      "description": "ComfyUI server launcher script. Image generation server (manual start).",
+      "system": "AI",
+      "machine": "Pro",
+      "type": "shell-manual",
+      "location": "~/scripts/"
+    },
+    "gdrive-backup-all.sh": {
+      "description": "Google Drive backup orchestrator: runs PG + Qdrant + Intel Archive backups sequentially with summary + Telegram alert.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-orchestrator",
+      "location": "~/scripts/"
+    },
+    "gdrive-intel-archive.sh": {
+      "description": "Intel Scraper crawl cache → Google Drive (30TB). Archives full bali-intel-scraper/data/ directory.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "gdrive-pg-backup.sh": {
+      "description": "PostgreSQL backup → Google Drive (30TB). Secondary disaster recovery mirror of local PG backup.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "gdrive-qdrant-backup.sh": {
+      "description": "Qdrant snapshots → Google Drive (30TB). Mirrors latest local Qdrant snapshot archive.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "generate-automations-all.sh": {
+      "description": "Generates both AUTOMATIONS_REFERENCE.md and automations-inventory.xlsx. Called nightly at 23:15 by LaunchAgent.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-generator",
+      "schedule": "23:15 (via com.nuzantara.automations-reference)",
+      "location": "~/scripts/"
+    },
+    "mata-garuda-watcher.sh": {
+      "description": "TCC-safe launcher for Mata Garuda watcher LaunchAgent. Bridges launchd to repo scripts.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "warroom-wrapper.sh": {
+      "description": "TCC-safe War Room launcher for launchd. Bridges LaunchAgent to War Room pipeline scripts.",
+      "system": "Content",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "setup-grafana-cloud.sh": {
+      "description": "Setup script for Grafana Cloud monitoring integration. One-time installation.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-setup",
+      "location": "~/scripts/"
+    },
+    "setup-log-drain.sh": {
+      "description": "Setup script for log drain configuration. One-time installation.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-setup",
+      "location": "~/scripts/"
+    }
+  },
+  "air_cron_extras": {
+    "API_lkpm_deadlines": {
+      "description": "Air cron: daily LKPM deadline notifier. Calls Fly.io backend POST /api/cron/notifiers/lkpm-deadlines at 07:00 WITA.",
+      "system": "Compliance",
+      "machine": "Air",
+      "type": "cron-api",
+      "schedule": "23:00 UTC daily (07:00 WITA)"
+    },
+    "run_db_nlm_sync.sh": {
+      "description": "Air cron: DB→NLM sync. Syncs database state to NotebookLM for knowledge grounding. Runs 20:30 UTC daily.",
+      "system": "NLM",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "20:30 UTC daily"
+    },
+    "run_t4_monitor.sh": {
+      "description": "Air cron: T4 social monitor execution. Runs every 6h alongside SEO guardian.",
+      "system": "Content",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "ogni 6h"
+    },
+    "weekly_ollama_restart": {
+      "description": "Air cron: weekly Ollama restart + re-pin warm model. Prevents memory drift. Sunday 05:00 WITA.",
+      "system": "AI",
+      "machine": "Air",
+      "type": "cron-maintenance",
+      "schedule": "Sunday 05:00"
+    },
+    "API_auto_practice_creator": {
+      "description": "Air cron: daily auto practice creator. Creates visa renewal practices at T-60 days before expiry. 07:30 WITA.",
+      "system": "CRM",
+      "machine": "Air",
+      "type": "cron-api",
+      "schedule": "07:30 WITA daily"
     }
   },
   "zombies": {
