@@ -8,6 +8,8 @@ Fail-open policy: if Redis is unavailable, tokens are NOT rejected.
 import logging
 from typing import Any
 
+from redis.exceptions import RedisError
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,8 +36,11 @@ class TokenRevocationService:
             await self._redis.setex(f"revoked:{jti}", ttl_seconds, reason)
             logger.info(f"S03: Token revoked jti={jti} reason={reason} ttl={ttl_seconds}s")
             return True
+        except (RedisError, OSError) as e:
+            logger.warning("S03: Token revocation failed jti=%s: %s", jti, e)
+            return False
         except Exception as e:
-            logger.error(f"S03: Token revocation failed jti={jti}: {e}")
+            logger.exception("S03: Unexpected error revoking token jti=%s", jti)
             return False
 
     async def is_revoked(self, jti: str) -> bool:
@@ -44,8 +49,11 @@ class TokenRevocationService:
         try:
             result = await self._redis.exists(f"revoked:{jti}")
             return bool(result)
+        except (RedisError, OSError) as e:
+            logger.warning("S03: Revocation check failed (fail-open): %s", e)
+            return False
         except Exception as e:
-            logger.warning(f"S03: Revocation check failed (fail-open): {e}")
+            logger.exception("S03: Unexpected error checking revocation for jti=%s", jti)
             return False
 
     async def revoke_all_user_tokens(
@@ -58,8 +66,11 @@ class TokenRevocationService:
             await self._redis.setex(f"revoked_user:{user_email}", 86400, reason)
             logger.info(f"S03: All tokens revoked for {user_email} reason={reason}")
             return True
+        except (RedisError, OSError) as e:
+            logger.warning("S03: User revocation failed %s: %s", user_email, e)
+            return False
         except Exception as e:
-            logger.error(f"S03: User revocation failed {user_email}: {e}")
+            logger.exception("S03: Unexpected error revoking tokens for %s", user_email)
             return False
 
     async def is_user_revoked(self, user_email: str) -> bool:
@@ -68,6 +79,9 @@ class TokenRevocationService:
         try:
             result = await self._redis.exists(f"revoked_user:{user_email}")
             return bool(result)
+        except (RedisError, OSError) as e:
+            logger.warning("S03: User revocation check failed (fail-open): %s", e)
+            return False
         except Exception as e:
-            logger.warning(f"S03: User revocation check failed (fail-open): {e}")
+            logger.exception("S03: Unexpected error checking user revocation for %s", user_email)
             return False

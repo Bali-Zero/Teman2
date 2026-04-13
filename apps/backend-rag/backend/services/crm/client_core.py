@@ -18,7 +18,7 @@ from enum import Enum
 from typing import Any
 
 import asyncpg
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationError as PydanticValidationError, field_validator
 
 from backend.app.core.exceptions import (
     DatabaseError,
@@ -323,8 +323,10 @@ class CRMAuditor:
             if len(self._buffer) >= self._buffer_size:
                 await self._flush_buffer()
 
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to log audit entry (DB): {sanitize_error_message(e)}")
         except Exception as e:
-            logger.error(f"Failed to log audit entry: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to log audit entry: {sanitize_error_message(e)}")
 
     async def log_client_created(
         self,
@@ -497,8 +499,12 @@ class CRMAuditor:
             logger.debug(f"Flushed {len(self._buffer)} audit entries")
             self._buffer.clear()
 
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to flush audit buffer (serialization): {sanitize_error_message(e)}")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to flush audit buffer (DB): {sanitize_error_message(e)}")
         except Exception as e:
-            logger.error(f"Failed to flush audit buffer: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to flush audit buffer: {sanitize_error_message(e)}")
 
     def _calculate_changes(
         self, old_values: dict[str, Any], new_values: dict[str, Any],
@@ -631,8 +637,11 @@ class EnhancedCRMService:
             self._initialized = True
             logger.info("✅ EnhancedCRMService initialized successfully")
 
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to initialize CRM service (DB): {sanitize_error_message(e)}")
+            raise
         except Exception as e:
-            logger.error(f"Failed to initialize CRM service: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to initialize CRM service: {sanitize_error_message(e)}")
             raise
 
     # ==================== CLIENT OPERATIONS ====================
@@ -691,8 +700,14 @@ class EnhancedCRMService:
 
         except ValidationError:
             raise
+        except PydanticValidationError as e:
+            logger.warning(f"Failed to create client (validation): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to create client", operation="insert")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to create client (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to create client", operation="insert")
         except Exception as e:
-            logger.error(f"Failed to create client: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to create client: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create client", operation="insert")
 
     async def update_client(
@@ -760,8 +775,14 @@ class EnhancedCRMService:
 
         except ResourceNotFoundError:
             raise
+        except (ValidationError, PydanticValidationError) as e:
+            logger.warning(f"Failed to update client (validation): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to update client", operation="update")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to update client (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to update client", operation="update")
         except Exception as e:
-            logger.error(f"Failed to update client: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to update client: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to update client", operation="update")
 
     async def get_client(
@@ -790,8 +811,11 @@ class EnhancedCRMService:
 
             return result
 
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to get client (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to retrieve client", operation="select")
         except Exception as e:
-            logger.error(f"Failed to get client: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to get client: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to retrieve client", operation="select")
 
     async def search_clients(
@@ -849,8 +873,14 @@ class EnhancedCRMService:
             logger.info(f"Created practice {result['id']} for client {validated.client_id}")
             return result
 
+        except PydanticValidationError as e:
+            logger.warning(f"Failed to create practice (validation): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to create practice", operation="insert")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to create practice (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to create practice", operation="insert")
         except Exception as e:
-            logger.error(f"Failed to create practice: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to create practice: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create practice", operation="insert")
 
     async def update_practice_status(
@@ -903,8 +933,11 @@ class EnhancedCRMService:
 
         except ResourceNotFoundError:
             raise
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Failed to update practice status (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Failed to update practice status", operation="update")
         except Exception as e:
-            logger.error(f"Failed to update practice status: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Failed to update practice status: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to update practice status", operation="update")
 
     # ==================== BATCH OPERATIONS ====================
@@ -922,8 +955,14 @@ class EnhancedCRMService:
             logger.info(f"Batch created {len(ids)} clients")
             return ids
 
+        except PydanticValidationError as e:
+            logger.warning(f"Batch create failed (validation): {sanitize_error_message(e)}")
+            raise DatabaseError("Batch creation failed", operation="batch_insert")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"Batch create failed (DB): {sanitize_error_message(e)}")
+            raise DatabaseError("Batch creation failed", operation="batch_insert")
         except Exception as e:
-            logger.error(f"Batch create failed: {sanitize_error_message(e)}", exc_info=True)
+            logger.exception(f"Batch create failed: {sanitize_error_message(e)}")
             raise DatabaseError("Batch creation failed", operation="batch_insert")
 
     # ==================== HR BONUS HOOK ====================
@@ -1023,8 +1062,12 @@ class EnhancedCRMService:
                     f"employee={assigned_to}, amount={rate['amount_idr']} IDR",
                 )
 
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(f"HR bonus hook failed for practice {practice_id} (DB): {e}")
+        except (KeyError, TypeError) as e:
+            logger.warning(f"HR bonus hook failed for practice {practice_id} (data): {e}")
         except Exception as e:
-            logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
+            logger.exception(f"HR bonus hook failed for practice {practice_id}: {e}")
 
     # ==================== UTILITY METHODS ====================
 

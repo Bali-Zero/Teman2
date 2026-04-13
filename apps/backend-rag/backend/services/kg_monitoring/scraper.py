@@ -234,11 +234,17 @@ class LegalScraper:
                         doc = self._parse_document_item(item, source)
                         if doc:
                             documents.append(doc)
-                    except Exception as e:
+                    except (AttributeError, ValueError, TypeError) as e:
                         logger.warning(f"   Failed to parse item: {e}")
+                    except Exception as e:
+                        logger.exception("   Unexpected error parsing document item")
 
+            except httpx.HTTPError as e:
+                logger.warning(f"   HTTP error scraping {search_path}: {e}")
+            except (AttributeError, ValueError) as e:
+                logger.warning(f"   Parse error scraping {search_path}: {e}")
             except Exception as e:
-                logger.error(f"   Error scraping {search_path}: {e}")
+                logger.exception(f"   Unexpected error scraping {search_path}")
 
         return documents
 
@@ -294,9 +300,15 @@ class LegalScraper:
                 elif attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)  # Exponential backoff
 
-            except Exception as e:
+            except (httpx.TimeoutException, httpx.ConnectError, OSError) as e:
                 self.scrape_stats["failed_requests"] += 1
                 logger.warning(f"   Request error: {e}")
+                if attempt < source.max_retries - 1:
+                    await asyncio.sleep(2**attempt)
+
+            except Exception as e:
+                self.scrape_stats["failed_requests"] += 1
+                logger.exception(f"   Unexpected request error for {url}")
                 if attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)
 
@@ -432,8 +444,11 @@ class LegalScraper:
             try:
                 documents = await self.scrape_source(source_id, max_pages, per_page)
                 results[source_id] = documents
+            except (httpx.HTTPError, OSError) as e:
+                logger.warning(f"Failed to scrape {source_id}: {e}")
+                results[source_id] = []
             except Exception as e:
-                logger.error(f"Failed to scrape {source_id}: {e}")
+                logger.exception(f"Unexpected error scraping {source_id}")
                 results[source_id] = []
 
         return results

@@ -37,6 +37,7 @@ import json
 import logging
 import subprocess
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
@@ -191,7 +192,11 @@ def _query_notebook_sync(notebook_id: str, query: str) -> tuple[str | None, str 
         return None, f"timeout after {NLM_QUERY_TIMEOUT}s"
     except FileNotFoundError:
         return None, "nlm CLI not found"
+    except OSError as exc:
+        logger.warning("Subprocess OS error querying notebook: %s", exc)
+        return None, str(exc)
     except Exception as exc:
+        logger.exception("Unexpected error querying notebook %s", notebook_id)
         return None, str(exc)
 
 
@@ -418,8 +423,14 @@ def _call_ollama_synthesis(
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             result = json.loads(resp.read().decode())
             return result.get("message", {}).get("content", "")
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as exc:
+        logger.warning("Ollama synthesis network error: %s", exc)
+        return None
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        logger.warning("Ollama synthesis serialization error: %s", exc)
+        return None
     except Exception as exc:
-        logger.warning("Ollama synthesis failed: %s", exc)
+        logger.exception("Unexpected error in Ollama synthesis")
         return None
 
 
