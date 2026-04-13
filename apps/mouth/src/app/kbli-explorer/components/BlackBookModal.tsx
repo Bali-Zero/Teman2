@@ -195,7 +195,7 @@ export default function BlackBookModal({
                       Back to Explorer
                     </button>
                     <a
-                      href="https://wa.me/6281338051876?text=Hi%2C%20I%20found%20a%20KBLI%20code%20I%20need%20help%20with."
+                      href="https://wa.me/628213107363?text=Hi%2C%20I%20found%20a%20KBLI%20code%20I%20need%20help%20with."
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full py-3 text-[#D4B483] text-sm font-bold border border-[#D4B483]/20 rounded-lg hover:bg-[#D4B483]/5 transition-all"
