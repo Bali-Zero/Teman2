@@ -18,6 +18,9 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+import asyncpg
+import httpx
+
 from backend.services.monitoring import AlertLevel, get_alert_service
 
 logger = logging.getLogger(__name__)
@@ -219,8 +222,8 @@ class ChangeDetector:
 
             logger.info("✅ Change tracking tables initialized")
 
-        except Exception as e:
-            logger.error(f"Failed to initialize DB tables: {e}")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.exception("Failed to initialize DB tables")
             raise
 
     async def detect_changes(
@@ -422,8 +425,10 @@ class ChangeDetector:
                     )
                     self._state_cache[state.document_id] = state
 
-        except Exception as e:
-            logger.error(f"Failed to load source states: {e}")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("Failed to load source states from DB: %s", e)
+        except (KeyError, TypeError) as e:
+            logger.exception("Corrupt row data while loading source states")
 
     async def _save_state(self, state: DocumentState) -> None:
         """Save document state to database"""
@@ -465,8 +470,10 @@ class ChangeDetector:
                 # Log change event if applicable
                 await self._log_change_event(state)
 
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("Failed to save state for %s: %s", state.document_id, e)
         except Exception as e:
-            logger.error(f"Failed to save state: {e}")
+            logger.exception("Unexpected error saving state for %s", state.document_id)
 
     async def _log_change_event(self, state: DocumentState) -> None:
         """Log change event to database"""
@@ -490,8 +497,8 @@ class ChangeDetector:
                     state.title,
                     state.url,
                 )
-        except Exception as e:
-            logger.error(f"Failed to log change event: {e}")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("Failed to log change event for %s: %s", state.document_id, e)
 
     async def _send_change_alerts(self, changes: list[ChangeEvent]) -> None:
         """Send alerts for significant changes"""
@@ -539,8 +546,10 @@ class ChangeDetector:
                     level=level,
                     metadata=metadata,
                 )
+            except httpx.HTTPError as e:
+                logger.warning("Failed to send change alert for %s: %s", source_id, e)
             except Exception as e:
-                logger.error(f"Failed to send alert: {e}")
+                logger.exception("Unexpected error sending alert for %s", source_id)
 
     def get_stats(self) -> dict[str, Any]:
         """Get detection statistics"""
@@ -593,8 +602,11 @@ class ChangeDetector:
                     for row in rows
                 ]
 
-        except Exception as e:
-            logger.error(f"Failed to get recent changes: {e}")
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("Failed to query recent changes: %s", e)
+            return []
+        except (KeyError, ValueError) as e:
+            logger.exception("Corrupt row data while reading recent changes")
             return []
 
     @staticmethod
