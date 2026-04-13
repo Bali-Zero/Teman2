@@ -14,6 +14,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from backend.core.cache import invalidate_cache
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sheets", tags=["sheets"])
@@ -94,6 +96,7 @@ async def write_range(req: WriteRequest) -> dict[str, Any]:
     try:
         svc = _get_sheets_service()
         result = await svc.write_range(req.spreadsheet_id, req.range, req.values)
+        await invalidate_cache("zantara:sheets:*")
         return {"status": "success", "updated_cells": result.get("updatedCells", 0)}
     except Exception as e:
         logger.error(f"[SHEETS] Write failed: {e}", exc_info=True)
@@ -106,6 +109,7 @@ async def append_rows(req: WriteRequest) -> dict[str, Any]:
     try:
         svc = _get_sheets_service()
         result = await svc.append_row(req.spreadsheet_id, req.range, req.values)
+        await invalidate_cache("zantara:sheets:*")
         return {
             "status": "success",
             "updated_range": result.get("updates", {}).get("updatedRange", ""),
@@ -147,6 +151,7 @@ async def update_row(req: UpdateRowRequest) -> dict[str, Any]:
         range_ = f"{req.sheet_name}!{req.column_start}{req.row_number}:{end_col}{req.row_number}"
 
         result = await svc.write_range(req.spreadsheet_id, range_, [req.values])
+        await invalidate_cache("zantara:sheets:*")
         return {
             "status": "success",
             "range": range_,
