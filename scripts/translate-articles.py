@@ -22,7 +22,7 @@ import httpx
 # ── Configuration ──────────────────────────────────────────────────────────
 
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:26b")
+MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:e4b")
 ARTICLES_DIR = Path(__file__).resolve().parent.parent / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {
