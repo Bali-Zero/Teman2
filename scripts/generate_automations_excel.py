@@ -69,6 +69,7 @@ class Automation:
     name: str
     machine: str  # Pro / Air
     type: str  # cron / launchd / openclaw / daemon
+    system: str = ""  # Garuda / Olympus / Cell / SEO / CRM / NLM / Infra / Ops / Intel
     schedule: str = ""
     schedule_human: str = ""
     script_path: str = ""
@@ -86,6 +87,95 @@ class Automation:
     produces: str = ""
     consumes: str = ""
     notes: str = ""
+
+
+# ── System classification ────────────────────────────────────────────────────
+# Maps automation name patterns to the system they belong to.
+SYSTEM_RULES: list[tuple[str, str]] = [
+    # Garuda — Knowledge Graph intelligence
+    ("garuda", "Garuda"),
+    ("gap-detector", "Garuda"),
+    ("knowledge-graph", "Garuda"),
+    ("matagaruda", "Garuda"),
+    # Cell — Autonomous organism
+    ("cell", "Cell"),
+    # NLM — NotebookLM pipelines
+    ("nlm", "NLM"),
+    ("nb1", "NLM"), ("nb2", "NLM"), ("nb3", "NLM"), ("nb4", "NLM"),
+    ("nb5", "NLM"), ("nb6", "NLM"), ("nb7", "NLM"), ("nb8", "NLM"),
+    ("nb10", "NLM"), ("notebook", "NLM"),
+    ("freshness", "NLM"), ("gap_scanner", "NLM"), ("multimodal", "NLM"),
+    ("heartbeat_check", "NLM"), ("ops_briefing", "NLM"), ("persona_validate", "NLM"),
+    ("peraturan_ingestion", "NLM"), ("peraturan-ingestion", "NLM"),
+    ("db_nlm_sync", "NLM"), ("db-nlm-sync", "NLM"),
+    ("yt_monitor", "NLM"), ("yt-monitor", "NLM"), ("deep-research", "NLM"),
+    ("run_gap", "NLM"), ("gap_scanner", "NLM"),
+    ("run_heartbeat", "NLM"), ("heartbeat_check", "NLM"),
+    ("run_ops_briefing", "NLM"), ("ops_briefing", "NLM"),
+    ("run_persona", "NLM"), ("persona_validate", "NLM"),
+    ("run_nb", "NLM"), ("run_freshness", "NLM"),
+    ("run_multimodal", "NLM"),
+    # SEO — Search engine optimization
+    ("seo", "SEO"), ("indexing", "SEO"), ("kbli", "SEO"),
+    # CRM — Client relationship management
+    ("client", "CRM"), ("compliance", "CRM"), ("practice", "CRM"),
+    ("renewal", "CRM"), ("expiry", "CRM"), ("cashout", "CRM"),
+    ("notifier", "CRM"), ("birthday", "CRM"), ("welcome", "CRM"),
+    ("crm", "CRM"), ("daily-ops", "CRM"), ("weekly-review", "CRM"),
+    # Intel — Business intelligence & scraping
+    ("intel", "Intel"), ("scraper", "Intel"), ("legal_radar", "Intel"),
+    ("translate", "Intel"), ("war-room", "Intel"), ("overnight", "Intel"),
+    ("normativa", "Intel"),
+    # Sentinel — Self-healing & monitoring
+    ("sentinel", "Sentinel"), ("dlq", "Sentinel"), ("circuit", "Sentinel"),
+    ("zombie", "Sentinel"), ("disk-monitor", "Sentinel"),
+    ("fly-health", "Sentinel"), ("fly-restart", "Sentinel"),
+    ("cert-monitor", "Sentinel"), ("fly-cost", "Sentinel"),
+    ("doctor", "Sentinel"), ("canary", "Sentinel"),
+    ("ragas", "Sentinel"), ("guardian-ragas", "Sentinel"),
+    ("guardian-redteam", "Sentinel"), ("job_health", "Sentinel"),
+    ("automations-reference", "Sentinel"), ("automap", "Sentinel"),
+    ("monitor", "Sentinel"), ("healthcheck", "Sentinel"),
+    ("core-guardian", "Sentinel"), ("tech-orchestrator", "Sentinel"),
+    ("vector-reindex", "Sentinel"),
+    # Olympus — Database & infrastructure
+    ("postgres", "Olympus"), ("pg-sync", "Olympus"), ("pg-backup", "Olympus"),
+    ("fly-backup", "Olympus"), ("qdrant", "Olympus"),
+    # Ops — Operational tools
+    ("openclaw", "Ops"), ("nuz-sync", "Ops"), ("syncthing", "Ops"),
+    ("sync-damar", "Ops"), ("sync-memory", "Ops"), ("mos", "Ops"),
+    ("memory", "Ops"), ("cache", "Ops"), ("cleanup", "Ops"),
+    ("warm", "Ops"), ("ollama", "Ops"), ("redis", "Ops"),
+    ("tunnel", "Ops"), ("claude-max", "Ops"), ("docker", "Ops"),
+    ("nightly-sync", "Ops"), ("drive", "Ops"), ("state-bridge", "Ops"),
+    ("webhook", "Ops"), ("poller", "Ops"), ("code-review", "Ops"),
+    ("conversation-cleanup", "Ops"), ("conversation-trainer", "Ops"),
+    ("dep-audit", "Ops"), ("dep_audit", "Ops"), ("coverage", "Ops"),
+    ("learning-pipeline", "Ops"), ("codebase-audit", "Ops"),
+    ("weekly-report", "Ops"), ("weekly-dep", "Ops"),
+    ("t4-monitor", "Intel"), ("t4_monitor", "Intel"),
+    # Sentinel additional
+    ("auto_test", "Sentinel"), ("auto-test", "Sentinel"),
+    ("auto_sentinel", "Sentinel"), ("auto-sentinel", "Sentinel"),
+    ("auto_judgement", "Sentinel"), ("judgement-day", "Sentinel"),
+    ("job-health", "Sentinel"), ("job_health", "Sentinel"),
+    # Intel additional
+    ("source-enrichment", "Intel"), ("legal-radar", "Intel"),
+    ("auto_kb_ingest", "Sentinel"), ("kb-ingest", "Sentinel"),
+    # Ops additional
+    ("cron-wrapper", "Ops"), ("cron_wrapper", "Ops"),
+    ("heartbeat", "Ops"), ("pro_heartbeat", "Ops"),
+]
+
+
+def classify_system(name: str) -> str:
+    """Classify an automation into a system based on name patterns."""
+    name_lower = name.lower()
+    for pattern, system in SYSTEM_RULES:
+        # Match both underscore and dash variants
+        if pattern in name_lower or pattern.replace("_", "-") in name_lower or pattern.replace("-", "_") in name_lower:
+            return system
+    return "—"
 
 
 # ── Catalog ───────────────────────────────────────────────────────────────────
@@ -144,6 +234,8 @@ def enrich_from_catalog(a: Automation, catalog: dict) -> None:
         a.notes = entry["notes"] if not a.notes else a.notes + "; " + entry["notes"]
     if entry.get("type"):
         a.type = entry["type"]
+    if entry.get("monitored_by") and not a.monitored_by:
+        a.monitored_by = entry["monitored_by"]
 
 
 def _read_script_header(script_path: str) -> str:
@@ -580,6 +672,7 @@ def status_fill(status: str) -> PatternFill:
 
 COLUMNS = [
     ("Nome", 30),
+    ("Sistema", 10),
     ("Macchina", 8),
     ("Tipo", 10),
     ("Schedule", 25),
@@ -594,10 +687,23 @@ COLUMNS = [
     ("Errori", 7),
     ("Ultimo Run", 16),
     ("Ultimo Errore", 40),
-    ("Produce", 25),
-    ("Consuma", 25),
+    ("Produce", 30),
+    ("Consuma", 30),
     ("Note", 35),
 ]
+
+# System colors
+SYSTEM_COLORS = {
+    "Garuda": PatternFill("solid", fgColor="E2EFDA"),    # sage green
+    "Cell": PatternFill("solid", fgColor="FCE4D6"),      # light orange
+    "NLM": PatternFill("solid", fgColor="D6E4F0"),       # light blue
+    "SEO": PatternFill("solid", fgColor="FFF2CC"),       # light yellow
+    "CRM": PatternFill("solid", fgColor="E2D9F3"),       # light purple
+    "Intel": PatternFill("solid", fgColor="F4CCCC"),     # light red
+    "Sentinel": PatternFill("solid", fgColor="D5E8D4"),  # mint green
+    "Olympus": PatternFill("solid", fgColor="DAE8FC"),   # steel blue
+    "Ops": PatternFill("solid", fgColor="F5F5F5"),       # light gray
+}
 
 
 def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) -> None:
@@ -631,13 +737,14 @@ def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) ->
     for row_idx, a in enumerate(sorted_autos, 2):
         values = [
             a.name,
+            a.system or "—",
             a.machine,
             a.type,
             a.schedule_human,
             a.description,
             a.uses_llm,
             a.llm_interface,
-            a.monitored_by,
+            a.monitored_by or "—",
             "SI" if a.is_critical else "—",
             a.repair_scope or "—",
             a.status or "—",
@@ -645,8 +752,8 @@ def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) ->
             a.failures if a.failures else "",
             a.last_run,
             a.last_error,
-            a.produces,
-            a.consumes,
+            a.produces or "—",
+            a.consumes or "—",
             a.notes,
         ]
         for col_idx, val in enumerate(values, 1):
@@ -655,14 +762,21 @@ def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) ->
             cell.alignment = WRAP_ALIGN
             cell.border = THIN_BORDER
 
-        # Color status column
-        status_cell = ws.cell(row=row_idx, column=11)
+        # Color Sistema column (col 2)
+        sys_cell = ws.cell(row=row_idx, column=2)
+        sys_fill = SYSTEM_COLORS.get(a.system)
+        if sys_fill:
+            sys_cell.fill = sys_fill
+            sys_cell.font = Font(bold=True, size=10)
+
+        # Color status column (col 12)
+        status_cell = ws.cell(row=row_idx, column=12)
         fill = status_fill(a.status)
         if fill.fgColor:
             status_cell.fill = fill
 
-        # Color circuit breaker column
-        cb_cell = ws.cell(row=row_idx, column=12)
+        # Color circuit breaker column (col 13)
+        cb_cell = ws.cell(row=row_idx, column=13)
         if a.circuit_state == "OPEN":
             cb_cell.fill = RED_FILL
         elif a.circuit_state == "CLOSED":
@@ -670,8 +784,8 @@ def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) ->
         elif a.circuit_state == "HALF_OPEN":
             cb_cell.fill = YELLOW_FILL
 
-        # Color critical
-        crit_cell = ws.cell(row=row_idx, column=9)
+        # Color critical (col 10)
+        crit_cell = ws.cell(row=row_idx, column=10)
         if a.is_critical:
             crit_cell.fill = BLUE_FILL
             crit_cell.font = Font(bold=True, size=10)
@@ -791,6 +905,16 @@ def main() -> None:
         if a.description != before_desc:
             enriched += 1
     print(f"    {enriched} automations enriched from catalog")
+
+    # Classify systems
+    print("  Classifying systems...")
+    for a in all_automations:
+        a.system = classify_system(a.name)
+    systems = {}
+    for a in all_automations:
+        s = a.system or "—"
+        systems[s] = systems.get(s, 0) + 1
+    print(f"    {', '.join(f'{s}:{c}' for s, c in sorted(systems.items()))}")
 
     # Auto-discover unknown automations (header parse + LLM fallback)
     print("  Auto-discovering unknown automations...")
