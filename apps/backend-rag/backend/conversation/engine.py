@@ -8,6 +8,7 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
+import json
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -17,6 +18,11 @@ from backend.channels.base import ChannelMessage, ChannelResponse
 from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
+
+# Session context TTL: 1 hour in Redis
+_SESSION_CONTEXT_TTL = 3600
+# Max conversation history entries to load
+_MAX_HISTORY_ENTRIES = 20
 
 
 class ConversationEngine:
@@ -215,23 +221,76 @@ class ConversationEngine:
             return None
 
     async def _load_context(self, session_id: str) -> dict[str, Any]:
-        """
-        Load conversation context (history, user state).
+        """Load conversation context from Redis cache, falling back to PostgreSQL.
+
+        Lookup order:
+        1. Redis session cache (fast, TTL=1h)
+        2. PostgreSQL conversation_messages table (persistent)
+        3. Empty context (new session)
 
         Args:
-            session_id: Session identifier
+            session_id: Session identifier.
 
         Returns:
-            Context dictionary with history and state
-
-        Note:
-            In Phase 1, this is a stub. In Phase 4, integrate with:
-            - PostgreSQL conversation_history table
-            - Redis session cache
-            - Memory orchestrator
+            Context dict with 'history' (list of role/content dicts) and 'user_state'.
         """
-        # TODO Phase 4: Implement context loading from database
-        return {"history": [], "user_state": {}}
+        empty_context: dict[str, Any] = {"history": [], "user_state": {}}
+
+        if not session_id:
+            return empty_context
+
+        cache_key = f"zantara:session_ctx:{session_id}"
+
+        # Strategy 1: Redis cache (sub-ms)
+        try:
+            from backend.core.cache import get_cache_service
+
+            cache = get_cache_service()
+            cached = await cache.get(cache_key)
+            if cached and isinstance(cached, dict):
+                logger.debug(f"Session context cache hit for {session_id}")
+                return cached
+        except Exception as e:
+            logger.debug(f"Redis context load skipped: {e}")
+
+        # Strategy 2: PostgreSQL conversation_messages table
+        db_pool = getattr(self, "_db_pool", None)
+        if db_pool:
+            try:
+                rows = await db_pool.fetch(
+                    """
+                    SELECT direction, content
+                    FROM conversation_messages
+                    WHERE metadata->>'session_id' = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2
+                    """,
+                    session_id,
+                    _MAX_HISTORY_ENTRIES,
+                )
+                if rows:
+                    history = []
+                    for row in reversed(rows):  # Chronological order
+                        role = "user" if row["direction"] == "inbound" else "assistant"
+                        history.append({"role": role, "content": row["content"]})
+
+                    context = {"history": history, "user_state": {}}
+
+                    # Warm the cache for next time
+                    try:
+                        cache = get_cache_service()
+                        await cache.set(cache_key, context, ttl=_SESSION_CONTEXT_TTL)
+                    except Exception:
+                        pass
+
+                    logger.debug(
+                        f"Loaded {len(history)} messages from DB for session {session_id}",
+                    )
+                    return context
+            except Exception as e:
+                logger.debug(f"DB context load failed (non-fatal): {e}")
+
+        return empty_context
 
     async def _load_cross_channel_context(self, thread_id: str) -> list[dict[str, str]]:
         """Load recent messages from the same thread across all channels.
@@ -272,17 +331,26 @@ class ConversationEngine:
             return []
 
     async def _save_context(self, session_id: str, context: dict[str, Any]) -> None:
-        """
-        Save conversation context.
+        """Save conversation context to Redis cache (with 1h TTL).
+
+        PostgreSQL persistence of individual messages is handled by
+        ChannelRouter._persist_message() at the channel layer.
+        This method only caches the assembled context for fast reload.
 
         Args:
-            session_id: Session identifier
-            context: Context dictionary to save
-
-        Note:
-            In Phase 1, this is a stub. In Phase 4, integrate with:
-            - PostgreSQL conversation_history table
-            - Redis session cache
+            session_id: Session identifier.
+            context: Context dictionary with history and user_state.
         """
-        # TODO Phase 4: Implement context saving to database
-        pass
+        if not session_id or not context:
+            return
+
+        cache_key = f"zantara:session_ctx:{session_id}"
+
+        try:
+            from backend.core.cache import get_cache_service
+
+            cache = get_cache_service()
+            await cache.set(cache_key, context, ttl=_SESSION_CONTEXT_TTL)
+            logger.debug(f"Saved session context to cache for {session_id}")
+        except Exception as e:
+            logger.debug(f"Failed to cache session context (non-fatal): {e}")
