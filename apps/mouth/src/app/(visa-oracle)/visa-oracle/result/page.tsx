@@ -296,7 +296,9 @@ export default function ResultPage() {
           our team on WhatsApp — they will help you find the right solution.
         </p>
         <a
-          href="https://wa.me/6281338051876"
+          href={`https://wa.me/6281338051876?text=${encodeURIComponent(
+            `Hello Bali Zero! I used Visa Oracle but no matching visa was found. Nationality: ${nationality}, Purpose: ${purpose ?? ""}, Duration: ${duration ?? ""}. Can you help me?`,
+          )}`}
           target="_blank"
           rel="noopener noreferrer"
           className="px-6 py-3 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
@@ -319,9 +321,18 @@ export default function ResultPage() {
     <div className="flex flex-col gap-8 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl sm:text-3xl font-bold">
-          Your visa recommendations
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            Your visa recommendations
+          </h1>
+          <button
+            onClick={() => router.replace("/visa-oracle/quiz")}
+            className="text-xs underline transition-opacity hover:opacity-70 flex-shrink-0"
+            style={{ color: "var(--tx-secondary)" }}
+          >
+            Change answers
+          </button>
+        </div>
         <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
           You have{" "}
           <span style={{ color: "var(--bz-accent)" }}>
