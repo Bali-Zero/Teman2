@@ -55,7 +55,7 @@ export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps)
               <p className="text-xs text-gray-400">Descrivi cosa vuoi creare</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors" aria-label="Close image generator">
             <X className="w-5 h-5 text-gray-400" />
           </button>
         </div>

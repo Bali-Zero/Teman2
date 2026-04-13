@@ -27,7 +27,8 @@ import { useChatSend } from "./useChatSend";
 import { useConversations } from "./useConversations";
 import { useTeamStatus } from "./useTeamStatus";
 import { useConversationPersistence } from "./useConversationPersistence";
-import type { ChatMessage, Source } from "@/app/chat/actions";
+import type { ChatMessage } from "@/app/chat/actions";
+import type { Source } from "@/types";
 import type { AgentStep } from "@/types";
 
 import type { SingleConversationResponse } from "@/lib/api/conversations/conversations.types";
@@ -240,7 +241,7 @@ export function useChatPage(): UseChatPageReturn {
     },
     onComplete: async (
       fullResponse: string,
-      sources: any[],
+      sources: Source[],
       metadata?: ChatMessage["metadata"],
     ) => {
       setMessages((prev) => {

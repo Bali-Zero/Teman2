@@ -24,15 +24,15 @@ export async function GET(request: Request) {
     } finally {
       client.release();
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Activity Log Error:", error);
     // If table doesn't exist, return empty to avoid breaking UI
-    if (error.code === "42P01") {
+    if (error instanceof Error && 'code' in error && (error as { code: string }).code === "42P01") {
       return NextResponse.json({
         activities: [],
         warning: "Table activity_log not found",
       });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

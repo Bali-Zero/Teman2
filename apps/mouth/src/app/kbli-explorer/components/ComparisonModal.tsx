@@ -107,7 +107,7 @@ export default function ComparisonModal({
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
-                <button className="p-2 rounded-lg hover:bg-[#1A1D24] text-[#888] hover:text-white transition-colors">
+                <button className="p-2 rounded-lg hover:bg-[#1A1D24] text-[#888] hover:text-white transition-colors" aria-label="Close comparison">
                   <X size={18} />
                 </button>
               </Dialog.Close>
