@@ -429,7 +429,7 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                   </svg>
                 </a>
                 <a
-                  href="https://wa.me/6281234567890"
+                  href="https://wa.me/628213107363"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"
@@ -513,12 +513,12 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
                 </li>
                 <li>
                   <a
-                    href="https://wa.me/6285904369574"
+                    href="https://wa.me/628213107363"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-white/50 hover:text-white transition-colors"
                   >
-                    +62 859 0436 9574
+                    +62 821 3107 363
                   </a>
                 </li>
                 <li>

@@ -1,0 +1,79 @@
+{
+  "_version": "2.0",
+  "_updated": "2026-04-13",
+  "_doc": "Single source of truth for all LLM model assignments. Every consumer reads this file. One change, one place.",
+  "nodes": {
+    "pro": {
+      "hostname": "Nuzantara",
+      "ram_gb": 48,
+      "mlx_enabled": true,
+      "warm_model": "qwen3.5:9b",
+      "warm_keep_alive": "-1",
+      "warm_ctx": 32768,
+      "warm_think": false,
+      "ollama_restart_schedule": "weekly sunday 05:00 WITA"
+    },
+    "air": {
+      "hostname": "Nuzantara-9",
+      "ram_gb": 16,
+      "mlx_enabled": false,
+      "warm_model": "qwen3:4b",
+      "warm_keep_alive": "-1",
+      "warm_ctx": 4096,
+      "warm_think": false,
+      "ollama_host": "http://127.0.0.1:11434",
+      "ollama_restart_schedule": "weekly sunday 05:00 WITA"
+    }
+  },
+  "roles": {
+    "cron_primary": "qwen3.5:9b",
+    "cron_primary_tool_calling": "qwen3:8b",
+    "cron_fallback": "gemma4:e4b",
+    "cloud_fallback": "google-gemini-cli/gemini-3-flash-preview",
+    "translation": "gemma4:e4b",
+    "kg_json": "gemma4:26b",
+    "vision": "qwen2.5vl:7b",
+    "reasoning": "deepseek-r1:32b",
+    "fast": "qwen3.5:9b",
+    "sentry": "qwen3:4b",
+    "code_review": "qwen3:8b",
+    "cell_tier0": "qwen3.5:9b",
+    "cell_tier1": "gemma4:26b",
+    "sentinel_classifier": "claude --print",
+    "dlq_reasoning": "claude --print",
+    "aider_fix": "openrouter/deepseek/deepseek-chat-v3-0324",
+    "codex_fix": "codex --full-auto"
+  },
+  "failure_domains": {
+    "ollama_pro": [
+      "cron_primary",
+      "cron_primary_tool_calling",
+      "cron_fallback",
+      "translation",
+      "kg_json",
+      "vision",
+      "reasoning",
+      "cell_tier0",
+      "cell_tier1",
+      "code_review"
+    ],
+    "ollama_air": ["sentry"],
+    "gemini_cloud": ["cloud_fallback"],
+    "claude_cli": ["sentinel_classifier", "dlq_reasoning"],
+    "openrouter": ["aider_fix"],
+    "codex_cli": ["codex_fix"]
+  },
+  "off_limits_files": [
+    "dependencies.py",
+    "fly.toml",
+    "zantara_core.py",
+    "service_initializer.py",
+    ".env"
+  ],
+  "notes": {
+    "qwen3.5_tool_calling": "BROKEN in Ollama (XML/JSON mismatch #14493). Use qwen3:8b for native tool calling. Our OpenClaw cron does NOT use tools parameter so qwen3.5 is safe.",
+    "air_python_ollama": "Use http://127.0.0.1:11434 not localhost (IPv4/IPv6 issue with Python on Air)",
+    "think_false": "Always set think:false for qwen3/3.5 API calls, otherwise content is empty and response goes to thinking field",
+    "keep_alive_bug": "Always send explicit keep_alive in every API request to prevent timer reset (GitHub #5272)"
+  }
+}

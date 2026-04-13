@@ -46,7 +46,7 @@ export default function TeamPage() {
 
               <div className="flex flex-wrap gap-4">
                 <Link
-                  href="https://wa.me/6285904369574"
+                  href="https://wa.me/628213107363"
                   target="_blank"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
                 >
@@ -251,12 +251,12 @@ export default function TeamPage() {
 
             <div className="flex flex-wrap gap-4 justify-center">
               <Link
-                href="https://wa.me/6285904369574"
+                href="https://wa.me/628213107363"
                 target="_blank"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-[#e85c41] font-medium hover:bg-white/90 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +62 859 0436 9574
+                +62 821 3107 363
               </Link>
               <a
                 href="mailto:info@balizero.com"
