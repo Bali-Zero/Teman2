@@ -12,6 +12,7 @@ Modern Architecture (2026-02-11):
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
@@ -126,66 +127,83 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"⚠️ CrossEncoder warm-up failed (non-critical): {e}")
 
-        # Initialize Workflow Queue (PG SKIP LOCKED + LangGraph checkpointer)
-        try:
-            from backend.services.workflow.checkpointer import get_checkpointer
-            from backend.services.workflow.queue import run_worker
-
-            db_url = settings.database_url
-            app.state.workflow_checkpointer = await get_checkpointer(db_url)
-
-            worker_task = asyncio.create_task(run_worker(app.state.db_pool, app.state))
-            app.state._workflow_worker_task = worker_task
-            logger.info("✅ Workflow queue worker started (PG SKIP LOCKED)")
-        except Exception as e:
-            logger.error(f"⚠️ Failed to initialize Workflow Queue: {e}")
-
-        # Initialize Legal Full Ingestion Worker
-        try:
-            from backend.services.ingestion.legal_full_ingestion_worker import (
-                run_worker as legal_run_worker,
+        # Background workers kill switch (2026-04-12 incident).
+        # When DISABLE_BACKGROUND_WORKERS=1 we skip every long-running async
+        # worker that holds DB connections and retries on failure. These are
+        # the ones that poisoned the asyncpg pool during the disk-full cascade:
+        # Workflow Queue, Legal Full Ingestion, Practice Status Listener, EventBus.
+        # Keep as a safety switch; unset the env var when you want to re-enable.
+        if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
+            logger.warning(
+                "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Workflow Queue + "
+                "Legal Ingestion + Practice Status Listener + EventBus",
             )
+            app.state._workflow_worker_task = None
+            app.state.workflow_checkpointer = None
+            app.state._legal_worker_task = None
+            app.state.practice_status_listener = None
+            app.state.event_bus = None
+        else:
+            # Initialize Workflow Queue (PG SKIP LOCKED + LangGraph checkpointer)
+            try:
+                from backend.services.workflow.checkpointer import get_checkpointer
+                from backend.services.workflow.queue import run_worker
 
-            legal_worker_task = asyncio.create_task(legal_run_worker(app.state.db_pool, app.state))
-            app.state._legal_worker_task = legal_worker_task
-            logger.info("✅ Legal ingestion worker started (PG SKIP LOCKED)")
-        except Exception as e:
-            logger.error(f"⚠️ Failed to initialize Legal Ingestion Worker: {e}")
+                db_url = settings.database_url
+                app.state.workflow_checkpointer = await get_checkpointer(db_url)
 
-        # Initialize Practice Status Listener (M4 + M5)
-        # Listens on pg_notify 'practice_changed' channel for real-time email dispatch:
-        # - M4: payment_status → 'paid' → payment confirmation to client + team member
-        # - M5: status milestone (on_process / submitted / approved / completed) → client email
-        try:
-            from backend.services.crm.practice_status_listener import PracticeStatusListener
+                worker_task = asyncio.create_task(run_worker(app.state.db_pool, app.state))
+                app.state._workflow_worker_task = worker_task
+                logger.info("✅ Workflow queue worker started (PG SKIP LOCKED)")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to initialize Workflow Queue: {e}")
 
-            db_dsn = settings.database_url
-            practice_listener = PracticeStatusListener(
-                db_dsn=db_dsn,
-                db_pool=app.state.db_pool,
-            )
-            await practice_listener.start()
-            app.state.practice_status_listener = practice_listener
-            logger.info("✅ Practice Status Listener started (M4 + M5 notifications)")
-        except Exception as e:
-            logger.error(f"⚠️ Failed to initialize Practice Status Listener: {e}")
+            # Initialize Legal Full Ingestion Worker
+            try:
+                from backend.services.ingestion.legal_full_ingestion_worker import (
+                    run_worker as legal_run_worker,
+                )
 
-        # Initialize EventBus (PG LISTEN/NOTIFY + in-process pub/sub)
-        # Extends PracticeStatusListener pattern to client_changed, compliance_alert
-        try:
-            from backend.services.events.event_bus import EventBus
-            from backend.services.events.handlers import register_handlers
+                legal_worker_task = asyncio.create_task(legal_run_worker(app.state.db_pool, app.state))
+                app.state._legal_worker_task = legal_worker_task
+                logger.info("✅ Legal ingestion worker started (PG SKIP LOCKED)")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to initialize Legal Ingestion Worker: {e}")
 
-            event_bus = EventBus(
-                db_dsn=settings.database_url,
-                db_pool=app.state.db_pool,
-            )
-            await event_bus.start()
-            register_handlers(event_bus, app.state.db_pool)
-            app.state.event_bus = event_bus
-            logger.info("✅ EventBus started (client_changed, compliance_alert)")
-        except Exception as e:
-            logger.error(f"⚠️ Failed to initialize EventBus: {e}")
+            # Initialize Practice Status Listener (M4 + M5)
+            # Listens on pg_notify 'practice_changed' channel for real-time email dispatch:
+            # - M4: payment_status → 'paid' → payment confirmation to client + team member
+            # - M5: status milestone (on_process / submitted / approved / completed) → client email
+            try:
+                from backend.services.crm.practice_status_listener import PracticeStatusListener
+
+                db_dsn = settings.database_url
+                practice_listener = PracticeStatusListener(
+                    db_dsn=db_dsn,
+                    db_pool=app.state.db_pool,
+                )
+                await practice_listener.start()
+                app.state.practice_status_listener = practice_listener
+                logger.info("✅ Practice Status Listener started (M4 + M5 notifications)")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to initialize Practice Status Listener: {e}")
+
+            # Initialize EventBus (PG LISTEN/NOTIFY + in-process pub/sub)
+            # Extends PracticeStatusListener pattern to client_changed, compliance_alert
+            try:
+                from backend.services.events.event_bus import EventBus
+                from backend.services.events.handlers import register_handlers
+
+                event_bus = EventBus(
+                    db_dsn=settings.database_url,
+                    db_pool=app.state.db_pool,
+                )
+                await event_bus.start()
+                register_handlers(event_bus, app.state.db_pool)
+                app.state.event_bus = event_bus
+                logger.info("✅ EventBus started (client_changed, compliance_alert)")
+            except Exception as e:
+                logger.error(f"⚠️ Failed to initialize EventBus: {e}")
 
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())

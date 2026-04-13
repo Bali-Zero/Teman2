@@ -10,6 +10,7 @@ Run via: uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -39,12 +40,19 @@ async def lifespan_light(app: FastAPI):
             app.state.db_pool = None
             return
 
-        try:
-            from backend.app.modules.notifications.scheduler import init_scheduler
-            app.state.notification_scheduler = await init_scheduler(app.state.db_pool)
-            logger.info("✅ Notification Scheduler initialized")
-        except Exception as e:
-            logger.warning(f"⚠️ Notification Scheduler failed: {e}")
+        # Background workers kill switch — see service_initializer.py note (2026-04-12 incident)
+        if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
+            logger.warning(
+                "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Notification Scheduler",
+            )
+            app.state.notification_scheduler = None
+        else:
+            try:
+                from backend.app.modules.notifications.scheduler import init_scheduler
+                app.state.notification_scheduler = await init_scheduler(app.state.db_pool)
+                logger.info("✅ Notification Scheduler initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Notification Scheduler failed: {e}")
 
     init_task = asyncio.create_task(_background_light_init())
     app.state._init_task = init_task
