@@ -883,5 +883,119 @@
       "produces": "Social media report",
       "consumes": "Social media feeds, nlm CLI"
     }
+  },
+  "backend_services": {
+    "olympus_heartbeat": {
+      "description": "Olympus DB Guardian heartbeat: lightweight PG health check, connection pool stats, replication lag detection.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (300s)",
+      "produces": "Health metrics, PG stats",
+      "consumes": "PostgreSQL pg_stat_statements",
+      "monitored_by": "Health Monitor"
+    },
+    "olympus_pulse": {
+      "description": "Olympus DB Guardian full pulse: vacuum analysis, bloat intelligence, query regression detection (>30%), autovacuum advisor, partition-aware cleanup.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 6h",
+      "produces": "olympus_insights, PulseAction, alerts",
+      "consumes": "pg_stat_statements, pg_stat_user_tables, index stats",
+      "monitored_by": "Health Monitor"
+    },
+    "proactive_compliance_monitor": {
+      "description": "Proactive compliance: daily scan of all clients for document expiry, visa deadlines, LKPM due dates. Sends automated WhatsApp/Telegram alerts.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 24h (86400s)",
+      "produces": "Compliance alerts (WhatsApp/Telegram)",
+      "consumes": "CRM practices, client documents",
+      "monitored_by": "Health Monitor"
+    },
+    "practice_status_listener": {
+      "description": "Practice status listener: listens for CRM practice state changes via Redis pub/sub, triggers follow-up actions (reminders, escalations).",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (event-driven)",
+      "produces": "Practice state change events",
+      "consumes": "Redis pub/sub practice_status channel",
+      "monitored_by": "Health Monitor"
+    },
+    "x_monitor_run_loop": {
+      "description": "X/Twitter monitor: polls Twitter API for keyword matches (Bali business, visa, immigration), stores matches for analysis.",
+      "system": "Intel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni N minuti (configurable)",
+      "produces": "Twitter match entries",
+      "consumes": "Twitter API v2 search/recent",
+      "monitored_by": "Health Monitor",
+      "notes": "CRC broken — X API access issues"
+    },
+    "x_monitor_digest_loop": {
+      "description": "X/Twitter digest: periodic summary of matched tweets, sends digest report.",
+      "system": "Intel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni N ore (configurable)",
+      "produces": "Twitter digest report",
+      "consumes": "Stored Twitter matches",
+      "monitored_by": "Health Monitor"
+    },
+    "health_monitor": {
+      "description": "Backend health monitor: checks all internal services (DB, Redis, Qdrant, Ollama tunnel, EventBus) every 60s. Core observability.",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 60s",
+      "produces": "Service health status, degradation alerts",
+      "consumes": "All internal service health endpoints",
+      "monitored_by": "Self (top-level monitor)"
+    },
+    "alert_service_digest": {
+      "description": "Alert digest: hourly aggregation of all alerts, sends condensed summary instead of individual notifications to prevent alert fatigue.",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni ora (next hour boundary)",
+      "produces": "Aggregated alert digest",
+      "consumes": "Individual alert events",
+      "monitored_by": "Health Monitor"
+    },
+    "event_bus_listen": {
+      "description": "EventBus listener: Redis Streams consumer for inter-service communication. Routes events between services. Core nervous system.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (event-driven, ping 30s)",
+      "produces": "Routed events to subscribers",
+      "consumes": "Redis Streams (all channels)",
+      "monitored_by": "Health Monitor"
+    },
+    "team_timesheet_auto_logout": {
+      "description": "Team timesheet auto-logout: checks for expired work sessions every 5min, auto-closes sessions that exceeded 10h without checkout.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (300s)",
+      "produces": "Auto-closed timesheet sessions",
+      "consumes": "work_sessions table",
+      "monitored_by": "Health Monitor"
+    },
+    "autonomous_scheduler": {
+      "description": "Backend autonomous scheduler: runs short-interval tasks (<=5min) inside FastAPI process. Long-interval tasks migrated to OpenClaw. Currently: Backend Self-Healing Agent (5min health check).",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (per remaining tasks)",
+      "produces": "Self-healing actions",
+      "consumes": "Service health status",
+      "monitored_by": "Health Monitor",
+      "notes": "Most tasks migrated to OpenClaw cron. Only short-interval tasks remain."
+    }
   }
 }
