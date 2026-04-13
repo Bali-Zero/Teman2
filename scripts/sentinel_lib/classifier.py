@@ -1,9 +1,8 @@
-"""Failure classifier: deterministic rules first, Haiku LLM fallback."""
+"""Failure classifier: deterministic rules first, Claude CLI fallback."""
 import re
 import os
 import json
-import urllib.request
-import urllib.parse
+import subprocess
 from typing import Optional
 
 TRANSIENT_PATTERNS = [
@@ -128,50 +127,45 @@ def classify(error_text: str, retry_count: int = 0) -> dict:
 
 def classify_with_llm(error_text: str, job_name: str) -> dict:
     """
-    Call Claude Haiku to classify failure when rules return UNKNOWN.
-    Returns same shape as classify(). Falls back to UNKNOWN if API fails.
+    Call Claude CLI to classify failure when rules return UNKNOWN.
+    Uses `claude --print` (CLI subscription, zero API cost, Legge 1 compliant).
+    Returns same shape as classify(). Falls back to UNKNOWN if CLI fails.
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        return {"type": "UNKNOWN", "subtype": "no_api_key", "fix_pattern": None, "confidence": 0.0}
-
-    prompt = f"""You are diagnosing a failed automation job named "{job_name}".
-Error output (last 20 lines):
-{error_text[-2000:]}
-
-Classify this failure as one of:
-- TRANSIENT: network issue, service temporarily down, timeout — safe to retry
-- DETERMINISTIC: code bug, missing file, permission error — retrying won't help
-- UNKNOWN: cannot determine
-
-Respond with JSON only:
-{{"type": "TRANSIENT|DETERMINISTIC|UNKNOWN", "subtype": "one_word_reason", "fix_suggestion": "one sentence fix", "confidence": 0.0-1.0}}"""
-
-    payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
-        "max_tokens": 256,
-        "messages": [{"role": "user", "content": prompt}],
-    }).encode()
+    prompt = (
+        f'You are diagnosing a failed automation job named "{job_name}".\n'
+        f"Error output (last 20 lines):\n"
+        f"{error_text[-2000:]}\n\n"
+        f"Classify this failure as one of:\n"
+        f"- TRANSIENT: network issue, service temporarily down, timeout — safe to retry\n"
+        f"- DETERMINISTIC: code bug, missing file, permission error — retrying won't help\n"
+        f"- UNKNOWN: cannot determine\n\n"
+        f"Respond with JSON only:\n"
+        f'{{"type": "TRANSIENT|DETERMINISTIC|UNKNOWN", "subtype": "one_word_reason", '
+        f'"fix_suggestion": "one sentence fix", "confidence": 0.0-1.0}}'
+    )
 
     try:
-        req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
-            data=payload,
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
+        proc = subprocess.run(
+            ["claude", "--print", prompt],
+            capture_output=True, text=True, timeout=30,
         )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = json.loads(resp.read())
-            text = body["content"][0]["text"]
-            result = json.loads(text)
-            return {
-                "type": result.get("type", "UNKNOWN"),
-                "subtype": result.get("subtype", "llm_classified"),
-                "fix_pattern": {"fix_instruction": result.get("fix_suggestion"), "confidence": result.get("confidence", 0.5)} if result.get("fix_suggestion") else None,
-                "confidence": result.get("confidence", 0.5),
-            }
-    except Exception:
-        return {"type": "UNKNOWN", "subtype": "llm_failed", "fix_pattern": None, "confidence": 0.0}
+        if proc.returncode != 0:
+            return {"type": "UNKNOWN", "subtype": "cli_failed", "fix_pattern": None, "confidence": 0.0}
+
+        text = proc.stdout.strip()
+        # Extract JSON from response (claude may wrap in markdown code block)
+        json_match = re.search(r'\{[^}]+\}', text)
+        if not json_match:
+            return {"type": "UNKNOWN", "subtype": "cli_no_json", "fix_pattern": None, "confidence": 0.0}
+
+        result = json.loads(json_match.group())
+        return {
+            "type": result.get("type", "UNKNOWN"),
+            "subtype": result.get("subtype", "llm_classified"),
+            "fix_pattern": {"fix_instruction": result.get("fix_suggestion"), "confidence": result.get("confidence", 0.5)} if result.get("fix_suggestion") else None,
+            "confidence": result.get("confidence", 0.5),
+        }
+    except subprocess.TimeoutExpired:
+        return {"type": "UNKNOWN", "subtype": "cli_timeout", "fix_pattern": None, "confidence": 0.0}
+    except (json.JSONDecodeError, Exception):
+        return {"type": "UNKNOWN", "subtype": "cli_failed", "fix_pattern": None, "confidence": 0.0}
