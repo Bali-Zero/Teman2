@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.core.cache import invalidate_cache
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.qdrant_db import QdrantClient
 
@@ -159,6 +160,7 @@ async def store_memory_vector(request: StoreMemoryRequest) -> dict[str, Any]:
 
         logger.info(f"✅ Memory stored: {request.id} for user {request.metadata.get('userId')}")
 
+        await invalidate_cache("zantara:memory_vector:*")
         return {"success": True, "memory_id": request.id, "collection": "zantara_memories"}
     except Exception as e:
         logger.error(f"Memory storage failed: {e}")
@@ -316,6 +318,7 @@ async def delete_memory_vector(memory_id: str) -> dict[str, Any]:
 
         logger.info(f"✅ Memory deleted: {memory_id}")
 
+        await invalidate_cache("zantara:memory_vector:*")
         return {"success": True, "deleted_id": memory_id}
     except Exception as e:
         logger.error(f"Memory deletion failed: {e}")
