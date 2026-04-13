@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from backend.app.core.config import settings
+from backend.core.cache import invalidate_cache
 from backend.services.misc.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,7 @@ async def create_session(service: SessionService = Depends(get_session_service))
     """Create a new conversation session"""
     try:
         session_id = await service.create_session()
+        await invalidate_cache("zantara:sessions:*")
         return {"success": True, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to create session: {e}")
@@ -87,6 +89,7 @@ async def update_session(
         success = await service.update_history(session_id, request.history)
         if not success:
             raise HTTPException(status_code=400, detail="Failed to update session")
+        await invalidate_cache("zantara:sessions:*")
         return {"success": True, "session_id": session_id}
     except HTTPException:
         raise
@@ -108,6 +111,7 @@ async def update_session_with_ttl(
         )
         if not success:
             raise HTTPException(status_code=400, detail="Failed to update session")
+        await invalidate_cache("zantara:sessions:*")
         return {"success": True, "session_id": session_id}
     except HTTPException:
         raise
@@ -123,6 +127,7 @@ async def delete_session(
     """Delete a session"""
     try:
         success = await service.delete_session(session_id)
+        await invalidate_cache("zantara:sessions:*")
         return {"success": success, "session_id": session_id}
     except Exception as e:
         logger.error(f"Failed to delete session: {e}")
@@ -212,6 +217,7 @@ async def cleanup_sessions(
     """Cleanup expired sessions (no-op, Redis handles automatically)"""
     try:
         cleaned = await service.cleanup_expired_sessions()
+        await invalidate_cache("zantara:sessions:*")
         return {"success": True, "cleaned": cleaned}
     except Exception as e:
         logger.error(f"Failed to cleanup sessions: {e}")
