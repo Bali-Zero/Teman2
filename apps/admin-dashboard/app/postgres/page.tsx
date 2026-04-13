@@ -10,13 +10,14 @@ import {
   FileText,
   Activity,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
 
 // Define categories
 const CATEGORIES: Record<
   string,
-  { label: string; icon: any; match: (name: string) => boolean }
+  { label: string; icon: LucideIcon; match: (name: string) => boolean }
 > = {
   crm: {
     label: "CRM & Clients",
@@ -56,8 +57,13 @@ const CATEGORIES: Record<
   },
 };
 
+interface TableInfo {
+  name: string;
+  count: string;
+}
+
 export default function PostgresPage() {
-  const [tables, setTables] = useState<any[]>([]);
+  const [tables, setTables] = useState<TableInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +175,7 @@ export default function PostgresPage() {
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {sectionTables.map((table: any) => (
+                  {sectionTables.map((table: TableInfo) => (
                     <Link
                       key={table.name}
                       href={`/postgres/${table.name}`}
