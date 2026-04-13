@@ -218,7 +218,7 @@ class InvoiceAutomationService:
             f"<p>Payment can be made via bank transfer to the details provided on the invoice.</p>"
             f"<p>We look forward to serving you!</p>"
             f"<p>Best regards,<br>Zantara Indonesia Team</p>"
-            f"<hr><small>For support: support@balizero.com | WhatsApp: +62 859 0436 9574</small>"
+            f"<hr><small>For support: support@balizero.com | WhatsApp: +62 821 3107 363</small>"
         )
 
         cc_emails = list(INVOICE_CC_EMAILS)
