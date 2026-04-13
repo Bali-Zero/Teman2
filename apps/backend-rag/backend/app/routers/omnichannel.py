@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user
 from backend.app.deps.crm_access import can_view_all_clients
+from backend.core.cache import invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -209,6 +210,7 @@ async def update_thread(
     # Emit WebSocket event for real-time updates
     await _emit_thread_event(request, thread_id, "thread_updated", user)
 
+    await invalidate_cache("zantara:omnichannel:*")
     return {"status": "updated", "thread_id": str(thread_id)}
 
 
@@ -266,6 +268,7 @@ async def send_thread_message(
     # Emit WebSocket event
     await _emit_thread_event(request, thread_id, "new_message", user)
 
+    await invalidate_cache("zantara:omnichannel:*")
     return {"status": "sent", "message_id": msg_id, "direction": direction}
 
 
@@ -309,6 +312,7 @@ async def assign_thread(
     except Exception as e:
         logger.debug(f"Assignment notification failed (non-fatal): {e}")
 
+    await invalidate_cache("zantara:omnichannel:*")
     return {"status": "assigned", "thread_id": str(thread_id), "assigned_to": assignee}
 
 
