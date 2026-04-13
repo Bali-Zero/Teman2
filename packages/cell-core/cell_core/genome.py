@@ -407,3 +407,90 @@ class Genome:
             "db_file_size": db_file_size,
             "by_type": [{"type": r["type"], "count": r["c"], "avg_confidence": round(r["avg_conf"], 2)} for r in by_type],
         }
+
+    # ─────────────────────────────────────────
+    # Compaction
+    # ─────────────────────────────────────────
+
+    def vacuum(self, days_silenced: int = 90) -> int:
+        """Permanently delete skills silenced more than *days_silenced* ago.
+
+        Returns the number of rows removed.
+        """
+        cutoff_ts = time.time() - days_silenced * 86400
+        cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).date().isoformat()
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute(
+                "DELETE FROM genome WHERE valid_to IS NOT NULL AND valid_to <= ?",
+                (cutoff_date,),
+            )
+            removed = conn.execute("SELECT changes()").fetchone()[0]
+            conn.commit()
+        if removed:
+            logger.info(f"[genome] vacuum: removed {removed} rows silenced before {cutoff_date}")
+        return removed
+
+    def compact(self) -> int:
+        """Run SQLite VACUUM to reclaim disk space. Returns bytes freed."""
+        size_before = 0
+        try:
+            size_before = os.path.getsize(self._db_path)
+        except OSError:
+            pass
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute("VACUUM")
+        size_after = 0
+        try:
+            size_after = os.path.getsize(self._db_path)
+        except OSError:
+            pass
+        freed = max(0, size_before - size_after)
+        logger.info(f"[genome] compact: {size_before} → {size_after} bytes (freed {freed})")
+        return freed
+
+    # ─────────────────────────────────────────
+    # Import / Export (Pro ↔ Air migration)
+    # ─────────────────────────────────────────
+
+    def export_genome(self, cell: str | None = None) -> list[dict]:
+        """Export all genome rows (optionally filtered by cell) as dicts.
+
+        Suitable for JSON serialisation and transfer to another machine.
+        """
+        conn = self._get_conn()
+        if cell:
+            rows = conn.execute("SELECT * FROM genome WHERE cell_origin = ?", (cell,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM genome").fetchall()
+        return [dict(r) for r in rows]
+
+    def import_genome(self, data: list[dict], target_cell: str | None = None) -> dict[str, int]:
+        """Import genome rows from a list of dicts (as produced by ``export_genome``).
+
+        If *target_cell* is given, overrides ``cell_origin`` for all imported rows.
+        Uses upsert (ON CONFLICT DO UPDATE) so re-imports are safe.
+
+        Returns ``{"inserted": N, "updated": M}``.
+        """
+        counts = {"inserted": 0, "updated": 0}
+        for row in data:
+            cell_origin = target_cell or row["cell_origin"]
+            action = self.record_skill(
+                cell=cell_origin,
+                skill_id=row["id"],
+                procedure=row["procedure"],
+                precondition=row.get("precondition") or "",
+                success_criterion=row.get("success_criterion") or "",
+                confidence=row.get("confidence", 0.5),
+                scope=row.get("scope", "Project"),
+                inherited_from=row.get("inherited_from"),
+                entry_type=row.get("type", "skill"),
+            )
+            counts[action] += 1
+        logger.info(
+            f"[genome] import: {counts['inserted']} inserted, "
+            f"{counts['updated']} updated"
+        )
+        return counts

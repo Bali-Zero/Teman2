@@ -335,3 +335,119 @@ def test_apply_inherited_genome_empty(genome):
     )
     assert applied == []
     assert genome.get_active(cell="orphan") == []
+
+
+# ─── Issue 5: Compaction (vacuum, compact, db_file_size) ──────
+
+
+def test_vacuum_removes_old_silenced(tmp_path):
+    """vacuum() should permanently delete skills silenced > N days ago."""
+    db = str(tmp_path / "vacuum.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c1", skill_id="old_one", procedure="old", confidence=0.3)
+    g.record_skill(cell="c1", skill_id="fresh_one", procedure="fresh", confidence=0.9)
+
+    # Silence old_one and backdate its valid_to to 100 days ago
+    g.silence_skill("old_one")
+    hundred_days_ago = datetime.fromtimestamp(
+        time.time() - 100 * 86400, tz=timezone.utc
+    ).date().isoformat()
+    conn = sqlite3.connect(db)
+    conn.execute("UPDATE genome SET valid_to = ? WHERE id = 'old_one'", (hundred_days_ago,))
+    conn.commit()
+    conn.close()
+
+    assert g.stats()["total"] == 2
+
+    removed = g.vacuum(days_silenced=90)
+    assert removed == 1
+    assert g.stats()["total"] == 1
+    # The fresh one is untouched
+    active = g.get_active(cell="c1")
+    assert len(active) == 1
+    assert active[0]["id"] == "fresh_one"
+
+
+def test_vacuum_keeps_recently_silenced(genome):
+    """Skills silenced within the window should NOT be removed."""
+    genome.record_skill(cell="c1", skill_id="recent", procedure="x")
+    genome.silence_skill("recent")
+    removed = genome.vacuum(days_silenced=90)
+    assert removed == 0  # silenced today, not 90 days ago
+
+
+def test_compact_returns_bytes_freed(tmp_path):
+    """compact() should run VACUUM and not crash. May free 0 bytes on small DB."""
+    db = str(tmp_path / "compact.db")
+    g = Genome(db_path=db)
+    for i in range(50):
+        g.record_skill(cell="c1", skill_id=f"s_{i}", procedure=f"p{i}" * 100)
+    size_before = g.stats()["db_file_size"]
+    assert size_before > 0
+
+    # Delete many rows, then compact
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM genome WHERE id LIKE 's_%'")
+    conn.commit()
+    conn.close()
+
+    freed = g.compact()
+    assert isinstance(freed, int)
+    assert freed >= 0
+    # After compacting deleted rows, DB should be smaller
+    size_after = g.stats()["db_file_size"]
+    assert size_after <= size_before
+
+
+def test_stats_includes_db_file_size(genome):
+    genome.record_skill(cell="c1", skill_id="s1", procedure="a")
+    stats = genome.stats()
+    assert "db_file_size" in stats
+    assert stats["db_file_size"] > 0
+
+
+# ─── Bonus: export / import ───────────────────────────────────
+
+
+def test_export_import_roundtrip(tmp_path):
+    """Export from one Genome, import into another — full roundtrip."""
+    db_src = str(tmp_path / "source.db")
+    db_dst = str(tmp_path / "dest.db")
+    src = Genome(db_path=db_src)
+    dst = Genome(db_path=db_dst)
+
+    src.record_skill(cell="c1", skill_id="s1", procedure="proc A", confidence=0.9)
+    src.record_skill(cell="c1", skill_id="s2", procedure="proc B", confidence=0.7)
+    src.record_scar(cell="c1", scar_id="scar1", procedure="avoid this")
+
+    exported = src.export_genome(cell="c1")
+    assert len(exported) == 3
+
+    counts = dst.import_genome(exported)
+    assert counts["inserted"] == 3
+    assert counts["updated"] == 0
+
+    # Re-import is safe (upsert)
+    counts2 = dst.import_genome(exported)
+    assert counts2["updated"] == 3
+    assert counts2["inserted"] == 0
+
+    # Verify data integrity
+    dst_skills = dst.get_active(cell="c1")
+    assert len(dst_skills) == 3
+
+
+def test_import_with_target_cell_override(tmp_path):
+    """import_genome with target_cell overrides cell_origin."""
+    db_src = str(tmp_path / "src.db")
+    db_dst = str(tmp_path / "dst.db")
+    src = Genome(db_path=db_src)
+    dst = Genome(db_path=db_dst)
+
+    src.record_skill(cell="original_cell", skill_id="s1", procedure="p1", confidence=0.8)
+    exported = src.export_genome()
+
+    dst.import_genome(exported, target_cell="new_cell")
+    skills = dst.get_active(cell="new_cell")
+    assert len(skills) == 1
+    assert skills[0]["cell_origin"] == "new_cell"
