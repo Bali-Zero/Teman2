@@ -29,12 +29,12 @@ export async function GET() {
     const byYear: Record<string, number> = {};
 
     for (const point of sample.points) {
-      const payload = point.payload as Record<string, any>;
+      const payload = point.payload as Record<string, unknown>;
 
-      const regType = payload?.regulation_type || "UNKNOWN";
+      const regType = String(payload?.regulation_type || "UNKNOWN");
       byType[regType] = (byType[regType] || 0) + 1;
 
-      const year = payload?.year?.toString() || "UNKNOWN";
+      const year = payload?.year ? String(payload.year) : "UNKNOWN";
       byYear[year] = (byYear[year] || 0) + 1;
     }
 
@@ -56,10 +56,13 @@ export async function GET() {
         by_year: byYear,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Legal Stats Error:", error);
     return NextResponse.json(
-      { error: error.message, collection: COLLECTION },
+      {
+        error: error instanceof Error ? error.message : String(error),
+        collection: COLLECTION,
+      },
       { status: 500 },
     );
   }

@@ -113,8 +113,8 @@ export default function CalendarPage() {
       } else {
         setError(data.error);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -144,8 +144,8 @@ export default function CalendarPage() {
       } else {
         alert("Errore: " + data.error);
       }
-    } catch (err: any) {
-      alert("Errore: " + err.message);
+    } catch (err) {
+      alert("Errore: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -163,8 +163,8 @@ export default function CalendarPage() {
         setSelectedEvent(null);
         fetchEvents();
       }
-    } catch (err: any) {
-      alert("Errore: " + err.message);
+    } catch (err) {
+      alert("Errore: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
