@@ -927,7 +927,7 @@
     },
     "x_monitor_run_loop": {
       "description": "X/Twitter monitor: polls Twitter API for keyword matches (Bali business, visa, immigration), stores matches for analysis.",
-      "system": "Intel",
+      "system": "Garuda",
       "machine": "Fly.io",
       "type": "backend-loop",
       "schedule": "ogni N minuti (configurable)",
@@ -938,7 +938,7 @@
     },
     "x_monitor_digest_loop": {
       "description": "X/Twitter digest: periodic summary of matched tweets, sends digest report.",
-      "system": "Intel",
+      "system": "Garuda",
       "machine": "Fly.io",
       "type": "backend-loop",
       "schedule": "ogni N ore (configurable)",
