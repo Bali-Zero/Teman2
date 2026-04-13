@@ -141,10 +141,43 @@ L'organismo vive su DUE mondi separati da una frontiera di rete:
 
 **Nota OSINT blindata**: il bridge trasporta solo dati business (articoli, eventi CRM, enrichment). I dati OSINT/intelligence NON attraversano mai la frontiera verso Fly.io (Legge 2).
 
+**Mappa stream Redis (stato attuale + proposta):**
+
+```
+ESISTENTI (4):
+  garuda:raw        ← Regulation Watcher, Harvesters  → Normalizer → Nexus bridge   (341 entries)
+  garuda:enriched   ← Normalizer                      → Scorer                       (?)
+  garuda:alerts     ← Scorer (score≥4)                → NESSUNO (TG non wired)       (?)
+  nexus:gaps        ← Gap Detector (8 Cypher)         → NESSUNO (consumer non esiste) (552 entries)
+
+PROPOSTI [NEW] — da validare nel brainstorm:
+
+  Ciclo 1 — Intel→Content→SEO→Revenue:
+    intel:articles   ← Scraper/War Room (articoli pronti)     → Bridge push → backend publish
+    intel:published  ← Bridge pull (conferma pubblicazione)   → MG tracking, SEO Guardian
+
+  Ciclo 2 — CRM→Intelligence:
+    crm:events       ← Bridge pull (nuovo cliente PMA, practice completata, settore)  → MG priority engine
+    crm:priorities   ← MG priority engine (ricalcolo topic priorities)                → Harvesters, War Room
+
+  Ciclo 3 — Canali→KB→RAG:
+    rag:gaps          ← Bridge pull (domande con confidence < 0.3)     → MG enrichment agents
+    rag:enriched      ← MG enrichment agents                          → Bridge push → backend KB
+
+  Ciclo 4 — Sentinel→Recovery→Learning:
+    sentinel:alerts   ← Sentinel (alert strutturati)         → Recovery agents, TG
+    sentinel:recovery ← Recovery agents (azioni eseguite)    → Learning, reflection
+
+  Cross-ciclo:
+    organism:metrics  ← Tutti gli organi (metriche metaboliche) → Dashboard, Consiglio
+```
+
+Sono 8 stream nuovi. L'approccio è: **definisci lo schema di tutti adesso (zero-cost), implementa i consumer incrementalmente**. Il brainstorm deve validare: quali stream servono davvero? Quali possono essere mergiati? Qual è il formato payload standard?
+
 **Domande che il brainstorm deve rispondere:**
 
-1. **Flusso circolare**: come i dati fluiscono da un organo all'altro e tornano arricchiti? La topologia C (due bus + bridge) è la risposta — il brainstorm deve definire gli stream specifici e i formati
-2. **Bridge design**: quali eventi CRM meritano di attraversare la frontiera? Quali stream Redis il bridge legge/scrive? Quale formato? Quale frequenza di polling?
+1. **Stream design**: validare/semplificare la mappa sopra. Definire il formato payload standard (JSON, campi obbligatori: `event_type`, `timestamp`, `source_organ`, `payload`). Quali stream mergiare? Quali consumer sono il minimo vitale per Phase 1?
+2. **Bridge design**: quali eventi CRM meritano di attraversare la frontiera? Frequenza polling? Webhook vs polling? Formato? Fallback se Fly.io è unreachable?
 3. **Curiosità**: come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"?
 4. **Confronto**: come implementare il Consiglio (Pilastro 4 SYMBIOSIS) — moderatore + 3+ agenti diversi (Claude, Gemini, DeepSeek, Ollama) che dibattono?
 5. **Sogno**: come il consolidamento notturno comprime esperienze in skill e pota il rumore?
