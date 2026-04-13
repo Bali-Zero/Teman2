@@ -867,6 +867,53 @@ async def db_health(request: Request) -> dict:
     return await olympus.get_health_summary()
 
 
+@router.get("/redis")
+async def redis_health(request: Request) -> dict[str, Any]:
+    """
+    Redis memory health endpoint.
+
+    Returns memory usage, eviction policy, evicted keys count, and connected clients.
+    Used by monitoring to detect memory pressure before Redis starts evicting keys.
+
+    Returns:
+        dict: Redis memory health info
+    """
+    redis_manager = getattr(request.app.state, "redis_manager", None)
+    if not redis_manager:
+        return {
+            "status": "unavailable",
+            "detail": "RedisManager not initialized",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    mem_info = await redis_manager.get_redis_memory_info()
+
+    # Determine status based on memory pressure
+    status = "healthy"
+    if mem_info.get("error"):
+        status = "error"
+    elif mem_info.get("maxmemory", 0) > 0:
+        usage_ratio = mem_info["used_memory"] / mem_info["maxmemory"]
+        if usage_ratio > 0.9:
+            status = "critical"
+        elif usage_ratio > 0.75:
+            status = "warning"
+
+    return {
+        "status": status,
+        "memory": {
+            "used": mem_info.get("used_memory_human", "0B"),
+            "used_bytes": mem_info.get("used_memory", 0),
+            "max": mem_info.get("maxmemory_human", "0B"),
+            "max_bytes": mem_info.get("maxmemory", 0),
+            "policy": mem_info.get("maxmemory_policy", "unknown"),
+        },
+        "evicted_keys": mem_info.get("evicted_keys", 0),
+        "connected_clients": mem_info.get("connected_clients", 0),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get("/metrics/prometheus", include_in_schema=False)
 async def prometheus_metrics():
     """Prometheus text format metrics for external scraping (Grafana Cloud, Prometheus)."""
