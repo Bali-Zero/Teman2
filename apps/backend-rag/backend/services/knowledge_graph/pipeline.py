@@ -24,6 +24,7 @@ from backend.services.knowledge_graph.extractor import (
     ExtractionResult,
 )
 from backend.services.knowledge_graph.quality_filter import KGQualityFilter
+from backend.services.knowledge_graph.schema_validator import SchemaValidator
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +321,8 @@ class KGPipeline:
                 except Exception as e:
                     logger.error(f"Failed to persist entity {eid}: {e}")
 
-            # Persist relations
+            # Persist relations (with schema validation)
+            validator = SchemaValidator()
             seen_relations: set[str] = set()
             for relation, chunk_id in all_relations:
                 rel_id = f"{relation.source_id}_{relation.type.value}_{relation.target_id}"
@@ -330,6 +332,24 @@ class KGPipeline:
 
                 seen_relations.add(rel_id)
                 self.relation_registry.add(rel_id)
+
+                # Look up entity types for validation
+                src_entity = all_entities.get(relation.source_id)
+                tgt_entity = all_entities.get(relation.target_id)
+                src_type = src_entity[0].type.value if src_entity else ""
+                tgt_type = tgt_entity[0].type.value if tgt_entity else ""
+
+                # Validate against ontology schema
+                if not validator.check(
+                    source_id=relation.source_id,
+                    target_id=relation.target_id,
+                    source_type=src_type,
+                    target_type=tgt_type,
+                    relation_type=relation.type.value,
+                    evidence=relation.evidence,
+                    confidence=relation.confidence,
+                ):
+                    continue  # Edge quarantined, skip persistence
 
                 try:
                     await conn.execute(
@@ -353,6 +373,16 @@ class KGPipeline:
                     self.stats.relations_persisted += 1
                 except Exception as e:
                     logger.warning(f"Failed to persist relation {rel_id}: {e}")
+
+            # Log validation summary
+            summary = validator.result.summary()
+            if summary["invalid"] > 0:
+                logger.warning(
+                    "KG schema validation: %d valid, %d quarantined out of %d edges",
+                    summary["valid"],
+                    summary["invalid"],
+                    summary["total"],
+                )
 
     async def process_batch(
         self,
