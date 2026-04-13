@@ -199,20 +199,63 @@ I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (pur
      - Se Fly unreachable → retry al prossimo ciclo, log, nessun crash
    - **Pro→Fly: POST** su endpoint backend API (pattern già usato da intel scraper)
    - Il brainstorm deve definire: quali eventi CRM specifici entrano in `bridge_outbox`? Quale formato payload? Quale retention nella outbox? Serve un cursor o basta timestamp?
-3. **Curiosità**: come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"?
-4. **Confronto**: come implementare il Consiglio (Pilastro 4 SYMBIOSIS) — moderatore + 3+ agenti diversi (Claude, Gemini, DeepSeek, Ollama) che dibattono?
-5. **Sogno**: come il consolidamento notturno comprime esperienze in skill e pota il rumore?
-6. **Misura**: le 4 metriche metaboliche (time-to-resolution, densità ontologica, indice di autonomia, frequenza escalation) — come implementarle?
-7. **Autonomia progressiva**: come passare da "Zero assegna" a "organismo propone, Zero approva" a "organismo anticipa"?
-8. **Produzione**: come l'intelligence diventa revenue? (articoli → SEO → clienti → CRM → fatturato) — il ciclo Intel→Content→SEO→Revenue deve essere tracciabile end-to-end
+3. **Curiosità** (Fase 4): come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"? Il brainstorm deve progettare il meccanismo.
+4. **Confronto** (Fase 3): come implementare il Consiglio v1 — moderatore + Claude + Gemini + DeepSeek su decisioni settimanali. Diversità architettonica, non roleplay.
+5. **Sogno** (Fase 2): come il consolidamento notturno comprime esperienze in skill e pota il rumore. Cron notturno, validazione before/after.
+6. **Misura** (Fase 3): le 4 metriche metaboliche — implementazione concreta, storage, trend.
+7. **Produzione** (Fase 4): come l'intelligence diventa revenue? Il ciclo Intel→Content→SEO→Revenue guidato da CRM+SEO, non solo scraping. Tracciabilità end-to-end.
 
 ### Fase 3: Scrivi il piano
 
-Dopo il brainstorm, scrivi un piano di implementazione in `docs/superpowers/plans/`. Il piano deve:
+**Le 4 fasi di maturazione dell'organismo sono già definite:**
 
-- Essere diviso in fasi (non sprint — fasi di maturazione dell'organismo)
-- Ogni fase deve avere metriche before/after (Legge 7 SYMBIOSIS: numeri prima)
-- Ogni fase deve produrre codice che gira, non documenti (Legge 7)
+```
+Fase 1 — SINAPSI (connettere)
+  L'organismo ha organi isolati. La Fase 1 li connette.
+  Deliverable:
+    - Bridge bidirezionale Pro↔Fly operativo (polling adattivo + POST)
+    - Envelope standard su tutti gli stream nuovi
+    - Gap consumer in MG che dispatcha agenti (nexus:gaps → 552 entries consumati)
+    - 2 harvester nuovi (LHKPN + LPSE) che chiudono il loop OSINT
+    - Intel scraper pubblica su intel:articles → bridge push → backend
+  Metriche:
+    Before: 0 cicli chiusi, 552 gap non consumati, articoli pubblicati manualmente
+    After: 4 cicli con almeno 1 segnale end-to-end, gap consumati, pubblicazione automatica
+
+Fase 2 — RIFLESSI (reagire)
+  L'organismo connesso impara a reagire.
+  Deliverable:
+    - Sprint 5 MG completato (reflection engine + KB unificata)
+    - Sleep-time consolidation (cron notturno: esperienze → skill, pota rumore)
+    - Sentinel→Recovery→Learning chiude il suo ciclo
+    - CRM→Intelligence: nuovi clienti PMA cambiano priorità harvesting
+  Metriche:
+    Before: 0 skill condivise, 0 consolidamenti notturni, priorità harvesting statiche
+    After: N skill in KB con confidence > 0.7, consolidamento notturno operativo, priorità adattive
+
+Fase 3 — COSCIENZA (deliberare)
+  L'organismo reagisce. Ora deve pensare.
+  Deliverable:
+    - Consiglio v1: moderatore + Claude + Gemini + DeepSeek su decisioni settimanali
+    - Meta-cognizione: analisi cross-organo periodica
+    - 4 metriche metaboliche operative (time-to-resolution, densità ontologica, indice autonomia, frequenza escalation)
+  Metriche:
+    Before: 0 decisioni autonome, 0 metriche metaboliche
+    After: N decisioni proposte dal Consiglio, 4 metriche tracciate, trend visibili
+
+Fase 4 — AUTONOMIA (anticipare)
+  L'organismo delibera. Ora anticipa.
+  Deliverable:
+    - Curiosità: archivio task + LLM propone il prossimo task interessante
+    - Produzione contenuti guidata da CRM + SEO (non solo scraping)
+    - L'organismo propone, Zero approva
+  Metriche:
+    Before: 100% task esogeni (Zero assegna)
+    After: X% task endogeni (organismo propone), revenue tracciabile a intelligence
+```
+
+Il piano di implementazione scritto nel brainstorm deve dettagliare ogni fase con task specifici, file da creare/modificare, test, e le metriche concrete. Ogni fase produce codice che gira (Legge 7).
+
 - Rispettare i vincoli: CLI-only LLM, OSINT blindato, event-driven, sovranità locale
 - Seguire la checklist VADEMECUM per ogni elemento creato
 - Registrare ogni nuova automazione in `scripts/automation_catalog.json`
