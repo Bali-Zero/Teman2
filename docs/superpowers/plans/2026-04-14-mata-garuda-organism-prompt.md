@@ -31,10 +31,12 @@ docs/AUTOMATION_MODEL_MAP.md               # mappa visuale
 packages/cell-core/                        # PulseLoop, Genome, Memory, Safety
 apps/mata-garuda/mata_garuda/              # agenti, workers, runtime, tools
 
-# 6. La rete intelligence
+# 6. La rete intelligence + produzione (TUTTI parte di Mata Garuda)
 apps/bali-intel-scraper/                   # 6 stadi: scrape→score→validate→enrich→images→publish
+apps/war-room/                             # content production: Canva, image brainstorm, Exa research, article pipeline
 apps/mata-garuda/mata_garuda/workers/      # normalizer, scorer, nlm_feeder
 apps/mata-garuda/mata_garuda/agents/       # 8 harvester + meta_agent + regulation_watcher
+apps/evaluator/nlm_deep_research/          # NLM pipelines, T4 social monitor, db-nlm-sync
 
 # 7. Il grafo
 ~/Desktop/OSINT-Nexus/                     # Neo4j, gap detector, bridge consumer
@@ -75,20 +77,31 @@ Dopo aver studiato, entra in brainstorming profondo. La domanda è:
 
 Gli organi da connettere:
 
-| Organo                 | Cosa fa oggi                        | Cosa dovrebbe fare domani                      |
-| ---------------------- | ----------------------------------- | ---------------------------------------------- |
-| **Mata Garuda**        | Harvesta, normalizza, score, digest | Cervello: correla, anticipa, decide            |
-| **Intel Scraper**      | Scrape 630+ fonti, 6 stadi pipeline | Apparato digerente: ingerisce mondo esterno    |
-| **EventBus**           | React a DB changes (PG NOTIFY)      | Sistema nervoso: propaga segnali tra organi    |
-| **Neo4j KG**           | 108K nodi, 243K archi, gap detector | Memoria a lungo termine: struttura relazionale |
-| **Cell Core**          | PulseLoop, Genome, Memory, Safety   | DNA: codice genetico condiviso da ogni cellula |
-| **NLM notebooks**      | 8 domini, knowledge grounding       | Biblioteca: conoscenza verificata              |
-| **Olympus**            | DB health, query intelligence       | Sistema immunitario: protegge l'infrastruttura |
-| **Sentinel**           | Monitor 50+ automazioni             | Pelle: sente l'ambiente, alerta                |
-| **Canali** (WA/TG/Web) | Rispondono a clienti/Zero           | Bocca + Orecchie: interfaccia col mondo        |
-| **SEO Guardian**       | Indexing, coverage, rankings        | Reputazione: come il mondo ci vede             |
-| **CRM**                | 5000+ clienti, practice lifecycle   | Cuore: pompa il valore ai clienti              |
-| **OpenClaw**           | 24 cron jobs agentici               | Muscoli: esegue azioni nel mondo               |
+**MATA GARUDA non è solo OSINT.** È l'intero sistema di intelligence E produzione. Include:
+
+- `apps/bali-intel-scraper/` — scraping 630+ fonti, 6 stadi pipeline (LLAMA→Claude→Gemini→publish)
+- `apps/war-room/` — content production (Canva automation, image brainstorm, Exa research, article pipeline)
+- `apps/mata-garuda/` — harvester agents, workers, gap detector, Lamarckian evolution, CLI runtime
+- `~/Desktop/OSINT-Nexus/` — Neo4j graph, bridge consumer, Cypher gap queries
+- `apps/evaluator/nlm_deep_research/` — NLM pipelines, T4 monitor, db-nlm-sync
+
+Garuda è il CERVELLO + APPARATO DIGERENTE + FABBRICA DI CONTENUTI dell'organismo. Non solo l'occhio.
+
+| Organo                            | Cosa fa oggi                                     | Cosa dovrebbe fare domani                               |
+| --------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
+| **Mata Garuda** (cervello)        | Harvesta, normalizza, score, digest, gap detect  | Correla, anticipa, decide, propone strategie            |
+| ↳ Intel Scraper (stomaco)         | Scrape 630+ fonti, 6 stadi LLAMA→Claude→publish  | Digerisce il mondo esterno, produce articoli revenue    |
+| ↳ War Room (fabbrica)             | Canva automation, image brainstorm, Exa research | Produzione contenuti autonoma, A/B test, SEO-driven     |
+| ↳ OSINT Nexus (memoria profonda)  | Neo4j 108K nodi, gap detector, bridge consumer   | Intelligence relazionale, pattern detection, alerting   |
+| ↳ NLM Pipelines (biblioteca)      | 8 notebook, 600 fonti, knowledge grounding       | Auto-alimentata da tutti gli organi, query cross-domain |
+| **EventBus** (sistema nervoso)    | React a DB changes (PG NOTIFY)                   | Propaga segnali tra TUTTI gli organi                    |
+| **Cell Core** (DNA)               | PulseLoop, Genome, Memory, Safety                | Codice genetico condiviso da ogni cellula               |
+| **Olympus** (sistema immunitario) | DB health, query intelligence, autovacuum        | Protegge l'infrastruttura, self-healing                 |
+| **Sentinel** (pelle)              | Monitor 50+ automazioni, circuit breakers        | Sente l'ambiente, alerta, auto-repair                   |
+| **Canali** (bocca + orecchie)     | WA/TG/IG/Web rispondono a clienti/Zero           | Interfaccia col mondo, feedback loop → intelligence     |
+| **SEO Guardian** (reputazione)    | Indexing, coverage, rankings, KBLI pages         | Come il mondo ci vede, guida la produzione contenuti    |
+| **CRM** (cuore)                   | 5000+ clienti, practice lifecycle, compliance    | Pompa valore ai clienti, alimenta intelligence          |
+| **OpenClaw** (muscoli)            | 24 cron jobs agentici                            | Esegue azioni nel mondo, coordina gli organi            |
 
 **Domande che il brainstorm deve rispondere:**
 
@@ -189,6 +202,12 @@ Dopo il brainstorm, scrivi un piano di implementazione in `docs/superpowers/plan
 - Non trattare gli organi come microservizi isolati — sono cellule di un organismo
 - Non costruire un orchestratore centrale — l'organismo è event-driven, decentralizzato
 - Non confondere "autonomia" con "fa quello che vuole" — Zero resta il giardiniere
+- **NON ridurre Mata Garuda a "solo OSINT/Nexus".** Garuda = Intel Scraper + War Room + OSINT Nexus + NLM Pipelines + harvester agents. È cervello + stomaco + fabbrica. I cicli vitali sono almeno 4:
+  1. **Intel → Content → SEO → Revenue**: scraper trova news → War Room produce articolo → SEO indexa → cliente arriva → CRM registra → revenue
+  2. **CRM → Intelligence**: nuovo cliente PMA settore X → MG monitora regolamenti X con priorità alta → contenuti mirati
+  3. **Canali → KB → RAG**: domanda cliente WhatsApp senza risposta buona → gap nel RAG → enrichment automatico → risposta migliore
+  4. **Sentinel → Recovery → Learning**: servizio degradato → alert → auto-fix → reflection → skill acquisita
+     Il loop OSINT (gap→harvest→graph) è UNO dei cicli. La produzione contenuti per revenue è un altro ugualmente critico.
 
 ---
 
