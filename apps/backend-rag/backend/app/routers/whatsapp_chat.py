@@ -640,6 +640,13 @@ async def whatsapp_webhook(
 
                 logger.info(f"Message from {phone} scheduled for processing")
 
+    # Record webhook metric
+    try:
+        from backend.app.metrics import metrics_collector
+        metrics_collector.record_webhook_request(channel="whatsapp", status="success")
+    except Exception:
+        pass  # Metrics must never break webhook processing
+
     return {"status": "ok"}
 
 
