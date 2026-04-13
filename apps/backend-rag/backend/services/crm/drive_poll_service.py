@@ -11,6 +11,7 @@ import hashlib
 import logging
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Awaitable, Callable
@@ -18,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import asyncpg
+from googleapiclient.errors import HttpError
 
 from backend.services.crm.document_categorizer import auto_categorize_document
 
@@ -114,8 +116,10 @@ def _send_telegram_alert(message: str) -> None:
             timeout=10,
         )
         logger.info("Telegram alert circuit breaker inviato")
-    except Exception as ex:
+    except (urllib.error.URLError, OSError, ValueError) as ex:
         logger.warning(f"Telegram alert fallito: {ex}")
+    except Exception as ex:
+        logger.exception("Telegram alert fallito con errore inatteso")
 
 
 async def poll_drive_changes() -> dict[str, Any]:
@@ -145,7 +149,11 @@ async def poll_drive_changes() -> dict[str, Any]:
         if result is None:
             return {"status": "circuit_open", "processed": 0}
         return result
+    except (HttpError, asyncpg.PostgresError, OSError) as e:
+        logger.warning(f"Drive poll failed with known error: {e}")
+        return {"status": "error", "error": str(e)}
     except Exception as e:
+        logger.exception("Drive poll failed with unexpected error")
         return {"status": "error", "error": str(e)}
 
 
@@ -281,7 +289,12 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     else:
                         skipped += 1
                         continue
+                except (HttpError, asyncpg.PostgresError, KeyError) as e:
+                    logger.debug(f"Drive poll: could not resolve parent {parent_id}: {e}")
+                    skipped += 1
+                    continue
                 except Exception:
+                    logger.exception(f"Drive poll: unexpected error resolving parent {parent_id}")
                     skipped += 1
                     continue
 
@@ -318,8 +331,10 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             logger.info(f"Drive poll: skipped duplicate content hash for {file_name} (matches doc {hash_dup})")
                             skipped += 1
                             continue
-            except Exception as e:
+            except (HttpError, asyncpg.PostgresError, OSError) as e:
                 logger.debug(f"Could not compute content hash for {file_name}: {e}")
+            except Exception as e:
+                logger.exception(f"Unexpected error computing content hash for {file_name}")
 
             logger.info(
                 f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}",
@@ -394,8 +409,10 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     doc_id,
                 )
                 processed += 1
+            except (HttpError, asyncpg.PostgresError, OSError) as e:
+                logger.warning(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
             except Exception as e:
-                logger.error(f"Drive poll: OCR dispatch failed for {file_name}: {e}", exc_info=True)
+                logger.exception(f"Drive poll: OCR dispatch failed unexpectedly for {file_name}")
 
         # 5. Save new page token
         async with db_pool.acquire() as conn:
@@ -415,8 +432,11 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             "skipped": skipped,
         }
 
+    except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:
+        logger.warning(f"Drive poll failed: {e}")
+        raise  # ri-lancia per permettere al circuit breaker di contare i failures
     except Exception as e:
-        logger.error(f"Drive poll failed: {e}", exc_info=True)
+        logger.exception("Drive poll failed with unexpected error")
         raise  # ri-lancia per permettere al circuit breaker di contare i failures
     finally:
         if db_pool:
