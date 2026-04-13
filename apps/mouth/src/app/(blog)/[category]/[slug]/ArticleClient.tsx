@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 import { MDXContent } from "@/components/blog/MDXContent";
 import { logger } from "@/lib/logger";
+import { api } from "@/lib/api";
 import {
   Clock,
   Eye,
@@ -151,12 +152,9 @@ export function ArticleClient({
     async function fetchArticle() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/blog/articles/${category}/${slug}`);
-        if (response.ok) {
-          const data = await response.json();
-          setArticle(data);
-          setRelatedArticles(data.relatedArticles || []);
-        }
+        const data = await api.blog.getArticle<ArticleWithMDX & { relatedArticles?: ArticleListItem[] }>(category, slug);
+        setArticle(data);
+        setRelatedArticles(data.relatedArticles || []);
       } catch (err) {
         logger.error(
           "Failed to fetch article:",
