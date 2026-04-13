@@ -122,7 +122,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         # Extract request metadata
-        user_email = self._get_user_email(request)
+        user_email = None  # Extracted after auth middleware runs (see finally block)
         session_id = self._get_session_id(request)
         ip_address = self._get_ip_address(request)
         user_agent = request.headers.get("User-Agent", "")
@@ -168,6 +168,9 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
                     # Note: Body is consumed by route, so we can't read it here
                     # We could store it in request.state during route processing
                     request_body = getattr(request.state, "request_body", None)
+
+                # Extract user_email AFTER auth middleware has set request.state.user
+                user_email = self._get_user_email(request)
 
                 # Log the API call
                 await activity_logger.log_api_call(
