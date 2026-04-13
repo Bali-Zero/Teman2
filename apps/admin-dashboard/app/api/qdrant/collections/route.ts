@@ -30,12 +30,15 @@ export async function GET() {
     );
 
     return NextResponse.json({ collections: collectionsWithStats });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Qdrant Collections Error:", error);
     return NextResponse.json(
       {
-        error: error.message,
-        details: error.cause ? String(error.cause) : undefined,
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.cause
+            ? String(error.cause)
+            : undefined,
         url: process.env.QDRANT_URL,
       },
       { status: 500 },

@@ -2,6 +2,17 @@
 // Prime Intelligence 3D Map — Google Maps JS API (v=beta), maps3d library
 // Cache bust: 2026-03-17-1555
 import React, { useEffect, useRef, useState, useCallback, useContext } from 'react';
+
+/** Ambient Google Maps declaration (loaded via Script tag at runtime) */
+declare global {
+  interface Window {
+    google?: {
+      maps: {
+        importLibrary: (name: string) => Promise<Record<string, unknown>>;
+      };
+    };
+  }
+}
 import Script from 'next/script';
 import Image from 'next/image';
 import { PrimeZantaraChat } from './PrimeZantaraChat';
@@ -66,6 +77,24 @@ interface IntelArticle {
   published_at?: string;
   relevance_score?: number;
 }
+
+/** Google Maps 3D Element (beta API — no official typings) */
+interface Map3DElementInstance {
+  center: { lat: number; lng: number; altitude: number };
+  tilt: number;
+  range: number;
+  heading: number;
+  append: (child: HTMLElement) => void;
+  appendChild: (child: Node) => Node;
+  addEventListener: (type: string, handler: (event: Map3DClickEvent) => void) => void;
+}
+
+interface Map3DClickEvent {
+  position?: { lat: number; lng: number };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Google Maps beta constructors from importLibrary have no typings
+type GoogleMapsConstructor = new (...args: unknown[]) => any;
 
 interface MapLayers {
   zoneColors: boolean;
@@ -248,7 +277,7 @@ export default function PrimeMap3D() {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [map3DElement, setMap3DElement] = useState<any>(null);
+  const [map3DElement, setMap3DElement] = useState<Map3DElementInstance | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedPoint, setSelectedPoint] = useState<Coordinate | null>(null);
   const [zoningResult, setZoningResult] = useState<ZoningInfo | null>(null);
@@ -395,7 +424,7 @@ export default function PrimeMap3D() {
           zonesGeoJsonRef.current = await res.json();
         }
 
-        const { Polygon3DElement } = await (window as any).google.maps.importLibrary('maps3d');
+        const { Polygon3DElement } = await window.google!.maps.importLibrary('maps3d') as { Polygon3DElement: GoogleMapsConstructor };
         const features = zonesGeoJsonRef.current?.features ?? [];
 
         for (const feature of features) {
@@ -528,9 +557,12 @@ export default function PrimeMap3D() {
 
     const initMap = async () => {
       try {
-        const { Map3DElement, Marker3DInteractiveElement, PinElement } = await (
-          window as any
-        ).google.maps.importLibrary('maps3d');
+        const { Map3DElement, Marker3DInteractiveElement, PinElement } = await
+          window.google!.maps.importLibrary('maps3d') as {
+            Map3DElement: GoogleMapsConstructor;
+            Marker3DInteractiveElement: GoogleMapsConstructor;
+            PinElement: GoogleMapsConstructor;
+          };
 
         const map = new Map3DElement({
           center: { lat: -8.648, lng: 115.132, altitude: 200 },
@@ -544,7 +576,7 @@ export default function PrimeMap3D() {
         mapContainerRef.current.appendChild(map);
         setMap3DElement(map);
 
-        map.addEventListener('gmp-click', async (event: any) => {
+        map.addEventListener('gmp-click', async (event: Map3DClickEvent) => {
           if (event.position) {
             const newPos = {
               lat: event.position.lat,
@@ -586,7 +618,7 @@ export default function PrimeMap3D() {
 
     const initAutocomplete = async () => {
       try {
-        const { Autocomplete } = await (window as any).google.maps.importLibrary('places');
+        const { Autocomplete } = await window.google!.maps.importLibrary('places') as { Autocomplete: GoogleMapsConstructor };
         const autocomplete = new Autocomplete(searchInputRef.current, {
           componentRestrictions: { country: 'id' },
           fields: ['geometry', 'name', 'formatted_address'],
@@ -605,7 +637,7 @@ export default function PrimeMap3D() {
           setSearchValue(place.name || place.formatted_address || '');
           analyzeLocation(newPos);
 
-          setMap3DElement((currentMap: any) => {
+          setMap3DElement((currentMap: Map3DElementInstance | null) => {
             if (currentMap) {
               currentMap.center = { lat, lng, altitude: 300 };
               currentMap.tilt = 65;
@@ -1213,7 +1245,7 @@ export default function PrimeMap3D() {
                 const newPos = { lat, lng, altitude: 0 };
                 setSelectedPoint(newPos);
                 analyzeLocation(newPos);
-                setMap3DElement((currentMap: any) => {
+                setMap3DElement((currentMap: Map3DElementInstance | null) => {
                   if (currentMap) {
                     currentMap.center = { lat, lng, altitude: 300 };
                     currentMap.tilt = 65;
