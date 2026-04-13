@@ -13,6 +13,8 @@ v2: Upgraded brain — Sonnet 4.5, dynamic persona "Zan", client profile memory,
 """
 
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 import time
@@ -579,9 +581,41 @@ async def verify_webhook(request: Request) -> PlainTextResponse:
     raise HTTPException(status_code=403, detail="Invalid verify token")
 
 
+def _verify_whatsapp_signature(body: bytes, signature_header: str | None) -> bool:
+    """Verify X-Hub-Signature-256 HMAC-SHA256 from Meta WhatsApp webhook.
+
+    Args:
+        body: Raw request body bytes
+        signature_header: Value of X-Hub-Signature-256 header (format: "sha256=<hex>")
+
+    Returns:
+        True if signature is valid or verification is disabled (no app secret configured)
+    """
+    app_secret = settings.whatsapp_app_secret
+    if not app_secret:
+        # No app secret configured — skip verification (dev mode)
+        return True
+
+    if not signature_header:
+        logger.warning("⚠️ WhatsApp webhook: missing X-Hub-Signature-256 header")
+        return False
+
+    if not signature_header.startswith("sha256="):
+        logger.warning("⚠️ WhatsApp webhook: malformed signature header")
+        return False
+
+    expected_sig = signature_header[7:]  # Strip "sha256=" prefix
+    computed_sig = hmac.new(
+        app_secret.encode("utf-8"),
+        body,
+        hashlib.sha256,
+    ).hexdigest()
+
+    return hmac.compare_digest(computed_sig, expected_sig)
+
+
 @router.post("")
 async def whatsapp_webhook(
-    webhook: WhatsAppWebhook,
     background_tasks: BackgroundTasks,
     request: Request,
 ) -> dict[str, Any]:
@@ -589,8 +623,27 @@ async def whatsapp_webhook(
     Handle incoming WhatsApp messages.
 
     Meta sends POST requests with message events.
+    Verifies X-Hub-Signature-256 HMAC if WHATSAPP_APP_SECRET is configured.
     We process in background and return 200 immediately.
     """
+    # HMAC-SHA256 signature verification
+    body = await request.body()
+    signature = request.headers.get("X-Hub-Signature-256")
+
+    if not _verify_whatsapp_signature(body, signature):
+        logger.warning(
+            f"❌ WhatsApp webhook signature verification failed "
+            f"(from {request.client.host if request.client else 'unknown'})"
+        )
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # Parse body into webhook model
+    try:
+        webhook = WhatsAppWebhook(**json.loads(body))
+    except Exception as e:
+        logger.error(f"❌ WhatsApp webhook body parse error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid request body")
+
     logger.info(f"Webhook received: {webhook.object}, {len(webhook.entry)} entries")
 
     for entry in webhook.entry:
@@ -672,9 +725,8 @@ async def verify_webhook_alias(request: Request) -> Any:
 
 @alias_router.post("/webhook")
 async def whatsapp_webhook_alias(
-    webhook: WhatsAppWebhook,
     background_tasks: BackgroundTasks,
     request: Request,
 ) -> Any:
     """Alias for /webhook/whatsapp (POST) — Meta webhook messages."""
-    return await whatsapp_webhook(webhook, background_tasks, request)
+    return await whatsapp_webhook(background_tasks, request)

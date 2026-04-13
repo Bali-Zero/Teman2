@@ -569,6 +569,10 @@ class Settings(BaseSettings):
 
         return v
 
+    whatsapp_app_secret: str | None = Field(
+        default=None,
+        description="WhatsApp App Secret for HMAC-SHA256 webhook signature verification. Set via WHATSAPP_APP_SECRET env var.",
+    )
     whatsapp_api_token: str | None = Field(
         default=None,
         description="WhatsApp Cloud API access token from Meta Business. Set via WHATSAPP_API_TOKEN env var.",
