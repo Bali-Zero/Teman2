@@ -70,7 +70,7 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 | ------------- | --------------------------------------------------------------- | ------------------------------------------------ |
 | Backend       | **Python 3.11+, FastAPI**                                       | 90 router, 253 service                           |
 | Frontend      | **Next.js** (App Router), TypeScript, Tailwind                  | `apps/mouth/`                                    |
-| Vector DB     | **Qdrant**                                                      | 10 collezioni live, 93.283 vettori               |
+| Vector DB     | **Qdrant**                                                      | 10 collezioni live, 93.283 vettori, 20 defined   |
 | Relational DB | **PostgreSQL 17**                                               | Fly.io `nuzantara-postgres` (2GB)                |
 | Cache         | **Redis**                                                       | Local su Pro                                     |
 | Embedding     | **`text-embedding-3-small` (1536 dims) — FROZEN, MAI CAMBIARE** |

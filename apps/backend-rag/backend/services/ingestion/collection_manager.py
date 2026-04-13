@@ -89,7 +89,6 @@ class CollectionManager:
                 "priority": "high",
                 "doc_count": 2898,
             },  # Dec 2025: Migrated to hybrid
-            "kb_indonesian": {"priority": "medium", "doc_count": 0, "alias": "knowledge_base"},
             "balizero_news": {
                 "priority": "high",
                 "doc_count": 175,
@@ -130,11 +129,6 @@ class CollectionManager:
                 "priority": "medium",
                 "doc_count": 5041,
                 "alias": resolve_collection_name("legal_updates"),
-            },
-            "legal_intelligence": {
-                "priority": "medium",
-                "doc_count": 5041,
-                "alias": resolve_collection_name("legal_intelligence"),
             },
             # Immigration circulars (Surat Edaran Kemnaker/Imigrasi)
             "immigration_circulars": {
