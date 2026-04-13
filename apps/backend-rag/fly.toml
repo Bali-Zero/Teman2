@@ -18,8 +18,11 @@ primary_region = 'sin'
   # Safety: migrations_v2/ currently empty, advisory lock prevents concurrent runs during rolling deploy
 
 [processes]
-  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2"
-  rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1"
+  # --timeout-worker-healthcheck 600: presidio/torch/transformers import chain
+  # takes ~7min on shared-cpu-1x (1 vCPU); default 5s was killing workers during
+  # import (2026-04-12 incident). Also see grace_period below.
+  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2 --timeout-worker-healthcheck 600"
+  rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1 --timeout-worker-healthcheck 600"
 
 [env]
   ENVIRONMENT = 'production'
@@ -53,7 +56,11 @@ primary_region = 'sin'
   [[http_service.checks]]
     interval = '30s'
     timeout = '10s'
-    grace_period = '60s'
+    # grace_period 600s: matches --timeout-worker-healthcheck above; cold-start
+    # import on shared-cpu-1x takes ~7min due to presidio/torch chain (see
+    # [processes] comment). Smaller values cause Fly to mark the machine
+    # unhealthy mid-import (2026-04-12 incident).
+    grace_period = '600s'
     method = 'GET'
     path = '/health/ready'
 
