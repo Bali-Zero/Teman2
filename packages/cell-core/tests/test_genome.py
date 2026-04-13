@@ -285,3 +285,53 @@ def test_fts_removes_deleted_rows(tmp_path):
     conn.close()
 
     assert len(g.search("ephemeral")) == 0
+
+
+# ─── Issue 4: apply_inherited_genome ──────────────────────────
+
+
+def test_apply_inherited_genome(genome):
+    """apply_inherited_genome should insert inherited skills into the daughter cell."""
+    # Parent has 2 Project skills and 1 Personal scar
+    genome.record_skill(
+        cell="parent", skill_id="skill_a",
+        procedure="technique A", confidence=0.95, scope="Project",
+    )
+    genome.record_skill(
+        cell="parent", skill_id="skill_b",
+        procedure="technique B", confidence=0.80, scope="Project",
+    )
+    genome.record_scar(
+        cell="parent", scar_id="scar_x", procedure="avoid this",
+    )
+
+    applied = genome.apply_inherited_genome(
+        parent_cell="parent",
+        daughter_cell="daughter",
+        decay=0.9,
+        min_confidence=0.7,
+    )
+
+    # Only 2 Project skills with confidence >= 0.7
+    assert len(applied) == 2
+
+    daughter_skills = genome.get_active(cell="daughter")
+    assert len(daughter_skills) == 2
+
+    ids = {s["id"] for s in daughter_skills}
+    assert ids == {"inherited_skill_a", "inherited_skill_b"}
+
+    for s in daughter_skills:
+        assert s["inherited_from"] in ("skill_a", "skill_b")
+        # Confidence should be original * 0.9
+        original = 0.95 if s["inherited_from"] == "skill_a" else 0.80
+        assert s["confidence"] == pytest.approx(original * 0.9, abs=0.01)
+
+
+def test_apply_inherited_genome_empty(genome):
+    """If parent has no eligible skills, daughter gets nothing."""
+    applied = genome.apply_inherited_genome(
+        parent_cell="ghost", daughter_cell="orphan",
+    )
+    assert applied == []
+    assert genome.get_active(cell="orphan") == []
