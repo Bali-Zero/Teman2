@@ -203,7 +203,51 @@ Il mock non rivela problemi di lock su tabelle grandi.
 
 ---
 
-## 11. Deploy su Fly.io
+## 11. Nuovo LaunchAgent (plist)
+
+> Daemon o scheduled job via `launchd` su Pro o Air.
+
+**Checklist:**
+
+1. [ ] Il `Label` segue la naming convention? (`com.nuzantara.*` per infra, `com.balizero.*` per business, `com.cell.*` per cell-core)
+2. [ ] `ProgramArguments` usa path assoluto all'interprete? (`/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3`, non `python3`)
+3. [ ] `EnvironmentVariables` include almeno `PATH` e `HOME`? (launchd NON eredita la shell — senza questi, ogni comando fallisce silenziosamente)
+4. [ ] Se usa segreti (Telegram token, API keys) → sono in `EnvironmentVariables` del plist O caricati da `~/.nuzantara-secrets.env`?
+5. [ ] `StandardOutPath` e `StandardErrorPath` puntano a `~/logs/`? (non `/tmp/` — sopravvive ai reboot, leggibile dal Sentinel)
+6. [ ] Scheduling corretto? `StartInterval` (secondi, ricorrente) vs `StartCalendarInterval` (orario fisso) vs `KeepAlive` (daemon always-on)?
+7. [ ] `RunAtLoad` è `true` solo per daemon che DEVONO partire al boot — per cron-style deve essere `false`
+8. [ ] È registrato in `~/.agent/decisions/job_registry.json`? (senza entry, il Sentinel non lo vede)
+9. [ ] Il registry entry ha: `host`, `type: "launchagent"`, `plist`, `schedule_seconds`, `staleness_threshold_s`, `restart_cmd`, `repair_scope`, `critical`
+10. [ ] `restart_cmd` usa `launchctl kickstart -k gui/$(id -u)/<Label>` — non `launchctl start` (che non forza restart se già loaded)
+11. [ ] Se è un daemon (`is_daemon: true` nel registry): ha un health endpoint o un modo per verificarne lo stato?
+12. [ ] È stato caricato con `launchctl load`? Verifica con `launchctl list <Label>`
+
+**Scar documentato:** `launchd` non eredita `PATH`, `HOME`, né variabili d'ambiente dalla shell.
+Ogni plist che non le dichiara esplicitamente fallisce con errori incomprensibili
+(es. `command not found`, `FileNotFoundError`, `Connection refused` per servizi locali).
+
+**Pattern di riferimento:**
+
+```xml
+<key>EnvironmentVariables</key>
+<dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+    <key>HOME</key>
+    <string>/Users/nuzantara</string>
+</dict>
+```
+
+**Dopo il load:**
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.nuzantara.mio-job.plist
+launchctl list com.nuzantara.mio-job  # verifica: LastExitStatus = 0
+```
+
+---
+
+## 12. Deploy su Fly.io
 
 > Solo `nuzantara-rag`, `nuzantara-postgres`, `nuzantara-qdrant`.
 
@@ -219,7 +263,7 @@ Il mock non rivela problemi di lock su tabelle grandi.
 
 ---
 
-## 12. Nuova dipendenza Python
+## 13. Nuova dipendenza Python
 
 > `pip install` o aggiunta a `pyproject.toml`.
 
@@ -234,7 +278,7 @@ Il mock non rivela problemi di lock su tabelle grandi.
 
 ---
 
-## 13. Claude Code come organo (sessione di lavoro)
+## 14. Claude Code come organo (sessione di lavoro)
 
 > Ogni sessione Claude Code è un pulse dell'organismo.
 
@@ -296,6 +340,7 @@ Prima di ogni PR, commit, o deploy, rispondi a queste 5:
 | Design spec genome   | `docs/superpowers/specs/2026-04-12-dna-recording-design.md` |
 | Memoria sessione     | `~/.claude/scripts/mem`                                     |
 | REFLECT automatico   | `~/.claude/scripts/session-reflect.py`                      |
+| Job registry         | `~/.agent/decisions/job_registry.json`                      |
 | Pricing              | `PRICING_REFERENCE.md`                                      |
 | Visa types           | `VISA_TYPES_REFERENCE.md`                                   |
 | Prompt SSOT          | `apps/backend-rag/backend/prompts/zantara_core.py`          |
@@ -308,6 +353,6 @@ il punto è esattamente quello che devi fare.
 
 ---
 
-_Versione: 1.0 — 2026-04-12_
+_Versione: 1.1 — 2026-04-13_
 _Mantenuto da: Zero + Claude_
 _Complementare a: SYMBIOSIS.md_
