@@ -299,11 +299,25 @@ async def telegram_webhook(
         # Route message through ChannelRouter
         await channel_router.route_message("telegram", update)
 
+        # Record webhook metric
+        try:
+            from backend.app.metrics import metrics_collector
+            metrics_collector.record_webhook_request(channel="telegram", status="success")
+        except Exception:
+            pass
+
         # Return 200 OK (Telegram requires this)
         return {"ok": True, "update_id": update_id}
 
     except Exception as e:
         logger.error(f"Failed to process Telegram webhook: {e}", exc_info=True)
+
+        # Record error metric
+        try:
+            from backend.app.metrics import metrics_collector
+            metrics_collector.record_webhook_request(channel="telegram", status="error")
+        except Exception:
+            pass
 
         # Return 200 OK even on error (to prevent Telegram from retrying)
         # Telegram will retry if we return 500, which can cause duplicates
