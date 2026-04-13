@@ -122,10 +122,9 @@ SYSTEM_RULES: list[tuple[str, str]] = [
     ("renewal", "CRM"), ("expiry", "CRM"), ("cashout", "CRM"),
     ("notifier", "CRM"), ("birthday", "CRM"), ("welcome", "CRM"),
     ("crm", "CRM"), ("daily-ops", "CRM"), ("weekly-review", "CRM"),
-    # Intel — Business intelligence & scraping
-    ("intel", "Intel"), ("scraper", "Intel"), ("legal_radar", "Intel"),
-    ("translate", "Intel"), ("war-room", "Intel"), ("overnight", "Intel"),
-    ("normativa", "Intel"),
+    # Garuda — Intelligence: scraping + KG + regulation radar
+    ("intel", "Garuda"), ("scraper", "Garuda"), ("legal_radar", "Garuda"),
+    ("war-room", "Garuda"), ("normativa", "Garuda"),
     # Sentinel — Self-healing & monitoring
     ("sentinel", "Sentinel"), ("dlq", "Sentinel"), ("circuit", "Sentinel"),
     ("zombie", "Sentinel"), ("disk-monitor", "Sentinel"),
@@ -142,6 +141,7 @@ SYSTEM_RULES: list[tuple[str, str]] = [
     ("postgres", "Olympus"), ("pg-sync", "Olympus"), ("pg-backup", "Olympus"),
     ("fly-backup", "Olympus"), ("qdrant", "Olympus"),
     # Ops — Operational tools
+    ("translate", "Ops"), ("overnight", "Ops"),
     ("openclaw", "Ops"), ("nuz-sync", "Ops"), ("syncthing", "Ops"),
     ("sync-damar", "Ops"), ("sync-memory", "Ops"), ("mos", "Ops"),
     ("memory", "Ops"), ("cache", "Ops"), ("cleanup", "Ops"),
@@ -153,14 +153,14 @@ SYSTEM_RULES: list[tuple[str, str]] = [
     ("dep-audit", "Ops"), ("dep_audit", "Ops"), ("coverage", "Ops"),
     ("learning-pipeline", "Ops"), ("codebase-audit", "Ops"),
     ("weekly-report", "Ops"), ("weekly-dep", "Ops"),
-    ("t4-monitor", "Intel"), ("t4_monitor", "Intel"),
+    ("t4-monitor", "Garuda"), ("t4_monitor", "Garuda"),
     # Sentinel additional
     ("auto_test", "Sentinel"), ("auto-test", "Sentinel"),
     ("auto_sentinel", "Sentinel"), ("auto-sentinel", "Sentinel"),
     ("auto_judgement", "Sentinel"), ("judgement-day", "Sentinel"),
     ("job-health", "Sentinel"), ("job_health", "Sentinel"),
-    # Intel additional
-    ("source-enrichment", "Intel"), ("legal-radar", "Intel"),
+    # Garuda additional
+    ("source-enrichment", "Garuda"), ("legal-radar", "Garuda"),
     ("auto_kb_ingest", "Sentinel"), ("kb-ingest", "Sentinel"),
     # Ops additional
     ("cron-wrapper", "Ops"), ("cron_wrapper", "Ops"),
@@ -747,7 +747,6 @@ SYSTEM_COLORS = {
     "NLM": PatternFill("solid", fgColor="D6E4F0"),       # light blue
     "SEO": PatternFill("solid", fgColor="FFF2CC"),       # light yellow
     "CRM": PatternFill("solid", fgColor="E2D9F3"),       # light purple
-    "Intel": PatternFill("solid", fgColor="F4CCCC"),     # light red
     "Sentinel": PatternFill("solid", fgColor="D5E8D4"),  # mint green
     "Olympus": PatternFill("solid", fgColor="DAE8FC"),   # steel blue
     "Ops": PatternFill("solid", fgColor="F5F5F5"),       # light gray
