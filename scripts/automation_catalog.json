@@ -791,6 +791,12 @@
       "description": "Pro heartbeat: write timestamp locally + push to Air via SSH. Hourly dead-man switch.",
       "produces": "Heartbeat file on both nodes",
       "consumes": "SSH to Air"
+    },
+    "coverage_trend.py": {
+      "description": "Test coverage trend tracker: runs pytest --cov, stores rolling history, detects >2% regressions, sends Telegram alert. Writes .last.json for Sentinel.",
+      "system": "Sentinel",
+      "produces": "Coverage metrics, regression alerts",
+      "consumes": "pytest, coverage history file"
     }
   },
   "nlm_pipelines": {
