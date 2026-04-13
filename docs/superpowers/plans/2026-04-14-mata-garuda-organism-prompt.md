@@ -172,11 +172,26 @@ PROPOSTI [NEW] — da validare nel brainstorm:
     organism:metrics  ← Tutti gli organi (metriche metaboliche) → Dashboard, Consiglio
 ```
 
-Sono 8 stream nuovi. L'approccio è: **definisci lo schema di tutti adesso (zero-cost), implementa i consumer incrementalmente**. Il brainstorm deve validare: quali stream servono davvero? Quali possono essere mergiati? Qual è il formato payload standard?
+Sono 8 stream nuovi. L'approccio è: **definisci lo schema di tutti adesso (zero-cost), implementa i consumer incrementalmente**.
+
+**Decisione presa — Envelope standard a 5 campi per TUTTI gli stream:**
+
+```json
+{
+  "id": "uuid-v4",
+  "type": "crm.client_created",        // dot notation gerarchica, consumer filtra per prefisso (crm.*)
+  "source": "bridge",                   // organo che ha prodotto l'evento
+  "timestamp": "2026-04-14T08:30:00+08:00",  // ISO 8601 con timezone
+  "priority": 3,                        // 1=urgente, 5=bassa — consumer processa in ordine
+  "payload": { ... }                    // contenuto libero, specifico per type
+}
+```
+
+I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (puro JSON), leggibile con `redis-cli XREAD`, loggabile/replayabile. Niente protobuf (Legge: solo pydantic+pytest). Gli stream esistenti (`garuda:raw`, `nexus:gaps`) verranno migrati a questo formato quando i consumer vengono riscritti — non è urgente rompere quello che funziona.
 
 **Domande che il brainstorm deve rispondere:**
 
-1. **Stream design**: validare/semplificare la mappa sopra. Definire il formato payload standard (JSON, campi obbligatori: `event_type`, `timestamp`, `source_organ`, `payload`). Quali stream mergiare? Quali consumer sono il minimo vitale per Phase 1?
+1. **Stream design**: validare/semplificare la mappa dei 12 stream. Quali possono essere mergiati? Quali consumer sono il minimo vitale per Phase 1? Definire il catalogo di `type` per ogni stream (es. `crm.client_created`, `crm.practice_completed`, `intel.article_ready`, etc.).
 2. **Bridge design** (decisioni già prese):
    - **Fly→Pro: polling adattivo** (NOT webhook — Legge 6 sovranità locale, Pro non espone porte)
      - 30s durante orario lavoro (08-18 WITA), 5min di notte
