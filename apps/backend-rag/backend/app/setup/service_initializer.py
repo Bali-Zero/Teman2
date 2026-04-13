@@ -920,6 +920,13 @@ async def initialize_channel_router(
             )
             logger.info(f"✅ Fallback orchestrator created with {len(tools)} tools")
 
+            # Eagerly initialize async components (MemoryOrchestrator, KG LangGraph)
+            # to avoid first-query latency spike
+            try:
+                await orchestrator.initialize()
+            except Exception as e:
+                logger.warning(f"⚠️ Orchestrator async init failed (non-fatal): {e}")
+
         # Initialize ConversationEngine (bridge between channels and orchestrator)
         conversation_engine = ConversationEngine(orchestrator)
         app.state.conversation_engine = conversation_engine
