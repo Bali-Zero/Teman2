@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn, renderMiniMarkdown } from "@/lib/utils";
+import { safeMiniMarkdown } from "@/lib/utils/safe-html";
 import { logger } from "@/lib/logger";
 import {
   Loader2,
@@ -961,9 +962,9 @@ export default function NewsRoomPage() {
             >
               <div
                 className="whitespace-pre-wrap"
-                dangerouslySetInnerHTML={renderMiniMarkdown(
+                dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(
                   previewItem.content,
-                )}
+                ))}
               />
             </div>
           )}

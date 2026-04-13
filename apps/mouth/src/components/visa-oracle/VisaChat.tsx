@@ -311,7 +311,7 @@ export function VisaChat({
         </button>
       </div>
 
-      {/* Bouncing dots keyframes */}
+      {/* Safe: hardcoded CSS keyframes for bouncing dots animation, no external input */}
       <style
         dangerouslySetInnerHTML={{
           __html: `

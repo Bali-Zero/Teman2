@@ -254,7 +254,7 @@ export default function RootLayout({
             }}
           />
         </QueryProvider>
-        {/* Service Worker Registration */}
+        {/* Service Worker Registration — safe: hardcoded static JS string, no external input */}
         <Script
           id="sw-register"
           strategy="afterInteractive"

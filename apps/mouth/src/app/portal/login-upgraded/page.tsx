@@ -140,13 +140,13 @@ export default function UpgradedLoginPage() {
         </motion.div>
       )}
 
-      {/* ── CSS animations ── */}
+      {/* Safe: hardcoded CSS for autofill styling, no external input */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px rgba(0,0,0,0.8) inset !important;
             -webkit-text-fill-color: #f0ece4 !important;
