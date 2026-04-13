@@ -9,6 +9,7 @@ import hashlib
 import logging
 import secrets
 from typing import Any
+from urllib.parse import quote
 
 from backend.services.pricing.pricing_service import get_pricing_service
 
@@ -46,7 +47,7 @@ DURATION_THRESHOLDS: dict[str, tuple[int, int]] = {
     "short": (0, 60),
     "medium": (61, 365),
     "long": (366, 1825),
-    "permanent": (1826, 99999),
+    "permanent": (1825, 99999),
 }
 
 # Static visa metadata (duration/validity not stored in PricingService data).
@@ -253,7 +254,7 @@ class VisaOracleService:
             f"duration: {duration}. "
             f"Can you help me get started?"
         )
-        encoded = text.replace(" ", "%20").replace("\n", "%0A")
+        encoded = quote(text, safe="")
         return f"{WHATSAPP_BASE_URL}?text={encoded}"
 
     def build_telegram_summary(
