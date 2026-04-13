@@ -8,7 +8,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:43:12.586016+00:00",
-    "label": "Immigration & Visa"
+    "label": "Immigration & Visa",
+    "coverage": {
+      "KITAS requirements and process 2025": "GAP",
+      "KITAP eligibility and conversion from KITAS": "GAP",
+      "B211A visa digital nomad Indonesia": "GAP",
+      "TKA (foreign worker permit) requirements": "GAP",
+      "KITAS renewal procedure and timeline": "GAP",
+      "Spouse/dependent KITAS (KITAS ikut suami/istri)": "GAP",
+      "Immigration fines and overstay penalties": "GAP",
+      "E-visa online application process": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:00:43.714604+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "company": {
     "gaps": [
@@ -19,7 +32,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:44:08.066122+00:00",
-    "label": "Company Setup & KBLI"
+    "label": "Company Setup & KBLI",
+    "coverage": {
+      "PT PMA setup requirements 2025": "GAP",
+      "OSS-RBA online registration process": "GAP",
+      "NIB (Nomor Induk Berusaha) registration": "GAP",
+      "Daftar Negatif Investasi foreign ownership limits": "GAP",
+      "PT PMA minimum capital requirements": "GAP",
+      "Notaris process for PT establishment": "GAP",
+      "KBLI 2020 classification system": "GAP",
+      "Representative Office vs PT PMA": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:01:24.886607+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "tax": {
     "gaps": [
@@ -30,7 +56,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:44:58.388821+00:00",
-    "label": "Tax & Fiscal"
+    "label": "Tax & Fiscal",
+    "coverage": {
+      "PPh 21 rates and calculation for expats": "GAP",
+      "PPN (VAT) 11% registration and reporting": "GAP",
+      "CoreTax system migration 2025": "GAP",
+      "PPh 25 quarterly installment for PT PMA": "GAP",
+      "LKPM reporting requirements BKPM": "GAP",
+      "Transfer pricing documentation": "GAP",
+      "SPT Tahunan Badan filing deadline": "GAP",
+      "NPWP registration for foreigners": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:02:05.929217+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "property": {
     "gaps": [
@@ -41,7 +80,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:45:40.574414+00:00",
-    "label": "Property & Real Estate"
+    "label": "Property & Real Estate",
+    "coverage": {
+      "HGB title for foreigners in Indonesia": "GAP",
+      "Hak Pakai for foreign nationals": "GAP",
+      "Leasehold property structures Bali": "GAP",
+      "RTRW zoning regulations Bali 2024": "GAP",
+      "BPHTB property transfer tax": "GAP",
+      "KPR mortgage for foreigners Indonesia": "GAP",
+      "Nominee structure legality Indonesia": "GAP",
+      "AJB process and notaris requirements": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:02:47.071034+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "operations": {
     "gaps": [
@@ -52,7 +104,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:46:39.484521+00:00",
-    "label": "Operations & Compliance"
+    "label": "Operations & Compliance",
+    "coverage": {
+      "UMR/UMK Bali minimum wage 2025": "GAP",
+      "BPJS Ketenagakerjaan rates 2025": "GAP",
+      "BPJS Kesehatan contribution rates": "GAP",
+      "PKWT vs PKWTT contract types": "GAP",
+      "UU Cipta Kerja employment law changes": "GAP",
+      "UU PDP data protection compliance": "GAP",
+      "TDUP license for tourism businesses": "GAP",
+      "Anti-money laundering PPATK obligations": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:03:28.275720+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "editorial": {
     "gaps": [
@@ -63,7 +128,20 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:47:21.489072+00:00",
-    "label": "Editorial & Content"
+    "label": "Editorial & Content",
+    "coverage": {
+      "Google Helpful Content Update 2024": "GAP",
+      "E-E-A-T for legal and financial content": "GAP",
+      "YMYL content best practices": "GAP",
+      "Indonesia expat search intent analysis": "GAP",
+      "Core Web Vitals ranking factors": "GAP",
+      "Long-form guide structure for immigration topics": "GAP",
+      "Content gap analysis vs competitors": "GAP",
+      "AI content detection and avoidance": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:04:09.455033+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   },
   "lifestyle": {
     "gaps": [
@@ -74,6 +152,19 @@
       "\"references\": []"
     ],
     "gaps_updated": "2026-04-03T13:48:04.668193+00:00",
-    "label": "Expat Life & Bali"
+    "label": "Expat Life & Bali",
+    "coverage": {
+      "International health insurance Bali 2025": "GAP",
+      "BIMC Siloam hospital services": "GAP",
+      "International schools Bali fees 2025": "GAP",
+      "Cost of living Canggu Seminyak 2025": "GAP",
+      "Opening bank account as foreigner Indonesia": "GAP",
+      "Driving license for foreigners in Bali": "GAP",
+      "Internet and phone plans Bali": "GAP",
+      "Pet import regulations Indonesia": "GAP"
+    },
+    "coverage_updated": "2026-04-12T11:04:50.570924+00:00",
+    "health_pct": 0.0,
+    "gap_pct": 100.0
   }
 }
