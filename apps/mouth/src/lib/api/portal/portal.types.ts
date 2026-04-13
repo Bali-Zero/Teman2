@@ -134,7 +134,7 @@ export interface TaxObligation {
   type: string;
   period: string;
   dueDate: string;
-  status: "pending" | "filed" | "overdue";
+  status: "pending" | "upcoming" | "filed" | "paid" | "overdue";
   amount?: number;
 }
 

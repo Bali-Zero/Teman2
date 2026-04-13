@@ -190,8 +190,8 @@ export class PortalApi {
     const response = await this.client.request<
       PortalApiResponse<Record<string, unknown>>
     >("/api/portal/taxes", { method: "GET" });
-    const raw = response.data as Record<string, unknown>;
-    const summary = raw.summary as Record<string, unknown>;
+    const raw = (response.data ?? {}) as Record<string, unknown>;
+    const summary = (raw.summary ?? {}) as Record<string, unknown>;
     const obligations = (raw.obligations ?? []) as Record<string, unknown>[];
     return {
       summary: {
