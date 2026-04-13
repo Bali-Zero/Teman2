@@ -44,7 +44,7 @@ export default function ContactPage() {
     const message = encodeURIComponent(
       `Hi Bali Zero! I'm ${formData.name}.\n\nService interested: ${formData.service || "General inquiry"}\n\nMessage: ${formData.message}\n\nEmail: ${formData.email}${formData.phone ? `\nPhone: ${formData.phone}` : ""}`,
     );
-    window.open(`https://wa.me/6285904369574?text=${message}`, "_blank");
+    window.open(`https://wa.me/628213107363?text=${message}`, "_blank");
     setFormState("success");
   };
 
@@ -100,7 +100,7 @@ export default function ContactPage() {
               <div className="space-y-6">
                 {/* WhatsApp */}
                 <a
-                  href="https://wa.me/6285904369574"
+                  href="https://wa.me/628213107363"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-start gap-4 p-6 rounded-xl border border-white/10 bg-[#0a2540] hover:border-[#25D366]/50 transition-all group"
@@ -116,7 +116,7 @@ export default function ContactPage() {
                       {t("contact.info.whatsappDesc")}
                     </p>
                     <p className="text-[#25D366] font-medium">
-                      +62 859 0436 9574
+                      +62 821 3107 363
                     </p>
                   </div>
                 </a>

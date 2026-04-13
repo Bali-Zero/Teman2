@@ -1,24 +1,24 @@
-import type { Metadata } from 'next';
-import Script from 'next/script';
-import { ZantaraWidget } from '@/components/ZantaraWidget';
-import { KbliSearchBox } from './KbliSearchBox';
-import { LatestIntelligence } from './LatestIntelligence';
-import { HomepageStaticContent } from './HomepageStaticContent';
+import type { Metadata } from "next";
+import Script from "next/script";
+import { ZantaraWidget } from "@/components/ZantaraWidget";
+import { KbliSearchBox } from "./KbliSearchBox";
+import { LatestIntelligence } from "./LatestIntelligence";
+import { HomepageStaticContent } from "./HomepageStaticContent";
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
+    absolute: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
   },
   description:
     "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients since 2020.",
   alternates: {
-    canonical: 'https://balizero.com',
+    canonical: "https://balizero.com",
   },
   openGraph: {
-    title: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
+    title: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
     description:
       "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients.",
-    url: 'https://balizero.com',
+    url: "https://balizero.com",
   },
 };
 
@@ -1080,8 +1080,9 @@ body::after {
             Navigator
           </h2>
           <p className="kbli-desc">
-            Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk
-            assessment, PMA status tracking, and AI-powered guidance.
+            Instant access to all 1,563 KBLI 2025 codes with intelligent search,
+            4-level risk assessment, PMA status tracking, and AI-powered
+            guidance.
           </p>
           <div className="kbli-features">
             <span className="kbli-feat">Smart bilingual search</span>
@@ -1169,9 +1170,9 @@ body::after {
       <div class="footer-col">
         <h4>Contact</h4>
         <a href="mailto:info@balizero.com">info@balizero.com</a>
-        <a href="tel:+6285904260571">+62 859 0426 0571</a>
+        <a href="tel:+628213107363">+62 821 3107 363</a>
         <a href="/contact">Bali, Indonesia</a>
-        <a href="https://wa.me/6285904260571" target="_blank" rel="noopener">WhatsApp</a>
+        <a href="https://wa.me/628213107363" target="_blank" rel="noopener">WhatsApp</a>
         <a href="https://t.me/Balizerobot" target="_blank" rel="noopener">Telegram</a>
       </div>
     </div>
