@@ -1,6 +1,7 @@
 import { UserProfile } from "@/types";
 import type { IApiClient, ApiRequestOptions } from "./types/api-client.types";
 import { safeStorage } from "@/lib/utils/storage";
+import { isTokenExpired } from "@/lib/utils/token";
 import { logger } from "@/lib/logger";
 
 /** FastAPI validation error structure */
@@ -96,6 +97,15 @@ export class ApiClientBase implements IApiClient {
       const storedToken = safeStorage.getItem("auth_token");
       if (storedToken !== this.token) {
         this.token = storedToken;
+      }
+      // Validate token expiry -- clear if expired
+      if (this.token && isTokenExpired(this.token)) {
+        logger.warn("Auth token expired, clearing from storage", {
+          component: "ApiClient",
+          action: "token_expired",
+        });
+        this.clearToken();
+        return null;
       }
     }
     return this.token;

@@ -10,6 +10,8 @@ const DEFAULT_GATEWAY_URL = "https://127.0.0.1:8090";
 // SSE streams go DIRECTLY to Fly.io (not through Vercel proxy) because
 // Vercel Hobby has a 60s timeout that kills long-running RAG responses.
 // Auth is handled via Authorization header from localStorage.
+import { getValidToken } from "@/lib/utils/token";
+
 const CLOUD_BACKEND =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev";
 
@@ -77,9 +79,10 @@ export async function sendChat(req: ChatRequest): Promise<Response> {
 
   // Read JWT from localStorage (same source as ApiClientBase) for Authorization header.
   // The httpOnly cookie alone is unreliable through Vercel Edge proxy.
+  // Token expiry is validated before use to avoid sending stale tokens.
   const authHeaders: Record<string, string> = { "Content-Type": "application/json" };
   if (typeof window !== "undefined") {
-    const authToken = localStorage.getItem("auth_token");
+    const authToken = getValidToken("auth_token", localStorage);
     if (authToken) {
       authHeaders["Authorization"] = `Bearer ${authToken}`;
     }
