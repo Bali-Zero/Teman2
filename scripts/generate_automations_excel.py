@@ -236,6 +236,8 @@ def enrich_from_catalog(a: Automation, catalog: dict) -> None:
         a.type = entry["type"]
     if entry.get("monitored_by") and not a.monitored_by:
         a.monitored_by = entry["monitored_by"]
+    if entry.get("schedule") and (not a.schedule_human or a.schedule_human in ("at boot", "daemon", "")):
+        a.schedule_human = entry["schedule"]
 
 
 def _read_script_header(script_path: str) -> str:
