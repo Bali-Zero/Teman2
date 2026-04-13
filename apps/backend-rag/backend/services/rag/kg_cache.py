@@ -11,9 +11,43 @@ Falls back to in-memory LRU when Redis is unavailable.
 
 import hashlib
 import logging
+import threading
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# KG Version Counter
+# ---------------------------------------------------------------------------
+# Monotonically increasing counter incremented on every KG mutation
+# (node/edge add). Used to invalidate stale cache entries: cached results
+# store the version at write time; on read, a version mismatch triggers
+# a cache miss.
+# ---------------------------------------------------------------------------
+_kg_version: int = 0
+_kg_version_lock = threading.Lock()
+
+
+def get_kg_version() -> int:
+    """Return the current KG version counter."""
+    return _kg_version
+
+
+def increment_kg_version() -> int:
+    """
+    Increment the KG version counter (thread-safe).
+
+    Call this after any KG mutation (node/edge addition).
+
+    Returns:
+        The new version number.
+    """
+    global _kg_version
+    with _kg_version_lock:
+        _kg_version += 1
+        new_version = _kg_version
+    logger.debug("KG version incremented to %d", new_version)
+    return new_version
 
 # TTL constants (seconds)
 TTL_ENTITY_RESOLUTION = 600  # 10 min — entities don't change often
@@ -157,26 +191,53 @@ class KGCache:
     # ------------------------------------------------------------------
 
     async def get_subgraph_result(self, domain: str, query: str) -> dict | None:
-        """Get cached domain subgraph result."""
+        """
+        Get cached domain subgraph result.
+
+        Returns None (cache miss) if:
+        - Cache is unavailable
+        - No cached entry exists
+        - Cached entry was written at a different KG version
+        """
         cache = self._get_cache()
         if cache is None:
             return None
         key = f"zantara:kg:subgraph:{domain}:{self._hash_key(query.lower())}"
-        result = await cache.get(key)
-        if result is not None:
-            _inc_metric("get", "hit")
-        else:
+        wrapper = await cache.get(key)
+        if wrapper is None:
             _inc_metric("get", "miss")
-        return result
+            return None
+
+        # Version check: if the KG was mutated since this entry was cached,
+        # treat as a miss so a fresh subgraph query is executed.
+        if isinstance(wrapper, dict) and "_kg_version" in wrapper:
+            cached_version = wrapper.get("_kg_version", -1)
+            current_version = get_kg_version()
+            if cached_version != current_version:
+                logger.info(
+                    "KG cache version mismatch for %s (cached=%d, current=%d) — miss",
+                    domain,
+                    cached_version,
+                    current_version,
+                )
+                _inc_metric("get", "version_miss")
+                return None
+            _inc_metric("get", "hit")
+            return wrapper.get("_data")
+
+        # Legacy entries without version wrapper — treat as hit
+        _inc_metric("get", "hit")
+        return wrapper
 
     async def set_subgraph_result(self, domain: str, query: str, result: dict) -> None:
-        """Cache domain subgraph result."""
+        """Cache domain subgraph result with current KG version."""
         cache = self._get_cache()
         if cache is None:
             return
         key = f"zantara:kg:subgraph:{domain}:{self._hash_key(query.lower())}"
         serializable = _make_serializable(result)
-        await cache.set(key, serializable, TTL_SUBGRAPH)
+        wrapper = {"_kg_version": get_kg_version(), "_data": serializable}
+        await cache.set(key, wrapper, TTL_SUBGRAPH)
         _inc_metric("set", "ok")
 
     # ------------------------------------------------------------------
