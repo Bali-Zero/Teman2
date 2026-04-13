@@ -17,6 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.core.cache import invalidate_cache
 from backend.app.services.hr.hr_leave_notifier import (
     notify_leave_request_pending,
     notify_leave_request_reviewed,
@@ -198,6 +199,7 @@ async def upsert_employee(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     result = await service.upsert_employee(data.model_dump())
+    await invalidate_cache("zantara:hr_employees:*")
     return {"success": True, "employee": result}
 
 
@@ -225,6 +227,7 @@ async def upsert_bonus_rate(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     result = await service.upsert_bonus_rate(data.model_dump())
+    await invalidate_cache("zantara:hr_bonuses:*")
     return {"success": True, "rate": result}
 
 
@@ -262,6 +265,7 @@ async def approve_bonus(
     try:
         approver_id = _get_user_id(current_user)
         result = await service.approve_bonus(bonus_id, approver_id)
+        await invalidate_cache("zantara:hr_bonuses:*")
         return {"success": True, "bonus": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -281,6 +285,7 @@ async def calculate_payroll(
     result = await service.calculate_payroll(
         data.month, data.year, _get_user_id(current_user),
     )
+    await invalidate_cache("zantara:hr_payroll:*")
     return {"success": True, **result}
 
 
@@ -347,6 +352,7 @@ async def approve_payroll(
     try:
         approver_id = _get_user_id(current_user)
         result = await service.approve_payroll(period_id, approver_id)
+        await invalidate_cache("zantara:hr_payroll:*")
         return {"success": True, "period": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -363,6 +369,7 @@ async def mark_payroll_paid(
     service = _get_hr_service(db_pool)
     try:
         result = await service.mark_payroll_paid(period_id)
+        await invalidate_cache("zantara:hr_payroll:*")
         return {"success": True, "period": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -423,6 +430,7 @@ async def request_leave(
         reason=data.reason,
     )
 
+    await invalidate_cache("zantara:hr_leave:*")
     return {"success": True, "request": result}
 
 
@@ -518,6 +526,7 @@ async def approve_leave(
         rejection_reason=None,
     )
 
+    await invalidate_cache("zantara:hr_leave:*")
     return {
         "success": True,
         "request": {**req, "status": "approved"},
@@ -566,6 +575,7 @@ async def reject_leave(
         rejection_reason=data.reason or None,
     )
 
+    await invalidate_cache("zantara:hr_leave:*")
     return {
         "success": True,
         "request": {
