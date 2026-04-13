@@ -1,7 +1,10 @@
 """Tests for cell_core.genome — DNA recording."""
 import pytest
+import sqlite3
 import tempfile
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from cell_core.genome import Genome
@@ -14,7 +17,7 @@ def genome(tmp_path):
 
 
 def test_record_skill_insert(genome):
-    inserted = genome.record_skill(
+    action = genome.record_skill(
         cell="akta_archive",
         skill_id="proxy_detection_v1",
         procedure="Use Python regex for 'bertindak berdasarkan' before LLM.",
@@ -22,13 +25,18 @@ def test_record_skill_insert(genome):
         success_criterion="Zero procuratori in founders table.",
         confidence=0.94,
     )
-    assert inserted is True
+    assert action == "inserted"
 
 
-def test_record_skill_idempotent(genome):
-    genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X")
-    inserted_again = genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X")
-    assert inserted_again is False  # INSERT OR IGNORE
+def test_record_skill_upsert(genome):
+    """Re-recording the same skill_id updates procedure and keeps max confidence."""
+    genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do X", confidence=0.8)
+    action = genome.record_skill(cell="akta_archive", skill_id="s1", procedure="do Y", confidence=0.6)
+    assert action == "updated"
+    # procedure updated, confidence kept at max(0.8, 0.6) = 0.8
+    results = genome.get_active(cell="akta_archive")
+    assert results[0]["procedure"] == "do Y"
+    assert results[0]["confidence"] == 0.8
 
 
 def test_get_active_returns_inserted(genome):
@@ -50,7 +58,6 @@ def test_silence_does_not_delete(genome):
     genome.record_skill(cell="c1", skill_id="old_skill", procedure="old way")
     genome.silence_skill("old_skill")
     # Still in DB, just has valid_to set
-    import sqlite3
     conn = sqlite3.connect(genome._db_path)
     row = conn.execute("SELECT valid_to FROM genome WHERE id='old_skill'").fetchone()
     conn.close()
@@ -134,7 +141,6 @@ def test_stats(genome):
 def test_silence_stale_removes_low_confidence_old_skills(genome):
     genome.record_skill(cell="c1", skill_id="old_weak", procedure="x", confidence=0.3)
     # Manually set last_used to 60 days ago
-    import sqlite3, time
     sixty_days_ago = datetime.fromtimestamp(time.time() - 60 * 86400, tz=timezone.utc).date().isoformat()
     conn = sqlite3.connect(genome._db_path)
     conn.execute("UPDATE genome SET last_used = ? WHERE id = 'old_weak'", (sixty_days_ago,))
@@ -172,3 +178,68 @@ def test_daughter_cell_inherits_with_decay(genome):
     assert len(daughter_skills) == 1
     assert daughter_skills[0]["confidence"] == pytest.approx(0.95 * 0.9, abs=0.01)
     assert daughter_skills[0]["inherited_from"] == "chunking_v1"
+
+
+# ─── Issue 1: Thread Safety ────────────────────────────────────
+
+
+def test_concurrent_writes_10_threads(tmp_path):
+    """10 threads writing concurrently must not lose data or raise errors."""
+    db = str(tmp_path / "concurrent.db")
+    g = Genome(db_path=db)
+    errors: list[Exception] = []
+
+    def writer(thread_id: int) -> None:
+        try:
+            for i in range(10):
+                g.record_skill(
+                    cell=f"cell_{thread_id}",
+                    skill_id=f"skill_{thread_id}_{i}",
+                    procedure=f"Thread {thread_id} procedure {i}",
+                    confidence=0.5 + (i * 0.04),
+                )
+        except Exception as exc:
+            errors.append(exc)
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = [pool.submit(writer, tid) for tid in range(10)]
+        for f in as_completed(futures):
+            f.result()  # re-raise
+
+    assert errors == [], f"Thread errors: {errors}"
+    # 10 threads × 10 skills = 100 total
+    stats = g.stats()
+    assert stats["total"] == 100
+
+
+def test_concurrent_read_write(tmp_path):
+    """Reads while writes are in-flight should never raise."""
+    db = str(tmp_path / "rw.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c", skill_id="seed", procedure="base")
+    errors: list[Exception] = []
+
+    def reader() -> None:
+        try:
+            for _ in range(50):
+                g.get_active(cell="c")
+                g.stats()
+        except Exception as exc:
+            errors.append(exc)
+
+    def writer() -> None:
+        try:
+            for i in range(50):
+                g.record_skill(cell="c", skill_id=f"w_{i}", procedure=f"p{i}")
+        except Exception as exc:
+            errors.append(exc)
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = []
+        for _ in range(5):
+            futures.append(pool.submit(reader))
+            futures.append(pool.submit(writer))
+        for f in as_completed(futures):
+            f.result()
+
+    assert errors == []

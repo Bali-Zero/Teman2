@@ -30,8 +30,11 @@ Usage:
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 import sqlite3
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,24 +81,35 @@ CREATE INDEX IF NOT EXISTS idx_genome_valid      ON genome(valid_from, valid_to)
 
 
 class Genome:
-    """DNA recording store. One instance per cell (or shared across cells by DB path)."""
+    """DNA recording store. One instance per cell (or shared across cells by DB path).
+
+    Thread-safety: a ``threading.Lock`` serialises all write operations.
+    Reads go through the same WAL-mode connection (SQLite allows concurrent
+    reads under WAL) so they never block writers for long.
+    """
 
     def __init__(self, db_path: str = "cell.db") -> None:
         self._db_path = db_path
+        self._write_lock = threading.Lock()
+        self._local = threading.local()
         self._ensure_schema()
 
-    def _conn(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self._db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return a per-thread connection (reused across calls)."""
+        conn: sqlite3.Connection | None = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self._db_path, timeout=5.0)
+            conn.execute("PRAGMA busy_timeout=5000")
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.row_factory = sqlite3.Row
+            self._local.conn = conn
         return conn
 
     def _ensure_schema(self) -> None:
-        conn = self._conn()
+        conn = self._get_conn()
         conn.executescript(_SCHEMA)
         conn.commit()
-        conn.close()
 
     # ─────────────────────────────────────────
     # Write operations
@@ -112,26 +126,41 @@ class Genome:
         scope: str = "Project",
         inherited_from: str | None = None,
         entry_type: str = "skill",
-    ) -> bool:
-        """Record a skill in the genome. Returns True if inserted, False if already exists."""
+    ) -> str:
+        """Record or update a skill in the genome.
+
+        On conflict (same id), updates procedure, precondition,
+        success_criterion and keeps the higher confidence.
+
+        Returns ``"inserted"`` or ``"updated"``.
+        """
         now = datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
-        try:
+        with self._write_lock:
+            conn = self._get_conn()
+            # Check existence first to reliably detect insert vs update.
+            exists = conn.execute(
+                "SELECT 1 FROM genome WHERE id = ?", (skill_id,)
+            ).fetchone() is not None
             conn.execute(
-                """INSERT OR IGNORE INTO genome
+                """INSERT INTO genome
                    (id, cell_origin, type, scope, precondition, procedure,
                     success_criterion, valid_from, confidence, inherited_from)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                       procedure        = excluded.procedure,
+                       precondition     = excluded.precondition,
+                       success_criterion = excluded.success_criterion,
+                       confidence       = MAX(genome.confidence, excluded.confidence)""",
                 (skill_id, cell, entry_type, scope, precondition or None,
                  procedure, success_criterion or None, now, confidence, inherited_from),
             )
-            inserted = conn.execute("SELECT changes()").fetchone()[0] > 0
             conn.commit()
-            if inserted:
-                logger.info(f"[genome] recorded {entry_type} '{skill_id}' for cell '{cell}' (confidence={confidence:.0%})")
-            return inserted
-        finally:
-            conn.close()
+            action = "updated" if exists else "inserted"
+            logger.info(
+                f"[genome] {action} {entry_type} '{skill_id}' for cell "
+                f"'{cell}' (confidence={confidence:.0%})"
+            )
+            return action
 
     def record_scar(
         self,
@@ -139,7 +168,7 @@ class Genome:
         scar_id: str,
         procedure: str,
         precondition: str = "",
-    ) -> bool:
+    ) -> str:
         """Record a failure scar — always Personal scope, confidence 0.9 (strong avoidance)."""
         return self.record_skill(
             cell=cell,
@@ -154,28 +183,28 @@ class Genome:
     def use_skill(self, skill_id: str) -> None:
         """Mark a skill as used. Increases confidence slightly (max 1.0)."""
         now = datetime.now(timezone.utc).isoformat()
-        conn = self._conn()
-        conn.execute(
-            """UPDATE genome SET
-               uses = uses + 1,
-               last_used = ?,
-               confidence = MIN(1.0, confidence + 0.02)
-               WHERE id = ?""",
-            (now, skill_id),
-        )
-        conn.commit()
-        conn.close()
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute(
+                """UPDATE genome SET
+                   uses = uses + 1,
+                   last_used = ?,
+                   confidence = MIN(1.0, confidence + 0.02)
+                   WHERE id = ?""",
+                (now, skill_id),
+            )
+            conn.commit()
 
     def silence_skill(self, skill_id: str, reason: str = "") -> None:
         """Silence an obsolete skill (non-destructive). Sets valid_to = today."""
         now = datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
-        conn.execute(
-            "UPDATE genome SET valid_to = ? WHERE id = ? AND valid_to IS NULL",
-            (now, skill_id),
-        )
-        conn.commit()
-        conn.close()
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute(
+                "UPDATE genome SET valid_to = ? WHERE id = ? AND valid_to IS NULL",
+                (now, skill_id),
+            )
+            conn.commit()
         logger.info(f"[genome] silenced skill '{skill_id}' reason='{reason}'")
 
     def silence_stale_skills(self, cell: str, unused_days: int = 30) -> int:
@@ -183,18 +212,18 @@ class Genome:
         cutoff_ts = time.time() - unused_days * 86400
         cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).date().isoformat()
         today = datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
-        conn.execute(
-            """UPDATE genome SET valid_to = ?
-               WHERE cell_origin = ?
-                 AND valid_to IS NULL
-                 AND confidence < 0.4
-                 AND (last_used IS NULL OR last_used < ?)""",
-            (today, cell, cutoff_date),
-        )
-        n = conn.execute("SELECT changes()").fetchone()[0]
-        conn.commit()
-        conn.close()
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute(
+                """UPDATE genome SET valid_to = ?
+                   WHERE cell_origin = ?
+                     AND valid_to IS NULL
+                     AND confidence < 0.4
+                     AND (last_used IS NULL OR last_used < ?)""",
+                (today, cell, cutoff_date),
+            )
+            n = conn.execute("SELECT changes()").fetchone()[0]
+            conn.commit()
         if n:
             logger.info(f"[genome] silenced {n} stale skills for cell '{cell}'")
         return n
@@ -230,19 +259,18 @@ class Genome:
             params.append(scope)
         params.append(limit)
 
-        conn = self._conn()
+        conn = self._get_conn()
         rows = conn.execute(
             f"SELECT * FROM genome WHERE {' AND '.join(filters)} "
             f"ORDER BY confidence DESC, uses DESC LIMIT ?",
             params,
         ).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def search(self, query: str, limit: int = 5) -> list[dict]:
         """FTS5 full-text search across genome. Use before reasoning from scratch."""
         today = datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
+        conn = self._get_conn()
         rows = conn.execute(
             """SELECT g.* FROM genome g
                JOIN genome_fts f ON g.rowid = f.rowid
@@ -252,7 +280,6 @@ class Genome:
                LIMIT ?""",
             (query, today, limit),
         ).fetchall()
-        conn.close()
         return [dict(r) for r in rows]
 
     def inherit_genome(
@@ -274,7 +301,7 @@ class Genome:
         The daughter cell should store these with a slight confidence decay (×0.9).
         """
         fd = fork_date or datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
+        conn = self._get_conn()
         rows = conn.execute(
             """SELECT * FROM genome
                WHERE cell_origin = ?
@@ -286,7 +313,6 @@ class Genome:
                ORDER BY confidence DESC, uses DESC""",
             (parent_cell, min_confidence, fd, fd),
         ).fetchall()
-        conn.close()
         result = [dict(r) for r in rows]
         logger.info(
             f"[genome] inherit_genome: {len(result)} skills from '{parent_cell}' "
@@ -297,7 +323,7 @@ class Genome:
     def stats(self, cell: str | None = None) -> dict:
         """Summary statistics for monitoring."""
         today = datetime.now(timezone.utc).date().isoformat()
-        conn = self._conn()
+        conn = self._get_conn()
         where = "WHERE cell_origin = ?" if cell else ""
         params = [cell] if cell else []
 
@@ -312,10 +338,17 @@ class Genome:
             f"GROUP BY type ORDER BY c DESC",
             params,
         ).fetchall()
-        conn.close()
+
+        db_file_size = 0
+        try:
+            db_file_size = os.path.getsize(self._db_path)
+        except OSError:
+            pass
+
         return {
             "total": total,
             "active": active,
             "silenced": total - active,
+            "db_file_size": db_file_size,
             "by_type": [{"type": r["type"], "count": r["c"], "avg_confidence": round(r["avg_conf"], 2)} for r in by_type],
         }
