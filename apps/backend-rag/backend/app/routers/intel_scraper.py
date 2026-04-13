@@ -38,6 +38,7 @@ from backend.app.routers.intel import (
 )
 from backend.app.utils.internal_api_auth import verify_internal_api_key
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
 
 logger = get_logger(__name__)
@@ -316,6 +317,7 @@ async def register_notification(
         item_id=request.item_id,
         title=request.title,
     )
+    await invalidate_cache("zantara:intel_scraper:*")
     return {
         "success": True,
         "message_id": request.telegram_message_id,
@@ -459,6 +461,7 @@ async def submit_from_scraper(
             },
         )
 
+        await invalidate_cache("zantara:intel_scraper:*")
         return {
             "success": True,
             "message": f"Article saved to {intel_type} staging",
@@ -1033,6 +1036,7 @@ async def publish_staging_item(
             },
         )
 
+        await invalidate_cache("zantara:intel_scraper:*")
         return {
             "success": True,
             "message": "Article published successfully",
