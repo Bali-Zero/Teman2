@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
 import type { LKPMReadyPack } from "@/lib/api/portal/portal.types";
+import { safeHtml } from "@/lib/utils/safe-html";
 
 export default function LKPMReadyPackPage() {
   const params = useParams();
@@ -75,7 +76,9 @@ export default function LKPMReadyPackPage() {
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (printWindow && pack?.html_content) {
-      printWindow.document.write(pack.html_content);
+      // Sanitize before writing to the print window to prevent XSS
+      const sanitized = safeHtml(pack.html_content).__html;
+      printWindow.document.write(sanitized);
       printWindow.document.close();
       printWindow.print();
     }
@@ -214,7 +217,7 @@ export default function LKPMReadyPackPage() {
         >
           <div
             className="p-6 prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: pack.html_content }}
+            dangerouslySetInnerHTML={safeHtml(pack.html_content)}
           />
         </section>
 

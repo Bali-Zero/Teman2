@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { normalizeDashboardRole } from '@/lib/dashboard-role';
 import type { LiveActivityEvent } from '@/types/dashboard-role.types';
 import { logger } from '@/lib/logger';
+import { api } from '@/lib/api';
 import { RefreshCw } from 'lucide-react';
 
 // ── Category colors ────────────────────────────────────────
@@ -50,10 +51,8 @@ function useIntelFeed() {
   return useQuery<IntelArticle[]>({
     queryKey: ['intel-feed'],
     queryFn: async () => {
-      const res = await fetch('/api/blog/articles?limit=8&offset=0');
-      if (!res.ok) throw new Error('Failed to fetch intel');
-      const data = await res.json();
-      return (data.articles ?? []).slice(0, 8) as IntelArticle[];
+      const data = await api.blog.listArticles(8, 0);
+      return ((data.articles ?? []) as IntelArticle[]).slice(0, 8);
     },
     staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
@@ -71,23 +70,21 @@ function useTeamStats(enabled: boolean) {
     queryKey: ['team-stats'],
     enabled,
     queryFn: async () => {
-      const [membersRes, overviewRes, practiceRes] = await Promise.all([
-        fetch('/api/admin/team-activity/team-stats'),
-        fetch('/api/admin/team-activity/overview'),
-        fetch('/api/admin/team-activity/practice-stats'),
+      const [membersData, overviewData, practiceData] = await Promise.all([
+        api.adminApi.getTeamStats().catch(() => ({ team_stats: [] as TeamMemberStats[] }) as Record<string, unknown>),
+        api.adminApi.getTeamActivityOverview().catch(() => null),
+        api.adminApi.getPracticeStats().catch(() => ({ practice_stats: [] })),
       ]);
-      const membersJson = membersRes.ok ? await membersRes.json() : {};
-      const rawMembers: TeamMemberStats[] = Array.isArray(membersJson)
-        ? membersJson
-        : Array.isArray(membersJson.team_stats)
-          ? membersJson.team_stats
+      const rawMembers: TeamMemberStats[] = Array.isArray(membersData)
+        ? membersData
+        : Array.isArray((membersData as Record<string, unknown>)?.team_stats)
+          ? (membersData as Record<string, unknown>).team_stats as TeamMemberStats[]
           : [];
 
       // Merge practice stats by email
-      const practiceJson = practiceRes.ok ? await practiceRes.json() : {};
       const practiceMap = new Map<string, { completed: number; active: number; revenue: number }>();
-      if (Array.isArray(practiceJson?.practice_stats)) {
-        for (const p of practiceJson.practice_stats) {
+      if (practiceData && Array.isArray(practiceData.practice_stats)) {
+        for (const p of practiceData.practice_stats) {
           practiceMap.set(p.email, {
             completed: p.completed ?? 0,
             active: p.active ?? 0,
@@ -106,8 +103,7 @@ function useTeamStats(enabled: boolean) {
         };
       });
 
-      const overviewJson = overviewRes.ok ? await overviewRes.json() : null;
-      const overview: TeamOverview | null = overviewJson?.stats ?? overviewJson ?? null;
+      const overview: TeamOverview | null = (overviewData as unknown as Record<string, unknown>)?.stats as TeamOverview ?? overviewData as unknown as TeamOverview ?? null;
       return { members, overview };
     },
     staleTime: 3 * 60_000,
