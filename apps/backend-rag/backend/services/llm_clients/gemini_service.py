@@ -12,7 +12,8 @@ import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+import httpx
+from google.api_core.exceptions import GoogleAPIError, ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.config import settings
 from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
@@ -76,8 +77,10 @@ class GeminiJakselService:
                         logger.info(
                             f"✅ Gemini Jaksel Service client loaded (model: {self.model_name}, auth: {auth_method})",
                         )
-                except Exception as e:
+                except (RuntimeError, AttributeError) as e:
                     logger.warning(f"Failed to initialize Gemini client: {e}")
+                except Exception as e:
+                    logger.exception("Unexpected error initializing Gemini client")
         return self._genai_client
 
     @property
@@ -148,8 +151,14 @@ class GeminiJakselService:
             result = await client.complete(messages, tier=ModelTier.RAG)
             logger.info(f"OpenRouter fallback used: {result.model_name}")
             return result.content
+        except (httpx.HTTPStatusError, httpx.TimeoutException) as e:
+            logger.warning(f"OpenRouter fallback HTTP error: {e}")
+            raise
+        except ValueError as e:
+            logger.warning(f"OpenRouter fallback configuration error: {e}")
+            raise
         except Exception as e:
-            logger.error(f"OpenRouter fallback failed: {e}")
+            logger.exception("OpenRouter fallback failed unexpectedly")
             raise
 
     async def _fallback_to_openrouter_stream(
@@ -168,8 +177,14 @@ class GeminiJakselService:
             logger.info("Using OpenRouter streaming fallback")
             async for chunk in client.complete_stream(messages, tier=ModelTier.RAG):
                 yield chunk
+        except (httpx.HTTPStatusError, httpx.TimeoutException) as e:
+            logger.warning(f"OpenRouter streaming fallback HTTP error: {e}")
+            raise
+        except ValueError as e:
+            logger.warning(f"OpenRouter streaming fallback configuration error: {e}")
+            raise
         except Exception as e:
-            logger.error(f"OpenRouter streaming fallback failed: {e}")
+            logger.exception("OpenRouter streaming fallback failed unexpectedly")
             raise
 
     async def generate_response_stream(
@@ -227,13 +242,22 @@ class GeminiJakselService:
                     self._gemini_circuit.record_failure()
                     logger.warning(f"Gemini quota exceeded, falling back to OpenRouter: {e}")
 
+                except GoogleAPIError as e:
+                    error_str = str(e).lower()
+                    if "429" in error_str or "quota" in error_str or "rate" in error_str:
+                        self._gemini_circuit.record_failure()
+                        logger.warning(f"Gemini rate limited, falling back to OpenRouter: {e}")
+                    else:
+                        logger.exception("Unexpected Gemini API error")
+                        raise
+
                 except Exception as e:
                     error_str = str(e).lower()
                     if "429" in error_str or "quota" in error_str or "rate" in error_str:
                         self._gemini_circuit.record_failure()
                         logger.warning(f"Gemini rate limited, falling back to OpenRouter: {e}")
                     else:
-                        logger.error(f"Unexpected Gemini error: {e}")
+                        logger.exception("Unexpected Gemini error")
                         raise
 
         # Fallback to OpenRouter
@@ -329,6 +353,6 @@ if __name__ == "__main__":
                 logger.info(chunk, end="", flush=True)
             logger.info("\n")
         except Exception as e:
-            logger.error(f"\n❌ Error: {e}")
+            logger.exception("Test execution failed")
 
     asyncio.run(test())

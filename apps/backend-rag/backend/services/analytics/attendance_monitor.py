@@ -387,11 +387,10 @@ class AttendanceMonitor:
                     counters,
                 )
             except Exception as exc:
-                logger.error(
+                logger.exception(
                     "AttendanceMonitor._escalation_loop: scan failed iter=%d — %s",
                     iteration,
                     exc,
-                    exc_info=True,
                 )
             try:
                 await asyncio.sleep(ESCALATION_SCAN_INTERVAL_SECONDS)
@@ -451,11 +450,10 @@ class AttendanceMonitor:
             try:
                 await self.send_daily_telegram_digest()
             except Exception as exc:
-                logger.error(
+                logger.exception(
                     "AttendanceMonitor._daily_digest_loop: digest failed pid=%d — %s",
                     pid,
                     exc,
-                    exc_info=True,
                 )
         logger.warning(
             "AttendanceMonitor._daily_digest_loop: EXITED pid=%d _running=%s",
@@ -656,8 +654,10 @@ class AttendanceMonitor:
                     json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
                 )
                 logger.info("Clock-in reminder sent: %d members missing", len(missing))
+        except httpx.HTTPError as e:
+            logger.warning("Clock-in reminder send failed (HTTP): %s", e)
         except Exception as e:
-            logger.error("Clock-in reminder send failed: %s", e)
+            logger.exception("Clock-in reminder send failed: %s", e)
 
     # ------------------------------------------------------------------
     # Private DB helpers
@@ -820,13 +820,19 @@ class AttendanceMonitor:
                 to,
                 exc.response.text,
             )
+        except (httpx.TimeoutException, httpx.ConnectError, OSError) as exc:
+            logger.warning(
+                "%s: network error sending to %s — %s",
+                log_tag,
+                to,
+                exc,
+            )
         except Exception as exc:
-            logger.error(
+            logger.exception(
                 "%s: failed to send to %s — %s",
                 log_tag,
                 to,
                 exc,
-                exc_info=True,
             )
 
     async def _send_gentle_reminder(
@@ -1130,16 +1136,23 @@ class AttendanceMonitor:
                     late_date=inc["late_date"],
                     reply_token=inc["reply_token"],
                 )
-            except Exception as exc:
+            except httpx.HTTPError as exc:
                 # State is already promoted in DB. Log loud so the missed
                 # email is visible in monitoring.
                 logger.error(
+                    "run_escalation_scan: reminder email FAILED (HTTP) for "
+                    "incident_id=%s email=%s — %s",
+                    inc["id"],
+                    inc["email"],
+                    exc,
+                )
+            except Exception as exc:
+                logger.exception(
                     "run_escalation_scan: reminder email FAILED for "
                     "incident_id=%s email=%s — %s",
                     inc["id"],
                     inc["email"],
                     exc,
-                    exc_info=True,
                 )
 
         for inc in to_escalate:
@@ -1151,14 +1164,21 @@ class AttendanceMonitor:
                     late_date=inc["late_date"],
                     manager_email=inc["manager_email"],
                 )
-            except Exception as exc:
+            except httpx.HTTPError as exc:
                 logger.error(
+                    "run_escalation_scan: ultimatum email FAILED (HTTP) for "
+                    "incident_id=%s email=%s — %s",
+                    inc["id"],
+                    inc["email"],
+                    exc,
+                )
+            except Exception as exc:
+                logger.exception(
                     "run_escalation_scan: ultimatum email FAILED for "
                     "incident_id=%s email=%s — %s",
                     inc["id"],
                     inc["email"],
                     exc,
-                    exc_info=True,
                 )
 
             # Ultimatum is the only event that breaks the "digest only"
@@ -1175,8 +1195,15 @@ class AttendanceMonitor:
                         else ""
                     ),
                 )
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    "run_escalation_scan: telegram ping FAILED (HTTP) for "
+                    "incident_id=%s — %s",
+                    inc["id"],
+                    exc,
+                )
             except Exception as exc:
-                logger.error(
+                logger.exception(
                     "run_escalation_scan: telegram ping FAILED for "
                     "incident_id=%s — %s",
                     inc["id"],
@@ -1388,15 +1415,30 @@ class AttendanceMonitor:
                         len(chunks),
                         len(chunk),
                     )
+                except httpx.HTTPStatusError as exc:
+                    logger.warning(
+                        "_send_telegram: HTTP %s on chunk %d/%d — %s",
+                        exc.response.status_code,
+                        idx,
+                        len(chunks),
+                        exc.response.text[:200],
+                    )
+                    # Keep going so a transient error on one chunk does not
+                    # block the rest of the digest.
+                except (httpx.TimeoutException, httpx.ConnectError, OSError) as exc:
+                    logger.warning(
+                        "_send_telegram: network error on chunk %d/%d — %s",
+                        idx,
+                        len(chunks),
+                        exc,
+                    )
                 except Exception as exc:
-                    logger.error(
+                    logger.exception(
                         "_send_telegram: failed chunk %d/%d — %s",
                         idx,
                         len(chunks),
                         exc,
                     )
-                    # Keep going so a transient error on one chunk does not
-                    # block the rest of the digest.
 
     async def send_daily_telegram_digest(self) -> bool:
         """
@@ -1677,9 +1719,14 @@ class AttendanceMonitor:
                 ADMIN_EMAIL,
                 exc.response.text,
             )
+        except (httpx.TimeoutException, httpx.ConnectError, OSError) as exc:
+            logger.warning(
+                "_send_absent_alert: network error sending to %s — %s",
+                ADMIN_EMAIL,
+                exc,
+            )
         except Exception as exc:
-            logger.error(
+            logger.exception(
                 "_send_absent_alert: failed to send — %s",
                 exc,
-                exc_info=True,
             )
