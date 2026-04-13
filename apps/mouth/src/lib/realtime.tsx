@@ -5,6 +5,7 @@
 
 import React from "react";
 import { logger } from "./logger";
+import { getValidToken } from "./utils/token";
 import type { Metadata } from "./types/common";
 import type {
   WebSocketMessage,
@@ -49,13 +50,13 @@ class RealtimeService {
       return;
     }
 
-    // Get auth token from localStorage with fallback
+    // Get auth token from localStorage with expiry validation, fallback to sessionStorage
     let token: string | null = null;
     if (typeof window !== "undefined") {
-      token = localStorage.getItem("auth_token");
+      token = getValidToken("auth_token", localStorage);
       // Fallback: try sessionStorage
       if (!token) {
-        token = sessionStorage.getItem("auth_token");
+        token = getValidToken("auth_token", sessionStorage);
       }
     }
 
@@ -268,9 +269,9 @@ class RealtimeService {
 
   // Auto-reconnect logic
   private scheduleReconnect(): void {
-    // Don't reconnect if no auth token available
+    // Don't reconnect if no valid auth token available
     const token =
-      typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+      typeof window !== "undefined" ? getValidToken("auth_token", localStorage) : null;
     if (!token) {
       logger.debug("Skipping WebSocket reconnect: No auth token", {
         component: "RealtimeService",
