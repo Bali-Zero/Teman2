@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       } else {
         // List users from team_members
         let query = `SELECT id, email, name as full_name, created_at FROM team_members ORDER BY created_at DESC LIMIT 50`;
-        let params: any[] = [];
+        let params: (string | number)[] = [];
 
         if (search) {
           query = `SELECT id, email, name as full_name, created_at FROM team_members WHERE email ILIKE $1 OR name ILIKE $1 ORDER BY created_at DESC LIMIT 50`;
@@ -51,15 +51,19 @@ export async function GET(request: Request) {
     } finally {
       client.release();
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error("User Context Error:", error);
     // Handle missing tables gracefully
-    if (error.code === "42P01") {
+    const pgError = error as { code?: string };
+    if (pgError.code === "42P01") {
       return NextResponse.json({
         users: [],
         warning: "User tables not found or schema mismatch",
       });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }

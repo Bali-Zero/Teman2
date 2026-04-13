@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import type { Source } from "@/types";
 
 // Types
 export interface ChatImage {
@@ -22,12 +23,8 @@ export interface ChatMessage {
   imageUrl?: string; // Generated image URL from image generation tool
 }
 
-export interface Source {
-  title: string;
-  url?: string;
-  content?: string;
-  score?: number;
-}
+// Re-export Source from canonical types to avoid duplicate definitions
+export type { Source } from "@/types";
 
 export interface AgentStep {
   type: "status" | "tool_start" | "tool_end" | "phase" | "reasoning_step";
