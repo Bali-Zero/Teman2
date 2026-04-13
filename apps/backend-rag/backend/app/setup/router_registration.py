@@ -431,6 +431,7 @@ def include_light_routers(api: FastAPI) -> None:
         telegram,
         telegram_webhook,
         # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
+        visa_oracle,
         webhooks,
         websocket,
         whatsapp_conversations,
@@ -586,6 +587,9 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Knowledge Activity Tracking
     api.include_router(knowledge_activity.router)
+
+    # Visa Oracle — public product (no auth required, light deps only)
+    api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
 
     # intel/intel_scraper/intel_analytics serve on rag process (need /data volume for staging files)
 
