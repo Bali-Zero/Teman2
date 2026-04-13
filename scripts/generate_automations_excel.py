@@ -996,12 +996,38 @@ def main() -> None:
     air = [a for a in all_automations if a.machine == "Air"]
     write_sheet(wb, "Air", air)
 
-    # All combined
-    write_sheet(wb, "All", all_automations)
+    # Backend services (from catalog)
+    backend_services = []
+    for name, entry in catalog.get("backend_services", {}).items():
+        if not isinstance(entry, dict):
+            continue
+        a = Automation(
+            name=name,
+            machine=entry.get("machine", "Fly.io"),
+            type=entry.get("type", "backend-loop"),
+            system=entry.get("system", ""),
+            schedule_human=entry.get("schedule", ""),
+            description=entry.get("description", ""),
+            uses_llm=entry.get("uses_llm", "—"),
+            llm_interface=entry.get("llm_interface", "—"),
+            monitored_by=entry.get("monitored_by", "Health Monitor"),
+            status="running",
+            produces=entry.get("produces", ""),
+            consumes=entry.get("consumes", ""),
+            notes=entry.get("notes", ""),
+        )
+        backend_services.append(a)
+    if backend_services:
+        write_sheet(wb, "Backend", backend_services)
+
+    # All combined (including backend)
+    all_with_backend = all_automations + backend_services
+    write_sheet(wb, "All", all_with_backend)
 
     wb.save(str(OUTPUT_FILE))
-    print(f"\nDone! {len(all_automations)} automations → {OUTPUT_FILE}")
-    print(f"  Pro: {len(pro)} | Air: {len(air)}")
+    total = len(all_with_backend)
+    print(f"\nDone! {total} automations → {OUTPUT_FILE}")
+    print(f"  Pro: {len(pro)} | Air: {len(air)} | Backend: {len(backend_services)}")
 
 
 if __name__ == "__main__":
