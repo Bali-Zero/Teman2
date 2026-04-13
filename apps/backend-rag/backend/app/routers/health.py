@@ -76,6 +76,12 @@ async def get_qdrant_stats() -> dict[str, Any]:
                     coll_response.raise_for_status()
                     points = coll_response.json().get("result", {}).get("points_count", 0)
                     total_documents += points
+                    # Update per-collection Prometheus gauge
+                    try:
+                        from backend.app.metrics import qdrant_collection_points_count
+                        qdrant_collection_points_count.labels(collection=coll_name).set(points)
+                    except Exception:
+                        pass
                 except Exception as coll_err:
                     logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
 
@@ -202,9 +208,16 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             db_pool = getattr(request.app.state, "db_pool", None)
             if db_pool:
                 try:
-                    from backend.app.metrics import db_pool_idle, db_pool_size
-                    db_pool_size.labels(service="rag").set(db_pool.get_size())
-                    db_pool_idle.labels(service="rag").set(db_pool.get_idle_size())
+                    from backend.app.metrics import (
+                        active_connections,
+                        db_pool_idle,
+                        db_pool_size,
+                    )
+                    pool_sz = db_pool.get_size()
+                    idle_sz = db_pool.get_idle_size()
+                    db_pool_size.labels(service="rag").set(pool_sz)
+                    db_pool_idle.labels(service="rag").set(idle_sz)
+                    active_connections.set(pool_sz - idle_sz)
                 except Exception:
                     pass
 
@@ -852,6 +865,115 @@ async def db_health(request: Request) -> dict:
     if olympus is None:
         return {"status": "not_initialized", "detail": "Olympus Guardian not running"}
     return await olympus.get_health_summary()
+
+
+@router.get("/collections")
+async def collections_health(request: Request) -> dict[str, Any]:
+    """
+    Collection freshness and live point count for all Qdrant collections.
+
+    Combines the CollectionManager's freshness tracking (last ingest timestamp)
+    with live Qdrant point counts. Useful for monitoring data staleness.
+
+    Returns:
+        dict: Per-collection last_updated timestamp, age, and live point count
+    """
+    # Get freshness data from CollectionManager if available
+    freshness: dict[str, Any] = {}
+    try:
+        search_service = getattr(request.app.state, "search_service", None)
+        if search_service:
+            collection_manager = getattr(search_service, "collection_manager", None)
+            if collection_manager and hasattr(collection_manager, "get_collection_freshness"):
+                freshness = collection_manager.get_collection_freshness()
+    except Exception as e:
+        logger.warning(f"Failed to get collection freshness: {e}")
+
+    # Get live point counts from Qdrant
+    qdrant_stats = await get_qdrant_stats()
+    live_counts: dict[str, int] = {}
+    try:
+        client = _get_qdrant_client()
+        response = await client.get("/collections")
+        response.raise_for_status()
+        collections_data = response.json().get("result", {}).get("collections", [])
+        for coll in collections_data:
+            coll_name = coll.get("name")
+            if coll_name:
+                try:
+                    coll_response = await client.get(f"/collections/{coll_name}")
+                    coll_response.raise_for_status()
+                    points = coll_response.json().get("result", {}).get("points_count", 0)
+                    live_counts[coll_name] = points
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Failed to get live Qdrant counts: {e}")
+
+    # Merge freshness + live counts
+    collections: dict[str, Any] = {}
+    all_names = set(freshness.keys()) | set(live_counts.keys())
+    for name in sorted(all_names):
+        entry: dict[str, Any] = {}
+        if name in freshness:
+            entry.update(freshness[name])
+        entry["live_points"] = live_counts.get(name, None)
+        collections[name] = entry
+
+    return {
+        "status": "ok",
+        "total_collections": len(collections),
+        "total_documents": qdrant_stats.get("total_documents", 0),
+        "collections": collections,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/redis")
+async def redis_health(request: Request) -> dict[str, Any]:
+    """
+    Redis memory health endpoint.
+
+    Returns memory usage, eviction policy, evicted keys count, and connected clients.
+    Used by monitoring to detect memory pressure before Redis starts evicting keys.
+
+    Returns:
+        dict: Redis memory health info
+    """
+    redis_manager = getattr(request.app.state, "redis_manager", None)
+    if not redis_manager:
+        return {
+            "status": "unavailable",
+            "detail": "RedisManager not initialized",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    mem_info = await redis_manager.get_redis_memory_info()
+
+    # Determine status based on memory pressure
+    status = "healthy"
+    if mem_info.get("error"):
+        status = "error"
+    elif mem_info.get("maxmemory", 0) > 0:
+        usage_ratio = mem_info["used_memory"] / mem_info["maxmemory"]
+        if usage_ratio > 0.9:
+            status = "critical"
+        elif usage_ratio > 0.75:
+            status = "warning"
+
+    return {
+        "status": status,
+        "memory": {
+            "used": mem_info.get("used_memory_human", "0B"),
+            "used_bytes": mem_info.get("used_memory", 0),
+            "max": mem_info.get("maxmemory_human", "0B"),
+            "max_bytes": mem_info.get("maxmemory", 0),
+            "policy": mem_info.get("maxmemory_policy", "unknown"),
+        },
+        "evicted_keys": mem_info.get("evicted_keys", 0),
+        "connected_clients": mem_info.get("connected_clients", 0),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @router.get("/metrics/prometheus", include_in_schema=False)
