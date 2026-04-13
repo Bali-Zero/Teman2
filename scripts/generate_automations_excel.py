@@ -201,7 +201,9 @@ def save_catalog(catalog: dict) -> None:
 def _find_catalog_entry(name: str, catalog: dict) -> Optional[dict]:
     """Find an entry in any catalog section by name or basename."""
     for section in ("openclaw_pro", "openclaw_air", "launchagents",
-                    "cron_scripts", "nlm_pipelines", AUTO_DISCOVERED_SECTION):
+                    "cron_scripts", "nlm_pipelines", "backend_services",
+                    "github_actions", "claude_code_hooks", "home_scripts",
+                    "air_cron_extras", AUTO_DISCOVERED_SECTION):
         entry = catalog.get(section, {}).get(name)
         if entry:
             return entry
@@ -1021,14 +1023,47 @@ def main() -> None:
     if backend_services:
         write_sheet(wb, "Backend", backend_services)
 
-    # All combined (including backend)
-    all_with_backend = all_automations + backend_services
+    # Extra catalog sections: GitHub Actions, Claude Code Hooks, Home Scripts, Air Cron Extras
+    extra_sections = [
+        ("github_actions", "GitHub Actions", "GitHub", "ci-workflow"),
+        ("claude_code_hooks", "Hooks", "Pro", "hook"),
+        ("home_scripts", "Home Scripts", "Pro", "shell"),
+        ("air_cron_extras", "Air Extras", "Air", "cron"),
+    ]
+    all_extras = []
+    for section_key, sheet_name, default_machine, default_type in extra_sections:
+        items = []
+        for name, entry in catalog.get(section_key, {}).items():
+            if not isinstance(entry, dict):
+                continue
+            a = Automation(
+                name=name,
+                machine=entry.get("machine", default_machine),
+                type=entry.get("type", default_type),
+                system=entry.get("system", ""),
+                schedule_human=entry.get("schedule", ""),
+                description=entry.get("description", ""),
+                uses_llm=entry.get("uses_llm", "—"),
+                llm_interface=entry.get("llm_interface", "—"),
+                monitored_by=entry.get("monitored_by", "—"),
+                status="running",
+                produces=entry.get("produces", ""),
+                consumes=entry.get("consumes", ""),
+                notes=entry.get("notes", ""),
+            )
+            items.append(a)
+        if items:
+            write_sheet(wb, sheet_name, items)
+            all_extras.extend(items)
+
+    # All combined (including backend + extras)
+    all_with_backend = all_automations + backend_services + all_extras
     write_sheet(wb, "All", all_with_backend)
 
     wb.save(str(OUTPUT_FILE))
     total = len(all_with_backend)
     print(f"\nDone! {total} automations → {OUTPUT_FILE}")
-    print(f"  Pro: {len(pro)} | Air: {len(air)} | Backend: {len(backend_services)}")
+    print(f"  Pro: {len(pro)} | Air: {len(air)} | Backend: {len(backend_services)} | Extras: {len(all_extras)}")
 
 
 if __name__ == "__main__":
