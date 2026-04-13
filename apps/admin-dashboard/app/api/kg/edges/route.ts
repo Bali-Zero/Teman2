@@ -36,8 +36,11 @@ export async function GET(request: Request) {
     } finally {
       client.release();
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error("NKG Edges Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    );
   }
 }
