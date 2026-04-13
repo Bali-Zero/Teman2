@@ -29,7 +29,7 @@ class RecommendRequest(BaseModel):
     nationality: str
     purpose: str
     duration: str
-    family: str  # "yes" / "no" / "true" / "false" — parsed in endpoint
+    family: str  # "solo" / "spouse" / "children" / "spouse_children" — parsed in endpoint
 
 
 class RecommendResponse(BaseModel):
@@ -105,7 +105,8 @@ def _compute_confidence(scores: list[float]) -> str:
 
 
 def _parse_family(family_str: str) -> bool:
-    return family_str.lower() in {"yes", "true", "1"}
+    """Parse family field: 'spouse', 'children', 'spouse_children' → True; 'solo' → False."""
+    return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +171,19 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
                     f"[User context: nationality={nationality}, "
                     f"purpose={purpose}, duration={duration}] "
                 )
+
+        # Include recent conversation history for context
+        history_ctx = ""
+        if body.conversation_history:
+            recent = body.conversation_history[-4:]  # Last 2 exchanges
+            history_lines = []
+            for msg in recent:
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+                if role in ("user", "assistant") and content:
+                    history_lines.append(f"{role}: {content[:200]}")
+            if history_lines:
+                history_ctx = "[Previous conversation:\n" + "\n".join(history_lines) + "]\n\n"
 
         enriched_query = f"{quiz_ctx}{body.message}"
 
@@ -246,6 +260,7 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
         prompt = (
             f"{system}\n\n"
             f"=== CONTEXT ===\n{context_str}\n\n"
+            f"{history_ctx}"
             f"=== QUESTION ===\n{body.message}"
         )
 
