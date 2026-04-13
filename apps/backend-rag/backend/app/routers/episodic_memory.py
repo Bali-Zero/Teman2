@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_database_pool as get_db_pool
 from backend.app.routers.auth import get_current_user
+from backend.core.cache import invalidate_cache
 from backend.services.memory.episodic_memory_service import (
     Emotion,
     EpisodicMemoryService,
@@ -91,6 +92,7 @@ async def add_event(
         if result.get("status") == "error":
             raise HTTPException(status_code=500, detail=result.get("message"))
 
+        await invalidate_cache("zantara:episodic_memory:*")
         return {"success": True, "message": "Event added to timeline", "data": result}
     except HTTPException:
         raise
@@ -132,6 +134,7 @@ async def extract_and_save_event(
                 "data": None,
             }
 
+        await invalidate_cache("zantara:episodic_memory:*")
         return {"success": True, "message": "Event extracted and saved", "data": result}
     except Exception as e:
         logger.error(f"Error extracting episodic event: {e}")
@@ -245,6 +248,7 @@ async def delete_event(
         if not deleted:
             raise HTTPException(status_code=404, detail="Event not found or not owned by user")
 
+        await invalidate_cache("zantara:episodic_memory:*")
         return {"success": True, "message": "Event deleted"}
     except HTTPException:
         raise

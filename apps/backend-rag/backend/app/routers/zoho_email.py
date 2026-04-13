@@ -21,6 +21,7 @@ from pydantic import BaseModel, EmailStr, Field
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
@@ -300,6 +301,7 @@ async def disconnect_account(
         oauth_service = _get_oauth_service(db_pool)
         await oauth_service.disconnect(user_id)
 
+        await invalidate_cache("zantara:zoho_email:*")
         return {"success": True, "message": "Zoho account disconnected"}
     except Exception as e:
         logger.error(f"Failed to disconnect: {e}")
@@ -411,7 +413,7 @@ async def send_email(
         user_id = _get_user_id(current_user)
         email_service = _get_email_service(db_pool)
 
-        return await email_service.send_email(
+        result = await email_service.send_email(
             user_id=user_id,
             to=[str(e) for e in request.to],
             subject=request.subject,
@@ -423,6 +425,8 @@ async def send_email(
             else None,
             is_html=request.is_html,
         )
+        await invalidate_cache("zantara:zoho_email:*")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -469,7 +473,7 @@ async def reply_email(
         user_id = _get_user_id(current_user)
         email_service = _get_email_service(db_pool)
 
-        return await email_service.reply_email(
+        result = await email_service.reply_email(
             user_id=user_id,
             message_id=message_id,
             content=request.content,
@@ -477,6 +481,8 @@ async def reply_email(
             to_address=request.to,
             cc_address=request.cc,
         )
+        await invalidate_cache("zantara:zoho_email:*")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -500,12 +506,14 @@ async def forward_email(
         user_id = _get_user_id(current_user)
         email_service = _get_email_service(db_pool)
 
-        return await email_service.forward_email(
+        result = await email_service.forward_email(
             user_id=user_id,
             message_id=message_id,
             to=[str(e) for e in request.to],
             content=request.content,
         )
+        await invalidate_cache("zantara:zoho_email:*")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -533,6 +541,7 @@ async def mark_emails_read(
             message_ids=request.message_ids,
             is_read=request.is_read,
         )
+        await invalidate_cache("zantara:zoho_email:*")
         return {"success": success}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -560,6 +569,7 @@ async def toggle_flag(
             message_id=message_id,
             is_flagged=is_flagged,
         )
+        await invalidate_cache("zantara:zoho_email:*")
         return {"success": success}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -587,6 +597,7 @@ async def delete_emails(
             user_id=user_id,
             message_ids=request.message_ids,
         )
+        await invalidate_cache("zantara:zoho_email:*")
         return {"success": success}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -614,6 +625,7 @@ async def delete_emails_post(
             user_id=user_id,
             message_ids=request.message_ids,
         )
+        await invalidate_cache("zantara:zoho_email:*")
         return {"success": success}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -651,7 +663,7 @@ async def save_draft(
         user_id = _get_user_id(current_user)
         email_service = _get_email_service(db_pool)
 
-        return await email_service.save_draft(
+        result = await email_service.save_draft(
             user_id=user_id,
             to=[str(e) for e in request.to] if request.to else None,
             subject=request.subject,
@@ -662,6 +674,8 @@ async def save_draft(
             if request.attachment_ids
             else None,
         )
+        await invalidate_cache("zantara:zoho_email:*")
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -689,12 +703,14 @@ async def upload_attachment(
         email_service = _get_email_service(db_pool)
 
         content = await file.read()
-        return await email_service.upload_attachment(
+        result = await email_service.upload_attachment(
             user_id=user_id,
             filename=file.filename or "unnamed",
             content=content,
             content_type=file.content_type or "application/octet-stream",
         )
+        await invalidate_cache("zantara:zoho_email:*")
+        return result
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
