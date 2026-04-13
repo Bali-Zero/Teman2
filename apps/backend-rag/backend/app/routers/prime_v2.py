@@ -12,6 +12,8 @@ from typing import Any
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
+from backend.core.cache import invalidate_cache
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/prime/v2", tags=["prime-nexus"])
@@ -258,7 +260,7 @@ async def create_proposal(req: CreateProposalRequest, request: Request) -> dict[
     Requires admin authentication. Returns a token for public sharing.
     """
     service = _get_service(request)
-    return await service.create_proposal(
+    result = await service.create_proposal(
         lat=req.lat, lng=req.lng, zone_code=req.zone_code,
         zone_name=req.zone_name, kbli_code=req.kbli_code,
         verdict_label=req.verdict_label, verdict_score=req.verdict_score,
@@ -266,6 +268,8 @@ async def create_proposal(req: CreateProposalRequest, request: Request) -> dict[
         investor_name=req.investor_name, investor_email=req.investor_email,
         investor_nationality=req.investor_nationality,
     )
+    await invalidate_cache("zantara:prime_proposals:*")
+    return result
 
 
 @router.get("/proposal/{token}")
