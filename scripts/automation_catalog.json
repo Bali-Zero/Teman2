@@ -996,6 +996,76 @@
       "consumes": "Service health status",
       "monitored_by": "Health Monitor",
       "notes": "Most tasks migrated to OpenClaw cron. Only short-interval tasks remain."
+    },
+    "workflow_queue": {
+      "description": "Workflow job queue: PG SKIP LOCKED + LangGraph checkpointer. Processes async workflows (document generation, complex multi-step operations).",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (poll su tabella jobs)",
+      "produces": "Completed workflow results",
+      "consumes": "workflow_jobs table (PG SKIP LOCKED)",
+      "monitored_by": "Health Monitor"
+    },
+    "legal_full_ingestion": {
+      "description": "Legal document ingestion: background processing of legal documents via PG SKIP LOCKED queue. Parses, extracts, indexes into KB.",
+      "system": "Garuda",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (poll su coda)",
+      "produces": "KB entries (legal documents)",
+      "consumes": "legal_ingestion_queue table",
+      "monitored_by": "Health Monitor"
+    },
+    "attendance_monitor": {
+      "description": "Attendance monitor: scans team presence, detects anomalies (late check-in, missed checkout, overtime). Escalation loop + daily digest report.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "escalation periodico + digest 1x/giorno",
+      "produces": "Attendance alerts, daily digest",
+      "consumes": "work_sessions, team_members tables",
+      "monitored_by": "Health Monitor"
+    },
+    "daily_checkin_notifier": {
+      "description": "Daily checkin email: sends morning email to zero@balizero.com with team check-in status summary.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "1x/giorno 10:00 WITA",
+      "produces": "Daily checkin email",
+      "consumes": "work_sessions table",
+      "monitored_by": "Health Monitor"
+    },
+    "weekly_email_reporter": {
+      "description": "Weekly email report: sends Sunday digest with individual team member email activity metrics.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "Dom 16:00 WITA",
+      "produces": "Weekly team email report",
+      "consumes": "email_logs, team_members tables",
+      "monitored_by": "Health Monitor"
+    },
+    "notification_scheduler": {
+      "description": "Notification scheduler: generic notification dispatch engine. Processes queued notifications (email, WhatsApp, Telegram) with rate limiting.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo",
+      "produces": "Sent notifications",
+      "consumes": "notification_queue table",
+      "monitored_by": "Health Monitor"
+    },
+    "dlq_retry_channels": {
+      "description": "Channel DLQ retry: dead letter queue for failed channel messages (WhatsApp/Telegram/Instagram). Automatic retry with exponential backoff.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo",
+      "produces": "Retried channel messages",
+      "consumes": "channel_dlq table",
+      "monitored_by": "Health Monitor"
     }
   }
 }
