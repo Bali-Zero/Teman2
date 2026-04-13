@@ -76,6 +76,12 @@ async def get_qdrant_stats() -> dict[str, Any]:
                     coll_response.raise_for_status()
                     points = coll_response.json().get("result", {}).get("points_count", 0)
                     total_documents += points
+                    # Update per-collection Prometheus gauge
+                    try:
+                        from backend.app.metrics import qdrant_collection_points_count
+                        qdrant_collection_points_count.labels(collection=coll_name).set(points)
+                    except Exception:
+                        pass
                 except Exception as coll_err:
                     logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
 
@@ -202,9 +208,16 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             db_pool = getattr(request.app.state, "db_pool", None)
             if db_pool:
                 try:
-                    from backend.app.metrics import db_pool_idle, db_pool_size
-                    db_pool_size.labels(service="rag").set(db_pool.get_size())
-                    db_pool_idle.labels(service="rag").set(db_pool.get_idle_size())
+                    from backend.app.metrics import (
+                        active_connections,
+                        db_pool_idle,
+                        db_pool_size,
+                    )
+                    pool_sz = db_pool.get_size()
+                    idle_sz = db_pool.get_idle_size()
+                    db_pool_size.labels(service="rag").set(pool_sz)
+                    db_pool_idle.labels(service="rag").set(idle_sz)
+                    active_connections.set(pool_sz - idle_sz)
                 except Exception:
                     pass
 
