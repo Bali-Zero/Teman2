@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from backend.app.dependencies import get_database_pool as get_db_pool
 from backend.app.routers.team_activity import get_admin_user
 from backend.app.utils.json_utils import to_jsonb
+from backend.core.cache import invalidate_cache
 
 router = APIRouter(prefix="/api/knowledge/visa", tags=["knowledge-visa"])
 
@@ -321,6 +322,8 @@ async def update_visa_type(
 
         row = await conn.fetchrow(query, *values)
 
+        await invalidate_cache("zantara:knowledge_visa:*")
+
         return VisaTypeResponse(
             id=row["id"],
             code=row["code"],
@@ -405,6 +408,8 @@ async def create_visa_type(
             visa.foreign_eligible,
             to_jsonb(visa.metadata),
         )
+
+        await invalidate_cache("zantara:knowledge_visa:*")
 
         return VisaTypeResponse(
             id=row["id"],

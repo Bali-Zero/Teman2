@@ -24,6 +24,7 @@ from backend.app.utils.crm_utils import (
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 
 logger = get_logger(__name__)
 
@@ -64,6 +65,7 @@ async def refresh_crm_metrics(
 
         results = await metrics_collector.update_all_metrics()
 
+        await invalidate_cache("zantara:crm_clients_documents:*")
         return {
             "message": "CRM metrics refreshed successfully",
             "timestamp": results.get("timestamp"),
@@ -421,6 +423,7 @@ Use null for unclear fields. Return ONLY JSON."""
             await conn.execute(update_sql, *params)
             logger.info(f"Updated client {request.client_id} with enhanced OCR data")
 
+        await invalidate_cache("zantara:crm_clients_documents:*")
         return PassportPreviewResponse(
             success=True,
             confidence=extracted.get("confidence", 0.0),
@@ -516,6 +519,7 @@ async def delete_client_document(
             logger.info(
                 f"Soft deleted document {document_id} (client {doc['client_id']}, type: {doc['document_type']}) by {user_email}",
             )
+            await invalidate_cache("zantara:crm_clients_documents:*")
             return {
                 "success": True,
                 "message": f"Document {doc['file_name']} marked as deleted",
@@ -644,6 +648,7 @@ Rules:
                 )
                 logger.info(f"Saved NPWP for client {request.client_id}")
 
+        await invalidate_cache("zantara:crm_clients_documents:*")
         return NpwpExtractResponse(
             success=True,
             npwp=npwp if npwp else None,
@@ -775,6 +780,7 @@ Rules:
                 )
                 logger.info(f"Saved NIB for client {request.client_id}")
 
+        await invalidate_cache("zantara:crm_clients_documents:*")
         return NibExtractResponse(
             success=True,
             nib=nib if nib else None,

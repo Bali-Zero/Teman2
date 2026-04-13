@@ -405,6 +405,51 @@ async def invalidate_namespace(namespace: str, cache_service: CacheService | Non
     return await invalidate_cache(f"zantara:{namespace}:*", cache_service=cache_service)
 
 
+async def invalidate_all_caches(
+    pattern: str = "zantara:*",
+    cache_service: CacheService | None = None,
+) -> dict[str, int]:
+    """
+    Unified invalidation: clears both CacheService (Redis/memory) and semantic caches.
+
+    Use this when a mutation affects data that may be cached in both the
+    general cache layer and the semantic response cache.
+
+    Args:
+        pattern: Redis key pattern for CacheService (default: all zantara keys)
+        cache_service: Optional CacheService instance (for testing)
+
+    Returns:
+        Dict with counts: {"cache_service": N, "semantic_cache": M}
+    """
+    # 1. CacheService (Redis + in-memory LRU)
+    cache_count = await invalidate_cache(pattern, cache_service=cache_service)
+
+    # 2. Semantic response cache (L1 in-memory + L2 Redis)
+    semantic_count = 0
+    try:
+        from backend.services.caching.semantic_cache import invalidate_semantic_cache_async
+
+        semantic_count = await invalidate_semantic_cache_async()
+    except Exception as e:
+        logger.warning(f"Semantic cache invalidation failed (non-fatal): {e}")
+
+    # 3. Semantic search cache (SemanticCache class, Redis-backed)
+    try:
+        from backend.services.search.semantic_cache import _semantic_cache
+
+        if _semantic_cache is not None:
+            await _semantic_cache.clear_cache()
+    except Exception as e:
+        logger.debug(f"Search semantic cache clear skipped: {e}")
+
+    total = cache_count + semantic_count
+    logger.info(
+        f"Unified invalidation: {cache_count} cache_service + {semantic_count} semantic_cache = {total} total",
+    )
+    return {"cache_service": cache_count, "semantic_cache": semantic_count}
+
+
 def cached_query(
     namespace: str,
     ttl: int = DEFAULT_CACHE_TTL,
