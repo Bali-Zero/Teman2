@@ -118,13 +118,14 @@ export interface ComplianceItem {
 
 export interface TaxOverview {
   summary: {
-    status: "compliant" | "attention" | "overdue";
+    status: "ok" | "attention" | "critical";
     totalDue: number;
     nextDeadline: string | null;
     daysToDeadline: number | null;
+    pendingCount: number;
+    overdueCount: number;
   };
   obligations: TaxObligation[];
-  history: TaxHistoryItem[];
 }
 
 export interface TaxObligation {

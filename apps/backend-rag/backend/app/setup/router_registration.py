@@ -637,7 +637,6 @@ def include_heavy_routers(api: FastAPI) -> None:
         news,
         oracle_ingest,
         oracle_universal,
-        visa_oracle,
         voice,
         whatsapp_chat,
     )
@@ -721,5 +720,4 @@ def include_heavy_routers(api: FastAPI) -> None:
     # RAG Monitoring router (Retrieval quality metrics and alerts)
     api.include_router(monitoring_rag.router)
 
-    # Visa Oracle — public product (no auth required)
-    api.include_router(visa_oracle.router, prefix=settings.API_V1_STR)
+    # Visa Oracle — already registered in include_light_routers(), skip duplicate
