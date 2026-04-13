@@ -127,12 +127,13 @@ export default function LoginPage() {
 
   return (
     <div className="flex w-full min-h-screen bg-[#0c0c0e] overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
+      {/* Safe: hardcoded CSS string for autofill styling, no external input */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px var(--bz-elevated) inset !important;
             -webkit-text-fill-color: white !important;

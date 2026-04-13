@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/toast';
 import { logger } from '@/lib/logger';
 import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 import { renderMiniMarkdown, fileToBase64 } from '@/lib/utils';
+import { safeMiniMarkdown } from '@/lib/utils/safe-html';
 import {
   Select,
   SelectContent,
@@ -845,7 +846,7 @@ export default function ArticleComposerPage() {
                     <div
                       className="text-[13px] leading-relaxed whitespace-pre-line"
                       style={{ color: 'var(--bz-text-1)' }}
-                      dangerouslySetInnerHTML={renderMiniMarkdown(activeArticle.facts)}
+                      dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(activeArticle.facts))}
                     />
                   )}
                 </div>
@@ -936,7 +937,7 @@ export default function ArticleComposerPage() {
                                   className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
                                   style={{ background: 'var(--bz-accent)' }}
                                 />
-                                <span dangerouslySetInnerHTML={renderMiniMarkdown(s)} />
+                                <span dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(s))} />
                               </li>
                             ))}
                           </ul>

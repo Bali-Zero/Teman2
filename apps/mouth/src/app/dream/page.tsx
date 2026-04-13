@@ -75,6 +75,7 @@ import {
 } from 'lucide-react';
 import { dreamApi } from '@/lib/api/dream.api';
 import { logger } from '@/lib/logger';
+import { safeHtml } from '@/lib/utils/safe-html';
 
 // ============ TYPES ============
 interface ArticleVersion {
@@ -1023,7 +1024,7 @@ const ArticleComposer = () => {
           contentEditable
           suppressContentEditableWarning
           className="flex-1 outline-none text-lg text-zinc-300 leading-relaxed max-w-3xl prose prose-invert"
-          dangerouslySetInnerHTML={{ __html: content }}
+          dangerouslySetInnerHTML={safeHtml(content)}
           onBlur={(e) => setContent(e.currentTarget.innerHTML)}
         />
       </div>
