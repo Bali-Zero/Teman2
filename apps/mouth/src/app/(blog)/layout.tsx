@@ -10,6 +10,7 @@ import { ZantaraWidget } from "@/components/ZantaraWidget";
 import { I18nProvider, useTranslation } from "@/i18n";
 import { LocaleHead } from "@/i18n/LocaleHead";
 import type { Locale } from "@/i18n/types";
+import { api } from "@/lib/api";
 
 // Language options
 const LANGUAGES = [
@@ -67,12 +68,11 @@ function BlogLayoutInner({ children }: { children: React.ReactNode }) {
     // Fetch pending news count for admins
     const fetchPendingCount = async () => {
       try {
-        const res = await fetch("/api/news?status=pending");
-        const data = await res.json();
+        const data = await api.blog.getPendingNews();
         if (data.success) {
           setPendingNewsCount(data.data?.length || 0);
         }
-      } catch (error) {
+      } catch {
         // silently ignore fetch errors for pending count
       }
     };

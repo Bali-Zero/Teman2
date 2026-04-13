@@ -81,4 +81,30 @@ export class AnalyticsApi {
   async getAlerts(): Promise<AlertStats> {
     return this.fetch<AlertStats>("/alerts");
   }
+
+  /**
+   * Get LLM usage statistics.
+   * Returns null on error (non-critical data).
+   * Generic T allows consumer to provide its own type shape.
+   */
+  async getLlmUsage<T = Record<string, unknown>>(): Promise<T | null> {
+    try {
+      return await this.fetch<T>("/llm-usage");
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get query insights for a given time window.
+   * Returns null on error (non-critical data).
+   * Generic T allows consumer to provide its own type shape.
+   */
+  async getQueryInsights<T = Record<string, unknown>>(days: number = 7): Promise<T | null> {
+    try {
+      return await this.fetch<T>(`/query-insights?days=${days}`);
+    } catch {
+      return null;
+    }
+  }
 }

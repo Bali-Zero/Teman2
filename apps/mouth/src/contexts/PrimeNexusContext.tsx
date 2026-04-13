@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { api } from '@/lib/api';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -101,20 +102,13 @@ export function PrimeNexusProvider({ children }: { children: React.ReactNode }) 
   const analyzePoint = useCallback(async (lat: number, lng: number, kbliCode?: string) => {
     setIsAnalyzing(true);
     try {
-      const res = await fetch('/api/prime/v2/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lat,
-          lng,
-          kbli_code: kbliCode || undefined,
-          is_pma: true,
-        }),
+      const data = await api.prime.analyze<AnalysisResult>({
+        lat,
+        lng,
+        kbli_code: kbliCode || undefined,
+        is_pma: true,
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAnalysis(data);
-      }
+      setAnalysis(data);
     } catch {
       // Silently fail — analysis is optional enhancement
     } finally {
@@ -134,27 +128,21 @@ export function PrimeNexusProvider({ children }: { children: React.ReactNode }) 
     debounceTimer.current = setTimeout(async () => {
       setIsLoadingIntelligence(true);
       try {
-        const params = new URLSearchParams({
-          sw_lat: String(newBounds.sw_lat),
-          sw_lng: String(newBounds.sw_lng),
-          ne_lat: String(newBounds.ne_lat),
-          ne_lng: String(newBounds.ne_lng),
-        });
-        const res = await fetch(`/api/prime/v2/intelligence?${params.toString()}`);
-        if (res.ok) {
-          const data = await res.json();
-          setIntelligenceData(data);
-        } else if (res.status === 401 || res.status === 403) {
-          // Auth error — set empty data with auth error flag
+        const data = await api.prime.getIntelligence<IntelligenceData>(newBounds);
+        setIntelligenceData(data);
+      } catch (err: unknown) {
+        // Check for auth errors from ApiClient (it throws on 401)
+        const message = err instanceof Error ? err.message : '';
+        if (message.includes('expired') || message.includes('Authentication')) {
           setIntelligenceData({
             type: 'FeatureCollection',
             features: [],
             stats: { auth_error: 1 },
           });
+        } else {
+          // Silently fail — show empty state
+          setIntelligenceData({ type: 'FeatureCollection', features: [], stats: {} });
         }
-      } catch {
-        // Silently fail — show empty state
-        setIntelligenceData({ type: 'FeatureCollection', features: [], stats: {} });
       } finally {
         setIsLoadingIntelligence(false);
       }
