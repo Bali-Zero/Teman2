@@ -19,6 +19,8 @@ import { WorkflowApi } from './workflow';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { AnalyticsApi } from './analytics/analytics.api';
 import { OmnichannelApi } from './omnichannel/omnichannel.api';
+import { BlogApi } from './blog/blog.api';
+import { PrimeApi } from './prime/prime.api';
 import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
 import type { LoginResponse } from './auth/auth.types';
 import type {
@@ -60,6 +62,8 @@ export class ApiClient extends ApiClientBase {
   private wsUtils: WebSocketUtils;
   private analyticsApi: AnalyticsApi;
   private omnichannelApi: OmnichannelApi;
+  private blogApi: BlogApi;
+  private primeApi: PrimeApi;
 
   constructor(baseUrl: string) {
     super(baseUrl);
@@ -83,6 +87,8 @@ export class ApiClient extends ApiClientBase {
     this.wsUtils = new WebSocketUtils(this);
     this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
     this.omnichannelApi = new OmnichannelApi(this);
+    this.blogApi = new BlogApi(this);
+    this.primeApi = new PrimeApi(this);
   }
 
   // ============================================================================
@@ -199,6 +205,22 @@ export class ApiClient extends ApiClientBase {
 
   public get workflow(): WorkflowApi {
     return this.workflowApi;
+  }
+
+  // ============================================================================
+  // Blog (Articles, News)
+  // ============================================================================
+
+  public get blog(): BlogApi {
+    return this.blogApi;
+  }
+
+  // ============================================================================
+  // Prime Intelligence (Zone analysis, investment data)
+  // ============================================================================
+
+  public get prime(): PrimeApi {
+    return this.primeApi;
   }
 
   // ============================================================================

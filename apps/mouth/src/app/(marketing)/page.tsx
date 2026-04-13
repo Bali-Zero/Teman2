@@ -32,6 +32,7 @@ export default function HomePage() {
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap"
         rel="stylesheet"
       />
+      {/* Safe: hardcoded CSS custom properties and base styles, no external input */}
       <style
         suppressHydrationWarning
         dangerouslySetInnerHTML={{

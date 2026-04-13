@@ -13,6 +13,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { logger } from '@/lib/logger';
+import { getValidToken } from '@/lib/utils/token';
 
 interface IslandHealth {
   name: string;
@@ -149,7 +150,7 @@ export function NusantaraHealthWidget({ className = '' }: NusantaraHealthWidgetP
 
   const fetchHealth = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getValidToken('auth_token', localStorage);
       const response = await fetch('/api/nusantara/health', {
         headers: {
           Authorization: `Bearer ${token}`,
