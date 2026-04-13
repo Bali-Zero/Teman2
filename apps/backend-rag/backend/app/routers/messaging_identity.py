@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user_email, get_database
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.messaging_identity_service import (
     get_messaging_identity_service,
 )
@@ -134,6 +135,7 @@ async def create_mapping(
     if not success:
         raise HTTPException(status_code=400, detail="Failed to create mapping (may already exist)")
 
+    await invalidate_cache("zantara:messaging_identity:*")
     return {"status": "created", "message": "Mapping created successfully"}
 
 
@@ -178,6 +180,7 @@ async def deactivate_mapping(
     if not success:
         raise HTTPException(status_code=400, detail="Failed to deactivate mapping")
 
+    await invalidate_cache("zantara:messaging_identity:*")
     return {"status": "deactivated", "message": "Mapping deactivated successfully"}
 
 
