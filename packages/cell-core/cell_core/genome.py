@@ -72,6 +72,18 @@ CREATE TRIGGER IF NOT EXISTS genome_ai AFTER INSERT ON genome BEGIN
     VALUES (new.rowid, new.precondition, new.procedure, new.success_criterion);
 END;
 
+CREATE TRIGGER IF NOT EXISTS genome_au AFTER UPDATE ON genome BEGIN
+    INSERT INTO genome_fts(genome_fts, rowid, precondition, procedure, success_criterion)
+    VALUES ('delete', old.rowid, old.precondition, old.procedure, old.success_criterion);
+    INSERT INTO genome_fts(rowid, precondition, procedure, success_criterion)
+    VALUES (new.rowid, new.precondition, new.procedure, new.success_criterion);
+END;
+
+CREATE TRIGGER IF NOT EXISTS genome_ad AFTER DELETE ON genome BEGIN
+    INSERT INTO genome_fts(genome_fts, rowid, precondition, procedure, success_criterion)
+    VALUES ('delete', old.rowid, old.precondition, old.procedure, old.success_criterion);
+END;
+
 CREATE INDEX IF NOT EXISTS idx_genome_cell       ON genome(cell_origin);
 CREATE INDEX IF NOT EXISTS idx_genome_type       ON genome(type);
 CREATE INDEX IF NOT EXISTS idx_genome_scope      ON genome(scope);
