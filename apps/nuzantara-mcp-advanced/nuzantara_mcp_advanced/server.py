@@ -33,6 +33,21 @@ mcp = FastMCP(
     instructions="Advanced operations for Nuzantara development, deployment, and diagnostics",
 )
 
+# Persistent HTTP client for health checks (Golden Rule #10)
+_health_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_health_client() -> httpx.AsyncClient:
+    """Get or create persistent HTTP client for health checks."""
+    global _health_client
+    if _health_client is None or _health_client.is_closed:
+        _health_client = httpx.AsyncClient(
+            base_url=BACKEND_URL,
+            timeout=10,
+            limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+        )
+    return _health_client
+
 
 # ============================================================================
 # DEPLOYMENT TOOLS
@@ -397,28 +412,27 @@ async def check_system_health() -> dict:
     }
     
     # Check backend health
+    client = _get_health_client()
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health", timeout=10)
-            data = resp.json()
-            health["components"]["backend"] = {
-                "status": "healthy" if resp.status_code == 200 else "unhealthy",
-                "version": data.get("version", "unknown"),
-                "embedding_model": data.get("embeddings", {}).get("model", "unknown")
-            }
+        resp = await client.get("/health")
+        data = resp.json()
+        health["components"]["backend"] = {
+            "status": "healthy" if resp.status_code == 200 else "unhealthy",
+            "version": data.get("version", "unknown"),
+            "embedding_model": data.get("embeddings", {}).get("model", "unknown")
+        }
     except Exception as e:
         health["components"]["backend"] = {"status": "error", "error": str(e)}
-    
+
     # Check detailed health
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health/detailed", timeout=10)
-            data = resp.json()
-            services = data.get("services", {})
-            health["components"]["services"] = {
-                name: status.get("healthy", False)
-                for name, status in services.items()
-            }
+        resp = await client.get("/health/detailed")
+        data = resp.json()
+        services = data.get("services", {})
+        health["components"]["services"] = {
+            name: status.get("healthy", False)
+            for name, status in services.items()
+        }
     except Exception as e:
         health["components"]["services"] = {"status": "error", "error": str(e)}
     
@@ -442,9 +456,9 @@ async def get_collection_stats() -> dict:
         Vector counts, sizes, and health for all collections
     """
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health/metrics/qdrant", timeout=10)
-            return resp.json()
+        client = _get_health_client()
+        resp = await client.get("/health/metrics/qdrant")
+        return resp.json()
     except Exception as e:
         return {"error": str(e)}
 

@@ -26,7 +26,9 @@ ALL_TOOL_MODULES = [
     "nuzantara_mcp.tools.memory",
     "nuzantara_mcp.tools.langsmith",
     "nuzantara_mcp.tools.legal",
+    "nuzantara_mcp.tools.prime",
     "nuzantara_mcp.tools.federation",
+    "nuzantara_mcp.tools.naga",
 ]
 
 OTHER_MODULES = [
