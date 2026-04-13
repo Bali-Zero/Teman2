@@ -2876,3 +2876,32 @@ class TestStreamQueryEdgeCases:
 
             # Should fall back to RAG
             assert len(events) > 0
+
+
+class TestOrchestratorInitialize:
+    """Tests for async initialize() method."""
+
+    @pytest.mark.asyncio
+    async def test_initialize_sets_flag(self, orchestrator):
+        """initialize() should set _initialized to True."""
+        assert orchestrator._initialized is False
+        await orchestrator.initialize()
+        assert orchestrator._initialized is True
+
+    @pytest.mark.asyncio
+    async def test_initialize_idempotent(self, orchestrator):
+        """Calling initialize() twice should be a no-op the second time."""
+        await orchestrator.initialize()
+        assert orchestrator._initialized is True
+        # Second call should return immediately
+        await orchestrator.initialize()
+        assert orchestrator._initialized is True
+
+    @pytest.mark.asyncio
+    async def test_initialize_memory_failure_graceful(self, orchestrator):
+        """If MemoryOrchestrator init fails, initialize() should still succeed."""
+        orchestrator.memory_handler.get_memory_orchestrator = AsyncMock(
+            side_effect=RuntimeError("DB unavailable")
+        )
+        await orchestrator.initialize()
+        assert orchestrator._initialized is True
