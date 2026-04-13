@@ -199,8 +199,14 @@ I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (pur
      - Se Fly unreachable → retry al prossimo ciclo, log, nessun crash
    - **Pro→Fly: POST** su endpoint backend API (pattern già usato da intel scraper)
    - Il brainstorm deve definire: quali eventi CRM specifici entrano in `bridge_outbox`? Quale formato payload? Quale retention nella outbox? Serve un cursor o basta timestamp?
-3. **Curiosità** (Fase 4): come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"? Il brainstorm deve progettare il meccanismo.
-4. **Confronto** (Fase 3): come implementare il Consiglio v1 — moderatore + Claude + Gemini + DeepSeek su decisioni settimanali. Diversità architettonica, non roleplay.
+3. **Curiosità** — decisione già presa: **2 stadi, strutturale (Fase 1) + generativa (Fase 4)**.
+   - **Stadio 1 (gap-driven, Fase 1)**: gap detector trova buchi nel grafo → `nexus:gaps` → agenti li riempiono. Curiosità reattiva: vede un buco, lo riempie. Quasi implementato.
+   - **Stadio 2 (LLM-driven, Fase 4)**: cron settimanale legge archivio task + stato grafo + skill accumulate → `claude --print` "cosa è la cosa più interessante da esplorare alla frontiera?" → propone task → organismo esegue → archivio cresce → ciclo. Stadio 1 riempie buchi noti. Stadio 2 scopre buchi che non sapeva di avere. Design dettagliato in Fase 4.
+4. **Confronto** — decisione già presa: **4 modelli reali + moderatore + anti-groupthink**.
+   - 4 modelli architettonicamente diversi: Claude (cli), Gemini (cli), DeepSeek (API), Ollama locale (gemma4 o deepseek-r1). NO roleplay sullo stesso modello.
+   - Moderatore (script Python) presenta questione a tutti e 4 via subprocess, raccoglie risposte, le ripresenta a un 5° LLM: "Trova consenso e dissenso. Se tutti concordano troppo, cerca la falla."
+   - Output: decisione + livello accordo + minoranza dissenziente. Se accordo < soglia → escalation TG a Zero.
+   - Design dettagliato in Fase 3.
 5. **Sogno** (Fase 2) — decisione già presa: **consolidamento LLM + safety gate deterministico**.
    Meccanismo concreto (cron notturno, finestra 01:00-05:00 WITA):
    1. Legge entry KB ultimi 7 giorni (reflections, insights, skills) da tutti gli agenti
@@ -216,7 +222,13 @@ I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (pur
    - **Indice autonomia**: task `origin` field — endogeno (gap_detector, curiosity, cron) vs esogeno (cli, telegram, manual). Ratio. Da ~0% (Fase 1) a >50% (Fase 4).
    - **Frequenza escalation**: count TG messages tagged "escalation" per periodo. Deve calare.
      Tutte su `organism:metrics` con envelope standard. Consumer salva in SQLite per trend. Zero infrastruttura nuova.
-7. **Produzione** (Fase 4): come l'intelligence diventa revenue? Il ciclo Intel→Content→SEO→Revenue guidato da CRM+SEO, non solo scraping. Tracciabilità end-to-end.
+7. **Produzione→Revenue** (Fase 4) — decisione già presa: **article_id come chiave di correlazione end-to-end**.
+   - Ogni articolo ha un `article_id` che viaggia: `intel:articles` → bridge push → backend publish → GA4 (property 505466833) → CRM
+   - GA4 traccia: page views, tempo su pagina, conversioni (contact form, WhatsApp click)
+   - Bridge pull porta dati GA4 → `intel:published` con metriche performance
+   - CRM registra se un cliente è arrivato da un articolo (referrer tracking)
+   - Catena completa: intelligence → articolo → traffico → lead → cliente → revenue = tracciabile
+   - Design dettagliato in Fase 4.
 
 ### Fase 3: Scrivi il piano
 
