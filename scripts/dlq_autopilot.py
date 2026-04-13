@@ -544,8 +544,31 @@ def process_entry(entry: dict, registry: dict) -> str:
                 )
                 return "aider_fixed"
 
-        logger.warning(f"{job}: Aider failed or unverified → escalating")
-        escalate_to_claude_code(entry, reasoning, aider_out)
+        # ── Tier 2.5: Codex CLI fix — multi-file, sandboxed ────────────────
+        # Aider failed, but this isn't architecturally critical. Let Codex try
+        # before bothering Zero. Codex runs sandboxed (workspace-write only).
+        logger.info(f"{job}: Aider failed → trying Codex CLI (Tier 2.5)")
+        from sentinel_lib.repairer import dispatch_codex_fix
+        codex_ok, codex_out = dispatch_codex_fix(
+            job=job,
+            error_summary=entry.get("error_summary", ""),
+            fix_instruction=reasoning["fix_instruction"],
+            files_implicated=real_files,
+            test_cmd=reg.get("test_cmd"),
+            aider_output=aider_out,
+        )
+        if codex_ok:
+            verified, _ = verify_fix(reg["test_cmd"])
+            if verified:
+                logger.info(f"{job}: Codex fix verified ✅")
+                send_telegram(
+                    f"✅ Codex auto-fixed `{job}` (after Aider fail): "
+                    f"{reasoning['fix_instruction'][:80]}"
+                )
+                return "codex_fixed"
+
+        logger.warning(f"{job}: Codex also failed → escalating to Claude Code")
+        escalate_to_claude_code(entry, reasoning, codex_out or aider_out)
         return "escalated"
 
     # ── Tier 3: escalate to Claude Code ───────────────────────────────────────

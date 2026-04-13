@@ -1,4 +1,4 @@
-"""Tier dispatch: retry (T1), aider-fix (T2), Claude Code alert (T3), Zero alert (T4)."""
+"""Tier dispatch: retry (T1), aider-fix (T2), codex-fix (T2.5), DLQ+Claude (T3), Zero alert (T4)."""
 import json
 import os
 import stat
@@ -205,6 +205,78 @@ def dispatch_aider_fix(job: str, error_summary: str, fix_instruction: str,
         return result.returncode == 0, result.stdout + result.stderr
     except subprocess.TimeoutExpired:
         return False, "aider-fix timed out after 5min"
+    except Exception as e:
+        return False, str(e)
+
+
+def dispatch_codex_fix(job: str, error_summary: str, fix_instruction: str,
+                       files_implicated: list, test_cmd: Optional[str],
+                       aider_output: str = "") -> tuple:
+    """
+    Tier 2.5: Codex CLI fix — sandboxed, multi-file capable.
+    Called when Aider fails on a fix that isn't architecturally critical.
+    Codex runs in workspace-write sandbox: can edit project files, run tests,
+    but cannot touch system files or deploy.
+
+    Returns (success, output).
+    """
+    # OFF-LIMITS: never let Codex touch these
+    off_limits = {"dependencies.py", "fly.toml", "zantara_core.py",
+                  "alembic/env.py", "service_initializer.py", ".env"}
+    if files_implicated:
+        blocked = [f for f in files_implicated if any(bl in f for bl in off_limits)]
+        if blocked:
+            return False, f"Codex blocked: off-limits files {blocked}"
+
+    files_str = ", ".join(files_implicated) if files_implicated else "auto-detect from error"
+    verify_str = f"\nAfter fixing, verify by running: {test_cmd}" if test_cmd else ""
+    aider_ctx = f"\nPrevious aider attempt failed with: {aider_output[:300]}" if aider_output else ""
+
+    prompt = (
+        f"Fix automation job '{job}'.\n"
+        f"Error: {error_summary}\n"
+        f"Diagnosis: {fix_instruction}\n"
+        f"Files likely involved: {files_str}"
+        f"{aider_ctx}"
+        f"{verify_str}\n"
+        f"Fix the root cause. Run tests to verify."
+    )
+
+    dispatch_script = os.path.join(NUZANTARA_ROOT, "scripts", "ai-dispatch.sh")
+    if not os.path.exists(dispatch_script):
+        return False, f"ai-dispatch.sh not found at {dispatch_script}"
+
+    # Git stash before codex — safety net
+    try:
+        subprocess.run(
+            ["git", "stash", "push", "-m", f"codex-fix-{job}-{int(time.time())}"],
+            cwd=NUZANTARA_ROOT, capture_output=True, timeout=10
+        )
+    except Exception:
+        pass  # non-blocking
+
+    try:
+        result = subprocess.run(
+            ["bash", dispatch_script, "codex-fix", prompt],
+            capture_output=True, text=True, timeout=600, cwd=NUZANTARA_ROOT
+        )
+        success = result.returncode == 0
+        output = result.stdout + result.stderr
+
+        # If codex succeeded and we have a test_cmd, verify independently
+        if success and test_cmd:
+            test_ok, test_output = verify_fix(test_cmd)
+            if not test_ok:
+                # Codex claimed success but test fails — rollback
+                subprocess.run(
+                    ["git", "checkout", "."],
+                    cwd=NUZANTARA_ROOT, capture_output=True, timeout=10
+                )
+                return False, f"Codex fix applied but test failed: {test_output[:200]}"
+
+        return success, output[:500]
+    except subprocess.TimeoutExpired:
+        return False, "codex-fix timed out after 10min"
     except Exception as e:
         return False, str(e)
 
