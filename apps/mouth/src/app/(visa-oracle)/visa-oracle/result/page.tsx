@@ -176,7 +176,7 @@ export default function ResultPage() {
         </div>
 
         <a
-          href={`https://wa.me/6281338051876?text=Hello%20Bali%20Zero!%20I%20am%20from%20${encodeURIComponent(nationality)}%20and%20I%20need%20a%20Calling%20Visa.%20Can%20you%20help%20me?`}
+          href={`https://wa.me/628213107363?text=Hello%20Bali%20Zero!%20I%20am%20from%20${encodeURIComponent(nationality)}%20and%20I%20need%20a%20Calling%20Visa.%20Can%20you%20help%20me?`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
@@ -269,7 +269,7 @@ export default function ResultPage() {
             </p>
           </div>
           <a
-            href={`https://wa.me/6281338051876?text=${encodeURIComponent(
+            href={`https://wa.me/628213107363?text=${encodeURIComponent(
               `Hello Bali Zero! I need sponsorship help. Nationality: ${nationality}, Purpose: ${purpose ?? ""}. Can you act as my guarantor?`,
             )}`}
             target="_blank"
@@ -296,7 +296,7 @@ export default function ResultPage() {
           our team on WhatsApp — they will help you find the right solution.
         </p>
         <a
-          href={`https://wa.me/6281338051876?text=${encodeURIComponent(
+          href={`https://wa.me/628213107363?text=${encodeURIComponent(
             `Hello Bali Zero! I used the Visa Oracle but no matching visa was found. Nationality: ${nationality}, Purpose: ${purpose ?? ""}, Duration: ${duration ?? ""}. Can you help me?`,
           )}`}
           target="_blank"
@@ -370,7 +370,7 @@ export default function ResultPage() {
           </p>
         </div>
         <a
-          href={`https://wa.me/6281338051876?text=${encodeURIComponent(
+          href={`https://wa.me/628213107363?text=${encodeURIComponent(
             `Hello Bali Zero! I used the Visa Oracle. Nationality: ${nationality}, Purpose: ${purpose ?? ""}, Duration: ${duration ?? ""}. My top recommendation is ${visas[0]?.visa_name ?? "a visa"}. Can you help me apply?`,
           )}`}
           target="_blank"

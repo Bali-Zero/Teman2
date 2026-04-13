@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const WHATSAPP_BASE = "https://wa.me/6281338051876";
+const WHATSAPP_BASE = "https://wa.me/628213107363";
 
 interface KBLIConsultationCTAProps {
   code: string;
