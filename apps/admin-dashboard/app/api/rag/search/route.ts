@@ -45,8 +45,8 @@ export async function POST(request: Request) {
       results: searchResult,
       vector_preview: vector.slice(0, 5), // Show first 5 dims for debug
     });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("RAG Search Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
