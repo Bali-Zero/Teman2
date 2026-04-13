@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from backend.app.dependencies import get_database_pool
 from backend.app.routers.visa_oracle import (
     ChatRequest,
     HandoffRequest,
@@ -31,6 +32,8 @@ def app() -> FastAPI:
     """Minimal FastAPI app with visa_oracle router mounted."""
     application = FastAPI()
     application.include_router(router, prefix="/api/v1")
+    # Override db_pool dependency with a mock for testing
+    application.dependency_overrides[get_database_pool] = lambda: MagicMock()
     return application
 
 
@@ -171,8 +174,9 @@ class TestHandoffRequest:
 class TestRecommendEndpoint:
     """Integration-style tests for POST /api/v1/visa-oracle/recommend."""
 
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
     @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
-    def test_recommend_success(self, mock_get_service, client: TestClient) -> None:
+    def test_recommend_success(self, mock_get_service, mock_persist, client: TestClient) -> None:
         mock_service = MagicMock()
         mock_service.recommend_visas.return_value = [
             {
@@ -186,6 +190,7 @@ class TestRecommendEndpoint:
             }
         ]
         mock_service.generate_session_id.return_value = "deadbeef" * 8
+        mock_service.hash_ip.return_value = "hashed_ip"
         mock_get_service.return_value = mock_service
 
         response = client.post(
@@ -205,11 +210,13 @@ class TestRecommendEndpoint:
         assert data["visas"][0]["visa_name"] == "Digital Nomad Visa E33G"
         assert "session_id" in data
 
+    @patch("backend.app.routers.visa_oracle._persist_session_create")
     @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
-    def test_recommend_parses_family_yes(self, mock_get_service, client: TestClient) -> None:
+    def test_recommend_parses_family_yes(self, mock_get_service, mock_persist, client: TestClient) -> None:
         mock_service = MagicMock()
         mock_service.recommend_visas.return_value = []
         mock_service.generate_session_id.return_value = "abc123"
+        mock_service.hash_ip.return_value = "hashed_ip"
         mock_get_service.return_value = mock_service
 
         client.post(
