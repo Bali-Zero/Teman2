@@ -18,7 +18,7 @@ def register(
             "authenticated": bool(api_key),
             "timeout": timeout,
             "version": "2.1.0",
-            "tools_count": 105,
+            "tools_count": 115,
             "chains_count": 8,
         }
 

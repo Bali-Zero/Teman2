@@ -63,7 +63,7 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 - `apps/admin-dashboard/` - Admin UI
 - `apps/webapp/` - Web application
 - `apps/bali-intel-scraper/` - Intelligence gathering
-- `apps/nuzantara-mcp/` - MCP server v2.1 (109 tools, 10 prompts, 5 resources, 8 chains)
+- `apps/nuzantara-mcp/` - MCP server v2.1 (115 tools, 10 prompts, 5 resources, 8 chains)
 - `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics)
 - `apps/nuzantara-mcp-browser/` - Browser automation MCP
 - `apps/graph-engine/` - Graph processing engine
@@ -75,12 +75,12 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 
 ### Tech Stack
 
-- **Backend:** Python 3.11+, FastAPI, 88 routers, 244 services, 385 test files
+- **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
-- **Knowledge Graph:** 56,113 nodes, 161,173 edges
-- **Vector Collections:** 9 live on Fly.io (66,595 documents), 11 defined in code
+- **Knowledge Graph:** 108,068 nodes, 242,827 edges
+- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
 ## 2. Codex Behavior Rules (IMPORTANT)
@@ -168,19 +168,24 @@ vercel --prod
 ```
 apps/backend-rag/
 ├── backend/
-│   ├── core/          # Core configuration, dependencies
-│   ├── prompts/       # ⭐ Prompt Single Source of Truth (see below)
-│   ├── routers/       # API endpoints (88 routers)
-│   ├── services/      # Business logic (244 services)
-│   ├── models/        # Pydantic models
-│   ├── db/            # Database access layer
-│   ├── utils/         # Utility functions
-│   └── main.py        # FastAPI app entry (alias for main_cloud.py)
-├── tests/             # 385 test files
-├── alembic/           # Database migrations
-├── requirements.txt   # Python dependencies
-└── fly.toml          # Fly.io configuration
+│   ├── app/              # FastAPI app
+│   │   ├── routers/      # API endpoints (90 routers)
+│   │   ├── services/     # App-level services (CRM, auth, metrics)
+│   │   ├── setup/        # app_factory, router_registration, service_initializer
+│   │   ├── dependencies.py  # ⚠️ Imported by ALL routers — test before deploy
+│   │   └── main.py       # Entrypoint (alias for main_cloud.py)
+│   ├── services/         # Core business logic (253 services)
+│   ├── core/             # Config, security, logging
+│   ├── prompts/          # ⭐ Prompt Single Source of Truth (see below)
+│   ├── channels/         # 7 channels (whatsapp, telegram, instagram, etc.)
+│   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
+│   └── migrations/       # Alembic (up to 060)
+├── tests/                # 419 test files
+├── .venv/                # ⚠️ ALWAYS .venv on Pro, venv on Air
+└── fly.toml
 ```
+
+**IMPORTANT:** Routers in `backend/app/routers/`, NOT `backend/routers/`. Services in both `backend/services/` and `backend/app/services/`.
 
 ### Prompt Architecture (Single Source of Truth)
 
@@ -265,7 +270,7 @@ Classification confidence thresholds:
 
 **Model:** `text-embedding-3-small` (OpenAI)  
 **Dimensions:** 1536  
-**CRITICAL:** This model is FROZEN. Changing it would invalidate 66,595 existing vectors.  
+**CRITICAL:** This model is FROZEN. Changing it would invalidate 93,283 existing vectors.  
 **Never:** Switch to another model without explicit authorization and full re-indexing plan.
 
 ## 6. MCP Servers
@@ -273,7 +278,7 @@ Classification confidence thresholds:
 **Primary:** `apps/nuzantara-mcp/` (v2.1, FastMCP, stdio transport)
 **Capabilities:**
 
-- **109 Tools** across 17 modules (CRM, portal, intel, content, analytics, knowledge, comms, drive, workflows, admin, health, journey, pricing, compliance, generals, memory, heartbeat)
+- **115 Tools** across 24 modules (CRM, portal, intel, content, analytics, knowledge, comms, drive, sheets, workflows, admin, health, google_bridge, journey, pricing, invoicing, compliance, memory, langsmith, legal, prime, federation, naga, heartbeat)
 - **10 Prompts** for guided workflows
 - **5 Resources** for knowledge base access
 - **8 Workflow Chains** for deterministic automation (daily_ops_autopilot, new_client_onboarding, practice_lifecycle_check, intel_pipeline, weekly_report, client_health_monitor, compliance_autopilot, journey_accelerator)
@@ -332,22 +337,20 @@ PYTHONPATH=. pytest --cov=backend --cov-report=html tests/
 ### Python (Backend)
 
 ```python
-# Good: Async, typed, clean logging
-from typing import List, Optional
+# Good: Async, typed, clean logging, persistent client
+from typing import Optional
 from backend.core.logging import logger
-import httpx
 
 async def fetch_kbli_data(code: str) -> Optional[dict]:
     """Fetch KBLI data from Qdrant."""
     try:
-        async with httpx.AsyncClient() as client:
-            result = await qdrant.search(
-                collection_name="kbli",
-                query_vector=embedding,
-                limit=1
-            )
-            logger.info(f"KBLI search successful: {code}")
-            return result[0] if result else None
+        result = await qdrant.search(
+            collection_name="kbli",
+            query_vector=embedding,
+            limit=1
+        )
+        logger.info(f"KBLI search successful: {code}")
+        return result[0] if result else None
     except Exception as e:
         logger.error(f"KBLI search failed: {code}", exc_info=True)
         raise
@@ -484,7 +487,7 @@ fly deploy --strategy rolling
 ```python
 # ✅ CORRETTO — adaptive thinking
 response = client.messages.create(
-    model="Codex-sonnet-4-6",
+    model="claude-sonnet-4-6",
     max_tokens=8192,
     thinking={"type": "adaptive"},
     output_config={"effort": "medium"},  # "max" | "high" | "medium" | "low"
@@ -549,7 +552,7 @@ tools = [{"name": "kbli_search", "eager_input_streaming": True, ...}]
 
 | Uso                       | Modello                    | Perché                                       |
 | ------------------------- | -------------------------- | -------------------------------------------- |
-| RAG complesso, reasoning  | `Codex-sonnet-4-6`         | Knowledge cutoff gen 2026, adaptive thinking |
-| Routing / classificazione | `Codex-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
-| Task critici              | `Codex-opus-4-6`           | 128K output, effort=max                      |
-| Spiegazioni KBLI          | `Codex-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |
+| RAG complesso, reasoning  | `claude-sonnet-4-6`         | Knowledge cutoff gen 2026, adaptive thinking |
+| Routing / classificazione | `claude-haiku-4-5-20251001` | $1/$5 MTok, velocissimo                      |
+| Task critici              | `claude-opus-4-6`           | 128K output, effort=max                      |
+| Spiegazioni KBLI          | `claude-haiku-4-5-20251001` | Già configurato in kbli_notebook.py          |
