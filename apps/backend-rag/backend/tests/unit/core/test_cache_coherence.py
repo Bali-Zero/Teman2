@@ -8,10 +8,7 @@ Covers:
 - invalidate_cache import presence in mutation routers
 """
 
-import importlib
 import time
-from collections import OrderedDict
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -250,44 +247,48 @@ class TestUnifiedInvalidation:
 
 
 class TestRouterInvalidationCoverage:
-    """Verify all 19 mutation routers import invalidate_cache."""
+    """Verify all 19 mutation routers import invalidate_cache (source-level check)."""
 
     ROUTERS_WITH_INVALIDATION = [
-        "backend.app.routers.news",
-        "backend.app.routers.knowledge_visa",
-        "backend.app.routers.hr",
-        "backend.app.routers.prime_v2",
-        "backend.app.routers.team_drive",
-        "backend.app.routers.agents",
-        "backend.app.routers.episodic_memory",
-        "backend.app.routers.lam_memory",
-        "backend.app.routers.memory_vector",
-        "backend.app.routers.session",
-        "backend.app.routers.sheets",
-        "backend.app.routers.newsletter",
-        "backend.app.routers.messaging_identity",
-        "backend.app.routers.conversations",
-        "backend.app.routers.autonomous_execution",
-        "backend.app.routers.omnichannel",
-        "backend.app.routers.zoho_email",
-        "backend.app.routers.intel_scraper",
-        "backend.app.routers.crm_clients_documents",
+        "news",
+        "knowledge_visa",
+        "hr",
+        "prime_v2",
+        "team_drive",
+        "agents",
+        "episodic_memory",
+        "lam_memory",
+        "memory_vector",
+        "session",
+        "sheets",
+        "newsletter",
+        "messaging_identity",
+        "conversations",
+        "autonomous_execution",
+        "omnichannel",
+        "zoho_email",
+        "intel_scraper",
+        "crm_clients_documents",
     ]
 
-    @pytest.mark.parametrize("module_path", ROUTERS_WITH_INVALIDATION)
-    def test_router_imports_invalidate_cache(self, module_path: str) -> None:
+    @pytest.mark.parametrize("router_name", ROUTERS_WITH_INVALIDATION)
+    def test_router_imports_invalidate_cache(self, router_name: str) -> None:
         """Each mutation router must import invalidate_cache from core.cache."""
-        import importlib
-        import inspect
+        from pathlib import Path
 
-        source_file = importlib.import_module(module_path).__file__
-        assert source_file is not None
-        source = open(source_file).read()
+        router_file = (
+            Path(__file__).parent.parent.parent.parent
+            / "app"
+            / "routers"
+            / f"{router_name}.py"
+        )
+        assert router_file.exists(), f"Router file not found: {router_file}"
+        source = router_file.read_text()
         assert "from backend.core.cache import" in source, (
-            f"{module_path} missing 'from backend.core.cache import'"
+            f"{router_name}.py missing 'from backend.core.cache import'"
         )
         assert "invalidate_cache" in source, (
-            f"{module_path} missing 'invalidate_cache' usage"
+            f"{router_name}.py missing 'invalidate_cache' usage"
         )
 
 
@@ -296,6 +297,14 @@ class TestRouterInvalidationCoverage:
 # ---------------------------------------------------------------------------
 
 
+try:
+    import fastapi  # noqa: F401
+    _HAS_FASTAPI = True
+except ImportError:
+    _HAS_FASTAPI = False
+
+
+@pytest.mark.skipif(not _HAS_FASTAPI, reason="fastapi not installed")
 class TestRateLimiterFallback:
     """Tests for rate limiter Redis fallback behavior."""
 
