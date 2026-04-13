@@ -31,7 +31,9 @@ fermati e rileggilo. Non andare avanti.
 7. [ ] È misurabile? (conta quante righe ha processato, quanti errori, quanto tempo)
 8. [ ] Produce almeno un evento Redis se rileva qualcosa di significativo?
 
-**Minimo vitale:** punti 1, 3, 6 obbligatori. Gli altri entro Sprint successivo.
+9. [ ] È registrata in `scripts/automation_catalog.json`? (descrizione, produces, consumes, LLM — senza entry, l'Excel inventory la mostra vuota)
+
+**Minimo vitale:** punti 1, 3, 6, 9 obbligatori. Gli altri entro Sprint successivo.
 
 **Pattern di riferimento:**
 
@@ -221,6 +223,7 @@ Il mock non rivela problemi di lock su tabelle grandi.
 10. [ ] `restart_cmd` usa `launchctl kickstart -k gui/$(id -u)/<Label>` — non `launchctl start` (che non forza restart se già loaded)
 11. [ ] Se è un daemon (`is_daemon: true` nel registry): ha un health endpoint o un modo per verificarne lo stato?
 12. [ ] È stato caricato con `launchctl load`? Verifica con `launchctl list <Label>`
+13. [ ] È registrato in `scripts/automation_catalog.json`? (descrizione, produces, consumes, LLM — senza entry, l'Excel inventory la mostra vuota)
 
 **Scar documentato:** `launchd` non eredita `PATH`, `HOME`, né variabili d'ambiente dalla shell.
 Ogni plist che non le dichiara esplicitamente fallisce con errori incomprensibili

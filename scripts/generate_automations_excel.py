@@ -90,6 +90,7 @@ class Automation:
 
 # ── Catalog ───────────────────────────────────────────────────────────────────
 CATALOG_PATH = Path(__file__).parent / "automation_catalog.json"
+AUTO_DISCOVERED_SECTION = "auto_discovered"
 
 
 def load_catalog() -> dict:
@@ -100,24 +101,32 @@ def load_catalog() -> dict:
         return {}
 
 
-def enrich_from_catalog(a: Automation, catalog: dict) -> None:
-    """Enrich an Automation from the catalog. Catalog wins over auto-detected."""
-    # Try multiple catalog sections
-    name = a.name
-    entry = None
-    for section in ("openclaw_pro", "openclaw_air", "launchagents", "cron_scripts", "nlm_pipelines"):
+def save_catalog(catalog: dict) -> None:
+    """Atomically save catalog back to disk."""
+    tmp = str(CATALOG_PATH) + ".tmp"
+    Path(tmp).write_text(json.dumps(catalog, indent=2, ensure_ascii=False))
+    Path(tmp).replace(CATALOG_PATH)
+
+
+def _find_catalog_entry(name: str, catalog: dict) -> Optional[dict]:
+    """Find an entry in any catalog section by name or basename."""
+    for section in ("openclaw_pro", "openclaw_air", "launchagents",
+                    "cron_scripts", "nlm_pipelines", AUTO_DISCOVERED_SECTION):
         entry = catalog.get(section, {}).get(name)
         if entry:
-            break
+            return entry
+    # Fallback: match by basename
+    basename = os.path.basename(name) if "/" in name else name
+    for section in ("cron_scripts", "nlm_pipelines", AUTO_DISCOVERED_SECTION):
+        entry = catalog.get(section, {}).get(basename)
+        if entry:
+            return entry
+    return None
 
-    if not entry:
-        # Try matching by script basename
-        basename = os.path.basename(name) if "/" in name else name
-        for section in ("cron_scripts", "nlm_pipelines"):
-            entry = catalog.get(section, {}).get(basename)
-            if entry:
-                break
 
+def enrich_from_catalog(a: Automation, catalog: dict) -> None:
+    """Enrich an Automation from the catalog. Catalog wins over auto-detected."""
+    entry = _find_catalog_entry(a.name, catalog)
     if not entry:
         return
 
@@ -135,6 +144,99 @@ def enrich_from_catalog(a: Automation, catalog: dict) -> None:
         a.notes = entry["notes"] if not a.notes else a.notes + "; " + entry["notes"]
     if entry.get("type"):
         a.type = entry["type"]
+
+
+def _read_script_header(script_path: str) -> str:
+    """Read the first comment block from a script file (up to 5 lines)."""
+    try:
+        path = os.path.expanduser(script_path)
+        if not os.path.exists(path):
+            return ""
+        lines = Path(path).read_text(errors="ignore").splitlines()[:10]
+        comments = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("#!"):
+                continue  # skip shebang
+            if stripped.startswith("#"):
+                comments.append(stripped.lstrip("# ").strip())
+            elif stripped.startswith('"""') or stripped.startswith("'''"):
+                # Python docstring
+                comments.append(stripped.strip("\"'").strip())
+            elif comments:
+                break  # stop at first non-comment line after we found some
+        return " ".join(comments)[:200]
+    except Exception:
+        return ""
+
+
+def _llm_describe_script(script_path: str, name: str) -> Optional[str]:
+    """Use claude --print to generate a one-line description of an unknown script."""
+    try:
+        header = _read_script_header(script_path)
+        if not header:
+            path = os.path.expanduser(script_path)
+            if os.path.exists(path):
+                header = Path(path).read_text(errors="ignore")[:500]
+            else:
+                return None
+
+        prompt = (
+            f"Describe this automation script in ONE sentence (max 120 chars). "
+            f"Script name: {name}\n"
+            f"Content:\n{header}\n\n"
+            f"Reply with ONLY the description, no quotes, no prefix."
+        )
+        proc = subprocess.run(
+            ["claude", "--print", prompt],
+            capture_output=True, text=True, timeout=20,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout.strip()[:200]
+    except (subprocess.TimeoutExpired, Exception):
+        pass
+    return None
+
+
+def auto_discover_unknown(automations: list, catalog: dict) -> int:
+    """
+    For automations not in catalog: try header parsing, then LLM fallback.
+    Writes new entries to catalog[AUTO_DISCOVERED_SECTION] and saves to disk.
+    Returns count of newly discovered entries.
+    """
+    discovered = 0
+    section = catalog.setdefault(AUTO_DISCOVERED_SECTION, {})
+
+    for a in automations:
+        # Skip if already in catalog
+        if _find_catalog_entry(a.name, catalog):
+            continue
+        # Skip if already has a description from OpenClaw payload
+        if a.description and not a.description.startswith("(empty"):
+            continue
+        # Skip inline commands (not script files)
+        if not a.script_path:
+            continue
+
+        # Step 1: try reading script header
+        header_desc = _read_script_header(a.script_path)
+
+        if header_desc and len(header_desc) > 15:
+            desc = header_desc
+        else:
+            # Step 2: LLM fallback (only if claude CLI is available)
+            desc = _llm_describe_script(a.script_path, a.name)
+
+        if desc:
+            entry = {"description": desc, "_source": "auto_discovered"}
+            section[a.name] = entry
+            a.description = desc
+            discovered += 1
+
+    if discovered > 0:
+        save_catalog(catalog)
+
+    return discovered
 
 
 # ── Data collection ──────────────────────────────────────────────────────────
@@ -689,6 +791,11 @@ def main() -> None:
         if a.description != before_desc:
             enriched += 1
     print(f"    {enriched} automations enriched from catalog")
+
+    # Auto-discover unknown automations (header parse + LLM fallback)
+    print("  Auto-discovering unknown automations...")
+    discovered = auto_discover_unknown(all_automations, catalog)
+    print(f"    {discovered} new automations auto-described (saved to catalog)")
 
     # Generate Excel
     print(f"\nGenerating {OUTPUT_FILE}...")
