@@ -210,7 +210,12 @@ I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (pur
    5. **Nightmare detection**: se skill consolidata contraddice skill esistente con confidence >0.7 → NON inserire, loggare come conflitto, TG a Zero per review
    6. **Safety gate**: misurare performance agenti sulle 10 run successive. Se cala → revert automatico delle skill consolidate
       Il brainstorm deve definire: formato JSON output, criterio "contraddizione", metrica concreta per "performance cala".
-6. **Misura** (Fase 3): le 4 metriche metaboliche — implementazione concreta, storage, trend. Il brainstorm deve definire come calcolarle e dove salvarle.
+6. **Misura** (Fase 3) — decisione già presa: **4 metriche → organism:metrics stream → SQLite locale per trend**.
+   - **Time-to-Resolution**: `gap.created_at` → `garuda:raw resolved_at`. Media mobile 30gg. Deve calare.
+   - **Densità ontologica**: Neo4j `edges/nodes`. Baseline oggi: 242827/108068 = **2.25**. Deve salire.
+   - **Indice autonomia**: task `origin` field — endogeno (gap_detector, curiosity, cron) vs esogeno (cli, telegram, manual). Ratio. Da ~0% (Fase 1) a >50% (Fase 4).
+   - **Frequenza escalation**: count TG messages tagged "escalation" per periodo. Deve calare.
+     Tutte su `organism:metrics` con envelope standard. Consumer salva in SQLite per trend. Zero infrastruttura nuova.
 7. **Produzione** (Fase 4): come l'intelligence diventa revenue? Il ciclo Intel→Content→SEO→Revenue guidato da CRM+SEO, non solo scraping. Tracciabilità end-to-end.
 
 ### Fase 3: Scrivi il piano
