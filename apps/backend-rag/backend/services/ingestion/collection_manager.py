@@ -7,6 +7,7 @@ Extracted from SearchService to follow Single Responsibility Principle.
 
 import asyncio
 import logging
+import time
 from typing import Any
 
 from backend.app.core.config import settings
@@ -39,6 +40,9 @@ class CollectionManager:
         self._collection_locks: dict[str, asyncio.Lock] = {}
         self._collection_read_semaphores: dict[str, asyncio.Semaphore] = {}
         self._lock_timeout = 30.0  # seconds (longer for ingestion operations)
+
+        # Freshness tracking: last successful ingest timestamp per collection
+        self._collection_last_updated: dict[str, float] = {}
 
         # Collection definitions (lazy initialization)
         self.collection_definitions = {
@@ -215,7 +219,29 @@ class CollectionManager:
 
         definition = self.collection_definitions[name].copy()
         definition["actual_name"] = definition.get("alias") or name
+        definition["last_updated"] = self._collection_last_updated.get(name)
         return definition
+
+    def get_collection_freshness(self) -> dict[str, dict[str, Any]]:
+        """
+        Get freshness information for all collections.
+
+        Returns a dict keyed by collection name with last_updated timestamp
+        and age_seconds (time since last ingest).
+
+        Returns:
+            Dict mapping collection names to freshness info
+        """
+        now = time.time()
+        result: dict[str, dict[str, Any]] = {}
+        for name in self.collection_definitions:
+            last_updated = self._collection_last_updated.get(name)
+            result[name] = {
+                "last_updated": last_updated,
+                "age_seconds": round(now - last_updated, 1) if last_updated else None,
+                "priority": self.collection_definitions[name].get("priority", "unknown"),
+            }
+        return result
 
     async def search_with_lock(
         self,
@@ -289,12 +315,21 @@ class CollectionManager:
             await asyncio.wait_for(lock.acquire(), timeout=self._lock_timeout)
             try:
                 # Exclusive write access
-                return await collection.upsert_documents(
+                result = await collection.upsert_documents(
                     chunks=documents,
                     embeddings=embeddings,
                     metadatas=metadatas or [],
                     ids=ids or [],
                 )
+                # Record freshness timestamp on successful ingest
+                now = time.time()
+                self._collection_last_updated[collection_name] = now
+                try:
+                    from backend.app.metrics import metrics_collector
+                    metrics_collector.set_collection_last_updated(collection_name, now)
+                except Exception:
+                    pass
+                return result
             finally:
                 lock.release()
         except asyncio.TimeoutError:

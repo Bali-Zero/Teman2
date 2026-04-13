@@ -22,7 +22,7 @@ scrape_configs:
     metrics_path: /probe
     params:
       module: [http_2xx]
-      target: ['https://nuzantara-rag.fly.dev/health']
+      target: ['https://nuzantara-rag.fly.dev/health/ready']
     scrape_interval: 30s
     scrape_timeout: 15s
     static_configs:
