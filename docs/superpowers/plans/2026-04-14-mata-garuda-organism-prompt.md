@@ -177,7 +177,13 @@ Sono 8 stream nuovi. L'approccio è: **definisci lo schema di tutti adesso (zero
 **Domande che il brainstorm deve rispondere:**
 
 1. **Stream design**: validare/semplificare la mappa sopra. Definire il formato payload standard (JSON, campi obbligatori: `event_type`, `timestamp`, `source_organ`, `payload`). Quali stream mergiare? Quali consumer sono il minimo vitale per Phase 1?
-2. **Bridge design**: quali eventi CRM meritano di attraversare la frontiera? Frequenza polling? Webhook vs polling? Formato? Fallback se Fly.io è unreachable?
+2. **Bridge design** (decisioni già prese):
+   - **Fly→Pro: polling adattivo** (NOT webhook — Legge 6 sovranità locale, Pro non espone porte)
+     - 30s durante orario lavoro (08-18 WITA), 5min di notte
+     - GET `/api/bridge/events?since=<timestamp>` — backend accumula in tabella `bridge_outbox`
+     - Se Fly unreachable → retry al prossimo ciclo, log, nessun crash
+   - **Pro→Fly: POST** su endpoint backend API (pattern già usato da intel scraper)
+   - Il brainstorm deve definire: quali eventi CRM specifici entrano in `bridge_outbox`? Quale formato payload? Quale retention nella outbox? Serve un cursor o basta timestamp?
 3. **Curiosità**: come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"?
 4. **Confronto**: come implementare il Consiglio (Pilastro 4 SYMBIOSIS) — moderatore + 3+ agenti diversi (Claude, Gemini, DeepSeek, Ollama) che dibattono?
 5. **Sogno**: come il consolidamento notturno comprime esperienze in skill e pota il rumore?
