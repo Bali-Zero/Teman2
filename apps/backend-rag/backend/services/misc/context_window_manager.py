@@ -3,7 +3,10 @@ Context Window Manager - Intelligent conversation history management
 Prevents context overflow by keeping only recent messages with automatic summarization
 """
 
+import hashlib
+import json
 import logging
+from collections import OrderedDict
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -19,6 +22,9 @@ class ContextWindowManager:
     - Total context stays within safe limits
     """
 
+    # Maximum cached summaries (LRU eviction when exceeded)
+    _SUMMARY_CACHE_MAX = 100
+
     def __init__(self, max_messages: int = 10, summary_threshold: int = 15) -> None:
         """
         Initialize context window manager
@@ -29,6 +35,8 @@ class ContextWindowManager:
         """
         self.max_messages = max_messages
         self.summary_threshold = summary_threshold
+        # LRU cache: hash(conversation) → summary string
+        self._summary_cache: OrderedDict[str, str] = OrderedDict()
         # Use ZANTARA AI for summarization (via ZantaraAIClient)
         try:
             from backend.llm.zantara_ai_client import ZantaraAIClient
@@ -203,11 +211,20 @@ Summary:"""
         # Inject at beginning
         return [summary_message] + recent_messages
 
+    @staticmethod
+    def _cache_key(messages: list[dict], existing_summary: str | None) -> str:
+        """Compute a stable hash key for a set of messages + existing summary."""
+        raw = json.dumps(messages, sort_keys=True, default=str) + (existing_summary or "")
+        return hashlib.sha256(raw.encode()).hexdigest()
+
     async def generate_summary(
         self, messages: list[dict], existing_summary: str | None = None,
     ) -> str:
         """
-        Generate conversation summary using ZANTARA AI (fast & cheap)
+        Generate conversation summary using ZANTARA AI (fast & cheap).
+
+        Results are memoized: identical conversation history returns cached summary
+        without calling the LLM.
 
         Args:
             messages: Messages to summarize
@@ -216,6 +233,14 @@ Summary:"""
         Returns:
             Summary text (2-3 sentences)
         """
+        # Check cache first
+        cache_key = self._cache_key(messages, existing_summary)
+        if cache_key in self._summary_cache:
+            # Move to end (most recently used)
+            self._summary_cache.move_to_end(cache_key)
+            logger.debug(f"📊 [Summary] Cache HIT ({len(messages)} msgs)")
+            return self._summary_cache[cache_key]
+
         if not self.zantara_client:
             logger.warning("⚠️ [Summary] ZANTARA AI client not available, cannot generate summary")
             return existing_summary or "Earlier conversation covered various topics."
@@ -239,8 +264,15 @@ Update the summary to include both the previous context and new messages."""
                 prompt=prompt, max_tokens=8192, temperature=0.3,
             )
 
-            logger.info(f"✅ [Summary] Generated ({len(summary)} chars)")
-            return summary.strip()
+            result = summary.strip()
+            logger.info(f"✅ [Summary] Generated ({len(result)} chars)")
+
+            # Store in cache with LRU eviction
+            self._summary_cache[cache_key] = result
+            if len(self._summary_cache) > self._SUMMARY_CACHE_MAX:
+                self._summary_cache.popitem(last=False)  # Evict oldest
+
+            return result
 
         except Exception as e:
             logger.error(f"❌ [Summary] Generation failed: {e}")
