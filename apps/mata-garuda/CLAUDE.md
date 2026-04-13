@@ -1,6 +1,7 @@
 # CLAUDE.md — Mata Garuda Project
 
 > **Read `SYMBIOSIS.md` (monorepo root) first.** Mata Garuda e' un organo dell'organismo Nuzantara. I principi SYMBIOSIS governano tutto.
+> **Before building anything new, read `VADEMECUM.md` (monorepo root).** Checklist operativa per ogni elemento: agenti, automazioni, script, deploy.
 > Questo file OVERRIDE il CLAUDE.md root per tutto ciò che riguarda Mata Garuda.
 
 ## 0. Identità del progetto
@@ -13,6 +14,7 @@
 Mata Garuda vive nel monorepo Nuzantara come app. Il **codice** è condiviso. I **dati OSINT** restano blindati (gitignored). I dati di Mata Garuda alimentano tutte le cellule di Nuzantara.
 
 **Flow dati:**
+
 ```
 Mondo esterno → Mata Garuda (raccoglie) → garuda:raw (Redis)
                                               ↓
@@ -155,15 +157,15 @@ python -m mata_garuda.cli run dummy_agent "hello"
 
 ## 5. Differenze critiche vs Nuzantara root CLAUDE.md
 
-| Aspetto | Nuzantara (root) | Mata Garuda (questa app) |
-|---|---|---|
-| Venv name | `.venv` (Pro) / `venv` (Air) | `.venv` sempre |
-| Deploy | Fly.io + Vercel | **MAI** — solo locale Pro |
-| API HTTP | Anthropic, Google, OpenAI OK | **MAI** — solo CLI subprocess |
-| Team access | Admin (zero@, antonellosiano@, asya@) | **Solo Zero** |
-| Dependencies | Pesanti OK (FastAPI, Qdrant, etc) | **Minimali** — solo pydantic |
-| Golden rules | 12 rules Nuzantara | Lamarckian + OSINT blindato |
-| Output dati | Cloud, frontend, API | Redis garuda:raw → Nuzantara consuma. Local analysis blindato. |
+| Aspetto      | Nuzantara (root)                      | Mata Garuda (questa app)                                       |
+| ------------ | ------------------------------------- | -------------------------------------------------------------- |
+| Venv name    | `.venv` (Pro) / `venv` (Air)          | `.venv` sempre                                                 |
+| Deploy       | Fly.io + Vercel                       | **MAI** — solo locale Pro                                      |
+| API HTTP     | Anthropic, Google, OpenAI OK          | **MAI** — solo CLI subprocess                                  |
+| Team access  | Admin (zero@, antonellosiano@, asya@) | **Solo Zero**                                                  |
+| Dependencies | Pesanti OK (FastAPI, Qdrant, etc)     | **Minimali** — solo pydantic                                   |
+| Golden rules | 12 rules Nuzantara                    | Lamarckian + OSINT blindato                                    |
+| Output dati  | Cloud, frontend, API                  | Redis garuda:raw → Nuzantara consuma. Local analysis blindato. |
 
 ## 6. Cron / LaunchAgent
 
@@ -180,6 +182,7 @@ python -m mata_garuda.cli run dummy_agent "hello"
 **Environment:** Plist injects `CLAUDE_CODE_OAUTH_TOKEN_{1,2,3}` for `claude --print` subprocess calls.
 
 **Manual test:**
+
 ```bash
 launchctl kickstart gui/$(id -u)/com.matagaruda.watcher.daily
 tail -f ~/logs/mata-garuda-watcher.log

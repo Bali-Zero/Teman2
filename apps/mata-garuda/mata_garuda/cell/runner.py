@@ -9,10 +9,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cell_core import CellConfig, PulseLoop, Maturation, SafetyGate
+from cell_core import CellConfig, PulseLoop, Maturation, SafetyGate, PulseResult
+from cell_core.genome import Genome
 from cell_core.homeostasis import HomeostaticController
 from cell_core.identity import SelfModelManager
 
@@ -30,12 +32,54 @@ MG_KB_PATH = str(Path(__file__).parent.parent.parent / "data" / "knowledge.db")
 MG_SELF_MODEL_PATH = str(Path(__file__).parent.parent.parent / "data" / "self_model.json")
 
 
+class MataGarudaPulseLoop(PulseLoop):
+    """PulseLoop + DNA recording for Mata Garuda.
+
+    Adds two genome hooks to the standard pulse cycle:
+    - REFLECT (step 5): records a skill when an action succeeds
+    - DREAM  (step 6): silences stale low-confidence skills
+    """
+
+    def __init__(self, *args, genome: Genome, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.genome = genome
+
+    async def single_pulse(self) -> PulseResult:
+        result = await super().single_pulse()
+
+        # 5b. REFLECT — record successful action as genome skill
+        action = result.action_taken or ""
+        if (
+            action
+            and not result.halted
+            and not result.skipped
+            and not action.startswith("[ERROR]")
+            and result.health_status != "red"
+        ):
+            skill_id = f"{action}_{int(time.time())}"
+            self.genome.record_skill(
+                cell="mata-garuda",
+                skill_id=skill_id,
+                procedure=result.action_reason or action,
+                confidence=0.6,
+                scope="Project",
+            )
+
+        # 6b. DREAM — silence skills unused for 30+ days with confidence < 0.4
+        if self.homeostasis.is_sleeping() and self.lifecycle.can_dream():
+            n = self.genome.silence_stale_skills(cell="mata-garuda", unused_days=30)
+            if n:
+                logger.info(f"[genome] silenced {n} stale skills during dream phase")
+
+        return result
+
+
 def build_pulse_loop(
     dna_path: str = MG_DNA_PATH,
     kb_path: str = MG_KB_PATH,
     self_model_path: str = MG_SELF_MODEL_PATH,
-) -> PulseLoop:
-    """Build a fully wired PulseLoop for Mata Garuda."""
+) -> MataGarudaPulseLoop:
+    """Build a fully wired MataGarudaPulseLoop with DNA recording."""
     config = CellConfig(
         name="mata-garuda",
         dna_path=dna_path,
@@ -47,12 +91,13 @@ def build_pulse_loop(
     )
 
     kb = KnowledgeBase(db_path=Path(kb_path))
+    genome = Genome(db_path=kb_path)
 
     # Identity
     identity = SelfModelManager(path=self_model_path)
     identity.load()
 
-    return PulseLoop(
+    return MataGarudaPulseLoop(
         config=config,
         sensors=[
             RegulationSensor(),
@@ -71,6 +116,7 @@ def build_pulse_loop(
         ),
         homeostasis=HomeostaticController(sleep_hours=config.sleep_hours),
         identity=identity,
+        genome=genome,
     )
 
 
