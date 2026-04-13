@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { safeHtmlChat } from "@/lib/utils/safe-html";
 
 interface ZoningInfo {
   status: string;
@@ -216,11 +217,11 @@ export function PrimeZantaraChat({
                   ? "bg-[#d4845a]/20 text-white border border-[#d4845a]/20"
                   : "bg-white/5 text-slate-200 border border-white/8"
               }`}
-              dangerouslySetInnerHTML={{
-                __html: msg.content
+              dangerouslySetInnerHTML={safeHtmlChat(
+                msg.content
                   .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
                   .replace(/\n/g, "<br/>"),
-              }}
+              )}
             />
           </div>
         ))}
