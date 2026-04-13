@@ -12,7 +12,7 @@ def register(mcp, _call, _call_safe):
         cc: Optional[str] = None,
     ) -> dict:
         """
-        Send an email from nuzantara@balizero.com via SMTP (Zoho).
+        Send an email from zantara@balizero.com via Brevo.
 
         Args:
             to: Recipient email address (e.g. "surya@balizero.com")
@@ -24,8 +24,8 @@ def register(mcp, _call, _call_safe):
             Send status: {success: bool, message: str}
 
         Note:
-            Uses /api/notifications/send-email endpoint with SMTP Zoho.
-            From address is always nuzantara@balizero.com.
+            Uses /api/notifications/send-email endpoint via Brevo API.
+            From address is always zantara@balizero.com (alias of damar@balizero.com).
         """
         payload: dict = {"to": to, "subject": subject, "body": body}
         if cc:

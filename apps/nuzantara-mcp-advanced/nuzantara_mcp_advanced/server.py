@@ -33,6 +33,21 @@ mcp = FastMCP(
     instructions="Advanced operations for Nuzantara development, deployment, and diagnostics",
 )
 
+# Persistent HTTP client for health checks (Golden Rule #10)
+_health_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_health_client() -> httpx.AsyncClient:
+    """Get or create persistent HTTP client for health checks."""
+    global _health_client
+    if _health_client is None or _health_client.is_closed:
+        _health_client = httpx.AsyncClient(
+            base_url=BACKEND_URL,
+            timeout=10,
+            limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+        )
+    return _health_client
+
 
 # ============================================================================
 # DEPLOYMENT TOOLS
@@ -61,18 +76,8 @@ async def check_fly_status() -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
-    """
-    Get recent Fly.io application logs.
-    
-    Args:
-        lines: Number of log lines to retrieve (default 50)
-        filter_str: Optional string to filter logs (e.g., "ERROR", "KG")
-    
-    Returns:
-        Recent log entries from the Fly.io application
-    """
+async def _fetch_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
+    """Internal log fetcher (callable by other functions without FunctionTool wrapping)."""
     try:
         cmd = ["fly", "logs", "--app", FLY_APP, "-n", str(lines)]
         result = subprocess.run(
@@ -88,6 +93,21 @@ async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dic
         return {"success": True, "logs": logs}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
+    """
+    Get recent Fly.io application logs.
+
+    Args:
+        lines: Number of log lines to retrieve (default 50)
+        filter_str: Optional string to filter logs (e.g., "ERROR", "KG")
+
+    Returns:
+        Recent log entries from the Fly.io application
+    """
+    return await _fetch_fly_logs(lines=lines, filter_str=filter_str)
 
 
 @mcp.tool()
@@ -235,7 +255,7 @@ async def analyze_fly_health(lines: int = 100) -> dict:
     Returns:
         Analysis report with risk score and recommendations.
     """
-    logs_resp = await get_fly_logs(lines=lines)
+    logs_resp = await _fetch_fly_logs(lines=lines)
     if not logs_resp["success"]:
         return logs_resp
 
@@ -397,28 +417,27 @@ async def check_system_health() -> dict:
     }
     
     # Check backend health
+    client = _get_health_client()
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health", timeout=10)
-            data = resp.json()
-            health["components"]["backend"] = {
-                "status": "healthy" if resp.status_code == 200 else "unhealthy",
-                "version": data.get("version", "unknown"),
-                "embedding_model": data.get("embeddings", {}).get("model", "unknown")
-            }
+        resp = await client.get("/health")
+        data = resp.json()
+        health["components"]["backend"] = {
+            "status": "healthy" if resp.status_code == 200 else "unhealthy",
+            "version": data.get("version", "unknown"),
+            "embedding_model": data.get("embeddings", {}).get("model", "unknown")
+        }
     except Exception as e:
         health["components"]["backend"] = {"status": "error", "error": str(e)}
-    
+
     # Check detailed health
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health/detailed", timeout=10)
-            data = resp.json()
-            services = data.get("services", {})
-            health["components"]["services"] = {
-                name: status.get("healthy", False)
-                for name, status in services.items()
-            }
+        resp = await client.get("/health/detailed")
+        data = resp.json()
+        services = data.get("services", {})
+        health["components"]["services"] = {
+            name: status.get("healthy", False)
+            for name, status in services.items()
+        }
     except Exception as e:
         health["components"]["services"] = {"status": "error", "error": str(e)}
     
@@ -442,9 +461,9 @@ async def get_collection_stats() -> dict:
         Vector counts, sizes, and health for all collections
     """
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"{BACKEND_URL}/health/metrics/qdrant", timeout=10)
-            return resp.json()
+        client = _get_health_client()
+        resp = await client.get("/health/metrics/qdrant")
+        return resp.json()
     except Exception as e:
         return {"error": str(e)}
 
