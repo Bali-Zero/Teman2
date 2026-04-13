@@ -13,16 +13,16 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      calendars: calendars.map((cal: any) => ({
+      calendars: calendars.map((cal: { id: string; summary: string; accessRole: string }) => ({
         id: cal.id,
         name: cal.summary,
         role: cal.accessRole,
       })),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Calendars API error:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }

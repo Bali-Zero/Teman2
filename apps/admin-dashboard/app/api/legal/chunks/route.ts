@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   try {
     // Build filter
-    const mustConditions: any[] = [];
+    const mustConditions: Record<string, unknown>[] = [];
 
     if (regulationType) {
       mustConditions.push({
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       mustConditions.length > 0 ? { must: mustConditions } : undefined;
 
     // Use scroll for pagination
-    const scrollParams: any = {
+    const scrollParams: Record<string, unknown> = {
       limit,
       with_payload: true,
       with_vector: false,
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       });
 
       const chunks = bigScroll.points.slice(skipCount).map((point) => {
-        const payload = point.payload as Record<string, any>;
+        const payload = point.payload as Record<string, unknown>;
         return {
           id: point.id,
           text: payload?.text || "",
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     const result = await client.scroll(COLLECTION, scrollParams);
 
     const chunks = result.points.map((point) => {
-      const payload = point.payload as Record<string, any>;
+      const payload = point.payload as Record<string, unknown>;
       return {
         id: point.id,
         text: payload?.text || "",
@@ -111,10 +111,13 @@ export async function GET(request: Request) {
       chunks,
       next_offset: result.next_page_offset,
     });
-  } catch (error: any) {
+  } catch (error) {
     logger.error("Legal Chunks Error:", error);
     return NextResponse.json(
-      { error: error.message, collection: COLLECTION },
+      {
+        error: error instanceof Error ? error.message : String(error),
+        collection: COLLECTION,
+      },
       { status: 500 },
     );
   }
