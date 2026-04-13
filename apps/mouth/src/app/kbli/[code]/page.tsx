@@ -25,6 +25,7 @@ import { GOLD_HERO_IMAGES } from "@/lib/kbli-hero-images";
 import Link from "next/link";
 import { MarkdownClient } from "@/components/kbli/MarkdownClient";
 import { KBLIPageTracker } from "@/components/kbli/KBLIPageTracker";
+import { KBLIConsultationCTA } from "@/components/kbli/KBLIConsultationCTA";
 
 const ZantaraChat = lazy(() =>
   import("@/components/kbli/ZantaraChat").then((mod) => ({
@@ -922,6 +923,13 @@ export default async function KBLICodePage({
             </div>
           </section>
         )}
+
+        {/* CONSULTATION CTA — pricing + WhatsApp */}
+        <KBLIConsultationCTA
+          code={kbli.code}
+          titleEn={kbli.titleEn}
+          pmaStatus={kbli.pma.status}
+        />
 
         {/* ZANTARA AI CHAT */}
         <section className="mt-12">
