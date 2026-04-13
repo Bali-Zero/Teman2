@@ -310,24 +310,28 @@
     "com.balizero.client-value-predictor": {
       "description": "Client value predictor: ML scoring of client lifetime value based on practice history and engagement.",
       "produces": "Client value scores",
-      "consumes": "CRM data"
+      "consumes": "CRM data",
+      "schedule": "09:00 WITA"
     },
     "com.balizero.intel.nightly": {
       "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only.",
       "produces": "Scraped articles → backend",
-      "consumes": "Source config, scraper scripts"
+      "consumes": "Source config, scraper scripts",
+      "schedule": "01:00 WITA (nightly)"
     },
     "com.balizero.renewal-alerts": {
       "description": "Renewal alerts: check all client visa/permit expiry dates, send alerts for upcoming expirations (30/14/7 days).",
       "produces": "Expiry alert emails/Telegram",
-      "consumes": "CRM practice data"
+      "consumes": "CRM practice data",
+      "schedule": "08:00 WITA"
     },
     "com.balizero.translate.hourly": {
       "description": "Hourly article translation: translate new MDX articles to Indonesian, Italian, Russian, French using Ollama gemma4:e4b.",
       "produces": "Translated .id.mdx, .it.mdx files",
       "consumes": "English MDX articles",
       "uses_llm": "gemma4:e4b",
-      "llm_interface": "Ollama API"
+      "llm_interface": "Ollama API",
+      "schedule": "ogni ora :30"
     },
     "com.cell.organism": {
       "description": "Cell organism: autonomous PulseLoop agent. Sense→Think→Act→Reflect→Dream→Mature. Monitors system health, sends Telegram alerts, accumulates skills.",
@@ -363,7 +367,8 @@
     "com.nuzantara.automations-reference": {
       "description": "Nightly doc generator: scans live system state (crontab, launchctl, registry, sentinel) and regenerates docs/AUTOMATIONS_REFERENCE.md.",
       "produces": "AUTOMATIONS_REFERENCE.md",
-      "consumes": "crontab, launchctl, job_registry, sentinel_status, circuit_breakers"
+      "consumes": "crontab, launchctl, job_registry, sentinel_status, circuit_breakers",
+      "schedule": "23:15 WITA"
     },
     "com.nuzantara.disk-monitor": {
       "description": "Disk usage monitor: check root disk >85%, log dir >500MB, single log >50MB. Alerts via Telegram with 6h cooldown.",
@@ -404,7 +409,8 @@
       "consumes": "Git diff, Ollama API",
       "uses_llm": "qwen3:8b",
       "llm_interface": "Ollama API",
-      "notes": "NOT LOADED — enable with launchctl load"
+      "notes": "NOT LOADED — enable with launchctl load",
+      "schedule": "10:00 WITA"
     },
     "com.nuzantara.sentinel": {
       "description": "Nuzantara Sentinel: 4-tier self-healing automation monitor. Classifies failures (regex + Claude CLI), retries, dispatches Aider/Codex fixes, escalates.",
@@ -416,7 +422,8 @@
     "com.nuzantara.vector-reindex-check": {
       "description": "Vector reindex checker: detects if Qdrant collections have drifted from source data, flags for re-indexing.",
       "produces": "Reindex alerts",
-      "consumes": "Qdrant collection stats, PG row counts"
+      "consumes": "Qdrant collection stats, PG row counts",
+      "schedule": "Lun 09:00 WITA"
     },
     "com.nuzantara.zombie-hunter": {
       "description": "Zombie process hunter: kills orphaned Python/Node processes that consume resources. Runs every minute.",
@@ -431,22 +438,26 @@
     "com.garuda.consumer.daily": {
       "description": "Mata Garuda KG consumer: reads garuda:raw Redis stream, processes intelligence into Knowledge Graph entities.",
       "produces": "KG entities (Neo4j)",
-      "consumes": "garuda:raw Redis stream"
+      "consumes": "garuda:raw Redis stream",
+      "schedule": "06:15 WITA"
     },
     "com.garuda.gap-detector.twice-daily": {
       "description": "Mata Garuda gap detector: runs 8 Cypher queries against Neo4j to find holes in the Knowledge Graph. Publishes nexus:gaps.",
       "produces": "Gap reports → nexus:gaps Redis stream",
-      "consumes": "Neo4j Knowledge Graph"
+      "consumes": "Neo4j Knowledge Graph",
+      "schedule": "07:00 + 18:00 WITA"
     },
     "com.matagaruda.sentinel.daily": {
       "description": "Mata Garuda sentinel: daily health check of the graph intelligence pipeline (scraper, consumer, Neo4j, gap detector).",
       "produces": "Pipeline health report",
-      "consumes": "Garuda pipeline state"
+      "consumes": "Garuda pipeline state",
+      "schedule": "02:00 WITA"
     },
     "com.matagaruda.watcher.daily": {
       "description": "Mata Garuda watcher: monitors KG data freshness and alerts if entities become stale.",
       "produces": "Staleness alerts",
-      "consumes": "Neo4j timestamps"
+      "consumes": "Neo4j timestamps",
+      "schedule": "06:00 WITA"
     },
     "com.nuzantara.fly-pg-tunnel": {
       "description": "Fly.io PG tunnel: persistent fly proxy for Air to access production PostgreSQL on Fly.io.",
@@ -913,7 +924,8 @@
       "schedule": "ogni 24h (86400s)",
       "produces": "Compliance alerts (WhatsApp/Telegram)",
       "consumes": "CRM practices, client documents",
-      "monitored_by": "Health Monitor"
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — _init_background_services() commented out. Re-enable when omnichannel stabilization complete."
     },
     "practice_status_listener": {
       "description": "Practice status listener: listens for CRM practice state changes via Redis pub/sub, triggers follow-up actions (reminders, escalations).",
@@ -934,7 +946,7 @@
       "produces": "Twitter match entries",
       "consumes": "Twitter API v2 search/recent",
       "monitored_by": "Health Monitor",
-      "notes": "CRC broken — X API access issues"
+      "notes": "DISABLED — loops exist in code but no startup wiring in service_initializer.py. X/Twitter CRC also broken."
     },
     "x_monitor_digest_loop": {
       "description": "X/Twitter digest: periodic summary of matched tweets, sends digest report.",
@@ -944,7 +956,8 @@
       "schedule": "ogni N ore (configurable)",
       "produces": "Twitter digest report",
       "consumes": "Stored Twitter matches",
-      "monitored_by": "Health Monitor"
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — same as x_monitor_run_loop."
     },
     "health_monitor": {
       "description": "Backend health monitor: checks all internal services (DB, Redis, Qdrant, Ollama tunnel, EventBus) every 60s. Core observability.",
@@ -964,7 +977,8 @@
       "schedule": "ogni ora (next hour boundary)",
       "produces": "Aggregated alert digest",
       "consumes": "Individual alert events",
-      "monitored_by": "Health Monitor"
+      "monitored_by": "Health Monitor",
+      "notes": "Runs via legacy startup.py:43, not service_initializer.py. Verify if startup.py is still in the boot path."
     },
     "event_bus_listen": {
       "description": "EventBus listener: Redis Streams consumer for inter-service communication. Routes events between services. Core nervous system.",
@@ -995,7 +1009,7 @@
       "produces": "Self-healing actions",
       "consumes": "Service health status",
       "monitored_by": "Health Monitor",
-      "notes": "Most tasks migrated to OpenClaw cron. Only short-interval tasks remain."
+      "notes": "DISABLED — _init_background_services() commented out in service_initializer.py:1169. Only HealthMonitor runs."
     },
     "workflow_queue": {
       "description": "Workflow job queue: PG SKIP LOCKED + LangGraph checkpointer. Processes async workflows (document generation, complex multi-step operations).",
@@ -1066,6 +1080,68 @@
       "produces": "Retried channel messages",
       "consumes": "channel_dlq table",
       "monitored_by": "Health Monitor"
+    },
+    "database_health_check_loop": {
+      "description": "Database health check: verifies asyncpg pool is healthy every 15s. Detects stale connections, pool exhaustion, InterfaceError recovery.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 15s",
+      "produces": "DB pool health status, auto-reconnect",
+      "consumes": "asyncpg pool stats",
+      "monitored_by": "Health Monitor"
+    },
+    "confirmation_pubsub_listener": {
+      "description": "Confirmation service pub/sub listener: persistent Redis subscriber on conf:resolutions channel. Resolves async confirmation Futures when agent confirmations arrive.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (Redis pub/sub)",
+      "produces": "Resolved confirmation Futures",
+      "consumes": "Redis channel conf:resolutions",
+      "monitored_by": "Health Monitor"
+    },
+    "websocket_redis_listener": {
+      "description": "WebSocket Redis bridge: persistent background task that relays Redis pub/sub messages to connected WebSocket clients for real-time UI updates.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (Redis→WebSocket bridge)",
+      "produces": "Real-time WebSocket messages to frontend",
+      "consumes": "Redis pub/sub channels",
+      "monitored_by": "Health Monitor"
+    }
+  },
+  "zombies": {
+    "ai.openclaw.monitor-air.DISABLED": {
+      "description": "DISABLED — Legacy LaunchAgent for monitoring Air node. Replaced by OpenClaw monitor.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "ai.openclaw.tunnel.DISABLED": {
+      "description": "DISABLED — Legacy autossh tunnel to Air. Replaced by direct SSH.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "com.balizero.seo-guardian-observe.disabled": {
+      "description": "DISABLED — Legacy launchd SEO observer. Replaced by OpenClaw seo-guardian-observe.",
+      "system": "SEO",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "com.balizero.seo-guardian-measure.disabled": {
+      "description": "DISABLED — Legacy launchd SEO measure. Replaced by OpenClaw seo-guardian-weekly.",
+      "system": "SEO",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "auto_kg_quality.sh": {
+      "description": "ZOMBIE — Script exists but removed from crontab. Was weekly KG quality check.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "zombie-cron"
     }
   }
 }
