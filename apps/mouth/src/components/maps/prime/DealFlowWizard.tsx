@@ -68,7 +68,7 @@ export function DealFlowWizard({ onClose }: { onClose: () => void }) {
             {step === 'investor' && 'Investor Details'}
             {step === 'confirm' && 'Proposal Ready'}
           </h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white text-lg">
+          <button onClick={onClose} className="text-slate-500 hover:text-white text-lg" aria-label="Close wizard">
             &times;
           </button>
         </div>

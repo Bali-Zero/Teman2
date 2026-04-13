@@ -746,9 +746,11 @@ const CommandPalette = ({ open, onClose }: { open: boolean; onClose: () => void 
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]"
+      role="dialog"
+      aria-label="Quick search"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" role="presentation" />
       <div className="relative w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
         <GlassCard className="overflow-hidden" glow>
           <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
@@ -841,7 +843,7 @@ const InspirationCorner = () => {
                   </p>
                 </div>
               ))}
-            <button className="aspect-square rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center hover:border-white/20 hover:bg-white/5 transition-all">
+            <button className="aspect-square rounded-xl border-2 border-dashed border-white/10 flex items-center justify-center hover:border-white/20 hover:bg-white/5 transition-all" aria-label="Add color">
               <Plus size={24} className="text-zinc-500" />
             </button>
           </div>
@@ -990,24 +992,25 @@ const ArticleComposer = () => {
         {/* Toolbar */}
         <div className="flex items-center gap-1 mb-4 p-2 rounded-xl bg-white/5 w-fit border border-white/10 sticky top-0 z-20 backdrop-blur-md">
           {[
-            Bold,
-            Italic,
-            Underline,
+            { Icon: Bold, label: 'Bold' },
+            { Icon: Italic, label: 'Italic' },
+            { Icon: Underline, label: 'Underline' },
             null,
-            AlignLeft,
-            List,
-            ListOrdered,
+            { Icon: AlignLeft, label: 'Align left' },
+            { Icon: List, label: 'Bulleted list' },
+            { Icon: ListOrdered, label: 'Numbered list' },
             null,
-            LinkIcon,
-            ImageIcon,
-            Code,
-          ].map((Icon, i) =>
-            Icon ? (
+            { Icon: LinkIcon, label: 'Insert link' },
+            { Icon: ImageIcon, label: 'Insert image' },
+            { Icon: Code, label: 'Code block' },
+          ].map((item, i) =>
+            item ? (
               <button
                 key={i}
                 className="p-2 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                aria-label={item.label}
               >
-                <Icon size={18} />
+                <item.Icon size={18} />
               </button>
             ) : (
               <div key={i} className="w-px h-6 bg-white/10 mx-1" />
@@ -1075,6 +1078,7 @@ const ArticleComposer = () => {
             <button
               onClick={() => setOutline([...outline, 'Nuova sezione'])}
               className="p-1 rounded hover:bg-white/10"
+              aria-label="Add section"
             >
               <Plus size={14} className="text-zinc-400" />
             </button>
@@ -1091,6 +1095,7 @@ const ArticleComposer = () => {
                 <button
                   onClick={() => setOutline(outline.filter((_, j) => j !== i))}
                   className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-white/10"
+                  aria-label="Remove section"
                 >
                   <X size={12} className="text-zinc-500" />
                 </button>
@@ -1268,7 +1273,7 @@ const ResearchScraper = () => {
               <Eye size={20} className="text-pink-400" />
               Competitor Watch
             </h3>
-            <button className="p-2 rounded-lg hover:bg-white/10">
+            <button className="p-2 rounded-lg hover:bg-white/10" aria-label="Add competitor">
               <Plus size={16} className="text-zinc-400" />
             </button>
           </div>
@@ -1278,12 +1283,14 @@ const ResearchScraper = () => {
               <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
                 <div
                   className={`w-2 h-2 rounded-full ${comp.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-600'}`}
+                  role="status"
+                  aria-label={`${comp.name}: ${comp.status}`}
                 />
                 <div className="flex-1">
                   <p className="text-sm text-white">{comp.name}</p>
                   <p className="text-xs text-zinc-500">{comp.url}</p>
                 </div>
-                <button className="p-2 rounded-lg hover:bg-white/10">
+                <button className="p-2 rounded-lg hover:bg-white/10" aria-label={`Visit ${comp.name}`}>
                   <ExternalLink size={14} className="text-zinc-400" />
                 </button>
               </div>
@@ -1350,10 +1357,10 @@ const ResearchScraper = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-zinc-500">— Andrew Davis</span>
                 <div className="flex gap-1">
-                  <button className="p-1 rounded hover:bg-white/10">
+                  <button className="p-1 rounded hover:bg-white/10" aria-label="Copy quote">
                     <Copy size={14} className="text-zinc-500" />
                   </button>
-                  <button className="p-1 rounded hover:bg-white/10">
+                  <button className="p-1 rounded hover:bg-white/10" aria-label="Delete quote">
                     <Trash2 size={14} className="text-zinc-500" />
                   </button>
                 </div>
@@ -1704,10 +1711,10 @@ const PublishHub = () => {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-semibold text-white">{currentMonth}</h3>
           <div className="flex gap-2">
-            <button className="p-2 rounded-lg hover:bg-white/10">
+            <button className="p-2 rounded-lg hover:bg-white/10" aria-label="Previous month">
               <ChevronDown size={16} className="text-zinc-400 rotate-90" />
             </button>
-            <button className="p-2 rounded-lg hover:bg-white/10">
+            <button className="p-2 rounded-lg hover:bg-white/10" aria-label="Next month">
               <ChevronDown size={16} className="text-zinc-400 -rotate-90" />
             </button>
           </div>
@@ -1790,6 +1797,7 @@ const PublishHub = () => {
                   <button
                     onClick={handlePublish}
                     className="p-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 transition-colors"
+                    aria-label="Publish"
                   >
                     <Send size={14} className="text-violet-400" />
                   </button>
