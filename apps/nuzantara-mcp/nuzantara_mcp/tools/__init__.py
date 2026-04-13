@@ -1,1 +1,1 @@
-"""Nuzantara MCP Tools - 72 tools across 11 domains."""
+"""Nuzantara MCP Tools - 115 tools across 24 domains."""

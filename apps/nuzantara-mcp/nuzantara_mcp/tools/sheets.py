@@ -12,6 +12,10 @@ def register(mcp, _call, _call_safe):
         """
         Read data from a Google Spreadsheet range.
 
+        Uses POST to avoid URL-encoding issues with A1 notation
+        (exclamation marks in ranges like 'Company!A1:Z100' cause
+        double-escaping problems with GET query parameters).
+
         Args:
             spreadsheet_id: The spreadsheet ID (from the URL)
             range: A1 notation range, e.g. 'Sheet1!A1:Z100'
@@ -21,7 +25,8 @@ def register(mcp, _call, _call_safe):
         """
         return await _call(
             "/api/sheets/read",
-            params={"spreadsheet_id": spreadsheet_id, "range": range},
+            method="POST",
+            json={"spreadsheet_id": spreadsheet_id, "range": range},
         )
 
     @mcp.tool()

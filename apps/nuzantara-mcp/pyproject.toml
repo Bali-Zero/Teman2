@@ -1,7 +1,7 @@
 [project]
 name = "nuzantara-mcp"
 version = "2.1.0"
-description = "Full-spectrum MCP server: 96 tools, 10 prompts, 5 resources, 8 deterministic workflow chains"
+description = "Full-spectrum MCP server: 115 tools, 10 prompts, 5 resources, 8 deterministic workflow chains"
 requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.0.0",
