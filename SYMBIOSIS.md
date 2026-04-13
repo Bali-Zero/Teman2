@@ -37,6 +37,7 @@ Dopo ogni run, l'agente produce una riflessione: cosa ha funzionato e perche', c
 Non e' un log. E' memoria episodica verbale che modifica il comportamento futuro.
 
 **In pratica:**
+
 - Ogni agente con Lamarckian loop riflette post-run via `claude --print` con output JSON
 - Le riflessioni vivono in SQLite KB (`type='reflection'`), non in file sparsi
 - Le ultime riflessioni rilevanti vengono iniettate nel prompt (budget: 2000 char)
@@ -47,6 +48,7 @@ Non e' un log. E' memoria episodica verbale che modifica il comportamento futuro
 I fallimenti producono cicatrici (gia' lo facciamo). I successi devono produrre skill — procedure riusabili con precondizioni e criteri di successo. Un organismo che impara solo dagli errori accumula paura. Uno che impara anche dai successi accumula competenza.
 
 **In pratica:**
+
 - Le skill sono entries `type='skill'` nella stessa SQLite KB (non file separati)
 - Ogni skill ha: nome, procedura, precondizione, criterio di successo, confidence
 - Un agente cerca nella skill library prima di ragionare da zero
@@ -58,6 +60,7 @@ I fallimenti producono cicatrici (gia' lo facciamo). I successi devono produrre 
 ### L0 Cellular — cell-core
 
 Every organ is a differentiated cell. `packages/cell-core/` provides:
+
 - **PulseLoop** — concrete lifecycle runner (sense→think→act→reflect→dream→mature)
 - **Memory stack** — STM/LTM/Episodic protocols with SQLite default + PostgreSQL optional
 - **Lifecycle** — Maturation phases (embrione→neonato→giovane→adulto→anziano)
@@ -67,6 +70,19 @@ Every organ is a differentiated cell. `packages/cell-core/` provides:
 
 Organs implement: `Sensor`, `Thinker`, `Actor` protocols.
 Communication between organs: L1 (Redis Streams) unchanged.
+
+**Genome — DNA Recording** (`cell_core.genome.Genome`):
+
+- Ogni cellula accumula skill/pattern/scar/insight in una tabella `genome` SQLite (stessa KB)
+- `record_skill()` nel passo REFLECT del PulseLoop — solo se action_taken e health != red
+- `silence_stale_skills()` nel passo DREAM — epigenetic silencing (valid_to), mai cancellazione
+- `inherit_genome(parent_cell, min_confidence=0.7)` al momento del fork — trascrizione selettiva
+  - scope='Project' = germline (trasferibile alle figlie)
+  - scope='Personal' = somatico (solo locale, es. scars)
+  - confidence decay ×0.9 nella cellula figlia
+- `search(query)` FTS5 — cercare nel genoma PRIMA di ragionare da zero
+- Horizontal Gene Transfer futuro: Redis Stream `cell:skills` tra cellule sorelle
+- Design spec completo: `docs/superpowers/specs/2026-04-12-dna-recording-design.md`
 
 ---
 
@@ -85,6 +101,7 @@ La conoscenza raggiunge chi ne ha bisogno attraverso tre livelli:
 **Livello 3 — Sintetico (Meta-cognizione).** Un LLM rilegge tutto e produce sintesi cross-sistema. Qui emergono le correlazioni profonde.
 
 **In pratica:**
+
 - Gli stream esistenti (`garuda:raw`, `nexus:gaps`) sono i primi canali. Altri nasceranno (`olympus:insights`, `canary:alerts`)
 - La condivisione ha un filtro di rilevanza — non broadcast. Ogni agente dichiara i propri interessi
 - Le skill e gli insight condivisi contengono conoscenza operativa, mai dati OSINT
@@ -96,6 +113,7 @@ La condivisione e' one-to-many. Il confronto e' many-to-many. L'intelligenza non
 Il Consiglio e' una sessione periodica dove un LLM moderatore ha accesso a tutti i report e puo' fare le domande che ogni agente farebbe agli altri.
 
 **In pratica:**
+
 - Il confronto richiede diversita' strutturale: agenti che girano su modelli diversi (Claude, Gemini, Llama, DeepSeek), non roleplay sullo stesso modello
 - Un devil's advocate LLM e' meno efficace di un autentico dissenziente. La diversita' deve essere architettonica
 - Le decisioni del Consiglio diventano: nuove regole, cross-tasks via Redis, insight condivisi, escalation a Zero solo se serve decisione umana
@@ -112,6 +130,7 @@ Questi pilastri sono design hypothesis. Non sono implementati. Sono la direzione
 Un organismo che non dorme non consolida. Durante le ore di idle, il sistema comprime le esperienze episodiche in regole astratte e distrugge il rumore. Imparare significa anche dimenticare.
 
 **Design hypothesis (da verificare con metriche before/after):**
+
 - Cron notturno o settimanale: legge N esperienze recenti, le comprime in skill/regole via LLM
 - Dopo la compressione, i log episodici originali vengono potati
 - Sleep-time compute (Letta 2025) mostra +13-18% accuracy e 5x compute reduction
@@ -122,6 +141,7 @@ Un organismo che non dorme non consolida. Durante le ore di idle, il sistema com
 Un organismo che fa solo cio' che gli si dice non esplora mai. La curiosita' e' il motore dell'evoluzione non diretta.
 
 **Design hypothesis (implementabile CLI-only):**
+
 - Mantieni un archivio testuale di task completati e falliti
 - Passa l'archivio a un LLM con direttiva "proponi il prossimo task interessantemente nuovo alla frontiera delle capacita'"
 - L'LLM propone, l'agente esegue, l'archivio cresce (pattern Voyager/OMNI-EPIC, confermato senza training)
@@ -133,6 +153,7 @@ Un organismo che fa solo cio' che gli si dice non esplora mai. La curiosita' e' 
 Senza metriche, "cresce" e' un'opinione. L'organismo deve sapere se e' piu' intelligente della settimana scorsa.
 
 **Metriche metaboliche (da implementare):**
+
 - **Time-to-Resolution:** quanti cicli per risolvere un problema noto rispetto a un mese fa. Se le skill funzionano, lo sforzo cala
 - **Densita' ontologica:** rapporto archi/nodi nel grafo. Un grafo stupido accumula fatti isolati. Uno intelligente capisce relazioni
 - **Indice di autonomia:** percentuale di azioni endogene (gap detector, curiosita') vs esogene (prompt umano). Piu' e' alto, piu' l'organismo e' vivo
@@ -166,16 +187,23 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
 ## DOVE SIAMO
 
-| Pilastro | Stato | Prossimo passo |
-|----------|-------|----------------|
-| Riflessione | Sprint 5 pianificato | `runtime/reflection.py` + JSON output |
-| Accumulazione | Sprint 5 pianificato | `runtime/knowledge.py` SQLite KB unificata |
-| Condivisione | `garuda:raw` e `nexus:gaps` operativi | Olimpo streams + routing semantico |
-| Confronto | Non implementato | Consiglio v1 dopo che 3+ agenti condividono |
-| Sogno | Design hypothesis | Prototipo dopo Sprint 5, con metriche before/after |
-| Curiosita' | Gap detector v1 operativo (69 gap, 8 query) | Archivio + prompt per curiosita' autonoma |
-| Misura | Non implementato | Definire le 4 metriche metaboliche |
-| Simbiosi | Fase 1 (micromanagement) | Evolve naturalmente con i pilastri precedenti |
+| Pilastro      | Stato                                       | Prossimo passo                                     |
+| ------------- | ------------------------------------------- | -------------------------------------------------- |
+| Riflessione   | Sprint 5 pianificato                        | `runtime/reflection.py` + JSON output              |
+| Accumulazione | Sprint 5 pianificato                        | `runtime/knowledge.py` SQLite KB unificata         |
+| Condivisione  | `garuda:raw` e `nexus:gaps` operativi       | Olimpo streams + routing semantico                 |
+| Confronto     | Non implementato                            | Consiglio v1 dopo che 3+ agenti condividono        |
+| Sogno         | Design hypothesis                           | Prototipo dopo Sprint 5, con metriche before/after |
+| Curiosita'    | Gap detector v1 operativo (69 gap, 8 query) | Archivio + prompt per curiosita' autonoma          |
+| Misura        | Non implementato                            | Definire le 4 metriche metaboliche                 |
+| Simbiosi      | Fase 1 (micromanagement)                    | Evolve naturalmente con i pilastri precedenti      |
+
+---
+
+## VADEMECUM
+
+Per il _come_ pratico: leggi `VADEMECUM.md` (monorepo root).
+Contiene checklist operative per ogni tipo di elemento: automazioni, agenti, router, migrazioni, deploy, sessioni Claude Code.
 
 ---
 

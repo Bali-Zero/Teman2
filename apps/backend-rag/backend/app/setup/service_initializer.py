@@ -1198,7 +1198,13 @@ async def initialize_services(app: FastAPI) -> None:
         logger.error(f"❌ Failed to initialize Health Monitor: {e}")
 
     # 10c. Olympus DB Guardian
-    if db_pool:
+    # Background workers kill switch (2026-04-12 incident): skip Olympus when
+    # DISABLE_BACKGROUND_WORKERS=1 — Olympus heartbeat/pulse loops corrupt the
+    # asyncpg pool on transient PG errors, causing ConnectionDoesNotExistError storms.
+    if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
+        logger.warning("⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Olympus (full init)")
+        app.state.olympus = None
+    elif db_pool:
         try:
             from backend.services.olympus.guardian import OlympusGuardian
 
@@ -1364,34 +1370,48 @@ async def initialize_services_light(app: FastAPI) -> None:
         logger.warning(f"⚠️ Redis cache failed (non-critical): {e}")
         app.state.cache = None
 
-    # 3. Timesheet service (requires DB pool, used by team_activity router)
-    try:
-        from backend.services.analytics.attendance_monitor import AttendanceMonitor
-        from backend.services.analytics.team_timesheet_service import init_timesheet_service
-        attendance_monitor = AttendanceMonitor(db_pool)
-        await attendance_monitor.start_schedulers()
-        app.state.attendance_monitor = attendance_monitor
-        ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
-        app.state.ts_service = ts_service
-        await ts_service.start_auto_logout_monitor()
-        logger.info("✅ Timesheet service initialized (light)")
-    except Exception as e:
-        logger.warning(f"⚠️ Timesheet service failed (non-critical): {e}")
+    # Background workers kill switch — set DISABLE_BACKGROUND_WORKERS=1 to skip
+    # all non-critical async workers that hold DB connections (incident mitigation).
+    # Introduced 2026-04-12 during the disk-full + cascading pool-corruption incident
+    # where Olympus Guardian's heartbeat/pulse loops poisoned the asyncpg pool by
+    # retrying failed queries without pool recreation, causing ConnectionDoesNotExistError
+    # storms that blocked login. Keep this flag in place as a safety switch.
+    if os.getenv("DISABLE_BACKGROUND_WORKERS") == "1":
+        logger.warning(
+            "⚠️ DISABLE_BACKGROUND_WORKERS=1 — skipping Timesheet + Olympus + other async workers",
+        )
         app.state.ts_service = None
         app.state.attendance_monitor = None
-
-    # 4. Olympus DB Guardian (non-critical, uses only db_pool)
-    try:
-        from backend.services.olympus.guardian import OlympusGuardian
-
-        olympus = OlympusGuardian(db_pool=db_pool, alert_service=None)
-        await olympus.initialize()
-        await olympus.start()
-        app.state.olympus = olympus
-        logger.info("✅ Olympus DB Guardian initialized (light)")
-    except Exception as e:
-        logger.warning(f"⚠️ Olympus Guardian failed (non-critical): {e}")
         app.state.olympus = None
+    else:
+        # 3. Timesheet service (requires DB pool, used by team_activity router)
+        try:
+            from backend.services.analytics.attendance_monitor import AttendanceMonitor
+            from backend.services.analytics.team_timesheet_service import init_timesheet_service
+            attendance_monitor = AttendanceMonitor(db_pool)
+            await attendance_monitor.start_schedulers()
+            app.state.attendance_monitor = attendance_monitor
+            ts_service = init_timesheet_service(db_pool, attendance_monitor=attendance_monitor)
+            app.state.ts_service = ts_service
+            await ts_service.start_auto_logout_monitor()
+            logger.info("✅ Timesheet service initialized (light)")
+        except Exception as e:
+            logger.warning(f"⚠️ Timesheet service failed (non-critical): {e}")
+            app.state.ts_service = None
+            app.state.attendance_monitor = None
+
+        # 4. Olympus DB Guardian (non-critical, uses only db_pool)
+        try:
+            from backend.services.olympus.guardian import OlympusGuardian
+
+            olympus = OlympusGuardian(db_pool=db_pool, alert_service=None)
+            await olympus.initialize()
+            await olympus.start()
+            app.state.olympus = olympus
+            logger.info("✅ Olympus DB Guardian initialized (light)")
+        except Exception as e:
+            logger.warning(f"⚠️ Olympus Guardian failed (non-critical): {e}")
+            app.state.olympus = None
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)
     app.state.search_service = None

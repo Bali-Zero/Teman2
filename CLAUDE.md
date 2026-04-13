@@ -1,11 +1,12 @@
 # CLAUDE.md - Nuzantara Project Context for Claude Code
 
 > **Read `SYMBIOSIS.md` first.** It defines the principles that govern this entire ecosystem. If what you're about to do contradicts a principle there, stop.
+> **Before building anything new, read `VADEMECUM.md`.** It has the operative checklist for every element type: automations, agents, routers, migrations, deploys. No exceptions.
 
 ## 0. Machine Identification (IMPORTANT)
 
-| Machine | User             | Hostname      | Role                       |
-| ------- | ---------------- | ------------- | -------------------------- |
+| Machine | User             | Hostname      | Role                            |
+| ------- | ---------------- | ------------- | ------------------------------- |
 | **Pro** | `nuzantara`      | `Nuzantara`   | Server H24 + Dev (48GB, M4 Pro) |
 | **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)           |
 

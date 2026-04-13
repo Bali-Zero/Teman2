@@ -1,40 +1,42 @@
 {
-  "seoTitle": "Indonesia Emergency Guide 2026: Safety for Foreigners",
-  "seoDescription": "Stay safe in Indonesia. Our 2026 guide covers earthquakes, volcanoes, and emergencies for expats and tourists. Get essential safety tips now.",
+  "seoTitle": "Visa Atlet Asing IBL 2026: Imigrasi Permudah Proses KITAS",
+  "seoDescription": "Ditjen Imigrasi berinovasi untuk mempermudah administrasi visa dan KITAS bagi pemain basket asing di IBL. Pelajari bagaimana aturan baru mendukung industri olahraga.",
   "keywords": [
-    "indonesia emergency",
-    "bali safety for foreigners",
-    "expat safety indonesia",
-    "natural disasters indonesia",
-    "indonesia travel advisory 2026",
-    "what to do in an earthquake bali",
-    "emergency services indonesia"
+    "visa atlet asing",
+    "kitas pemain basket",
+    "ibl indonesia",
+    "imigrasi untuk atlet",
+    "foreign athlete visa indonesia",
+    "peraturan imigrasi terbaru 2026",
+    "syarat kitas atlet"
   ],
   "aiOptimization": {
-    "answerSnippet": "In an emergency in Indonesia, foreigners must prioritize their immediate safety, then contact their embassy and follow local authority instructions. Key risks include natural disasters like earthquakes and volcanic eruptions due to the country's position on the Pacific Ring of Fire.",
-    "primaryQuestion": "What should a foreigner do during an emergency in Indonesia?",
+    "answerSnippet": "Direktorat Jenderal Imigrasi Indonesia mempermudah proses administrasi visa dan KITAS untuk pemain asing di Indonesian Basketball League (IBL). Inovasi ini mengakui kontribusi atlet asing dalam meningkatkan kualitas kompetisi, siaran, dan sponsor liga.",
+    "primaryQuestion": "Bagaimana proses visa kerja (KITAS) untuk atlet asing di Indonesia?",
     "entityMentions": [
-      {"name": "Indonesia", "type": "Place"},
-      {"name": "Bali", "type": "Place"},
-      {"name": "Pacific Ring of Fire", "type": "Place"},
-      {"name": "BNPB (Badan Nasional Penanggulangan Bencana)", "type": "GovernmentOrganization"},
-      {"name": "Basarnas (Badan Nasional Pencarian dan Pertolongan)", "type": "GovernmentOrganization"}
+      { "name": "Indonesian Basketball League (IBL)", "type": "Organization" },
+      {
+        "name": "Direktorat Jenderal Imigrasi",
+        "type": "GovernmentOrganization"
+      },
+      { "name": "KITAS", "type": "Product" },
+      { "name": "Indonesia", "type": "Place" }
     ]
   },
   "faqSchema": [
     {
-      "question": "What are the main emergency numbers in Indonesia?",
-      "answer": "The national emergency number is 112. For specific services, call 110 for police, 118 for ambulance, and 113 for the fire department. It's wise to save these and your embassy's number."
+      "question": "Apa peran pemain asing di IBL?",
+      "answer": "Pemain asing meningkatkan level kompetitif, menarik penonton, dan mendorong nilai komersial liga melalui sponsor dan hak siar."
     },
     {
-      "question": "Do I need special insurance for visiting Indonesia?",
-      "answer": "Yes, comprehensive travel and health insurance that covers natural disasters and medical evacuation is strongly recommended. Quality of medical care can vary, and private evacuation is costly."
+      "question": "Apa jenis visa yang digunakan oleh atlet asing di Indonesia?",
+      "answer": "Atlet asing profesional biasanya menggunakan Izin Tinggal Terbatas (KITAS) yang berfungsi sebagai izin kerja dan tinggal mereka selama masa kontrak."
     },
     {
-      "question": "How can I prepare for an earthquake in Bali or Indonesia?",
-      "answer": "Familiarize yourself with the 'Drop, Cover, and Hold On' technique. Identify safe spots in your accommodation, and have an emergency kit with water, a first-aid kit, a flashlight, and important documents."
+      "question": "Mengapa Imigrasi memberikan kemudahan untuk atlet asing?",
+      "answer": "Imigrasi mendukung pertumbuhan industri olahraga di Indonesia dengan menyederhanakan birokrasi, mengakui dampak positif atlet asing bagi ekonomi dan perkembangan olahraga nasional."
     }
   ],
-  "og_title": "A Foreigner's Guide to Navigating Accidents and Emergencies in Indonesia",
-  "og_description": "From seismic activity on the Pacific Ring of Fire to common travel mishaps, here’s what every foreigner needs to know about staying safe during an emergency in Indonesia and Bali."
+  "og_title": "Pemain Asing Beri Warna IBL, Ditjen Imigrasi Permudah Proses Visa dan Kitas",
+  "og_description": "Inovasi terbaru dari Ditjen Imigrasi membuka jalan bagi pemain basket asing untuk lebih mudah berkarir di Indonesian Basketball League (IBL), mendorong pertumbuhan industri olahraga."
 }
