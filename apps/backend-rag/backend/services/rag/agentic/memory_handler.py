@@ -33,6 +33,9 @@ class MemoryHandler:
     - Metrics recording for lock contention
     """
 
+    # Maximum number of per-user locks to keep (prevents unbounded memory growth)
+    _MAX_LOCKS = 10_000
+
     def __init__(self, db_pool: asyncpg.Pool | None = None, lock_timeout: float = 5.0) -> None:
         """
         Initialize the MemoryHandler.
@@ -45,6 +48,14 @@ class MemoryHandler:
         self._memory_orchestrator: MemoryOrchestrator | None = None
         self._memory_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._lock_timeout = lock_timeout
+
+    def _evict_stale_locks(self) -> None:
+        """Remove unlocked entries from _memory_locks to bound memory usage."""
+        to_remove = [uid for uid, lock in self._memory_locks.items() if not lock.locked()]
+        for uid in to_remove:
+            del self._memory_locks[uid]
+        if to_remove:
+            logger.info(f"Evicted {len(to_remove)} stale memory locks")
 
     @property
     def memory_orchestrator(self) -> "MemoryOrchestrator | None":
@@ -114,6 +125,10 @@ class MemoryHandler:
         """
         if not user_id or user_id == "anonymous":
             return
+
+        # Evict unlocked entries when dict grows too large
+        if len(self._memory_locks) > self._MAX_LOCKS:
+            self._evict_stale_locks()
 
         lock = self._memory_locks[user_id]
         lock_start_time = time.time()
