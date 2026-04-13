@@ -25,6 +25,7 @@ from backend.services.knowledge_graph.extractor import (
 )
 from backend.services.knowledge_graph.quality_filter import KGQualityFilter
 from backend.services.knowledge_graph.schema_validator import SchemaValidator
+from backend.services.rag.kg_cache import increment_kg_version
 
 logger = logging.getLogger(__name__)
 
@@ -383,6 +384,10 @@ class KGPipeline:
                     summary["invalid"],
                     summary["total"],
                 )
+
+            # Bump KG version if any nodes or edges were persisted
+            if self.stats.entities_persisted > 0 or self.stats.relations_persisted > 0:
+                increment_kg_version()
 
     async def process_batch(
         self,
