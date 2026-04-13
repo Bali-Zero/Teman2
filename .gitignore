@@ -591,3 +591,7 @@ scripts/inspect_schema.py
 apps/mouth/public/temp_*.png
 .worktrees/
 apps/backend-rag/scripts/output/
+
+# Runtime artifacts / local backups
+apps/cell/data/.ai_intel_last_harvest
+apps/mouth/public/assets/logo/_pre-fix-backup-*/
