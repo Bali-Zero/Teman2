@@ -723,6 +723,68 @@ email_active_users = safe_register_gauge(
     "Number of users with connected email accounts",
 )
 
+# Webhook Metrics (Channel Health Tracking)
+webhook_requests_total = safe_register_counter(
+    "zantara_webhook_requests_total",
+    "Total webhook requests by channel and status",
+    ["channel", "status"],  # channel: whatsapp|telegram|instagram, status: success|error
+)
+
+# Qdrant Collection Metrics (Live Document Counts)
+qdrant_collection_points_count = safe_register_gauge(
+    "qdrant_collection_points_count",
+    "Live document/point count per Qdrant collection",
+    ["collection"],
+)
+qdrant_search_latency_seconds = safe_register_histogram(
+    "qdrant_search_latency_seconds",
+    "Qdrant search latency by collection and search type",
+    ["collection", "search_type"],  # search_type: dense|sparse|hybrid
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+)
+
+# LLM Detailed Token Counter (per model/provider/type)
+llm_tokens_total = safe_register_counter(
+    "zantara_llm_tokens_total",
+    "Total LLM tokens used by model, provider, and type",
+    ["model", "provider", "type"],  # type: input|output
+)
+
+# Database Active Connections (Gauge)
+active_connections = safe_register_gauge(
+    "zantara_active_connections",
+    "Database pool active connections",
+)
+
+# Redis Cache Hit/Miss (Labeled Counters)
+redis_cache_hit_total = safe_register_counter(
+    "redis_cache_hit_total",
+    "Total Redis cache hits by cache type",
+    ["cache_type"],  # hybrid_search, kg, faq, session, etc.
+)
+redis_cache_miss_total = safe_register_counter(
+    "redis_cache_miss_total",
+    "Total Redis cache misses by cache type",
+    ["cache_type"],
+)
+
+# Redis Memory Metrics
+redis_memory_usage_bytes = safe_register_gauge(
+    "redis_memory_usage_bytes",
+    "Redis used memory in bytes",
+)
+redis_evicted_keys_total = safe_register_counter(
+    "redis_evicted_keys_total",
+    "Total keys evicted by Redis due to maxmemory policy",
+)
+
+# Collection Freshness Tracking
+qdrant_collection_last_updated_timestamp = safe_register_gauge(
+    "qdrant_collection_last_updated_timestamp",
+    "Unix timestamp of last successful ingest per collection",
+    ["collection"],
+)
+
 # Boot time tracking
 BOOT_TIME = time.time()
 
@@ -1293,6 +1355,114 @@ class MetricsCollector:
         scraper_normalization_errors_total.labels(
             scraper_type=scraper_type, error_type=error_type,
         ).inc()
+
+    # Webhook Metrics Methods
+    def record_webhook_request(self, channel: str, status: str) -> Any:
+        """Record a webhook request by channel and outcome.
+
+        Args:
+            channel: Channel name (whatsapp, telegram, instagram)
+            status: Request outcome (success, error)
+        """
+        webhook_requests_total.labels(channel=channel, status=status).inc()
+
+    # Qdrant Collection Metrics Methods
+    def set_collection_points_count(self, collection: str, count: int) -> Any:
+        """Set the live document count for a Qdrant collection.
+
+        Args:
+            collection: Collection name
+            count: Number of points/documents
+        """
+        qdrant_collection_points_count.labels(collection=collection).set(count)
+
+    def record_qdrant_search_latency(
+        self, collection: str, search_type: str, duration_seconds: float,
+    ) -> Any:
+        """Record Qdrant search latency.
+
+        Args:
+            collection: Collection searched
+            search_type: Type of search (dense, sparse, hybrid)
+            duration_seconds: Search duration
+        """
+        qdrant_search_latency_seconds.labels(
+            collection=collection, search_type=search_type,
+        ).observe(duration_seconds)
+
+    # LLM Detailed Token Methods
+    def record_llm_tokens(
+        self, model: str, provider: str, input_tokens: int, output_tokens: int,
+    ) -> Any:
+        """Record LLM token usage with provider detail.
+
+        Args:
+            model: Model name (e.g., 'gemini-2.0-flash')
+            provider: Provider name (e.g., 'google', 'openai', 'anthropic')
+            input_tokens: Number of input/prompt tokens
+            output_tokens: Number of output/completion tokens
+        """
+        if input_tokens > 0:
+            llm_tokens_total.labels(
+                model=model, provider=provider, type="input",
+            ).inc(input_tokens)
+        if output_tokens > 0:
+            llm_tokens_total.labels(
+                model=model, provider=provider, type="output",
+            ).inc(output_tokens)
+
+    # Database Active Connections
+    def set_active_connections(self, count: int) -> Any:
+        """Set the number of active database connections.
+
+        Args:
+            count: Active connection count
+        """
+        active_connections.set(count)
+
+    # Redis Cache Methods (Labeled)
+    def record_redis_cache_hit(self, cache_type: str) -> Any:
+        """Record a Redis cache hit by type.
+
+        Args:
+            cache_type: Cache type (hybrid_search, kg, faq, session, etc.)
+        """
+        redis_cache_hit_total.labels(cache_type=cache_type).inc()
+
+    def record_redis_cache_miss(self, cache_type: str) -> Any:
+        """Record a Redis cache miss by type.
+
+        Args:
+            cache_type: Cache type (hybrid_search, kg, faq, session, etc.)
+        """
+        redis_cache_miss_total.labels(cache_type=cache_type).inc()
+
+    # Redis Memory Methods
+    def set_redis_memory_usage(self, used_bytes: int) -> Any:
+        """Set Redis memory usage in bytes.
+
+        Args:
+            used_bytes: Used memory in bytes
+        """
+        redis_memory_usage_bytes.set(used_bytes)
+
+    def record_redis_evicted_keys(self, count: int) -> Any:
+        """Record Redis evicted keys count.
+
+        Args:
+            count: Number of newly evicted keys
+        """
+        redis_evicted_keys_total.inc(count)
+
+    # Collection Freshness Methods
+    def set_collection_last_updated(self, collection: str, timestamp: float) -> Any:
+        """Set the last update timestamp for a collection.
+
+        Args:
+            collection: Collection name
+            timestamp: Unix timestamp of the last successful ingest
+        """
+        qdrant_collection_last_updated_timestamp.labels(collection=collection).set(timestamp)
 
 
 # Global metrics collector instance
