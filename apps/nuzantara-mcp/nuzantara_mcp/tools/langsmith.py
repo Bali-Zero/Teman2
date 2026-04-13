@@ -9,17 +9,29 @@ LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY", "")
 LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "nuzantara-rag")
 LANGSMITH_BASE = "https://api.smith.langchain.com"
 
+# Persistent HTTP client for LangSmith API (Golden Rule #10)
+_ls_client: Optional[httpx.AsyncClient] = None
+
+
+def _get_ls_client() -> httpx.AsyncClient:
+    """Get or create persistent LangSmith HTTP client."""
+    global _ls_client
+    if _ls_client is None or _ls_client.is_closed:
+        _ls_client = httpx.AsyncClient(
+            base_url=LANGSMITH_BASE,
+            timeout=15,
+            headers={"x-api-key": LANGSMITH_API_KEY},
+            limits=httpx.Limits(max_connections=5, max_keepalive_connections=2),
+        )
+    return _ls_client
+
 
 async def _ls_get(path: str, params: Optional[dict] = None) -> Any:
     """Authenticated GET to LangSmith API."""
-    async with httpx.AsyncClient(base_url=LANGSMITH_BASE, timeout=15) as client:
-        resp = await client.get(
-            path,
-            params=params,
-            headers={"x-api-key": LANGSMITH_API_KEY},
-        )
-        resp.raise_for_status()
-        return resp.json()
+    client = _get_ls_client()
+    resp = await client.get(path, params=params)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def register(mcp, _call, _call_safe):

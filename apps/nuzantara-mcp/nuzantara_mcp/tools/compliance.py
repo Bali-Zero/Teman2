@@ -94,13 +94,14 @@ def register(mcp, _call, _call_safe):
     @mcp.tool()
     async def get_compliance_summary() -> dict:
         """
-        Get a system-wide compliance summary.
+        Get a system-wide compliance summary (critical alerts view).
 
-        Returns aggregate counts of compliance items by type and severity,
-        plus items due within the next 30 days.
+        Returns CRITICAL-severity compliance alerts across all clients.
+        Use get_compliance_alerts() with severity filter for other levels,
+        or get_client_compliance() for per-client details.
 
         Returns:
-            Summary: total_items, by_type, by_severity, due_soon list.
+            List of critical compliance alerts with severity, days_remaining, required_action.
         """
         return await _call(
             "/api/agents/compliance/alerts",
