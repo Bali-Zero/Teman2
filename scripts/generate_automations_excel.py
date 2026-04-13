@@ -88,6 +88,55 @@ class Automation:
     notes: str = ""
 
 
+# ── Catalog ───────────────────────────────────────────────────────────────────
+CATALOG_PATH = Path(__file__).parent / "automation_catalog.json"
+
+
+def load_catalog() -> dict:
+    """Load human-verified automation catalog for enrichment."""
+    try:
+        return json.loads(CATALOG_PATH.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def enrich_from_catalog(a: Automation, catalog: dict) -> None:
+    """Enrich an Automation from the catalog. Catalog wins over auto-detected."""
+    # Try multiple catalog sections
+    name = a.name
+    entry = None
+    for section in ("openclaw_pro", "openclaw_air", "launchagents", "cron_scripts", "nlm_pipelines"):
+        entry = catalog.get(section, {}).get(name)
+        if entry:
+            break
+
+    if not entry:
+        # Try matching by script basename
+        basename = os.path.basename(name) if "/" in name else name
+        for section in ("cron_scripts", "nlm_pipelines"):
+            entry = catalog.get(section, {}).get(basename)
+            if entry:
+                break
+
+    if not entry:
+        return
+
+    if entry.get("description") and (not a.description or a.description.startswith("(empty")):
+        a.description = entry["description"]
+    if entry.get("produces") and not a.produces:
+        a.produces = entry["produces"]
+    if entry.get("consumes") and not a.consumes:
+        a.consumes = entry["consumes"]
+    if entry.get("uses_llm") and (not a.uses_llm or a.uses_llm == "—"):
+        a.uses_llm = entry["uses_llm"]
+    if entry.get("llm_interface") and (not a.llm_interface or a.llm_interface == "—"):
+        a.llm_interface = entry["llm_interface"]
+    if entry.get("notes"):
+        a.notes = entry["notes"] if not a.notes else a.notes + "; " + entry["notes"]
+    if entry.get("type"):
+        a.type = entry["type"]
+
+
 # ── Data collection ──────────────────────────────────────────────────────────
 
 def load_json(path: Path) -> dict:
@@ -626,9 +675,20 @@ def main() -> None:
     all_automations.extend(collect_openclaw("Air"))
     print(f"    {sum(1 for a in all_automations if a.machine == 'Air' and a.type == 'openclaw')} openclaw jobs")
 
-    # Enrich
+    # Enrich from registry + circuit breakers
     print("  Enriching from registry + circuit breakers...")
     enrich_from_registry(all_automations)
+
+    # Enrich from human-verified catalog
+    print("  Enriching from automation catalog...")
+    catalog = load_catalog()
+    enriched = 0
+    for a in all_automations:
+        before_desc = a.description
+        enrich_from_catalog(a, catalog)
+        if a.description != before_desc:
+            enriched += 1
+    print(f"    {enriched} automations enriched from catalog")
 
     # Generate Excel
     print(f"\nGenerating {OUTPUT_FILE}...")
