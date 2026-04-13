@@ -1,7 +1,7 @@
 # Nuzantara — Mappa Completa Automazioni x Modelli LLM
 
 > **Auto-reference** — mantenuto manualmente. Aggiornare quando si aggiunge/modifica un'automazione.
-> Ultimo aggiornamento: 2026-04-13
+> Ultimo aggiornamento: 2026-04-14
 
 ---
 
@@ -340,4 +340,90 @@ Fuori finestra test: solo 3.2GB. 12.8GB liberi per OS+PG+Redis+servizi.
 
 ---
 
-_Compilata da: Claude Opus 4.6, verificata su dati live 2026-04-13_
+## GitHub Actions (8 workflow)
+
+| #   | Workflow           | Trigger         | Schedule      | LLM? | Note                              |
+| --- | ------------------ | --------------- | ------------- | ---- | --------------------------------- |
+| 1   | docs-sync          | push/PR         | —             | —    | Checks docs in sync               |
+| 2   | fly-deploy         | push to main    | —             | —    | Multi-stage: lint→test→deploy     |
+| 3   | fly-secrets-check  | scheduled + man | Lun 09:00 UTC | —    | Verifica FLY_API_TOKEN + TG alert |
+| 4   | intel-router-tests | push/PR         | —             | —    | bali-intel-scraper API tests      |
+| 5   | security-scanning  | scheduled + man | Dom 00:00 UTC | —    | Snyk Python + Node                |
+| 6   | semgrep-sast       | push/PR         | —             | —    | Bandit + ESLint, blocks on HIGH   |
+| 7   | sonarqube          | push/PR         | —             | —    | Code quality gates                |
+| 8   | tests              | push/PR         | —             | —    | pytest + coverage gate            |
+
+---
+
+## Claude Code Hooks (12 hooks)
+
+| #   | Event            | Matcher    | LLM? | Note                             |
+| --- | ---------------- | ---------- | ---- | -------------------------------- |
+| 1-3 | PostToolUse      | Edit/Write | —    | 3 post-processors on file edits  |
+| 4   | PostToolUse      | Bash       | —    | Post-processor on shell commands |
+| 5   | PostToolUse      | \*         | —    | Global post-processor            |
+| 6   | Notification     | \*         | —    | Notification handler             |
+| 7   | PreToolUse       | Edit/Write | —    | Pre-validation on file edits     |
+| 8   | PreToolUse       | Bash       | —    | Pre-validation on shell          |
+| 9   | Stop             | \*         | —    | Session cleanup                  |
+| 10  | SessionStart     | compact    | —    | Context loading                  |
+| 11  | SessionStart     | \*         | —    | Global init                      |
+| 12  | UserPromptSubmit | \*         | —    | Prompt pre-processing            |
+
+---
+
+## Backend Event-Driven (16 entries)
+
+| #   | Name                              | Type           | Trigger                     | System     |
+| --- | --------------------------------- | -------------- | --------------------------- | ---------- |
+| 1   | event_bus_client_changed          | PG NOTIFY      | clients INSERT/UPDATE       | CRM        |
+| 2   | event_bus_practice_status_changed | PG NOTIFY      | practices status change     | CRM        |
+| 3   | event_bus_compliance_alert        | PG NOTIFY      | compliance threshold breach | Compliance |
+| 4   | redis_reconnect_loop              | backend-loop   | on disconnect               | Ops        |
+| 5   | article_composer_cache_startup    | startup-hook   | once at boot                | Content    |
+| 6   | bali_intel_task_queue             | backend-loop   | while scraper running       | Intel      |
+| 7   | bali_intel_proxy_health_check     | backend-loop   | while scraper running       | Intel      |
+| 8   | bali_intel_browser_pool_cleanup   | backend-loop   | while scraper running       | Intel      |
+| 9   | bali_intel_ai_batch_flush         | backend-loop   | batch threshold/delay       | Intel      |
+| 10  | bali_intel_webhook_receiver       | webhook        | incoming POST               | Intel      |
+| 11  | bg_crm_practice_email             | BackgroundTask | practice update             | CRM        |
+| 12  | bg_crm_client_welcome             | BackgroundTask | client creation             | CRM        |
+| 13  | bg_whatsapp_async_processing      | BackgroundTask | incoming WA message         | Channels   |
+| 14  | bg_document_ocr                   | BackgroundTask | document upload             | CRM        |
+
+---
+
+## Home Scripts (~/scripts/ — non in repo, 13 entries)
+
+| #   | Script                      | Type         | System  | Note                           |
+| --- | --------------------------- | ------------ | ------- | ------------------------------ |
+| 1   | ai-intel-sentinel.sh        | TCC bridge   | Intel   | LaunchAgent→venv bypass        |
+| 2   | cron-runner.sh              | wrapper      | Ops     | macOS provenance bypass        |
+| 3   | deadman-heartbeat.sh        | monitor      | Ops     | Pro→Air ogni 30s               |
+| 4   | comfyui-server.sh           | manual       | AI      | Image gen (non schedulato)     |
+| 5   | gdrive-backup-all.sh        | orchestrator | Backup  | PG+Qdrant+Intel→GDrive         |
+| 6   | gdrive-intel-archive.sh     | backup       | Backup  | Intel data→GDrive 30TB         |
+| 7   | gdrive-pg-backup.sh         | backup       | Backup  | PG→GDrive secondary DR         |
+| 8   | gdrive-qdrant-backup.sh     | backup       | Backup  | Qdrant→GDrive                  |
+| 9   | generate-automations-all.sh | generator    | Ops     | MD+Excel via LaunchAgent 23:15 |
+| 10  | mata-garuda-watcher.sh      | TCC bridge   | Garuda  | LaunchAgent→repo bridge        |
+| 11  | warroom-wrapper.sh          | TCC bridge   | Content | LaunchAgent→War Room bridge    |
+| 12  | setup-grafana-cloud.sh      | setup        | Ops     | One-time Grafana setup         |
+| 13  | setup-log-drain.sh          | setup        | Ops     | One-time log drain setup       |
+
+---
+
+## Air Cron Extras (5 entries non nel blocco principale)
+
+| #   | Job                    | Schedule         | System     | Note                          |
+| --- | ---------------------- | ---------------- | ---------- | ----------------------------- |
+| 1   | LKPM deadline notifier | 07:00 WITA daily | Compliance | API call a Fly.io             |
+| 2   | db-nlm-sync            | 20:30 UTC daily  | NLM        | DB→NotebookLM                 |
+| 3   | T4 monitor             | ogni 6h          | Content    | Social monitor                |
+| 4   | Ollama restart weekly  | Dom 05:00        | AI         | Previene memory fragmentation |
+| 5   | Auto practice creator  | 07:30 WITA daily | CRM        | Crea pratiche rinnovo T-60    |
+
+---
+
+_Compilata da: Claude Opus 4.6, verificata su dati live 2026-04-14_
+_Deep scan sessione 2: +52 automazioni (179→231 totali)_
