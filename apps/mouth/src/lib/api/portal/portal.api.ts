@@ -9,6 +9,7 @@ import type {
   VisaInfo,
   PortalCompany,
   TaxOverview,
+  TaxObligation,
   PortalDocument,
   MessagesResponse,
   PortalMessage,
@@ -186,11 +187,32 @@ export class PortalApi {
   // ============================================================================
 
   async getTaxOverview(): Promise<TaxOverview> {
-    const response = await this.client.request<PortalApiResponse<TaxOverview>>(
-      "/api/portal/taxes",
-      { method: "GET" },
-    );
-    return response.data!;
+    const response = await this.client.request<
+      PortalApiResponse<Record<string, unknown>>
+    >("/api/portal/taxes", { method: "GET" });
+    const raw = (response.data ?? {}) as Record<string, unknown>;
+    const summary = (raw.summary ?? {}) as Record<string, unknown>;
+    const obligations = (raw.obligations ?? []) as Record<string, unknown>[];
+    return {
+      summary: {
+        status: (summary.status as TaxOverview["summary"]["status"]) ?? "ok",
+        totalDue: (summary.total_due as number) ?? 0,
+        nextDeadline: (summary.next_deadline as string | null) ?? null,
+        daysToDeadline:
+          (summary.days_until_deadline as number | null) ?? null,
+        pendingCount: (summary.pending_count as number) ?? 0,
+        overdueCount: (summary.overdue_count as number) ?? 0,
+      },
+      obligations: obligations.map((o) => ({
+        id: String(o.id ?? o.uuid ?? ""),
+        name: (o.name as string) ?? "",
+        type: (o.tax_type as string) ?? "",
+        period: `${o.period_start ?? ""} — ${o.period_end ?? ""}`,
+        dueDate: (o.due_date as string) ?? "",
+        status: (o.status as TaxObligation["status"]) ?? "pending",
+        amount: (o.amount_due as number) ?? undefined,
+      })),
+    };
   }
 
   // ============================================================================

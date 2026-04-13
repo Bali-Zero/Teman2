@@ -217,11 +217,11 @@ WELCOME_EMAIL_TEAM_UNASSIGNED: dict[str, str] = {
 }
 
 WELCOME_EMAIL_CTA: dict[str, str] = {
-    "en": "Have a question right now? Reply to this email or WhatsApp us at +62 813 3805 1876",
-    "it": "Hai una domanda adesso? Rispondi a questa email o scrivici su WhatsApp al +62 813 3805 1876",
-    "ru": "Есть вопрос прямо сейчас? Ответьте на это письмо или напишите нам в WhatsApp: +62 813 3805 1876",
-    "uk": "Є питання зараз? Відповідайте на цей лист або пишіть у WhatsApp: +62 813 3805 1876",
-    "id": "Ada pertanyaan sekarang? Balas email ini atau hubungi kami di WhatsApp +62 813 3805 1876",
+    "en": "Have a question right now? Reply to this email or WhatsApp us at +62 821 3107 363",
+    "it": "Hai una domanda adesso? Rispondi a questa email o scrivici su WhatsApp al +62 821 3107 363",
+    "ru": "Есть вопрос прямо сейчас? Ответьте на это письмо или напишите нам в WhatsApp: +62 821 3107 363",
+    "uk": "Є питання зараз? Відповідайте на цей лист або пишіть у WhatsApp: +62 821 3107 363",
+    "id": "Ada pertanyaan sekarang? Balas email ini atau hubungi kami di WhatsApp +62 821 3107 363",
 }
 
 
