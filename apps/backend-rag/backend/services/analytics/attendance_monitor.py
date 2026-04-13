@@ -122,6 +122,8 @@ RUSLANA_EMAIL: str = "ruslana@balizero.com"
 ESCALATION_SCAN_INTERVAL_SECONDS: int = 15 * 60  # every 15 minutes
 DAILY_DIGEST_HOUR: int = 18  # 18:00 WITA
 DAILY_DIGEST_MINUTE: int = 0
+CLOCKIN_REMINDER_HOUR: int = 9
+CLOCKIN_REMINDER_MINUTE: int = 15
 
 
 def resolve_responsible_manager(email: str) -> str | None:
@@ -364,6 +366,18 @@ class AttendanceMonitor:
         while self._running:
             iteration += 1
             try:
+                # PANOPTICON: Clock-in reminder at 09:15 WITA
+                now_bali = datetime.now(BALI_TZ)
+                if (
+                    now_bali.hour == CLOCKIN_REMINDER_HOUR
+                    and now_bali.minute >= CLOCKIN_REMINDER_MINUTE
+                    and now_bali.minute < CLOCKIN_REMINDER_MINUTE + 15
+                    and now_bali.weekday() < 5  # Mon-Fri only
+                ):
+                    if not getattr(self, "_reminder_sent_date", None) == now_bali.date():
+                        await self.send_clockin_reminder()
+                        self._reminder_sent_date = now_bali.date()
+
                 counters = await self.run_escalation_scan()
                 logger.info(
                     "AttendanceMonitor._escalation_loop: heartbeat "
@@ -591,6 +605,59 @@ class AttendanceMonitor:
             return
 
         await self._send_absent_alert(absent_members)
+
+    async def get_logged_in_not_clocked(self) -> list[dict]:
+        """Find team members who logged in today but haven't clocked in."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT a.email
+                FROM auth_audit_log a
+                WHERE a.timestamp AT TIME ZONE 'Asia/Makassar' >= (NOW() AT TIME ZONE 'Asia/Makassar')::date
+                  AND a.success = true
+                  AND a.email LIKE '%@balizero.com'
+                  AND a.email NOT IN (
+                      SELECT email FROM team_timesheet
+                      WHERE action_type = 'clock_in'
+                        AND timestamp AT TIME ZONE 'Asia/Makassar' >= (NOW() AT TIME ZONE 'Asia/Makassar')::date
+                  )
+                ORDER BY a.email
+                """,
+            )
+            return [dict(r) for r in rows]
+
+    async def send_clockin_reminder(self) -> None:
+        """Send Telegram alert to Zero listing members who logged in but haven't clocked in."""
+        missing = await self.get_logged_in_not_clocked()
+
+        if not missing:
+            logger.info("Clock-in reminder: all logged-in members have clocked in")
+            return
+
+        names = [m["email"].split("@")[0].replace(".", " ").title() for m in missing]
+        text = (
+            f"\u23f0 *Clock-In Reminder*\n\n"
+            f"{len(missing)} membri loggati ma senza clock-in:\n"
+            + "\n".join(f"\u2022 {name}" for name in names)
+            + "\n\n_PANOPTICON auto-alert_"
+        )
+
+        telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        chat_id = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
+
+        if not telegram_token:
+            logger.warning("Clock-in reminder: TELEGRAM_BOT_TOKEN not set")
+            return
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{telegram_token}/sendMessage",
+                    json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
+                )
+                logger.info("Clock-in reminder sent: %d members missing", len(missing))
+        except Exception as e:
+            logger.error("Clock-in reminder send failed: %s", e)
 
     # ------------------------------------------------------------------
     # Private DB helpers
