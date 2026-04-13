@@ -3,6 +3,7 @@ JWT Authentication Router
 Real email+PIN authentication using bcrypt and JWT tokens
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -137,6 +138,49 @@ async def get_current_user(
 
         logger.debug(f"User validated: {user_id}")
         return dict(row)
+
+
+# ============================================================================
+# PANOPTICON: Auto Clock-In
+# ============================================================================
+
+_CLIENT_ROLES = frozenset({"client"})
+
+
+async def _auto_clockin_if_needed(
+    pool: asyncpg.Pool,
+    user_id: str,
+    email: str,
+    role: str,
+) -> bool:
+    """Auto-clock-in team member on first login of the day. Never raises."""
+    if role in _CLIENT_ROLES or not email.endswith("@balizero.com"):
+        return False
+    try:
+        async with pool.acquire() as conn:
+            existing = await conn.fetchval(
+                """
+                SELECT count(*) FROM team_timesheet
+                WHERE user_id = $1
+                  AND action_type = 'clock_in'
+                  AND timestamp AT TIME ZONE 'Asia/Makassar' >= (NOW() AT TIME ZONE 'Asia/Makassar')::date
+                """,
+                user_id,
+            )
+            if existing > 0:
+                return False
+            await conn.execute(
+                """
+                INSERT INTO team_timesheet (user_id, email, action_type, metadata)
+                VALUES ($1, $2, 'clock_in', '{"source": "auto_login"}'::jsonb)
+                """,
+                user_id, email,
+            )
+            logger.info(f"🟢 Auto clock-in: {email} (from login)")
+            return True
+    except Exception as e:
+        logger.warning(f"⚠️ Auto clock-in failed for {email}: {e}")
+        return False
 
 
 # ============================================================================
@@ -309,6 +353,13 @@ async def login(
                 user_agent=user_agent,
                 user_id=str(user["id"]),
             )
+
+            # PANOPTICON: Auto clock-in on team login
+            if user["role"] != "client":
+                asyncio.create_task(
+                    _auto_clockin_if_needed(db_pool, str(user["id"]), user["email"], user["role"]),
+                    name=f"auto-clockin:{user['email']}",
+                )
 
             # Set httpOnly JWT cookie and CSRF cookie
             csrf_token = set_auth_cookies(
