@@ -201,8 +201,16 @@ I 5 campi sono fissi e obbligatori. Il `payload` è libero. Zero dipendenze (pur
    - Il brainstorm deve definire: quali eventi CRM specifici entrano in `bridge_outbox`? Quale formato payload? Quale retention nella outbox? Serve un cursor o basta timestamp?
 3. **Curiosità** (Fase 4): come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"? Il brainstorm deve progettare il meccanismo.
 4. **Confronto** (Fase 3): come implementare il Consiglio v1 — moderatore + Claude + Gemini + DeepSeek su decisioni settimanali. Diversità architettonica, non roleplay.
-5. **Sogno** (Fase 2): come il consolidamento notturno comprime esperienze in skill e pota il rumore. Cron notturno, validazione before/after.
-6. **Misura** (Fase 3): le 4 metriche metaboliche — implementazione concreta, storage, trend.
+5. **Sogno** (Fase 2) — decisione già presa: **consolidamento LLM + safety gate deterministico**.
+   Meccanismo concreto (cron notturno, finestra 01:00-05:00 WITA):
+   1. Legge entry KB ultimi 7 giorni (reflections, insights, skills) da tutti gli agenti
+   2. `claude --print` con prompt: "Comprimi, estrai skill riusabili, identifica pattern, segnala contraddizioni. Output JSON."
+   3. Skill estratte entrano in KB con `confidence=0.3` (bassa — non validate)
+   4. Entry originali marcate `consolidated` (NON cancellate — Genome è non-distruttivo)
+   5. **Nightmare detection**: se skill consolidata contraddice skill esistente con confidence >0.7 → NON inserire, loggare come conflitto, TG a Zero per review
+   6. **Safety gate**: misurare performance agenti sulle 10 run successive. Se cala → revert automatico delle skill consolidate
+      Il brainstorm deve definire: formato JSON output, criterio "contraddizione", metrica concreta per "performance cala".
+6. **Misura** (Fase 3): le 4 metriche metaboliche — implementazione concreta, storage, trend. Il brainstorm deve definire come calcolarle e dove salvarle.
 7. **Produzione** (Fase 4): come l'intelligence diventa revenue? Il ciclo Intel→Content→SEO→Revenue guidato da CRM+SEO, non solo scraping. Tracciabilità end-to-end.
 
 ### Fase 3: Scrivi il piano
