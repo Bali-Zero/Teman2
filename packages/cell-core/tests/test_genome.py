@@ -243,3 +243,45 @@ def test_concurrent_read_write(tmp_path):
             f.result()
 
     assert errors == []
+
+
+# ─── Issue 2: FTS Triggers (UPDATE / DELETE) ───────────────────
+
+
+def test_fts_finds_updated_content(genome):
+    """After upsert, FTS should find the new procedure, not the old one."""
+    genome.record_skill(
+        cell="c1", skill_id="evolving",
+        procedure="Parse documents using regex",
+        confidence=0.8,
+    )
+    assert len(genome.search("regex")) >= 1
+
+    # Upsert with new procedure
+    genome.record_skill(
+        cell="c1", skill_id="evolving",
+        procedure="Parse documents using tree-sitter AST",
+        confidence=0.7,
+    )
+    # Old term gone from FTS
+    assert len(genome.search("regex")) == 0
+    # New term found
+    results = genome.search("tree")
+    assert len(results) == 1
+    assert results[0]["id"] == "evolving"
+
+
+def test_fts_removes_deleted_rows(tmp_path):
+    """After DELETE, FTS should not return the deleted row."""
+    db = str(tmp_path / "fts_del.db")
+    g = Genome(db_path=db)
+    g.record_skill(cell="c1", skill_id="doomed", procedure="ephemeral technique")
+    assert len(g.search("ephemeral")) == 1
+
+    # Direct DELETE (not exposed as API, but tests trigger integrity)
+    conn = sqlite3.connect(db)
+    conn.execute("DELETE FROM genome WHERE id = 'doomed'")
+    conn.commit()
+    conn.close()
+
+    assert len(g.search("ephemeral")) == 0
