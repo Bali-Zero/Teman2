@@ -12,13 +12,34 @@ import {
 import { UserCog, Search, Brain, Fingerprint } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface UserRecord {
+  id: string;
+  email?: string;
+  name?: string;
+  role?: string;
+  created_at?: string;
+}
+
+interface UserFact {
+  key: string;
+  value: string;
+  source?: string;
+}
+
+interface UserMemory {
+  id: string;
+  content: string;
+  timestamp?: string;
+  importance?: number;
+}
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [details, setDetails] = useState<{
-    facts: any[];
-    memories: any[];
+    facts: UserFact[];
+    memories: UserMemory[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -40,7 +61,7 @@ export default function UsersPage() {
     }
   };
 
-  const selectUser = async (user: any) => {
+  const selectUser = async (user: UserRecord) => {
     setSelectedUser(user);
     setDetailsLoading(true);
     try {

@@ -11,12 +11,26 @@ import {
 import { Network, Search, ArrowRight, GitMerge, CircleDot } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface KGNode {
+  entity_id: string;
+  name: string;
+  entity_type: string;
+  properties?: Record<string, string | number | boolean>;
+}
+
+interface KGEdge {
+  source_id: string;
+  target_id: string;
+  relation_type: string;
+  weight?: number;
+}
+
 export default function KnowledgeGraphPage() {
-  const [nodes, setNodes] = useState<any[]>([]);
+  const [nodes, setNodes] = useState<KGNode[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<any>(null);
-  const [edges, setEdges] = useState<any[]>([]);
+  const [selectedNode, setSelectedNode] = useState<KGNode | null>(null);
+  const [edges, setEdges] = useState<KGEdge[]>([]);
   const [edgesLoading, setEdgesLoading] = useState(false);
 
   // Initial load
@@ -39,7 +53,7 @@ export default function KnowledgeGraphPage() {
     }
   };
 
-  const handleNodeClick = async (node: any) => {
+  const handleNodeClick = async (node: KGNode) => {
     setSelectedNode(node);
     setEdgesLoading(true);
     try {
