@@ -320,6 +320,140 @@ class RedisManager:
 
         logger.debug("Redis reconnect loop exited")
 
+    # ── Event-Driven Cache Invalidation ────────────────────────────
+    #
+    # Redis maxmemory-policy recommendation:
+    #   Configure Redis with `maxmemory 256mb` and `maxmemory-policy allkeys-lru`
+    #   to auto-evict least-recently-used keys when memory is exhausted.
+    #   This prevents OOM kills on Fly.io's 2GB RAM constraint.
+    #   Set via: redis-cli CONFIG SET maxmemory 256mb
+    #            redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
+    async def invalidate_by_pattern(self, pattern: str) -> int:
+        """Delete all Redis keys matching a glob pattern.
+
+        Uses SCAN (not KEYS) to avoid blocking Redis on large datasets.
+
+        Args:
+            pattern: Redis glob pattern (e.g., 'zantara:hybrid_search:*')
+
+        Returns:
+            Number of keys deleted
+        """
+        if not self._available or self._async_client is None:
+            logger.debug(f"Redis unavailable — skipping invalidation for pattern: {pattern}")
+            return 0
+
+        try:
+            deleted = 0
+            cursor = 0
+            while True:
+                cursor, keys = await self._async_client.scan(
+                    cursor=cursor, match=pattern, count=100,
+                )
+                if keys:
+                    deleted += await self._async_client.delete(*keys)
+                if cursor == 0:
+                    break
+            if deleted > 0:
+                logger.info(f"Cache invalidated: {deleted} keys matching '{pattern}'")
+            return deleted
+        except Exception as e:
+            logger.error(f"Cache invalidation failed for pattern '{pattern}': {e}")
+            return 0
+
+    async def invalidate_collection_cache(self, collection_name: str) -> int:
+        """Invalidate all search result caches for a specific collection.
+
+        Called when documents are upserted or deleted in a collection to ensure
+        stale search results are not served.
+
+        Args:
+            collection_name: Qdrant collection name (e.g., 'visa_oracle')
+
+        Returns:
+            Number of keys deleted
+        """
+        # Hybrid search results are keyed by collection name
+        pattern = f"zantara:hybrid_search:{collection_name}:*"
+        count = await self.invalidate_by_pattern(pattern)
+        # Also invalidate any general search cache that may reference this collection
+        count += await self.invalidate_by_pattern(f"zantara:search:{collection_name}:*")
+        return count
+
+    async def invalidate_session_cache(self, session_id: str | None = None) -> int:
+        """Invalidate session cache on user logout.
+
+        Args:
+            session_id: Specific session to invalidate, or None for all sessions
+
+        Returns:
+            Number of keys deleted
+        """
+        if session_id:
+            pattern = f"zantara:session:{session_id}:*"
+        else:
+            pattern = "zantara:session:*"
+        return await self.invalidate_by_pattern(pattern)
+
+    async def invalidate_faq_cache(self) -> int:
+        """Invalidate FAQ cache when FAQ content is updated.
+
+        Returns:
+            Number of keys deleted
+        """
+        return await self.invalidate_by_pattern("zantara:faq:*")
+
+    async def get_redis_memory_info(self) -> dict[str, Any]:
+        """Get Redis memory health information.
+
+        Returns:
+            Dict with used_memory, maxmemory, evicted_keys, and policy.
+        """
+        result: dict[str, Any] = {
+            "used_memory": 0,
+            "used_memory_human": "0B",
+            "maxmemory": 0,
+            "maxmemory_human": "0B",
+            "maxmemory_policy": "unknown",
+            "evicted_keys": 0,
+            "connected_clients": 0,
+        }
+
+        if not self._available or self._async_client is None:
+            result["error"] = "Redis unavailable"
+            return result
+
+        try:
+            # Memory stats
+            mem_info = await self._async_client.info("memory")
+            result["used_memory"] = mem_info.get("used_memory", 0)
+            result["used_memory_human"] = mem_info.get("used_memory_human", "0B")
+            result["maxmemory"] = mem_info.get("maxmemory", 0)
+            result["maxmemory_human"] = mem_info.get("maxmemory_human", "0B")
+            result["maxmemory_policy"] = mem_info.get("maxmemory_policy", "unknown")
+
+            # Eviction stats
+            stats_info = await self._async_client.info("stats")
+            result["evicted_keys"] = stats_info.get("evicted_keys", 0)
+
+            # Client stats
+            client_info = await self._async_client.info("clients")
+            result["connected_clients"] = client_info.get("connected_clients", 0)
+
+            # Update Prometheus gauges
+            try:
+                from backend.app.metrics import metrics_collector
+                metrics_collector.set_redis_memory_usage(result["used_memory"])
+            except Exception:
+                pass
+
+        except Exception as e:
+            logger.error(f"Failed to get Redis memory info: {e}")
+            result["error"] = str(e)
+
+        return result
+
     def _close_sync(self) -> None:
         """Close sync client (for cleanup)."""
         if self._sync_client is not None:

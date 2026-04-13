@@ -209,7 +209,19 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
         channel_router = get_channel_router(request)
         await channel_router.route_message("instagram", raw_payload)
 
+        # Record webhook metric
+        try:
+            from backend.app.metrics import metrics_collector
+            metrics_collector.record_webhook_request(channel="instagram", status="success")
+        except Exception:
+            pass
+
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Failed to route IG message: {e}")
+        try:
+            from backend.app.metrics import metrics_collector
+            metrics_collector.record_webhook_request(channel="instagram", status="error")
+        except Exception:
+            pass
         return {"status": "error", "detail": str(e)}
