@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.core.cache import invalidate_cache
 from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,7 @@ async def save_episode(request: SaveEpisodeRequest) -> SaveEpisodeResponse:
         )
 
         logger.info(f"LAM episode saved: {episode_id} (agent={request.agent})")
+        await invalidate_cache("zantara:lam_memory:*")
         return SaveEpisodeResponse(id=episode_id, status="saved")
 
     except Exception as e:
@@ -245,6 +247,7 @@ async def delete_episode(episode_id: str) -> dict[str, str]:
         db = await _get_qdrant()
         await db.delete([episode_id])
         logger.info(f"LAM episode deleted: {episode_id}")
+        await invalidate_cache("zantara:lam_memory:*")
         return {"status": "deleted", "id": episode_id}
     except Exception as e:
         logger.error(f"LAM delete_episode failed: {e}", exc_info=True)
