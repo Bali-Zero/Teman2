@@ -16,6 +16,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.core.cache import invalidate_cache
 from backend.services.rag.autonomous_executor import (
     AutonomousExecutor,
 )
@@ -101,6 +102,7 @@ async def create_execution_plan(request: CreatePlanRequest) -> CreatePlanRespons
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    await invalidate_cache("zantara:autonomous_execution:*")
     return CreatePlanResponse(
         plan_id=plan["plan_id"],
         task_type=plan["task_type"],
@@ -124,6 +126,7 @@ async def execute_plan(plan_id: str) -> PlanStatusResponse:
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Plan {plan_id} not found")
 
+    await invalidate_cache("zantara:autonomous_execution:*")
     return PlanStatusResponse(plan=plan)
 
 
@@ -177,4 +180,5 @@ async def approve_step(
     action = "approved" if request.approved else "rejected"
     logger.info(f"Step {step_id} in plan {plan_id} {action}")
 
+    await invalidate_cache("zantara:autonomous_execution:*")
     return {"status": action, "plan_id": plan_id, "step_id": step_id}

@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.metrics import metrics_collector
+from backend.core.cache import invalidate_cache
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success, log_warning
@@ -326,6 +327,7 @@ async def save_conversation(
     # If both failed, then we have a problem
     # But we already tried memory cache.
 
+    await invalidate_cache("zantara:conversations:*")
     return {
         "success": True,  # Always return true to keep chat alive
         "conversation_id": conversation_id,
@@ -484,6 +486,7 @@ async def clear_conversation_history(
                 deleted_count=deleted_count_int,
             )
 
+            await invalidate_cache("zantara:conversations:*")
             return {"success": True, "deleted_count": deleted_count_int}
 
     except HTTPException:
@@ -750,6 +753,7 @@ async def delete_conversation(
                 user_email=user_email,
             )
 
+            await invalidate_cache("zantara:conversations:*")
             return {"success": True, "deleted_id": conversation_id}
 
     except HTTPException:
