@@ -16,9 +16,9 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
     async def save_episode(
         content: str,
         agent: str = "main",
-        tags: list[str] = [],
+        tags: Optional[list[str]] = None,
         outcome: str = "",
-        metadata: dict[str, Any] = {},
+        metadata: Optional[dict[str, Any]] = None,
     ) -> dict:
         """
         Save a memory episode for the LAM agent after completing a task.
@@ -45,9 +45,9 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
             json={
                 "content": content,
                 "agent": agent,
-                "tags": tags,
+                "tags": tags if tags is not None else [],
                 "outcome": outcome,
-                "metadata": metadata,
+                "metadata": metadata if metadata is not None else {},
             },
         )
 

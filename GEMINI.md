@@ -68,23 +68,23 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 
 | Layer         | Tecnologia                                                      | Scala                                            |
 | ------------- | --------------------------------------------------------------- | ------------------------------------------------ |
-| Backend       | **Python 3.11+, FastAPI**                                       | 88 router, 244 service                           |
+| Backend       | **Python 3.11+, FastAPI**                                       | 90 router, 253 service                           |
 | Frontend      | **Next.js** (App Router), TypeScript, Tailwind                  | `apps/mouth/`                                    |
-| Vector DB     | **Qdrant**                                                      | 9 collezioni live, 66.595 vettori                |
+| Vector DB     | **Qdrant**                                                      | 10 collezioni live, 93.283 vettori               |
 | Relational DB | **PostgreSQL 17**                                               | Fly.io `nuzantara-postgres` (2GB)                |
 | Cache         | **Redis**                                                       | Local su Pro                                     |
 | Embedding     | **`text-embedding-3-small` (1536 dims) — FROZEN, MAI CAMBIARE** |
-| KG            | LangGraph                                                       | 56.113 nodi, 161.173 archi                       |
+| KG            | LangGraph                                                       | 108.068 nodi, 242.827 archi                      |
 | Deploy        | Fly.io backend + Vercel frontend                                |
-| MCP Server    | `apps/nuzantara-mcp/`                                           | **109 tools, 10 prompts, 5 resources, 8 chains** |
+| MCP Server    | `apps/nuzantara-mcp/`                                           | **115 tools, 10 prompts, 5 resources, 8 chains** |
 
 ### Fly.io — SOLO 3 APP
 
 | App                  | RAM | Note                                   |
 | -------------------- | --- | -------------------------------------- |
-| `nuzantara-rag`      | 2GB | auto_stop=true, min=0, cold start ~35s |
+| `nuzantara-rag`      | 2GB | auto_stop=off, min=1 (always-on)       |
 | `nuzantara-postgres` | 2GB | v0.1.0                                 |
-| `nuzantara-qdrant`   | 2GB | v1.12.1                                |
+| `nuzantara-qdrant`   | 2GB | v1.17.0                                |
 
 **bali-intel-scraper NON è su Fly** — gira SOLO locale su Pro.
 
@@ -120,13 +120,13 @@ Entrambe le macchine lavorano su `main` direttamente. Sync automatico via husky:
 ```
 apps/backend-rag/
 ├── backend/
-│   ├── routers/       # 88 router FastAPI
-│   ├── services/      # 244 service
+│   ├── app/routers/   # 90 router FastAPI (IMPORTANT: in app/routers/, NOT routers/)
+│   ├── services/      # 253 service
 │   ├── core/          # config, dipendenze
 │   ├── prompts/       # ⭐ Single Source of Truth prompt (zantara_core.py)
 │   └── main.py        # entrypoint (alias main_cloud.py)
 apps/mouth/            # Next.js frontend (deploy da ROOT monorepo, NON da apps/mouth)
-apps/nuzantara-mcp/    # MCP server v2.1 (109 tools, 8 chains)
+apps/nuzantara-mcp/    # MCP server v2.1 (115 tools, 8 chains)
 apps/nuzantara-mcp-advanced/  # MCP operativo (deploy, test, lint)
 apps/evaluator/        # SEO Guardian + quality assurance
 ```
