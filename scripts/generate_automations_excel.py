@@ -627,8 +627,38 @@ def collect_openclaw(machine: str) -> list[Automation]:
     return automations
 
 
+def _get_launchagent_status(label: str, machine: str) -> tuple[str, str]:
+    """Get LaunchAgent status from launchctl. Returns (status, exit_code_str)."""
+    try:
+        if machine == "Pro":
+            r = subprocess.run(
+                ["launchctl", "list", label],
+                capture_output=True, text=True, timeout=5,
+            )
+        else:
+            r = subprocess.run(
+                ["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes", "air",
+                 f"launchctl list {label}"],
+                capture_output=True, text=True, timeout=10,
+            )
+        if r.returncode != 0:
+            return "not loaded", ""
+        # Parse LastExitStatus
+        for line in r.stdout.splitlines():
+            if "LastExitStatus" in line:
+                code = line.split("=")[-1].strip().rstrip(";").strip()
+                if code == "0":
+                    return "healthy", "0"
+                return "failed", code
+            if "PID" in line and "=" in line:
+                return "running", ""
+    except Exception:
+        pass
+    return "unknown", ""
+
+
 def enrich_from_registry(automations: list[Automation]) -> None:
-    """Enrich automations with registry + circuit breaker data."""
+    """Enrich automations with registry + circuit breaker + launchctl data."""
     registry = load_json(REGISTRY_PATH).get("jobs", {})
     cbs = load_json(CB_PATH)
 
@@ -655,11 +685,29 @@ def enrich_from_registry(automations: list[Automation]) -> None:
             elif a.circuit_state == "CLOSED" and not a.status:
                 a.status = "healthy"
 
+        # Fill defaults for non-sentinel-tracked automations
+        if not a.monitored_by:
+            if a.type in ("daemon", "launchd"):
+                a.monitored_by = "launchd"
+            elif a.type == "cron":
+                a.monitored_by = "cron"
+            elif a.type == "openclaw":
+                a.monitored_by = "OpenClaw"
+
+        # Get LaunchAgent status from launchctl if not already set
+        if a.type in ("daemon", "launchd") and not a.status:
+            status, _ = _get_launchagent_status(a.name, a.machine)
+            a.status = status
+
+        # Default status for cron jobs (if no circuit breaker data)
+        if a.type == "cron" and not a.status:
+            a.status = "active"
+
 
 def status_fill(status: str) -> PatternFill:
-    if status in ("healthy", "ok"):
+    if status in ("healthy", "ok", "running", "active"):
         return GREEN_FILL
-    if status in ("failed", "terminal"):
+    if status in ("failed", "terminal", "not loaded"):
         return RED_FILL
     if status in ("skipped", "unknown"):
         return GRAY_FILL
@@ -915,6 +963,16 @@ def main() -> None:
         s = a.system or "—"
         systems[s] = systems.get(s, 0) + 1
     print(f"    {', '.join(f'{s}:{c}' for s, c in sorted(systems.items()))}")
+
+    # Fill defaults for monitored_by where still empty
+    for a in all_automations:
+        if not a.monitored_by or a.monitored_by == "—":
+            if a.type in ("daemon", "launchd"):
+                a.monitored_by = "launchd"
+            elif a.type == "cron":
+                a.monitored_by = "cron"
+            elif a.type == "openclaw":
+                a.monitored_by = "OpenClaw"
 
     # Auto-discover unknown automations (header parse + LLM fallback)
     print("  Auto-discovering unknown automations...")
