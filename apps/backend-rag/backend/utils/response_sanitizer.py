@@ -161,7 +161,7 @@ def add_contact_if_appropriate(response: str, query_type: str) -> str:
         and "whatsapp" not in response.lower()
         and "+62" not in response
     ):
-        contact = "\n\nNeed help? Contact us on WhatsApp +62 859 0436 9574"
+        contact = "\n\nNeed help? Contact us on WhatsApp +62 821 3107 363"
         return response + contact
 
     return response
