@@ -1,7 +1,6 @@
 {
   "_doc": "Human-verified catalog of all automations. Used by generate_automations_excel.py to enrich auto-detected entries.",
   "_updated": "2026-04-13",
-
   "openclaw_pro": {
     "core-guardian": {
       "description": "Code quality auto-fix: ruff lint, import check, type annotations. Runs evaluator/core_guardian/cron_guardian.py in worktree.",
@@ -178,7 +177,6 @@
       "notes": "Skipped: empty task."
     }
   },
-
   "openclaw_air": {
     "ecosystem-healthcheck": {
       "description": "Air ecosystem health: check all services (backend, PG, Redis, Qdrant, Ollama, frontends) and report status.",
@@ -265,7 +263,6 @@
       "llm_interface": "OpenClaw (main)"
     }
   },
-
   "launchagents": {
     "ai.openclaw.gateway": {
       "description": "OpenClaw gateway: WebSocket server (port 18789) that routes agent tasks to models. Heart of the OpenClaw runtime.",
@@ -518,7 +515,6 @@
       "consumes": "Network bandwidth"
     }
   },
-
   "cron_scripts": {
     "fly-health-check.sh": {
       "description": "Fly.io health check: curl all 3 apps, verify HTTP 200, alert on failure. Every 30 min.",
@@ -685,9 +681,107 @@
       "description": "Garuda gap detector wrapper: runs 8 Cypher queries to find KG holes, publishes to nexus:gaps.",
       "produces": "Gap reports",
       "consumes": "Neo4j Knowledge Graph"
+    },
+    "knowledge-graph-builder.sh": {
+      "description": "Weekly KG builder: trigger knowledge-graph-builder OpenClaw job via cron-runner wrapper. Ingests entities into Neo4j.",
+      "produces": "KG entities (Neo4j)",
+      "consumes": "Conversation data, OpenClaw gateway"
+    },
+    "conversation-trainer.sh": {
+      "description": "Weekly conversation trainer: trigger conversation-trainer OpenClaw job via cron-runner wrapper. Extracts patterns from recent chats.",
+      "produces": "Training patterns",
+      "consumes": "Recent conversations, OpenClaw gateway"
+    },
+    ".py": {
+      "description": "Orphan crontab entry — incomplete script reference. Likely a broken entry.",
+      "notes": "AUDIT: remove or fix in crontab"
+    },
+    "API: /api/admin/practice/auto-create": {
+      "description": "Auto practice creator: POST to Fly.io API to auto-create practices for expiring visas at T-60 days.",
+      "produces": "New CRM practices",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/all": {
+      "description": "All notifiers: trigger visa expiry, unpaid invoices, stale practice alerts via backend API.",
+      "produces": "Client alerts (WhatsApp/email/Telegram)",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/birthday": {
+      "description": "Birthday notifier: send birthday greetings to clients via backend API.",
+      "produces": "Birthday greeting messages",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/welcome-pending": {
+      "description": "Welcome pending: send welcome emails to new clients after 30min delay. Every 15min.",
+      "produces": "Welcome emails",
+      "consumes": "Fly.io backend API"
+    },
+    "audit_trail_cleanup.sh": {
+      "description": "Weekly audit trail cleanup: prune old audit log entries on Air.",
+      "produces": "Freed disk space",
+      "consumes": "Audit log files"
+    },
+    "crm_automation_engine.py": {
+      "description": "CRM automation engine: quality checks, document follow-up, renewal processing. Runs nightly on Air.",
+      "produces": "CRM updates, follow-up tasks",
+      "consumes": "Backend API CRM data"
+    },
+    "cron-wrapper.sh": {
+      "description": "Cron wrapper: universal wrapper that adds logging, locking, timeout, and Telegram alerts to any cron script.",
+      "produces": "Structured logs, state files",
+      "consumes": "Wrapped script output"
+    },
+    "fly-pg-backup.sh": {
+      "description": "Fly PG backup (Air): pg_dump from Fly.io PG tunnel to local backup. Separate from Pro fly-backup.sh.",
+      "produces": "PG dump file",
+      "consumes": "Fly.io PG tunnel (port 15432)"
+    },
+    "ollama_cron_window.sh": {
+      "description": "Ollama cron window: start/stop Ollama models for test window (01:00-06:05 WITA). Manages model loading/unloading.",
+      "produces": "Model load/unload events",
+      "consumes": "Ollama API"
+    },
+    "qdrant-snapshot.sh": {
+      "description": "Qdrant snapshot (Air): weekly Qdrant cloud snapshot to Tigris S3 backup.",
+      "produces": "Qdrant snapshot on Tigris",
+      "consumes": "Qdrant API"
+    },
+    "sync_owner_cashout_fly.sh": {
+      "description": "Owner cashout sync: Monday sync of owner weekly cashout data from Fly.io to local spreadsheet.",
+      "produces": "Updated cashout data",
+      "consumes": "Fly.io API, Google Sheets"
+    },
+    "cp ~/.claude/memory.db ~/.claude/backups/memory_$(date +\\%Y\\": {
+      "description": "MOS daily backup: copy memory.db to timestamped backup file.",
+      "produces": "Memory DB backup",
+      "consumes": "~/.claude/memory.db"
+    },
+    "find ~/.claude/backups -name \"memory_*.db\" -mtime +30 -delet": {
+      "description": "MOS backup pruning: delete memory backups older than 30 days.",
+      "produces": "Freed disk space",
+      "consumes": "~/.claude/backups/"
+    },
+    "sqlite3 ~/.claude/memory.db 'DELETE FROM memories WHERE ttl_": {
+      "description": "MOS TTL cleanup: delete expired memories (where julianday now > created_at + ttl_days).",
+      "produces": "Cleaned memory DB",
+      "consumes": "~/.claude/memory.db"
+    },
+    "echo '{\"job\":\"nlm_bridge\",\"ts\":'$(date +%s)',\"status\":\"ok\",\"": {
+      "description": "NLM bridge state writer: write heartbeat JSON for Sentinel to monitor NLM bridge daemon.",
+      "produces": "State JSON for Sentinel",
+      "consumes": "System clock"
+    },
+    "npm cache clean --force >> /tmp/cron-cache-cleanup.log 2>&1 ": {
+      "description": "Cache cleanup: npm + pip + brew cache purge. Runs 1st and 15th of each month.",
+      "produces": "Freed disk space",
+      "consumes": "npm/pip/brew caches"
+    },
+    "touch ~/.pro_heartbeat 2>/dev/null; ssh -o ConnectTimeout=3 ": {
+      "description": "Pro heartbeat: write timestamp locally + push to Air via SSH. Hourly dead-man switch.",
+      "produces": "Heartbeat file on both nodes",
+      "consumes": "SSH to Air"
     }
   },
-
   "nlm_pipelines": {
     "run_nb1_refresh.sh": {
       "description": "NLM NB-1 codebase refresh: bundle and upload latest code snapshots to architecture notebook.",
