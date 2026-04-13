@@ -17,6 +17,7 @@ Architecture:
 - Provides backward compatibility with legacy interfaces
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -127,8 +128,10 @@ class AgenticRAGOrchestrator:
             - Configures intent classifier and emotional attunement services
             - Converts tools to Gemini function declarations for native calling
         """
+        init_start = time.perf_counter()
         logger.debug(f"AgenticRAGOrchestrator.__init__ started. Model: {model_name}")
         self.tools = {tool.name: tool for tool in tools}  # Changed to dict for direct access
+        self._initialized = False  # Track async initialization state
         self.db_pool = db_pool
         self.model_name = model_name
         self.semantic_cache = semantic_cache
@@ -288,9 +291,53 @@ class AgenticRAGOrchestrator:
             core=self.core,
             streaming_manager=streaming_manager,
         )
+        init_elapsed = (time.perf_counter() - init_start) * 1000
         logger.info(
-            "✅ OrchestratorCore and OrchestratorStreamingCore initialized (Refactored Architecture)",
+            f"✅ OrchestratorCore and OrchestratorStreamingCore initialized "
+            f"(Refactored Architecture, {init_elapsed:.0f}ms)",
         )
+
+    async def initialize(self) -> None:
+        """Eagerly initialize async components in parallel.
+
+        Call this after __init__ to warm up services that require async I/O.
+        Components that fail to initialize are disabled gracefully.
+        """
+        if self._initialized:
+            return
+
+        init_start = time.perf_counter()
+        results: dict[str, str] = {}
+
+        async def _init_memory() -> None:
+            try:
+                t0 = time.perf_counter()
+                await self.memory_handler.get_memory_orchestrator()
+                elapsed = (time.perf_counter() - t0) * 1000
+                results["memory"] = f"ok ({elapsed:.0f}ms)"
+            except Exception as e:
+                results["memory"] = f"failed: {e}"
+                logger.warning(f"⚠️ MemoryOrchestrator eager init failed: {e}")
+
+        async def _init_kg_langgraph() -> None:
+            if self.kg_langgraph_orchestrator and hasattr(
+                self.kg_langgraph_orchestrator, "initialize"
+            ):
+                try:
+                    t0 = time.perf_counter()
+                    await self.kg_langgraph_orchestrator.initialize()
+                    elapsed = (time.perf_counter() - t0) * 1000
+                    results["kg_langgraph"] = f"ok ({elapsed:.0f}ms)"
+                except Exception as e:
+                    results["kg_langgraph"] = f"failed: {e}"
+                    logger.warning(f"⚠️ KG LangGraph eager init failed: {e}")
+
+        # Run independent async initializations in parallel
+        await asyncio.gather(_init_memory(), _init_kg_langgraph(), return_exceptions=True)
+
+        self._initialized = True
+        total_ms = (time.perf_counter() - init_start) * 1000
+        logger.info(f"🚀 Orchestrator async initialize: {total_ms:.0f}ms — {results}")
 
     async def process_query(
         self,
@@ -314,6 +361,10 @@ class AgenticRAGOrchestrator:
             CoreResult with answer, sources, and metadata
         """
         start_time = start_time or time.time()
+
+        # Ensure async components are warmed up (no-op after first call)
+        if not self._initialized:
+            await self.initialize()
 
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
