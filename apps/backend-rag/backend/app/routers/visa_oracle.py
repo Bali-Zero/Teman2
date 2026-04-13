@@ -8,12 +8,14 @@ No authentication required (public product).
 """
 
 import asyncio
+import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from backend.app.dependencies import get_database_pool
 from backend.services.visa_oracle.visa_oracle_service import get_visa_oracle_service
 
 logger = logging.getLogger(__name__)
@@ -109,13 +111,79 @@ def _parse_family(family_str: str) -> bool:
     return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
 
 
+async def _persist_session_create(
+    db_pool: Any,
+    session_id: str,
+    quiz_answers: dict[str, Any],
+    recommended_visas: list[dict[str, Any]],
+    ip_hash: str,
+) -> None:
+    """Insert a new session row. Non-fatal — failures are logged, not raised."""
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO visa_oracle_sessions
+                    (session_id, quiz_answers, recommended_visas, ip_hash)
+                VALUES ($1, $2::jsonb, $3::jsonb, $4)
+                """,
+                session_id,
+                json.dumps(quiz_answers),
+                json.dumps(recommended_visas),
+                ip_hash,
+            )
+    except Exception as exc:
+        logger.warning("visa-oracle session persist (create) failed: %s", exc)
+
+
+async def _persist_session_append_message(
+    db_pool: Any,
+    session_id: str,
+    role: str,
+    content: str,
+) -> None:
+    """Append a chat message to an existing session. Non-fatal."""
+    try:
+        msg = json.dumps({"role": role, "content": content[:500]})
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE visa_oracle_sessions
+                SET messages = messages || $2::jsonb
+                WHERE session_id = $1
+                """,
+                session_id,
+                f"[{msg}]",
+            )
+    except Exception as exc:
+        logger.warning("visa-oracle session persist (message) failed: %s", exc)
+
+
+async def _persist_session_handoff(db_pool: Any, session_id: str) -> None:
+    """Mark handoff_triggered = TRUE. Non-fatal."""
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE visa_oracle_sessions
+                SET handoff_triggered = TRUE
+                WHERE session_id = $1
+                """,
+                session_id,
+            )
+    except Exception as exc:
+        logger.warning("visa-oracle session persist (handoff) failed: %s", exc)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
 
 @router.post("/recommend", response_model=RecommendResponse)
-async def recommend(request: Request, body: RecommendRequest) -> RecommendResponse:
+async def recommend(
+    request: Request, body: RecommendRequest, db_pool=Depends(get_database_pool),
+) -> RecommendResponse:
     """
     Score and rank visa types for the given quiz answers.
     No LLM — pure scoring logic from VisaOracleService.
@@ -138,6 +206,14 @@ async def recommend(request: Request, body: RecommendRequest) -> RecommendRespon
             family_bool,
             len(visas),
         )
+        # Persist session non-blocking
+        ip_hash = service.hash_ip(request.client.host if request.client else "unknown")
+        asyncio.create_task(
+            _persist_session_create(
+                db_pool, session_id, body.model_dump(), visas, ip_hash,
+            )
+        )
+
         return RecommendResponse(success=True, visas=visas, session_id=session_id)
 
     except Exception as exc:
@@ -146,7 +222,9 @@ async def recommend(request: Request, body: RecommendRequest) -> RecommendRespon
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: Request, body: ChatRequest) -> ChatResponse:
+async def chat(
+    request: Request, body: ChatRequest, db_pool=Depends(get_database_pool),
+) -> ChatResponse:
     """
     Answer a visa question using the hybrid search pipeline + cross-encoder reranker.
 
@@ -301,6 +379,14 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
             body.session_id[:12],
         )
 
+        # Persist Q&A non-blocking
+        asyncio.create_task(
+            _persist_session_append_message(db_pool, body.session_id, "user", body.message)
+        )
+        asyncio.create_task(
+            _persist_session_append_message(db_pool, body.session_id, "assistant", answer_text)
+        )
+
         return ChatResponse(
             success=True,
             answer=answer_text,
@@ -315,7 +401,9 @@ async def chat(request: Request, body: ChatRequest) -> ChatResponse:
 
 
 @router.post("/handoff", response_model=HandoffResponse)
-async def handoff(request: Request, body: HandoffRequest) -> HandoffResponse:
+async def handoff(
+    request: Request, body: HandoffRequest, db_pool=Depends(get_database_pool),
+) -> HandoffResponse:
     """
     Build WhatsApp deep-link URL and send Telegram lead notification.
     """
@@ -378,6 +466,9 @@ async def handoff(request: Request, body: HandoffRequest) -> HandoffResponse:
             logger.warning(
                 "visa-oracle /handoff: Telegram notification failed: %s", tg_exc
             )
+
+        # Mark handoff in session non-blocking
+        asyncio.create_task(_persist_session_handoff(db_pool, body.session_id))
 
         return HandoffResponse(
             success=True,
