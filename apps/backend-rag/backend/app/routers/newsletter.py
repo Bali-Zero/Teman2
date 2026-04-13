@@ -19,6 +19,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
+from backend.core.cache import invalidate_cache
 
 logger = get_logger(__name__)
 
@@ -149,6 +150,7 @@ async def subscribe(
                     request.name,
                 )
                 logger.info(f"Resubscribed: {request.email}")
+                await invalidate_cache("zantara:newsletter:*")
                 return SubscribeResponse(
                     success=True,
                     message="Please check your email to confirm your subscription.",
@@ -176,6 +178,7 @@ async def subscribe(
                 request.name,
             )
             logger.info(f"Resent confirmation: {request.email}")
+            await invalidate_cache("zantara:newsletter:*")
             return SubscribeResponse(
                 success=True,
                 message="Confirmation email resent. Please check your inbox.",
@@ -202,6 +205,7 @@ async def subscribe(
 
         subscriber_id = row["id"]
         logger.info(f"New subscriber: {request.email} (ID: {subscriber_id})")
+        await invalidate_cache("zantara:newsletter:*")
 
         # TODO: Send confirmation email via Zoho
         # await send_confirmation_email(request.email, subscriber_id, confirmation_token)
@@ -249,6 +253,7 @@ async def confirm_subscription(
         )
 
         logger.info(f"Confirmed subscription: {row['email']}")
+        await invalidate_cache("zantara:newsletter:*")
         return {"success": True, "message": "Subscription confirmed successfully"}
 
 
@@ -285,6 +290,7 @@ async def unsubscribe(
         )
 
         logger.info(f"Unsubscribed: {row['email']}")
+        await invalidate_cache("zantara:newsletter:*")
         return {"success": True, "message": "Successfully unsubscribed"}
 
 
@@ -339,6 +345,7 @@ async def update_preferences(
         await conn.execute(query, *params)
 
         logger.info(f"Updated preferences for subscriber: {row['id']}")
+        await invalidate_cache("zantara:newsletter:*")
         return {"success": True, "message": "Preferences updated"}
 
 
@@ -437,4 +444,5 @@ async def log_newsletter_send(
             failed_count,
         )
 
+        await invalidate_cache("zantara:newsletter:*")
         return {"success": True}
