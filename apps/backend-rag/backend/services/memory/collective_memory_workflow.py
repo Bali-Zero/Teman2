@@ -211,14 +211,16 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
     conflicts: list[str] = []
     new_lower = new_content.lower().strip()
 
-    # Negation markers that signal contradiction
-    negation_pairs = [
-        ("piace", "non piace"), ("preferisco", "non preferisco"),
-        ("amo", "odio"), ("voglio", "non voglio"),
+    # Antonym pairs that signal contradiction when one appears in each text.
+    # Each tuple is (word_a, word_b) — if existing has word_a and new has word_b
+    # (or vice versa), it's a contradiction.
+    antonym_pairs = [
+        ("piace", "non.*piace"), ("preferisco", "non.*preferisco"),
+        ("amo", "odio"), ("voglio", "non.*voglio"),
         ("likes", "dislikes"), ("prefer", "don't prefer"),
         ("loves", "hates"), ("wants", "doesn't want"),
-        ("always", "never"), ("yes", "no"),
-        ("suka", "tidak suka"), ("mau", "tidak mau"),  # Indonesian
+        ("always", "never"),
+        ("suka", "tidak.*suka"), ("mau", "tidak.*mau"),  # Indonesian
     ]
 
     for mem in existing:
@@ -239,14 +241,16 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
                     f"vs new='{new_content[:80]}' (similarity={similarity:.2f})"
                 )
 
-        # Check 2: Negation-based contradiction
-        for pos, neg in negation_pairs:
-            if (pos in existing_lower and neg in new_lower) or (
-                neg in existing_lower and pos in new_lower
-            ):
+        # Check 2: Antonym/negation-based contradiction
+        for word_a, word_b in antonym_pairs:
+            a_in_existing = re.search(rf"\b{word_a}\b", existing_lower) is not None
+            b_in_existing = re.search(rf"\b{word_b}", existing_lower) is not None
+            a_in_new = re.search(rf"\b{word_a}\b", new_lower) is not None
+            b_in_new = re.search(rf"\b{word_b}", new_lower) is not None
+            if (a_in_existing and b_in_new) or (b_in_existing and a_in_new):
                 conflicts.append(
                     f"Contradiction detected: '{existing_content[:60]}' "
-                    f"vs '{new_content[:60]}' (negation: {pos}/{neg})"
+                    f"vs '{new_content[:60]}' (antonyms: {word_a}/{word_b})"
                 )
                 break
 
@@ -383,21 +387,32 @@ def extract_preferences(text: str) -> dict[str, str]:
     return preferences
 
 
+def _has_word(query: str, words: list[str]) -> bool:
+    """Check if any word appears as a whole word in the query (word-boundary match)."""
+    for word in words:
+        if re.search(rf"\b{re.escape(word)}\b", query):
+            return True
+    return False
+
+
 async def analyze_content_intent(state: CollectiveMemoryState) -> CollectiveMemoryState:
-    """Analizza intent e categoria della memoria"""
+    """Analyze intent and categorize the memory content.
+
+    Uses word-boundary matching to avoid false positives from substrings
+    (e.g. "amo" should not match inside "dobbiamo").
+    """
     query = state["query"].lower()
 
-    # Rileva categoria
-    if any(word in query for word in ["preferisco", "mi piace", "non mi piace", "amo", "odio"]):
+    # Rileva categoria (word-boundary matching to avoid substring false positives)
+    if _has_word(query, ["preferisco", "preferisce", "mi piace", "non mi piace", "amo", "odio"]):
         state["detected_category"] = MemoryCategory.PREFERENCE
-    elif any(word in query for word in ["compleanno", "anniversario", "festa", "celebrazione"]):
+    elif _has_word(query, ["compleanno", "anniversario", "festa", "celebrazione"]):
         state["detected_category"] = MemoryCategory.MILESTONE
-    elif any(
-        word in query
-        for word in ["amicizia", "conosco", "incontri", "incontrato", "social", "amico"]
+    elif _has_word(
+        query, ["amicizia", "conosco", "incontri", "incontrato", "social", "amico"],
     ):
         state["detected_category"] = MemoryCategory.RELATIONSHIP
-    elif any(word in query for word in ["cultura", "tradizione", "costume", "locale"]):
+    elif _has_word(query, ["cultura", "tradizione", "costume", "locale"]):
         state["detected_category"] = MemoryCategory.CULTURAL
     else:
         state["detected_category"] = MemoryCategory.WORK
@@ -419,6 +434,10 @@ def _extract_entity_mentions(text: str) -> list[dict[str, str]]:
     Uses pattern matching — not a full NER model, but covers common patterns
     across Italian, English, and Indonesian.
 
+    Extraction order: organizations (most specific pattern), locations
+    (preposition + capitalized), then persons (catch-all names).
+    Earlier matches take priority via the seen set.
+
     Args:
         text: Input text.
 
@@ -428,14 +447,22 @@ def _extract_entity_mentions(text: str) -> list[dict[str, str]]:
     entities: list[dict[str, str]] = []
     seen: set[str] = set()
 
-    # Persons (from extract_person_names)
-    for name in extract_person_names(text):
-        key = name.lower()
+    # Organizations first — look for common suffixes (most specific pattern)
+    org_re = re.compile(
+        r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+"
+        r"(?:Ltd|LLC|Inc|SRL|PT|CV|Corp|GmbH|SpA|SA|Srl)\b",
+    )
+    for match in org_re.finditer(text):
+        org = match.group(0).strip()
+        key = org.lower()
         if key not in seen:
             seen.add(key)
-            entities.append({"name": name, "type": "person", "source": "name_extraction"})
+            # Also mark individual words as seen to prevent person extraction
+            for word in org.split():
+                seen.add(word.lower())
+            entities.append({"name": org, "type": "organization", "source": "pattern"})
 
-    # Locations — look for "in/a/di/ke + Capitalized"
+    # Locations second — "in/a/di/ke + Capitalized" (preposition signals location)
     loc_re = re.compile(
         r"\b(?:in|a|di|da|ke|dari|near|at)\s+([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){0,2})\b",
     )
@@ -446,17 +473,12 @@ def _extract_entity_mentions(text: str) -> list[dict[str, str]]:
             seen.add(key)
             entities.append({"name": loc, "type": "location", "source": "pattern"})
 
-    # Organizations — look for common suffixes
-    org_re = re.compile(
-        r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+"
-        r"(?:Ltd|LLC|Inc|SRL|PT|CV|Corp|GmbH|SpA|SA|Srl)\b",
-    )
-    for match in org_re.finditer(text):
-        org = match.group(0).strip()
-        key = org.lower()
+    # Persons last — from name extraction (catch-all)
+    for name in extract_person_names(text):
+        key = name.lower()
         if key not in seen:
             seen.add(key)
-            entities.append({"name": org, "type": "organization", "source": "pattern"})
+            entities.append({"name": name, "type": "person", "source": "name_extraction"})
 
     return entities
 
