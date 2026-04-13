@@ -111,6 +111,51 @@ def _parse_family(family_str: str) -> bool:
     return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
 
 
+def _detect_language(text: str) -> str:
+    """Detect user language from message text using Unicode script ranges.
+
+    Returns ISO 639-1 code. Defaults to 'en'.
+    Covers the top Bali visitor demographics: Russian, Chinese, Korean,
+    Japanese, Indonesian, and major European languages.
+    """
+    # Check by Unicode script (most reliable for non-Latin)
+    for char in text:
+        cp = ord(char)
+        if 0x0400 <= cp <= 0x04FF:  # Cyrillic
+            return "ru"
+        if 0x4E00 <= cp <= 0x9FFF or 0x3400 <= cp <= 0x4DBF:  # CJK
+            return "zh"
+        if 0xAC00 <= cp <= 0xD7AF or 0x1100 <= cp <= 0x11FF:  # Hangul
+            return "ko"
+        if (0x3040 <= cp <= 0x309F) or (0x30A0 <= cp <= 0x30FF):  # Hiragana/Katakana
+            return "ja"
+
+    # Latin-script languages — keyword detection
+    lower = text.lower()
+    # Indonesian
+    id_markers = {"saya", "apa", "bagaimana", "tolong", "bisa", "mau", "untuk", "visa"}
+    if sum(1 for w in id_markers if f" {w} " in f" {lower} ") >= 2:
+        return "id"
+    # French
+    fr_markers = {"je", "mon", "comment", "bonjour", "merci", "besoin", "pour", "obtenir", "quel"}
+    if sum(1 for w in fr_markers if f" {w} " in f" {lower} ") >= 2:
+        return "fr"
+    # Italian
+    it_markers = {"il", "come", "posso", "vorrei", "quanto", "bisogno"}
+    if sum(1 for w in it_markers if f" {w} " in f" {lower} ") >= 2:
+        return "it"
+    # German
+    de_markers = {"ich", "wie", "brauche", "visum", "kann", "mein"}
+    if sum(1 for w in de_markers if f" {w} " in f" {lower} ") >= 2:
+        return "de"
+    # Spanish
+    es_markers = {"necesito", "como", "puedo", "quiero", "visa"}
+    if sum(1 for w in es_markers if f" {w} " in f" {lower} ") >= 2:
+        return "es"
+
+    return "en"
+
+
 async def _persist_session_create(
     db_pool: Any,
     session_id: str,
@@ -334,6 +379,17 @@ async def chat(
                 "\n\nIMPORTANT: Add a brief disclaimer that the user should verify "
                 "the information with the Bali Zero team, as regulations may change."
             )
+
+        # Auto-detect user language and instruct LLM to respond in it
+        detected_lang = _detect_language(body.message)
+        if detected_lang != "en":
+            lang_names = {
+                "ru": "Russian", "zh": "Chinese", "ko": "Korean",
+                "ja": "Japanese", "id": "Indonesian", "fr": "French",
+                "it": "Italian", "de": "German", "es": "Spanish",
+            }
+            lang_name = lang_names.get(detected_lang, detected_lang)
+            system += f"\n\nIMPORTANT: The user is writing in {lang_name}. Respond in {lang_name}."
 
         prompt = (
             f"{system}\n\n"
