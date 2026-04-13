@@ -867,6 +867,68 @@ async def db_health(request: Request) -> dict:
     return await olympus.get_health_summary()
 
 
+@router.get("/collections")
+async def collections_health(request: Request) -> dict[str, Any]:
+    """
+    Collection freshness and live point count for all Qdrant collections.
+
+    Combines the CollectionManager's freshness tracking (last ingest timestamp)
+    with live Qdrant point counts. Useful for monitoring data staleness.
+
+    Returns:
+        dict: Per-collection last_updated timestamp, age, and live point count
+    """
+    # Get freshness data from CollectionManager if available
+    freshness: dict[str, Any] = {}
+    try:
+        search_service = getattr(request.app.state, "search_service", None)
+        if search_service:
+            collection_manager = getattr(search_service, "collection_manager", None)
+            if collection_manager and hasattr(collection_manager, "get_collection_freshness"):
+                freshness = collection_manager.get_collection_freshness()
+    except Exception as e:
+        logger.warning(f"Failed to get collection freshness: {e}")
+
+    # Get live point counts from Qdrant
+    qdrant_stats = await get_qdrant_stats()
+    live_counts: dict[str, int] = {}
+    try:
+        client = _get_qdrant_client()
+        response = await client.get("/collections")
+        response.raise_for_status()
+        collections_data = response.json().get("result", {}).get("collections", [])
+        for coll in collections_data:
+            coll_name = coll.get("name")
+            if coll_name:
+                try:
+                    coll_response = await client.get(f"/collections/{coll_name}")
+                    coll_response.raise_for_status()
+                    points = coll_response.json().get("result", {}).get("points_count", 0)
+                    live_counts[coll_name] = points
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning(f"Failed to get live Qdrant counts: {e}")
+
+    # Merge freshness + live counts
+    collections: dict[str, Any] = {}
+    all_names = set(freshness.keys()) | set(live_counts.keys())
+    for name in sorted(all_names):
+        entry: dict[str, Any] = {}
+        if name in freshness:
+            entry.update(freshness[name])
+        entry["live_points"] = live_counts.get(name, None)
+        collections[name] = entry
+
+    return {
+        "status": "ok",
+        "total_collections": len(collections),
+        "total_documents": qdrant_stats.get("total_documents", 0),
+        "collections": collections,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.get("/redis")
 async def redis_health(request: Request) -> dict[str, Any]:
     """
