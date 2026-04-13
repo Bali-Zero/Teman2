@@ -80,7 +80,7 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 108,068 nodes, 242,827 edges
-- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
+- **Vector Collections:** 10 live on Fly.io (93,283 documents), 20 defined in code (after orphan cleanup)
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE**
 
 ## 2. Codex Behavior Rules (IMPORTANT)
