@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_database_pool
+from backend.core.cache import invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +325,8 @@ async def create_news(
 
             result = {"success": True, "data": {"id": str(row["id"]), "slug": row["slug"]}}
 
+        await invalidate_cache("zantara:news:*")
+
         # Enqueue for post-publish pipeline (cover image + translations + SEO)
         if not item.image_url:
             await _enqueue_post_publish(
@@ -394,6 +397,7 @@ async def create_news_bulk(
                         pool=pool,
                     )
 
+        await invalidate_cache("zantara:news:*")
         return {"success": True, "created": created, "duplicates": duplicates, "total": len(items)}
 
     except Exception as e:
@@ -419,6 +423,7 @@ async def update_news_image(
             )
             if result == "UPDATE 0":
                 raise HTTPException(status_code=404, detail="News item not found")
+            await invalidate_cache("zantara:news:*")
             return {"success": True, "image_url": image_url}
     except HTTPException:
         raise
@@ -450,6 +455,7 @@ async def update_news_status(
             if result == "UPDATE 0":
                 raise HTTPException(status_code=404, detail="News item not found")
 
+            await invalidate_cache("zantara:news:*")
             return {"success": True, "status": status}
 
     except HTTPException:
@@ -488,6 +494,7 @@ async def subscribe_to_news(
                 subscription.frequency,
             )
 
+        await invalidate_cache("zantara:news_subscriptions:*")
         return {"success": True, "message": "Subscribed successfully"}
 
     except Exception as e:
@@ -513,6 +520,7 @@ async def unsubscribe_from_news(
                 email,
             )
 
+        await invalidate_cache("zantara:news_subscriptions:*")
         return {"success": True, "message": "Unsubscribed successfully"}
 
     except Exception as e:

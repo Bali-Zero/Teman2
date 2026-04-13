@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_super_admin
+from backend.core.cache import invalidate_cache
 from backend.services.integrations.team_drive_service import (
     TeamDriveService,
     get_team_drive_service,
@@ -564,6 +565,7 @@ async def upload_file(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} uploaded: {file.filename}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
             success=True,
@@ -599,6 +601,7 @@ async def create_folder(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} created folder: {request.name}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
             success=True, file=FileItem(**result), message=f"Cartella '{request.name}' creata",
@@ -639,6 +642,7 @@ async def create_doc(
         }
 
         logger.info(f"[TEAM_DRIVE] {user_email} created {request.doc_type}: {request.name}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
             success=True,
@@ -672,6 +676,7 @@ async def rename_file(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} renamed {file_id} to: {request.new_name}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
             success=True, file=FileItem(**result), message=f"Rinominato in '{request.new_name}'",
@@ -702,6 +707,7 @@ async def delete_file(
 
         action = "eliminato definitivamente" if permanent else "spostato nel cestino"
         logger.info(f"[TEAM_DRIVE] {user_email} deleted {file_id} (permanent={permanent})")
+        await invalidate_cache("zantara:team_drive:*")
 
         return {"success": True, "message": f"File {action}"}
 
@@ -737,6 +743,7 @@ async def move_file(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} moved {file_id} to {request.new_parent_id}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(success=True, file=FileItem(**result), message="File spostato")
 
@@ -773,6 +780,7 @@ async def copy_file(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} copied {file_id}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(success=True, file=FileItem(**result), message="File copiato")
 
@@ -880,6 +888,7 @@ async def add_permission(
         logger.info(
             f"[TEAM_DRIVE] {user_email} added {request.role} for {request.email} on {file_id}",
         )
+        await invalidate_cache("zantara:team_drive:*")
 
         return PermissionItem(**permission)
 
@@ -911,6 +920,7 @@ async def update_permission(
         logger.info(
             f"[TEAM_DRIVE] {user_email} updated permission {permission_id} to {request.role}",
         )
+        await invalidate_cache("zantara:team_drive:*")
 
         return PermissionItem(**permission)
 
@@ -938,6 +948,7 @@ async def remove_permission(
         )
 
         logger.info(f"[TEAM_DRIVE] {user_email} removed permission {permission_id} from {file_id}")
+        await invalidate_cache("zantara:team_drive:*")
 
         return {"success": True, "message": "Permesso rimosso"}
 
