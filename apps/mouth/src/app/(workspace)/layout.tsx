@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { AppSidebar } from '@/components/workspace/AppSidebar';
-import { Header } from '@/components/workspace/Header';
-import { ToastProvider } from '@/components/ui/toast';
-import { api } from '@/lib/api';
-import { useTeamStatus } from '@/hooks/useTeamStatus';
-import { logger } from '@/lib/logger';
-import { ErrorBoundary } from '@/components/optimization';
-import { CellWidget } from '@/components/cell/CellWidget';
-import { WorkspaceAssistant } from '@/components/workspace/WorkspaceAssistant';
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { AppSidebar } from "@/components/workspace/AppSidebar";
+import { Header } from "@/components/workspace/Header";
+import { ToastProvider } from "@/components/ui/toast";
+import { api } from "@/lib/api";
+// useTeamStatus removed — PANOPTICON auto-clock-in from login (2026-04-14)
+import { logger } from "@/lib/logger";
+import { ErrorBoundary } from "@/components/optimization";
+import { CellWidget } from "@/components/cell/CellWidget";
+import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -19,21 +19,20 @@ interface WorkspaceLayoutProps {
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const isTerminalPage = pathname === '/terminal';
+  const isTerminalPage = pathname === "/terminal";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
-    name: '',
-    email: '',
-    role: '',
-    team: '',
+    name: "",
+    email: "",
+    role: "",
+    team: "",
     avatar: undefined as string | undefined,
     isOnline: false,
     hoursToday: undefined as string | undefined,
   });
 
-  // Clock status from existing hook
-  const { isClockIn, isLoading: isClockLoading, loadClockStatus, toggleClock } = useTeamStatus();
+  // Clock-in is now automatic on login (PANOPTICON Phase 0)
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
@@ -41,12 +40,13 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       const storedProfile = api.getUserProfile();
       if (storedProfile) {
         const userName =
-          storedProfile.name || (storedProfile.email ? storedProfile.email.split('@')[0] : 'User');
+          storedProfile.name ||
+          (storedProfile.email ? storedProfile.email.split("@")[0] : "User");
         setUser({
           name: userName,
-          email: storedProfile.email || '',
-          role: storedProfile.role || 'Member',
-          team: storedProfile.team || 'Team',
+          email: storedProfile.email || "",
+          role: storedProfile.role || "Member",
+          team: storedProfile.team || "Team",
           avatar: storedProfile.avatar,
           isOnline: true,
           hoursToday: undefined,
@@ -55,21 +55,22 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       }
 
       const profile = await api.getProfile();
-      const userName = profile.name || (profile.email ? profile.email.split('@')[0] : 'User');
+      const userName =
+        profile.name || (profile.email ? profile.email.split("@")[0] : "User");
       setUser({
         name: userName,
-        email: profile.email || '',
-        role: profile.role || 'Member',
-        team: profile.team || 'Team',
+        email: profile.email || "",
+        role: profile.role || "Member",
+        team: profile.team || "Team",
         avatar: profile.avatar,
         isOnline: true,
         hoursToday: undefined,
       });
     } catch (error) {
       logger.error(
-        'Failed to load profile',
-        { component: 'WorkspaceLayout', action: 'loadProfile' },
-        error instanceof Error ? error : new Error(String(error))
+        "Failed to load profile",
+        { component: "WorkspaceLayout", action: "loadProfile" },
+        error instanceof Error ? error : new Error(String(error)),
       );
       throw error; // Re-throw so caller can redirect to login
     }
@@ -90,43 +91,37 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
           // Check if user is a client - redirect to portal
           const profile = api.getUserProfile();
-          if (profile?.role === 'client') {
+          if (profile?.role === "client") {
             // Clients should use the portal, not the team workspace
-            router.push('/portal');
+            router.push("/portal");
             return;
           }
 
-          // Load clock status with timeout - don't block if it fails
-          await Promise.race([
-            loadClockStatus(),
-            new Promise((resolve) => setTimeout(resolve, 5000)), // 5s timeout
-          ]).catch(() => {
-            // Clock status failed, but continue anyway
-            logger.warn('Clock status load failed or timed out, continuing anyway', {
-              component: 'WorkspaceLayout',
-              action: 'loadClockStatus',
-            });
-          });
+          // Clock-in is now automatic on login (PANOPTICON Phase 0)
         } catch (error) {
           // Profile load failed = not authenticated → redirect to login
           // Always use kita.balizero.com for login (auth hub), preserving return URL
-          const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-          const loginBase = 'https://kita.balizero.com/login';
+          const currentUrl =
+            typeof window !== "undefined" ? window.location.href : "";
+          const loginBase = "https://kita.balizero.com/login";
           const loginUrl = currentUrl
             ? `${loginBase}?redirect=${encodeURIComponent(currentUrl)}`
             : loginBase;
 
           // --- UI DEV BYPASS ---
-          if (process.env.NODE_ENV === 'development') {
-            logger.warn('[DEV MODE] Bypassing login redirect for local UI inspection', {
-              component: 'WorkspaceLayout',
-              action: 'authCheck',
-            });
+          if (process.env.NODE_ENV === "development") {
+            logger.warn(
+              "[DEV MODE] Bypassing login redirect for local UI inspection",
+              {
+                component: "WorkspaceLayout",
+                action: "authCheck",
+              },
+            );
             setUser({
-              name: 'Zero (Local Dev)',
-              email: 'zero@balizero.com',
-              role: 'admin',
-              team: 'Management',
+              name: "Zero (Local Dev)",
+              email: "zero@balizero.com",
+              role: "admin",
+              team: "Management",
               avatar: undefined,
               isOnline: true,
               hoursToday: undefined,
@@ -151,10 +146,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
 
-  // Update isOnline based on clock status
-  useEffect(() => {
-    setUser((prev) => ({ ...prev, isOnline: isClockIn }));
-  }, [isClockIn]);
+  // isOnline status is now managed server-side (PANOPTICON)
 
   // Handle logout
   const handleLogout = async () => {
@@ -162,12 +154,12 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       await api.logout();
     } catch (error) {
       logger.error(
-        'Logout error',
-        { component: 'WorkspaceLayout', action: 'logout' },
-        error instanceof Error ? error : new Error(String(error))
+        "Logout error",
+        { component: "WorkspaceLayout", action: "logout" },
+        error instanceof Error ? error : new Error(String(error)),
       );
     } finally {
-      router.push('/login');
+      router.push("/login");
     }
   };
 
@@ -185,10 +177,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   useEffect(() => {
     if (!isMobileMenuOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+      if (e.key === "Escape") setIsMobileMenuOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isMobileMenuOpen]);
 
   // Show loading state
@@ -219,7 +211,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               onClick={() => setIsMobileMenuOpen(false)}
             />
             <div className="fixed inset-y-0 left-0 z-50 md:hidden">
-              <AppSidebar user={user} unreadWhatsApp={0} onLogout={handleLogout} />
+              <AppSidebar
+                user={user}
+                unreadWhatsApp={0}
+                onLogout={handleLogout}
+              />
             </div>
           </>
         )}
@@ -229,9 +225,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           {/* Header */}
           <Header
             userName={user.name}
-            isClockIn={isClockIn}
-            isClockLoading={isClockLoading}
-            onToggleClock={toggleClock}
             onMobileMenuToggle={handleMobileMenuToggle}
             isMobileMenuOpen={isMobileMenuOpen}
             whatsappUnread={0}
