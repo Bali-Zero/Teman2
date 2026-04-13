@@ -103,15 +103,54 @@ Garuda è il CERVELLO + APPARATO DIGERENTE + FABBRICA DI CONTENUTI dell'organism
 | **CRM** (cuore)                   | 5000+ clienti, practice lifecycle, compliance    | Pompa valore ai clienti, alimenta intelligence          |
 | **OpenClaw** (muscoli)            | 24 cron jobs agentici                            | Esegue azioni nel mondo, coordina gli organi            |
 
+**Decisione architetturale già presa — Approccio C (ibrido con bridge bidirezionale):**
+
+L'organismo vive su DUE mondi separati da una frontiera di rete:
+
+```
+┌─────────────────────────────────────┐     ┌──────────────────────────────┐
+│           PRO (48GB, locale)         │     │      FLY.IO (cloud)          │
+│                                      │     │                              │
+│  Mata Garuda (cervello)              │     │  Backend RAG (FastAPI)       │
+│  Intel Scraper (stomaco)             │     │  CRM (PG — 5000+ clienti)   │
+│  War Room (fabbrica)                 │     │  EventBus (PG NOTIFY)        │
+│  OSINT Nexus (Neo4j)                 │     │  Canali (WA/TG/IG/Web)      │
+│  NLM Pipelines                       │     │  Qdrant (93K vectors)        │
+│  Sentinel, Olympus                   │     │  Redis (cache + sessions)    │
+│  OpenClaw (24 cron agentici)         │     │                              │
+│  Ollama (4 modelli H24)             │     │                              │
+│                                      │     │                              │
+│  Bus interno: Redis Streams          │     │  Bus interno: PG NOTIFY      │
+│  (garuda:raw, nexus:gaps, etc.)      │     │  + EventBus handlers         │
+│                                      │     │                              │
+│            ┌──────────┐              │     │                              │
+│            │  BRIDGE   │◄────────────┼─────┼──── Pull: polling/webhook    │
+│            │  (nervo   │─────────────┼─────┼───► Push: POST /api/...      │
+│            │   vago)   │              │     │                              │
+│            └──────────┘              │     │                              │
+└─────────────────────────────────────┘     └──────────────────────────────┘
+```
+
+- **Redis Streams** = bus locale Pro (tutto Garuda, Sentinel, OpenClaw, NLM)
+- **PG NOTIFY + EventBus** = bus Fly.io (CRM, canali, RAG)
+- **Bridge bidirezionale** = il pezzo NUOVO da costruire:
+  - **Pull**: polling periodico su endpoint backend Fly per eventi CRM → pubblica su Redis `crm:events`
+  - **Push**: legge Redis stream `intel:publish` → POST su backend API per articoli/enrichment
+  - Se bridge giù → entrambi i mondi continuano in autonomia (graceful degradation, Legge 4)
+  - Il bridge è un SINGOLO componente, non un orchestratore. È il nervo vago dell'organismo.
+
+**Nota OSINT blindata**: il bridge trasporta solo dati business (articoli, eventi CRM, enrichment). I dati OSINT/intelligence NON attraversano mai la frontiera verso Fly.io (Legge 2).
+
 **Domande che il brainstorm deve rispondere:**
 
-1. **Flusso circolare**: come i dati fluiscono da un organo all'altro e tornano arricchiti? (oggi è lineare: scrape→score→digest→stop)
-2. **Curiosità**: come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"?
-3. **Confronto**: come implementare il Consiglio (Pilastro 4 SYMBIOSIS) — moderatore + 3+ agenti diversi (Claude, Gemini, DeepSeek, Ollama) che dibattono?
-4. **Sogno**: come il consolidamento notturno comprime esperienze in skill e pota il rumore?
-5. **Misura**: le 4 metriche metaboliche (time-to-resolution, densità ontologica, indice di autonomia, frequenza escalation) — come implementarle?
-6. **Autonomia progressiva**: come passare da "Zero assegna" a "organismo propone, Zero approva" a "organismo anticipa"?
-7. **Produzione**: come l'intelligence diventa revenue? (articoli → SEO → clienti → CRM → fatturato)
+1. **Flusso circolare**: come i dati fluiscono da un organo all'altro e tornano arricchiti? La topologia C (due bus + bridge) è la risposta — il brainstorm deve definire gli stream specifici e i formati
+2. **Bridge design**: quali eventi CRM meritano di attraversare la frontiera? Quali stream Redis il bridge legge/scrive? Quale formato? Quale frequenza di polling?
+3. **Curiosità**: come il gap detector evolve da "trova buchi nel grafo" a "decide cosa esplorare dopo"?
+4. **Confronto**: come implementare il Consiglio (Pilastro 4 SYMBIOSIS) — moderatore + 3+ agenti diversi (Claude, Gemini, DeepSeek, Ollama) che dibattono?
+5. **Sogno**: come il consolidamento notturno comprime esperienze in skill e pota il rumore?
+6. **Misura**: le 4 metriche metaboliche (time-to-resolution, densità ontologica, indice di autonomia, frequenza escalation) — come implementarle?
+7. **Autonomia progressiva**: come passare da "Zero assegna" a "organismo propone, Zero approva" a "organismo anticipa"?
+8. **Produzione**: come l'intelligence diventa revenue? (articoli → SEO → clienti → CRM → fatturato) — il ciclo Intel→Content→SEO→Revenue deve essere tracciabile end-to-end
 
 ### Fase 3: Scrivi il piano
 
