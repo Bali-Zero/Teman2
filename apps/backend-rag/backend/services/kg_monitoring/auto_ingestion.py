@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
+import asyncpg
+
 from backend.services.monitoring import AlertLevel, get_alert_service
 
 logger = logging.getLogger(__name__)
@@ -227,8 +229,14 @@ Return ONLY the JSON object, no other text."""
 
             logger.info("✅ Ingestion tracking tables initialized")
 
-        except Exception as e:
+        except asyncpg.PostgresError as e:
             logger.error(f"Failed to initialize DB tables: {e}")
+            raise
+        except OSError as e:
+            logger.error(f"DB connection error during table init: {e}")
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error initializing DB tables")
             raise
 
     async def ingest_document(
@@ -287,6 +295,28 @@ Return ONLY the JSON object, no other text."""
 
             logger.info(f"✅ Ingested: {scraped_doc.title[:40]}... (ID: {qdrant_id})")
 
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+            result.status = IngestionStatus.FAILED
+            result.error_message = str(e)
+            result.completed_at = datetime.now(tz=timezone.utc)
+            result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
+
+            self.ingestion_stats["failed"] += 1
+            logger.warning(
+                "Ingestion data error for %s: %s", scraped_doc.document_id, e
+            )
+        except OSError as e:
+            result.status = IngestionStatus.FAILED
+            result.error_message = str(e)
+            result.completed_at = datetime.now(tz=timezone.utc)
+            result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
+
+            self.ingestion_stats["failed"] += 1
+            logger.error(
+                "Network/IO error during ingestion for %s: %s",
+                scraped_doc.document_id,
+                e,
+            )
         except Exception as e:
             result.status = IngestionStatus.FAILED
             result.error_message = str(e)
@@ -294,7 +324,9 @@ Return ONLY the JSON object, no other text."""
             result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["failed"] += 1
-            logger.error(f"❌ Ingestion failed for {scraped_doc.document_id}: {e}")
+            logger.exception(
+                "Unexpected ingestion failure for %s", scraped_doc.document_id
+            )
 
         self.ingestion_stats["total_processed"] += 1
         self.ingestion_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
@@ -325,7 +357,9 @@ Return ONLY the JSON object, no other text."""
                 result = await self.ingest_document(doc, target_collection)
                 results.append(result)
             except Exception as e:
-                logger.error(f"Batch ingestion error for {doc.document_id}: {e}")
+                logger.exception(
+                    "Batch ingestion error for %s", doc.document_id
+                )
                 results.append(
                     IngestionResult(
                         document_id=doc.document_id,
@@ -426,8 +460,14 @@ Return ONLY the JSON object, no other text."""
                 confidence_score=0.3,
             )
 
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning("LLM response parsing error: %s", e)
+            raise
+        except OSError as e:
+            logger.error("LLM client network error: %s", e)
+            raise
         except Exception as e:
-            logger.error(f"LLM extraction error: {e}")
+            logger.exception("Unexpected LLM extraction error")
             raise
 
     def _extract_json(self, text: str) -> str:
@@ -478,8 +518,14 @@ Return ONLY the JSON object, no other text."""
             # Return first ID as document ID
             return qdrant_ids[0] if qdrant_ids else None
 
+        except (KeyError, IndexError, TypeError) as e:
+            logger.warning("Data error during Qdrant ingestion: %s", e)
+            raise
+        except OSError as e:
+            logger.error("Network error during Qdrant ingestion: %s", e)
+            raise
         except Exception as e:
-            logger.error(f"Qdrant ingestion error: {e}")
+            logger.exception("Unexpected Qdrant ingestion error")
             raise
 
     def _create_chunks(self, extracted: ExtractedDocument) -> list[dict[str, Any]]:
@@ -570,8 +616,12 @@ Full Text:
                     result.error_message,
                     result.processing_time_ms,
                 )
+        except asyncpg.PostgresError as e:
+            logger.warning("DB error saving ingestion result: %s", e)
+        except OSError as e:
+            logger.warning("Connection error saving ingestion result: %s", e)
         except Exception as e:
-            logger.error(f"Failed to save ingestion result: {e}")
+            logger.exception("Unexpected error saving ingestion result")
 
     def get_stats(self) -> dict[str, Any]:
         """Get ingestion statistics"""
@@ -623,6 +673,12 @@ Full Text:
                     for row in rows
                 ]
 
+        except asyncpg.PostgresError as e:
+            logger.warning("DB error fetching recent results: %s", e)
+            return []
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning("Data error constructing results: %s", e)
+            return []
         except Exception as e:
-            logger.error(f"Failed to get recent results: {e}")
+            logger.exception("Unexpected error fetching recent results")
             return []

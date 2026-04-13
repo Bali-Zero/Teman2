@@ -18,6 +18,8 @@ import json
 import logging
 from typing import Any
 
+from redis.exceptions import RedisError
+
 logger = logging.getLogger(__name__)
 
 
@@ -59,8 +61,14 @@ class NotebookLMCacheService:
             else:
                 manager.register_component("notebooklm_cache", "disabled")
                 logger.warning("Redis not available for NotebookLM cache")
+        except ImportError as e:
+            logger.warning("RedisManager not available, NotebookLM cache disabled: %s", e)
+            self.redis_client = None
+        except (RedisError, OSError) as e:
+            logger.warning("Redis connection failed for NotebookLM cache: %s", e)
+            self.redis_client = None
         except Exception as e:
-            logger.error(f"NotebookLM cache init failed: {e}")
+            logger.exception("Unexpected error initializing NotebookLM cache")
             self.redis_client = None
 
     async def close(self) -> None:
@@ -130,8 +138,14 @@ class NotebookLMCacheService:
                 return json.loads(cached)
             logger.debug(f"❌ Cache MISS: {question[:50]}...")
             return None
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning("Corrupt cache entry for question '%.50s': %s", question, e)
+            return None
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during cache get: %s", e)
+            return None
         except Exception as e:
-            logger.error(f"❌ Cache get error: {e}")
+            logger.exception("Unexpected error during cache get")
             return None
 
     async def set(
@@ -178,8 +192,14 @@ class NotebookLMCacheService:
 
             logger.info(f"✅ Cached: {question[:50]}... (TTL: {self.ttl_seconds}s)")
             return True
+        except (TypeError, ValueError) as e:
+            logger.warning("Failed to serialize cache entry for '%.50s': %s", question, e)
+            return False
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during cache set: %s", e)
+            return False
         except Exception as e:
-            logger.error(f"❌ Cache set error: {e}")
+            logger.exception("Unexpected error during cache set")
             return False
 
     async def delete(self, question: str, notebook_id: str = "") -> bool:
@@ -201,8 +221,11 @@ class NotebookLMCacheService:
             await self.redis_client.delete(key)
             logger.info(f"✅ Deleted cache: {question[:50]}...")
             return True
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during cache delete: %s", e)
+            return False
         except Exception as e:
-            logger.error(f"❌ Cache delete error: {e}")
+            logger.exception("Unexpected error during cache delete")
             return False
 
     async def clear_all(self) -> int:
@@ -227,8 +250,11 @@ class NotebookLMCacheService:
                 return deleted
             logger.info("ℹ️ No cache entries to clear")
             return 0
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during cache clear: %s", e)
+            return 0
         except Exception as e:
-            logger.error(f"❌ Cache clear error: {e}")
+            logger.exception("Unexpected error during cache clear")
             return 0
 
     async def get_stats(self) -> dict:
@@ -261,6 +287,9 @@ class NotebookLMCacheService:
                 "cache_prefix": self.cache_prefix,
                 "ttl_days": self.ttl_seconds / (24 * 60 * 60),
             }
+        except (RedisError, OSError) as e:
+            logger.warning("Redis error during cache stats: %s", e)
+            return {"error": str(e)}
         except Exception as e:
-            logger.error(f"❌ Cache stats error: {e}")
+            logger.exception("Unexpected error during cache stats")
             return {"error": str(e)}
