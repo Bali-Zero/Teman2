@@ -219,7 +219,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task. Configure or decommission.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb4-tax-fiscal": {
       "description": "PLACEHOLDER — NB-4 Tax & Fiscal notebook refresh. Task empty, never configured.",
@@ -227,7 +227,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task. Has separate cron (run_nb4_pipeline.sh) that runs independently.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb5-property": {
       "description": "PLACEHOLDER — NB-5 Property notebook refresh. Task empty, never configured.",
@@ -235,7 +235,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task. Has separate cron (run_nb5_pipeline.sh).",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb6-ops-compliance": {
       "description": "PLACEHOLDER — NB-6 Ops & Compliance notebook refresh. Task empty.",
@@ -243,7 +243,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb7-editorial": {
       "description": "PLACEHOLDER — NB-7 Editorial notebook refresh. Task empty.",
@@ -251,7 +251,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb8-expat-life": {
       "description": "PLACEHOLDER — NB-8 Expat Life notebook refresh. Task empty.",
@@ -259,7 +259,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb10-team-guides": {
       "description": "PLACEHOLDER — NB-10 Team Guides notebook refresh. Task empty.",
@@ -267,7 +267,7 @@
       "consumes": "—",
       "notes": "Skipped: empty task.",
       "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-deep-research": {
       "description": "PLACEHOLDER — Deep Research trigger via NLM. Task empty.",
@@ -278,7 +278,7 @@
         "nlm CLI (notebook_query, source_snapshot)",
         "ollama/qwen3.5:9b (QueryDecomposer)"
       ],
-      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
+      "status": "fixed (payload.kind→agentTurn)"
     },
     "cell-weekly-report": {
       "description": "PLACEHOLDER — Cell organism weekly report. Task empty.",
@@ -287,7 +287,7 @@
       "notes": "Skipped: empty task.",
       "tools_called": ["postgresql (CELL_DATABASE_URL)"],
       "apis_called": ["Telegram Bot API"],
-      "status": "BROKEN (main job requires payload.kind=systemEvent)"
+      "status": "fixed (payload.kind→agentTurn)"
     }
   },
   "openclaw_air": {
@@ -1825,6 +1825,360 @@
       "system": "Garuda",
       "machine": "Pro",
       "type": "zombie-cron"
+    }
+  },
+  "mata_garuda_pipeline": {
+    "_doc": "Mata Garuda intelligence pipeline: 4-layer OSINT system. Layer 1=Harvest, Layer 2=Kognitif, Layer 3=Nexus, Layer 4=Action.",
+    "mg_sentinel_pulse": {
+      "description": "Mata Garuda Sentinel: daily full pulse (sense→think→act→reflect→dream→mature). Runs all 4 layers sequentially: harvest sources, normalize+score, digest via Claude CLI, publish + TG alert.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "02:00 WITA daily (com.matagaruda.sentinel.daily)",
+      "uses_llm": "Claude CLI (digest synthesis) + Ollama qwen3.5:9b (scoring)",
+      "tools_called": [
+        "run_sentinel_py.py",
+        "SentinelCell.pulse()",
+        "Claude CLI --print",
+        "Ollama scoring",
+        "Redis garuda:raw→garuda:enriched→garuda:digest"
+      ],
+      "apis_called": [
+        "Telegram Bot API",
+        "arXiv API",
+        "GitHub API",
+        "YouTube Data API",
+        "RSS feeds"
+      ],
+      "produces": "garuda:digest stream, TG intelligence briefing",
+      "consumes": "arXiv, RSS, GitHub trending, YouTube, regulation sites"
+    },
+    "mg_watcher": {
+      "description": "Mata Garuda Watcher: monitors regulation changes and KG data freshness. Alerts if entities become stale or new regulations detected.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "06:00 WITA daily (com.matagaruda.watcher.daily)",
+      "uses_llm": "none",
+      "tools_called": [
+        "run_watcher.sh",
+        "regulation_watcher agent",
+        "scraper_tools.check_regulation_source"
+      ],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
+      "produces": "Regulation change alerts, stale entity alerts",
+      "consumes": "Neo4j KG, government websites"
+    },
+    "mg_bridge_consumer": {
+      "description": "Garuda Bridge Consumer: reads garuda:raw Redis stream, processes intelligence items into Neo4j Knowledge Graph. Uses OSINT-Nexus venv (neo4j 6.1).",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "06:15 WITA daily (com.garuda.consumer.daily)",
+      "uses_llm": "none",
+      "tools_called": [
+        "garuda-consumer.sh",
+        "OSINT-Nexus venv python",
+        "neo4j driver"
+      ],
+      "apis_called": ["Neo4j (localhost)", "Redis (garuda:raw stream)"],
+      "produces": "Neo4j nodes and edges from intelligence items",
+      "consumes": "Redis garuda:raw stream"
+    },
+    "mg_gap_detector": {
+      "description": "Garuda Gap Detector: runs 8 Cypher queries against Neo4j to find holes in the intelligence graph. Publishes tasks to nexus:gaps stream for future auto-enrichment.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "07:00 + 18:00 WITA (com.garuda.gap-detector.twice-daily)",
+      "uses_llm": "none",
+      "tools_called": [
+        "garuda-gap-detector.sh",
+        "OSINT-Nexus venv python",
+        "8 Cypher gap queries"
+      ],
+      "apis_called": ["Neo4j (localhost)", "Redis (nexus:gaps stream)"],
+      "produces": "nexus:gaps stream tasks (missing attributes, relations, stale data)",
+      "consumes": "Neo4j KG state"
+    },
+    "mg_task_consumer": {
+      "description": "Mata Garuda Task Consumer: reads research/enrichment tasks from Redis stream, dispatches to MG agents. Currently mostly log_only (agents for NIP, LHKPN, bio, org chart, LPSE planned).",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "on-demand",
+      "uses_llm": "none (dispatch only, agents use LLMs)",
+      "tools_called": [
+        "task_tools.py",
+        "Redis nexus:gaps stream",
+        "DISPATCH_TABLE routing"
+      ],
+      "produces": "Dispatched agent tasks, audit log (task_dispatch.jsonl)",
+      "consumes": "nexus:gaps stream from gap detector"
+    },
+    "mg_worker_normalizer": {
+      "description": "Normalizer Worker: reads garuda:raw, deduplicates (SHA256), normalizes to common schema, stores in KB, publishes to garuda:enriched. Layer 2 Kognitif.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "none",
+      "tools_called": [
+        "Redis garuda:raw→garuda:enriched",
+        "SHA256 dedup",
+        "KB SQLite"
+      ],
+      "produces": "garuda:enriched stream, KB entries",
+      "consumes": "garuda:raw stream"
+    },
+    "mg_worker_scorer": {
+      "description": "Relevance Scorer Worker: reads garuda:enriched, scores items 1-5 using Ollama (local, $0), triggers TG alert for items >= SCORE_SIGNAL. Layer 2 Kognitif.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "Ollama (scoring model)",
+      "tools_called": ["Redis garuda:enriched", "Ollama local API"],
+      "apis_called": [
+        "Ollama localhost",
+        "Telegram Bot API (high-score alerts)"
+      ],
+      "produces": "Scored intelligence items, TG alerts for high-value items",
+      "consumes": "garuda:enriched stream"
+    },
+    "mg_worker_nlm_feeder": {
+      "description": "NLM Feeder Worker: reads harvested items from KB, adds URLs to appropriate NLM notebooks. Layer 3 Nexus — after 30 days NLM has 300+ sources.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "none",
+      "tools_called": ["nlm CLI (source add)", "KB SQLite"],
+      "apis_called": ["NotebookLM (via nlm CLI)"],
+      "produces": "NLM sources added to domain notebooks",
+      "consumes": "KB harvested items"
+    },
+    "mg_ai_digest_agent": {
+      "description": "AI Digest Agent: reads KB + Redis data, synthesizes intelligence briefing via Claude CLI (one call), publishes to garuda:digest, sends TG alert.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI (--print, synthesis)",
+      "tools_called": [
+        "run_ai_digest.py",
+        "Claude CLI --print",
+        "knowledge_tools.py",
+        "Redis garuda:digest",
+        "tg_tools.py"
+      ],
+      "apis_called": [
+        "Claude CLI (Anthropic subscription)",
+        "Telegram Bot API"
+      ],
+      "produces": "Intelligence digest, garuda:digest stream entry, TG briefing",
+      "consumes": "KB data, garuda:enriched items"
+    },
+    "mg_regulation_watcher_agent": {
+      "description": "Regulation Watcher Agent: monitors Indonesian government regulation sites for changes relevant to Bali Zero services (visa, company, tax). GENOME-based self-evolving.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": [
+        "scraper_tools.check_regulation_source",
+        "feed_tools.py"
+      ],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
+      "produces": "Regulation change items → garuda:raw",
+      "consumes": "Government regulation websites"
+    },
+    "mg_twitter_harvester_agent": {
+      "description": "AI Twitter Harvester: monitors X/Twitter for Bali business/immigration/regulation keywords. GENOME-based.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": ["scraper_tools.py", "Twitter API v2"],
+      "apis_called": ["Twitter API v2"],
+      "produces": "Twitter intelligence items → garuda:raw",
+      "consumes": "Twitter keyword streams"
+    },
+    "mg_arxiv_harvester_agent": {
+      "description": "arXiv Harvester: harvests AI/ML papers relevant to intelligence operations.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["arxiv_tools.py", "arxiv_sensor.py"],
+      "apis_called": ["arXiv API"],
+      "produces": "Research papers → garuda:raw",
+      "consumes": "arXiv feeds"
+    },
+    "mg_github_harvester_agent": {
+      "description": "GitHub Trending Harvester: harvests trending repos relevant to OSINT/intelligence tooling.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["github_tools.py", "github_sensor.py"],
+      "apis_called": ["GitHub API"],
+      "produces": "GitHub trends → garuda:raw",
+      "consumes": "GitHub trending"
+    },
+    "mg_youtube_harvester_agent": {
+      "description": "YouTube Intel Harvester: harvests YouTube videos on Indonesia business/regulation topics.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["youtube_tools.py", "youtube_sensor.py"],
+      "apis_called": ["YouTube Data API"],
+      "produces": "Video intelligence → garuda:raw",
+      "consumes": "YouTube search/channels"
+    },
+    "mg_newsletter_harvester_agent": {
+      "description": "AI Newsletter Harvester: harvests newsletter/RSS sources for business intelligence.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["feed_tools.py", "rss_sensor.py"],
+      "apis_called": ["RSS feeds"],
+      "produces": "Newsletter items → garuda:raw",
+      "consumes": "RSS/newsletter feeds"
+    },
+    "mg_meta_agent": {
+      "description": "Meta Agent: Lamarckian self-evolution engine. Reviews agent GENOME performance, proposes mutations, spawns new agent variants. Uses Claude CLI for reasoning.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "meta-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": [
+        "meta_tools.py",
+        "lamarckian.py",
+        "reflection.py",
+        "Claude CLI --print"
+      ],
+      "produces": "Agent GENOME mutations, performance reflections",
+      "consumes": "Agent run logs, GENOME.md files"
+    },
+    "mg_source_health_agent": {
+      "description": "Source Health Agent: checks if data sources (URLs, APIs, RSS) are still alive and returning data. Marks dead sources.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["scraper_tools.py (HTTP probes)"],
+      "produces": "Source health status, dead source alerts",
+      "consumes": "Source registry"
+    },
+    "mg_lamarckian_evolution": {
+      "description": "Lamarckian runtime: runs evolution cycles on agent GENOMEs. Reflection→mutation→selection. Stored in SQLite KB.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "runtime",
+      "uses_llm": "Claude CLI (reflection + mutation proposals)",
+      "tools_called": [
+        "lamarckian.py",
+        "reflection.py",
+        "CLIRuntime(model=claude)"
+      ],
+      "produces": "Evolved GENOME.md files, KB reflection entries",
+      "consumes": "Agent performance logs, current GENOMEs"
+    },
+    "mg_cli_runtime": {
+      "description": "CLI Runtime: subprocess wrapper for LLM CLIs (claude --print, gemini --prompt, codex). Aligned with bali-intel-scraper enricher pattern. Fallback: claude→gemini.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "runtime",
+      "uses_llm": "Claude CLI (primary) → Gemini CLI (fallback)",
+      "tools_called": [
+        "subprocess: claude --print",
+        "subprocess: gemini --prompt"
+      ],
+      "produces": "LLM responses for agents",
+      "consumes": "Agent prompts"
+    }
+  },
+  "intel_scraper_pipeline": {
+    "_doc": "Bali Intel Scraper: news/regulation scraping pipeline. Runs locally on Pro via OpenClaw at 03:00 WITA.",
+    "intel_stage1_scraping": {
+      "description": "Intel Pipeline Stage 1: scrapes 630+ news/regulation sources via Google News RSS + direct sites. Playwright browser pool.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "none",
+      "tools_called": [
+        "GoogleNewsRSSFetcher",
+        "browser_pool.py",
+        "proxy_manager.py"
+      ],
+      "apis_called": ["Google News RSS", "600+ news/gov websites"],
+      "produces": "Raw scraped articles",
+      "consumes": "Source list (630+ URLs)"
+    },
+    "intel_stage2_scoring": {
+      "description": "Intel Pipeline Stage 2: LLAMA local scoring — fast relevance filtering ($0 cost).",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "LLAMA (local via Ollama)",
+      "tools_called": ["AIEngine (LLAMA provider)"],
+      "produces": "Scored articles (1-5)",
+      "consumes": "Raw scraped articles"
+    },
+    "intel_stage3_validation": {
+      "description": "Intel Pipeline Stage 3: Claude validation gate — intelligent quality filter.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Claude (Anthropic API)",
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
+      "produces": "Validated articles",
+      "consumes": "Scored articles (score >= threshold)"
+    },
+    "intel_stage4_enrichment": {
+      "description": "Intel Pipeline Stage 4: Claude Max enrichment — full article generation with SEO/AEO optimization.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Claude (Anthropic API, max context)",
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
+      "produces": "Enriched full articles (MDX format)",
+      "consumes": "Validated articles"
+    },
+    "intel_stage5_images": {
+      "description": "Intel Pipeline Stage 5: Gemini image generation — cover images for published articles.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Gemini (image generation)",
+      "apis_called": ["Gemini API (image gen)"],
+      "produces": "Cover images for articles",
+      "consumes": "Article metadata"
+    },
+    "intel_stage6_publish": {
+      "description": "Intel Pipeline Stage 6: publish to BaliZero website API + optional Telegram approval workflow.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "none",
+      "tools_called": ["balizero.com/api/news (POST)"],
+      "apis_called": ["balizero.com/api/news", "Telegram Bot API (approval)"],
+      "produces": "Published articles on balizero.com",
+      "consumes": "Enriched articles + images"
+    },
+    "intel_nightly_orchestrator": {
+      "description": "Intel Nightly: LaunchAgent orchestrates the full pipeline at 01:00 WITA via OpenClaw. Triggers all 6 stages sequentially.",
+      "system": "Intel",
+      "machine": "Pro",
+      "type": "launchd-orchestrator",
+      "schedule": "01:00 WITA daily (com.balizero.intel.nightly)",
+      "uses_llm": "LLAMA + Claude + Gemini (via pipeline stages)",
+      "tools_called": [
+        "OpenClaw gateway trigger",
+        "bali-intel-scraper pipeline"
+      ],
+      "produces": "Published intel articles (~$0.06/article)",
+      "consumes": "630+ sources"
     }
   }
 }
