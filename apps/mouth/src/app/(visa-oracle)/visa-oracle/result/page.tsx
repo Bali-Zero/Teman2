@@ -297,7 +297,7 @@ export default function ResultPage() {
         </p>
         <a
           href={`https://wa.me/6281338051876?text=${encodeURIComponent(
-            `Hello Bali Zero! I used Visa Oracle but no matching visa was found. Nationality: ${nationality}, Purpose: ${purpose ?? ""}, Duration: ${duration ?? ""}. Can you help me?`,
+            `Hello Bali Zero! I used the Visa Oracle but no matching visa was found. Nationality: ${nationality}, Purpose: ${purpose ?? ""}, Duration: ${duration ?? ""}. Can you help me?`,
           )}`}
           target="_blank"
           rel="noopener noreferrer"
@@ -321,25 +321,25 @@ export default function ResultPage() {
     <div className="flex flex-col gap-8 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            Your visa recommendations
-          </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          Your visa recommendations
+        </h1>
+        <div className="flex items-center gap-3">
+          <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
+            You have{" "}
+            <span style={{ color: "var(--bz-accent)" }}>
+              {MAX_QUESTIONS} free questions
+            </span>{" "}
+            to ask about these visa options.
+          </p>
           <button
             onClick={() => router.replace("/visa-oracle/quiz")}
-            className="text-xs underline transition-opacity hover:opacity-70 flex-shrink-0"
+            className="text-xs underline transition-opacity hover:opacity-70 whitespace-nowrap"
             style={{ color: "var(--tx-secondary)" }}
           >
             Change answers
           </button>
         </div>
-        <p className="text-sm" style={{ color: "var(--tx-secondary)" }}>
-          You have{" "}
-          <span style={{ color: "var(--bz-accent)" }}>
-            {MAX_QUESTIONS} free questions
-          </span>{" "}
-          to ask about these visa options.
-        </p>
       </div>
 
       {/* Visa cards */}
