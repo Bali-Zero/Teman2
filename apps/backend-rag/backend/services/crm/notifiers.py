@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.logging_utils import get_logger
@@ -193,9 +194,15 @@ class BirthdayNotifierService:
                     raise_on_failure=True,
                 )
                 sent_via_brevo = True
-            except Exception as brevo_err:
+            except httpx.HTTPError as brevo_err:
                 logger.warning(
-                    f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}",
+                    "Brevo HTTP failed for birthday %s, trying Zoho: %s",
+                    client["email"], brevo_err,
+                )
+            except OSError as brevo_err:
+                logger.warning(
+                    "Brevo connection failed for birthday %s, trying Zoho: %s",
+                    client["email"], brevo_err,
                 )
             if not sent_via_brevo:
                 await self.email_service.send_email(
@@ -207,8 +214,26 @@ class BirthdayNotifierService:
                 )
                 logger.info(f"Birthday email sent to {client['email']} via Zoho ({language})")
             return True
+        except (KeyError, ValueError) as e:
+            logger.warning(
+                "Template formatting error for birthday email to %s: %s",
+                client.get("email"), e,
+            )
+            return False
+        except httpx.HTTPError as e:
+            logger.warning(
+                "HTTP error sending birthday email to %s: %s",
+                client.get("email"), e,
+            )
+            return False
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(
+                "DB/connection error sending birthday email to %s: %s",
+                client.get("email"), e,
+            )
+            return False
         except Exception as e:
-            logger.error(f"Failed to send birthday email to {client.get('email')}: {e}")
+            logger.exception("Failed to send birthday email to %s", client.get("email"))
             return False
 
     async def run_birthday_notifications(self) -> dict[str, Any]:
@@ -232,8 +257,14 @@ class BirthdayNotifierService:
                 await asyncio.sleep(2)
             logger.info(f"Birthday notifications complete: {stats}")
             return stats
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning(
+                "DB/connection error during birthday notification run: %s", e,
+            )
+            stats["error"] = str(e)
+            return stats
         except Exception as e:
-            logger.error(f"Birthday notification run failed: {e}", exc_info=True)
+            logger.exception("Birthday notification run failed")
             stats["error"] = str(e)
             return stats
 
@@ -288,8 +319,12 @@ class StalePracticeNotifier:
         }
         try:
             stale = await self._get_stale_practices()
+        except (asyncpg.PostgresError, OSError) as exc:
+            logger.warning("DB/connection error querying stale practices: %s", exc)
+            result["errors"].append(f"DB query failed: {exc}")
+            return result
         except Exception as exc:
-            logger.error("Failed to query stale practices", exc_info=True)
+            logger.exception("Failed to query stale practices")
             result["errors"].append(f"DB query failed: {exc}")
             return result
 
@@ -303,8 +338,14 @@ class StalePracticeNotifier:
         try:
             await self._send_zero_summary(stale)
             result["admin_notified"] = True
+        except httpx.HTTPError as exc:
+            logger.warning("HTTP error sending admin summary email: %s", exc)
+            result["errors"].append(f"Admin email failed: {exc}")
+        except OSError as exc:
+            logger.warning("Connection error sending admin summary email: %s", exc)
+            result["errors"].append(f"Admin email failed: {exc}")
         except Exception as exc:
-            logger.error("Failed to send admin summary email", exc_info=True)
+            logger.exception("Failed to send admin summary email")
             result["errors"].append(f"Admin email failed: {exc}")
 
         by_leader: dict[str, list[dict[str, Any]]] = {}
@@ -318,11 +359,22 @@ class StalePracticeNotifier:
             try:
                 await self._send_team_leader_alert(leader_email, practices)
                 result["leaders_notified"] += 1
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    "HTTP error sending team-leader alert",
+                    extra={"context": {"leader": leader_email, "error": str(exc)}},
+                )
+                result["errors"].append(f"Leader email ({leader_email}) failed: {exc}")
+            except OSError as exc:
+                logger.warning(
+                    "Connection error sending team-leader alert",
+                    extra={"context": {"leader": leader_email, "error": str(exc)}},
+                )
+                result["errors"].append(f"Leader email ({leader_email}) failed: {exc}")
             except Exception as exc:
-                logger.error(
+                logger.exception(
                     "Failed to send team-leader alert",
                     extra={"context": {"leader": leader_email}},
-                    exc_info=True,
                 )
                 result["errors"].append(f"Leader email ({leader_email}) failed: {exc}")
 
