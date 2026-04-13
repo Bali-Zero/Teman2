@@ -17,6 +17,7 @@ from typing import Any
 
 import asyncpg
 import httpx
+from googleapiclient.errors import HttpError as GoogleHttpError
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
@@ -103,8 +104,11 @@ class InvoiceAutomationService:
                 filename = f"Invoice_{invoice_number}.pdf"
                 logger.info(f"PDF generated: {filename}")
 
+            except (OSError, ValueError, KeyError) as pdf_error:
+                logger.warning(f"Failed to generate PDF: {pdf_error}")
+                return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
             except Exception as pdf_error:
-                logger.error(f"Failed to generate PDF: {pdf_error}")
+                logger.exception(f"Unexpected error generating PDF for practice {practice_id}")
                 return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
 
             # Step 3: Send invoice email to client
@@ -122,8 +126,15 @@ class InvoiceAutomationService:
                     )
                     email_sent = True
                     logger.info(f"Invoice email sent to client {client_data['email']}")
+                except httpx.HTTPStatusError as email_error:
+                    logger.warning(
+                        f"Email API returned {email_error.response.status_code} "
+                        f"sending invoice to {client_data['email']}: {email_error}",
+                    )
+                except httpx.HTTPError as email_error:
+                    logger.warning(f"Failed to send invoice email to client: {email_error}")
                 except Exception as email_error:
-                    logger.error(f"Failed to send invoice email to client: {email_error}")
+                    logger.exception(f"Unexpected error sending invoice email to {client_data['email']}")
             else:
                 logger.warning(f"Client {client_data['id']} has no email, skipping email")
 
@@ -139,8 +150,15 @@ class InvoiceAutomationService:
                 )
                 asya_notified = True
                 logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL}")
-            except Exception as notify_error:
+            except httpx.HTTPStatusError as notify_error:
+                logger.warning(
+                    f"Email API returned {notify_error.response.status_code} "
+                    f"sending accounting notification: {notify_error}",
+                )
+            except httpx.HTTPError as notify_error:
                 logger.warning(f"Failed to notify accounting: {notify_error}")
+            except Exception as notify_error:
+                logger.exception("Unexpected error sending accounting notification")
 
             # Step 5: Upload backup PDF to Google Drive
             logger.info("Uploading invoice backup to Google Drive")
@@ -156,8 +174,15 @@ class InvoiceAutomationService:
                 drive_file_id = upload_result.get("id")
                 drive_web_link = upload_result.get("webViewLink")
                 logger.info(f"Invoice backup uploaded to Drive: {drive_file_id}")
+            except GoogleHttpError as drive_error:
+                logger.warning(
+                    f"Google Drive API error uploading invoice backup: "
+                    f"{drive_error.status_code} {drive_error.reason}",
+                )
+            except OSError as drive_error:
+                logger.warning(f"Network error uploading invoice backup to Drive: {drive_error}")
             except Exception as drive_error:
-                logger.warning(f"Failed to upload invoice backup to Drive: {drive_error}")
+                logger.exception("Unexpected error uploading invoice backup to Drive")
                 # Continue even if Drive upload fails
 
             # Step 6: Update practice with invoice details
@@ -188,11 +213,14 @@ class InvoiceAutomationService:
                 "accounting_notified": asya_notified,
             }
 
-        except Exception as error:
-            logger.error(
-                f"Invoice automation failed for practice {practice_id}: {error}",
-                exc_info=True,
+        except (asyncpg.PostgresError, OSError) as error:
+            logger.warning(
+                f"Invoice automation failed for practice {practice_id} "
+                f"({type(error).__name__}): {error}",
             )
+            return {"success": False, "error": str(error)}
+        except Exception as error:
+            logger.exception(f"Unexpected error in invoice automation for practice {practice_id}")
             return {"success": False, "error": str(error)}
 
     async def _send_invoice_email_to_client(

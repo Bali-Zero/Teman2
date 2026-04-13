@@ -82,9 +82,12 @@ try:
     with open(_BUILDING_CODES_PATH, encoding="utf-8") as _f:
         _BUILDING_CODES: dict[str, dict[str, str]] = json.load(_f)
     logger.info("✅ [PrimeNexus] Loaded building codes for %d zone types", len(_BUILDING_CODES))
-except Exception as _e:
+except (OSError, json.JSONDecodeError) as _e:
     _BUILDING_CODES = {}
     logger.warning("⚠️ [PrimeNexus] Could not load building codes: %s", _e)
+except Exception as _e:
+    _BUILDING_CODES = {}
+    logger.exception("⚠️ [PrimeNexus] Unexpected error loading building codes")
 
 
 def parse_tb_to_meters(tb_str: str | None) -> float | None:
@@ -119,8 +122,11 @@ def calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
             "setback": data.get("GSB", "—"),
             "notes": data.get("note", ""),
         }
-    except Exception as exc:
+    except (ValueError, TypeError, AttributeError) as exc:
         logger.warning("⚠️ [PrimeNexus] Building codes parse error for %s: %s", zone_code, exc)
+        return None
+    except Exception as exc:
+        logger.exception("⚠️ [PrimeNexus] Unexpected error parsing building codes for %s", zone_code)
         return None
 
 
@@ -842,8 +848,10 @@ class PrimeNexusService:
                 cached = await self._cache.get(cache_key)
                 if cached is not None:
                     return float(cached) if cached != "null" else None
+            except (ValueError, TypeError) as exc:
+                logger.debug("[PrimeNexus] Sea distance cache parse error: %s", exc)
             except Exception:
-                pass
+                logger.debug("[PrimeNexus] Sea distance cache get failed")
 
         # PostGIS query
         pool = self._db_pool
@@ -875,15 +883,17 @@ class PrimeNexusService:
 
             if row and row["dist_m"] is not None:
                 dist = round(float(row["dist_m"]), 1)
-        except Exception as exc:
+        except (asyncpg.PostgresError, OSError) as exc:
             logger.debug("[PrimeNexus] Sea distance query skipped: %s", exc)
+        except Exception as exc:
+            logger.exception("[PrimeNexus] Unexpected error in sea distance query")
 
         # Cache result (24h)
         if self._cache:
             try:
                 await self._cache.set(cache_key, str(dist) if dist is not None else "null", ttl=86400)
             except Exception:
-                pass
+                logger.debug("[PrimeNexus] Sea distance cache set failed")
 
         return dist
 
@@ -904,6 +914,8 @@ class PrimeNexusService:
                     result = cached if isinstance(cached, dict) else json.loads(cached)
                     result["cache_hit"] = True
                     return result
+            except (json.JSONDecodeError, TypeError, KeyError) as exc:
+                logger.debug("[PrimeNexus] Cache parse failed: %s", exc)
             except Exception as exc:
                 logger.debug("[PrimeNexus] Cache get failed: %s", exc)
 
@@ -1040,8 +1052,16 @@ class PrimeNexusService:
                 "gsb": req_data.get("old_minimum_gsb", "N/A"),
                 "desa": location_data.get("name", "N/A"),
             }
+        except httpx.HTTPError as exc:
+            logger.warning("⚠️ [PrimeNexus] BATARA HTTP error (%s,%s): %s", lat, lng, exc)
+            self._record_batara_failure()
+            return None
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("⚠️ [PrimeNexus] BATARA response parse error (%s,%s): %s", lat, lng, exc)
+            self._record_batara_failure()
+            return None
         except Exception as exc:
-            logger.warning("⚠️ [PrimeNexus] BATARA query failed (%s,%s): %s", lat, lng, exc)
+            logger.exception("⚠️ [PrimeNexus] BATARA query unexpected error (%s,%s)", lat, lng)
             self._record_batara_failure()
             return None
 
@@ -1111,8 +1131,14 @@ class PrimeNexusService:
                             if attrs.get(k) and attrs.get(k) != "Tidak Ada"
                         },
                     }
+        except httpx.HTTPError as exc:
+            logger.warning("⚠️ [PrimeNexus] GISTARU HTTP error: %s", exc)
+            self._record_gistaru_failure()
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("⚠️ [PrimeNexus] GISTARU response parse error: %s", exc)
+            self._record_gistaru_failure()
         except Exception as exc:
-            logger.warning("⚠️ [PrimeNexus] GISTARU query failed: %s", exc)
+            logger.exception("⚠️ [PrimeNexus] GISTARU query unexpected error")
             self._record_gistaru_failure()
         return None
 
@@ -1137,8 +1163,11 @@ class PrimeNexusService:
                     )
                 finally:
                     await conn.close()
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS fallback failed: %s", exc)
+                return None
+            except Exception as exc:
+                logger.exception("[PrimeNexus] PostGIS fallback unexpected error")
                 return None
         else:
             try:
@@ -1150,8 +1179,11 @@ class PrimeNexusService:
                         "ORDER BY risk_score DESC LIMIT 1",
                         lng, lat,
                     )
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS pool query failed: %s", exc)
+                return None
+            except Exception as exc:
+                logger.exception("[PrimeNexus] PostGIS pool query unexpected error")
                 return None
 
     # ── Price query ──────────────────────────────────────────────────
@@ -1177,8 +1209,10 @@ class PrimeNexusService:
                     await conn.close()
                 if row and row["avg_price_per_are"]:
                     return float(row["avg_price_per_are"])
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
                 logger.debug("[PrimeNexus] Price lookup skipped: %s", exc)
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Price lookup unexpected error")
         else:
             try:
                 async with pool.acquire() as conn:
@@ -1190,8 +1224,10 @@ class PrimeNexusService:
                     )
                     if row and row["avg_price_per_are"]:
                         return float(row["avg_price_per_are"])
+            except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
+                logger.debug("[PrimeNexus] Price pool lookup skipped: %s", exc)
             except Exception as exc:
-                logger.debug("[PrimeNexus] Price lookup skipped: %s", exc)
+                logger.exception("[PrimeNexus] Price pool lookup unexpected error")
         return None
 
     # ── Business extraction ──────────────────────────────────────────
@@ -1372,8 +1408,10 @@ class PrimeNexusService:
                     result = cached if isinstance(cached, dict) else json.loads(cached)
                     result["cache_hit"] = True
                     return result
+            except (json.JSONDecodeError, TypeError, KeyError) as exc:
+                logger.debug("[PrimeNexus] Analyze cache parse error: %s", exc)
             except Exception:
-                pass
+                logger.debug("[PrimeNexus] Analyze cache get failed")
 
         # Step 1: Resolve zone
         resolve_result = await self.resolve(lat, lng)
@@ -1421,9 +1459,12 @@ class PrimeNexusService:
                     "oss_risk": audit.get("oss_risk", ""),
                     "max_foreign_ownership": pma_logic.get("max_foreign_ownership", 0),
                 }
+            except (KeyError, ValueError, TypeError) as e:
+                kbli_result = {"code": kbli_code, "state": "ERROR", "error": str(e)}
+                logger.warning("[PrimeNexus] KBLIEye data error: %s", e)
             except Exception as e:
                 kbli_result = {"code": kbli_code, "state": "ERROR", "error": str(e)}
-                logger.warning("[PrimeNexus] KBLIEye failed: %s", e)
+                logger.exception("[PrimeNexus] KBLIEye unexpected error")
 
         # Step 3: ROI calculation (if land/price provided)
         roi_data: dict[str, Any] | None = None
@@ -1443,8 +1484,15 @@ class PrimeNexusService:
                     "urbanistica": rd.get("urbanistica", {}),
                     "total_investment_idr": rd.get("total_investment_idr"),
                 }
+            except httpx.HTTPError as e:
+                roi_data = {"error": str(e)}
+                logger.warning("[PrimeNexus] ROI HTTP error: %s", e)
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                roi_data = {"error": str(e)}
+                logger.warning("[PrimeNexus] ROI response parse error: %s", e)
             except Exception as e:
                 roi_data = {"error": str(e)}
+                logger.exception("[PrimeNexus] ROI calculation unexpected error")
 
         # Step 3b: Enrich geo_data with sea_distance_m and risk_score from resolve
         sea_dist = resolve_result.get("sea_distance_m")
@@ -1525,8 +1573,10 @@ class PrimeNexusService:
             try:
                 cache_data = {k: v for k, v in result.items() if k != "cache_hit"}
                 await self._cache.set(cache_key, json.dumps(cache_data, default=str), ttl=14400)
+            except (TypeError, ValueError) as exc:
+                logger.debug("[PrimeNexus] Analyze cache serialize error: %s", exc)
             except Exception:
-                pass
+                logger.debug("[PrimeNexus] Analyze cache set failed")
 
         logger.info(
             "[PrimeNexus] analyze: verdict=%s score=%d zone=%s kbli=%s",
@@ -1588,8 +1638,14 @@ class PrimeNexusService:
                 if len(articles) >= limit:
                     break
             return articles
+        except httpx.HTTPError as exc:
+            logger.debug("[PrimeNexus] Intel search HTTP error: %s", exc)
+            return []
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            logger.debug("[PrimeNexus] Intel search parse error: %s", exc)
+            return []
         except Exception as exc:
-            logger.debug("[PrimeNexus] Intel search skipped: %s", exc)
+            logger.exception("[PrimeNexus] Intel search unexpected error")
             return []
 
     # ── Layer 3: CRM Intelligence Overlay ───────────────────────────
@@ -1625,8 +1681,11 @@ class PrimeNexusService:
                                                           include_clients, include_companies, max_features, features, stats)
                 finally:
                     await conn.close()
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Intelligence fallback failed: %s", exc)
+                return {"type": "FeatureCollection", "features": [], "stats": stats}
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Intelligence fallback unexpected error")
                 return {"type": "FeatureCollection", "features": [], "stats": stats}
 
         try:
@@ -1635,8 +1694,10 @@ class PrimeNexusService:
                     conn, sw_lat, sw_lng, ne_lat, ne_lng,
                     include_clients, include_companies, max_features, features, stats,
                 )
-        except Exception as exc:
+        except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Intelligence query failed: %s", exc)
+        except Exception as exc:
+            logger.exception("[PrimeNexus] Intelligence query unexpected error")
 
         return {"type": "FeatureCollection", "features": [], "stats": stats}
 
@@ -1746,8 +1807,10 @@ class PrimeNexusService:
                         cnt = row["cnt"]
                         by_kbli[sector] = cnt
                         total += cnt
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Density query failed: %s", exc)
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Density query unexpected error")
 
         # Compute saturation index
         prefix = zone_code.split("-")[0] if "-" in zone_code else zone_code
@@ -1865,8 +1928,10 @@ class PrimeNexusService:
                         else:
                             factors.append({"signal": "new_companies", "direction": "stable",
                                            "detail": f"{recent_act} recent, {prior_act} prior"})
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Predict query failed: %s", exc)
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Predict query unexpected error")
 
         trend = "improving" if trend_score >= 1 else "declining" if trend_score <= -1 else "stable"
 
@@ -1955,8 +2020,10 @@ class PrimeNexusService:
                             "companies": companies,
                             "activity_score": practices + companies,
                         })
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Temporal query failed: %s", exc)
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Temporal query unexpected error")
 
         trend = "stable"
         if len(buckets) >= 2:
@@ -2028,8 +2095,10 @@ class PrimeNexusService:
                             "source_url": row["source_url"] or "",
                             "source": "database",
                         })
-            except Exception as exc:
+            except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Regulations SQL query failed: %s", exc)
+            except Exception as exc:
+                logger.exception("[PrimeNexus] Regulations SQL unexpected error")
 
         # Source 2: Qdrant semantic search (reuse _search_intel)
         try:
@@ -2048,8 +2117,10 @@ class PrimeNexusService:
                     "source_url": art.get("source_url", ""),
                     "source": "qdrant",
                 })
-        except Exception as exc:
+        except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.debug("[PrimeNexus] Regulations Qdrant failed: %s", exc)
+        except Exception as exc:
+            logger.exception("[PrimeNexus] Regulations Qdrant unexpected error")
 
         # Sort by published_at desc, cap at limit
         regulations.sort(key=lambda r: r.get("published_at", ""), reverse=True)
@@ -2107,8 +2178,11 @@ class PrimeNexusService:
                     "expires_at": row["expires_at"].isoformat(),
                     "status": "draft",
                 }
+        except (asyncpg.PostgresError, OSError) as exc:
+            logger.warning("[PrimeNexus] Create proposal DB error: %s", exc)
+            return {"error": str(exc), "token": None}
         except Exception as exc:
-            logger.error("[PrimeNexus] Create proposal failed: %s", exc)
+            logger.exception("[PrimeNexus] Create proposal unexpected error")
             return {"error": str(exc), "token": None}
 
     async def get_proposal(self, token: str) -> dict[str, Any] | None:
@@ -2164,8 +2238,14 @@ class PrimeNexusService:
                     "created_at": row["created_at"].isoformat() if row["created_at"] else None,
                     "expires_at": row["expires_at"].isoformat() if row["expires_at"] else None,
                 }
+        except (asyncpg.PostgresError, OSError) as exc:
+            logger.warning("[PrimeNexus] Get proposal DB error: %s", exc)
+            return None
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("[PrimeNexus] Get proposal parse error: %s", exc)
+            return None
         except Exception as exc:
-            logger.error("[PrimeNexus] Get proposal failed: %s", exc)
+            logger.exception("[PrimeNexus] Get proposal unexpected error")
             return None
 
     # ── Layer 9: Portfolio Advisor ──────────────────────────────────
@@ -2250,8 +2330,10 @@ class PrimeNexusService:
                         "issues": issues_p,
                     })
 
-        except Exception as exc:
+        except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Portfolio query failed: %s", exc)
+        except Exception as exc:
+            logger.exception("[PrimeNexus] Portfolio query unexpected error")
 
         # Risk concentration
         from collections import Counter
@@ -2293,5 +2375,7 @@ class PrimeNexusService:
         try:
             cache_data = {k: v for k, v in data.items() if k != "cache_hit"}
             await self._cache.set(key, json.dumps(cache_data, default=str), ttl=86400)
+        except (TypeError, ValueError) as exc:
+            logger.debug("[PrimeNexus] Cache zone serialize error: %s", exc)
         except Exception as exc:
-            logger.debug("[PrimeNexus] Cache set failed: %s", exc)
+            logger.debug("[PrimeNexus] Cache zone set failed: %s", exc)
