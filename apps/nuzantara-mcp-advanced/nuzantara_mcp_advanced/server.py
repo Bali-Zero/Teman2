@@ -76,18 +76,8 @@ async def check_fly_status() -> dict:
         return {"success": False, "error": str(e)}
 
 
-@mcp.tool()
-async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
-    """
-    Get recent Fly.io application logs.
-    
-    Args:
-        lines: Number of log lines to retrieve (default 50)
-        filter_str: Optional string to filter logs (e.g., "ERROR", "KG")
-    
-    Returns:
-        Recent log entries from the Fly.io application
-    """
+async def _fetch_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
+    """Internal log fetcher (callable by other functions without FunctionTool wrapping)."""
     try:
         cmd = ["fly", "logs", "--app", FLY_APP, "-n", str(lines)]
         result = subprocess.run(
@@ -103,6 +93,21 @@ async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dic
         return {"success": True, "logs": logs}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+@mcp.tool()
+async def get_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> dict:
+    """
+    Get recent Fly.io application logs.
+
+    Args:
+        lines: Number of log lines to retrieve (default 50)
+        filter_str: Optional string to filter logs (e.g., "ERROR", "KG")
+
+    Returns:
+        Recent log entries from the Fly.io application
+    """
+    return await _fetch_fly_logs(lines=lines, filter_str=filter_str)
 
 
 @mcp.tool()
@@ -250,7 +255,7 @@ async def analyze_fly_health(lines: int = 100) -> dict:
     Returns:
         Analysis report with risk score and recommendations.
     """
-    logs_resp = await get_fly_logs(lines=lines)
+    logs_resp = await _fetch_fly_logs(lines=lines)
     if not logs_resp["success"]:
         return logs_resp
 
