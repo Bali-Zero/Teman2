@@ -233,24 +233,61 @@ class MemoryOrchestrator:
                 pass
 
     async def _alert_critical_failure(self, failures: list[tuple[str, str]]) -> None:
-        """Alert on critical initialization failure."""
+        """Alert on critical initialization failure via logger + Telegram."""
+        failure_details = "; ".join(f"{name}: {err}" for name, err in failures)
         logger.error(
             "🚨 CRITICAL: MemoryOrchestrator initialization failed completely",
             extra={"failures": failures, "action": "system_unavailable"},
         )
-        # TODO: Integrate with alerting system when available
+        try:
+            from backend.services.monitoring.alert_service import AlertLevel, get_alert_service
+
+            alert = get_alert_service()
+            await alert.send_alert(
+                title="Memory System CRITICAL Failure",
+                message=(
+                    f"MemoryOrchestrator failed to initialize.\n"
+                    f"Failures: {failure_details}\n"
+                    f"Memory system is UNAVAILABLE — all context retrieval disabled."
+                ),
+                level=AlertLevel.CRITICAL,
+                metadata={"component": "memory_orchestrator", "failures": dict(failures)},
+            )
+        except Exception as e:
+            logger.warning(f"Could not send Telegram alert for critical failure: {e}")
 
     async def _alert_degraded_mode(self, failures: list[tuple[str, str]]) -> None:
-        """Alert on degraded mode activation."""
+        """Alert on degraded mode activation via logger + Telegram."""
+        degraded_features = [f[0] for f in failures]
+        failure_details = "; ".join(f"{name}: {err}" for name, err in failures)
         logger.warning(
             "⚠️ MemoryOrchestrator running in DEGRADED mode",
             extra={
                 "failures": failures,
-                "degraded_features": [f[0] for f in failures],
+                "degraded_features": degraded_features,
                 "action": "monitor_degraded_features",
             },
         )
-        # TODO: Integrate with alerting system when available
+        try:
+            from backend.services.monitoring.alert_service import AlertLevel, get_alert_service
+
+            alert = get_alert_service()
+            await alert.send_alert(
+                title="Memory System DEGRADED",
+                message=(
+                    f"MemoryOrchestrator running in degraded mode.\n"
+                    f"Unavailable features: {', '.join(degraded_features)}\n"
+                    f"Details: {failure_details}\n"
+                    f"Core memory service is functional."
+                ),
+                level=AlertLevel.WARNING,
+                metadata={
+                    "component": "memory_orchestrator",
+                    "degraded_features": degraded_features,
+                },
+            )
+        except Exception as e:
+            logger.debug(f"Could not send Telegram alert for degraded mode: {e}")
 
     async def close(self) -> None:
         """
