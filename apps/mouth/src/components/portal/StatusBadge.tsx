@@ -61,6 +61,12 @@ const STATUS_MAP: Record<
     color: "#34d399",
   },
   // Amber group
+  applied: {
+    icon: Clock,
+    label: "Applied",
+    bg: "rgba(245,158,11,0.12)",
+    color: "#fbbf24",
+  },
   pending: {
     icon: Clock,
     label: "Pending",
@@ -88,6 +94,12 @@ const STATUS_MAP: Record<
   expiring: {
     icon: AlertTriangle,
     label: "Expiring",
+    bg: "rgba(245,158,11,0.12)",
+    color: "#fbbf24",
+  },
+  expiring_soon: {
+    icon: AlertTriangle,
+    label: "Expiring Soon",
     bg: "rgba(245,158,11,0.12)",
     color: "#fbbf24",
   },

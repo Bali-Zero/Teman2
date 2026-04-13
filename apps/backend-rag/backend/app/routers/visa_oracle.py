@@ -94,18 +94,6 @@ HEDGING_PREFIX = (
 )
 
 
-def _compute_confidence(scores: list[float]) -> str:
-    """Map reranker scores to a confidence label."""
-    if not scores:
-        return CONFIDENCE_ABSTAIN
-    top = max(scores)
-    if top < 0.15:
-        return CONFIDENCE_ABSTAIN
-    if top <= 0.60:
-        return CONFIDENCE_CAUTIOUS
-    return CONFIDENCE_NORMAL
-
-
 def _parse_family(family_str: str) -> bool:
     """Parse family field: 'spouse', 'children', 'spouse_children' → True; 'solo' → False."""
     return family_str.lower() in {"spouse", "children", "spouse_children", "yes", "true", "1"}
@@ -271,12 +259,12 @@ async def chat(
     request: Request, body: ChatRequest, db_pool=Depends(get_database_pool),
 ) -> ChatResponse:
     """
-    Answer a visa question using the hybrid search pipeline + cross-encoder reranker.
+    Answer a visa question using the hybrid search pipeline.
 
-    Confidence thresholds (from reranker scores):
-      < 0.15  → ABSTAIN  (no answer generated)
-      0.15-0.60 → CAUTIOUS (hedged answer via Gemini Flash)
-      > 0.60  → NORMAL   (standard answer via Gemini Flash)
+    Confidence thresholds (vector similarity scores, no cross-encoder on Fly):
+      < 0.30  → ABSTAIN  (no answer generated, WhatsApp handoff)
+      0.30-0.55 → CAUTIOUS (hedged answer via Gemini Flash)
+      > 0.55  → NORMAL   (standard answer via Gemini Flash)
     """
     # Lazy imports — avoid loading heavy ML deps at startup
     from backend.llm.genai_client import get_genai_client
