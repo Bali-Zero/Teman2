@@ -4,18 +4,14 @@ import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Menu, X, MessageCircle, CheckCheck } from "lucide-react";
 import { routeTitles } from "@/types/navigation";
-import { cn } from "@/lib/utils";
+
 import { useCrmNotifications } from "@/hooks/useCrmNotifications";
 
 interface HeaderProps {
   userName: string;
-  isClockIn?: boolean;
-  isClockLoading?: boolean;
-  onToggleClock?: () => void;
   onMobileMenuToggle: () => void;
   isMobileMenuOpen: boolean;
   whatsappUnread?: number;
-  showClock?: boolean;
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -27,13 +23,9 @@ const SEVERITY_DOT: Record<string, string> = {
 
 export function Header({
   userName,
-  isClockIn = false,
-  isClockLoading = false,
-  onToggleClock,
   onMobileMenuToggle,
   isMobileMenuOpen,
   whatsappUnread = 0,
-  showClock = true,
 }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -289,40 +281,7 @@ export function Header({
           )}
         </div>
 
-        {/* Clock chip */}
-        {showClock && onToggleClock && (
-          <button
-            onClick={onToggleClock}
-            disabled={isClockLoading}
-            className={cn(
-              "hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium transition-all border",
-            )}
-            style={
-              isClockIn
-                ? {
-                    borderColor: "rgba(77,184,122,0.25)",
-                    background: "rgba(77,184,122,0.07)",
-                    color: "var(--bz-green)",
-                  }
-                : {
-                    borderColor: "rgba(255,255,255,0.05)",
-                    background: "rgba(35,35,40,0.6)",
-                    color: "var(--bz-text-2)",
-                  }
-            }
-          >
-            <span
-              className={cn(
-                "w-[5px] h-[5px] rounded-full",
-                isClockIn && "animate-pulse",
-              )}
-              style={{
-                background: isClockIn ? "var(--bz-green)" : "var(--bz-text-3)",
-              }}
-            />
-            {isClockLoading ? "..." : isClockIn ? "Clocked In" : "Clock In"}
-          </button>
-        )}
+        {/* Clock chip removed — PANOPTICON auto-clock-in from login (2026-04-14) */}
       </div>
     </header>
   );
