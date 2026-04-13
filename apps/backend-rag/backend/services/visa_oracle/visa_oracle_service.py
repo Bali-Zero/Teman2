@@ -33,11 +33,11 @@ PURPOSE_CATEGORY_MAP: dict[str, list[str]] = {
 
 # Keywords matched against visa names (case-insensitive) per purpose.
 PURPOSE_KEYWORDS: dict[str, list[str]] = {
-    "visit": ["tourism", "tourist", "c1", "visit", "business", "b1", "voa"],
+    "visit": ["tourism", "tourist", "c1", "visit", "voa"],
     "work": ["working", "work", "employment", "kitas", "imta"],
-    "invest": ["investor", "invest", "business", "kitas"],
+    "invest": ["investor", "invest", "kitas"],
     "retire": ["retirement", "retire", "pensioner", "pension"],
-    "digital_nomad": ["remote", "freelance", "e33g", "digital", "nomad", "c1"],
+    "digital_nomad": ["remote", "freelance", "e33g", "digital", "nomad"],
     "family": ["spouse", "dependent", "family", "child"],
     "study": ["internship", "student", "c22", "study", "education"],
 }
@@ -194,7 +194,16 @@ class VisaOracleService:
 
         # Sort descending by score, then alphabetically for stability
         scored.sort(key=lambda x: (-x["score"], x["visa_name"]))
-        top3 = scored[:3]
+
+        # Deduplicate variants (Onshore/Offshore/Extend) — keep highest-scoring variant per base type
+        seen_bases: set[str] = set()
+        deduplicated: list[dict[str, Any]] = []
+        for entry in scored:
+            base = self._get_visa_base_name(entry["visa_name"])
+            if base not in seen_bases:
+                seen_bases.add(base)
+                deduplicated.append(entry)
+        top3 = deduplicated[:3]
 
         logger.debug(
             "recommend_visas: purpose=%s duration=%s family=%s → %d candidates → top3=%s",
@@ -377,6 +386,23 @@ class VisaOracleService:
                 score += SCORE_FAMILY_MATCH
 
         return score
+
+    @staticmethod
+    def _get_visa_base_name(visa_name: str) -> str:
+        """Strip process variant suffixes to group similar visa types.
+
+        E.g. "E33G Remote Worker (Altus/Onshore)" → "E33G Remote Worker"
+             "Spouse 2 Years (Offshore)" → "Spouse 2 Years"
+             "B1 Visa on Arrival (VOA)" → "B1 Visa on Arrival (VOA)" (unchanged)
+        """
+        variant_suffixes = (
+            "(Altus/Onshore)", "(Offshore)", "(Extend)",
+        )
+        name = visa_name.strip()
+        for suffix in variant_suffixes:
+            if name.endswith(suffix):
+                return name[: -len(suffix)].strip()
+        return name
 
     @staticmethod
     def _parse_duration_days(duration_str: str) -> int | None:
