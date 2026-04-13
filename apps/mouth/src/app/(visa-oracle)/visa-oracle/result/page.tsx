@@ -10,6 +10,11 @@ import {
   isGuarantorRequired,
 } from "@/lib/visa-oracle/nationalities";
 import type { QuizAnswers, VisaRecommendation } from "@/lib/visa-oracle/types";
+import {
+  trackVisaQuizCompleted,
+  trackVisaResultViewed,
+  trackVisaCallingBlock,
+} from "@/lib/analytics";
 
 export default function ResultPage() {
   const searchParams = useSearchParams();
@@ -42,11 +47,16 @@ export default function ResultPage() {
       family: family!,
     };
 
+    trackVisaQuizCompleted(answers);
+
     recommendVisas(answers)
       .then((res) => {
         setVisas(res.visas);
         setSessionId(res.session_id);
         saveVisaResults(res.visas);
+        if (res.visas.length > 0) {
+          trackVisaResultViewed(res.visas[0].visa_name, res.visas.length);
+        }
       })
       .catch((err: unknown) => {
         setError(
@@ -107,6 +117,7 @@ export default function ResultPage() {
 
   // Calling Visa — restricted nationalities
   if (!loading && !error && nationality && isCallingVisa(nationality)) {
+    trackVisaCallingBlock(nationality);
     return (
       <div className="flex flex-col gap-6 max-w-2xl mx-auto py-8">
         <div

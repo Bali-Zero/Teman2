@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { TaxOverview, TaxObligation } from "@/lib/api/portal/portal.types";
 import { StatusBadge } from "@/components/portal";
+import { trackTaxDashboardViewed } from "@/lib/analytics";
 
 export default function TaxesPage() {
   const { error } = useToast();
@@ -22,6 +23,7 @@ export default function TaxesPage() {
       setIsLoading(true);
       const data = await api.portal.getTaxOverview();
       setTaxData(data);
+      trackTaxDashboardViewed(data.summary.status, data.obligations.length);
     } catch (err) {
       error("Failed to load tax information", "Please try again later");
       logger.error("Failed to load portal tax data", {}, err as Error);
