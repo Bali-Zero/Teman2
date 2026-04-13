@@ -1,9 +1,13 @@
 """
 Unit tests for whatsapp_chat router.
 Coverage target: GET /webhook/whatsapp (verification), POST /webhook/whatsapp (messages),
-GET /webhook/whatsapp/status, alias routes GET/POST /api/whatsapp/webhook.
+GET /webhook/whatsapp/status, alias routes GET/POST /api/whatsapp/webhook,
+X-Hub-Signature-256 HMAC verification.
 """
 
+import hashlib
+import hmac
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -150,10 +154,11 @@ def _make_webhook_payload(
 
 def test_whatsapp_webhook_returns_ok(client):
     """Should return status=ok immediately without processing."""
-    with patch(
-        "backend.app.routers.whatsapp_chat.process_whatsapp_message",
-        new=AsyncMock(),
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
     ):
+        mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=_make_webhook_payload())
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
@@ -165,7 +170,9 @@ def test_whatsapp_webhook_non_text_message_ignored(client):
     # Remove text field from payload since type is image
     payload["entry"][0]["changes"][0]["value"]["messages"][0]["text"] = None
 
-    response = client.post("/webhook/whatsapp", json=payload)
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
 
@@ -186,7 +193,9 @@ def test_whatsapp_webhook_non_message_change_ignored(client):
             }
         ],
     }
-    response = client.post("/webhook/whatsapp", json=payload)
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
 
 
@@ -206,14 +215,18 @@ def test_whatsapp_webhook_empty_messages(client):
             }
         ],
     }
-    response = client.post("/webhook/whatsapp", json=payload)
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
 
 
 def test_whatsapp_webhook_empty_text_body(client):
     """Should skip messages with empty text body."""
     payload = _make_webhook_payload(text="")
-    response = client.post("/webhook/whatsapp", json=payload)
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
 
 
@@ -251,7 +264,11 @@ def test_whatsapp_webhook_multiple_messages(client):
             }
         ],
     }
-    with patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()):
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
+    ):
+        mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
 
@@ -282,21 +299,29 @@ def test_whatsapp_webhook_no_contacts(client):
             }
         ],
     }
-    with patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()):
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
+    ):
+        mock_settings.whatsapp_app_secret = None
         response = client.post("/webhook/whatsapp", json=payload)
     assert response.status_code == 200
 
 
 def test_whatsapp_webhook_invalid_payload(client):
-    """Should return 422 for invalid payload structure."""
-    response = client.post("/webhook/whatsapp", json={"invalid": "payload"})
-    assert response.status_code == 422
+    """Should return 400 for invalid payload structure (now parsed internally)."""
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json={"invalid": "payload"})
+    assert response.status_code == 400
 
 
 def test_whatsapp_webhook_missing_object_field(client):
-    """Should return 422 when 'object' field is missing."""
-    response = client.post("/webhook/whatsapp", json={"entry": []})
-    assert response.status_code == 422
+    """Should return 400 when 'object' field is missing."""
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json={"entry": []})
+    assert response.status_code == 400
 
 
 # ============================================================
@@ -382,10 +407,107 @@ def test_verify_webhook_alias_wrong_token(client):
 
 def test_webhook_alias_post_returns_ok(client):
     """Alias POST /api/whatsapp/webhook should return ok."""
-    with patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()):
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
+    ):
+        mock_settings.whatsapp_app_secret = None
         response = client.post("/api/whatsapp/webhook", json=_make_webhook_payload())
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+
+
+# ============================================================
+# HMAC-SHA256 Signature Verification
+# ============================================================
+
+_TEST_APP_SECRET = "test_secret_key_for_hmac"
+
+
+def _sign_payload(payload: dict, secret: str = _TEST_APP_SECRET) -> str:
+    """Generate X-Hub-Signature-256 header value for a payload."""
+    body = json.dumps(payload).encode("utf-8")
+    sig = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+    return f"sha256={sig}"
+
+
+def test_hmac_unsigned_request_rejected_when_secret_configured(client):
+    """POST without signature should return 401 when WHATSAPP_APP_SECRET is set."""
+    payload = _make_webhook_payload()
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
+        response = client.post(
+            "/webhook/whatsapp",
+            content=json.dumps(payload),
+            headers={"Content-Type": "application/json"},
+        )
+    assert response.status_code == 401
+
+
+def test_hmac_wrong_signature_rejected(client):
+    """POST with wrong signature should return 401."""
+    payload = _make_webhook_payload()
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
+        response = client.post(
+            "/webhook/whatsapp",
+            content=json.dumps(payload),
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": "sha256=0000000000000000000000000000000000000000000000000000000000000000",
+            },
+        )
+    assert response.status_code == 401
+
+
+def test_hmac_valid_signature_accepted(client):
+    """POST with valid HMAC signature should pass through and return 200."""
+    payload = _make_webhook_payload()
+    body = json.dumps(payload)
+    signature = _sign_payload(payload)
+
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
+    ):
+        mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
+        response = client.post(
+            "/webhook/whatsapp",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": signature,
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_hmac_skipped_when_no_secret(client):
+    """POST without signature should pass when WHATSAPP_APP_SECRET is not configured."""
+    with (
+        patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
+        patch("backend.app.routers.whatsapp_chat.process_whatsapp_message", new=AsyncMock()),
+    ):
+        mock_settings.whatsapp_app_secret = None
+        response = client.post("/webhook/whatsapp", json=_make_webhook_payload())
+    assert response.status_code == 200
+
+
+def test_hmac_malformed_signature_rejected(client):
+    """POST with malformed signature (no sha256= prefix) should return 401."""
+    payload = _make_webhook_payload()
+    with patch("backend.app.routers.whatsapp_chat.settings") as mock_settings:
+        mock_settings.whatsapp_app_secret = _TEST_APP_SECRET
+        response = client.post(
+            "/webhook/whatsapp",
+            content=json.dumps(payload),
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": "invalid_format_no_prefix",
+            },
+        )
+    assert response.status_code == 401
 
 
 # ============================================================
