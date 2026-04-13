@@ -3,9 +3,9 @@
  * Sends events to the analytics service for monitoring usage patterns
  */
 
-import type { AnalyticsProperties } from './types/common';
-import { logger } from './logger';
-import { toError } from './types/common';
+import type { AnalyticsProperties } from "./types/common";
+import { logger } from "./logger";
+import { toError } from "./types/common";
 
 export interface AnalyticsEvent {
   event_name: string;
@@ -21,7 +21,7 @@ let sessionId: string | null = null;
  * Initialize analytics session
  */
 export function initializeAnalytics(): void {
-  if (typeof window !== 'undefined' && !sessionId) {
+  if (typeof window !== "undefined" && !sessionId) {
     sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 }
@@ -32,9 +32,9 @@ export function initializeAnalytics(): void {
 export function trackEvent(
   eventName: string,
   properties?: AnalyticsProperties,
-  userId?: string
+  userId?: string,
 ): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   initializeAnalytics();
 
@@ -47,10 +47,10 @@ export function trackEvent(
   };
 
   // Log to logger in development
-  if (process.env.NODE_ENV === 'development') {
-    logger.debug('Analytics event', {
-      component: 'Analytics',
-      action: 'trackEvent',
+  if (process.env.NODE_ENV === "development") {
+    logger.debug("Analytics event", {
+      component: "Analytics",
+      action: "trackEvent",
       metadata: { eventName, userId },
     });
   }
@@ -64,8 +64,8 @@ export function trackEvent(
 /**
  * Track view mode changes
  */
-export function trackViewModeChange(newMode: 'kanban' | 'list'): void {
-  trackEvent('view_mode_changed', {
+export function trackViewModeChange(newMode: "kanban" | "list"): void {
+  trackEvent("view_mode_changed", {
     view_mode: newMode,
     timestamp: Date.now(),
   });
@@ -75,10 +75,10 @@ export function trackViewModeChange(newMode: 'kanban' | 'list'): void {
  * Track filter application
  */
 export function trackFilterApplied(
-  filterType: 'status' | 'type' | 'assigned_to',
-  filterValue: string
+  filterType: "status" | "type" | "assigned_to",
+  filterValue: string,
 ): void {
-  trackEvent('filter_applied', {
+  trackEvent("filter_applied", {
     filter_type: filterType,
     filter_value: filterValue,
     timestamp: Date.now(),
@@ -89,7 +89,7 @@ export function trackFilterApplied(
  * Track filter removal
  */
 export function trackFilterRemoved(filterType: string): void {
-  trackEvent('filter_removed', {
+  trackEvent("filter_removed", {
     filter_type: filterType,
     timestamp: Date.now(),
   });
@@ -98,8 +98,11 @@ export function trackFilterRemoved(filterType: string): void {
 /**
  * Track sort operation
  */
-export function trackSortApplied(sortField: string, sortOrder: 'asc' | 'desc'): void {
-  trackEvent('sort_applied', {
+export function trackSortApplied(
+  sortField: string,
+  sortOrder: "asc" | "desc",
+): void {
+  trackEvent("sort_applied", {
     sort_field: sortField,
     sort_order: sortOrder,
     timestamp: Date.now(),
@@ -110,7 +113,7 @@ export function trackSortApplied(sortField: string, sortOrder: 'asc' | 'desc'): 
  * Track search operation
  */
 export function trackSearch(query: string, resultsCount: number): void {
-  trackEvent('search_performed', {
+  trackEvent("search_performed", {
     query_length: query.length,
     results_count: resultsCount,
     timestamp: Date.now(),
@@ -120,8 +123,12 @@ export function trackSearch(query: string, resultsCount: number): void {
 /**
  * Track case status change
  */
-export function trackCaseStatusChanged(caseId: number, oldStatus: string, newStatus: string): void {
-  trackEvent('case_status_changed', {
+export function trackCaseStatusChanged(
+  caseId: number,
+  oldStatus: string,
+  newStatus: string,
+): void {
+  trackEvent("case_status_changed", {
     case_id: caseId,
     old_status: oldStatus,
     new_status: newStatus,
@@ -132,8 +139,11 @@ export function trackCaseStatusChanged(caseId: number, oldStatus: string, newSta
 /**
  * Track pagination
  */
-export function trackPaginationChange(pageNumber: number, itemsPerPage: number): void {
-  trackEvent('pagination_changed', {
+export function trackPaginationChange(
+  pageNumber: number,
+  itemsPerPage: number,
+): void {
+  trackEvent("pagination_changed", {
     page_number: pageNumber,
     items_per_page: itemsPerPage,
     timestamp: Date.now(),
@@ -149,9 +159,9 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
     if (!endpoint) return;
 
     await fetch(endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(event),
       keepalive: true, // Ensures request completes even if page unloads
@@ -159,9 +169,9 @@ async function sendAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
   } catch (error) {
     // Silently fail - don't interrupt user experience for analytics
     logger.warn(
-      'Failed to send analytics event',
-      { component: 'Analytics', action: 'sendAnalyticsEvent' },
-      toError(error)
+      "Failed to send analytics event",
+      { component: "Analytics", action: "sendAnalyticsEvent" },
+      toError(error),
     );
   }
 }
@@ -184,48 +194,197 @@ type GtagWindow = typeof window & { gtag?: (...args: unknown[]) => void };
  * Send a custom event to GA4 via gtag.
  * No-op if gtag is not loaded (GA4 not configured).
  */
-function sendGA4Event(eventName: string, params: Record<string, string | number | boolean>): void {
-  if (typeof window === 'undefined') return;
+function sendGA4Event(
+  eventName: string,
+  params: Record<string, string | number | boolean>,
+): void {
+  if (typeof window === "undefined") return;
   const win = window as GtagWindow;
-  if (typeof win.gtag !== 'function') return;
-  win.gtag('event', eventName, params);
+  if (typeof win.gtag !== "function") return;
+  win.gtag("event", eventName, params);
 }
 
 /** Track when a new lead/client is created in CRM */
 export function trackLeadCreated(source: string): void {
-  sendGA4Event('lead_created', { event_category: 'Conversion', source });
-  trackEvent('lead_created', { source });
+  sendGA4Event("lead_created", { event_category: "Conversion", source });
+  trackEvent("lead_created", { source });
 }
 
 /** Track when a practice/case is started */
 export function trackPracticeStarted(practiceType: string): void {
-  sendGA4Event('practice_started', {
-    event_category: 'Conversion',
+  sendGA4Event("practice_started", {
+    event_category: "Conversion",
     practice_type: practiceType,
   });
-  trackEvent('practice_started', { practice_type: practiceType });
+  trackEvent("practice_started", { practice_type: practiceType });
 }
 
 /** Track when a document is uploaded */
 export function trackDocumentUploaded(documentType: string): void {
-  sendGA4Event('document_uploaded', {
-    event_category: 'Engagement',
+  sendGA4Event("document_uploaded", {
+    event_category: "Engagement",
     document_type: documentType,
   });
-  trackEvent('document_uploaded', { document_type: documentType });
+  trackEvent("document_uploaded", { document_type: documentType });
 }
 
 /** Track when a user logs into the portal */
 export function trackPortalLogin(): void {
-  sendGA4Event('portal_login', { event_category: 'Engagement' });
-  trackEvent('portal_login', {});
+  sendGA4Event("portal_login", { event_category: "Engagement" });
+  trackEvent("portal_login", {});
 }
 
 /** Track when a chat conversation starts */
 export function trackChatStarted(channel: string): void {
-  sendGA4Event('chat_started', {
-    event_category: 'Engagement',
+  sendGA4Event("chat_started", {
+    event_category: "Engagement",
     channel,
   });
-  trackEvent('chat_started', { channel });
+  trackEvent("chat_started", { channel });
+}
+
+// ============================================================
+// Client Tool Tracking — Visa Oracle, KBLI, Tax, Property
+// ============================================================
+
+// --- Visa Oracle ---
+
+/** Track quiz completion with answers */
+export function trackVisaQuizCompleted(answers: {
+  nationality: string;
+  purpose: string;
+  duration: string;
+  family: string;
+}): void {
+  sendGA4Event("visa_quiz_completed", {
+    event_category: "VisaOracle",
+    nationality: answers.nationality,
+    purpose: answers.purpose,
+    duration: answers.duration,
+    family: answers.family,
+  });
+  trackEvent("visa_quiz_completed", answers);
+}
+
+/** Track visa recommendation result viewed */
+export function trackVisaResultViewed(
+  topVisa: string,
+  visaCount: number,
+): void {
+  sendGA4Event("visa_result_viewed", {
+    event_category: "VisaOracle",
+    top_visa: topVisa,
+    visa_count: visaCount,
+  });
+  trackEvent("visa_result_viewed", {
+    top_visa: topVisa,
+    visa_count: visaCount,
+  });
+}
+
+/** Track chat question sent in Visa Oracle */
+export function trackVisaChatQuestion(remaining: number): void {
+  sendGA4Event("visa_chat_question", {
+    event_category: "VisaOracle",
+    questions_remaining: remaining,
+  });
+  trackEvent("visa_chat_question", { questions_remaining: remaining });
+}
+
+/** Track WhatsApp CTA shown or clicked */
+export function trackVisaWhatsAppCTA(
+  action: "shown" | "clicked",
+  trigger: string,
+): void {
+  sendGA4Event("visa_whatsapp_cta", {
+    event_category: "VisaOracle",
+    action,
+    trigger,
+  });
+  trackEvent("visa_whatsapp_cta", { action, trigger });
+}
+
+/** Track calling visa block shown */
+export function trackVisaCallingBlock(nationality: string): void {
+  sendGA4Event("visa_calling_block", {
+    event_category: "VisaOracle",
+    nationality,
+  });
+  trackEvent("visa_calling_block", { nationality });
+}
+
+// --- KBLI Navigator ---
+
+/** Track KBLI code page viewed */
+export function trackKBLICodeViewed(code: string, tier: string): void {
+  sendGA4Event("kbli_code_viewed", {
+    event_category: "KBLI",
+    kbli_code: code,
+    tier,
+  });
+  trackEvent("kbli_code_viewed", { kbli_code: code, tier });
+}
+
+/** Track KBLI search performed */
+export function trackKBLISearch(query: string, resultCount: number): void {
+  sendGA4Event("kbli_search", {
+    event_category: "KBLI",
+    query_length: query.length,
+    result_count: resultCount,
+  });
+  trackEvent("kbli_search", {
+    query_length: query.length,
+    result_count: resultCount,
+  });
+}
+
+/** Track ZantaraChat question on KBLI page */
+export function trackKBLIChatQuestion(code: string): void {
+  sendGA4Event("kbli_chat_question", {
+    event_category: "KBLI",
+    kbli_code: code,
+  });
+  trackEvent("kbli_chat_question", { kbli_code: code });
+}
+
+// --- Tax ---
+
+/** Track tax dashboard viewed */
+export function trackTaxDashboardViewed(
+  status: string,
+  obligationCount: number,
+): void {
+  sendGA4Event("tax_dashboard_viewed", {
+    event_category: "Tax",
+    tax_status: status,
+    obligation_count: obligationCount,
+  });
+  trackEvent("tax_dashboard_viewed", {
+    tax_status: status,
+    obligation_count: obligationCount,
+  });
+}
+
+// --- Property ---
+
+/** Track property article CTA interaction */
+export function trackPropertyCTA(articleSlug: string, ctaType: string): void {
+  sendGA4Event("property_cta_clicked", {
+    event_category: "Property",
+    article_slug: articleSlug,
+    cta_type: ctaType,
+  });
+  trackEvent("property_cta_clicked", {
+    article_slug: articleSlug,
+    cta_type: ctaType,
+  });
+}
+
+/** Track AskZantara question on property article */
+export function trackPropertyChatQuestion(articleSlug: string): void {
+  sendGA4Event("property_chat_question", {
+    event_category: "Property",
+    article_slug: articleSlug,
+  });
+  trackEvent("property_chat_question", { article_slug: articleSlug });
 }
