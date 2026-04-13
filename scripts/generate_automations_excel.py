@@ -86,6 +86,9 @@ class Automation:
     last_error: str = ""
     produces: str = ""
     consumes: str = ""
+    tools_called: str = ""
+    apis_called: str = ""
+    secrets_used: str = ""
     notes: str = ""
 
 
@@ -240,6 +243,16 @@ def enrich_from_catalog(a: Automation, catalog: dict) -> None:
         a.monitored_by = entry["monitored_by"]
     if entry.get("schedule") and (not a.schedule_human or a.schedule_human in ("at boot", "daemon", "")):
         a.schedule_human = entry["schedule"]
+    # New enrichment fields: tools, APIs, secrets
+    if entry.get("tools_called") and not a.tools_called:
+        tc = entry["tools_called"]
+        a.tools_called = ", ".join(tc) if isinstance(tc, list) else str(tc)
+    if entry.get("apis_called") and not a.apis_called:
+        ac = entry["apis_called"]
+        a.apis_called = ", ".join(ac) if isinstance(ac, list) else str(ac)
+    if entry.get("secrets_used") and not a.secrets_used:
+        su = entry["secrets_used"]
+        a.secrets_used = ", ".join(su) if isinstance(su, list) else str(su)
 
 
 def _read_script_header(script_path: str) -> str:
@@ -741,6 +754,9 @@ COLUMNS = [
     ("Ultimo Errore", 40),
     ("Produce", 30),
     ("Consuma", 30),
+    ("Tools Chiamati", 40),
+    ("API Chiamate", 35),
+    ("Secrets", 25),
     ("Note", 35),
 ]
 
@@ -805,6 +821,9 @@ def write_sheet(wb: Workbook, sheet_name: str, automations: list[Automation]) ->
             a.last_error,
             a.produces or "—",
             a.consumes or "—",
+            a.tools_called or "—",
+            a.apis_called or "—",
+            a.secrets_used or "—",
             a.notes,
         ]
         for col_idx, val in enumerate(values, 1):
@@ -1017,6 +1036,9 @@ def main() -> None:
             status="running",
             produces=entry.get("produces", ""),
             consumes=entry.get("consumes", ""),
+            tools_called=", ".join(entry["tools_called"]) if isinstance(entry.get("tools_called"), list) else entry.get("tools_called", ""),
+            apis_called=", ".join(entry["apis_called"]) if isinstance(entry.get("apis_called"), list) else entry.get("apis_called", ""),
+            secrets_used=", ".join(entry["secrets_used"]) if isinstance(entry.get("secrets_used"), list) else entry.get("secrets_used", ""),
             notes=entry.get("notes", ""),
         )
         backend_services.append(a)
@@ -1046,9 +1068,12 @@ def main() -> None:
                 uses_llm=entry.get("uses_llm", "—"),
                 llm_interface=entry.get("llm_interface", "—"),
                 monitored_by=entry.get("monitored_by", "—"),
-                status="running",
+                status=entry.get("status", "running"),
                 produces=entry.get("produces", ""),
                 consumes=entry.get("consumes", ""),
+                tools_called=", ".join(entry["tools_called"]) if isinstance(entry.get("tools_called"), list) else entry.get("tools_called", ""),
+                apis_called=", ".join(entry["apis_called"]) if isinstance(entry.get("apis_called"), list) else entry.get("apis_called", ""),
+                secrets_used=", ".join(entry["secrets_used"]) if isinstance(entry.get("secrets_used"), list) else entry.get("secrets_used", ""),
                 notes=entry.get("notes", ""),
             )
             items.append(a)

@@ -7,8 +7,10 @@
       "produces": "Fix commits, lint report",
       "consumes": "Git diff, ruff output",
       "monitored_by": "Sentinel",
-      "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (coder)"
+      "uses_llm": "none (deterministic fixers)",
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["ruff (subprocess)", "git (branch/diff)"],
+      "apis_called": ["Telegram Bot API"]
     },
     "seo-guardian-observe": {
       "description": "SEO observation cycle: check backend+frontend health, read coverage state, submit unindexed URLs to Google Indexing API, check KBLI indexing.",
@@ -16,15 +18,26 @@
       "consumes": "GSC API, coverage_state.json",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["curl (backend+frontend health)", "seo_auto_fixer.py"],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "balizero.com",
+        "Telegram Bot API"
+      ]
     },
     "seo-guardian-weekly": {
       "description": "SEO weekly LEARN+REPORT: run seo_guardian_learn.py, seo_guardian_measure.py, generate weekly report with patterns and recommendations.",
       "produces": "Weekly SEO report, patterns.json",
       "consumes": "coverage_state.json, GSC metrics",
       "monitored_by": "Sentinel",
-      "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "uses_llm": "claude-sonnet-4-5 (override)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "seo_guardian_learn.py",
+        "seo_guardian_measure.py",
+        "filesystem (state.json, patterns.json)"
+      ]
     },
     "system-doctor": {
       "description": "System diagnostics: check backend, drive token, fly machine status, Redis, PG, Ollama, embeddings. Triage GREEN/YELLOW/RED. Auto-fix LOW-risk.",
@@ -32,7 +45,19 @@
       "consumes": "Health endpoints, system state",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp-advanced.check_system_health",
+        "mcporter:nuzantara-mcp-advanced.get_fly_logs",
+        "mcporter:nuzantara-mcp.check_health_detailed",
+        "mcporter:nuzantara-mcp-advanced.execute_recovery_action",
+        "pytest",
+        "ssh air"
+      ],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "nuzantara-rag.fly.dev/api/admin/drive/health"
+      ]
     },
     "tech-orchestrator": {
       "description": "Technical guardrails: blackout window check, deploy-in-progress check, diff-size gate, Core Guardian results review. Decides if deploy is safe.",
@@ -40,7 +65,18 @@
       "consumes": "Git diff, fly status, Core Guardian output",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.read_shared_memory",
+        "mcporter:nuzantara-mcp.write_shared_memory",
+        "claude CLI",
+        "gemini CLI",
+        "codex CLI",
+        "fly deploy",
+        "fly status",
+        "pytest",
+        "git diff"
+      ]
     },
     "compliance-ops": {
       "description": "Compliance autopilot + practice lifecycle: check client doc expiry, send WhatsApp/Telegram alerts for critical (<=7d), check unpaid invoices >30d, stale practices.",
@@ -48,7 +84,13 @@
       "consumes": "CRM data via MCP tools",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.get_compliance_alerts",
+        "mcporter:nuzantara-mcp.get_expiry_alerts",
+        "mcporter:nuzantara-mcp.list_practices",
+        "mcporter:nuzantara-mcp.send_whatsapp"
+      ]
     },
     "daily-ops": {
       "description": "Daily morning sweep: review overnight messages, CRM pipeline health, urgent deadlines, team hours/anomalies, send Telegram daily briefing.",
@@ -56,15 +98,28 @@
       "consumes": "CRM, team hours, messages via MCP",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.list_clients",
+        "mcporter:nuzantara-mcp.list_practices",
+        "mcporter:nuzantara-mcp.get_team_hours",
+        "mcporter:nuzantara-mcp.get_critical_alerts",
+        "mcporter:nuzantara-mcp.send_whatsapp",
+        "mcporter:nuzantara-mcp.chain_daily_ops_autopilot"
+      ]
     },
     "client-health-monitor": {
       "description": "Client health chain: re-engagement, stalled reminders, birthday greetings, surveys, churn risk detection. Saves summary for BIZ Orchestrator.",
       "produces": "Client health summary → shared memory",
       "consumes": "MCP chain_client_health_monitor",
       "monitored_by": "Sentinel",
-      "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "uses_llm": "gemini-3-flash-preview (fallback chain)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.chain_client_health_monitor",
+        "mcporter:nuzantara-mcp.write_shared_memory",
+        "mcporter:nuzantara-mcp.get_burnout_indicators"
+      ]
     },
     "conversation-cleanup": {
       "description": "Cleanup stale conversations in backend: warm backend, then execute cleanup via API.",
@@ -72,7 +127,12 @@
       "consumes": "Backend API",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (coder)"
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["curl"],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "nuzantara-rag.fly.dev/api/admin/conversation-cleanup"
+      ]
     },
     "indexing-daily": {
       "description": "Daily Google Search Console indexing: submit unindexed intel articles + KBLI pages to Indexing API.",
@@ -80,7 +140,9 @@
       "consumes": "GSC API, article list",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (coder)"
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["Google Indexing API", "kbli_indexing_submit.py"],
+      "apis_called": ["Google Indexing API (200/day)"]
     },
     "weekly-review": {
       "description": "Weekly Monday review: business KPIs (revenue, clients, practices, compliance) + tech quality (ruff, coverage, deps, SEO, Fly costs). Unified Telegram report.",
@@ -88,15 +150,30 @@
       "consumes": "CRM, code quality, Fly.io metrics via MCP",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.get_revenue_analytics",
+        "mcporter:nuzantara-mcp.get_team_productivity",
+        "mcporter:nuzantara-mcp.get_sla_compliance",
+        "mcporter:nuzantara-mcp.get_completion_rates",
+        "mcporter:nuzantara-mcp.list_clients",
+        "mcporter:nuzantara-mcp.get_qdrant_metrics"
+      ]
     },
     "weekly-dep-audit": {
       "description": "pip-audit scan + auto-patch safe upgrades. Detects vulnerable Python dependencies.",
       "produces": "Audit report, patched deps",
       "consumes": "pyproject.toml, pip-audit",
       "monitored_by": "Sentinel",
-      "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "uses_llm": "gemini-3-flash-preview (fallback chain)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp-advanced.check_deployment_readiness",
+        "pip list --outdated",
+        "npm audit",
+        "pip install --upgrade",
+        "npm audit fix"
+      ]
     },
     "learning-pipeline": {
       "description": "Weekly learning: Phase 1 Conversation Trainer (extract patterns from recent chats), Phase 2 Knowledge Graph Builder (ingest entities+relationships).",
@@ -104,15 +181,27 @@
       "consumes": "Recent conversations, KG",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [],
+      "apis_called": [
+        "localhost:18789/api/trigger/conversation-trainer",
+        "localhost:18789/api/trigger/knowledge-graph-builder"
+      ]
     },
     "t4-monitor-daily": {
       "description": "T4 social media monitor: run run_t4_monitor.sh, check logs for anomalies.",
       "produces": "Social media report",
       "consumes": "T4 monitor script output",
       "monitored_by": "Sentinel",
-      "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "uses_llm": "claude-haiku-4-5 (L3 filter)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["nlm CLI (source add)", "httpx (RSS/web/Twitter fetch)"],
+      "apis_called": [
+        "Anthropic API (Haiku classifier)",
+        "Twitter API v2",
+        "RSS feeds (imigrasi.go.id)",
+        "Gov websites"
+      ]
     },
     "nlm-nb1-daily-refresh": {
       "description": "NotebookLM NB-1 daily refresh: run nlm_nb1_daily_refresh.py to update codebase bundles in the architecture notebook.",
@@ -120,61 +209,85 @@
       "consumes": "Codebase files",
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
-      "llm_interface": "OpenClaw (main)"
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["nlm CLI (source list/delete/add)", "git log"],
+      "apis_called": ["Telegram Bot API"]
     },
     "nlm-nb3-company-setup": {
       "description": "PLACEHOLDER — NB-3 Company Setup notebook refresh. Task empty, never configured.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task. Configure or decommission."
+      "notes": "Skipped: empty task. Configure or decommission.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb4-tax-fiscal": {
       "description": "PLACEHOLDER — NB-4 Tax & Fiscal notebook refresh. Task empty, never configured.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task. Has separate cron (run_nb4_pipeline.sh) that runs independently."
+      "notes": "Skipped: empty task. Has separate cron (run_nb4_pipeline.sh) that runs independently.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb5-property": {
       "description": "PLACEHOLDER — NB-5 Property notebook refresh. Task empty, never configured.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task. Has separate cron (run_nb5_pipeline.sh)."
+      "notes": "Skipped: empty task. Has separate cron (run_nb5_pipeline.sh).",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb6-ops-compliance": {
       "description": "PLACEHOLDER — NB-6 Ops & Compliance notebook refresh. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb7-editorial": {
       "description": "PLACEHOLDER — NB-7 Editorial notebook refresh. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb8-expat-life": {
       "description": "PLACEHOLDER — NB-8 Expat Life notebook refresh. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-nb10-team-guides": {
       "description": "PLACEHOLDER — NB-10 Team Guides notebook refresh. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "nlm-deep-research": {
       "description": "PLACEHOLDER — Deep Research trigger via NLM. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": [
+        "nlm CLI (notebook_query, source_snapshot)",
+        "ollama/qwen3.5:9b (QueryDecomposer)"
+      ],
+      "status": "BROKEN (isolated job requires payload.kind=agentTurn)"
     },
     "cell-weekly-report": {
       "description": "PLACEHOLDER — Cell organism weekly report. Task empty.",
       "produces": "—",
       "consumes": "—",
-      "notes": "Skipped: empty task."
+      "notes": "Skipped: empty task.",
+      "tools_called": ["postgresql (CELL_DATABASE_URL)"],
+      "apis_called": ["Telegram Bot API"],
+      "status": "BROKEN (main job requires payload.kind=systemEvent)"
     }
   },
   "openclaw_air": {
@@ -941,7 +1054,16 @@
       "schedule": "continuo (event-driven)",
       "produces": "Practice state change events",
       "consumes": "Redis pub/sub practice_status channel",
-      "monitored_by": "Health Monitor"
+      "monitored_by": "Health Monitor",
+      "uses_llm": "none",
+      "tools_called": [
+        "ProcessAutomationService",
+        "WaitingDocumentsService",
+        "InvoiceAutomationService",
+        "CompletedProcessService"
+      ],
+      "apis_called": ["Brevo/Zoho Email API"],
+      "emails_sent": "M4 payment confirmation, M5 milestones (on_process, submitted, approved, completed)"
     },
     "x_monitor_run_loop": {
       "description": "X/Twitter monitor: polls Twitter API for keyword matches (Bali business, visa, immigration), stores matches for analysis.",
@@ -994,7 +1116,12 @@
       "schedule": "continuo (event-driven, ping 30s)",
       "produces": "Routed events to subscribers",
       "consumes": "Redis Streams (all channels)",
-      "monitored_by": "Health Monitor"
+      "monitored_by": "Health Monitor",
+      "uses_llm": "none",
+      "tools_called": [
+        "asyncpg LISTEN (dedicated connection)",
+        "PG channels: practice_changed, client_changed, compliance_alert"
+      ]
     },
     "team_timesheet_auto_logout": {
       "description": "Team timesheet auto-logout: checks for expired work sessions every 5min, auto-closes sessions that exceeded 10h without checkout.",
@@ -1124,7 +1251,14 @@
       "type": "event-handler",
       "schedule": "event-driven (PG NOTIFY client_changed)",
       "produces": "Cache invalidation, Drive folders, CRM interactions",
-      "consumes": "PG trigger on clients table (migration_076)"
+      "consumes": "PG trigger on clients table (migration_076)",
+      "uses_llm": "none",
+      "tools_called": [
+        "cache_service.invalidate_cache",
+        "ServiceAccountDriveService.create_folder",
+        "PredictiveComplianceEngine.scan"
+      ],
+      "apis_called": ["Google Drive API (service account)", "PostgreSQL"]
     },
     "event_bus_practice_status_changed": {
       "description": "EventBus handler: reacts to PG NOTIFY practice_changed. Invalidates practice cache, stores cross-chain context, on completion runs expiry check + predictive compliance scan.",
@@ -1133,7 +1267,14 @@
       "type": "event-handler",
       "schedule": "event-driven (PG NOTIFY practice_changed)",
       "produces": "Cache invalidation, expiry alerts, predictive compliance forecasts",
-      "consumes": "PG trigger on practices table (migration_075)"
+      "consumes": "PG trigger on practices table (migration_075)",
+      "uses_llm": "none",
+      "tools_called": [
+        "cache_service.invalidate_cache",
+        "PredictiveComplianceEngine.scan",
+        "PricingService.get_pricing"
+      ],
+      "apis_called": ["PostgreSQL"]
     },
     "event_bus_compliance_alert": {
       "description": "EventBus handler: reacts to PG NOTIFY compliance_alert. Stores cross-chain context, sends Telegram alert for high/critical severity, logs CRM interaction.",
@@ -1142,7 +1283,10 @@
       "type": "event-handler",
       "schedule": "event-driven (PG NOTIFY compliance_alert)",
       "produces": "Telegram alerts, CRM interactions",
-      "consumes": "PG trigger on compliance checks (migration_076)"
+      "consumes": "PG trigger on compliance checks (migration_076)",
+      "uses_llm": "none",
+      "tools_called": ["AlertService.send_alert"],
+      "apis_called": ["Telegram Bot API", "PostgreSQL"]
     },
     "redis_reconnect_loop": {
       "description": "Redis manager auto-reconnect loop: persistent asyncio task that reconnects to Redis after disconnections with exponential backoff.",
@@ -1151,14 +1295,20 @@
       "type": "backend-loop",
       "schedule": "continuo (on disconnect)",
       "produces": "Restored Redis connection",
-      "consumes": "Redis connection state"
+      "consumes": "Redis connection state",
+      "uses_llm": "none",
+      "tools_called": [],
+      "apis_called": ["Redis (exponential backoff: 30s→60s→120s→300s)"]
     },
     "article_composer_cache_startup": {
       "description": "Article composer cache initialization on FastAPI startup event. Loads cache for article composition pipeline.",
       "system": "Content",
       "machine": "Fly.io",
       "type": "startup-hook",
-      "schedule": "once (at startup)"
+      "schedule": "once (at startup)",
+      "uses_llm": "none",
+      "tools_called": ["cache_service.initialize"],
+      "apis_called": ["Redis"]
     },
     "bali_intel_task_queue": {
       "description": "Bali Intel Scraper distributed task queue: Celery-like async workers processing scraping, AI, cleanup, and report tasks. Multiple worker loops per instance.",
@@ -1167,63 +1317,128 @@
       "type": "backend-loop",
       "schedule": "continuo (while scraper running)",
       "produces": "Processed scrape/AI/report tasks",
-      "consumes": "Task queue submissions"
+      "consumes": "Task queue submissions",
+      "uses_llm": "OpenAI or Anthropic (configurable)",
+      "tools_called": [
+        "ScrapeTaskHandler",
+        "AITaskHandler",
+        "CleanupTaskHandler"
+      ],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
     },
     "bali_intel_proxy_health_check": {
       "description": "Bali Intel Scraper proxy manager health check loop: persistent asyncio task monitoring proxy pool health and rotating proxies.",
       "system": "Intel",
       "machine": "Pro (local)",
       "type": "backend-loop",
-      "schedule": "continuo (while scraper running)"
+      "schedule": "continuo (while scraper running)",
+      "uses_llm": "none",
+      "tools_called": [],
+      "apis_called": ["httpbin.org/ip (health check)"]
     },
     "bali_intel_browser_pool_cleanup": {
       "description": "Bali Intel Scraper browser pool cleanup loop: persistent asyncio task recycling stale browser contexts to prevent memory leaks.",
       "system": "Intel",
       "machine": "Pro (local)",
       "type": "backend-loop",
-      "schedule": "continuo (while scraper running)"
+      "schedule": "continuo (while scraper running)",
+      "uses_llm": "none",
+      "tools_called": ["Playwright (browser contexts)"],
+      "apis_called": []
     },
     "bali_intel_ai_batch_flush": {
       "description": "Bali Intel Scraper AI engine batch flush: asyncio task that flushes accumulated AI processing batches after delay or on threshold.",
       "system": "Intel",
       "machine": "Pro (local)",
       "type": "backend-loop",
-      "schedule": "continuo (batch threshold/delay)"
+      "schedule": "continuo (batch threshold/delay)",
+      "uses_llm": "OpenAI or Anthropic (per provider)",
+      "tools_called": ["AIBatchProcessor"],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
     },
     "bali_intel_webhook_receiver": {
       "description": "Bali Intel Scraper webhook endpoint POST /api/v1/webhook/balizero: receives external scraping events/callbacks.",
       "system": "Intel",
       "machine": "Pro (local)",
       "type": "webhook",
-      "schedule": "event-driven (incoming POST)"
+      "schedule": "event-driven (incoming POST)",
+      "uses_llm": "LLAMA (scoring) + Claude (validation/enrichment) + Gemini (images)",
+      "tools_called": ["IntelPipeline.process_batch", "GoogleNewsRSSFetcher"],
+      "apis_called": ["balizero.com/api/news", "Google News RSS"]
     },
     "bg_crm_practice_email": {
       "description": "FastAPI BackgroundTask in crm_practices router: sends emails on practice status changes (M4/M5 milestone emails, confirmation emails).",
       "system": "CRM",
       "machine": "Fly.io",
       "type": "background-task",
-      "schedule": "event-driven (practice update)"
+      "schedule": "event-driven (practice update)",
+      "uses_llm": "none",
+      "tools_called": [
+        "WaitingDocumentsService",
+        "InvoiceAutomationService",
+        "CompletedProcessService",
+        "PortalNotificationService"
+      ],
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Brevo/Zoho Email API",
+        "Google Drive API"
+      ]
     },
     "bg_crm_client_welcome": {
       "description": "FastAPI BackgroundTask in crm_clients router: sends welcome messages (WA + email) and schedules welcome email on new client creation.",
       "system": "CRM",
       "machine": "Fly.io",
       "type": "background-task",
-      "schedule": "event-driven (client creation)"
+      "schedule": "event-driven (client creation)",
+      "uses_llm": "none",
+      "tools_called": [
+        "ServiceAccountDriveService.create_client_folder",
+        "welcome_whatsapp_service",
+        "PortalProfileService.ensure_portal_profile"
+      ],
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Google Drive API",
+        "Brevo Email API (queued)"
+      ]
     },
     "bg_whatsapp_async_processing": {
       "description": "FastAPI BackgroundTask in whatsapp_chat router: handles async message processing for WhatsApp conversations.",
       "system": "Channels",
       "machine": "Fly.io",
       "type": "background-task",
-      "schedule": "event-driven (incoming WA message)"
+      "schedule": "event-driven (incoming WA message)",
+      "uses_llm": "Gemini 2.5 Flash (via RAG orchestrator)",
+      "tools_called": [
+        "whatsapp_triage_service",
+        "onboarding_detector",
+        "orchestrator.process_query (RAG)",
+        "whatsapp_service.send_message"
+      ],
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Telegram Bot API (logging)",
+        "Qdrant (vector search)"
+      ]
     },
     "bg_document_ocr": {
       "description": "FastAPI BackgroundTask in crm_enhanced_documents router: runs OCR processing on uploaded client documents.",
       "system": "CRM",
       "machine": "Fly.io",
       "type": "background-task",
-      "schedule": "event-driven (document upload)"
+      "schedule": "event-driven (document upload)",
+      "uses_llm": "qwen2.5vl:7b (primary) → Gemini CLI (fallback) → Gemini 2.5 Flash API",
+      "tools_called": [
+        "ServiceAccountDriveService",
+        "auto_categorize_document",
+        "PortalNotificationService"
+      ],
+      "apis_called": [
+        "Ollama local (qwen2.5vl:7b)",
+        "Gemini API",
+        "Google Drive API"
+      ]
     }
   },
   "github_actions": {
@@ -1232,56 +1447,134 @@
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push/PR"
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": ["actions/checkout@v4", "actions/setup-python@v5"],
+      "secrets_used": []
     },
     "gh_fly_deploy": {
       "description": "GitHub Action: deploys backend to Fly.io on push to main. Multi-stage: lint, test, build, deploy rolling.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push to main"
+      "schedule": "on push to main",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/upload-artifact@v4",
+        "superfly/flyctl-actions/setup-flyctl@master"
+      ],
+      "apis_called": [
+        "Fly.io (deploy+rollback)",
+        "Telegram Bot API",
+        "nuzantara-rag.fly.dev (smoke test)"
+      ],
+      "secrets_used": [
+        "FLY_API_TOKEN",
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_OWNER_CHAT_ID",
+        "SMOKE_TEST_API_KEY"
+      ]
     },
     "gh_fly_secrets_check": {
       "description": "GitHub Action: weekly Fly.io secrets health check. Verifies FLY_API_TOKEN validity, sends Telegram alert on failure.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "Monday 09:00 UTC (cron: 0 9 * * 1)"
+      "schedule": "Monday 09:00 UTC (cron: 0 9 * * 1)",
+      "uses_llm": "none",
+      "tools_called": ["superfly/flyctl-actions/setup-flyctl@v2"],
+      "apis_called": ["Fly.io (auth whoami)", "Telegram Bot API"],
+      "secrets_used": [
+        "FLY_API_TOKEN",
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_OWNER_CHAT_ID"
+      ]
     },
     "gh_intel_router_tests": {
       "description": "GitHub Action: runs intel router tests on push/PR. Validates bali-intel-scraper API endpoints.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push/PR"
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/upload-artifact@v4",
+        "actions/setup-node@v4"
+      ],
+      "secrets_used": []
     },
     "gh_security_scanning": {
       "description": "GitHub Action: weekly Snyk security scan. Checks Python and Node.js dependencies for vulnerabilities.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "Sunday 00:00 UTC (cron: 0 0 * * 0)"
+      "schedule": "Sunday 00:00 UTC (cron: 0 0 * * 0)",
+      "uses_llm": "none",
+      "tools_called": [
+        "snyk/actions/python@master",
+        "snyk/actions/node@master",
+        "snyk/actions/docker@master",
+        "github/codeql-action/*@v3"
+      ],
+      "apis_called": ["Snyk", "GitHub CodeQL SARIF"],
+      "secrets_used": ["SNYK_TOKEN"]
     },
     "gh_semgrep_sast": {
       "description": "GitHub Action: Bandit + ESLint SAST (Static Application Security Testing). Blocks PR on HIGH/CRITICAL findings.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push/PR"
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "Bandit (Python SAST)",
+        "ESLint + eslint-plugin-security"
+      ],
+      "secrets_used": [],
+      "notes": "Filename says semgrep but actually runs Bandit+ESLint"
     },
     "gh_sonarqube": {
       "description": "GitHub Action: SonarQube code analysis. Python and Node.js quality gates.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push/PR"
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "sonarsource/sonarqube-scan-action@master",
+        "sonarsource/sonarqube-quality-gate-action@master",
+        "codecov/codecov-action@v4"
+      ],
+      "apis_called": ["SonarCloud", "Codecov"],
+      "secrets_used": ["SONAR_TOKEN"]
     },
     "gh_tests": {
       "description": "GitHub Action: main test suite. Runs pytest backend tests on push/PR with coverage gate.",
       "system": "CI/CD",
       "machine": "GitHub",
       "type": "ci-workflow",
-      "schedule": "on push/PR"
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/setup-node@v4",
+        "codecov/codecov-action@v4"
+      ],
+      "apis_called": ["Codecov"],
+      "secrets_used": [
+        "QDRANT_URL",
+        "QDRANT_API_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "JWT_SECRET",
+        "E2E_TEST_EMAIL",
+        "E2E_TEST_PIN"
+      ]
     }
   },
   "claude_code_hooks": {
