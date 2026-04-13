@@ -252,6 +252,13 @@ export class AdminApi {
     );
   }
 
+  async getPracticeStats(): Promise<PracticeStatsResponse> {
+    return this.client.request<PracticeStatsResponse>(
+      "/api/admin/team-activity/practice-stats",
+      { headers: this.client.getAdminHeaders() },
+    );
+  }
+
   async getCrmActions(params: {
     email?: string;
     action?: string;
@@ -391,4 +398,16 @@ interface CrmActionsResponse {
   limit: number;
   offset: number;
   actions: CrmAction[];
+}
+
+interface PracticeStatItem {
+  email: string;
+  completed: number;
+  active: number;
+  revenue: number;
+}
+
+interface PracticeStatsResponse {
+  success: boolean;
+  practice_stats: PracticeStatItem[];
 }

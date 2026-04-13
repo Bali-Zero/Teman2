@@ -387,16 +387,8 @@ export default function AnalyticsDashboard() {
       // Fetch analytics, LLM usage, and query insights in parallel
       const [analytics, llmStats, qInsights] = await Promise.all([
         api.analytics.getAll(),
-        fetch('/api/analytics/llm-usage', {
-          credentials: 'include',
-        })
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null),
-        fetch('/api/analytics/query-insights?days=7', {
-          credentials: 'include',
-        })
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null),
+        api.analytics.getLlmUsage<LLMUsageStats>(),
+        api.analytics.getQueryInsights<QueryInsightsData>(7),
       ]);
 
       setData(analytics);
