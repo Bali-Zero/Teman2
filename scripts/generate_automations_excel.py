@@ -1051,6 +1051,8 @@ def main() -> None:
         ("claude_code_hooks", "Hooks", "Pro", "hook"),
         ("home_scripts", "Home Scripts", "Pro", "shell"),
         ("air_cron_extras", "Air Extras", "Air", "cron"),
+        ("mata_garuda_pipeline", "Mata Garuda", "Pro", "pipeline"),
+        ("intel_scraper_pipeline", "Intel Scraper", "Pro", "pipeline"),
     ]
     all_extras = []
     for section_key, sheet_name, default_machine, default_type in extra_sections:
