@@ -625,6 +625,20 @@ class ReasoningEngine:
                 state.evidence_score = evidence_score
             else:
                 state.evidence_score = evidence_score
+
+            # Bridge: emit rag.low_confidence event if evidence is weak.
+            # Defensive — never break the RAG path on outbox failure.
+            # pool is None here (no db_pool on ReasoningEngine); full wire-up in Task 16.
+            try:
+                from backend.services.bridge.low_confidence_emitter import (
+                    maybe_emit_low_confidence,
+                )
+                pool = getattr(self, "_db_pool", None)
+                if pool is not None:
+                    await maybe_emit_low_confidence(pool, query, evidence_score)
+            except Exception as exc:
+                logger.warning(f"Low-confidence emit skipped: {exc}")
+
             set_span_status("ok")
 
         # ==================== ANSWER CONTENT CHECK ====================
