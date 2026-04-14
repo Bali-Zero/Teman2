@@ -55,7 +55,10 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
     Returns {"case_resolved": bool, "reason": str}.
     Exceptions propagate so the caller can convert them to status="error".
     """
+    import mata_garuda.agents  # noqa: F401 — populate @register_agent registry
+
     from mata_garuda.registry import get_agent
+    from mata_garuda.runtime.knowledge import KnowledgeBase
     from mata_garuda.runtime.lamarckian import run_with_lamarckian_feedback
 
     agent = get_agent(agent_name)
@@ -64,7 +67,11 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
 
     # Format payload as a query string the agent can understand
     query = json.dumps(payload, ensure_ascii=False)
-    response = run_with_lamarckian_feedback(agent, query)
+    kb = KnowledgeBase()
+    try:
+        response = run_with_lamarckian_feedback(agent, query, kb=kb)
+    finally:
+        kb.close()
 
     # Inspect the response messages for the case_resolved/case_not_resolved tool call.
     # The lamarckian loop ends with one of these tools being called.
