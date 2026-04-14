@@ -11,12 +11,18 @@ export default function BriefingPage() {
       <header className="border-b border-white/5 bg-[#0a0a0b]/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#c23c2c] rounded-sm flex items-center justify-center font-bold text-sm text-white">
-              BZ
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              className="w-10 h-10 rounded-full"
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold text-white tracking-wide">
+                BALI ZERO
+              </span>
+              <span className="text-xs text-white/40">Briefing Material</span>
             </div>
-            <span className="text-sm font-medium text-white/60">
-              Briefing Material
-            </span>
           </div>
           <a
             href="/assessment"
@@ -29,6 +35,19 @@ export default function BriefingPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-10">
         <article className="prose prose-invert prose-sm max-w-none space-y-8">
+          {/* Hero with logo */}
+          <div className="flex flex-col items-center text-center space-y-4 py-6 border-b border-white/5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              className="w-32 h-32 rounded-full shadow-2xl shadow-[#c23c2c]/20"
+            />
+            <div className="text-xs uppercase tracking-[0.3em] text-[#c23c2c] font-semibold">
+              Bali Zero — Official
+            </div>
+          </div>
+
           {/* Part 1 */}
           <section>
             <h1 className="text-2xl font-bold tracking-tight text-white mb-2">
