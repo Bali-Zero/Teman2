@@ -81,6 +81,27 @@ def test_envelope_from_redis_dict_roundtrip():
 def test_envelope_filter_by_prefix():
     """Type prefix matching for consumer routing."""
     env = Envelope(type="crm.client_created", source="b", priority=3, payload={})
-    assert env.matches_prefix("crm")
-    assert env.matches_prefix("crm.client")
-    assert not env.matches_prefix("intel")
+    assert env.matches_prefix("crm")           # top-level category matches
+    assert not env.matches_prefix("intel")     # unrelated category does not match
+
+    # Positive multi-segment: dot-segment boundary
+    env2 = Envelope(type="crm.client.details", source="b", priority=3, payload={})
+    assert env2.matches_prefix("crm.client")   # True: dot-segment boundary
+
+    # Negative cross-segment: client != clientele segment
+    env3 = Envelope(type="crm.clientele.foo", source="b", priority=3, payload={})
+    assert not env3.matches_prefix("crm.client")  # False: client != clientele segment
+
+
+def test_envelope_from_redis_dict_missing_payload_key():
+    """from_redis_dict handles missing payload key (defaults to {})."""
+    data = {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "type": "test.thing",
+        "source": "test",
+        "timestamp": "2026-04-14T10:00:00+08:00",
+        "priority": "3",
+        # No payload key!
+    }
+    env = Envelope.from_redis_dict(data)
+    assert env.payload == {}
