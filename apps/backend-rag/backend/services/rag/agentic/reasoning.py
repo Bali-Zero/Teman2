@@ -628,7 +628,7 @@ class ReasoningEngine:
 
             # Bridge: emit rag.low_confidence event if evidence is weak.
             # Defensive — never break the RAG path on outbox failure.
-            # pool is None here (no db_pool on ReasoningEngine); full wire-up in Task 16.
+            # pool is None here (no db_pool on ReasoningEngine); full wire-up in Task 17.
             try:
                 from backend.services.bridge.low_confidence_emitter import (
                     maybe_emit_low_confidence,
