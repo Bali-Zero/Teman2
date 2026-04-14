@@ -1,0 +1,54 @@
+[project]
+name = "zantara-media"
+version = "0.1.0"
+description = "GARUDA asset indexer + multi-channel curator agent for Bali Zero (Mata Garuda Layer 4.5)"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.29",
+    "qdrant-client>=1.10",
+    "openai>=1.40",
+    "google-api-python-client>=2.140",
+    "google-auth>=2.32",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+    "httpx>=0.27",
+    "ollama>=0.3",
+    "pypdf>=4.3",
+    "pytesseract>=0.3.10",
+    "openai-whisper",
+    "Pillow>=10.0",
+    "ffmpeg-python>=0.2",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+garuda-indexer = "zantara_media.cli.garuda_indexer:main"
+garuda-pool-builder = "zantara_media.cli.garuda_pool_builder:main"
+garuda-gc = "zantara_media.cli.garuda_gc:main"
+garuda-bootstrap = "zantara_media.cli.garuda_bootstrap:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["zantara_media*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
