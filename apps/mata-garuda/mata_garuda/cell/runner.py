@@ -24,6 +24,12 @@ from mata_garuda.cell.sensors import FitnessSensor, GapStreamSensor, RegulationS
 from mata_garuda.cell.thinker import PassthroughThinker
 from mata_garuda.runtime.knowledge import KnowledgeBase
 
+# Organo: cell-core PulseLoop runner → dispatches MG agents via MetaChainActor.
+# Importing mata_garuda.agents populates the registry via @register_agent
+# decorators — without it, get_agent(display_name) returns None and the actor
+# fails with "Agent 'Regulation Watcher' not registered".
+import mata_garuda.agents  # noqa: F401
+
 logger = logging.getLogger("mata_garuda.cell")
 
 MG_BIRTH_DATE = datetime(2026, 4, 1, tzinfo=timezone.utc)
