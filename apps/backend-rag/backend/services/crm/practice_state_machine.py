@@ -38,7 +38,7 @@ ALL_STATES = frozenset(VALID_TRANSITIONS.keys())
 class InvalidTransitionError(Exception):
     """Raised when a practice status transition is not allowed."""
 
-    def __init__(self, from_state: str, to_state: str, reason: str = ""):
+    def __init__(self, from_state: str, to_state: str, reason: str = "") -> None:
         self.from_state = from_state
         self.to_state = to_state
         self.reason = reason
