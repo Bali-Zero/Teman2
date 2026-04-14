@@ -33,6 +33,7 @@ def include_routers(api: FastAPI) -> None:
         analytics,
         article_composer,
         auth,
+        bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge
         autonomous_agents,
         autonomous_execution,
         blog_ask,
@@ -346,6 +347,9 @@ def include_routers(api: FastAPI) -> None:
 
     # EventBus monitoring
     api.include_router(event_bus.router)
+
+    # Bridge — Pro<->Fly bidirectional event bridge
+    api.include_router(bridge.router)
 
     # Guardian V4 decision audit + risk scores
     # from backend.app.routers import guardian
