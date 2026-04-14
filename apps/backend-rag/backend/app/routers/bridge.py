@@ -12,6 +12,7 @@ Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md Â
 """
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 from typing import Any
@@ -34,7 +35,7 @@ def _check_auth(x_bridge_auth: str | None) -> None:
     if not expected:
         logger.error("BRIDGE_API_KEY not set in environment")
         raise HTTPException(status_code=503, detail="Bridge auth not configured")
-    if not x_bridge_auth or x_bridge_auth != expected:
+    if not x_bridge_auth or not hmac.compare_digest(x_bridge_auth, expected):
         raise HTTPException(status_code=401, detail="Invalid bridge credentials")
 
 
