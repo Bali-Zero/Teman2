@@ -1387,6 +1387,18 @@ Do not invent information. If the context is insufficient, admit it.
         else:
             state.evidence_score = evidence_score
 
+        # Bridge: emit rag.low_confidence event if evidence is weak.
+        # Defensive — never break the RAG path on outbox failure.
+        try:
+            from backend.services.bridge.low_confidence_emitter import (
+                maybe_emit_low_confidence,
+            )
+            pool = getattr(self, "_db_pool", None)
+            if pool is not None:
+                await maybe_emit_low_confidence(pool, query, evidence_score)
+        except Exception as exc:
+            logger.warning(f"Low-confidence emit (streaming) skipped: {exc}")
+
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
