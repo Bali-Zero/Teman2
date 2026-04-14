@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.modules.notifications.checker import ExpiryChecker
@@ -68,6 +68,13 @@ class SendEmailRequest(BaseModel):
     cc: str | None = None               # comma-separated CC addresses
     bcc: str | None = None              # comma-separated BCC addresses
     attachments: list[EmailAttachment] | None = None
+
+    @field_validator("subject", "body")
+    @classmethod
+    def _reject_empty(cls, v: str, info) -> str:
+        if not v or not v.strip():
+            raise ValueError(f"{info.field_name} must not be empty or whitespace-only")
+        return v
 
 
 class SendEmailResponse(BaseModel):
