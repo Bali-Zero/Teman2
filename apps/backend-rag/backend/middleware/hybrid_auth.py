@@ -208,6 +208,17 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # - /api/legal/parent-documents - Requires API key (legal_ingest.py)
             # - /api/audio/ - Requires API key (audio.py)
             # - /preview/upload - Requires API key (preview.py)
+            # ========================================================================
+            # PHASE 1 ORGANISM BRIDGE (Pro<->Fly bidirectional nerve)
+            # ========================================================================
+            # SECURITY: /api/bridge/* uses dedicated X-Bridge-Auth header with
+            # hmac.compare_digest constant-time comparison against BRIDGE_API_KEY env
+            # var (see backend/app/routers/bridge.py:_check_auth). The router itself
+            # rejects unauthorized requests with 401 (Invalid bridge credentials) or
+            # 503 (Bridge auth not configured). Bypassing JWT/API-key middleware here
+            # is the explicit design — the bridge is M2M traffic from Pro local
+            # network, not user-facing.
+            "/api/bridge/",  # BUSINESS: Pro<->Fly bidirectional bridge (Phase 1 Sinapsi)
         ]
 
         # SECURITY: Removed TEMPORARY/FIX/DEBUG endpoints:
