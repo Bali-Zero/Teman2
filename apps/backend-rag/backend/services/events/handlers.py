@@ -275,7 +275,8 @@ def register_handlers(
         _store_context("compliance.alert", alert_id or client_id, payload)
 
         # ── Bridge outbox: notify Pro of critical compliance alerts ──
-        if severity == "critical" and (payload.get("days_until_expiry") or 999) <= 7:
+        days = payload.get("days_until_expiry")
+        if severity == "critical" and days is not None and days <= 7:
             try:
                 async with db_pool.acquire() as conn:
                     await insert_outbox_event(

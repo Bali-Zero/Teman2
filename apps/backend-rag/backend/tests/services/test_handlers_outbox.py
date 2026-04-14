@@ -267,3 +267,54 @@ async def test_outbox_write_failure_does_not_raise(monkeypatch):
     h._recent_events.clear()
     # Must NOT raise
     await on_client({"client_id": 7, "operation": "INSERT", "email": "x@y"})
+
+
+@pytest.mark.asyncio
+async def test_on_compliance_alert_critical_zero_days_writes_outbox(monkeypatch):
+    """severity=critical AND days_until_expiry=0 (expires TODAY) MUST write outbox."""
+    from backend.services.events import handlers as h
+
+    insert_mock = AsyncMock(return_value=50)
+    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+
+    bus_stub, fake_pool, _ = _build_bus_and_pool()
+    h.register_handlers(bus_stub, fake_pool)
+    on_compliance = _get_handler(bus_stub, "compliance.alert")
+
+    h._recent_events.clear()
+    await on_compliance({
+        "alert_id": "alert-zero",
+        "client_id": 7,
+        "severity": "critical",
+        "alert_type": "visa_expiry",
+        "days_until_expiry": 0,
+    })
+
+    insert_mock.assert_called_once()
+    call_kwargs = insert_mock.call_args.kwargs
+    assert call_kwargs["event_type"] == "compliance.critical_alert"
+    assert call_kwargs["payload"]["days_until_expiry"] == 0
+
+
+@pytest.mark.asyncio
+async def test_on_compliance_alert_critical_no_days_field_does_not_write(monkeypatch):
+    """severity=critical but days_until_expiry missing (None) does NOT write."""
+    from backend.services.events import handlers as h
+
+    insert_mock = AsyncMock(return_value=51)
+    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+
+    bus_stub, fake_pool, _ = _build_bus_and_pool()
+    h.register_handlers(bus_stub, fake_pool)
+    on_compliance = _get_handler(bus_stub, "compliance.alert")
+
+    h._recent_events.clear()
+    await on_compliance({
+        "alert_id": "alert-no-days",
+        "client_id": 7,
+        "severity": "critical",
+        "alert_type": "general",
+        # NO days_until_expiry
+    })
+
+    insert_mock.assert_not_called()
