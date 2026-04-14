@@ -30,6 +30,7 @@ from mata_garuda.config import (
     BRIDGE_HTTP_TIMEOUT_S,
     BRIDGE_PULL_LIMIT,
     STREAM_BRIDGE_INBOUND,
+    STREAM_BRIDGE_OUTBOUND,
 )
 
 logger = logging.getLogger("mata_garuda.bridge.nerve")
@@ -199,9 +200,230 @@ def pull_loop_main() -> None:
     pull_once(cursor=cursor, backend_url=BRIDGE_BACKEND_URL, api_key=api_key)
 
 
+
+# ── Push side ──────────────────────────────────────────────────────────
+
+
+PUSH_CONSUMER_GROUP = "bridge-push"
+PUSH_CONSUMER_NAME = "nerve-1"
+
+# Map envelope type → backend ingest endpoint path
+PUSH_ROUTING: dict[str, str] = {
+    "intel.article_ready": "/api/bridge/ingest/article",
+    "enrichment.kb_entry": "/api/bridge/ingest/enrichment",
+}
+
+
+def _default_http_post(
+    url: str,
+    headers: dict[str, str],
+    json_body: dict[str, Any],
+    timeout: int,
+) -> dict[str, Any]:
+    """HTTP POST via curl subprocess. Returns {status_code, json, text}."""
+    cmd = [
+        "curl", "-sS", "-X", "POST",
+        "--max-time", str(timeout),
+        "-w", "\\n%{http_code}",
+    ]
+    for k, v in headers.items():
+        cmd.extend(["-H", f"{k}: {v}"])
+    cmd.extend(["-H", "Content-Type: application/json"])
+    cmd.extend(["-d", json.dumps(json_body, ensure_ascii=False)])
+    cmd.append(url)
+
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, timeout=timeout + 5,
+    )
+    if result.returncode != 0:
+        raise ConnectionError(
+            f"curl POST exit {result.returncode}: {result.stderr.strip()}"
+        )
+
+    output = result.stdout
+    nl = output.rfind("\n")
+    if nl == -1:
+        raise ConnectionError(f"curl POST response missing status line: {output!r}")
+    body = output[:nl]
+    try:
+        status = int(output[nl + 1:].strip())
+    except ValueError as e:
+        raise ConnectionError(f"curl POST invalid status: {output[nl + 1:]!r}") from e
+
+    parsed: Any = None
+    if body:
+        try:
+            parsed = json.loads(body)
+        except json.JSONDecodeError:
+            parsed = None
+
+    return {"status_code": status, "json": parsed, "text": body}
+
+
+def _default_redis_xreadgroup(
+    stream: str,
+    group: str,
+    consumer: str,
+    count: int,
+    block_ms: int,
+) -> list[dict[str, Any]]:
+    """XREADGROUP via redis-cli subprocess. Ensures group exists.
+
+    Returns list of {id: msg_id, envelope: Envelope}. Empty list if no msgs.
+    """
+    # Ensure group exists (idempotent — fails silently if already exists)
+    subprocess.run(
+        ["redis-cli", "XGROUP", "CREATE", stream, group, "0", "MKSTREAM"],
+        capture_output=True, text=True, timeout=5,
+    )
+
+    args = [
+        "redis-cli", "XREADGROUP", "GROUP", group, consumer,
+        "COUNT", str(count),
+    ]
+    if block_ms > 0:
+        args.extend(["BLOCK", str(block_ms)])
+    args.extend(["STREAMS", stream, ">"])
+
+    result = subprocess.run(args, capture_output=True, text=True, timeout=15)
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+
+    # Parse redis-cli flat output
+    items: list[dict[str, Any]] = []
+    lines = [ln.strip() for ln in result.stdout.split("\n") if ln.strip()]
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if "-" in line and line[0].isdigit():
+            msg_id = line
+            data: dict[str, str] = {}
+            j = i + 1
+            while j < len(lines) and not (lines[j][0].isdigit() and "-" in lines[j]):
+                if j + 1 < len(lines):
+                    data[lines[j]] = lines[j + 1]
+                    j += 2
+                else:
+                    break
+            if data:
+                try:
+                    env = Envelope.from_redis_dict(data)
+                    items.append({"id": msg_id, "envelope": env})
+                except Exception as e:
+                    logger.error("Failed to parse envelope %s: %s", msg_id, e)
+            i = j
+        else:
+            i += 1
+    return items
+
+
+def _default_redis_xack(stream: str, group: str, msg_id: str) -> None:
+    """ACK a message in a consumer group."""
+    subprocess.run(
+        ["redis-cli", "XACK", stream, group, msg_id],
+        capture_output=True, text=True, timeout=5,
+    )
+
+
+def push_once(
+    backend_url: str,
+    api_key: str,
+    batch: int = 10,
+    timeout: int = BRIDGE_HTTP_TIMEOUT_S,
+    http_post: Callable = _default_http_post,
+    redis_xreadgroup: Callable = _default_redis_xreadgroup,
+    redis_xack: Callable = _default_redis_xack,
+) -> dict[str, int]:
+    """Run one push cycle. Returns stats {sent, acked, errors}.
+
+    For each message:
+      - Lookup type in PUSH_ROUTING
+      - Unknown type → ACK + log warning + count as error (no infinite loop)
+      - Known type → POST to endpoint
+      - 200/202 → ACK + count sent+acked
+      - Non-2xx or exception → NOT ACK, count error (redelivered next cycle)
+    """
+    stats = {"sent": 0, "acked": 0, "errors": 0}
+
+    items = redis_xreadgroup(
+        STREAM_BRIDGE_OUTBOUND,
+        PUSH_CONSUMER_GROUP,
+        PUSH_CONSUMER_NAME,
+        batch,
+        1000,  # 1s block
+    )
+
+    if not items:
+        return stats
+
+    headers = {"X-Bridge-Auth": api_key, "Content-Type": "application/json"}
+
+    for item in items:
+        msg_id = item["id"]
+        env: Envelope = item["envelope"]
+
+        endpoint_path = PUSH_ROUTING.get(env.type)
+        if endpoint_path is None:
+            logger.warning(
+                "Unknown push type %s (msg_id=%s) — ACKing to avoid loop",
+                env.type, msg_id,
+            )
+            redis_xack(STREAM_BRIDGE_OUTBOUND, PUSH_CONSUMER_GROUP, msg_id)
+            stats["acked"] += 1
+            stats["errors"] += 1
+            continue
+
+        url = f"{backend_url.rstrip('/')}{endpoint_path}"
+        try:
+            resp = http_post(url, headers=headers, json_body=env.payload, timeout=timeout)
+            stats["sent"] += 1
+            status = resp.get("status_code")
+            if status in (200, 202):
+                redis_xack(STREAM_BRIDGE_OUTBOUND, PUSH_CONSUMER_GROUP, msg_id)
+                stats["acked"] += 1
+            else:
+                logger.warning(
+                    "Push %s non-2xx: status=%s body=%s — NOT acked",
+                    env.type, status, (resp.get("text") or "")[:200],
+                )
+                stats["errors"] += 1
+        except Exception as e:
+            logger.warning("Push %s HTTP error: %s — NOT acked", env.type, e)
+            stats["errors"] += 1
+
+    if stats["sent"] or stats["errors"]:
+        logger.info(
+            "Bridge push: sent=%d acked=%d errors=%d",
+            stats["sent"], stats["acked"], stats["errors"],
+        )
+
+    return stats
+
+
+def push_loop_main() -> None:
+    """Entry point for the push worker (single iteration — cron driven)."""
+    api_key = os.getenv(BRIDGE_API_KEY_ENV, "")
+    if not api_key:
+        logger.error("BRIDGE_API_KEY not set — aborting push")
+        return
+    push_once(backend_url=BRIDGE_BACKEND_URL, api_key=api_key)
+
+
+def bridge_main() -> None:
+    """Entry point: run pull then push in one cycle."""
+    api_key = os.getenv(BRIDGE_API_KEY_ENV, "")
+    if not api_key:
+        logger.error("BRIDGE_API_KEY not set — aborting bridge cycle")
+        return
+
+    cursor = BridgeCursor(BRIDGE_CURSOR_PATH)
+    pull_once(cursor=cursor, backend_url=BRIDGE_BACKEND_URL, api_key=api_key)
+    push_once(backend_url=BRIDGE_BACKEND_URL, api_key=api_key)
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    pull_loop_main()
+    bridge_main()
