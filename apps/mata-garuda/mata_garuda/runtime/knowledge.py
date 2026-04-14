@@ -27,7 +27,11 @@ class KnowledgeBase:
     def __init__(self, db_path: Optional[Path] = None):
         self.db_path = db_path or DEFAULT_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path))
+        # check_same_thread=False: KB is shared across PulseLoop's event loop
+        # and MetaChainActor's asyncio.to_thread() worker threads. All writes
+        # serialize through a single connection; SQLite handles concurrent
+        # reads via WAL.
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_tables()
 
