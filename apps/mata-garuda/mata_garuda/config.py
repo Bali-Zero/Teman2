@@ -68,3 +68,24 @@ AI_RSS_FEEDS = [
     "https://magazine.sebastianraschka.com/feed",         # Sebastian Raschka AI
     "https://thegradient.pub/rss/",                       # The Gradient
 ]
+
+
+# ── Phase 1 — Bridge & Nexus integration ──────────────────────────────
+from pathlib import Path
+
+# New streams
+STREAM_BRIDGE_OUTBOUND = "bridge:outbound"
+STREAM_BRIDGE_INBOUND = "bridge:inbound"
+STREAM_NEXUS_GAPS = "nexus:gaps"
+
+# Bridge config
+BRIDGE_API_KEY_ENV = "BRIDGE_API_KEY"
+BRIDGE_BACKEND_URL = "https://nuzantara-rag.fly.dev"
+BRIDGE_CURSOR_PATH = Path.home() / ".agent" / "decisions" / "bridge_cursor.json"
+
+# Polling cadence (seconds)
+BRIDGE_POLL_INTERVAL_DAY_S = 30      # 08:00-18:00 WITA
+BRIDGE_POLL_INTERVAL_NIGHT_S = 300   # 18:00-08:00 WITA
+BRIDGE_PULL_LIMIT = 50
+BRIDGE_PUSH_BATCH = 10
+BRIDGE_HTTP_TIMEOUT_S = 15
