@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 WITA = timezone(timedelta(hours=8))
@@ -34,8 +34,6 @@ class Envelope(BaseModel):
     5 campi obbligatori, payload libero. Puro JSON, zero dipendenze esterne
     oltre pydantic. Compatibile con redis-cli XADD/XREADGROUP.
     """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     type: str = Field(..., description="dot notation: category.subtype")
@@ -75,17 +73,15 @@ class Envelope(BaseModel):
         )
 
     def matches_prefix(self, prefix: str) -> bool:
-        """True if type starts with prefix at a dot-segment boundary.
+        """True if self.type equals prefix or starts with prefix at a dot-segment boundary.
 
-        Supports both top-level category ("crm") and partial paths ("crm.client").
         Matching is always at a segment boundary (dot or end-of-string) to avoid
         false positives across unrelated categories.
 
         Examples:
-            "crm.client_created".matches_prefix("crm")         → True
-            "crm.client_created".matches_prefix("crm.client")  → True
-            "crm.client_created".matches_prefix("intel")       → False
+            "crm.client_created".matches_prefix("crm")          → True
+            "crm.client.details".matches_prefix("crm.client")   → True
+            "crm.clientele.foo".matches_prefix("crm.client")    → False
+            "crm.client_created".matches_prefix("intel")        → False
         """
-        return self.type == prefix or self.type.startswith(prefix + ".") or (
-            "." in prefix and self.type.startswith(prefix)
-        )
+        return self.type == prefix or self.type.startswith(prefix + ".")
