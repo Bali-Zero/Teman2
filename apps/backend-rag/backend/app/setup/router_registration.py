@@ -33,10 +33,10 @@ def include_routers(api: FastAPI) -> None:
         analytics,
         article_composer,
         auth,
-        bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge
         autonomous_agents,
         autonomous_execution,
         blog_ask,
+        bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge
         cell_status,  # [CELL] CELL organism dashboard status
         channels,  # Channel health, DLQ, unified conversations
         collective_memory,
@@ -382,6 +382,7 @@ def include_light_routers(api: FastAPI) -> None:
         analytics,
         article_composer,
         auth,
+        bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge (Phase 1 Sinapsi)
         cell_status,
         channels,  # Channel health, DLQ, unified conversations
         crm_analytics,
@@ -588,6 +589,10 @@ def include_light_routers(api: FastAPI) -> None:
 
     # EventBus monitoring
     api.include_router(event_bus.router)
+
+    # Bridge — Pro<->Fly bidirectional event bridge (Phase 1 Sinapsi)
+    # Light path: only DB + custom X-Bridge-Auth, no RAG dependencies
+    api.include_router(bridge.router)
 
     # Knowledge Activity Tracking
     api.include_router(knowledge_activity.router)
