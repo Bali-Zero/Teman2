@@ -10,6 +10,11 @@ import logging
 from typing import Optional
 
 from cell_core.types import Proposal
+
+# Import side-effect: populate @register_agent decorators so get_agent() works
+# when this module is imported before mata_garuda.agents.
+import mata_garuda.agents  # noqa: F401
+
 from mata_garuda.registry import get_agent
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.runtime.lamarckian import run_with_lamarckian_feedback
