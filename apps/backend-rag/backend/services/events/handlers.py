@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
+from backend.services.bridge.outbox import insert_outbox_event
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
@@ -114,6 +116,32 @@ def register_handlers(
         # Store in cross-chain context
         _store_context("client.changed", client_id, payload)
 
+        # ── Bridge outbox: notify Pro of CRM client changes ──────────
+        try:
+            async with db_pool.acquire() as conn:
+                if operation == "INSERT":
+                    await insert_outbox_event(
+                        conn,
+                        event_type="crm.client_created",
+                        payload={
+                            "client_id": client_id,
+                            "email": email,
+                            "sector": payload.get("sector"),
+                        },
+                    )
+                elif operation == "UPDATE" and "sector" in (payload.get("changed_fields") or []):
+                    await insert_outbox_event(
+                        conn,
+                        event_type="crm.client_sector_changed",
+                        payload={
+                            "client_id": client_id,
+                            "sector": payload.get("sector"),
+                            "old_sector": payload.get("old_sector"),
+                        },
+                    )
+        except Exception as e:
+            logger.error(f"Bridge outbox write failed for client {client_id}: {e}")
+
         # On new client: create Drive folder + log interaction
         if operation == "INSERT":
             logger.info(
@@ -169,6 +197,32 @@ def register_handlers(
         # Store in cross-chain context
         _store_context("practice.status_changed", practice_id, payload)
 
+        # ── Bridge outbox: notify Pro of practice lifecycle ──────────
+        try:
+            async with db_pool.acquire() as conn:
+                if new_status == "completed":
+                    await insert_outbox_event(
+                        conn,
+                        event_type="crm.practice_completed",
+                        payload={
+                            "practice_id": practice_id,
+                            "client_id": client_id,
+                            "completed_at": payload.get("completed_at"),
+                        },
+                    )
+                elif old_status is None and new_status in ("created", "open", "in_progress"):
+                    await insert_outbox_event(
+                        conn,
+                        event_type="crm.practice_created",
+                        payload={
+                            "practice_id": practice_id,
+                            "client_id": client_id,
+                            "practice_type": payload.get("practice_type"),
+                        },
+                    )
+        except Exception as e:
+            logger.error(f"Bridge outbox write failed for practice {practice_id}: {e}")
+
         # On completion: check if client has other expiring docs
         if new_status == "completed" and client_id:
             asyncio.create_task(
@@ -219,6 +273,23 @@ def register_handlers(
 
         # Store in cross-chain context
         _store_context("compliance.alert", alert_id or client_id, payload)
+
+        # ── Bridge outbox: notify Pro of critical compliance alerts ──
+        if severity == "critical" and (payload.get("days_until_expiry") or 999) <= 7:
+            try:
+                async with db_pool.acquire() as conn:
+                    await insert_outbox_event(
+                        conn,
+                        event_type="compliance.critical_alert",
+                        payload={
+                            "client_id": client_id,
+                            "document_type": payload.get("document_type"),
+                            "days_until_expiry": payload.get("days_until_expiry"),
+                            "expires_at": payload.get("expires_at"),
+                        },
+                    )
+            except Exception as e:
+                logger.error(f"Bridge outbox write failed for compliance alert: {e}")
 
         # High/critical: Telegram alert
         if severity in ("high", "critical"):
