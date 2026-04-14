@@ -318,12 +318,18 @@ export default function AssessmentPage() {
       <header className="border-b border-white/5 bg-[#0a0a0b]/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#c23c2c] rounded-sm flex items-center justify-center font-bold text-sm text-white">
-              BZ
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              className="w-10 h-10 rounded-full"
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-semibold text-white tracking-wide">
+                BALI ZERO
+              </span>
+              <span className="text-xs text-white/40">Assessment 2026</span>
             </div>
-            <span className="text-sm font-medium text-white/60">
-              Assessment 2026
-            </span>
           </div>
           {phase === "blocks" && (
             <div className="flex items-center gap-4">
@@ -345,11 +351,22 @@ export default function AssessmentPage() {
         {/* ── INTRO ─────────────────────────────────── */}
         {phase === "intro" && (
           <div className="space-y-8 animate-fadeIn">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">
-                Assessment Teknis-Strategis
-              </h1>
-              <p className="text-white/50 text-lg">Bali Zero + Nuzantara</p>
+            <div className="flex flex-col items-center text-center space-y-6 py-8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/static/balizero-logo-clean.png"
+                alt="Bali Zero"
+                className="w-40 h-40 rounded-full shadow-2xl shadow-[#c23c2c]/20"
+              />
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-[0.3em] text-[#c23c2c] font-semibold">
+                  Bali Zero — Official
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight">
+                  Assessment Teknis-Strategis
+                </h1>
+                <p className="text-white/50 text-lg">Bali Zero + Nuzantara</p>
+              </div>
             </div>
 
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-6 space-y-4">
@@ -646,6 +663,12 @@ export default function AssessmentPage() {
         {/* ── DONE ──────────────────────────────────── */}
         {phase === "done" && (
           <div className="text-center space-y-6 py-20 animate-fadeIn">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/static/balizero-logo-clean.png"
+              alt="Bali Zero"
+              className="w-32 h-32 rounded-full mx-auto shadow-2xl shadow-[#c23c2c]/30"
+            />
             <div className="text-4xl">Selesai</div>
             <h1 className="text-2xl font-bold">
               Terima kasih, {CANDIDATE_NAME}
