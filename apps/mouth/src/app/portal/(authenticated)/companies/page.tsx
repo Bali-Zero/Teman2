@@ -6,10 +6,8 @@ import {
   Building2,
   ChevronRight,
   CheckCircle,
-  Clock,
   Shield,
   AlertTriangle,
-  Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -24,10 +22,9 @@ import {
 
 export default function CompaniesPage() {
   const router = useRouter();
-  const { error, success } = useToast();
+  const { error } = useToast();
   const [companies, setCompanies] = useState<PortalCompany[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [settingPrimaryId, setSettingPrimaryId] = useState<number | null>(null);
 
   useEffect(() => {
     loadCompanies();
@@ -43,24 +40,6 @@ export default function CompaniesPage() {
       logger.error("Failed to load portal companies", {}, err as Error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSetPrimary = async (companyId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      setSettingPrimaryId(companyId);
-      await api.portal.setPrimaryCompany(companyId);
-      setCompanies((prev) =>
-        prev.map((c) => ({ ...c, isPrimary: c.id === companyId })),
-      );
-      success("Primary company updated", "Your primary company has been set.");
-      logger.info("Primary company set", {});
-    } catch (err) {
-      error("Failed to set primary company", "Please try again");
-      logger.error("Failed to set primary company", {}, err as Error);
-    } finally {
-      setSettingPrimaryId(null);
     }
   };
 
@@ -107,8 +86,6 @@ export default function CompaniesPage() {
               key={company.id}
               company={company}
               onClick={() => router.push(`/portal/company/${company.id}`)}
-              onSetPrimary={(e) => handleSetPrimary(company.id, e)}
-              isSettingPrimary={settingPrimaryId === company.id}
             />
           ))}
         </section>
@@ -120,13 +97,9 @@ export default function CompaniesPage() {
 function CompanyCard({
   company,
   onClick,
-  onSetPrimary,
-  isSettingPrimary,
 }: {
   company: PortalCompany;
   onClick: () => void;
-  onSetPrimary: (e: React.MouseEvent) => void;
-  isSettingPrimary: boolean;
 }) {
   const getComplianceStatus = () => {
     if (!company.compliance || company.compliance.length === 0) return null;
@@ -214,24 +187,11 @@ function CompanyCard({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              {!company.isPrimary && (
-                <button
-                  onClick={onSetPrimary}
-                  disabled={isSettingPrimary}
-                  className="text-xs px-2 py-1 rounded-full border transition-opacity hover:opacity-80 disabled:opacity-40 whitespace-nowrap"
-                  style={{
-                    borderColor: "rgba(201,169,110,0.3)",
-                    color: "var(--bz-accent-warm)",
-                    background: "rgba(201,169,110,0.06)",
-                  }}
-                >
-                  {isSettingPrimary ? (
-                    <Loader2 className="w-3 h-3 animate-spin inline" />
-                  ) : (
-                    "Set primary"
-                  )}
-                </button>
-              )}
+              {/* "Set primary" is portal-inappropriate: shareholders sit on
+                  5-10 PTs via client_company_links, a single primary pick
+                  doesn't match their mental model. Staff still manage it
+                  from the workspace CompanyTab. Shield icon stays as a
+                  read-only marker. */}
               <StatusBadge status={company.status} />
               <ChevronRight
                 className="w-5 h-5"
