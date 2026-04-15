@@ -253,19 +253,22 @@ export interface RegistrationResponse {
 // LKPM Types (Investment Activity Reports)
 // ============================================================================
 
+// Matches backend/app/models/lkpm.py:InvestmentRealization.
+// Backend splits only the three categories that can be imported
+// (equipment, building, vehicle). Land, working_capital, and "other" are
+// single-column totals (no import distinction per OSS schema).
 export interface LKPMInvestmentRealization {
-  land_building_domestic: number;
-  land_building_import: number;
-  machinery_domestic: number;
-  machinery_import: number;
   equipment_domestic: number;
   equipment_import: number;
-  vehicles_domestic: number;
-  vehicles_import: number;
-  other_fixed_domestic: number;
-  other_fixed_import: number;
-  working_capital_domestic: number;
-  working_capital_import: number;
+  building_domestic: number;
+  building_import: number;
+  vehicle_domestic: number;
+  vehicle_import: number;
+  land: number;
+  working_capital: number;
+  other: number;
+  total_domestic: number;
+  total_import: number;
   grand_total: number;
 }
 
