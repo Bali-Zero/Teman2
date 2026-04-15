@@ -10,12 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type Theme =
-  | "dark"
-  | "light"
-  | "editorial"
-  | "operative-light"
-  | "operative-dark";
+export type Theme = "dark" | "light" | "editorial";
 export type Funnel = "visa" | "kbli" | "tax" | "property" | null;
 
 interface ThemeContextValue {
@@ -54,16 +49,9 @@ export function ThemeProvider({
 
   // On mount: read localStorage and sync to state + DOM.
   useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-    if (
-      stored === "dark" ||
-      stored === "light" ||
-      stored === "editorial" ||
-      stored === "operative-light" ||
-      stored === "operative-dark"
-    ) {
-      setThemeState(stored as Theme);
+    const stored = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
+    if (stored === "dark" || stored === "light" || stored === "editorial") {
+      setThemeState(stored);
       document.documentElement.dataset.theme = stored;
     } else {
       document.documentElement.dataset.theme = defaultTheme;
@@ -91,12 +79,10 @@ export function ThemeProvider({
 
   const value = useMemo(
     () => ({ theme, setTheme, funnel, setFunnel }),
-    [theme, setTheme, funnel, setFunnel],
+    [theme, setTheme, funnel, setFunnel]
   );
 
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import Script from "next/script";
+import { Toaster } from "sonner";
 import {
   OrganizationJsonLd,
   LocalBusinessJsonLd,
@@ -12,19 +14,29 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
 import { ThemeProvider } from "@balizero/core/components/ThemeProvider";
-import { WhatsAppFAB } from "@balizero/core/components/WhatsAppFAB";
 import { inter } from "@balizero/core/fonts/inter";
-import { LazyToaster } from "@/components/providers/LazyToaster";
 import "./globals.css";
 
-// Pre-paint theme script — persona-aware, sets data-theme before React hydrates
-// to prevent FOUC. Design 2026-04-17-v2-subdomain-rollout §3 (L1/L2/L3 persona).
-// Precedence: localStorage('bz-theme') > hostname persona > editorial default.
-//   kita., prime.                 → operative-dark (workspace + 3D)
-//   my., zantara.                 → operative-light (client self-service)
-//   balizero, visa., tax., /kbli  → editorial (public funnel)
-// Must be inline; next/script strategy="beforeInteractive" is insufficient in App Router.
-const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var t=stored;if(!t){if(host.indexOf('kita.')===0||host.indexOf('prime.')===0)t='operative-dark';else if(host.indexOf('my.')===0||host.indexOf('zantara.')===0)t='operative-light';else t='editorial';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='editorial';}})();`;
+// Pre-paint theme script — sets data-theme before React hydrates to prevent FOUC.
+// Three-coupled-changes procedure, design doc §5. Must be inline; next/script
+// strategy="beforeInteractive" is insufficient in App Router.
+const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap", // Prevent FOIT (Flash of Invisible Text)
+  preload: true,
+  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap", // Prevent FOIT
+  preload: true,
+  fallback: ["SF Mono", "Monaco", "Inconsolata", "monospace"],
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -224,11 +236,11 @@ export default function RootLayout({
         <DynamicJsonLd />
       </head>
       <body
-        className="antialiased bg-[var(--background)] text-[var(--foreground)]"
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
         suppressHydrationWarning
       >
         <QueryProvider>
-          <ThemeProvider defaultTheme="editorial">
+          <ThemeProvider defaultTheme="dark">
             <WebVitalsMonitor />
             <ErrorBoundary
               fallback={
@@ -239,10 +251,20 @@ export default function RootLayout({
             >
               {children}
             </ErrorBoundary>
-            {/* Persistent WhatsApp FAB — visible on every page */}
-            <WhatsAppFAB />
           </ThemeProvider>
-          <LazyToaster />
+          <Toaster
+            position="bottom-right"
+            theme="dark"
+            richColors
+            closeButton
+            toastOptions={{
+              style: {
+                background: "var(--background-elevated)",
+                border: "1px solid var(--border)",
+                color: "var(--foreground)",
+              },
+            }}
+          />
         </QueryProvider>
         {/* Service Worker Registration — safe: hardcoded static JS string, no external input */}
         <Script
