@@ -69,6 +69,13 @@ _USE_QUERY_PLANNER = os.getenv("USE_QUERY_PLANNER", "false").lower() in ("true",
 # When true, graders can trigger retry/fail-fast actions.
 _ENABLE_GRADING_GATES = os.getenv("ENABLE_GRADING_GATES", "false").lower() in ("true", "1", "yes")
 
+# ── SOTA 2026 Multi-Tier Feature Flags ──
+_ENABLE_SELF_RAG = os.getenv("ENABLE_SELF_RAG", "false").lower() in ("true", "1", "yes")
+_ENABLE_CRAG_ROUTER = os.getenv("ENABLE_CRAG_ROUTER", "false").lower() in ("true", "1", "yes")
+_ENABLE_HYDE = os.getenv("ENABLE_HYDE", "false").lower() in ("true", "1", "yes")
+_ENABLE_NLM_ORCHESTRATOR = os.getenv("ENABLE_NLM_ORCHESTRATOR", "false").lower() in ("true", "1", "yes")
+_ENABLE_DEEP_RESEARCH = os.getenv("ENABLE_DEEP_RESEARCH", "false").lower() in ("true", "1", "yes")
+
 
 class OrchestratorCore:
     """
@@ -98,6 +105,8 @@ class OrchestratorCore:
         nlm_enrichment_service: Any = None,  # NLMEnrichmentService
         retriever: Any = None,  # SearchService — used for embedding-based semantic cache
         specialized_service_router: Any = None,  # SpecializedServiceRouter
+        nlm_orchestrator: Any = None,  # NLMOrchestrator (SOTA 2026)
+        deep_research_dispatcher: Any = None,  # DeepResearchDispatcher (SOTA 2026)
     ) -> None:
         """
         Inizializza OrchestratorCore.
@@ -131,6 +140,8 @@ class OrchestratorCore:
         self.db_pool = db_pool  # Store for later use
         self.retriever = retriever  # SearchService — for embedding-based semantic cache lookup
         self._specialized_router = specialized_service_router  # Complex query fast-path
+        self._nlm_orchestrator = nlm_orchestrator  # SOTA 2026: NLM Orchestrator
+        self._deep_research_dispatcher = deep_research_dispatcher  # SOTA 2026: Deep Research
 
         # Initialize specialized managers
         self.context_manager = OrchestratorContextManager(
@@ -710,13 +721,27 @@ class OrchestratorCore:
             session_id=session_id,
         )
 
-        # 1b. [GraphRAG v6] Shadow mode: run QueryPlanner async (fire-and-forget)
-        # Planner result is LOGGED but NOT used for routing (shadow mode).
-        # Switch to active mode when USE_QUERY_PLANNER=true after validation.
+        # 1b. [GraphRAG v6 → SOTA 2026] QueryPlanner
+        # Active mode: produces QueryPlan consumed by CRAG Router.
+        # Shadow mode: logs plan but doesn't route (backward-compatible).
+        query_plan = None
+        crag_decision = None
         if self._query_planner:
-            asyncio.create_task(
-                self._run_query_planner_shadow(query, user_context),
-            )
+            if _USE_QUERY_PLANNER:
+                query_plan = self._query_planner.plan(query, user_context)
+                # 1c. [SOTA 2026] CRAG Router — conditional tier activation
+                if _ENABLE_CRAG_ROUTER and query_plan:
+                    from backend.services.rag.crag_router import CRAGRouter
+                    _crag_router = CRAGRouter(
+                        enable_hyde=_ENABLE_HYDE,
+                        enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
+                        enable_deep_research=_ENABLE_DEEP_RESEARCH,
+                    )
+                    crag_decision = _crag_router.route(query_plan)
+            else:
+                asyncio.create_task(
+                    self._run_query_planner_shadow(query, user_context),
+                )
 
         # 2. Check gates (security, greeting, etc.)
         gate_result = self.query_gates.run_all_gates(

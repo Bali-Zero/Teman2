@@ -15,6 +15,7 @@ from pathlib import Path
 
 from cell_core import CellConfig, PulseLoop, Maturation, SafetyGate, PulseResult
 from cell_core.genome import Genome
+from cell_core.hgt.publisher import HGTPublisher
 from cell_core.homeostasis import HomeostaticController
 from cell_core.identity import SelfModelManager
 
@@ -46,9 +47,13 @@ class MataGarudaPulseLoop(PulseLoop):
     - DREAM  (step 6): silences stale low-confidence skills
     """
 
-    def __init__(self, *args, genome: Genome, **kwargs) -> None:
+    def __init__(
+        self, *args, genome: Genome,
+        hgt_publisher: HGTPublisher | None = None, **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.genome = genome
+        self.hgt_publisher = hgt_publisher
 
     async def single_pulse(self) -> PulseResult:
         result = await super().single_pulse()
@@ -69,7 +74,22 @@ class MataGarudaPulseLoop(PulseLoop):
                 procedure=result.action_reason or action,
                 confidence=0.6,
                 scope="Project",
+                domain="news",  # Mata Garuda primarily produces news/intel skills
             )
+
+            # 5c. HGT PUBLISH — share high-confidence skills with sibling cells
+            if self.hgt_publisher:
+                try:
+                    await self.hgt_publisher.publish({
+                        "id": skill_id,
+                        "procedure": result.action_reason or action,
+                        "confidence": 0.6,
+                        "scope": "Project",
+                        "type": "skill",
+                        "domain": "news",
+                    })
+                except Exception:
+                    pass  # graceful degradation: Redis down = skill stays local
 
         # 6b. DREAM — silence skills unused for 30+ days with confidence < 0.4
         if self.homeostasis.is_sleeping() and self.lifecycle.can_dream():
@@ -99,6 +119,16 @@ def build_pulse_loop(
     kb = KnowledgeBase(db_path=Path(kb_path))
     genome = Genome(db_path=kb_path)
 
+    # HGT Publisher — optional, graceful degradation if Redis unavailable
+    hgt_publisher = None
+    try:
+        import redis.asyncio as aioredis
+        redis_client = aioredis.Redis(host="localhost", port=6379, decode_responses=True)
+        hgt_publisher = HGTPublisher(redis_client, cell_name="mata-garuda")
+        logger.info("[hgt] Publisher initialized for mata-garuda")
+    except (ImportError, Exception) as e:
+        logger.info(f"[hgt] Publisher not available: {e}")
+
     # Identity
     identity = SelfModelManager(path=self_model_path)
     identity.load()
@@ -123,6 +153,7 @@ def build_pulse_loop(
         homeostasis=HomeostaticController(sleep_hours=config.sleep_hours),
         identity=identity,
         genome=genome,
+        hgt_publisher=hgt_publisher,
     )
 
 

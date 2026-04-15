@@ -1,6 +1,6 @@
 {
   "_doc": "Human-verified catalog of all automations. Used by generate_automations_excel.py to enrich auto-detected entries.",
-  "_updated": "2026-04-14",
+  "_updated": "2026-04-16",
   "openclaw_pro": {
     "core-guardian": {
       "description": "Code quality auto-fix: ruff lint, import check, type annotations. Runs evaluator/core_guardian/cron_guardian.py in worktree.",
@@ -1924,6 +1924,18 @@
       "machine": "Air",
       "type": "cron-api",
       "schedule": "07:30 WITA daily"
+    },
+    "metabolic_rollup": {
+      "description": "SYMBIOSIS Pillar 7 daily rollup. Collects 4 metabolic metrics (TTR, DO, IA, FE), stores in SQLite, pushes to Redis organism:metrics stream, sends Telegram report.",
+      "produces": "SQLite snapshots, Redis stream events, Telegram report, JSONL log",
+      "consumes": "cell_pulse_log (PG), kg_nodes/kg_edges (PG), cron JSONL, MOS SQLite, escalations JSONL",
+      "monitored_by": "CronSensor (metabolic_rollup: 24h)",
+      "uses_llm": "none (pure metrics computation)",
+      "system": "Organism",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "23:30 WITA daily",
+      "script": "scripts/metabolic_rollup.py"
     }
   },
   "zombies": {
