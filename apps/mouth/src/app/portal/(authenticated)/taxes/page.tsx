@@ -6,7 +6,12 @@ import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { TaxOverview, TaxObligation } from "@/lib/api/portal/portal.types";
-import { StatusBadge } from "@/components/portal";
+import {
+  StatusBadge,
+  PortalEmptyState,
+  PortalCardSkeleton,
+  PortalListSkeleton,
+} from "@/components/portal";
 import { trackTaxDashboardViewed } from "@/lib/analytics";
 
 export default function TaxesPage() {
@@ -45,37 +50,8 @@ export default function TaxesPage() {
             style={{ background: "var(--bz-border)", opacity: 0.5 }}
           />
         </section>
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl border p-4 h-20 animate-pulse"
-              style={{
-                background: "rgba(30,30,35,0.7)",
-                borderColor: "rgba(255,255,255,0.05)",
-              }}
-            />
-          ))}
-        </div>
-        <div
-          className="rounded-xl border p-6 space-y-3 animate-pulse"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-          }}
-        >
-          <div
-            className="h-5 w-36 rounded"
-            style={{ background: "var(--bz-border)" }}
-          />
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-16 rounded"
-              style={{ background: "var(--bz-border)", opacity: 0.4 }}
-            />
-          ))}
-        </div>
+        <PortalCardSkeleton />
+        <PortalListSkeleton count={3} />
       </div>
     );
   }
@@ -89,28 +65,12 @@ export default function TaxesPage() {
             Your tax obligations and history
           </p>
         </section>
-        <section
-          className="rounded-xl border border-dashed p-12 text-center"
-          style={{
-            background: "rgba(30,30,35,0.7)",
-            borderColor: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(24px)",
-          }}
-        >
-          <DollarSign
-            className="w-16 h-16 mx-auto mb-4 opacity-30"
-            style={{ color: "var(--bz-text-2)" }}
-          />
-          <h2
-            className="text-lg font-semibold"
-            style={{ color: "var(--bz-text-2)" }}
-          >
-            No tax data available
-          </h2>
-          <p className="text-sm mt-1" style={{ color: "var(--bz-text-3)" }}>
-            Tax information will appear here once your company is set up.
-          </p>
-        </section>
+        <PortalEmptyState
+          icon={DollarSign}
+          title="No tax data available"
+          description="Tax information will appear here once your company is set up."
+          cta={{ label: "Message our team", href: "/portal/chat" }}
+        />
       </div>
     );
   }

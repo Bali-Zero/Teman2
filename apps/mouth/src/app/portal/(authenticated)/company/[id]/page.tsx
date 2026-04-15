@@ -10,13 +10,17 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Building2, ChevronLeft, Loader2 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Building2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import type { PortalCompany } from "@/lib/api/portal/portal.types";
-import { Button } from "@/components/ui/button";
+import {
+  PortalBackButton,
+  PortalEmptyState,
+  PortalPageLoader,
+} from "@/components/portal";
 
 import { EditorialHero } from "@/components/portal/company/EditorialHero";
 import { IdentityRow } from "@/components/portal/company/IdentityRow";
@@ -64,7 +68,6 @@ function extractProvince(address?: string): string | undefined {
 
 export default function CompanyDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { error } = useToast();
   const [company, setCompany] = useState<PortalCompany | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,37 +101,18 @@ export default function CompanyDetailPage() {
   }, [companyId, error]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2
-          className="w-6 h-6 animate-spin"
-          style={{ color: "var(--bz-accent-warm)" }}
-        />
-      </div>
-    );
+    return <PortalPageLoader />;
   }
 
   if (!company) {
     return (
-      <div className="text-center py-12">
-        <Building2
-          className="w-16 h-16 mx-auto mb-4 opacity-30"
-          style={{ color: "var(--bz-text-2)" }}
+      <div>
+        <PortalBackButton href="/portal/companies" label="Back to Companies" />
+        <PortalEmptyState
+          icon={Building2}
+          title="Company not found"
+          description="The company you're looking for doesn't exist or you don't have access to it."
         />
-        <h2
-          className="text-lg font-semibold"
-          style={{ color: "var(--bz-text-2)" }}
-        >
-          Company not found
-        </h2>
-        <Button
-          variant="ghost"
-          className="mt-4"
-          onClick={() => router.push("/portal/companies")}
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Back to Companies
-        </Button>
       </div>
     );
   }
@@ -167,16 +151,7 @@ export default function CompanyDetailPage() {
 
   return (
     <div className="animate-in fade-in duration-500">
-      {/* Back */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push("/portal/companies")}
-        className="-ml-2 mb-4"
-      >
-        <ChevronLeft className="w-4 h-4 mr-1" />
-        Back to Companies
-      </Button>
+      <PortalBackButton href="/portal/companies" label="Back to Companies" />
 
       {/* Editorial Hero */}
       <EditorialHero
