@@ -8,16 +8,22 @@ Startup: ~30s (full service init with Qdrant + LLM warmup)
 Run via: uvicorn backend.app.main_rag:app --host 0.0.0.0 --port 8080
 """
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 
 from backend.app.setup.sentry_config import init_sentry
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 init_sentry()
 
 logger = logging.getLogger("zantara.backend")
 
 
-def create_rag_app() -> "FastAPI":  # type: ignore[return]
+def create_rag_app() -> FastAPI:
     from fastapi import FastAPI, HTTPException
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
