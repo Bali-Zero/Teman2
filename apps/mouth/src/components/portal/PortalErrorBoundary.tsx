@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * PortalErrorBoundary Component
@@ -7,10 +7,10 @@
  * Più user-friendly rispetto a quello del workspace
  */
 
-import React from 'react';
-import { logger } from '@/lib/logger';
-import { AlertTriangle, RefreshCw, Home, MessageCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React from "react";
+import { logger } from "@/lib/logger";
+import { AlertTriangle, RefreshCw, Home, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,7 +18,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 
 interface Props {
   children: React.ReactNode;
@@ -44,11 +44,15 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    logger.error(`Portal Error in ${this.props.section || 'unknown'}`, { note: errorInfo.componentStack ?? undefined }, error);
+    logger.error(
+      `Portal Error in ${this.props.section || "unknown"}`,
+      { note: errorInfo.componentStack ?? undefined },
+      error,
+    );
     this.setState({ errorInfo });
 
     // Send to error tracking
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
+    if (typeof window !== "undefined" && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
         extra: {
           componentStack: errorInfo.componentStack,
@@ -69,11 +73,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = '/portal';
+    window.location.href = "/portal";
   };
 
   handleContactSupport = () => {
-    window.location.href = '/portal/messages?new=true';
+    window.location.href = "/portal/messages?new=true";
   };
 
   render() {
@@ -96,9 +100,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {process.env.NODE_ENV === "development" && this.state.error && (
                 <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-md text-sm">
-                  <p className="font-medium text-gray-900 dark:text-gray-100">Technical details:</p>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                    Technical details:
+                  </p>
                   <p className="text-gray-600 dark:text-gray-400 font-mono text-xs mt-1">
                     {this.state.error.message}
                   </p>
@@ -117,7 +123,11 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
 
             <CardFooter className="flex flex-col gap-2">
               <div className="flex gap-2 w-full">
-                <Button variant="outline" onClick={this.handleGoHome} className="flex-1 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={this.handleGoHome}
+                  className="flex-1 gap-2"
+                >
                   <Home className="w-4 h-4" />
                   Dashboard
                 </Button>
@@ -149,7 +159,7 @@ export class PortalErrorBoundary extends React.Component<Props, State> {
  */
 export function withPortalErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
-  section?: string
+  section?: string,
 ) {
   return function WithPortalErrorBoundaryWrapper(props: P) {
     return (
@@ -160,16 +170,37 @@ export function withPortalErrorBoundary<P extends object>(
   };
 }
 
+// Uses portal design tokens (rgba(30,30,35,0.7) glass + var(--bz-border)) so
+// skeletons match the actual card surface instead of reading as a different
+// shade of gray. Every page had its own hand-rolled skeleton before this.
+const PORTAL_SKELETON_CARD: React.CSSProperties = {
+  background: "rgba(30,30,35,0.7)",
+  borderColor: "rgba(255,255,255,0.05)",
+  backdropFilter: "blur(24px)",
+};
+
 /**
  * Skeleton loader per card del portale
  */
 export function PortalCardSkeleton({ className }: { className?: string }) {
   return (
-    <div className={`bg-[#2a2a2a] rounded-lg p-6 animate-pulse ${className}`}>
-      <div className="h-6 bg-gray-700 rounded w-1/3 mb-4" />
+    <div
+      className={`rounded-xl border p-6 animate-pulse ${className ?? ""}`}
+      style={PORTAL_SKELETON_CARD}
+    >
+      <div
+        className="h-5 w-1/3 rounded mb-4"
+        style={{ background: "var(--bz-border)" }}
+      />
       <div className="space-y-3">
-        <div className="h-4 bg-gray-700 rounded w-full" />
-        <div className="h-4 bg-gray-700 rounded w-2/3" />
+        <div
+          className="h-4 w-full rounded"
+          style={{ background: "var(--bz-border)", opacity: 0.6 }}
+        />
+        <div
+          className="h-4 w-2/3 rounded"
+          style={{ background: "var(--bz-border)", opacity: 0.4 }}
+        />
       </div>
     </div>
   );
@@ -182,7 +213,11 @@ export function PortalListSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="space-y-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="h-16 bg-[#2a2a2a] rounded-lg animate-pulse" />
+        <div
+          key={i}
+          className="h-20 rounded-xl border animate-pulse"
+          style={PORTAL_SKELETON_CARD}
+        />
       ))}
     </div>
   );
@@ -193,10 +228,18 @@ export function PortalListSkeleton({ count = 3 }: { count?: number }) {
  */
 export function PortalPageLoader() {
   return (
-    <div className="min-h-[400px] flex items-center justify-center">
+    <div className="min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
+        <div
+          className="w-10 h-10 border-2 rounded-full animate-spin"
+          style={{
+            borderColor: "var(--bz-accent-warm)",
+            borderTopColor: "transparent",
+          }}
+        />
+        <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
+          Loading…
+        </p>
       </div>
     </div>
   );
