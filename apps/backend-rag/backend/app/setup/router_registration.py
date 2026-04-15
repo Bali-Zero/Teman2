@@ -63,6 +63,7 @@ def include_routers(api: FastAPI) -> None:
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
         experience,  # [EXP] Experience Library — trajectory recording/query
+        skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
         federation,
         feedback,
         google_drive,
@@ -156,6 +157,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
+    api.include_router(skill.router)  # [SKILL] Skill Registry
     api.include_router(federation.router)
     api.include_router(feedback.router)
 
@@ -636,6 +638,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         dynamic_pricing,
         episodic_memory,
         experience,  # [EXP] Experience Library
+        skill,  # [SKILL] Skill Registry
         handlers,
         health,
         ingest,
@@ -675,6 +678,7 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
+    api.include_router(skill.router)  # [SKILL] Skill Registry
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)
