@@ -187,16 +187,16 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
 ## DOVE SIAMO
 
-| Pilastro      | Stato                                       | Prossimo passo                                     |
-| ------------- | ------------------------------------------- | -------------------------------------------------- |
-| Riflessione   | Sprint 5 pianificato                        | `runtime/reflection.py` + JSON output              |
-| Accumulazione | Sprint 5 pianificato                        | `runtime/knowledge.py` SQLite KB unificata         |
-| Condivisione  | `garuda:raw` e `nexus:gaps` operativi       | Olimpo streams + routing semantico                 |
-| Confronto     | Non implementato                            | Consiglio v1 dopo che 3+ agenti condividono        |
-| Sogno         | Design hypothesis                           | Prototipo dopo Sprint 5, con metriche before/after |
-| Curiosita'    | Gap detector v1 operativo (69 gap, 8 query) | Archivio + prompt per curiosita' autonoma          |
-| Misura        | Non implementato                            | Definire le 4 metriche metaboliche                 |
-| Simbiosi      | Fase 1 (micromanagement)                    | Evolve naturalmente con i pilastri precedenti      |
+| Pilastro      | Stato                                                | Prossimo passo                                     |
+| ------------- | ---------------------------------------------------- | -------------------------------------------------- |
+| Riflessione   | Sprint 5 live (session-reflect → genome)             | Cross-cell reflection aggregation                  |
+| Accumulazione | **v1 live su 2 organi + HGT** (2026-04-16)          | Activate HGT on 3+ additional cells               |
+| Condivisione  | `cell:skills` + `cell:feedback` + `garuda:raw`       | Olimpo streams + KG gap routing                    |
+| Confronto     | Non implementato                                     | Consiglio v1 dopo che 3+ agenti condividono        |
+| Sogno         | Design hypothesis + decay scheduler (cron 02:30)     | Prototipo dopo Sprint 5, con metriche before/after |
+| Curiosita'    | Gap detector v1 operativo (69 gap, 8 query)          | Archivio + prompt per curiosita' autonoma          |
+| Misura        | Implementato v1 (2026-04-16)                         | T0 baseline: TTR=869, DO=2.21, IA=1.0, FE=0.01    |
+| Simbiosi      | Fase 1 (micromanagement)                             | Evolve naturalmente con i pilastri precedenti      |
 
 ---
 
