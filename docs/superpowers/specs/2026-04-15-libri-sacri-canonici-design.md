@@ -1,10 +1,20 @@
 # Libri Sacri Canonici — Sprint 5.1.5
 
-**Status:** Design v1
+**Status:** SUPERSEDED v1 (draft) — replaced by lean implementation 2026-04-15
 **Date:** 2026-04-15
 **Author:** Zero + Claude Opus 4.6
 **Sprint:** 5.1.5 — precursore di Sprint 5.2 (Curator)
-**Duration:** 1 settimana
+**Duration:** 1 settimana (non eseguito)
+
+> **⚠️ Questa spec non è stata implementata.** Dopo federation review (5 modelli: Codex, DeepSeek, Claude, Gemini, Exa) sono emersi 20 critiche + 8 bug bloccanti. Il design è stato sostituito da un'implementazione **lean** (3-4 ore invece di 7 giorni), fatta direttamente nel repo senza nuova spec:
+>
+> - `INDEX.md` statico (<150 righe), discovery manuale
+> - `scripts/docs_sync.py` implementato davvero (pattern DOCSYNC già specificato in `docs/DOCSYNC_SENTINEL.md` ma senza script fino ad ora)
+> - Marker `LIVING_ORGANS` aggiunto a `CLAUDE.md`, auto-sincronizzato
+> - Nessun nuovo cron, nessun post-commit hook (violavano "minimo vitale" VADEMECUM)
+> - No FISIOLOGIA, no STORIA-CLINICA (deferred — non ne abbiamo ancora bisogno)
+>
+> **Questa spec resta come memoria storica** dell'analisi federation review. Le 20 critiche + 8 bug sono salvati in MOS (importance 9-10). Commit lean: vedi git log dopo `eea5aef28`.
 
 ---
 
