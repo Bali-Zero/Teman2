@@ -7,6 +7,7 @@ This invariant is enforced in pipeline.py — do not break the call order.
 import asyncio
 import logging
 import os
+import uuid
 from typing import Any
 
 from qdrant_client import AsyncQdrantClient
@@ -18,6 +19,15 @@ COLLECTION_NAME = "garuda_assets"
 MAX_RETRIES = 3
 RETRY_DELAY_S = 2.0
 TIMEOUT_S = 30.0
+
+# Deterministic namespace UUID for mapping Drive file_id strings to Qdrant point IDs.
+# Qdrant requires unsigned int or UUID as point ID — Drive file_id is a base64-ish string.
+_DRIVE_UUID_NAMESPACE = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # RFC 4122 DNS ns
+
+
+def drive_file_id_to_point_id(file_id: str) -> str:
+    """Map Drive file_id string → deterministic UUID5 (stable across runs)."""
+    return str(uuid.uuid5(_DRIVE_UUID_NAMESPACE, file_id))
 
 
 class QdrantWriter:
@@ -44,8 +54,14 @@ class QdrantWriter:
         vector: list[float],
         payload: dict[str, Any],
     ) -> None:
-        """Upsert single point with retry. Raises on all retries exhausted."""
-        point = PointStruct(id=file_id, vector=vector, payload=payload)
+        """Upsert single point with retry. Raises on all retries exhausted.
+
+        file_id (Drive string) is mapped to a deterministic UUID5 for Qdrant's ID constraint.
+        The original Drive file_id is preserved in the payload.
+        """
+        point_id = drive_file_id_to_point_id(file_id)
+        payload = {**payload, "file_id": file_id}  # ensure payload keeps the Drive ID
+        point = PointStruct(id=point_id, vector=vector, payload=payload)
 
         for attempt in range(MAX_RETRIES):
             try:
@@ -72,10 +88,25 @@ class QdrantWriter:
                 await asyncio.sleep(RETRY_DELAY_S * (attempt + 1))
 
     async def mark_archived(self, file_id: str) -> None:
-        """Set archived=True in Qdrant payload (tombstone)."""
+        """Set archived=True in Qdrant payload (tombstone).
+
+        If the point doesn't exist (never indexed), logs and returns — not an error.
+        """
+        from qdrant_client.http.exceptions import UnexpectedResponse
+
+        point_id = drive_file_id_to_point_id(file_id)
         client = self._get_client()
-        await client.set_payload(
-            collection_name=COLLECTION_NAME,
-            points=[file_id],
-            payload={"archived": True},
-        )
+        try:
+            await client.set_payload(
+                collection_name=COLLECTION_NAME,
+                points=[point_id],
+                payload={"archived": True},
+            )
+        except UnexpectedResponse as e:
+            if getattr(e, "status_code", None) == 404:
+                logger.debug(
+                    "mark_archived: point %s not found in Qdrant (never indexed), skipping",
+                    file_id,
+                )
+                return
+            raise
