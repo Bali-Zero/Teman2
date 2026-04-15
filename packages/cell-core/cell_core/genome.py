@@ -65,7 +65,10 @@ CREATE TABLE IF NOT EXISTS genome (
     outcome          TEXT CHECK(outcome IN ('success','failure','partial') OR outcome IS NULL),
     tokens           INTEGER,
     duration_ms      INTEGER,
-    tags             TEXT  -- JSON array of strings
+    tags             TEXT,  -- JSON array of strings
+
+    -- Sprint 5.2 Week 3-4: Skill Registry tier (NULL | tier1 | tier2)
+    tier             TEXT CHECK(tier IN ('tier1','tier2') OR tier IS NULL)
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS genome_fts USING fts5(
@@ -95,6 +98,12 @@ CREATE INDEX IF NOT EXISTS idx_genome_type       ON genome(type);
 CREATE INDEX IF NOT EXISTS idx_genome_scope      ON genome(scope);
 CREATE INDEX IF NOT EXISTS idx_genome_confidence ON genome(confidence DESC);
 CREATE INDEX IF NOT EXISTS idx_genome_valid      ON genome(valid_from, valid_to);
+"""
+
+# Indexes that depend on columns added by runtime migration. Applied AFTER
+# _migrate_schema has ensured the column exists on legacy DBs.
+_SCHEMA_POST_MIGRATION = """
+CREATE INDEX IF NOT EXISTS idx_genome_tier ON genome(tier) WHERE tier IS NOT NULL;
 """
 
 
@@ -128,6 +137,7 @@ class Genome:
         conn = self._get_conn()
         conn.executescript(_SCHEMA)
         self._migrate_schema(conn)
+        conn.executescript(_SCHEMA_POST_MIGRATION)
         conn.commit()
 
     def _migrate_schema(self, conn: sqlite3.Connection) -> None:
@@ -144,6 +154,11 @@ class Genome:
             ("tokens", "INTEGER"),
             ("duration_ms", "INTEGER"),
             ("tags", "TEXT"),
+            # Week 3-4: tier promotion. SQLite can't add a column WITH a CHECK
+            # constraint via ALTER; the schema-level CHECK on tier applies to
+            # fresh tables. For legacy tables we rely on promote_skills() and
+            # record_skill to only ever write 'tier1'|'tier2'|NULL.
+            ("tier", "TEXT"),
         ):
             if col_name not in cols:
                 conn.execute(f"ALTER TABLE genome ADD COLUMN {col_name} {col_def}")
@@ -194,12 +209,13 @@ class Genome:
                 outcome          TEXT CHECK(outcome IN ('success','failure','partial') OR outcome IS NULL),
                 tokens           INTEGER,
                 duration_ms      INTEGER,
-                tags             TEXT
+                tags             TEXT,
+                tier             TEXT CHECK(tier IN ('tier1','tier2') OR tier IS NULL)
             );
             INSERT INTO genome_new SELECT
                 id, cell_origin, type, scope, precondition, procedure,
                 success_criterion, valid_from, valid_to, confidence, uses,
-                last_used, inherited_from, NULL, NULL, NULL, NULL
+                last_used, inherited_from, NULL, NULL, NULL, NULL, NULL
             FROM genome;
             DROP TABLE genome;
             ALTER TABLE genome_new RENAME TO genome;
@@ -208,6 +224,7 @@ class Genome:
         """)
         # Recreate indexes + FTS artefacts (idempotent via IF NOT EXISTS in _SCHEMA)
         conn.executescript(_SCHEMA)
+        conn.executescript(_SCHEMA_POST_MIGRATION)
 
     # ─────────────────────────────────────────
     # Write operations
@@ -453,6 +470,114 @@ class Genome:
             conn.commit()
         if n:
             logger.info(f"[genome] silenced {n} stale skills for cell '{cell}'")
+        return n
+
+    # ─────────────────────────────────────────
+    # Week 3-4: Skill Registry (promotion + decay v2)
+    # ─────────────────────────────────────────
+
+    # Tier thresholds — kept as class constants so tests and /api/skill/*
+    # consumers can read them without hard-coding magic numbers.
+    TIER1_MIN_USES = 100
+    TIER1_MIN_CONFIDENCE = 0.85
+    TIER2_MIN_USES = 30
+    TIER2_MIN_CONFIDENCE = 0.70
+
+    def promote_skills(self) -> dict[str, int]:
+        """Promote hot & reliable skills to tier1/tier2.
+
+        Rules (applied to type='skill' only, never to trajectories/scars/patterns):
+        - uses >= TIER1_MIN_USES AND confidence >= TIER1_MIN_CONFIDENCE → tier1
+        - uses >= TIER2_MIN_USES AND confidence >= TIER2_MIN_CONFIDENCE
+          AND not already tier1 → tier2
+
+        Monotonic: a skill that once reached tier1 is never downgraded by this
+        call. Only ``silence_stale_skills_v2`` (soft silence) or a future
+        ``demote_skills`` can undo it — intentionally, to avoid flapping.
+
+        Returns a dict ``{"tier1": N, "tier2": M}`` of newly promoted rows.
+        """
+        today = datetime.now(timezone.utc).date().isoformat()
+        with self._write_lock:
+            conn = self._get_conn()
+            # Tier1 — only promote rows currently below tier1 (NULL or tier2).
+            conn.execute(
+                """UPDATE genome SET tier = 'tier1'
+                   WHERE type = 'skill'
+                     AND (valid_to IS NULL OR valid_to > ?)
+                     AND uses >= ?
+                     AND confidence >= ?
+                     AND (tier IS NULL OR tier = 'tier2')""",
+                (today, self.TIER1_MIN_USES, self.TIER1_MIN_CONFIDENCE),
+            )
+            tier1_n = conn.execute("SELECT changes()").fetchone()[0]
+
+            # Tier2 — only promote rows currently NULL (never downgrade tier1).
+            conn.execute(
+                """UPDATE genome SET tier = 'tier2'
+                   WHERE type = 'skill'
+                     AND (valid_to IS NULL OR valid_to > ?)
+                     AND uses >= ?
+                     AND confidence >= ?
+                     AND tier IS NULL""",
+                (today, self.TIER2_MIN_USES, self.TIER2_MIN_CONFIDENCE),
+            )
+            tier2_n = conn.execute("SELECT changes()").fetchone()[0]
+            conn.commit()
+        if tier1_n or tier2_n:
+            logger.info(
+                f"[genome] promote_skills: +{tier1_n} tier1, +{tier2_n} tier2"
+            )
+        return {"tier1": tier1_n, "tier2": tier2_n}
+
+    def silence_stale_skills_v2(
+        self,
+        unused_days: int = 30,
+        min_uses: int = 5,
+        min_confidence: float = 0.3,
+    ) -> int:
+        """Auto-decay (epigenetic silencing) — finer-grained than v1.
+
+        A skill row is silenced (``valid_to = today``) when ANY of:
+
+        1. ``confidence < min_confidence`` — irrespective of uses.
+        2. ``uses < min_uses`` AND the row has been dormant for more than
+           ``unused_days`` days. Dormancy is measured against ``last_used``
+           when set, otherwise against ``valid_from`` (so a skill recorded
+           long ago and never used still ages out).
+
+        Applies to ``type='skill'`` only — trajectories/scars are governed
+        by their own lifecycle.
+
+        Returns the number of newly silenced rows. Idempotent: running twice
+        on a stable DB silences nothing the second time.
+        """
+        cutoff_ts = time.time() - unused_days * 86400
+        cutoff_date = datetime.fromtimestamp(cutoff_ts, tz=timezone.utc).date().isoformat()
+        today = datetime.now(timezone.utc).date().isoformat()
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.execute(
+                """UPDATE genome SET valid_to = ?
+                   WHERE type = 'skill'
+                     AND valid_to IS NULL
+                     AND (
+                         confidence < ?
+                         OR (
+                             uses < ?
+                             AND COALESCE(last_used, valid_from) < ?
+                         )
+                     )""",
+                (today, min_confidence, min_uses, cutoff_date),
+            )
+            n = conn.execute("SELECT changes()").fetchone()[0]
+            conn.commit()
+        if n:
+            logger.info(
+                f"[genome] silence_stale_skills_v2: silenced {n} stale skills "
+                f"(min_uses={min_uses}, unused_days={unused_days}, "
+                f"min_confidence={min_confidence})"
+            )
         return n
 
     # ─────────────────────────────────────────
