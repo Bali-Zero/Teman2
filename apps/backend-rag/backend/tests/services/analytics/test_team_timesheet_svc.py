@@ -420,8 +420,12 @@ class TestClockOut:
         self, service: TeamTimesheetService, conn: AsyncMock,
     ) -> None:
         """If clock_in_time from DB is naive, it should be coerced to BALI_TZ."""
-        # Create a naive datetime (no tzinfo)
-        naive_clock_in = datetime.now().replace(tzinfo=None) - timedelta(hours=3)
+        # Use datetime.now(BALI_TZ) then strip tz so the test is timezone-
+        # agnostic: previously datetime.now() (no tz) returned LOCAL time,
+        # which passed on a Bali laptop (local == BALI_TZ) but failed in CI
+        # (UTC) where clock_out interprets the naive value as BALI_TZ and the
+        # delta appears as (UTC-BALI) + 3h = 11h instead of 3h.
+        naive_clock_in = datetime.now(BALI_TZ).replace(tzinfo=None) - timedelta(hours=3)
         status_row = _make_status_row(
             is_online=True,
             action_type="clock_in",
