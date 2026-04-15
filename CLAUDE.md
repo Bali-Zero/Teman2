@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 24 · **Packages:** 4
+**Apps:** 26 · **Packages:** 4
 
 | App | Ruolo |
 | --- | ----- |
@@ -46,6 +46,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `cell` |  |
 | `drive` | Vercel subdomain satellite app. File management for Bali Zero workspace. |
 | `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
+| `federation` |  |
 | `graph-engine` | Graph processing engine for Knowledge Graph operations. |
 | `kb` |  |
 | `kbli-navigator` |  |
@@ -62,6 +63,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `team-agent` |  |
 | `war-room` | **Automated Marketing & Journalism Pipeline** |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
+| `webapp` |  |
 | `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
 <!-- DOCSYNC:LIVING_ORGANS_END -->
 
@@ -70,7 +72,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 237 routers, 349 services, 655 test files
+- **Backend:** Python 3.11+, FastAPI, 239 routers, 349 services, 655 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
