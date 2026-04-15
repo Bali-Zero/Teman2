@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 25 · **Packages:** 4
+**Apps:** 24 · **Packages:** 4
 
 | App | Ruolo |
 | --- | ----- |
@@ -62,7 +62,6 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `team-agent` |  |
 | `war-room` | **Automated Marketing & Journalism Pipeline** |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
-| `webapp` |  |
 | `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
 <!-- DOCSYNC:LIVING_ORGANS_END -->
 
