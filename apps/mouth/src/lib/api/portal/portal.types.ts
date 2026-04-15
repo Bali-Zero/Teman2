@@ -86,15 +86,23 @@ export interface PortalCompany {
   phone?: string;
   aktaNo?: string;
   aktaDate?: string;
+  // Legacy snake_case alternatives that may come from the workspace shape
+  // when the portal endpoint is refactored — typed so the company detail
+  // page can read either without runtime casts.
+  akta_pendirian_no?: string;
+  akta_pendirian_date?: string;
+  akta_perubahan_no?: string;
+  akta_perubahan_date?: string;
   skNumber?: string;
   taxOffice?: string;
   companyStatus?: string;
   investmentType?: string;
-  authorizedCapital?: string;
-  directors: string[];
+  authorizedCapital?: string | null;
+  directors?: string[];
   shareholders?: { name: string; pct: number | null }[];
-  licenses: CompanyLicense[];
-  compliance: ComplianceItem[];
+  documents?: Array<{ id?: string; name?: string; url?: string }>;
+  licenses?: CompanyLicense[];
+  compliance?: ComplianceItem[];
 }
 
 export interface CompanyLicense {
