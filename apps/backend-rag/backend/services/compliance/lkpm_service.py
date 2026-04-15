@@ -554,20 +554,72 @@ class LKPMService:
         return await self._load_draft(client_id, quarter, year)
 
     async def get_history(self, client_id: int) -> list[LKPMBatchItem]:
-        """Get LKPM report history for a client."""
+        """
+        Get LKPM report history visible to a client (workspace view).
+
+        Cascade via `r.company_id` — shareholders of a PT see all reports of
+        that PT even when `lkpm_reports.client_id` holds the primary contact's
+        id (or the company_id per Lori's import convention). See SCAR in
+        `.claude/rules/cicatrix-scars.md` for the r.client_id bug fixed on
+        2026-04-15.
+        """
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT r.*, c.company_name
+                SELECT DISTINCT r.*,
+                       COALESCE(c.company_name, co.company_name) AS company_name
                 FROM lkpm_reports r
-                JOIN lkpm_client_config c ON r.client_id = c.client_id
+                LEFT JOIN lkpm_client_config c ON c.client_id = r.client_id
                     AND COALESCE(r.company_id, 0) = COALESCE(c.company_id, 0)
-                WHERE r.client_id = $1
+                LEFT JOIN companies co ON co.id = r.company_id
+                WHERE r.company_id IN (
+                    SELECT DISTINCT ccl.company_id
+                    FROM client_company_links ccl
+                    WHERE ccl.client_id = $1 AND ccl.status = 'active'
+                )
                 ORDER BY r.year DESC, r.quarter DESC
                 """,
                 client_id,
             )
         return [self._row_to_batch_item(row) for row in rows]
+
+    async def get_receipts_for_client(self, client_id: int) -> list[dict[str, Any]]:
+        """
+        Workspace-side: OSS receipts of every company where the given client
+        is a shareholder/director/commissioner.
+
+        Same cascade as `get_receipts_for_portal_client`, but keyed by the
+        client_id passed in (instead of the authenticated portal user). Used
+        by the TaxTab in kita.balizero.com.
+        """
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT re.id, re.lkpm_report_id,
+                       re.nomor_laporan, re.nomor_kegiatan_usaha,
+                       re.kbli_code, re.kegiatan_usaha_desc,
+                       re.stage, re.oss_status,
+                       re.lokasi, re.tanggal_diterima,
+                       re.nama_perusahaan_oss,
+                       re.file_drive_id, re.file_drive_url, re.file_name,
+                       r.quarter, r.year, r.client_id,
+                       r.company_id,
+                       COALESCE(cfg.company_name, co.company_name) AS company_name
+                FROM lkpm_receipts re
+                JOIN lkpm_reports r ON r.id = re.lkpm_report_id
+                LEFT JOIN lkpm_client_config cfg ON cfg.client_id = r.client_id
+                LEFT JOIN companies co ON co.id = r.company_id
+                WHERE r.company_id IN (
+                    SELECT DISTINCT ccl.company_id
+                    FROM client_company_links ccl
+                    WHERE ccl.client_id = $1 AND ccl.status = 'active'
+                )
+                ORDER BY r.year DESC, r.quarter DESC,
+                         re.tanggal_diterima DESC NULLS LAST, re.id
+                """,
+                client_id,
+            )
+        return [dict(r) for r in rows]
 
     async def get_batch(self, quarter: str, year: int) -> list[LKPMBatchItem]:
         """Get all LKPM reports for a quarter (team batch view)."""

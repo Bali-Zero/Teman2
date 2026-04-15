@@ -326,6 +326,36 @@ async def get_my_receipts(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+# Order matters: /receipts/by-client/{id} must precede /receipts/{id}, otherwise
+# FastAPI binds "by-client" as the int path param of get_receipts_for_report.
+@router.get("/receipts/by-client/{client_id}", response_model=dict)
+async def get_receipts_by_client(
+    client_id: int,
+    current_user: str = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Workspace TaxTab: OSS tanda terima across every company where the client
+    is a shareholder (via client_company_links). Staff-authenticated; the
+    portal equivalent is GET /receipts/me.
+    """
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_client(client_id)
+        return {
+            "success": True,
+            "client_id": client_id,
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for client {client_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.get("/receipts/{lkpm_report_id}", response_model=dict)
 async def get_receipts_for_report(
     lkpm_report_id: int,

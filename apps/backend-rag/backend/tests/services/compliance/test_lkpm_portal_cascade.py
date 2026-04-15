@@ -175,3 +175,51 @@ class TestGetReceiptsForReport:
         assert "lkpm_report_id = $1" in sql
         call = mock_pool._conn.fetch.await_args
         assert call.args[1] == 124
+
+
+class TestGetHistoryWorkspaceCascade:
+    """
+    Workspace-side `get_history(client_id)` is consumed by the kita TaxTab via
+    `lkpmApi.getClientHistory`. It used to be a plain `WHERE r.client_id = $1`
+    — same bug as the portal side. Must now cascade via `r.company_id` so that
+    a shareholder's TaxTab shows all of their PT's reports.
+    """
+
+    @pytest.mark.asyncio
+    async def test_cascade_keys_on_r_company_id(
+        self, mock_pool: MagicMock,
+    ) -> None:
+        from backend.services.compliance.lkpm_service import LKPMService
+
+        service = LKPMService(db_pool=mock_pool)
+        await service.get_history(client_id=11139)
+
+        sql = _normalize(_captured_sql(mock_pool._conn))
+        assert "r.company_id IN" in sql, (
+            f"workspace get_history must cascade via r.company_id, got:\n{sql}"
+        )
+        assert re.search(r"SELECT\s+DISTINCT\s+ccl\.company_id", sql), (
+            f"subquery should SELECT DISTINCT ccl.company_id, got:\n{sql}"
+        )
+        assert "r.client_id = $1" not in sql, (
+            "regressed: workspace get_history is back to plain r.client_id filter"
+        )
+
+
+class TestGetReceiptsForClientWorkspace:
+    """Workspace TaxTab: `get_receipts_for_client` mirrors the portal cascade."""
+
+    @pytest.mark.asyncio
+    async def test_receipts_cascade_keys_on_r_company_id(
+        self, mock_pool: MagicMock,
+    ) -> None:
+        from backend.services.compliance.lkpm_service import LKPMService
+
+        service = LKPMService(db_pool=mock_pool)
+        await service.get_receipts_for_client(client_id=11139)
+
+        sql = _normalize(_captured_sql(mock_pool._conn))
+        assert "r.company_id IN" in sql
+        assert re.search(r"SELECT\s+DISTINCT\s+ccl\.company_id", sql)
+        assert "r.client_id IN" not in sql
+        assert "lkpm_receipts" in sql and "lkpm_reports" in sql

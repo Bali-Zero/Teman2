@@ -13,6 +13,7 @@ import type {
   LKPMDeadline,
   LKPMReadyPack,
   LKPMOSSCredentials,
+  LKPMReceipt,
 } from "../portal/portal.types";
 
 export const lkpmApi = {
@@ -36,6 +37,36 @@ export const lkpmApi = {
       count: number;
       items: LKPMBatchItem[];
     }>(`/api/v1/lkpm/history/${clientId}`);
+    return { count: r.count ?? 0, items: r.items ?? [] };
+  },
+
+  /**
+   * Workspace TaxTab: fetch OSS tanda terima for every company where the
+   * client is a shareholder/director/commissioner. Cascade happens server-side
+   * via `client_company_links`. Mirrors `/receipts/me` on the portal side.
+   */
+  async getClientReceipts(
+    clientId: number,
+  ): Promise<{ count: number; items: LKPMReceipt[] }> {
+    const r = await api.get<{
+      success: boolean;
+      count: number;
+      items: LKPMReceipt[];
+    }>(`/api/v1/lkpm/receipts/by-client/${clientId}`);
+    return { count: r.count ?? 0, items: r.items ?? [] };
+  },
+
+  /**
+   * Workspace LKPM detail: receipts attached to a single lkpm_reports row.
+   */
+  async getReportReceipts(
+    lkpmReportId: number,
+  ): Promise<{ count: number; items: LKPMReceipt[] }> {
+    const r = await api.get<{
+      success: boolean;
+      count: number;
+      items: LKPMReceipt[];
+    }>(`/api/v1/lkpm/receipts/${lkpmReportId}`);
     return { count: r.count ?? 0, items: r.items ?? [] };
   },
 
@@ -131,9 +162,9 @@ export const lkpmApi = {
    * RBAC: admin OR the tax consultant assigned to a LKPM report for this client.
    */
   async getCredentials(clientId: number): Promise<LKPMOSSCredentials> {
-    const r = await api.get<
-      LKPMOSSCredentials & { success: boolean }
-    >(`/api/v1/lkpm/credentials/${clientId}`);
+    const r = await api.get<LKPMOSSCredentials & { success: boolean }>(
+      `/api/v1/lkpm/credentials/${clientId}`,
+    );
     return {
       client_id: r.client_id,
       company_name: r.company_name,
