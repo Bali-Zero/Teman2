@@ -322,12 +322,15 @@ export class PortalApi {
     quarter: string,
     year: number,
   ): Promise<LKPMDraft> {
-    const response = await this.client.request<
-      PortalApiResponse<{ draft: LKPMDraft }>
-    >(`/api/v1/lkpm/draft/${clientId}/${quarter}?year=${year}`, {
+    // Backend returns {success: true, draft: {...}} (no data envelope),
+    // unlike most portal endpoints. Cast accordingly.
+    const response = await this.client.request<{
+      success: boolean;
+      draft: LKPMDraft;
+    }>(`/api/v1/lkpm/draft/${clientId}/${quarter}?year=${year}`, {
       method: "GET",
     });
-    return response.data!.draft;
+    return response.draft;
   }
 
   async submitLKPMData(data: {
