@@ -382,7 +382,10 @@ run_claude() {
         local token_val=""
         local label="$tv"
         if [ "$tv" != "keychain" ]; then
-            token_val="${!tv}"
+            # Indirect expansion must tolerate `set -u`: if the env var is not
+            # exported, `${!tv}` would abort the script with "unbound variable".
+            # `${!tv:-}` falls back to empty and we `continue` silently.
+            token_val="${!tv:-}"
             [ -z "$token_val" ] && continue
         fi
         tried=$((tried + 1))
@@ -817,9 +820,13 @@ $PROMPT" 180) && ec=0 || ec=$?
         [ -z "$PROMPT" ] && { err "Usage: ai-dispatch.sh codex-review \"prompt\""; exit 1; }
         require_codex
         check_safety "$PROMPT"
-        log "Codex → native code review (sandbox read-only)"
+        # `codex review` is read-only by design — it only inspects the diff
+        # and writes commentary; no file-system or network side effects. The
+        # old `--sandbox read-only` flag was removed from the CLI around
+        # Sprint 5.2 time; passing it now aborts with exit 2. Drop the flag.
+        log "Codex → native code review (read-only by design)"
         start=$(date +%s)
-        output=$(run_with_timeout 180 $CODEX_BIN review --sandbox read-only "$PROMPT" 2>&1) && exit_code=0 || exit_code=$?
+        output=$(run_with_timeout 180 $CODEX_BIN review "$PROMPT" 2>&1) && exit_code=0 || exit_code=$?
         duration=$(( $(date +%s) - start ))
         save_output "codex-review" "$output" "$duration"
         if [ "$exit_code" -eq 0 ]; then

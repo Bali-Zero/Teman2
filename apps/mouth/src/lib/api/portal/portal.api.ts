@@ -124,34 +124,50 @@ export class PortalApi {
   // ============================================================================
 
   async getVisaStatus(): Promise<VisaInfo> {
-    // Backend returns {summary, current_visa, history} without PortalApiResponse wrapper
+    // Backend may return {success, data: {current, history, documents}} or
+    // the legacy {summary, current_visa, history} shape. Accept both.
     const response = await this.client.request<any>("/api/portal/visa", {
       method: "GET",
     });
 
-    // Handle both wrapped {success, data} and unwrapped responses
     const raw = response.data ?? response;
-    const visa = raw.current_visa;
+    const visa = raw.current ?? raw.current_visa ?? null;
 
     return {
       current: visa
         ? {
-            type: visa.visa_type ?? "",
+            type: visa.visa_type ?? visa.type ?? "",
             status: visa.status ?? "expired",
-            issueDate: visa.issue_date ?? "",
-            expiryDate: visa.expiry_date ?? "",
-            daysRemaining: raw.summary?.days_until_expiry ?? 0,
-            permitNumber: visa.visa_number ?? "",
-            sponsor: visa.sponsor_name ?? "",
+            issueDate: visa.issue_date ?? visa.issueDate ?? "",
+            expiryDate: visa.expiry_date ?? visa.expiryDate ?? "",
+            daysRemaining:
+              raw.summary?.days_until_expiry ??
+              visa.days_remaining ??
+              visa.daysRemaining ??
+              0,
+            permitNumber:
+              visa.visa_number ?? visa.permit_number ?? visa.permitNumber ?? "",
+            sponsor: visa.sponsor_name ?? visa.sponsor ?? "",
           }
         : null,
       history: (raw.history ?? []).map((h: Record<string, unknown>) => ({
         id: String(h.id ?? ""),
-        type: (h.visa_type as string) ?? "",
-        period: `${h.issue_date ?? ""} — ${h.expiry_date ?? ""}`,
+        type: (h.visa_type as string) ?? (h.type as string) ?? "",
+        period: `${h.issue_date ?? h.issueDate ?? ""} — ${h.expiry_date ?? h.expiryDate ?? ""}`,
         status: h.status === "active" ? "completed" : "expired",
       })),
-      documents: [],
+      documents: (raw.documents ?? []).map((d: Record<string, unknown>) => ({
+        id: String(d.id ?? ""),
+        name: (d.name as string) ?? "",
+        type: (d.type as string) ?? "",
+        category: (d.category as string) ?? "",
+        status: (d.status as string) ?? "",
+        uploadDate: (d.uploadDate as string) ?? (d.upload_date as string) ?? "",
+        expiryDate: (d.expiryDate as string) ?? (d.expiry_date as string) ?? "",
+        size: (d.size as string) ?? "",
+        downloadUrl:
+          (d.downloadUrl as string) ?? (d.download_url as string) ?? "",
+      })),
     };
   }
 
@@ -193,23 +209,48 @@ export class PortalApi {
     const raw = (response.data ?? {}) as Record<string, unknown>;
     const summary = (raw.summary ?? {}) as Record<string, unknown>;
     const obligations = (raw.obligations ?? []) as Record<string, unknown>[];
+    // Backend currently emits camelCase keys (totalDue, nextDeadline,
+    // daysToDeadline, dueDate, type, period). Older builds used snake_case
+    // (total_due, next_deadline…). Accept either so a silent backend schema
+    // drift doesn't wipe out the UI again.
+    const pick = <T>(
+      obj: Record<string, unknown>,
+      keys: string[],
+    ): T | undefined => {
+      for (const k of keys) {
+        const v = obj[k];
+        if (v !== undefined && v !== null) return v as T;
+      }
+      return undefined;
+    };
     return {
       summary: {
-        status: (summary.status as TaxOverview["summary"]["status"]) ?? "ok",
-        totalDue: (summary.total_due as number) ?? 0,
-        nextDeadline: (summary.next_deadline as string | null) ?? null,
-        daysToDeadline: (summary.days_until_deadline as number | null) ?? null,
-        pendingCount: (summary.pending_count as number) ?? 0,
-        overdueCount: (summary.overdue_count as number) ?? 0,
+        status:
+          pick<TaxOverview["summary"]["status"]>(summary, ["status"]) ?? "ok",
+        totalDue: pick<number>(summary, ["totalDue", "total_due"]) ?? 0,
+        nextDeadline:
+          pick<string>(summary, ["nextDeadline", "next_deadline"]) ?? null,
+        daysToDeadline:
+          pick<number>(summary, [
+            "daysToDeadline",
+            "days_until_deadline",
+            "days_to_deadline",
+          ]) ?? null,
+        pendingCount:
+          pick<number>(summary, ["pendingCount", "pending_count"]) ?? 0,
+        overdueCount:
+          pick<number>(summary, ["overdueCount", "overdue_count"]) ?? 0,
       },
       obligations: obligations.map((o) => ({
         id: String(o.id ?? o.uuid ?? ""),
-        name: (o.name as string) ?? "",
-        type: (o.tax_type as string) ?? "",
-        period: `${o.period_start ?? ""} — ${o.period_end ?? ""}`,
-        dueDate: (o.due_date as string) ?? "",
-        status: (o.status as TaxObligation["status"]) ?? "pending",
-        amount: (o.amount_due as number) ?? undefined,
+        name: pick<string>(o, ["name"]) ?? "",
+        type: pick<string>(o, ["type", "tax_type"]) ?? "",
+        period:
+          pick<string>(o, ["period"]) ??
+          `${o.period_start ?? ""} — ${o.period_end ?? ""}`,
+        dueDate: pick<string>(o, ["dueDate", "due_date"]) ?? "",
+        status: pick<TaxObligation["status"]>(o, ["status"]) ?? "pending",
+        amount: pick<number>(o, ["amount", "amount_due"]),
       })),
     };
   }

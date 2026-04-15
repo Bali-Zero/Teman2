@@ -187,11 +187,11 @@ function CompanyCard({
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* "Set primary" action is portal-inappropriate: shareholders
-                  sit on 5-10 PTs via client_company_links, a single primary
-                  pick doesn't match their mental model. Staff still manage
-                  primary selection from the workspace CompanyTab. The Shield
-                  icon stays as a read-only marker. */}
+              {/* "Set primary" is portal-inappropriate: shareholders sit on
+                  5-10 PTs via client_company_links, a single primary pick
+                  doesn't match their mental model. Staff still manage it
+                  from the workspace CompanyTab. Shield icon stays as a
+                  read-only marker. */}
               <StatusBadge status={company.status} />
               <ChevronRight
                 className="w-5 h-5"
