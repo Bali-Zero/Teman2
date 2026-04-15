@@ -96,6 +96,15 @@ class ExperienceService:
             return {"total": 0, "by_outcome": {"success": 0, "failure": 0, "partial": 0}}
         return self._genome.trajectory_stats(cell=cell)
 
+    def get_by_id(self, trajectory_id: str) -> TrajectoryResult | None:
+        """Fetch one trajectory row by id. Returns None if missing or if the
+        row exists but has a non-trajectory type (skill/pattern/scar/insight).
+        Used by the router to return 404 vs 200 cleanly."""
+        if not self.is_available:
+            return None
+        row = self._genome.get_trajectory(trajectory_id)
+        return self._row_to_result(row) if row is not None else None
+
     @staticmethod
     def _row_to_result(row: dict[str, Any]) -> TrajectoryResult:
         tags_raw = row.get("tags")

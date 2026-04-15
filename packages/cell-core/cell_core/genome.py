@@ -372,6 +372,16 @@ class Genome:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_trajectory(self, trajectory_id: str) -> dict | None:
+        """Fetch one trajectory row by id. Returns None when the id is
+        missing OR when the row exists but has a non-trajectory type."""
+        conn = self._get_conn()
+        row = conn.execute(
+            "SELECT * FROM genome WHERE id = ? AND type = 'trajectory'",
+            (trajectory_id,),
+        ).fetchone()
+        return dict(row) if row is not None else None
+
     def trajectory_stats(self, cell: str | None = None) -> dict:
         """Count trajectories by outcome (and total) for monitoring."""
         today = datetime.now(timezone.utc).date().isoformat()

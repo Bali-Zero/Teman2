@@ -621,3 +621,24 @@ def test_search_trajectories_filter_by_tag(genome):
     results = genome.search_trajectories("prose", tag="ig")
     assert len(results) == 1
     assert results[0]["id"] == "t1"
+
+
+def test_get_trajectory_returns_row(genome):
+    genome.record_trajectory(
+        cell="c1", trajectory_id="lookup_me", outcome="success",
+        procedure="fetch by id", tokens=999,
+    )
+    row = genome.get_trajectory("lookup_me")
+    assert row is not None
+    assert row["id"] == "lookup_me"
+    assert row["tokens"] == 999
+
+
+def test_get_trajectory_none_for_missing_id(genome):
+    assert genome.get_trajectory("nope") is None
+
+
+def test_get_trajectory_none_for_non_trajectory_type(genome):
+    """A skill with the same id must NOT be returned by get_trajectory."""
+    genome.record_skill(cell="c1", skill_id="dup", procedure="skill body")
+    assert genome.get_trajectory("dup") is None
