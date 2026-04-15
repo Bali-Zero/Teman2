@@ -723,6 +723,72 @@ async def get_timeline(
 
 
 # ================================================
+# PROCESS / REQUIRED DOCUMENTS
+# ================================================
+
+
+@router.get("/process/required-documents")
+async def get_required_documents(
+    client: dict = Depends(get_current_client),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Portal-scoped wrapper around the CRM "required documents per client"
+    query. The workspace version (/api/crm/clients/client/{id}/...) is
+    staff-only and 403s for plain client JWTs, which left /portal/process
+    stuck in a loading spinner. Here the client id is derived from the
+    caller's JWT (or ?as_client= for superusers) so shareholders can read
+    their own process checklist without CRM RBAC.
+    """
+    client_id = client["client_id"]
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    prd.id, prd.practice_id, prd.document_type, prd.document_label,
+                    prd.description, prd.is_required, prd.uploaded_by_client,
+                    prd.status, prd.client_notes, prd.team_member_notes,
+                    COALESCE(pt.name, p.practice_type_code) as process_name,
+                    p.status as process_status
+                FROM practice_required_documents prd
+                JOIN practices p ON prd.practice_id = p.id
+                LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
+                WHERE p.client_id = $1 AND p.status NOT IN ('completed', 'cancelled')
+                ORDER BY prd.is_required DESC, prd.created_at DESC
+                """,
+                client_id,
+            )
+        items = [
+            {
+                "id": row["id"],
+                "practice_id": row["practice_id"],
+                "process_name": row["process_name"],
+                "process_status": row["process_status"],
+                "document_type": row["document_type"],
+                "document_label": row["document_label"],
+                "description": row["description"],
+                "is_required": row["is_required"],
+                "uploaded_by_client": row["uploaded_by_client"],
+                "status": row["status"],
+                "client_notes": row["client_notes"],
+                "team_member_notes": row["team_member_notes"],
+            }
+            for row in rows
+        ]
+        return {"success": True, "data": items}
+    except Exception as e:
+        logger.error(
+            f"Failed to get portal required documents for client {client_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load process documents",
+        ) from e
+
+
+# ================================================
 # PROFILE ENDPOINT
 # ================================================
 
