@@ -147,10 +147,27 @@ async def get_draft(
     client_id: int,
     quarter: str,
     year: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
-    """Get LKPM draft for a client/quarter."""
+    """Get LKPM draft for a client/quarter.
+
+    If client_id=0, resolve the caller's client_id from the JWT (portal clients
+    call with /draft/0/Q1?year=2026 since they don't know their own numeric id).
+    """
+    if client_id == 0 and current_user.get("role") == "client":
+        email = current_user.get("email")
+        if not email:
+            raise HTTPException(status_code=401, detail="No email on token")
+        async with db_pool.acquire() as conn:
+            resolved = await conn.fetchval(
+                "SELECT id FROM clients WHERE LOWER(email) = LOWER($1) LIMIT 1",
+                email,
+            )
+        if not resolved:
+            raise HTTPException(status_code=404, detail="Client not found for this account")
+        client_id = int(resolved)
+
     service = _get_service(db_pool)
     draft = await service.get_draft(client_id, quarter, year)
     if not draft:
