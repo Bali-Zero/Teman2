@@ -451,3 +451,173 @@ def test_import_with_target_cell_override(tmp_path):
     skills = dst.get_active(cell="new_cell")
     assert len(skills) == 1
     assert skills[0]["cell_origin"] == "new_cell"
+
+
+# ─── Sprint 5.2: Trajectory recording (Experience Library) ─────
+
+
+def test_record_trajectory_success(genome):
+    action = genome.record_trajectory(
+        cell="curator_war_room",
+        trajectory_id="run_2026_04_15_abc",
+        outcome="success",
+        procedure="Selected photo X, caption Y, published to IG carousel.",
+        tokens=1420,
+        duration_ms=8750,
+        tags=["ig", "carousel", "morning"],
+        confidence=0.8,
+    )
+    assert action == "inserted"
+
+    results = genome.get_active(cell="curator_war_room", entry_type="trajectory")
+    assert len(results) == 1
+    row = results[0]
+    assert row["id"] == "run_2026_04_15_abc"
+    assert row["type"] == "trajectory"
+    assert row["outcome"] == "success"
+    assert row["tokens"] == 1420
+    assert row["duration_ms"] == 8750
+
+
+def test_record_trajectory_failure_is_personal_scope(genome):
+    """Failure trajectories should be Personal scope (scar-like), not inherited."""
+    genome.record_trajectory(
+        cell="curator_war_room",
+        trajectory_id="run_failed_1",
+        outcome="failure",
+        procedure="Tried compose without checking DLP flags — blocked on publish.",
+    )
+    rows = genome.get_active(cell="curator_war_room", entry_type="trajectory")
+    assert rows[0]["scope"] == "Personal"
+
+
+def test_record_trajectory_success_is_project_scope(genome):
+    """Success trajectories default to Project scope — but are still not inherited (type filter)."""
+    genome.record_trajectory(
+        cell="curator_war_room",
+        trajectory_id="run_good_1",
+        outcome="success",
+        procedure="Published asset cleanly.",
+    )
+    rows = genome.get_active(cell="curator_war_room", entry_type="trajectory")
+    assert rows[0]["scope"] == "Project"
+
+
+def test_record_trajectory_partial_stored_with_lower_confidence(genome):
+    genome.record_trajectory(
+        cell="c1",
+        trajectory_id="run_partial",
+        outcome="partial",
+        procedure="Published 2 of 3 assets — third timed out on DLP scan.",
+        confidence=0.6,
+    )
+    rows = genome.get_active(cell="c1", entry_type="trajectory")
+    assert rows[0]["outcome"] == "partial"
+    assert rows[0]["confidence"] == 0.6
+
+
+def test_record_trajectory_rejects_invalid_outcome(genome):
+    with pytest.raises(ValueError, match="outcome"):
+        genome.record_trajectory(
+            cell="c1",
+            trajectory_id="bad",
+            outcome="maybe",
+            procedure="x",
+        )
+
+
+def test_record_trajectory_upsert_keeps_max_confidence(genome):
+    """Re-recording the same trajectory_id updates procedure, keeps max confidence."""
+    genome.record_trajectory(
+        cell="c1", trajectory_id="t1", outcome="partial",
+        procedure="first attempt", confidence=0.7,
+    )
+    action = genome.record_trajectory(
+        cell="c1", trajectory_id="t1", outcome="success",
+        procedure="revised attempt", confidence=0.5,
+    )
+    assert action == "updated"
+    rows = genome.get_active(cell="c1", entry_type="trajectory")
+    assert rows[0]["procedure"] == "revised attempt"
+    assert rows[0]["confidence"] == 0.7  # max preserved
+    assert rows[0]["outcome"] == "success"  # outcome updated
+
+
+def test_search_trajectories_by_fts(genome):
+    genome.record_trajectory(
+        cell="c1", trajectory_id="t1", outcome="success",
+        procedure="DLP scan detected PII in draft caption and blocked publish.",
+    )
+    genome.record_trajectory(
+        cell="c1", trajectory_id="t2", outcome="success",
+        procedure="Selected a morning photo from GARUDA photos folder.",
+    )
+    results = genome.search_trajectories("DLP")
+    assert len(results) == 1
+    assert results[0]["id"] == "t1"
+
+
+def test_search_trajectories_filter_by_outcome(genome):
+    genome.record_trajectory(cell="c1", trajectory_id="ok", outcome="success", procedure="published cleanly")
+    genome.record_trajectory(cell="c1", trajectory_id="ko", outcome="failure", procedure="published cleanly")
+    failures = genome.search_trajectories("published", outcome="failure")
+    assert len(failures) == 1
+    assert failures[0]["id"] == "ko"
+
+
+def test_search_trajectories_filter_by_cell(genome):
+    genome.record_trajectory(cell="cell_a", trajectory_id="a1", outcome="success", procedure="common prose")
+    genome.record_trajectory(cell="cell_b", trajectory_id="b1", outcome="success", procedure="common prose")
+    only_a = genome.search_trajectories("common", cell="cell_a")
+    assert len(only_a) == 1
+    assert only_a[0]["cell_origin"] == "cell_a"
+
+
+def test_trajectory_not_inherited_at_fork(genome):
+    """inherit_genome should NOT include trajectories — only skills/patterns are germline."""
+    genome.record_trajectory(
+        cell="parent_cell", trajectory_id="t1", outcome="success",
+        procedure="episode detail", confidence=0.95,
+    )
+    genome.record_skill(
+        cell="parent_cell", skill_id="s1",
+        procedure="distilled technique", confidence=0.95, scope="Project",
+    )
+    inherited = genome.inherit_genome(parent_cell="parent_cell", min_confidence=0.7)
+    ids = [s["id"] for s in inherited]
+    assert "s1" in ids
+    assert "t1" not in ids
+
+
+def test_trajectory_stats(genome):
+    genome.record_trajectory(cell="c1", trajectory_id="ok_1", outcome="success", procedure="p")
+    genome.record_trajectory(cell="c1", trajectory_id="ok_2", outcome="success", procedure="p")
+    genome.record_trajectory(cell="c1", trajectory_id="ko_1", outcome="failure", procedure="p")
+    genome.record_trajectory(cell="c1", trajectory_id="part_1", outcome="partial", procedure="p")
+
+    stats = genome.trajectory_stats(cell="c1")
+    assert stats["total"] == 4
+    assert stats["by_outcome"]["success"] == 2
+    assert stats["by_outcome"]["failure"] == 1
+    assert stats["by_outcome"]["partial"] == 1
+
+
+def test_trajectory_tags_roundtrip(genome):
+    genome.record_trajectory(
+        cell="c1", trajectory_id="t1", outcome="success",
+        procedure="x", tags=["ig", "video", "evening"],
+    )
+    rows = genome.get_active(cell="c1", entry_type="trajectory")
+    # tags stored as JSON string in DB; search via dedicated API or tag filter
+    assert "ig" in rows[0]["tags"]
+    assert "video" in rows[0]["tags"]
+
+
+def test_search_trajectories_filter_by_tag(genome):
+    genome.record_trajectory(cell="c1", trajectory_id="t1", outcome="success",
+                              procedure="prose", tags=["ig"])
+    genome.record_trajectory(cell="c1", trajectory_id="t2", outcome="success",
+                              procedure="prose", tags=["wa"])
+    results = genome.search_trajectories("prose", tag="ig")
+    assert len(results) == 1
+    assert results[0]["id"] == "t1"

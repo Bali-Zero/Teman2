@@ -45,7 +45,7 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS genome (
     id               TEXT PRIMARY KEY,
     cell_origin      TEXT NOT NULL,
-    type             TEXT NOT NULL CHECK(type IN ('skill','pattern','scar','insight')),
+    type             TEXT NOT NULL CHECK(type IN ('skill','pattern','scar','insight','trajectory')),
     scope            TEXT NOT NULL DEFAULT 'Project' CHECK(scope IN ('Project','Personal')),
 
     precondition     TEXT,
@@ -59,7 +59,13 @@ CREATE TABLE IF NOT EXISTS genome (
     uses             INTEGER NOT NULL DEFAULT 0,
     last_used        TEXT,
 
-    inherited_from   TEXT REFERENCES genome(id)
+    inherited_from   TEXT REFERENCES genome(id),
+
+    -- Sprint 5.2: Trajectory fields (nullable for skill/pattern/scar/insight)
+    outcome          TEXT CHECK(outcome IN ('success','failure','partial') OR outcome IS NULL),
+    tokens           INTEGER,
+    duration_ms      INTEGER,
+    tags             TEXT  -- JSON array of strings
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS genome_fts USING fts5(
@@ -121,7 +127,87 @@ class Genome:
     def _ensure_schema(self) -> None:
         conn = self._get_conn()
         conn.executescript(_SCHEMA)
+        self._migrate_schema(conn)
         conn.commit()
+
+    def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        """Apply additive migrations to genome tables created by earlier versions.
+
+        Sprint 5.2 adds outcome/tokens/duration_ms/tags columns and widens the
+        type CHECK constraint to include 'trajectory'. CREATE TABLE IF NOT
+        EXISTS keeps the old schema untouched on existing DBs, so we patch it
+        here. All operations are idempotent.
+        """
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(genome)")}
+        for col_name, col_def in (
+            ("outcome", "TEXT"),
+            ("tokens", "INTEGER"),
+            ("duration_ms", "INTEGER"),
+            ("tags", "TEXT"),
+        ):
+            if col_name not in cols:
+                conn.execute(f"ALTER TABLE genome ADD COLUMN {col_name} {col_def}")
+
+        # SQLite cannot widen a CHECK constraint in place. If the existing
+        # table was created before 'trajectory' was allowed, attempting to
+        # insert a trajectory row will fail. We detect this by trying an
+        # INSERT + ROLLBACK in a savepoint; if it fails we rebuild the table.
+        # Keep it lazy: only rebuild if we actually see the old constraint.
+        try:
+            conn.execute("SAVEPOINT trajectory_check")
+            conn.execute(
+                "INSERT INTO genome (id, cell_origin, type, procedure, valid_from) "
+                "VALUES ('__probe__', '__probe__', 'trajectory', 'probe', '1970-01-01')"
+            )
+            conn.execute("ROLLBACK TO SAVEPOINT trajectory_check")
+            conn.execute("RELEASE SAVEPOINT trajectory_check")
+        except sqlite3.IntegrityError:
+            conn.execute("ROLLBACK TO SAVEPOINT trajectory_check")
+            conn.execute("RELEASE SAVEPOINT trajectory_check")
+            self._rebuild_table_for_trajectory(conn)
+
+    def _rebuild_table_for_trajectory(self, conn: sqlite3.Connection) -> None:
+        """Rebuild the genome table when the old CHECK constraint rejects 'trajectory'.
+
+        SQLite's recommended "12-step" rebuild pattern, scoped to this one
+        widening. FTS triggers/table are preserved because they reference
+        rowid and are recreated by _SCHEMA on next open if missing.
+        """
+        logger.info("[genome] widening type CHECK to include 'trajectory'")
+        conn.executescript("""
+            PRAGMA foreign_keys=OFF;
+            BEGIN;
+            CREATE TABLE genome_new (
+                id               TEXT PRIMARY KEY,
+                cell_origin      TEXT NOT NULL,
+                type             TEXT NOT NULL CHECK(type IN ('skill','pattern','scar','insight','trajectory')),
+                scope            TEXT NOT NULL DEFAULT 'Project' CHECK(scope IN ('Project','Personal')),
+                precondition     TEXT,
+                procedure        TEXT NOT NULL,
+                success_criterion TEXT,
+                valid_from       TEXT NOT NULL,
+                valid_to         TEXT,
+                confidence       REAL NOT NULL DEFAULT 0.5,
+                uses             INTEGER NOT NULL DEFAULT 0,
+                last_used        TEXT,
+                inherited_from   TEXT REFERENCES genome_new(id),
+                outcome          TEXT CHECK(outcome IN ('success','failure','partial') OR outcome IS NULL),
+                tokens           INTEGER,
+                duration_ms      INTEGER,
+                tags             TEXT
+            );
+            INSERT INTO genome_new SELECT
+                id, cell_origin, type, scope, precondition, procedure,
+                success_criterion, valid_from, valid_to, confidence, uses,
+                last_used, inherited_from, NULL, NULL, NULL, NULL
+            FROM genome;
+            DROP TABLE genome;
+            ALTER TABLE genome_new RENAME TO genome;
+            COMMIT;
+            PRAGMA foreign_keys=ON;
+        """)
+        # Recreate indexes + FTS artefacts (idempotent via IF NOT EXISTS in _SCHEMA)
+        conn.executescript(_SCHEMA)
 
     # ─────────────────────────────────────────
     # Write operations
@@ -191,6 +277,125 @@ class Genome:
             scope="Personal",
             entry_type="scar",
         )
+
+    def record_trajectory(
+        self,
+        cell: str,
+        trajectory_id: str,
+        outcome: str,
+        procedure: str,
+        tokens: int | None = None,
+        duration_ms: int | None = None,
+        tags: list[str] | None = None,
+        confidence: float = 0.5,
+    ) -> str:
+        """Record a trajectory (episode of execution) in the genome.
+
+        Scope rule: failure → Personal (somatic, never inherited); success and
+        partial → Project (but inherit_genome excludes type='trajectory' by
+        default — episodes are not germline).
+
+        On conflict: procedure/outcome/tags updated, confidence kept at max.
+        """
+        if outcome not in {"success", "failure", "partial"}:
+            raise ValueError(
+                f"outcome must be one of success|failure|partial, got {outcome!r}"
+            )
+        scope = "Personal" if outcome == "failure" else "Project"
+        tags_json = json.dumps(tags or [], ensure_ascii=False)
+        now = datetime.now(timezone.utc).date().isoformat()
+
+        with self._write_lock:
+            conn = self._get_conn()
+            exists = conn.execute(
+                "SELECT 1 FROM genome WHERE id = ?", (trajectory_id,)
+            ).fetchone() is not None
+            conn.execute(
+                """INSERT INTO genome
+                   (id, cell_origin, type, scope, procedure, valid_from,
+                    confidence, outcome, tokens, duration_ms, tags)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT(id) DO UPDATE SET
+                       procedure   = excluded.procedure,
+                       outcome     = excluded.outcome,
+                       tokens      = COALESCE(excluded.tokens, genome.tokens),
+                       duration_ms = COALESCE(excluded.duration_ms, genome.duration_ms),
+                       tags        = excluded.tags,
+                       confidence  = MAX(genome.confidence, excluded.confidence)""",
+                (trajectory_id, cell, "trajectory", scope, procedure, now,
+                 confidence, outcome, tokens, duration_ms, tags_json),
+            )
+            conn.commit()
+            action = "updated" if exists else "inserted"
+            logger.info(
+                f"[genome] {action} trajectory '{trajectory_id}' for cell "
+                f"'{cell}' (outcome={outcome}, confidence={confidence:.0%})"
+            )
+            return action
+
+    def search_trajectories(
+        self,
+        query: str,
+        outcome: str | None = None,
+        cell: str | None = None,
+        tag: str | None = None,
+        limit: int = 20,
+    ) -> list[dict]:
+        """FTS5 search restricted to trajectories, with optional outcome/cell/tag filters."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        clauses = [
+            "g.type = 'trajectory'",
+            "genome_fts MATCH ?",
+            "(g.valid_to IS NULL OR g.valid_to > ?)",
+        ]
+        params: list = [query, today]
+        if outcome:
+            clauses.append("g.outcome = ?")
+            params.append(outcome)
+        if cell:
+            clauses.append("g.cell_origin = ?")
+            params.append(cell)
+        if tag:
+            # tags is JSON array; use LIKE on the serialised form.
+            clauses.append("g.tags LIKE ?")
+            params.append(f'%"{tag}"%')
+        params.append(limit)
+
+        conn = self._get_conn()
+        rows = conn.execute(
+            f"""SELECT g.* FROM genome g
+                JOIN genome_fts f ON g.rowid = f.rowid
+                WHERE {' AND '.join(clauses)}
+                ORDER BY rank, g.confidence DESC
+                LIMIT ?""",
+            params,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def trajectory_stats(self, cell: str | None = None) -> dict:
+        """Count trajectories by outcome (and total) for monitoring."""
+        today = datetime.now(timezone.utc).date().isoformat()
+        conn = self._get_conn()
+        filters = ["type = 'trajectory'", "(valid_to IS NULL OR valid_to > ?)"]
+        params: list = [today]
+        if cell:
+            filters.append("cell_origin = ?")
+            params.append(cell)
+
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM genome WHERE {' AND '.join(filters)}",
+            params,
+        ).fetchone()[0]
+        by_outcome_rows = conn.execute(
+            f"SELECT outcome, COUNT(*) c FROM genome "
+            f"WHERE {' AND '.join(filters)} GROUP BY outcome",
+            params,
+        ).fetchall()
+        by_outcome = {"success": 0, "failure": 0, "partial": 0}
+        for r in by_outcome_rows:
+            if r["outcome"] in by_outcome:
+                by_outcome[r["outcome"]] = r["c"]
+        return {"total": total, "by_outcome": by_outcome}
 
     def use_skill(self, skill_id: str) -> None:
         """Mark a skill as used. Increases confidence slightly (max 1.0)."""
