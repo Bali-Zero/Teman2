@@ -26,6 +26,11 @@ See: app.setup.service_initializer::initialize_services() for initialization log
 # ============================================================================
 # AUTH DEPENDENCIES
 # ============================================================================
+# _agentic_rag_orchestrator is a mutable global in orchestrator.py.
+# We expose it as a module-level __getattr__ so that consumers like health.py
+# who do `from backend.app.dependencies import _agentic_rag_orchestrator`
+# always get the current value from the source module (not a stale snapshot).
+import backend.app.deps.orchestrator as _orch_mod  # noqa: E402
 from backend.app.deps.auth import (
     get_current_portal_client,
     get_current_user,
@@ -34,7 +39,6 @@ from backend.app.deps.auth import (
     require_team_member,
     security,
 )
-from backend.app.deps.owner import OWNER_EMAILS, require_owner
 
 # ============================================================================
 # DATABASE DEPENDENCIES
@@ -47,6 +51,12 @@ from backend.app.deps.database import (
 )
 
 # ============================================================================
+# ORCHESTRATOR DEPENDENCIES
+# ============================================================================
+from backend.app.deps.orchestrator import get_orchestrator
+from backend.app.deps.owner import OWNER_EMAILS, require_owner
+
+# ============================================================================
 # SERVICE LOCATOR DEPENDENCIES
 # ============================================================================
 from backend.app.deps.services import (
@@ -57,17 +67,6 @@ from backend.app.deps.services import (
     get_memory_service,
     get_search_service,
 )
-
-# ============================================================================
-# ORCHESTRATOR DEPENDENCIES
-# ============================================================================
-from backend.app.deps.orchestrator import get_orchestrator
-
-# _agentic_rag_orchestrator is a mutable global in orchestrator.py.
-# We expose it as a module-level __getattr__ so that consumers like health.py
-# who do `from backend.app.dependencies import _agentic_rag_orchestrator`
-# always get the current value from the source module (not a stale snapshot).
-import backend.app.deps.orchestrator as _orch_mod  # noqa: E402
 
 
 def __getattr__(name: str):
@@ -100,5 +99,5 @@ __all__ = [
     "get_channel_router",
     # orchestrator
     "get_orchestrator",
-    "_agentic_rag_orchestrator",
+    "_agentic_rag_orchestrator",  # noqa: F822  (resolved via module __getattr__ above)
 ]
