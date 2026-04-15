@@ -80,35 +80,78 @@ export default function LKPMReviewPage() {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         {/* Back + header */}
-        <div className="h-5 w-24 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
+        <div
+          className="h-5 w-24 rounded animate-pulse"
+          style={{ background: "var(--bz-border)" }}
+        />
         <section className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full animate-pulse" style={{ background: 'var(--bz-border)' }} />
+          <div
+            className="h-8 w-8 rounded-full animate-pulse"
+            style={{ background: "var(--bz-border)" }}
+          />
           <div className="space-y-1.5">
-            <div className="h-6 w-48 rounded animate-pulse" style={{ background: 'var(--bz-border)' }} />
-            <div className="h-4 w-32 rounded animate-pulse" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+            <div
+              className="h-6 w-48 rounded animate-pulse"
+              style={{ background: "var(--bz-border)" }}
+            />
+            <div
+              className="h-4 w-32 rounded animate-pulse"
+              style={{ background: "var(--bz-border)", opacity: 0.5 }}
+            />
           </div>
         </section>
         {/* Validation alerts skeleton */}
-        <div className="rounded-xl border p-6 space-y-3 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="h-5 w-40 rounded" style={{ background: 'var(--bz-border)' }} />
+        <div
+          className="rounded-xl border p-6 space-y-3 animate-pulse"
+          style={{
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+          }}
+        >
+          <div
+            className="h-5 w-40 rounded"
+            style={{ background: "var(--bz-border)" }}
+          />
           {[1, 2].map((i) => (
-            <div key={i} className="h-10 rounded-lg" style={{ background: 'var(--bz-border)', opacity: 0.4 }} />
+            <div
+              key={i}
+              className="h-10 rounded-lg"
+              style={{ background: "var(--bz-border)", opacity: 0.4 }}
+            />
           ))}
         </div>
         {/* Investment table skeleton */}
-        <div className="rounded-xl border p-6 space-y-4 animate-pulse" style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="h-5 w-36 rounded" style={{ background: 'var(--bz-border)' }} />
+        <div
+          className="rounded-xl border p-6 space-y-4 animate-pulse"
+          style={{
+            background: "rgba(30,30,35,0.7)",
+            borderColor: "rgba(255,255,255,0.05)",
+          }}
+        >
+          <div
+            className="h-5 w-36 rounded"
+            style={{ background: "var(--bz-border)" }}
+          />
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex justify-between">
-                <div className="h-4 w-32 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
-                <div className="h-4 w-24 rounded" style={{ background: 'var(--bz-border)', opacity: 0.5 }} />
+                <div
+                  className="h-4 w-32 rounded"
+                  style={{ background: "var(--bz-border)", opacity: 0.5 }}
+                />
+                <div
+                  className="h-4 w-24 rounded"
+                  style={{ background: "var(--bz-border)", opacity: 0.5 }}
+                />
               </div>
             ))}
           </div>
         </div>
         {/* Approve button skeleton */}
-        <div className="h-12 w-full rounded-lg animate-pulse" style={{ background: 'var(--bz-border)' }} />
+        <div
+          className="h-12 w-full rounded-lg animate-pulse"
+          style={{ background: "var(--bz-border)" }}
+        />
       </div>
     );
   }
@@ -184,27 +227,22 @@ export default function LKPMReviewPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ color: "var(--bz-text-2)" }}>
-                <th scope="col" className="text-left py-2">Category</th>
-                <th scope="col" className="text-right py-2">Domestic</th>
-                <th scope="col" className="text-right py-2">Import</th>
+                <th scope="col" className="text-left py-2">
+                  Category
+                </th>
+                <th scope="col" className="text-right py-2">
+                  Domestic
+                </th>
+                <th scope="col" className="text-right py-2">
+                  Import
+                </th>
               </tr>
             </thead>
             <tbody
               className="divide-y"
               style={{ borderColor: "var(--bz-border)" }}
             >
-              <InvestmentRow
-                label="Land & Building"
-                domestic={draft.realized.land_building_domestic}
-                importVal={draft.realized.land_building_import}
-                format={formatIDR}
-              />
-              <InvestmentRow
-                label="Machinery"
-                domestic={draft.realized.machinery_domestic}
-                importVal={draft.realized.machinery_import}
-                format={formatIDR}
-              />
+              {/* Categories with import split per OSS schema */}
               <InvestmentRow
                 label="Equipment"
                 domestic={draft.realized.equipment_domestic}
@@ -212,21 +250,34 @@ export default function LKPMReviewPage() {
                 format={formatIDR}
               />
               <InvestmentRow
-                label="Vehicles"
-                domestic={draft.realized.vehicles_domestic}
-                importVal={draft.realized.vehicles_import}
+                label="Building"
+                domestic={draft.realized.building_domestic}
+                importVal={draft.realized.building_import}
                 format={formatIDR}
               />
               <InvestmentRow
-                label="Other Fixed"
-                domestic={draft.realized.other_fixed_domestic}
-                importVal={draft.realized.other_fixed_import}
+                label="Vehicle"
+                domestic={draft.realized.vehicle_domestic}
+                importVal={draft.realized.vehicle_import}
+                format={formatIDR}
+              />
+              {/* Single-column categories (no import breakdown) */}
+              <InvestmentRow
+                label="Land"
+                domestic={draft.realized.land}
+                importVal={0}
                 format={formatIDR}
               />
               <InvestmentRow
                 label="Working Capital"
-                domestic={draft.realized.working_capital_domestic}
-                importVal={draft.realized.working_capital_import}
+                domestic={draft.realized.working_capital}
+                importVal={0}
+                format={formatIDR}
+              />
+              <InvestmentRow
+                label="Other"
+                domestic={draft.realized.other}
+                importVal={0}
                 format={formatIDR}
               />
               <tr className="font-bold">
@@ -357,11 +408,7 @@ export default function LKPMReviewPage() {
   );
 }
 
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
+function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; style: React.CSSProperties }> =
     {
       draft: {
