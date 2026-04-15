@@ -177,6 +177,7 @@ What action should I take?"""
                     ],
                     "stream": False,
                     "think": False,
+                    "format": "json",
                     "options": {"temperature": 0.3, "num_predict": 256},
                 },
             )

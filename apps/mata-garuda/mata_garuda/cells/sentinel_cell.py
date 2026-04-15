@@ -20,12 +20,14 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from cell_core.genome import Genome
 from cell_core.homeostasis import HomeostaticController
+from cell_core.hgt.consumer import HGTConsumer
 from cell_core.lifecycle import Maturation
 from cell_core.memory_sqlite import SqliteMemoryStack
 from cell_core.pulse import PulseLoop
 from cell_core.safety import SafetyGate
-from cell_core.types import CellConfig
+from cell_core.types import CellConfig, PulseResult
 
 from mata_garuda.cells.actors.sentinel_actor import SentinelActor
 from mata_garuda.cells.sensors.arxiv_sensor import ArXivSensor
@@ -84,6 +86,20 @@ def create_sentinel_cell() -> PulseLoop:
     # Homeostasis
     homeostasis = HomeostaticController(config.sleep_hours)
 
+    # Genome + HGT Consumer — sentinel consumes news/architecture skills
+    genome = Genome(db_path=str(DATA_DIR / "knowledge.db"))
+    hgt_consumer = None
+    try:
+        import redis.asyncio as aioredis
+        redis_client = aioredis.Redis(host="localhost", port=6379, decode_responses=True)
+        hgt_consumer = HGTConsumer(
+            redis_client, genome, cell_name="ai-intel-sentinel",
+            interested_domains={"news", "architecture", "rag", "generic"},
+        )
+        logger.info("[hgt] Consumer initialized for ai-intel-sentinel")
+    except (ImportError, Exception) as e:
+        logger.info(f"[hgt] Consumer not available: {e}")
+
     async def on_pulse(result):
         """Post-pulse callback: log result and set readings on actor."""
         logger.info(
@@ -106,15 +122,63 @@ def create_sentinel_cell() -> PulseLoop:
         safety=safety,
         homeostasis=homeostasis,
         on_pulse=on_pulse,
+        genome=genome,
+        hgt_consumer=hgt_consumer,
     )
 
 
 class _SentinelPulseLoop(PulseLoop):
-    """Extended PulseLoop that passes readings to the SentinelActor."""
+    """Extended PulseLoop with genome + HGT consumer for the Sentinel."""
 
-    async def single_pulse(self, *args, **kwargs):
-        # Run sensors first to capture readings
+    def __init__(
+        self, *args,
+        genome: Genome | None = None,
+        hgt_consumer: HGTConsumer | None = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.genome = genome
+        self.hgt_consumer = hgt_consumer
+
+    async def single_pulse(self, *args, **kwargs) -> PulseResult:
         result = await super().single_pulse(*args, **kwargs)
+
+        # 5b. REFLECT — record successful action as genome skill
+        action = result.action_taken or ""
+        if (
+            self.genome
+            and action
+            and not result.halted
+            and not result.skipped
+            and result.health_status != "red"
+        ):
+            import time
+            skill_id = f"sentinel_{action}_{int(time.time())}"
+            self.genome.record_skill(
+                cell="ai-intel-sentinel",
+                skill_id=skill_id,
+                procedure=result.action_reason or action,
+                confidence=0.6,
+                scope="Project",
+                domain="news",
+            )
+
+        # 5c. HGT CONSUME — integrate skills from sibling cells
+        if self.hgt_consumer:
+            try:
+                await self.hgt_consumer.ensure_group()
+                await self.hgt_consumer.consume_once()
+            except Exception:
+                pass  # graceful degradation
+
+        # 6b. DREAM — silence stale skills during sleep window
+        if (
+            self.genome
+            and self.homeostasis.is_sleeping()
+            and self.lifecycle.can_dream()
+        ):
+            self.genome.silence_stale_skills(cell="ai-intel-sentinel", unused_days=30)
+
         return result
 
     async def _run_sense_phase(self):

@@ -114,6 +114,14 @@ class QueryPlan:
     parallel_kg: bool = True
     prefetch_collections: bool = True
 
+    # SOTA 2026 Multi-Tier Extensions
+    enable_hyde: bool = False
+    enable_nlm_orchestrator: bool = False
+    enable_deep_research: bool = False
+    retrieval_strategy: str = "standard"  # "standard" | "hyde" | "multi_collection"
+    reranker_model: str = "ms-marco"
+    self_rag_threshold: float = 0.4
+
     def __post_init__(self) -> None:
         """Compute query hash if not set."""
         if not self.query_hash:

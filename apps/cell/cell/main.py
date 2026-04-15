@@ -1,8 +1,10 @@
 """CELL — Entry point. Runs the pulse loop. This is the organism."""
 import asyncio
+import json
 import logging
 import os
 import signal
+import socket
 import sys
 
 import httpx
@@ -79,11 +81,38 @@ async def main() -> None:
     )
 
     # SLOW layer — the brain (all local, zero API cost)
-    reasoner = SlowReasoner()
+    # Read model config from MODEL_TOPOLOGY.json (respects Air vs Pro)
+    _topology_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "MODEL_TOPOLOGY.json")
+    _hostname = socket.gethostname().removesuffix(".local")
+    _ollama_url = "http://127.0.0.1:11434"
+    _model_fast = "qwen3:4b"  # safe default for Air
+    _model_heavy = "qwen3:4b"
+    try:
+        with open(_topology_path) as _f:
+            _topo = json.load(_f)
+        for _node in _topo["nodes"].values():
+            if _node["hostname"] == _hostname:
+                _ollama_url = _node.get("ollama_host", "http://127.0.0.1:11434")
+                break
+        _model_fast = _topo["roles"].get("cell_tier0", "qwen3:4b")
+        _model_heavy = _topo["roles"].get("cell_tier1", "qwen3:4b")
+        # On Air (16GB), fall back to sentry model if tier0/tier1 aren't available locally
+        for _node in _topo["nodes"].values():
+            if _node["hostname"] == _hostname and _node.get("ram_gb", 0) <= 16:
+                _model_fast = _topo["roles"].get("sentry", _model_fast)
+                _model_heavy = _model_fast  # Air can't run heavy models
+                break
+    except Exception as _te:
+        logger.warning(f"Failed to read MODEL_TOPOLOGY.json, using defaults: {_te}")
+    reasoner = SlowReasoner(
+        ollama_url=_ollama_url,
+        ollama_model_fast=_model_fast,
+        ollama_model_heavy=_model_heavy,
+    )
     patterns_loaded = await reasoner.bootstrap_memory()
     logger.info(f"PatternIndex: {patterns_loaded} patterns loaded from DB")
     interpreter = DNAInterpreter()
-    logger.info("SLOW layer initialized (Qwen 9B fast + Qwen 27B deep, all local)")
+    logger.info(f"SLOW layer initialized ({_model_fast} fast + {_model_heavy} deep, ollama={_ollama_url})")
 
     # Safety gate — real Redis kill switch
     redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -105,7 +134,7 @@ async def main() -> None:
         error_rate_sensor = ErrorRateSensor(client=http_client, metrics_url=metrics_url)
 
         # New sensors — local visibility
-        ollama_sensor = OllamaSensor()
+        ollama_sensor = OllamaSensor(ollama_url=_ollama_url, required_models=[_model_fast])
         backup_sensor = BackupSensor()
         cron_sensor = CronSensor()
         vercel_sensor = VercelSensor(client=http_client)
@@ -161,11 +190,11 @@ async def main() -> None:
 
         # Dreamer — nocturnal consolidation (shares http_client for Golden Rule #10)
         ollama_client = httpx.AsyncClient(timeout=30.0)
-        dreamer = Dreamer(pool=_db_pool_ep, ollama_url="http://localhost:11434", http_client=ollama_client)
+        dreamer = Dreamer(pool=_db_pool_ep, ollama_url=_ollama_url, http_client=ollama_client)
         logger.info("Dreamer initialized")
 
         # Journal — daily narrative (shares same http_client)
-        journal = Journal(pool=_db_pool_ep, ollama_url="http://localhost:11434", http_client=ollama_client)
+        journal = Journal(pool=_db_pool_ep, ollama_url=_ollama_url, http_client=ollama_client)
         logger.info("Journal initialized")
 
         # Attention Allocator — scarce cognitive budget
@@ -202,6 +231,8 @@ async def main() -> None:
                 attention=attention,
                 maturation=maturation,
                 ollama_client=ollama_client,
+                ollama_url=_ollama_url,
+                ollama_model=_model_fast,
             )
         except Exception as e:
             logger.warning(f"Cortex init failed (non-fatal, CELL runs Phase 1+2 only): {e}")

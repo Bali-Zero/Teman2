@@ -70,6 +70,19 @@ kb.store(type="reflection", content=json.dumps(reflection), cell=CELL_NAME)
 
 **Minimo vitale:** punti 1, 2, 3, 4, 6.
 
+### HGT — Horizontal Gene Transfer (opzionale, Sprint 5.2+)
+
+Se la cellula partecipa al sistema circolatorio di conoscenza:
+
+11. [ ] **Publisher** — se produce skill: `HGTPublisher` nel REFLECT hook, pubblica su `cell:skills` se confidence > 0.7 e scope='Project'
+12. [ ] **Consumer** — se consuma skill: `HGTConsumer` con `interested_domains` dichiarati, integra con decay 0.9x
+13. [ ] **Feedback** — se migliora skill ereditate: `VerticalFeedback` propone a parent se conf > inherited + 0.15
+14. [ ] **Domain tag** — ogni `record_skill()` include `domain=` corretto (11 domini canonici in `hgt/domains.py`)
+15. [ ] **Graceful degradation** — Redis down = cellula funziona in isolamento (Legge 4)
+16. [ ] **No OSINT in HGT** — solo conoscenza operativa nei payload skill (Legge 2)
+
+**Pattern di riferimento:** `apps/mata-garuda/mata_garuda/cell/runner.py` (publisher), `apps/mata-garuda/mata_garuda/cells/sentinel_cell.py` (consumer)
+
 ---
 
 ## 3. Nuovo router FastAPI
