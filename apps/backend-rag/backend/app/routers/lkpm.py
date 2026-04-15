@@ -297,6 +297,59 @@ async def get_my_history(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.get("/receipts/me", response_model=dict)
+async def get_my_receipts(
+    request: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Portal: OSS tanda terima for every company where the authenticated client
+    is a shareholder (via client_company_links). Mirrors /history/me but at
+    the receipt granularity.
+    """
+    from backend.app.routers.portal import get_current_client
+
+    client = await get_current_client(request, db_pool)
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_portal_client(client["client_id"])
+        return {
+            "success": True,
+            "client_id": client["client_id"],
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for portal client: {e}", exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/receipts/{lkpm_report_id}", response_model=dict)
+async def get_receipts_for_report(
+    lkpm_report_id: int,
+    current_user: str = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """Workspace: OSS tanda terima attached to a single lkpm_reports row."""
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_report(lkpm_report_id)
+        return {
+            "success": True,
+            "lkpm_report_id": lkpm_report_id,
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for report {lkpm_report_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 # ------------------------------------------------------------------
 # Batch & Queries
 # ------------------------------------------------------------------
