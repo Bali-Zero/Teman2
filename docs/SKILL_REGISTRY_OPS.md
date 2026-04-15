@@ -315,6 +315,45 @@ grows past ~10k rows.
 | Merge proposals file stays empty                 | fewer than 2 active skills, or threshold too tight        | lower `--threshold`, check `/api/skill/stats.total`                                 |
 | Aggregator proposals file stays empty            | no (cell, tags) cluster hits `--min-cluster-size`         | lower the threshold temporarily for inspection; `--window-days` can widen the lens  |
 
+## Design Notes (from DeepSeek R1 federation review, 2026-04-16)
+
+### Confidence growth: why aggregated skills CAN reach tier1
+
+Aggregated skills start at `confidence=0.45` (below the seed default 0.6). The
+tier1 threshold is `confidence ≥ 0.85 AND uses ≥ 100`. The growth path is
+implicit in `Genome.use_skill`: each successful invocation bumps confidence by
+`+0.02` (clamped at 1.0). Arithmetic: by the time a skill has accumulated 100
+uses, its confidence is at least `0.45 + 100*0.02 = 2.45` — clamped to 1.0,
+well past the `≥ 0.85` bar. So aggregate skills *do* converge to tier1 under
+sustained real usage; no manual confidence bump is required.
+
+If `use_skill` is not being called on a Skill Registry entry, the registry is
+effectively cold regardless of tier. Hook it in whenever a cell actually acts
+on a recalled skill — else promotion will stall by design.
+
+### Aggregator ↔ Merge-proposals overlap is intentional
+
+`experience_to_skill_aggregator.py` creates proposals for NEW skills from
+successful trajectory clusters (exact-tag match). `skill_merge_proposals.py`
+proposes MERGES between already-recorded skills (embedding similarity on the
+full `precondition | procedure | success_criterion` triple). The two can both
+fire on the same skill family — e.g. an aggregate gets recorded, then the
+merge job flags it as near-duplicate of an older seed. This is by design:
+both are propose-only, both land in different jsonl files, and Zero decides
+the order. Deduplication at the proposal layer would hide context the human
+needs to judge (was this an aggregation good enough to supplant the seed, or
+should it be merged into it?).
+
+### Merge embedding uses the FULL triple, not just procedure
+
+`find_merge_candidates` in `skill_merge_proposals.py` embeds
+`f"{precondition} | {procedure} | {success_criterion}"` — not just
+`procedure`. Two skills that share a procedure body but apply to different
+contexts (tourist vs business visa, for example) keep distinct vectors and do
+not get proposed as a merge. Regression test:
+`test_embedder_receives_full_precondition_procedure_success_triple` in
+`backend/tests/unit/scripts/test_skill_merge_proposals.py`.
+
 ## Open Questions (Week 5+)
 
 - Activation of the weekly cron (Sunday 06:00 WITA) once we have 4 weeks of

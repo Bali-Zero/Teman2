@@ -158,6 +158,109 @@ def test_find_candidates_each_pair_emitted_once():
     }
 
 
+# ─── Full triple embedding (DeepSeek review 2026-04-16) ──────────
+
+
+class _TripleCapture:
+    """Embedder that records the full text it was asked to embed per skill_id."""
+
+    def __init__(self) -> None:
+        self.captured: dict[str, str] = {}
+
+    def embed(self, text: str, skill_id: str | None = None) -> list[float]:
+        if skill_id is not None:
+            self.captured[skill_id] = text
+        # Deterministic orthogonal vectors by id hash so pairs never match.
+        h = (hash(skill_id or text) & 0xFFFF) / 0xFFFF
+        return [h, 1.0 - h]
+
+
+def test_embedder_receives_full_precondition_procedure_success_triple():
+    """DeepSeek review (2026-04-16) flagged that embedding only `procedure`
+    makes false-positive merges for skills that share a procedure body but
+    apply to different contexts (different precondition / success criterion).
+
+    Regression guard: the embedder must receive the full triple, separated so
+    a reviewer can still read which field contributed.
+    """
+    skills = [
+        {
+            "id": "visa_tourist_submit",
+            "cell_origin": "visa",
+            "type": "skill",
+            "procedure": "Submit documents to the immigration portal.",
+            "precondition": "Client holds a tourist visa application.",
+            "success_criterion": "Portal returns a tourist tracking number.",
+            "confidence": 0.7,
+            "valid_to": None,
+        },
+        {
+            "id": "visa_business_submit",
+            "cell_origin": "visa",
+            "type": "skill",
+            "procedure": "Submit documents to the immigration portal.",
+            "precondition": "Client holds a business visa application (B211A).",
+            "success_criterion": "Portal returns a business tracking number.",
+            "confidence": 0.7,
+            "valid_to": None,
+        },
+    ]
+    cap = _TripleCapture()
+    find_merge_candidates(skills, embedder=cap, threshold=0.15)
+
+    tourist = cap.captured["visa_tourist_submit"]
+    business = cap.captured["visa_business_submit"]
+
+    # Procedure is shared; the preconditions / success criteria differ, so the
+    # full-triple text MUST differ between the two skills.
+    assert tourist != business, (
+        "embedder was given identical text for two skills with different "
+        "preconditions — merge proposal would be a false positive"
+    )
+    # Each text must include all three fields (order-agnostic).
+    for triple_text, skill in ((tourist, skills[0]), (business, skills[1])):
+        assert skill["precondition"] in triple_text
+        assert skill["procedure"] in triple_text
+        assert skill["success_criterion"] in triple_text
+
+
+def test_find_candidates_full_triple_text_passed_to_embedder():
+    """Regression guard for the DeepSeek fix: the text handed to the embedder
+    must include all three fields so a real embedding model can distinguish
+    contexts. We already asserted the text differs between two skills above;
+    here we pin the invariant that EVERY field appears in the embedded text."""
+    skills = [
+        {
+            "id": "a",
+            "cell_origin": "c",
+            "type": "skill",
+            "procedure": "PROC_MARKER",
+            "precondition": "PRE_MARKER",
+            "success_criterion": "OK_MARKER",
+            "confidence": 0.7,
+            "valid_to": None,
+        },
+        # find_merge_candidates short-circuits for fewer than 2 skills, so
+        # include a filler that won't match (orthogonal vector by hash).
+        {
+            "id": "filler",
+            "cell_origin": "c",
+            "type": "skill",
+            "procedure": "completely unrelated text",
+            "precondition": "nothing in common",
+            "success_criterion": "other goal",
+            "confidence": 0.7,
+            "valid_to": None,
+        },
+    ]
+    cap = _TripleCapture()
+    find_merge_candidates(skills, embedder=cap, threshold=0.15)
+    text = cap.captured["a"]
+    assert "PRE_MARKER" in text
+    assert "PROC_MARKER" in text
+    assert "OK_MARKER" in text
+
+
 # ─── main() smoke ────────────────────────────────────────────────
 
 

@@ -90,12 +90,22 @@ def find_merge_candidates(
         return []
 
     # Embed once per skill, keyed by id so the stub can look up by id.
+    #
+    # DeepSeek review (2026-04-16): embed the FULL (precondition, procedure,
+    # success_criterion) triple — not just procedure. Two skills that share
+    # a procedure body but apply to different contexts (e.g. tourist vs
+    # business visa submission) must stay separate, and the context lives in
+    # precondition + success_criterion. The " | " separator is non-semantic
+    # but keeps each field legible for a human reading the jsonl.
     vectors: dict[str, list[float]] = {}
     for s in skills:
         sid = s["id"]
-        text = (s.get("procedure") or "").strip()
-        if not text:
+        procedure = (s.get("procedure") or "").strip()
+        if not procedure:
             continue
+        precondition = (s.get("precondition") or "").strip()
+        success = (s.get("success_criterion") or "").strip()
+        text = f"{precondition} | {procedure} | {success}"
         try:
             vectors[sid] = embedder.embed(text, skill_id=sid)
         except Exception as exc:  # pragma: no cover — defensive
