@@ -62,6 +62,7 @@ def include_routers(api: FastAPI) -> None:
         dynamic_pricing,  # [NEW] Dynamic scenario pricing
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
+        experience,  # [EXP] Experience Library — trajectory recording/query
         federation,
         feedback,
         google_drive,
@@ -154,6 +155,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(session.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
+    api.include_router(experience.router)  # [EXP] Experience Library
     api.include_router(federation.router)
     api.include_router(feedback.router)
 
@@ -633,6 +635,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         dream,
         dynamic_pricing,
         episodic_memory,
+        experience,  # [EXP] Experience Library
         handlers,
         health,
         ingest,
@@ -671,6 +674,7 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(conversations.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
+    api.include_router(experience.router)  # [EXP] Experience Library
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)
