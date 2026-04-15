@@ -146,27 +146,51 @@ async def sync_jurnal(
 async def get_draft(
     client_id: int,
     quarter: str,
+    request: Request,
     year: int,
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
     """Get LKPM draft for a client/quarter.
 
-    If client_id=0, resolve the caller's client_id from the JWT (portal clients
-    call with /draft/0/Q1?year=2026 since they don't know their own numeric id).
+    Resolution rules for ``client_id``:
+      * ``client_id > 0`` — used as-is (staff calling with explicit id).
+      * ``client_id = 0`` + ``role='client'`` — resolve from the JWT email
+        (shareholders don't know their own numeric id).
+      * ``client_id = 0`` + superuser (zero@balizero.com) + ``?as_client=<id>``
+        — override to the requested id (admin impersonation, also honored as
+        the new ``/draft/0/...`` convention everywhere).
     """
-    if client_id == 0 and current_user.get("role") == "client":
-        email = current_user.get("email")
-        if not email:
-            raise HTTPException(status_code=401, detail="No email on token")
-        async with db_pool.acquire() as conn:
-            resolved = await conn.fetchval(
-                "SELECT id FROM clients WHERE LOWER(email) = LOWER($1) LIMIT 1",
-                email,
-            )
-        if not resolved:
-            raise HTTPException(status_code=404, detail="Client not found for this account")
-        client_id = int(resolved)
+    from backend.app.routers.portal import SUPERUSER_EMAILS
+
+    email = (current_user.get("email") or "").lower()
+    is_superuser = email in SUPERUSER_EMAILS
+
+    if client_id == 0:
+        if is_superuser:
+            as_client_raw = request.query_params.get("as_client")
+            if not as_client_raw:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Superuser: pass ?as_client=<id> to select a client",
+                )
+            try:
+                client_id = int(as_client_raw)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail="as_client must be int") from e
+        elif current_user.get("role") == "client":
+            if not email:
+                raise HTTPException(status_code=401, detail="No email on token")
+            async with db_pool.acquire() as conn:
+                resolved = await conn.fetchval(
+                    "SELECT id FROM clients WHERE LOWER(email) = LOWER($1) LIMIT 1",
+                    email,
+                )
+            if not resolved:
+                raise HTTPException(status_code=404, detail="Client not found for this account")
+            client_id = int(resolved)
+        else:
+            raise HTTPException(status_code=403, detail="Not authorised")
 
     service = _get_service(db_pool)
     draft = await service.get_draft(client_id, quarter, year)
