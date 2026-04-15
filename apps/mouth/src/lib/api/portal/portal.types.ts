@@ -378,6 +378,34 @@ export interface LKPMOSSCredentials {
   oss_creds_updated_by: string | null;
 }
 
+/**
+ * OSS "Tanda Terima" receipt — one per Nomor Kegiatan Usaha.
+ * A lkpm_report typically has 1–5 of these.
+ * Schema: `lkpm_receipts` (migration 100).
+ */
+export interface LKPMReceipt {
+  id: number;
+  lkpm_report_id: number;
+  nomor_laporan: string;
+  nomor_kegiatan_usaha: string;
+  kbli_code: string | null;
+  kegiatan_usaha_desc: string | null;
+  stage: string | null; // "KONSTRUKSI" | "PRODUKSI"
+  oss_status: string | null; // "Terkirim" | "Disetujui"
+  lokasi: string | null;
+  tanggal_diterima: string | null; // ISO date
+  nama_perusahaan_oss: string | null;
+  file_drive_id: string | null;
+  file_drive_url: string | null;
+  file_name: string | null;
+  // Joined from lkpm_reports when returned by /receipts/me and /receipts/by-client:
+  quarter?: string;
+  year?: number;
+  client_id?: number;
+  company_id?: number;
+  company_name?: string;
+}
+
 export interface LKPMDeadline {
   quarter: string;
   year: number;
