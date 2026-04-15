@@ -26,6 +26,10 @@ export class ApiClientBase implements IApiClient {
   protected token: string | null = null;
   protected csrfToken: string | null = null; // CSRF token for cookie-based auth
   protected userProfile: UserProfile | null = null;
+  // Superuser impersonation: when set, every portal/lkpm API call adds
+  // ?as_client=<id>. Seeded from localStorage and kept in sync by the
+  // AdminImpersonationContext (contexts/AdminImpersonationContext.tsx).
+  protected portalImpersonationClientId: number | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -38,6 +42,19 @@ export class ApiClientBase implements IApiClient {
         } catch {
           this.userProfile = null;
         }
+      }
+      // Seed impersonation from localStorage so the very first portal fetch
+      // on page reload already carries as_client.
+      try {
+        const rawImp = localStorage.getItem("bz_portal_impersonation_v1");
+        if (rawImp) {
+          const parsed = JSON.parse(rawImp) as { id?: number };
+          if (typeof parsed.id === "number") {
+            this.portalImpersonationClientId = parsed.id;
+          }
+        }
+      } catch {
+        // ignore — impersonation is optional
       }
     }
 
@@ -121,6 +138,18 @@ export class ApiClientBase implements IApiClient {
     return match ? match[1] : null;
   }
 
+  /**
+   * Superuser-only: set/clear the client id that all portal/lkpm calls
+   * should be scoped to via ?as_client=<id>. null disables impersonation.
+   */
+  setPortalImpersonation(clientId: number | null) {
+    this.portalImpersonationClientId = clientId;
+  }
+
+  getPortalImpersonation(): number | null {
+    return this.portalImpersonationClientId;
+  }
+
   getUserProfile(): UserProfile | null {
     // Always read from storage to ensure we have the latest profile
     // This is critical for cases where login happens after ApiClient instantiation
@@ -197,6 +226,26 @@ export class ApiClientBase implements IApiClient {
     options: ApiRequestOptions = {},
     timeoutMs: number = 30000,
   ): Promise<T> {
+    // Superuser impersonation: append ?as_client=<id> to portal/lkpm paths
+    // when the context has a target set. Idempotent — if the query already
+    // carries as_client we leave it alone, honoring explicit callers (e.g.
+    // admin tooling).
+    if (this.portalImpersonationClientId !== null) {
+      const isPortalApi =
+        endpoint.startsWith("/api/portal") ||
+        endpoint.startsWith("/api/v1/lkpm");
+      // The admin-only endpoints must NOT be rewritten — they operate on
+      // the superuser itself, not on the impersonated client.
+      const isAdminApi = endpoint.startsWith("/api/portal/admin");
+      if (isPortalApi && !isAdminApi) {
+        const alreadySet = /[?&]as_client=/.test(endpoint);
+        if (!alreadySet) {
+          const sep = endpoint.includes("?") ? "&" : "?";
+          endpoint = `${endpoint}${sep}as_client=${this.portalImpersonationClientId}`;
+        }
+      }
+    }
+
     // Don't set Content-Type for FormData - browser will set it with boundary
     const isFormData = options.body instanceof FormData;
     const headers: Record<string, string> = isFormData

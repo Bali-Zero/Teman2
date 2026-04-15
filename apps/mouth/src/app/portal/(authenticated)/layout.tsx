@@ -12,6 +12,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { portalNavigation } from "@/types/navigation";
+import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
 
 export default function PortalLayout({
   children,
@@ -175,66 +176,68 @@ export default function PortalLayout({
   }
 
   return (
-    <ToastProvider>
-      <div className="min-h-screen" style={{ background: "var(--bz-base)" }}>
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block">
-          <AppSidebar
-            user={{
-              ...user,
-              role: "client",
-              team: "Client Portal",
-              isOnline: true,
-            }}
-            navigationConfig={portalNavigation}
-            isPortal={true}
-            onLogout={handleLogout}
-          />
-        </div>
-
-        {/* Mobile Sidebar Overlay */}
-        {isMobileMenuOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
+    <AdminImpersonationProvider>
+      <ToastProvider>
+        <div className="min-h-screen" style={{ background: "var(--bz-base)" }}>
+          {/* Desktop Sidebar */}
+          <div className="hidden md:block">
+            <AppSidebar
+              user={{
+                ...user,
+                role: "client",
+                team: "Client Portal",
+                isOnline: true,
+              }}
+              navigationConfig={portalNavigation}
+              isPortal={true}
+              onLogout={handleLogout}
             />
-            <div className="fixed inset-y-0 left-0 z-50 md:hidden">
-              <AppSidebar
-                user={{
-                  ...user,
-                  role: "client",
-                  team: "Client Portal",
-                  isOnline: true,
-                }}
-                navigationConfig={portalNavigation}
-                isPortal={true}
-                onLogout={handleLogout}
+          </div>
+
+          {/* Mobile Sidebar Overlay */}
+          {isMobileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
               />
-            </div>
-          </>
-        )}
+              <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+                <AppSidebar
+                  user={{
+                    ...user,
+                    role: "client",
+                    team: "Client Portal",
+                    isOnline: true,
+                  }}
+                  navigationConfig={portalNavigation}
+                  isPortal={true}
+                  onLogout={handleLogout}
+                />
+              </div>
+            </>
+          )}
 
-        {/* Main Content */}
-        <div className="md:ml-60 min-h-screen flex flex-col">
-          {/* Header */}
-          <PortalHeader
-            userName={user.name}
-            onMobileMenuToggle={handleMobileMenuToggle}
-            isMobileMenuOpen={isMobileMenuOpen}
-          />
+          {/* Main Content */}
+          <div className="md:ml-60 min-h-screen flex flex-col">
+            {/* Header */}
+            <PortalHeader
+              userName={user.name}
+              onMobileMenuToggle={handleMobileMenuToggle}
+              isMobileMenuOpen={isMobileMenuOpen}
+            />
 
-          {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <PortalErrorBoundary section="Portal">
-              {children}
-            </PortalErrorBoundary>
-          </main>
+            {/* Page Content */}
+            <main className="flex-1 p-4 md:p-6 lg:p-8">
+              <PortalErrorBoundary section="Portal">
+                {children}
+              </PortalErrorBoundary>
+            </main>
+          </div>
+
+          {/* Mobile Bottom Nav */}
+          <PortalBottomNav />
         </div>
-
-        {/* Mobile Bottom Nav */}
-        <PortalBottomNav />
-      </div>
-    </ToastProvider>
+      </ToastProvider>
+    </AdminImpersonationProvider>
   );
 }

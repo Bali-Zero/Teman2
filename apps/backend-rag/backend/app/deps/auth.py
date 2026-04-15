@@ -180,6 +180,12 @@ def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dic
     return user
 
 
+# Superusers allowed to impersonate any client via ?as_client=<id>.
+# Source-of-truth duplicated in backend/app/routers/portal.py:SUPERUSER_EMAILS
+# (kept small + explicit; a follow-up can centralise into core/config).
+_SUPERUSER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
+
+
 async def get_current_portal_client(
     request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -189,16 +195,17 @@ async def get_current_portal_client(
 
     Validates that:
     1. User has valid JWT token (set by middleware)
-    2. User role is 'client' (not team member)
+    2. User role is 'client' (bypassed for superusers)
     3. User has a linked client profile in the database
+       (bypassed for superusers using ?as_client=<id>)
+
+    Superuser impersonation mirrors portal.get_current_client — see that
+    function for the full rationale. Audit entries are written from the
+    portal.py code path; this dependency is used only by portal_visa and
+    portal_taxes, both of which are read-only data fetches.
 
     Returns:
-        dict: Client information with keys: id, email, full_name
-
-    Raises:
-        HTTPException 401: If no valid JWT token present
-        HTTPException 403: If user role is not 'client'
-        HTTPException 404: If client profile not found in database
+        dict: {id, email, full_name, impersonating (bool)}
     """
     if not hasattr(request.state, "user") or not request.state.user:
         raise HTTPException(
@@ -208,7 +215,46 @@ async def get_current_portal_client(
         )
 
     user = request.state.user
+    user_email = (user.get("email") or "").lower()
+    is_superuser = user_email in _SUPERUSER_EMAILS
 
+    # ---- Superuser impersonation path ----
+    if is_superuser:
+        as_client_raw = request.query_params.get("as_client")
+        if as_client_raw is None:
+            async with db_pool.acquire() as conn:
+                own = await conn.fetchrow(
+                    "SELECT id, email, full_name FROM clients WHERE LOWER(email) = LOWER($1)",
+                    user_email,
+                )
+            if own:
+                return {**dict(own), "impersonating": False}
+            raise HTTPException(
+                status_code=422,
+                detail="Superuser: select a client via ?as_client=<id>",
+            )
+
+        try:
+            as_client_id = int(as_client_raw)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail="as_client must be an integer",
+            ) from e
+
+        async with db_pool.acquire() as conn:
+            target = await conn.fetchrow(
+                "SELECT id, email, full_name FROM clients WHERE id = $1",
+                as_client_id,
+            )
+        if not target:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Client {as_client_id} not found",
+            )
+        return {**dict(target), "impersonating": True}
+
+    # ---- Normal client path ----
     if user.get("role") != "client":
         raise HTTPException(
             status_code=403,
@@ -235,4 +281,4 @@ async def get_current_portal_client(
                 detail="Client profile not found. Please contact support.",
             )
 
-        return dict(client_row)
+        return {**dict(client_row), "impersonating": False}
