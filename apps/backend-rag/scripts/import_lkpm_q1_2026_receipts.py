@@ -130,29 +130,29 @@ CLIENT_NAME_FIXES: list[tuple[int, str, str]] = [
 # ──────────────────────────────────────────────────────────────────────
 RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]] = [
     # ───────── PT Nayat Ibiza Beauty (3) ─────────
-    ("PT Nayat Ibiza Beauty", "1jDpRTmyy8ofviBkjXg2JkrUdadI8Qlk1",
+    ("PT Nayat Ibiza Beauty", "1jDpRTmyy8ofviBkjXg2JkrUdadI8Qlk1",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 PT Nayat.pdf",
      "LK6785433", "202412-1913-2514-6246-937", "70209", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "BJ Saren , Kab. Badung, Bali",
      "2026-04-13", "PT NAYAT IBIZA BEAUTY"),
-    ("PT Nayat Ibiza Beauty", "1ULN0BCWJpznkW96aKxLkWVg_rqTejEZ6",
+    ("PT Nayat Ibiza Beauty", "1ULN0BCWJpznkW96aKxLkWVg_rqTejEZ6",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 PT Nayat.pdf",
      "LK6779740", "202412-1913-1934-7086-055", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Disetujui", "BJ Saren , Kab. Badung, Bali",
      "2026-04-13", "PT NAYAT IBIZA BEAUTY"),
-    ("PT Nayat Ibiza Beauty", "1atN0P45hjY8yKIf61qchQaawgqrmSHJ6",
+    ("PT Nayat Ibiza Beauty", "1atN0P45hjY8yKIf61qchQaawgqrmSHJ6",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 55900 PT Nayat.pdf",
      "LK6785564", "202412-1913-2936-9639-016", "55900", "Penyediaan akomodasi lainnya",
      "PRODUKSI", "Terkirim", "BJ Saren , Kab. Badung, Bali",
      "2026-04-13", "PT NAYAT IBIZA BEAUTY"),
 
     # ───────── PT Paradise Beach Brothers (3) ─────────
-    ("PT Paradise Beach Brothers", "1zU5gYq5xJVNALI9od7P641sy2_R9c1T1",
+    ("PT Paradise Beach Brothers", "1zU5gYq5xJVNALI9od7P641sy2_R9c1T1",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 PT Paradise beach brother.pdf",
      "LK6787700", "202408-1415-0425-6501-815", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-13", "PT PARADISE BEACH BROTHERS"),
-    ("PT Paradise Beach Brothers", "1rgnpDRTRb4hYR8oVmHbobuCh-MgFALrc",
+    ("PT Paradise Beach Brothers", "1rgnpDRTRb4hYR8oVmHbobuCh-MgFALrc",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 PT Paradise beach brother 2.pdf",
      "LK6792924", "202411-1514-1222-7431-851", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Beru, Kab. Sumbawa Barat, Nusa Tenggara Barat",
@@ -169,58 +169,58 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "LK6802976", "202301-2613-1521-4027-063", "6201", "Aktivitas Pemrograman Komputer",
      "KONSTRUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2 , Kab. Badung, Bali",
      "2026-04-13", "PT HAPPY EVENTS BALI TRAVEL"),
-    ("PT Happy Events Bali Travel", "1giJnAg3VWGeuTdVKaUTPXh1rXfoK07aJ",
+    ("PT Happy Events Bali Travel", "1giJnAg3VWGeuTdVKaUTPXh1rXfoK07aJ",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 46900 Happy Event.pdf",
      "LK6800328", "202301-2613-2208-1298-732", "4690", "Perdagangan besar berbagai macam barang",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2 , Kab. Badung, Bali",
      "2026-04-13", "PT HAPPY EVENTS BALI TRAVEL"),
-    ("PT Happy Events Bali Travel", "1_D6z8_NKR4A1_s50TPlCDvrCA47OY5be",
+    ("PT Happy Events Bali Travel", "1_D6z8_NKR4A1_s50TPlCDvrCA47OY5be",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 Happy Event.pdf",
      "LK6802781", "202301-2613-0634-3384-998", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "KONSTRUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2 , Kab. Badung, Bali",
      "2026-04-13", "PT HAPPY EVENTS BALI TRAVEL"),
-    ("PT Happy Events Bali Travel", "1327i52xLgw5JH6y5hNqUarXRGjIg9fO8",
+    ("PT Happy Events Bali Travel", "1327i52xLgw5JH6y5hNqUarXRGjIg9fO8",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 Happy Event.pdf",
      "LK6799959", "202301-2613-1237-1092-408", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2 , Kab. Badung, Bali",
      "2026-04-13", "PT HAPPY EVENTS BALI TRAVEL"),
-    ("PT Happy Events Bali Travel", "1HUMMaEw-NU2ZxvYZvN5FScCZRvGOjjk3",
+    ("PT Happy Events Bali Travel", "1HUMMaEw-NU2ZxvYZvN5FScCZRvGOjjk3",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68200 Happy Event.pdf",
      "LK6800480", "202301-2613-2544-6925-457", "6820", "Real estat atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2 , Kab. Badung, Bali",
      "2026-04-13", "PT HAPPY EVENTS BALI TRAVEL"),
 
     # ───────── PT Itchi Digital Bali (2) ─────────
-    ("PT Itchi Digital Bali", "1aEEgjh4I3_JnNCWNDfikMfeqwbiL7oJj",
+    ("PT Itchi Digital Bali", "1aEEgjh4I3_JnNCWNDfikMfeqwbiL7oJj",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 Ichi Digital.pdf",
      "LK6804588", "202403-2611-2849-0427-921", "7020", "Aktivitas Konsultasi Manajemen",
      "KONSTRUKSI", "Terkirim", "Jalan Raya Tumbakbayuh, Kab. Badung, Bali",
      "2026-04-13", "PT ITCHI DIGITAL BALI"),
-    ("PT Itchi Digital Bali", "1vxOc0CEqK__iRde6cpUzDUpt8byWDXtT",
+    ("PT Itchi Digital Bali", "1vxOc0CEqK__iRde6cpUzDUpt8byWDXtT",  # pragma: allowlist secret
      "LKPM Triwuln 1 Jan-Mar 2026 KBLI 68111 Ichi Digital.pdf",
      "LK6804715", "202403-2611-4706-4479-302", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "KONSTRUKSI", "Terkirim", "Jalan Raya Tumbakbayuh, Kab. Badung, Bali",
      "2026-04-13", "PT ITCHI DIGITAL BALI"),
 
     # ───────── PT Meraki Creations Bali (3) ─────────
-    ("PT Meraki Creations Bali", "1ilCObM4VkKKp_5RUlNzuhX72yRblLF2i",
+    ("PT Meraki Creations Bali", "1ilCObM4VkKKp_5RUlNzuhX72yRblLF2i",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68200 Merakih.pdf",
      "LK6807779", "202210-1915-1548-6331-936", "6820", "Real estat atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Terkirim", "JL. RAYA ANYAR GANG III NO. 2, Kab. Badung, Bali",
      "2026-04-13", "PT MERAKI CREATIONS BALI"),
-    ("PT Meraki Creations Bali", "1395tvucSayM6DpghQ8n2EgMMk-bNYoUj",
+    ("PT Meraki Creations Bali", "1395tvucSayM6DpghQ8n2EgMMk-bNYoUj",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-mar 2026 KBLI 68111 Merakih.pdf",
      "LK6807612", "202210-1915-1322-0963-280", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "JL. RAYA ANYAR GANG III NO. 2, Kab. Badung, Bali",
      "2026-04-13", "PT MERAKI CREATIONS BALI"),
-    ("PT Meraki Creations Bali", "1sHonSXv1c651LKw_zV_iQmECmmRkD6_3",
+    ("PT Meraki Creations Bali", "1sHonSXv1c651LKw_zV_iQmECmmRkD6_3",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 Merakih.pdf",
      "LK6807461", "202210-1915-0740-1384-066", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "JL. RAYA ANYAR GANG III NO. 2, Kab. Badung, Bali",
      "2026-04-13", "PT MERAKI CREATIONS BALI"),
 
     # ───────── PT Black Pork Consulting (1) ─────────
-    ("PT Black Pork Consulting", "1Cfukogi5GBvtRhSa0QabIrb6xkhZL5kp",
+    ("PT Black Pork Consulting", "1Cfukogi5GBvtRhSa0QabIrb6xkhZL5kp",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 Black Pork.pdf",
      "LK6808765", "202406-2014-2052-0726-671", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
@@ -234,31 +234,31 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "2026-04-14", "PT SINGA INVESTMENTS BALI"),
 
     # ───────── PT Chloe Nature Escape (1) ─────────
-    ("PT Chloe Nature Escape", "1SCy7AecmlwSTkhsf2Tdir0v1xjjFc0FF",
+    ("PT Chloe Nature Escape", "1SCy7AecmlwSTkhsf2Tdir0v1xjjFc0FF",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 Chole Nature Escape.pdf",
      "LK6867389", "202504-2016-4144-5078-859", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "PROMENADE SHOP UNIT S11, Jl. Kayu Tulang No. 82, Kab. Badung, Bali",
      "2026-04-14", "PT CHLOE NATURE ESCAPE"),
 
     # ───────── PT Ichnos West Sumbawa (2) ─────────
-    ("PT Ichnos West Sumbawa", "1XfZYaPZh1fsu6knjOwbTXCmprXd9fUcL",
+    ("PT Ichnos West Sumbawa", "1XfZYaPZh1fsu6knjOwbTXCmprXd9fUcL",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 Icnos West Sumbawa.pdf",
      "LK6868939", "202411-1511-0551-7115-951", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Beru, Kab. Sumbawa Barat, Nusa Tenggara Barat",
      "2026-04-14", "PT ICHNOS WEST SUMBAWA"),
-    ("PT Ichnos West Sumbawa", "1yqFQsX1MmYY8nERNat3m3DLjz-P-DswR",
+    ("PT Ichnos West Sumbawa", "1yqFQsX1MmYY8nERNat3m3DLjz-P-DswR",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 Icnos West Sumbawa 2.pdf",
      "LK6868748", "202411-1410-0710-2462-808", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT ICHNOS WEST SUMBAWA"),
 
     # ───────── PT Ventura Impact Positif (2) ─────────
-    ("PT Ventura Impact Positif", "1PCNCVojl7BUyLCbnAH2sGG6hvsZjfg9y",
+    ("PT Ventura Impact Positif", "1PCNCVojl7BUyLCbnAH2sGG6hvsZjfg9y",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 68111 Ventura Impact.pdf",
      "LK6871922", "202308-1906-3631-9903-626", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT VENTURA IMPACT POSITIF"),
-    ("PT Ventura Impact Positif", "1GaOjx_EnUiUy_XAHF0RcjIJ5lM6q97Pi",
+    ("PT Ventura Impact Positif", "1GaOjx_EnUiUy_XAHF0RcjIJ5lM6q97Pi",  # pragma: allowlist secret
      "LKPM Triwulan 1 Jan-Mar 2026 KBLI 70209 Ventura Impact.pdf",
      "LK6871505", "202308-1906-3203-3714-379", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
@@ -272,12 +272,12 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "2026-04-06", "PT JUNGLE DREAM HOUSE"),
 
     # ───────── PT Urban Jungle Bali (2) ─────────
-    ("PT Urban Jungle Bali", "1hGbhkeccyz0EaI9-yql-6A5stEMyKBGM",
+    ("PT Urban Jungle Bali", "1hGbhkeccyz0EaI9-yql-6A5stEMyKBGM",  # pragma: allowlist secret
      "PT Urban Junggle (5519) - LKPM Q1.pdf",
      "LK6492198", "202503-1215-3024-4327-774", "5519", "Penyediaan Akomodasi jangka pendek lainnya",
      "PRODUKSI", "Disetujui", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-06", "PT URBAN JUNGLE BALI"),
-    ("PT Urban Jungle Bali", "18o0PiP0AJVWoJiov296PsuBCSEYXTqcl",
+    ("PT Urban Jungle Bali", "18o0PiP0AJVWoJiov296PsuBCSEYXTqcl",  # pragma: allowlist secret
      "PT Urban Junggle (6811) - LKPM Q1.pdf",
      "LK6492100", "202503-1215-2229-3848-179", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Disetujui", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
@@ -296,27 +296,27 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "2026-04-14", "PT KARTA DEVELOPERS PARADISE"),
 
     # ───────── PT Domus Dei Amare (5) ─────────
-    ("PT Domus Dei Amare", "1Oz9DTtyHFnZGVgQ3z0WZ0l41lwNKt5Jy",
+    ("PT Domus Dei Amare", "1Oz9DTtyHFnZGVgQ3z0WZ0l41lwNKt5Jy",  # pragma: allowlist secret
      "PT Domus Dei Amare (4641) - LKPM Q1.pdf",
      "LK6873042", "202307-1111-1612-6799-342", "4641", "Perdagangan besar tekstil, pakaian dan alas kaki",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT DOMUS DEI AMARE"),
-    ("PT Domus Dei Amare", "1NHZQ66mT54gOwxOZtbMlJkPz-OfPT4tU",
+    ("PT Domus Dei Amare", "1NHZQ66mT54gOwxOZtbMlJkPz-OfPT4tU",  # pragma: allowlist secret
      "PT Domus Dei Amare (7020) - LKPM Q1.pdf",
      "LK6873567", "202307-1112-0131-6947-301", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT DOMUS DEI AMARE"),
-    ("PT Domus Dei Amare", "1mPcCu5tdNBZ6lEjytOdpj7fnh2R8Ombu",
+    ("PT Domus Dei Amare", "1mPcCu5tdNBZ6lEjytOdpj7fnh2R8Ombu",  # pragma: allowlist secret
      "PT Domus Dei Amare (4610) - LKPM Q1.pdf",
      "LK6873755", "202307-1112-1625-8969-212", "4610", "Perdagangan besar atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT DOMUS DEI AMARE"),
-    ("PT Domus Dei Amare", "1hoLJu7BntdqJ8W-Jdc0C3vxuEwYlGdaf",
+    ("PT Domus Dei Amare", "1hoLJu7BntdqJ8W-Jdc0C3vxuEwYlGdaf",  # pragma: allowlist secret
      "PT Domus Dei Amare (4649) - LKPM Q1.pdf",
      "LK6873152", "202307-1111-2441-9634-484", "4649", "Perdagangan Besar Barang Keperluan Rumah Tangga Lainnya",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
      "2026-04-14", "PT DOMUS DEI AMARE"),
-    ("PT Domus Dei Amare", "12tUjXdYA9KXdvbxeNBGDnkRv_i8zoS61",
+    ("PT Domus Dei Amare", "12tUjXdYA9KXdvbxeNBGDnkRv_i8zoS61",  # pragma: allowlist secret
      "PT Domus Dei Amare (6811) - LKPM Q1.pdf",
      "LK6873441", "202307-1111-2855-6859-600", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III No. 2, Kab. Badung, Bali",
@@ -328,12 +328,12 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "LK6489143", "202410-3011-5341-9229-801", "6820", "Real estat atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Disetujui", "Jl. Pengubugan Gg Kayu Merbau No. 1A, Kab. Badung, Bali",
      "2026-04-06", "PT BALI NEA KARMA"),
-    ("PT Bali Nea Karma", "1bye_LbY0BA72Va4XJkgmceNhJg6gLFy8",
+    ("PT Bali Nea Karma", "1bye_LbY0BA72Va4XJkgmceNhJg6gLFy8",  # pragma: allowlist secret
      "PT Bali Nea Karma (7020) - LKPM Q1.pdf",
      "LK6825034", "201912-2914-4940-0753-126", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jl. Pengubugan Gg Kayu Merbau No. 1A, Kab. Badung, Bali",
      "2026-04-13", "PT BALI NEA KARMA"),
-    ("PT Bali Nea Karma", "14Smel5JTosbM-xpcdQp_Z2fmIJI95aAu",
+    ("PT Bali Nea Karma", "14Smel5JTosbM-xpcdQp_Z2fmIJI95aAu",  # pragma: allowlist secret
      "PT Bali Nea Karma (6811) - LKPM Q1.pdf",
      "LK6489083", "202410-3011-4921-5825-692", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Disetujui", "Jl. Pengubugan Gg Kayu Merbau No. 1A, Kab. Badung, Bali",
@@ -350,24 +350,24 @@ RECEIPTS: list[tuple[str, str, str, str, str, str, str, str, str, str, str, str]
      "LK6864050", "202509-3010-1146-0343-037", "68111", "Real estat yang dimiliki sendiri atau disewa",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III E, Kab. Badung, Bali",
      "2026-04-14", "PT BALI ACCOMMODATION MANAGEMENT"),
-    ("PT Bali Accommodation Management", "1ZlSPUGxFNRuSUsGQv3AE2iabgmSNpe2J",
+    ("PT Bali Accommodation Management", "1ZlSPUGxFNRuSUsGQv3AE2iabgmSNpe2J",  # pragma: allowlist secret
      "PT Bali Acomodation Management (6820) - LKPM Q1.pdf",
      "LK6864227", "202509-3010-1503-6368-950", "6820", "Real estat atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III E, Kab. Badung, Bali",
      "2026-04-14", "PT BALI ACCOMMODATION MANAGEMENT"),
-    ("PT Bali Accommodation Management", "1SW98K_f-A8KfrvyYn4ZFtd61B2zVPJl4",
+    ("PT Bali Accommodation Management", "1SW98K_f-A8KfrvyYn4ZFtd61B2zVPJl4",  # pragma: allowlist secret
      "PT Bali Acomodation Management (7020) - LKPM Q1.pdf",
      "LK6864327", "202509-3010-1817-2282-268", "7020", "Aktivitas Konsultasi Manajemen",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III E, Kab. Badung, Bali",
      "2026-04-14", "PT BALI ACCOMMODATION MANAGEMENT"),
-    ("PT Bali Accommodation Management", "1xVMBgEfdkzuP8_gXiw_TaVnPF1wiX49J",
+    ("PT Bali Accommodation Management", "1xVMBgEfdkzuP8_gXiw_TaVnPF1wiX49J",  # pragma: allowlist secret
      "PT Bali Acomodation Management (4610) - LKPM Q1.pdf",
      "LK6864435", "202509-3010-2054-4377-656", "4610", "Perdagangan besar atas dasar balas jasa (fee) atau kontrak",
      "PRODUKSI", "Terkirim", "Jalan Raya Anyar Gang III E, Kab. Badung, Bali",
      "2026-04-14", "PT BALI ACCOMMODATION MANAGEMENT"),
 
     # ───────── PT Hang Loose Compagny (1) — aka Drive "PT PIM HANG LOSE" ─────────
-    ("PT Hang Loose Compagny", "1rWK8_cUKauOnZoLivlynFOwK9x-7MyLs",
+    ("PT Hang Loose Compagny", "1rWK8_cUKauOnZoLivlynFOwK9x-7MyLs",  # pragma: allowlist secret
      "PT PIM Hang Lose  (7020) - LKPM Q1.pdf",
      "LK6871664", "202407-0315-3007-5765-036", "7020", "Aktivitas Konsultasi Manajemen",
      "KONSTRUKSI", "Terkirim", "Desa Sekongkang Bawah, Kab. Sumbawa Barat, Nusa Tenggara Barat",
