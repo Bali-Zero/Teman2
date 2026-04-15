@@ -1,6 +1,7 @@
 # VADEMECUM — Checklist operativa per costruire nell'organismo Nuzantara
 
 > Leggi `SYMBIOSIS.md` per il _perché_. Leggi questo per il _come_.
+> Serve la mappa del _cosa/dove_? Vedi [`INDEX.md`](INDEX.md).
 > Ogni sezione risponde alla domanda: "cosa devo fare quando costruisco X?"
 
 ---

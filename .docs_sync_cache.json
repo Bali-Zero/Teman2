@@ -1,0 +1,11 @@
+{
+  "qdrant": {
+    "collections": 12,
+    "documents": 104154,
+    "embedding_model": "text-embedding-3-small"
+  },
+  "kg": {
+    "nodes": 108068,
+    "edges": 242827
+  }
+}
