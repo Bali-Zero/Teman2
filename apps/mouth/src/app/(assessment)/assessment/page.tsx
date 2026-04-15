@@ -133,6 +133,38 @@ export default function AssessmentPage() {
   const [bonusSubmitted, setBonusSubmitted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Resume support: ?start=N skips to block N with prior blocks marked as submitted.
+  // Used when the candidate has already completed earlier blocks and needs to continue.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const startParam = params.get("start");
+    if (!startParam) return;
+    const startIdx = Math.max(1, Math.min(3, parseInt(startParam, 10))) - 1;
+    if (!Number.isFinite(startIdx) || startIdx <= 0) return;
+
+    const now = Date.now();
+    setBlocks((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < startIdx; i++) {
+        next[i] = {
+          answers: {},
+          submitted: true,
+          submitting: false,
+          startedAt: now,
+        };
+      }
+      next[startIdx] = {
+        ...next[startIdx],
+        startedAt: now,
+      };
+      return next;
+    });
+    setActiveBlock(startIdx);
+    setTotalStarted(now);
+    setPhase("blocks");
+  }, []);
+
   // Timer
   useEffect(() => {
     if (phase !== "blocks") return;
