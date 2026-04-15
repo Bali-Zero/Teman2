@@ -58,6 +58,12 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio pytest-mock fakeredis
+          # cell-core is the DNA-recording package used by ExperienceService
+          # (Sprint 5.2 Week 1-2) and SkillService (Sprint 5.2 Week 3-4).
+          # Install editable so `from cell_core.genome import Genome` resolves
+          # in integration tests. Without this the services run in degraded
+          # mode and e2e tests assert 'skipped' instead of 'inserted'.
+          pip install -e ../../packages/cell-core
 
       - name: pip-audit
         run: |
