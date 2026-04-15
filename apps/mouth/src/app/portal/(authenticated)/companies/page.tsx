@@ -85,7 +85,17 @@ export default function CompaniesPage() {
             <CompanyCard
               key={company.id}
               company={company}
-              onClick={() => router.push(`/portal/company/${company.id}`)}
+              // The backend returns company.id = client_company_links.id (the
+              // relationship row id) and company.company_id = the real
+              // companies.id. The detail endpoint expects companies.id, so use
+              // company_id with a fallback to id for shapes that already flatten
+              // the two (workspace consumers).
+              onClick={() => {
+                const targetId =
+                  (company as PortalCompany & { company_id?: number })
+                    .company_id ?? company.id;
+                router.push(`/portal/company/${targetId}`);
+              }}
             />
           ))}
         </section>

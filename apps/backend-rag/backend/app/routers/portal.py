@@ -366,8 +366,12 @@ async def get_company_detail(
                 status_code=404,
                 detail="Company not found or not accessible",
             )
-        # Map snake_case → camelCase for frontend PortalCompany type
-        data["isPrimary"] = data.get("ownership", {}).get("is_primary", False)
+        # Map snake_case → camelCase for frontend PortalCompany type.
+        # Defensive: `ownership` can be None when the link row was deleted;
+        # `data.get("ownership", {})` returns None (not {}) in that case,
+        # which would then crash on `.get("is_primary")`.
+        ownership = data.get("ownership") or {}
+        data["isPrimary"] = ownership.get("is_primary", False)
         data["aktaNo"] = data.pop("akta_no", None)
         data["aktaDate"] = data.pop("akta_date", None)
         data["skNumber"] = data.pop("sk_number", None)
