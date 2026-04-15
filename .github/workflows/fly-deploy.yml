@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/backend-rag/**"
       - ".github/workflows/fly-deploy.yml"
+  workflow_dispatch: # allow manual retrigger (e.g. after a secret rotation)
 
 concurrency:
   group: fly-deploy
