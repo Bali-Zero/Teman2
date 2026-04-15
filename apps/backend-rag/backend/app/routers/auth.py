@@ -235,7 +235,9 @@ async def login(
             # Real database authentication using team_members
             # Use case-insensitive query to handle email case variations
             query = """
-                SELECT id, email, full_name as name, pin_hash as password_hash, role,
+                SELECT id, email,
+                       COALESCE(full_name, name) as name,
+                       pin_hash as password_hash, role,
                        'active' as status, NULL::jsonb as metadata, language as language_preference,
                        active, avatar
                 FROM team_members
@@ -471,7 +473,9 @@ async def refresh_token(
         # Verify user is still active
         async with db_pool.acquire() as conn:
             query = """
-                SELECT id, email, full_name as name, role, 'active' as status,
+                SELECT id, email,
+                       COALESCE(full_name, name) as name,
+                       role, 'active' as status,
                        NULL::jsonb as metadata, language as language_preference,
                        linked_client_id, portal_access, avatar
                 FROM team_members
