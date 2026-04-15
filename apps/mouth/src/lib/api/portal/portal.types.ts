@@ -74,6 +74,10 @@ export interface VisaHistoryItem {
 
 export interface PortalCompany {
   id: number;
+  // /api/portal/companies returns id=client_company_links.id (the relation row)
+  // and company_id=companies.id (the real company). The detail endpoint needs
+  // the latter — keep both so the list can route correctly.
+  company_id?: number;
   name: string;
   type: string;
   status: "active" | "pending";
