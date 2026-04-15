@@ -159,7 +159,15 @@ def _load_creds_from_file(path: str):
 
 
 async def _load_creds_from_db():
-    """Load OAuth2 credentials from the ``google_drive_tokens`` Postgres table."""
+    """
+    Load OAuth2 credentials from the ``google_drive_tokens`` Postgres table.
+
+    Schema (matches backend-rag/services/integrations/drive/drive_auth.py):
+      user_id, access_token, refresh_token, expires_at, created_at, updated_at
+
+    client_id/client_secret/token_uri come from env vars (same as backend-rag).
+    Defaults to user_id='SYSTEM' (system-wide Drive access).
+    """
     import asyncpg  # type: ignore[import]
     from google.oauth2.credentials import Credentials  # type: ignore[import]
 
@@ -170,25 +178,39 @@ async def _load_creds_from_db():
             "cannot load Drive OAuth tokens."
         )
 
+    user_id = os.environ.get("GARUDA_DRIVE_USER_ID", "SYSTEM")
     conn = await asyncpg.connect(database_url)
     try:
         row = await conn.fetchrow(
-            "SELECT token, refresh_token, token_uri, client_id, client_secret, scopes "
-            "FROM google_drive_tokens ORDER BY id DESC LIMIT 1"
+            "SELECT access_token, refresh_token, expires_at FROM google_drive_tokens "
+            "WHERE user_id = $1",
+            user_id,
         )
     finally:
         await conn.close()
 
     if not row:
-        raise RuntimeError("No rows found in google_drive_tokens table.")
+        raise RuntimeError(
+            f"No rows found in google_drive_tokens for user_id={user_id!r}."
+        )
+
+    client_id = os.environ.get("GOOGLE_CLIENT_ID")
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+    if not client_id or not client_secret:
+        raise RuntimeError(
+            "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars required for OAuth refresh."
+        )
 
     return Credentials(
-        token=row["token"],
+        token=row["access_token"],
         refresh_token=row["refresh_token"],
-        token_uri=row.get("token_uri", "https://oauth2.googleapis.com/token"),
-        client_id=row["client_id"],
-        client_secret=row["client_secret"],
-        scopes=row["scopes"].split(",") if row.get("scopes") else None,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=[
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.readonly",
+        ],
     )
 
 
