@@ -44,8 +44,11 @@ def _default_http_get(url: str, headers: dict[str, str], timeout: int) -> dict[s
 
     Raises ConnectionError on network failures (no response received).
     """
+    # -4: force IPv4. Fly.io publishes AAAA records but this host's IPv6 route
+    # to Fly's anycast is unreachable, causing 15s timeouts under launchd's
+    # minimal env (no Happy Eyeballs fallback). Discovered 2026-04-16.
     cmd = [
-        "curl", "-sS",
+        "curl", "-sS", "-4",
         "--max-time", str(timeout),
         "-w", "\\n%{http_code}",  # Append status code on a new line
     ]
@@ -221,8 +224,9 @@ def _default_http_post(
     timeout: int,
 ) -> dict[str, Any]:
     """HTTP POST via curl subprocess. Returns {status_code, json, text}."""
+    # -4: force IPv4. See _default_http_get for the full explanation.
     cmd = [
-        "curl", "-sS", "-X", "POST",
+        "curl", "-sS", "-4", "-X", "POST",
         "--max-time", str(timeout),
         "-w", "\\n%{http_code}",
     ]
