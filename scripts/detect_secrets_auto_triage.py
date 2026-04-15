@@ -316,6 +316,31 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)docs/database/postgresql/.*\.(py|sh)$"),
         "docs/database tooling: local dev db update scripts",
     ),
+    # mata-garuda config: BRIDGE_API_KEY_ENV constant holds the NAME of the
+    # env var ("BRIDGE_API_KEY"), not its value. detect-secrets matches the
+    # word "KEY" in the literal. Verified 2026-04-16.
+    (
+        re.compile(r"(^|/)apps/mata-garuda/mata_garuda/config\.py$"),
+        "mata-garuda config: env var NAME constants, not credential values",
+    ),
+    # zantara-media Google Drive folder IDs are PUBLIC Drive identifiers
+    # (GARUDA photos, videos, audio, intelligence, drafts, research,
+    # published). Shared with Bali Zero team as public Drive links; carry
+    # no access authority. High-entropy false positive.
+    (
+        re.compile(r"(^|/)apps/zantara-media/zantara_media/indexer/(drive_client|pipeline)\.py$"),
+        "zantara-media indexer: Google Drive folder IDs (public identifiers, not tokens)",
+    ),
+    # detect_secrets_auto_triage.py contains REGEX PATTERNS that include
+    # placeholder credential substrings (e.g. "user:pass@localhost",
+    # ".env.prod", "service_account") used to match paths that MUST be
+    # audited. The script is itself flagged on these patterns — a
+    # meta-false-positive. The file is the triage engine; it never holds
+    # real secrets.
+    (
+        re.compile(r"(^|/)scripts/detect_secrets_auto_triage\.py$"),
+        "detect_secrets_auto_triage: triage rule patterns, not credentials (meta)",
+    ),
     # Video file (binary): base64 false positive inside .mp4 chunk.
     (
         re.compile(r"\.(mp4|webm|mov|mkv|avi|png|jpg|jpeg|gif|pdf)$"),

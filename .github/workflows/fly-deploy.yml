@@ -54,6 +54,11 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt -q
           pip install pytest pytest-asyncio pytest-mock ruff -q
+          # cell-core is the DNA-recording package (Genome/Experience/Skill).
+          # Installed editable so the backend import chain resolves in the
+          # pre-deploy gate even though the core tests below don't touch it
+          # today — keeps the gate future-proof as we add tests.
+          pip install -e ../../packages/cell-core -q
 
       - name: Import chain gate (blocca rogue AI refactor)
         run: |
