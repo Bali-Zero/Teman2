@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cell.metabolic-rollup</string>
+
+    <!-- SYMBIOSIS Pillar 7 daily rollup @ 23:30 WITA (Air local)
+         Produce: organism_metrics.db snapshot + Telegram report
+         Consume: PG cell_pulse_log, kg_nodes/kg_edges, cron JSONL, MOS, escalations -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/metabolic_rollup.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/antonellosiano/Projects/nuzantara</string>
+
+    <!-- VADEMECUM §11: launchd doesn't inherit PATH/HOME — declare explicitly. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/antonellosiano/.pyenv/shims</string>
+        <key>HOME</key>
+        <string>/Users/antonellosiano</string>
+    </dict>
+
+    <!-- 23:30 WITA daily. Late enough for all pulse data of the day to be settled. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>23</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/metabolic-rollup.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/metabolic-rollup.stderr.log</string>
+</dict>
+</plist>
