@@ -285,3 +285,110 @@ def test_record_skill_upsert_preserves_tier(genome):
     conn.close()
     assert row[0] == "tier1"
     assert row[1] == "v2"
+
+
+# ─── Scale tests (promotion + decay on 1000+ simulated skills) ───
+
+
+def _bulk_populate(db_path: str, n: int) -> None:
+    """Insert *n* skills with a deterministic distribution of uses/confidence.
+
+    Distribution (pseudo-realistic Zipf-ish):
+    - 5% hot & reliable        → uses>=150, conf>=0.88 → tier1 candidates
+    - 15% warm                 → uses 40-80, conf 0.72-0.85 → tier2 candidates
+    - 50% lukewarm             → uses 10-25, conf 0.5-0.7 → no tier, kept active
+    - 20% dormant (old)        → uses 1-4, last_used >45d → silence candidates
+    - 10% low confidence       → conf 0.1-0.25 → silence regardless of uses
+    """
+    import random
+    rng = random.Random(42)  # deterministic
+    old = datetime.fromtimestamp(time.time() - 60 * 86400, tz=timezone.utc).date().isoformat()
+    now = datetime.now(timezone.utc).date().isoformat()
+
+    rows: list[tuple] = []
+    today_valid_from = datetime.now(timezone.utc).date().isoformat()
+    for i in range(n):
+        bucket = rng.random()
+        if bucket < 0.05:
+            uses = rng.randint(150, 400)
+            conf = rng.uniform(0.88, 0.99)
+            last = now
+        elif bucket < 0.20:
+            uses = rng.randint(40, 80)
+            conf = rng.uniform(0.72, 0.85)
+            last = now
+        elif bucket < 0.70:
+            uses = rng.randint(10, 25)
+            conf = rng.uniform(0.5, 0.7)
+            last = now
+        elif bucket < 0.90:
+            uses = rng.randint(1, 4)
+            conf = rng.uniform(0.5, 0.8)
+            last = old
+        else:
+            uses = rng.randint(0, 10)
+            conf = rng.uniform(0.1, 0.25)
+            last = now
+
+        rows.append((
+            f"bulk_{i:05d}", f"cell_{i % 8}", "skill", "Project",
+            f"procedure number {i} describing a distinct reusable step",
+            today_valid_from, conf, uses, last,
+        ))
+
+    conn = sqlite3.connect(db_path)
+    conn.executemany(
+        """INSERT INTO genome
+           (id, cell_origin, type, scope, procedure, valid_from,
+            confidence, uses, last_used)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        rows,
+    )
+    conn.commit()
+    conn.close()
+
+
+def test_promote_skills_at_scale_1000(genome):
+    """On a 1000-skill fixture, promotion hits the expected tier1/tier2 range."""
+    _bulk_populate(genome._db_path, 1000)
+    result = genome.promote_skills()
+    # 5% bucket → ~50 tier1, 15% bucket → ~150 tier2.
+    # Allow ±30% sampling slack because of RNG bucketing.
+    assert 30 <= result["tier1"] <= 80, result
+    assert 100 <= result["tier2"] <= 200, result
+
+
+def test_silence_stale_v2_at_scale_1000(genome):
+    """On the same fixture, decay silences dormant + low-confidence buckets."""
+    _bulk_populate(genome._db_path, 1000)
+    n = genome.silence_stale_skills_v2()
+    # 20% dormant + 10% low-conf = ~300. Some overlap possible.
+    assert 250 <= n <= 350, n
+
+
+def test_promote_then_decay_no_overlap(genome):
+    """A skill just promoted to tier1 must not be silenced by the decay pass.
+
+    Regression guard: decay runs after promote in the intended weekly cron.
+    If promote leaves confidence untouched and decay uses confidence<0.3,
+    a tier1 row (conf >= 0.85) is safe by construction — pin that.
+    """
+    _bulk_populate(genome._db_path, 500)
+    genome.promote_skills()
+    # Count tier1 rows before decay
+    conn = sqlite3.connect(genome._db_path)
+    tier1_before = conn.execute(
+        "SELECT COUNT(*) FROM genome WHERE tier='tier1'"
+    ).fetchone()[0]
+    conn.close()
+
+    genome.silence_stale_skills_v2()
+
+    conn = sqlite3.connect(genome._db_path)
+    tier1_active = conn.execute(
+        "SELECT COUNT(*) FROM genome WHERE tier='tier1' AND valid_to IS NULL"
+    ).fetchone()[0]
+    conn.close()
+    assert tier1_active == tier1_before, (
+        f"decay silenced {tier1_before - tier1_active} tier1 rows"
+    )
