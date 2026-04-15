@@ -73,13 +73,17 @@ export function FunnelBoxes() {
       >
         Our Platforms
       </div>
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-4 gap-4">
         {BOXES.map((b) => (
           <article
             key={b.funnel}
             data-funnel={b.funnel}
             id={b.funnel}
-            className="bz-glass bz-glass--strong p-7 transition-transform hover:-translate-y-1"
+            className="rounded-2xl p-7 transition-transform hover:-translate-y-1"
+            style={{
+              background: "color-mix(in srgb, var(--surface-raised) 60%, transparent)",
+              border: "1px solid var(--border-default)",
+            }}
           >
             <div
               className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-4"
@@ -87,10 +91,7 @@ export function FunnelBoxes() {
             >
               <span
                 className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  background: "var(--accent-funnel)",
-                  boxShadow: "0 0 6px var(--accent-funnel)",
-                }}
+                style={{ background: "var(--accent-funnel)", boxShadow: "0 0 6px var(--accent-funnel)" }}
               />
               {b.status}
             </div>
@@ -100,10 +101,7 @@ export function FunnelBoxes() {
             >
               {b.title}
             </h3>
-            <p
-              className="text-[13px] leading-relaxed mb-5"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <p className="text-[13px] leading-relaxed mb-5" style={{ color: "var(--text-secondary)" }}>
               {b.desc}
             </p>
             <div
@@ -113,10 +111,7 @@ export function FunnelBoxes() {
               {b.stats.map((s) => (
                 <div key={s.l} className="flex justify-between text-xs">
                   <span style={{ color: "var(--text-tertiary)" }}>{s.l}</span>
-                  <span
-                    className="font-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
                     {s.v}
                   </span>
                 </div>
@@ -126,8 +121,7 @@ export function FunnelBoxes() {
               className="mt-5 inline-flex items-center px-4 py-2 rounded-lg text-xs font-bold"
               style={{
                 color: "var(--accent-funnel-text)",
-                border:
-                  "1px solid color-mix(in srgb, var(--accent-funnel) 25%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--accent-funnel) 25%, transparent)",
               }}
             >
               {b.cta}

@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @import '../../../../packages/core/tokens/index.css';
 @import '../../../../packages/core/tailwind/theme.css';
+@import '../../../../packages/core/effects/grain.css';
+@import '../../../../packages/core/effects/shimmer.css';
 @import '../styles/kbli-theme.css';
 
 /* Redefine dark variant to target data-theme instead of .dark class
