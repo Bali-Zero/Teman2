@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   ChevronRight,
@@ -10,13 +10,17 @@ import {
   Shield,
   AlertTriangle,
   Loader2,
-} from 'lucide-react';
-import { api } from '@/lib/api';
-import { useToast } from '@/components/ui/toast';
-import { cn } from '@/lib/utils';
-import { logger } from '@/lib/logger';
-import type { PortalCompany } from '@/lib/api/portal/portal.types';
-import { StatusBadge } from '@/components/portal';
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
+import type { PortalCompany } from "@/lib/api/portal/portal.types";
+import {
+  StatusBadge,
+  PortalEmptyState,
+  PortalListSkeleton,
+} from "@/components/portal";
 
 export default function CompaniesPage() {
   const router = useRouter();
@@ -35,8 +39,8 @@ export default function CompaniesPage() {
       const data = await api.portal.getCompanies();
       setCompanies(data);
     } catch (err) {
-      error('Failed to load companies', 'Please try again later');
-      logger.error('Failed to load portal companies', {}, err as Error);
+      error("Failed to load companies", "Please try again later");
+      logger.error("Failed to load portal companies", {}, err as Error);
     } finally {
       setIsLoading(false);
     }
@@ -47,12 +51,14 @@ export default function CompaniesPage() {
     try {
       setSettingPrimaryId(companyId);
       await api.portal.setPrimaryCompany(companyId);
-      setCompanies((prev) => prev.map((c) => ({ ...c, isPrimary: c.id === companyId })));
-      success('Primary company updated', 'Your primary company has been set.');
-      logger.info('Primary company set', {});
+      setCompanies((prev) =>
+        prev.map((c) => ({ ...c, isPrimary: c.id === companyId })),
+      );
+      success("Primary company updated", "Your primary company has been set.");
+      logger.info("Primary company set", {});
     } catch (err) {
-      error('Failed to set primary company', 'Please try again');
-      logger.error('Failed to set primary company', {}, err as Error);
+      error("Failed to set primary company", "Please try again");
+      logger.error("Failed to set primary company", {}, err as Error);
     } finally {
       setSettingPrimaryId(null);
     }
@@ -64,22 +70,14 @@ export default function CompaniesPage() {
         <section>
           <div
             className="h-7 w-48 rounded animate-pulse"
-            style={{ background: 'var(--bz-border)' }}
+            style={{ background: "var(--bz-border)" }}
           />
           <div
             className="h-4 w-72 rounded mt-2 animate-pulse"
-            style={{ background: 'var(--bz-border)', opacity: 0.5 }}
+            style={{ background: "var(--bz-border)", opacity: 0.5 }}
           />
         </section>
-        <section className="space-y-3">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl border p-4 h-24 animate-pulse"
-              style={{ background: 'rgba(30,30,35,0.7)', borderColor: 'rgba(255,255,255,0.05)' }}
-            />
-          ))}
-        </section>
+        <PortalListSkeleton count={3} />
       </div>
     );
   }
@@ -89,40 +87,19 @@ export default function CompaniesPage() {
       {/* Header */}
       <section>
         <h1 className="text-2xl font-bold tracking-tight">Your Companies</h1>
-        <p style={{ color: 'var(--bz-text-2)' }}>Manage your business entities in Indonesia</p>
+        <p style={{ color: "var(--bz-text-2)" }}>
+          Manage your business entities in Indonesia
+        </p>
       </section>
 
       {/* Companies List */}
       {companies.length === 0 ? (
-        <section
-          className="rounded-xl border border-dashed p-12 text-center"
-          style={{
-            background: 'rgba(30,30,35,0.7)',
-            borderColor: 'rgba(255,255,255,0.05)',
-            backdropFilter: 'blur(24px)',
-          }}
-        >
-          <Building2
-            className="w-16 h-16 mx-auto mb-4 opacity-30"
-            style={{ color: 'var(--bz-text-2)' }}
-          />
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--bz-text-2)' }}>
-            No companies yet
-          </h2>
-          <p className="text-sm mt-1" style={{ color: 'var(--bz-text-3)' }}>
-            Contact us to set up your Indonesian business entity.
-          </p>
-          <a
-            href="/portal/chat"
-            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
-            style={{
-              background: 'rgba(201,169,110,0.12)',
-              color: 'var(--bz-accent-warm)',
-            }}
-          >
-            Message our team
-          </a>
-        </section>
+        <PortalEmptyState
+          icon={Building2}
+          title="No companies yet"
+          description="Contact us to set up your Indonesian business entity."
+          cta={{ label: "Message our team", href: "/portal/chat" }}
+        />
       ) : (
         <section className="space-y-3">
           {companies.map((company) => (
@@ -154,31 +131,31 @@ function CompanyCard({
   const getComplianceStatus = () => {
     if (!company.compliance || company.compliance.length === 0) return null;
 
-    const hasOverdue = company.compliance.some((c) => c.status === 'overdue');
-    const hasUpcoming = company.compliance.some((c) => c.status === 'upcoming');
+    const hasOverdue = company.compliance.some((c) => c.status === "overdue");
+    const hasUpcoming = company.compliance.some((c) => c.status === "upcoming");
 
     if (hasOverdue) {
-      return { label: 'Overdue', color: '#f87171' };
+      return { label: "Overdue", color: "#f87171" };
     }
     if (hasUpcoming) {
-      return { label: 'Upcoming', color: '#fbbf24' };
+      return { label: "Upcoming", color: "#fbbf24" };
     }
-    return { label: 'Compliant', color: '#34d399' };
+    return { label: "Compliant", color: "#34d399" };
   };
 
   const getLicenseStatus = () => {
     if (!company.licenses || company.licenses.length === 0) return null;
 
-    const hasExpired = company.licenses.some((l) => l.status === 'expired');
-    const hasExpiring = company.licenses.some((l) => l.status === 'expiring');
+    const hasExpired = company.licenses.some((l) => l.status === "expired");
+    const hasExpiring = company.licenses.some((l) => l.status === "expiring");
 
     if (hasExpired) {
-      return { icon: AlertTriangle, className: 'text-red-500' };
+      return { icon: AlertTriangle, className: "text-red-500" };
     }
     if (hasExpiring) {
-      return { icon: AlertTriangle, className: 'text-amber-500' };
+      return { icon: AlertTriangle, className: "text-amber-500" };
     }
-    return { icon: CheckCircle, className: 'text-emerald-500' };
+    return { icon: CheckCircle, className: "text-emerald-500" };
   };
 
   const compliance = getComplianceStatus();
@@ -187,38 +164,51 @@ function CompanyCard({
   return (
     <article
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       tabIndex={0}
       role="button"
       aria-label={`View ${company.name} details`}
       className="rounded-xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--bz-accent-warm)]"
       style={{
-        background: 'rgba(30,30,35,0.7)',
-        borderColor: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(24px)',
+        background: "rgba(30,30,35,0.7)",
+        borderColor: "rgba(255,255,255,0.05)",
+        backdropFilter: "blur(24px)",
       }}
     >
       <div className="flex items-start gap-4">
         <div
           className="p-3 rounded-xl flex-shrink-0"
-          style={{ background: 'rgba(201,169,110,0.1)' }}
+          style={{ background: "rgba(201,169,110,0.1)" }}
         >
-          <Building2 className="w-6 h-6" style={{ color: 'var(--bz-accent-warm)' }} />
+          <Building2
+            className="w-6 h-6"
+            style={{ color: "var(--bz-accent-warm)" }}
+          />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-base truncate">{company.name}</h3>
+                <h3 className="font-semibold text-base truncate">
+                  {company.name}
+                </h3>
                 {company.isPrimary && (
                   <Shield
                     className="w-4 h-4 flex-shrink-0"
-                    style={{ color: 'var(--bz-accent-warm)' }}
+                    style={{ color: "var(--bz-accent-warm)" }}
                   />
                 )}
               </div>
-              <p className="text-sm mt-0.5" style={{ color: 'var(--bz-text-2)' }}>
+              <p
+                className="text-sm mt-0.5"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {company.type}
               </p>
             </div>
@@ -230,51 +220,87 @@ function CompanyCard({
                   disabled={isSettingPrimary}
                   className="text-xs px-2 py-1 rounded-full border transition-opacity hover:opacity-80 disabled:opacity-40 whitespace-nowrap"
                   style={{
-                    borderColor: 'rgba(201,169,110,0.3)',
-                    color: 'var(--bz-accent-warm)',
-                    background: 'rgba(201,169,110,0.06)',
+                    borderColor: "rgba(201,169,110,0.3)",
+                    color: "var(--bz-accent-warm)",
+                    background: "rgba(201,169,110,0.06)",
                   }}
                 >
                   {isSettingPrimary ? (
                     <Loader2 className="w-3 h-3 animate-spin inline" />
                   ) : (
-                    'Set primary'
+                    "Set primary"
                   )}
                 </button>
               )}
               <StatusBadge status={company.status} />
-              <ChevronRight className="w-5 h-5" style={{ color: 'var(--bz-text-2)' }} />
+              <ChevronRight
+                className="w-5 h-5"
+                style={{ color: "var(--bz-text-2)" }}
+              />
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs"
-            style={{ color: 'var(--bz-text-2)' }}
-          >
-            {company.nib && <span>NIB: {company.nib}</span>}
-            {company.kbli && <span>KBLI: {company.kbli}</span>}
-            {company.licenses && company.licenses.length > 0 && licenseStatus && (
-              <div className="flex items-center gap-1.5">
-                <licenseStatus.icon className={cn('w-3.5 h-3.5', licenseStatus.className)} />
-                <span>
-                  {company.licenses.length} license
-                  {company.licenses.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
-
-            {company.directors && company.directors.length > 0 && (
-              <span>
-                {company.directors.length} director
-                {company.directors.length !== 1 ? 's' : ''}
+          {/* Quick Stats — monospace chips for identifiers, plain text for counts. */}
+          <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
+            {company.nib && (
+              <span
+                className="px-2 py-0.5 rounded-full font-mono tabular-nums"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  color: "var(--bz-text-1)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+                title="Nomor Induk Berusaha"
+              >
+                NIB {company.nib}
               </span>
             )}
-
+            {company.kbli && (
+              <span
+                className="px-2 py-0.5 rounded-full font-mono tabular-nums"
+                style={{
+                  background: "rgba(201,169,110,0.08)",
+                  color: "var(--bz-accent-warm)",
+                  border: "1px solid rgba(201,169,110,0.2)",
+                }}
+                title="KBLI activity codes"
+              >
+                KBLI {company.kbli.split(",")[0]}
+                {company.kbli.includes(",")
+                  ? ` +${company.kbli.split(",").length - 1}`
+                  : ""}
+              </span>
+            )}
+            {company.licenses &&
+              company.licenses.length > 0 &&
+              licenseStatus && (
+                <span
+                  className="flex items-center gap-1"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
+                  <licenseStatus.icon
+                    className={cn("w-3.5 h-3.5", licenseStatus.className)}
+                  />
+                  {company.licenses.length} license
+                  {company.licenses.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            {company.directors && company.directors.length > 0 && (
+              <span style={{ color: "var(--bz-text-2)" }}>
+                {company.directors.length} director
+                {company.directors.length !== 1 ? "s" : ""}
+              </span>
+            )}
             {compliance && (
-              <div className="font-medium" style={{ color: compliance.color }}>
+              <span
+                className="font-medium px-2 py-0.5 rounded-full"
+                style={{
+                  color: compliance.color,
+                  background: `${compliance.color}15`,
+                }}
+              >
                 {compliance.label}
-              </div>
+              </span>
             )}
           </div>
         </div>
