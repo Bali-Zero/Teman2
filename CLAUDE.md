@@ -2,6 +2,7 @@
 
 > **Read `SYMBIOSIS.md` first.** It defines the principles that govern this entire ecosystem. If what you're about to do contradicts a principle there, stop.
 > **Before building anything new, read `VADEMECUM.md`.** It has the operative checklist for every element type: automations, agents, routers, migrations, deploys. No exceptions.
+> **Need to find where X lives?** See [`INDEX.md`](INDEX.md) — it's the atlas of organs, tissues, nerves. Start there before asking.
 
 ## 0. Machine Identification (IMPORTANT)
 
@@ -31,35 +32,52 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 **Business:** Indonesian business services (visa, company setup, tax, property) in Bali — 5000+ clients
 **URL:** https://kita.balizero.com
 
-### Architecture — Monorepo (20 apps)
+### Architecture — Monorepo
 
-- `apps/mouth/` - Next.js frontend (Vercel) — kita/my/prime.balizero.com
-- `apps/backend-rag/` - Python FastAPI RAG backend (Fly.io)
-- `apps/nuzantara-mcp/` - MCP server v2.1 (115 tools, 10 prompts, 5 resources, 8 chains)
-- `apps/nuzantara-mcp-advanced/` - Advanced MCP (Fly.io ops, diagnostics, 14 tools)
-- `apps/nuzantara-mcp-browser/` - Browser automation MCP
-- `apps/bali-intel-scraper/` - Intel pipeline (runs LOCALLY on Pro via OpenClaw, NOT Fly)
-- `apps/evaluator/` - Quality assurance + Core Guardian V3
-- `apps/war-room/` - Operations dashboard + Canva automation
-- `apps/graph-engine/` - Graph processing engine
-- `apps/kbli-voice/` · `apps/zantara-media/` · `apps/admin-dashboard/` · `apps/webapp/`
-- `apps/kbli-navigator/` - KBLI 2025 Navigator
-- `apps/calendar/` · `apps/drive/` · `apps/knowledge/` · `apps/mail/` · `apps/web/` - Subdomain satellites
-- `packages/core/` - Core libraries + BZ design tokens + BZLogo
-- `packages/kb/` - Knowledge base
+<!-- DOCSYNC:LIVING_ORGANS_START -->
+**Apps:** 24 · **Packages:** 4
+
+| App | Ruolo |
+| --- | ----- |
+| `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
+| `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
+| `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
+| `calendar` | Vercel subdomain satellite app. Part of the Bali Zero workspace ecosystem. |
+| `cell` |  |
+| `drive` | Vercel subdomain satellite app. File management for Bali Zero workspace. |
+| `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
+| `graph-engine` | Graph processing engine for Knowledge Graph operations. |
+| `kb` |  |
+| `kbli-navigator` |  |
+| `knowledge` | Vercel subdomain satellite app. Knowledge base interface for Bali Zero. |
+| `mail` | Vercel subdomain satellite app. Email interface for Bali Zero workspace. |
+| `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
+| `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
+| `nlm-bridge` |  |
+| `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
+| `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
+| `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
+| `osint-nexus` |  |
+| `osint-nexus-ui` |  |
+| `team-agent` |  |
+| `war-room` | **Automated Marketing & Journalism Pipeline** |
+| `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
+| `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
+<!-- DOCSYNC:LIVING_ORGANS_END -->
+
+See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, cron schedule, and top-of-mind organs.
 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-
-- **Backend:** Python 3.11+, FastAPI, 90 routers, 253 services, 419 test files
+- **Backend:** Python 3.11+, FastAPI, 233 routers, 345 services, 643 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
 - **Infrastructure:** Fly.io (backend), Vercel (frontend)
 - **Knowledge Graph:** 108,068 nodes, 242,827 edges
 <!-- DOCSYNC:VECTOR_STATS_START -->
-- **Vector Collections:** 10 live on Fly.io (93,283 documents), 11 defined in code
+- **Vector Collections:** 12 live on Fly.io (104,154 documents), 12 defined in code
 <!-- DOCSYNC:VECTOR_STATS_END -->
 - **Embedding Model:** `text-embedding-3-small` (1536 dims) — **NEVER CHANGE** (would invalidate 93,283 vectors)
 - **Search Pipeline:** Hybrid (BM25+Dense+RRF) + CrossEncoder reranking
@@ -221,9 +239,7 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 ### Evidence Scoring — `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL
 
 <!-- DOCSYNC:EMBEDDING_FROZEN_START -->
-
 ### Embedding — `text-embedding-3-small` (1536 dims) FROZEN. Never change without re-indexing plan.
-
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 
 ## 7. MCP Servers

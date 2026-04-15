@@ -37,18 +37,11 @@ nuzantara/
 ## Tech Stack
 
 <!-- DOCSYNC:TECH_STATS_START -->
-
-| Layer               | Technology                                                          |
-| ------------------- | ------------------------------------------------------------------- |
-| **Backend**         | Python 3.11, FastAPI, 89 routers, 250 services                      |
-| **Frontend**        | Next.js, TypeScript, Tailwind CSS                                   |
-| **Databases**       | PostgreSQL (relational), Qdrant v1.17.0 (vector), Redis (cache)     |
-| **Infrastructure**  | Fly.io (backend, Singapore), Vercel (frontend)                      |
-| **LLM**             | Gemini 2.5 Flash (primary), Gemini 2.0 Flash (fallback), OpenRouter |
-| **Embedding**       | `text-embedding-3-small` (1536 dims) — FROZEN                       |
-| **Knowledge Graph** | 56,113 nodes, 161,173 edges, LangGraph orchestrator                 |
-| **Vector Store**    | 10 collections, 93,283 documents                                    |
-
+- Backend: FastAPI · 233 routers · 345 services
+- Vector DB: Qdrant · 12 collections · 104,154 documents
+- Knowledge Graph: 108,068 nodes · 242,827 edges
+- Apps: 24 · Packages: 4
+- Version: 5.2.0
 <!-- DOCSYNC:TECH_STATS_END -->
 
 | **Vector Store** | 10 collections, 93,283 documents |
