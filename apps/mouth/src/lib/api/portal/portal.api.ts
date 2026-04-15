@@ -449,6 +449,20 @@ export class PortalApi {
     return response.data!;
   }
 
+  /**
+   * Portal-scoped list of required documents across the caller's active
+   * practices. The workspace uses /api/crm/clients/client/{id}/required-documents
+   * which 403s for plain client JWTs — this route resolves client_id from
+   * the JWT (or ?as_client= for superusers).
+   */
+  async getMyRequiredDocuments(): Promise<unknown[]> {
+    const response = await this.client.request<PortalApiResponse<unknown[]>>(
+      "/api/portal/process/required-documents",
+      { method: "GET" },
+    );
+    return response.data ?? [];
+  }
+
   // ============================================================================
   // Drive Files
   // ============================================================================

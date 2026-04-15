@@ -7,6 +7,7 @@ import {
   StatusBadge,
   CountdownChip,
   PortalCardSkeleton,
+  PortalEmptyState,
 } from "@/components/portal";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
@@ -163,30 +164,11 @@ export default function BillingPage() {
       {/* Invoice List */}
       <section className="space-y-3">
         {invoices.length === 0 ? (
-          <div
-            className="rounded-xl border border-dashed p-12 text-center"
-            style={{
-              background: "rgba(30,30,35,0.7)",
-              borderColor: "rgba(255,255,255,0.05)",
-            }}
-          >
-            <Receipt
-              className="w-16 h-16 mx-auto mb-4 opacity-30"
-              style={{ color: "var(--bz-text-2)" }}
-            />
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: "var(--bz-text-2)" }}
-            >
-              No invoices yet
-            </h2>
-            <p
-              className="text-sm mt-1"
-              style={{ color: "var(--bz-text-3)" }}
-            >
-              Invoices will appear here when your services are billed.
-            </p>
-          </div>
+          <PortalEmptyState
+            icon={Receipt}
+            title="No invoices yet"
+            description="Invoices will appear here when your services are billed."
+          />
         ) : (
           invoices.map((invoice) => (
             <div
