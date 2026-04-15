@@ -26,3 +26,10 @@
   0%   { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
+
+/* General pulse — reusable for state indicators, motion demos.
+   Respects prefers-reduced-motion via the duration variables. */
+@keyframes pulse {
+  0%   { opacity: 1; }
+  100% { opacity: 0.4; }
+}

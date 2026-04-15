@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import Script from "next/script";
 import { Toaster } from "sonner";
@@ -21,22 +20,6 @@ import "./globals.css";
 // Three-coupled-changes procedure, design doc §5. Must be inline; next/script
 // strategy="beforeInteractive" is insufficient in App Router.
 const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap", // Prevent FOIT (Flash of Invisible Text)
-  preload: true,
-  fallback: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap", // Prevent FOIT
-  preload: true,
-  fallback: ["SF Mono", "Monaco", "Inconsolata", "monospace"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -236,7 +219,7 @@ export default function RootLayout({
         <DynamicJsonLd />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
+        className="antialiased bg-[var(--background)] text-[var(--foreground)]"
         suppressHydrationWarning
       >
         <QueryProvider>
