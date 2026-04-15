@@ -47,6 +47,11 @@ PG_CHANNEL_MAP: dict[str, str] = {
     "practice_changed": "practice.status_changed",
     "client_changed": "client.changed",
     "compliance_alert": "compliance.alert",
+    # Emitted by import scripts after bulk ingest of OSS tanda terima receipts.
+    # Payload: {"quarter": "Q1", "year": 2026, "pt_count": N, "receipt_count": N,
+    #           "report_ids": [...], "source": "tax_drive_manual"}
+    # Consumers: KG Tax subgraph sync, portal notifications, audit log.
+    "lkpm_ingest_completed": "lkpm.ingest_completed",
 }
 
 _RECONNECT_DELAY_S = 5

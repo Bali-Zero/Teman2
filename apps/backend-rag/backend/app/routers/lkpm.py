@@ -147,10 +147,27 @@ async def get_draft(
     client_id: int,
     quarter: str,
     year: int,
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict:
-    """Get LKPM draft for a client/quarter."""
+    """Get LKPM draft for a client/quarter.
+
+    If client_id=0, resolve the caller's client_id from the JWT (portal clients
+    call with /draft/0/Q1?year=2026 since they don't know their own numeric id).
+    """
+    if client_id == 0 and current_user.get("role") == "client":
+        email = current_user.get("email")
+        if not email:
+            raise HTTPException(status_code=401, detail="No email on token")
+        async with db_pool.acquire() as conn:
+            resolved = await conn.fetchval(
+                "SELECT id FROM clients WHERE LOWER(email) = LOWER($1) LIMIT 1",
+                email,
+            )
+        if not resolved:
+            raise HTTPException(status_code=404, detail="Client not found for this account")
+        client_id = int(resolved)
+
     service = _get_service(db_pool)
     draft = await service.get_draft(client_id, quarter, year)
     if not draft:
@@ -294,6 +311,89 @@ async def get_my_history(
         }
     except Exception as e:
         logger.error(f"Failed to get LKPM history for portal client: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/receipts/me", response_model=dict)
+async def get_my_receipts(
+    request: Request,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Portal: OSS tanda terima for every company where the authenticated client
+    is a shareholder (via client_company_links). Mirrors /history/me but at
+    the receipt granularity.
+    """
+    from backend.app.routers.portal import get_current_client
+
+    client = await get_current_client(request, db_pool)
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_portal_client(client["client_id"])
+        return {
+            "success": True,
+            "client_id": client["client_id"],
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for portal client: {e}", exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# Order matters: /receipts/by-client/{id} must precede /receipts/{id}, otherwise
+# FastAPI binds "by-client" as the int path param of get_receipts_for_report.
+@router.get("/receipts/by-client/{client_id}", response_model=dict)
+async def get_receipts_by_client(
+    client_id: int,
+    current_user: str = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """
+    Workspace TaxTab: OSS tanda terima across every company where the client
+    is a shareholder (via client_company_links). Staff-authenticated; the
+    portal equivalent is GET /receipts/me.
+    """
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_client(client_id)
+        return {
+            "success": True,
+            "client_id": client_id,
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for client {client_id}: {e}",
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get("/receipts/{lkpm_report_id}", response_model=dict)
+async def get_receipts_for_report(
+    lkpm_report_id: int,
+    current_user: str = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """Workspace: OSS tanda terima attached to a single lkpm_reports row."""
+    service = _get_service(db_pool)
+    try:
+        items = await service.get_receipts_for_report(lkpm_report_id)
+        return {
+            "success": True,
+            "lkpm_report_id": lkpm_report_id,
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(
+            f"Failed to get LKPM receipts for report {lkpm_report_id}: {e}",
+            exc_info=True,
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

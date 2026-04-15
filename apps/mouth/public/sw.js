@@ -5,12 +5,14 @@
  *            Cache-First per assets statici
  */
 
-const CACHE_NAME = "balizero-v5";
-const STATIC_CACHE = "balizero-static-v5";
-const API_CACHE = "balizero-api-v5";
+const CACHE_NAME = "balizero-v6";
+const STATIC_CACHE = "balizero-static-v6";
+const API_CACHE = "balizero-api-v6";
 
-// Assets da cacheare immediatamente
-const STATIC_ASSETS = ["/", "/offline"];
+// Assets da cacheare al momento dell'install.
+// "/offline" rimosso: su subdomini (my/kita) viene redirected cross-origin al
+// dominio principale e bloccato da CORS, facendo fallire l'intero cache.addAll.
+const STATIC_ASSETS = ["/"];
 
 // Install: Cache static assets
 self.addEventListener("install", (event) => {
@@ -129,7 +131,10 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-// Stale While Revalidate: Ritorna cache, aggiorna in background
+// Stale While Revalidate: Ritorna cache, aggiorna in background.
+// Se cache e network sono entrambi vuoti, restituiamo comunque una Response
+// 503 sintetica — respondWith NON può rimanere senza una Response valida
+// (il browser emette "Failed to convert value to 'Response'").
 async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -141,7 +146,17 @@ async function staleWhileRevalidate(request, cacheName) {
       }
       return networkResponse;
     })
-    .catch(() => cached); // Fallback a cache se network fallisce
+    .catch(
+      () =>
+        cached ||
+        new Response(
+          JSON.stringify({ error: "offline", detail: "Network unavailable" }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+    );
 
   return cached || fetchPromise;
 }
@@ -178,7 +193,16 @@ async function networkFirst(request) {
       );
     }
 
-    throw error;
+    // Never throw from fetch handler — Service Worker fetch listener must
+    // always respondWith a valid Response, otherwise the browser reports
+    // "Failed to convert value to 'Response'" and the navigation stalls.
+    return new Response(
+      JSON.stringify({ error: "offline", detail: "Network unavailable" }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 

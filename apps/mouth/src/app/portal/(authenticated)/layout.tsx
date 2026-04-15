@@ -28,6 +28,9 @@ export default function PortalLayout({
   });
 
   // Load user profile
+  // Uses portal-scoped endpoint (/api/portal/profile) because /api/auth/profile
+  // 500s for role=client — see commit history. Falls back to storedProfile name
+  // when available, since portal profile uses fullName (not name).
   const loadUserProfile = useCallback(async () => {
     try {
       const storedProfile = api.getUserProfile();
@@ -43,13 +46,14 @@ export default function PortalLayout({
         return;
       }
 
-      const profile = await api.getProfile();
+      const portalProfile = await api.portal.getProfile();
       const userName =
-        profile.name || (profile.email ? profile.email.split("@")[0] : "User");
+        portalProfile.fullName ||
+        (portalProfile.email ? portalProfile.email.split("@")[0] : "User");
       setUser({
         name: userName,
-        email: profile.email || "",
-        avatar: profile.avatar,
+        email: portalProfile.email || "",
+        avatar: undefined,
       });
     } catch (error) {
       logger.error(
@@ -87,17 +91,15 @@ export default function PortalLayout({
       // No localStorage token — try cookie-based auth (cross-domain SSO).
       // The httpOnly cookie is sent automatically via credentials: "include".
       try {
-        const profile = await api.getProfile();
-        if (profile?.email) {
-          // Cookie auth worked — sync token to localStorage for future fast checks
-          api.setUserProfile(profile);
+        const portalProfile = await api.portal.getProfile();
+        if (portalProfile?.email) {
           const userName =
-            profile.name ||
-            (profile.email ? profile.email.split("@")[0] : "User");
+            portalProfile.fullName ||
+            (portalProfile.email ? portalProfile.email.split("@")[0] : "User");
           setUser({
             name: userName,
-            email: profile.email || "",
-            avatar: profile.avatar,
+            email: portalProfile.email || "",
+            avatar: undefined,
           });
           setIsLoading(false);
           return;
@@ -143,10 +145,10 @@ export default function PortalLayout({
   useEffect(() => {
     if (!isMobileMenuOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+      if (e.key === "Escape") setIsMobileMenuOpen(false);
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [isMobileMenuOpen]);
 
   // Show loading state
