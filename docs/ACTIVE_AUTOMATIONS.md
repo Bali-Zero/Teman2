@@ -240,6 +240,48 @@ Seeds common query patterns to `golden_routes` table for faster routing:
 
 ---
 
+## 🗓️ PLANNED (Documented, NOT yet scheduled)
+
+These are implemented in code but intentionally NOT wired to any scheduler
+yet. Activation requires a VADEMECUM §1 audit and Zero's approval.
+
+### Skill Registry — Weekly Maintenance
+
+**Proposed schedule:** Every Sunday 06:00 WITA (Air-side cron, after `ragas_eval`)  
+**File:** `packages/cell-core/cell_core/genome.py` (`promote_skills`, `silence_stale_skills_v2`)  
+**Sprint:** 5.2 Week 3-4
+
+**What it would do (sequential, idempotent):**
+
+1. `Genome.silence_stale_skills_v2()` — soft-silence (valid_to = today) skills
+   that are either (a) confidence<0.3 or (b) uses<5 AND dormant >30d.
+   Never touches trajectories/scars; reversible via `valid_to = NULL`.
+2. `Genome.promote_skills()` — promote survivors:
+   - uses≥100 AND confidence≥0.85 → tier1
+   - uses≥30 AND confidence≥0.70 (and not tier1) → tier2
+   Monotonic: never downgrades.
+3. Emit a JSON summary to `shared/skill_registry_maintenance.jsonl` with
+   `{date, silenced_n, promoted_tier1, promoted_tier2, total_active}`.
+
+**Why NOT active yet:**
+
+- Seed is still <50 skills; promotion math needs real production usage stats
+  (from `/api/skill/record` use counters) before thresholds are trustworthy.
+- VADEMECUM §1 audit not run — need to confirm Sunday 06:00 slot doesn't
+  collide with `ragas_eval` memory footprint.
+- Auto-apply is allowed here (per SYMBIOSIS Legge 5: decay is reversible via
+  `valid_to = NULL`, so it's the one place auto-action is safe).
+
+**Activation checklist when the time comes:**
+
+- [ ] Run for 4 weeks in dry-run mode via manual invocation; compare proposed
+      changes against a human reviewer.
+- [ ] Add Telegram summary notification (owner chat 1125336968).
+- [ ] Wire into `~/scripts/` as `skill_registry_maintenance.sh` with lockfile.
+- [ ] Add entry to this file's active section; remove from PLANNED.
+
+---
+
 ## ❌ REMOVED/DISABLED
 
 These were removed from the codebase or explicitly disabled:
