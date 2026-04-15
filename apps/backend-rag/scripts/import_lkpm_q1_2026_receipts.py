@@ -22,7 +22,10 @@ What this script does:
    as the row's canonical oss_receipt_number/url, set lkpm_assigned_to to the
    DEWA AYU or Kadek address based on the source folder.
 5. Insert 41 rows into lkpm_receipts (one per PDF), UNIQUE on nomor_laporan.
-6. Send email report to zero@balizero.com + tax@balizero.com via Brevo
+6. After commit, pg_notify('lkpm_ingest_completed', payload) so the EventBus
+   (backend/services/events/event_bus.py) dispatches lkpm.ingest_completed
+   to KG Tax subgraph, portal notifications, audit log. Skip with --skip-event.
+7. Send email report to zero@balizero.com + tax@balizero.com via Brevo
    (POST /api/notifications/send-email on nuzantara-rag.fly.dev).
 
 Idempotent: safe to re-run. UNIQUE constraints prevent duplicates.
@@ -54,7 +57,7 @@ import json
 import logging
 import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import asyncpg
@@ -728,6 +731,7 @@ async def run_import(conn: asyncpg.Connection, stats: dict[str, int]) -> dict[st
         report_rows.append({
             "pt_key": pt_key,
             "company_id": company_id,
+            "report_id": report_id,
             "operator": operator,
             "action": action,
             "receipts_total": len(receipts),
@@ -745,6 +749,60 @@ async def run_import(conn: asyncpg.Connection, stats: dict[str, int]) -> dict[st
         "name_changes": name_changes,
         "stats": stats,
     }
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Event bus — pg_notify after successful commit
+# ──────────────────────────────────────────────────────────────────────
+
+# PG channel registered in backend/services/events/event_bus.py:PG_CHANNEL_MAP.
+# Consumers (KG Tax sync, portal notifications, audit log) subscribe to the
+# corresponding event type `lkpm.ingest_completed` via EventBus.
+PG_CHANNEL_INGEST = "lkpm_ingest_completed"
+
+
+async def emit_ingest_event(
+    conn: asyncpg.Connection,
+    result: dict[str, Any],
+    source: str,
+) -> bool:
+    """
+    Emit a pg_notify on `lkpm_ingest_completed` after the import tx commits.
+    Must run AFTER the tx is closed — before that, other backends cannot see
+    the new rows and reacting on the notify would hit an empty DB.
+
+    Payload must be < 8KB (PG NOTIFY limit). We send only IDs, not full rows.
+    """
+    try:
+        report_ids = [r["report_id"] for r in result["pt_rows"] if r.get("report_id")]
+        company_ids = [r["company_id"] for r in result["pt_rows"] if r.get("company_id")]
+        payload = {
+            "quarter": "Q1",
+            "year": 2026,
+            "pt_count": len(result["pt_rows"]),
+            "receipt_count": result["stats"]["receipts_inserted"],
+            "report_ids": report_ids,
+            "company_ids": company_ids,
+            "source": source,
+            "emitted_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        payload_str = json.dumps(payload, default=str)
+        if len(payload_str) > 7500:
+            logger.warning(
+                f"EventBus: payload is {len(payload_str)} bytes, dropping company_ids",
+            )
+            payload.pop("company_ids", None)
+            payload_str = json.dumps(payload, default=str)
+
+        await conn.execute("SELECT pg_notify($1, $2)", PG_CHANNEL_INGEST, payload_str)
+        logger.info(
+            f"📡 pg_notify('{PG_CHANNEL_INGEST}'): "
+            f"{payload['pt_count']} PT, {payload['receipt_count']} receipts",
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to emit ingest event: {e}")
+        return False
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -768,7 +826,7 @@ def _render_email_html(result: dict[str, Any], dry_run: bool) -> str:
     title = "LKPM Q1 2026 — OSS receipts import report" + (" [DRY-RUN]" if dry_run else "")
     lines = [
         f"<h2 style='font-family:sans-serif'>{title}</h2>",
-        f"<p>Generated: {datetime.utcnow().isoformat(timespec='seconds')}Z</p>",
+        f"<p>Generated: {datetime.now(timezone.utc).isoformat(timespec='seconds')}</p>",
         "<h3>Summary</h3>",
         "<table cellpadding='4' style='border-collapse:collapse;font-family:sans-serif;font-size:13px'>",
         f"<tr><td>PDFs processed</td><td align='right'><b>{len(RECEIPTS)}</b></td></tr>",
@@ -850,7 +908,7 @@ class _DryRunRollback(Exception):
     """Sentinel to abort dry-run transaction cleanly."""
 
 
-async def main(dry_run: bool, skip_email: bool) -> int:
+async def main(dry_run: bool, skip_email: bool, skip_event: bool) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.error("DATABASE_URL not set")
@@ -870,6 +928,7 @@ async def main(dry_run: bool, skip_email: bool) -> int:
         "lkpm_reports_exists_noop": 0,
         "receipts_inserted": 0,
         "receipts_exists": 0,
+        "event_emitted": 0,
         "errors": 0,
     }
 
@@ -904,6 +963,15 @@ async def main(dry_run: bool, skip_email: bool) -> int:
             )
             logger.info(f"  lkpm_receipts total rows: {tot_rec}")
             logger.info(f"  lkpm_reports Q1 2026 submitted=TRUE: {tot_q1}")
+
+            # Emit pg_notify AFTER tx committed (consumers must see new rows).
+            # Run on a fresh connection context (current `conn` is fine — tx closed).
+            if not skip_event and stats["errors"] == 0:
+                emitted = await emit_ingest_event(
+                    conn, result, source="tax_drive_manual_q1_2026",
+                )
+                if emitted:
+                    stats["event_emitted"] = 1
     finally:
         await conn.close()
 
@@ -934,6 +1002,11 @@ if __name__ == "__main__":
         help="Skip sending the email report (still logs stats).",
     )
     parser.add_argument(
+        "--skip-event",
+        action="store_true",
+        help="Skip emitting the pg_notify('lkpm_ingest_completed') event after commit.",
+    )
+    parser.add_argument(
         "--dump-json",
         metavar="PATH",
         help="Also write the parsed receipts payload as JSON to this path and exit.",
@@ -948,4 +1021,8 @@ if __name__ == "__main__":
         sys.exit(0)
 
     dry = not args.commit
-    sys.exit(asyncio.run(main(dry_run=dry, skip_email=args.skip_email)))
+    sys.exit(
+        asyncio.run(
+            main(dry_run=dry, skip_email=args.skip_email, skip_event=args.skip_event),
+        ),
+    )
