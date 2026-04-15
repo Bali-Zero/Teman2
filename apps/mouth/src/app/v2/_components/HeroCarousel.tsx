@@ -10,6 +10,8 @@ interface Slide {
   sub: string;
   badge: string;
   cta: string;
+  symbol: string; // large identity glyph rendered as visual
+  imageUrl?: string; // when real Imagen 4 heroes are regenerated, drop them here
 }
 
 const SLIDES: Slide[] = [
@@ -20,6 +22,7 @@ const SLIDES: Slide[] = [
     sub: "Ask any visa question. Get instant, accurate answers backed by real Indonesian immigration law.",
     badge: "Live · 2,400+ visa cases",
     cta: "Try Visa Oracle →",
+    symbol: "🛂",
   },
   {
     funnel: "kbli",
@@ -28,6 +31,7 @@ const SLIDES: Slide[] = [
     sub: "Complete KBLI 2025 database. PMA eligibility, risk classification, required licenses.",
     badge: "Live · 1,563 categories",
     cta: "Explore KBLI →",
+    symbol: "🏢",
   },
   {
     funnel: "tax",
@@ -36,6 +40,7 @@ const SLIDES: Slide[] = [
     sub: "Monthly filing, annual reports, CoreTax integration. Your dedicated tax advisor for Bali business.",
     badge: "Beta · CoreTax integrated",
     cta: "Explore Tax →",
+    symbol: "📊",
   },
   {
     funnel: "property",
@@ -44,6 +49,7 @@ const SLIDES: Slide[] = [
     sub: "Zoning intelligence, due diligence, land certificate verification.",
     badge: "Beta · Bali-wide coverage",
     cta: "Check Zoning →",
+    symbol: "🏝️",
   },
 ];
 
@@ -61,18 +67,56 @@ export function HeroCarousel() {
         <article
           key={slide.funnel}
           data-funnel={slide.funnel}
-          className="absolute inset-0 flex items-center px-16 transition-opacity duration-1000"
+          className="absolute inset-0 flex items-center transition-opacity duration-1000"
           style={{
             opacity: active === i ? 1 : 0,
             pointerEvents: active === i ? "auto" : "none",
             // Per-slide gradient using the slide's own --accent-funnel.
             // This proves leaf scoping: each slide computes its own accent
             // even though they all live under the same :root.
-            background:
-              "radial-gradient(ellipse at 30% 50%, color-mix(in srgb, var(--accent-funnel) 18%, transparent), transparent 60%), var(--surface-base)",
+            background: "var(--surface-base)",
           }}
         >
-          <div className="max-w-2xl">
+          {/* Right visual — 68% of the slide.
+              When real Imagen 4 hero images are regenerated, drop them at
+              public/assets/art/hero-{funnel}.jpg and they'll render here via
+              backgroundImage. Until then, a layered gradient + glyph fills
+              the space with funnel identity. */}
+          <div
+            className="absolute top-0 right-0 h-full w-[68%] z-0"
+            style={{
+              background: slide.imageUrl
+                ? `center/cover no-repeat url('${slide.imageUrl}')`
+                : `
+                  radial-gradient(ellipse 80% 60% at 30% 50%, color-mix(in srgb, var(--accent-funnel) 40%, transparent) 0%, transparent 70%),
+                  radial-gradient(ellipse 60% 80% at 70% 70%, color-mix(in srgb, var(--accent-funnel) 20%, transparent) 0%, transparent 70%),
+                  linear-gradient(135deg, color-mix(in srgb, var(--accent-funnel) 12%, var(--surface-base)) 0%, var(--surface-base) 80%)
+                `,
+            }}
+          >
+            {!slide.imageUrl && (
+              <div
+                className="absolute inset-0 flex items-center justify-center text-[22vw] leading-none select-none"
+                style={{
+                  opacity: 0.15,
+                  filter: "drop-shadow(0 0 80px color-mix(in srgb, var(--accent-funnel) 60%, transparent))",
+                }}
+              >
+                {slide.symbol}
+              </div>
+            )}
+          </div>
+
+          {/* Gradient fade on left so text reads cleanly over the visual */}
+          <div
+            className="absolute top-0 left-0 h-full w-[46%] z-10 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(90deg, var(--surface-base) 0%, color-mix(in srgb, var(--surface-base) 92%, transparent) 65%, transparent 100%)",
+            }}
+          />
+
+          <div className="relative z-20 max-w-2xl ml-16 pl-0">
             <h2
               className="text-[clamp(52px,5.5vw,84px)] font-black leading-none tracking-tighter mb-4 bz-shimmer"
               style={{ fontFamily: "var(--font-sans)" }}

@@ -3,8 +3,8 @@ import { BZLogo } from "@balizero/core/components/BZLogo";
 export function BrandEntrance() {
   return (
     <section className="text-center pt-28 pb-16 px-10">
-      <div className="flex justify-center mb-6">
-        <BZLogo variant="full" size={44} />
+      <div className="flex justify-center mb-10">
+        <BZLogo variant="full" size={88} />
       </div>
       <p
         className="text-[15px] tracking-widest uppercase mb-10"
