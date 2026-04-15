@@ -5,9 +5,9 @@
  *            Cache-First per assets statici
  */
 
-const CACHE_NAME = "balizero-v6";
-const STATIC_CACHE = "balizero-static-v6";
-const API_CACHE = "balizero-api-v6";
+const CACHE_NAME = "balizero-v7";
+const STATIC_CACHE = "balizero-static-v7";
+const API_CACHE = "balizero-api-v7";
 
 // Assets da cacheare al momento dell'install.
 // "/offline" rimosso: su subdomini (my/kita) viene redirected cross-origin al
@@ -79,6 +79,14 @@ self.addEventListener("fetch", (event) => {
   // Skip RSC navigation requests (these may redirect cross-origin)
   if (url.searchParams.has("_rsc")) return;
 
+  // Skip navigation requests entirely. Next.js SSR + Vercel edge caching
+  // already serve HTML correctly; intercepting them only risks serving a
+  // stale "You are offline" fallback when a transient fetch() blip happens
+  // (browsers can throw ERR_INSUFFICIENT_RESOURCES under load even while
+  // online). The PWA offline page can come back later when we have a real
+  // offline strategy per route.
+  if (request.mode === "navigate") return;
+
   // 1. Static assets: Cache First
   if (isStaticAsset(url)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
@@ -91,7 +99,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 3. Everything else: Network First with offline fallback
+  // 3. Everything else: Network First (no offline HTML fallback)
   event.respondWith(networkFirst(request));
 });
 
@@ -174,24 +182,9 @@ async function networkFirst(request) {
       return cached;
     }
 
-    // Pagina offline fallback
-    if (request.mode === "navigate") {
-      return new Response(
-        `<!DOCTYPE html>
-        <html>
-          <head><title>Offline - Bali Zero</title></head>
-          <body>
-            <h1>You are offline</h1>
-            <p>Please check your connection and try again.</p>
-            <a href="/">Go Home</a>
-          </body>
-        </html>`,
-        {
-          status: 200,
-          headers: { "Content-Type": "text/html" },
-        },
-      );
-    }
+    // Note: navigation requests are excluded from this handler entirely
+    // (see fetch listener), so the offline HTML fallback no longer lives
+    // here. API/asset fetches fall through to the 503 JSON below.
 
     // Never throw from fetch handler — Service Worker fetch listener must
     // always respondWith a valid Response, otherwise the browser reports
