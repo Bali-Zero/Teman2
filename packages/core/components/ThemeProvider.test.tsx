@@ -25,7 +25,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider defaultTheme="dark">
         <Probe />
-      </ThemeProvider>,
+      </ThemeProvider>
     );
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
@@ -34,7 +34,7 @@ describe("ThemeProvider", () => {
     const { getByTestId } = render(
       <ThemeProvider defaultTheme="dark">
         <Probe />
-      </ThemeProvider>,
+      </ThemeProvider>
     );
     act(() => {
       getByTestId("set-light").click();
@@ -48,7 +48,7 @@ describe("ThemeProvider", () => {
     render(
       <ThemeProvider defaultTheme="dark">
         <Probe />
-      </ThemeProvider>,
+      </ThemeProvider>
     );
     expect(document.documentElement.dataset.theme).toBe("light");
   });
@@ -57,7 +57,7 @@ describe("ThemeProvider", () => {
     const { getByTestId } = render(
       <ThemeProvider defaultTheme="dark">
         <Probe />
-      </ThemeProvider>,
+      </ThemeProvider>
     );
     expect(getByTestId("funnel").textContent).toBe("none");
     act(() => {
@@ -73,7 +73,7 @@ describe("ThemeScope", () => {
     const { container } = render(
       <ThemeScope funnel="kbli">
         <span>content</span>
-      </ThemeScope>,
+      </ThemeScope>
     );
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper.getAttribute("data-funnel")).toBe("kbli");

@@ -10,16 +10,13 @@ import { BZLogo, ThemeProvider, useTheme } from "@balizero/core";
 function ExampleCard() {
   const { setTheme } = useTheme();
   return (
-    <article
-      data-funnel="kbli"
-      style={{
-        background: "var(--surface-raised)",
-        border: "1px solid var(--border-default)",
-        color: "var(--text-primary)",
-        padding: "var(--space-6)",
-        borderRadius: "var(--radius-md)",
-      }}
-    >
+    <article data-funnel="kbli" style={{
+      background: "var(--surface-raised)",
+      border: "1px solid var(--border-default)",
+      color: "var(--text-primary)",
+      padding: "var(--space-6)",
+      borderRadius: "var(--radius-md)",
+    }}>
       <BZLogo variant="mark" />
       <h2 style={{ color: "var(--accent-funnel-text)" }}>KBLI Navigator</h2>
       <button onClick={() => setTheme("light")}>Switch to light</button>
@@ -43,7 +40,6 @@ fonts/inter.ts          → next/font Inter loader
 ## Consumer wiring (once, in `app/layout.tsx` + `app/globals.css`)
 
 See the design doc for the full three-coupled-changes procedure:
-
 - `docs/superpowers/specs/2026-04-15-design-system-foundation-design.md` §5
 - `docs/superpowers/plans/2026-04-15-design-system-foundation-plan.md` Step 0.3
 
