@@ -64,6 +64,7 @@ def include_routers(api: FastAPI) -> None:
         event_bus,  # [EVENT] EventBus monitoring
         experience,  # [EXP] Experience Library — trajectory recording/query
         skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
+        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 — 4 metabolic metrics (read-only)
         federation,
         feedback,
         google_drive,
@@ -159,6 +160,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
     api.include_router(skill.router)  # [SKILL] Skill Registry
+    api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
     api.include_router(federation.router)
     api.include_router(feedback.router)
 
@@ -643,6 +645,7 @@ def include_heavy_routers(api: FastAPI) -> None:
         episodic_memory,
         experience,  # [EXP] Experience Library
         skill,  # [SKILL] Skill Registry
+        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7
         handlers,
         health,
         ingest,
@@ -683,6 +686,7 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
     api.include_router(skill.router)  # [SKILL] Skill Registry
+    api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)
