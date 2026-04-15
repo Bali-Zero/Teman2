@@ -52,6 +52,13 @@ export interface IApiClient {
   setToken(token: string): void;
 
   /**
+   * Superuser impersonation: scope all /api/portal and /api/v1/lkpm calls
+   * to the given client id via ?as_client=<id>. Pass null to disable.
+   */
+  setPortalImpersonation?(clientId: number | null): void;
+  getPortalImpersonation?(): number | null;
+
+  /**
    * Get the current authentication token.
    */
   getToken(): string | null;
