@@ -60,6 +60,8 @@ class Cortex:
         attention: Any,
         maturation: Maturation,
         ollama_client: httpx.AsyncClient | None = None,
+        ollama_url: str = "http://127.0.0.1:11434",
+        ollama_model: str = "qwen3:4b",
     ) -> None:
         self._pool = pool
         self._reasoner = reasoner
@@ -70,10 +72,10 @@ class Cortex:
         self._maturation = maturation
 
         self.skills = SkillLibrary(pool=pool)
-        self.critic = CriticAgent(pool=pool, skill_library=self.skills, http_client=ollama_client)
-        self.curiosity = CuriosityEngine(pool=pool, http_client=ollama_client)
-        self.goals = GoalGenerator(pool=pool, http_client=ollama_client)
-        self.mutator = StrategyMutator(pool=pool, library=self.skills, reasoner=reasoner, http_client=ollama_client)
+        self.critic = CriticAgent(pool=pool, skill_library=self.skills, http_client=ollama_client, ollama_url=ollama_url, ollama_model=ollama_model)
+        self.curiosity = CuriosityEngine(pool=pool, http_client=ollama_client, ollama_url=ollama_url, ollama_model=ollama_model)
+        self.goals = GoalGenerator(pool=pool, http_client=ollama_client, ollama_url=ollama_url, ollama_model=ollama_model)
+        self.mutator = StrategyMutator(pool=pool, library=self.skills, reasoner=reasoner, http_client=ollama_client, ollama_url=ollama_url, ollama_model=ollama_model)
         self.gate = AchievementGate(base=maturation, pool=pool, self_model=self_model)
         logger.info("Cortex initialized: phase=%s", maturation.phase.value)
 

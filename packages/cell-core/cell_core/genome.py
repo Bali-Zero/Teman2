@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS genome (
     uses             INTEGER NOT NULL DEFAULT 0,
     last_used        TEXT,
 
-    inherited_from   TEXT REFERENCES genome(id),
+    inherited_from   TEXT,                       -- soft reference (no FK: cross-cell HGT)
 
     -- Sprint 5.2: Trajectory fields (nullable for skill/pattern/scar/insight)
     outcome          TEXT CHECK(outcome IN ('success','failure','partial') OR outcome IS NULL),
@@ -68,7 +68,10 @@ CREATE TABLE IF NOT EXISTS genome (
     tags             TEXT,  -- JSON array of strings
 
     -- Sprint 5.2 Week 3-4: Skill Registry tier (NULL | tier1 | tier2)
-    tier             TEXT CHECK(tier IN ('tier1','tier2') OR tier IS NULL)
+    tier             TEXT CHECK(tier IN ('tier1','tier2') OR tier IS NULL),
+
+    -- Sprint 5.2 Week 3-4: HGT domain routing (11 canonical domains in hgt/domains.py)
+    domain           TEXT DEFAULT 'generic'
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS genome_fts USING fts5(
@@ -103,7 +106,8 @@ CREATE INDEX IF NOT EXISTS idx_genome_valid      ON genome(valid_from, valid_to)
 # Indexes that depend on columns added by runtime migration. Applied AFTER
 # _migrate_schema has ensured the column exists on legacy DBs.
 _SCHEMA_POST_MIGRATION = """
-CREATE INDEX IF NOT EXISTS idx_genome_tier ON genome(tier) WHERE tier IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_genome_tier   ON genome(tier) WHERE tier IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_genome_domain ON genome(domain);
 """
 
 
@@ -128,7 +132,8 @@ class Genome:
             conn = sqlite3.connect(self._db_path, timeout=5.0)
             conn.execute("PRAGMA busy_timeout=5000")
             conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
+            # foreign_keys deliberately OFF: inherited_from is a soft reference
+            # that may point to skills in other cells' genomes (HGT cross-cell)
             conn.row_factory = sqlite3.Row
             self._local.conn = conn
         return conn
@@ -159,6 +164,9 @@ class Genome:
             # fresh tables. For legacy tables we rely on promote_skills() and
             # record_skill to only ever write 'tier1'|'tier2'|NULL.
             ("tier", "TEXT"),
+            # Week 3-4: HGT domain routing. 11 canonical domains in hgt/domains.py.
+            # NULL-safe for legacy rows (defaults to 'generic' via column default).
+            ("domain", "TEXT DEFAULT 'generic'"),
         ):
             if col_name not in cols:
                 conn.execute(f"ALTER TABLE genome ADD COLUMN {col_name} {col_def}")
@@ -241,11 +249,12 @@ class Genome:
         scope: str = "Project",
         inherited_from: str | None = None,
         entry_type: str = "skill",
+        domain: str = "generic",
     ) -> str:
         """Record or update a skill in the genome.
 
         On conflict (same id), updates procedure, precondition,
-        success_criterion and keeps the higher confidence.
+        success_criterion, domain, and keeps the higher confidence.
 
         Returns ``"inserted"`` or ``"updated"``.
         """
@@ -259,21 +268,23 @@ class Genome:
             conn.execute(
                 """INSERT INTO genome
                    (id, cell_origin, type, scope, precondition, procedure,
-                    success_criterion, valid_from, confidence, inherited_from)
-                   VALUES (?,?,?,?,?,?,?,?,?,?)
+                    success_criterion, valid_from, confidence, inherited_from, domain)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(id) DO UPDATE SET
                        procedure        = excluded.procedure,
                        precondition     = excluded.precondition,
                        success_criterion = excluded.success_criterion,
-                       confidence       = MAX(genome.confidence, excluded.confidence)""",
+                       confidence       = MAX(genome.confidence, excluded.confidence),
+                       domain           = excluded.domain""",
                 (skill_id, cell, entry_type, scope, precondition or None,
-                 procedure, success_criterion or None, now, confidence, inherited_from),
+                 procedure, success_criterion or None, now, confidence,
+                 inherited_from, domain),
             )
             conn.commit()
             action = "updated" if exists else "inserted"
             logger.info(
                 f"[genome] {action} {entry_type} '{skill_id}' for cell "
-                f"'{cell}' (confidence={confidence:.0%})"
+                f"'{cell}' (confidence={confidence:.0%}, domain={domain})"
             )
             return action
 
@@ -472,6 +483,82 @@ class Genome:
             logger.info(f"[genome] silenced {n} stale skills for cell '{cell}'")
         return n
 
+    def decay_unused_skills(
+        self,
+        decay_rate: float = 0.95,
+        silence_threshold: float = 0.3,
+        min_idle_days: int = 7,
+    ) -> dict[str, int]:
+        """Apply exponential decay to unused skills.
+
+        Formula: ``new_conf = confidence * (decay_rate ** days_unused)``
+
+        Guards:
+        - Scars (type='scar') are immune — avoidance memory is permanent
+        - Skills used within *min_idle_days* are skipped
+        - Skills with last_used=NULL are excluded (never used = never decaying)
+        - Already-silenced skills (valid_to IS NOT NULL) are excluded
+
+        Returns counts: ``{"decayed": N, "silenced": M, "skipped": K}``
+        """
+        now = datetime.now(timezone.utc)
+        counts = {"decayed": 0, "silenced": 0, "skipped": 0}
+
+        with self._write_lock:
+            conn = self._get_conn()
+            rows = conn.execute(
+                """SELECT id, confidence, last_used, type FROM genome
+                   WHERE valid_to IS NULL AND last_used IS NOT NULL"""
+            ).fetchall()
+
+            for row in rows:
+                # Scars don't decay
+                if row["type"] == "scar":
+                    counts["skipped"] += 1
+                    continue
+
+                last_used_str = row["last_used"]
+                try:
+                    last_used = datetime.fromisoformat(last_used_str)
+                    # Ensure timezone-aware comparison
+                    if last_used.tzinfo is None:
+                        last_used = last_used.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    counts["skipped"] += 1
+                    continue
+
+                days = (now - last_used).days
+                if days < min_idle_days:
+                    counts["skipped"] += 1
+                    continue
+
+                new_conf = row["confidence"] * (decay_rate ** days)
+                if new_conf < silence_threshold:
+                    conn.execute(
+                        "UPDATE genome SET valid_to = ? WHERE id = ? AND valid_to IS NULL",
+                        (now.date().isoformat(), row["id"]),
+                    )
+                    counts["silenced"] += 1
+                    logger.info(
+                        f"[genome] decay silenced '{row['id']}' "
+                        f"(conf={row['confidence']:.2f}→{new_conf:.4f}, days={days})"
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE genome SET confidence = ? WHERE id = ?",
+                        (round(new_conf, 4), row["id"]),
+                    )
+                    counts["decayed"] += 1
+
+            conn.commit()
+
+        if counts["decayed"] or counts["silenced"]:
+            logger.info(
+                f"[genome] decay_unused_skills: {counts['decayed']} decayed, "
+                f"{counts['silenced']} silenced, {counts['skipped']} skipped"
+            )
+        return counts
+
     # ─────────────────────────────────────────
     # Week 3-4: Skill Registry (promotion + decay v2)
     # ─────────────────────────────────────────
@@ -591,10 +678,10 @@ class Genome:
         scope: str | None = None,
         min_confidence: float = 0.0,
         limit: int = 20,
+        domain: str | None = None,
     ) -> list[dict]:
         """Get active genome entries for a cell."""
         today = datetime.now(timezone.utc).date().isoformat()
-        params: list = [cell, today, min_confidence]
         filters = [
             "cell_origin = ?",
             "valid_from <= ?",
@@ -602,13 +689,16 @@ class Genome:
             "confidence >= ?",
         ]
         # valid_to > today check needs today again
-        params = [cell, today, today, min_confidence]
+        params: list = [cell, today, today, min_confidence]
         if entry_type:
             filters.append("type = ?")
             params.append(entry_type)
         if scope:
             filters.append("scope = ?")
             params.append(scope)
+        if domain:
+            filters.append("domain = ?")
+            params.append(domain)
         params.append(limit)
 
         conn = self._get_conn()
