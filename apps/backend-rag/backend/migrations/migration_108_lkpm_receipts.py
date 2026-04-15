@@ -1,5 +1,5 @@
 """
-Migration 100: LKPM tanda terima (OSS receipts) table.
+Migration 108: LKPM tanda terima (OSS receipts) table.
 
 Each LKPM report in `lkpm_reports` aggregates one PT's quarterly activity, but
 OSS issues a separate "Tanda Terima" PDF per Nomor Kegiatan Usaha. A single PT
@@ -21,7 +21,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-MIGRATION_ID = "100_lkpm_receipts"
+MIGRATION_ID = "108_lkpm_receipts"
 DESCRIPTION = (
     "LKPM: lkpm_receipts child table (one row per OSS tanda terima / "
     "Nomor Kegiatan Usaha), FK to lkpm_reports.id"

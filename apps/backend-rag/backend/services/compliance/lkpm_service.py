@@ -265,7 +265,7 @@ class LKPMService:
         return [self._row_to_batch_item(row) for row in rows]
 
     # ------------------------------------------------------------------
-    # OSS Tanda Terima (receipts) — migration 100
+    # OSS Tanda Terima (receipts) — migration 108
     # ------------------------------------------------------------------
 
     async def get_receipts_for_report(self, lkpm_report_id: int) -> list[dict[str, Any]]:
