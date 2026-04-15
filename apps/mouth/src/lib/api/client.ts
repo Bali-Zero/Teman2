@@ -271,14 +271,23 @@ export class ApiClientBase implements IApiClient {
         if (typeof window !== "undefined") {
           // Avoid redirect loops by checking current path
           const currentPath = window.location.pathname;
-          if (currentPath !== "/login" && !currentPath.startsWith("/api/")) {
+          // Portal subdomain uses /portal/login; workspace uses /login.
+          // Without this check, shareholders on my.balizero.com would bounce
+          // to /login, which mouth's middleware redirects cross-origin to
+          // kita.balizero.com/login — breaking the portal session silently.
+          const isPortal = currentPath.startsWith("/portal");
+          const loginPath = isPortal ? "/portal/login" : "/login";
+          const alreadyOnLogin = currentPath === loginPath;
+          if (!alreadyOnLogin && !currentPath.startsWith("/api/")) {
             logger.warn("Token expired or invalid, redirecting to login", {
               component: "ApiClient",
               action: "auth_redirect",
-              metadata: { currentPath },
+              metadata: { currentPath, target: loginPath },
             });
             // Use replace to avoid adding to history
-            window.location.replace("/login?expired=true&reason=token_expired");
+            window.location.replace(
+              `${loginPath}?expired=true&reason=token_expired`,
+            );
           }
         }
 
