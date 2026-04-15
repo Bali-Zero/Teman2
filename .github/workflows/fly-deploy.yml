@@ -127,6 +127,10 @@ jobs:
     name: Run DB migrations on Fly.io
     needs: pre-deploy-gate # only after gate passes
     runs-on: ubuntu-latest
+    # Job-level env so both setup-flyctl and the flyctl ssh call see the token.
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl ≥0.3 reads this name
 
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -138,13 +142,14 @@ jobs:
             --app nuzantara-rag \
             --command "cd /app && python -m backend.db.migrate apply-all"
           echo "✅ Migrations OK"
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   deploy:
     name: Fly.io rolling deploy
     needs: run-migrations # BLOCCATO se migration fallisce
     runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -158,13 +163,14 @@ jobs:
             --config apps/backend-rag/fly.toml \
             --app nuzantara-rag \
             --remote-only
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   post-deploy-health:
     name: Post-deploy health check + rollback
     needs: deploy
     runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
