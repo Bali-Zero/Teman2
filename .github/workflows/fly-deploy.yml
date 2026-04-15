@@ -157,10 +157,10 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy (rolling strategy)
+        working-directory: apps/backend-rag
         run: |
           flyctl deploy \
             --strategy rolling \
-            --config apps/backend-rag/fly.toml \
             --app nuzantara-rag \
             --remote-only
 
