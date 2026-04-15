@@ -66,6 +66,37 @@ class PortalResponse(BaseModel):
 # ================================================
 
 
+# Superusers that can impersonate any client via ?as_client=<id>.
+# Kept explicit (email-based) rather than "role=Founder" to avoid privilege
+# creep — adding/removing a name here is an auditable code change.
+SUPERUSER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
+
+
+async def _log_impersonation(
+    conn: asyncpg.Connection,
+    actor_email: str,
+    actor_user_id: str | None,
+    target_client_id: int,
+    path: str,
+) -> None:
+    """Best-effort audit log for a superuser viewing another client's data."""
+    try:
+        from backend.services.security.audit_service import SecurityAuditService
+
+        await SecurityAuditService().log_event(
+            conn=conn,
+            action="portal_impersonation",
+            user_email=actor_email,
+            user_id=actor_user_id,
+            resource_type="client",
+            resource_id=str(target_client_id),
+            success=True,
+            details={"path": path},
+        )
+    except Exception as e:  # never fail the request because audit broke
+        logger.warning(f"impersonation audit log failed: {e}")
+
+
 async def get_current_client(
     request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -75,11 +106,17 @@ async def get_current_client(
 
     Requires:
     - Valid JWT token (from middleware)
-    - role = 'client'
-    - linked_client_id set
+    - role = 'client' (bypassed for superusers — see SUPERUSER_EMAILS)
+    - linked_client_id set (bypassed for superusers using ?as_client=<id>)
+
+    Superuser impersonation:
+        When the JWT belongs to a SUPERUSER_EMAILS account, a query string
+        ?as_client=<client_id> overrides the normal lookup and the handler
+        operates as if the caller were that client. Each hit is audit-logged
+        (security_audit_log action='portal_impersonation').
 
     Returns:
-        dict with: client_id, user_id, email, name
+        dict with: client_id, user_id, email, name, impersonating (bool)
     """
     # Get user from middleware
     if not hasattr(request.state, "user") or not request.state.user:
@@ -90,7 +127,70 @@ async def get_current_client(
         )
 
     user = request.state.user
+    user_email = (user.get("email") or "").lower()
+    user_id = user.get("id") or user.get("user_id")
+    is_superuser = user_email in SUPERUSER_EMAILS
 
+    # ---- Superuser impersonation path ----
+    if is_superuser:
+        as_client_raw = request.query_params.get("as_client")
+        if not as_client_raw:
+            # Superuser without as_client → fall through to normal lookup so
+            # zero@ can still see their own linked profile if any. If they
+            # don't have one (most likely) we 422 with a helpful message.
+            async with db_pool.acquire() as conn:
+                own = await conn.fetchrow(
+                    "SELECT id, email, full_name FROM clients WHERE LOWER(email) = LOWER($1)",
+                    user_email,
+                )
+            if own:
+                return {
+                    "client_id": own["id"],
+                    "user_id": str(user_id) if user_id else user_email,
+                    "email": own["email"],
+                    "name": own["full_name"],
+                    "impersonating": False,
+                }
+            raise HTTPException(
+                status_code=422,
+                detail="Superuser: select a client via ?as_client=<id>",
+            )
+
+        try:
+            as_client_id = int(as_client_raw)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail="as_client must be an integer",
+            ) from e
+
+        async with db_pool.acquire() as conn:
+            target = await conn.fetchrow(
+                "SELECT id, email, full_name FROM clients WHERE id = $1",
+                as_client_id,
+            )
+            if not target:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Client {as_client_id} not found",
+                )
+            await _log_impersonation(
+                conn=conn,
+                actor_email=user_email,
+                actor_user_id=str(user_id) if user_id else None,
+                target_client_id=as_client_id,
+                path=str(request.url.path),
+            )
+
+        return {
+            "client_id": target["id"],
+            "user_id": str(user_id) if user_id else user_email,
+            "email": target["email"],
+            "name": target["full_name"],
+            "impersonating": True,
+        }
+
+    # ---- Normal client path ----
     # Check role is client
     if user.get("role") != "client":
         raise HTTPException(
@@ -98,9 +198,6 @@ async def get_current_client(
             detail="This endpoint is only accessible to clients",
         )
 
-    # Get linked_client_id from user record
-    # Note: team_members.id is UUID (VARCHAR), not integer
-    user_id = user.get("id") or user.get("user_id")
     if not user_id:
         raise HTTPException(
             status_code=401,
@@ -141,6 +238,7 @@ async def get_current_client(
             "user_id": row["id"],
             "email": row["email"],
             "name": row["full_name"],
+            "impersonating": False,
         }
 
 

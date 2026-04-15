@@ -94,6 +94,7 @@ def include_routers(api: FastAPI) -> None:
         oracle_universal,
         performance,
         portal,
+        portal_admin,
         portal_billing,
         portal_drive,
         portal_invite,
@@ -194,6 +195,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Portal routers (Client-facing)
     api.include_router(portal.router)
+    api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
     api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
@@ -418,6 +420,7 @@ def include_light_routers(api: FastAPI) -> None:
         omnichannel,
         performance,
         portal,
+        portal_admin,
         portal_billing,
         portal_drive,
         portal_invite,
@@ -497,6 +500,7 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Portal routers (Client-facing)
     api.include_router(portal.router)
+    api.include_router(portal_admin.router)  # superuser impersonation support
     api.include_router(portal_billing.router)
     api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
