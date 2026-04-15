@@ -31,6 +31,7 @@ _JOB_PERIODS: dict[str, float] = {
     "core_guardian":        4.0,   # every 3h
     "expiry_alerter":      24.0,   # daily
     "knowledge_graph_builder": 24.0,
+    "metabolic_rollup":        24.0,   # daily 23:30
 }
 
 

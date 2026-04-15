@@ -1,7 +1,7 @@
 # DNA Recording — Design Spec
 
 **Date:** 2026-04-12
-**Status:** Approved for implementation
+**Status:** IMPLEMENTED 2026-04-16 — see `2026-04-16-skill-registry-hgt-design.md` for HGT extension
 **Author:** Zero + Claude Sonnet 4.6
 **Research base:** SELF_EVOLVING_AGENT_RESEARCH.md (49 Exa citations + 65 NLM sources) + deep research AgentSpawn / MemOcean / Crab Engram / Voyager
 
@@ -235,20 +235,20 @@ for msg in redis.xread({"cell:skills": "$"}):
 
 ---
 
-## 8. I 3 gap aperti (territorio vergine)
+## 8. I 3 gap aperti — CHIUSI (2026-04-16)
 
-Nessun sistema trovato nella ricerca li implementa:
+**Implementati in `packages/cell-core/cell_core/hgt/` + `genome.py` extension:**
 
-1. **Vertical feedback** — figlia che migliora una skill e la propaga indietro alla madre.
-   Soluzione ipotetica: skill con `confidence > inherited_confidence + 0.1` → proposta via Redis a madre.
+1. **Vertical feedback** ✅ — `hgt/feedback.py` `VerticalFeedback` class. Redis Stream `cell:feedback`.
+   Merge policy: conditional overwrite if child.conf > parent.conf + 0.15 AND uses >= 3.
 
-2. **Confidence decay automatico** — skill non usata da N giorni decade esponenzialmente.
-   Formula: `new_confidence = confidence * (0.95 ** days_unused)`. Soglia minima 0.3 prima del silenzio.
+2. **Confidence decay automatico** ✅ — `genome.decay_unused_skills()`. Exponential `0.95^days`.
+   Cron 02:30 WITA via `scripts/genome_decay_cron.py`. Scars immune.
 
-3. **Cross-domain HGT esplicito** — routing semantico delle skill: chi pubblica specifica i KBLI/domain
-   a cui si applica, chi consuma filtra per rilevanza prima di integrare.
+3. **Cross-domain HGT** ✅ — `hgt/domains.py` flat taxonomy (11 domains). `hgt/publisher.py` +
+   `hgt/consumer.py`. Redis Stream `cell:skills`. Subscribe-by-domain filtering.
 
-Questi tre si implementano dopo che il meccanismo base è testato e ha numeri.
+See `2026-04-16-skill-registry-hgt-design.md` for full design spec.
 
 ---
 
