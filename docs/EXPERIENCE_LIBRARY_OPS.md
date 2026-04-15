@@ -67,6 +67,25 @@ Schema additions to `cell_core.genome` (Sprint 5.2, backward-compatible):
 episodes stay local to the cell that lived them. Only skills/patterns
 transfer at fork time.
 
+## Relation to `/api/memory/lam/episodes`
+
+Superficial overlap — both accept `content`, `agent/cell`, `tags`, `outcome`
+and persist episodes. They are deliberately separate:
+
+| Aspect            | `/api/memory/lam/*`                           | `/api/experience/*`                              |
+| ----------------- | --------------------------------------------- | ------------------------------------------------ |
+| Store             | Qdrant `lam_episodes` (vector)                | SQLite Genome (`type='trajectory'`)              |
+| Purpose           | Semantic recall for user-facing questions     | Episodic reflection for cell thinkers            |
+| `outcome` shape   | Free-text string                              | Enum `success|failure|partial` (enforced 422)    |
+| Inheritable       | No (user-scoped)                              | No (trajectories are never germline)             |
+| Ownership         | LAM agent runtime                             | Cell post-pulse reflection                       |
+
+If a cell needs to ask "what did user X do last Tuesday?" → LAM. If a cell
+needs "have I ever tried this action and what happened?" → Experience.
+
+Week 3 may introduce a unified index; until then, keep the boundary
+explicit when calling.
+
 ## Environment Variables
 
 | Variable               | Required | Description                                         |
@@ -74,6 +93,34 @@ transfer at fork time.
 | `EXPERIENCE_DB_PATH`   | ⚙️        | SQLite path (default: `~/.nuzantara/experience.db`) |
 | `JWT_SECRET_KEY`       | ✅       | Required by backend-rag for auth middleware         |
 | `API_KEYS`             | ✅       | Required by backend-rag for auth middleware         |
+
+### ⚠️ Path constraints for Pro/Air dual-machine setup
+
+**Do NOT** set `EXPERIENCE_DB_PATH` to anything under `shared/` or any
+git-tracked directory. The Genome file is a binary WAL-mode SQLite and two
+machines writing concurrent local copies synced by git would split-brain
+(unmergeable binary conflicts — see `docs/AUTOMATION_AUTONOMY_SYSTEM_V3_3.md`
+ADR-3/4 for the precedent on `escalations.jsonl`).
+
+Safe defaults:
+- **Pro**: `~/.nuzantara/experience.db` (default)
+- **Air**: `~/.nuzantara/experience.db` (default, independent file)
+- **Fly.io**: each worker starts its own temp file; a shared-store decision
+  belongs in Week 3+ and should go through Postgres via `asyncpg` (see the
+  same ADR-4 for the reasoning).
+
+If Pro and Air must share knowledge in a future sprint, the path is
+export/import via `Genome.export_genome()` / `Genome.import_genome()`
+over the federation bus — NOT filesystem sync.
+
+### Tag slug constraint
+
+Tags accepted by `/record` and `/query` must match `[A-Za-z0-9_-]+`
+(Pydantic validator). Quotes, backslashes, or whitespace in a tag are
+rejected with 422. The reason is implementation-level: tags are stored
+as a JSON array and the filter does `LIKE '%"<tag>"%'` against the
+serialised form, which is exact-match for slugs but would silently miss
+escaped characters. See `services/experience/models.py` for the pattern.
 
 Optional: the service runs in **degraded mode** (is_available=False, record
 and query become no-ops) if `cell_core` cannot be imported. This is an

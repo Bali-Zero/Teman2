@@ -623,6 +623,35 @@ def test_search_trajectories_filter_by_tag(genome):
     assert results[0]["id"] == "t1"
 
 
+def test_search_trajectories_tag_exact_match_not_substring(genome):
+    """Bug caught by DeepSeek review 2026-04-15:
+    tag='ig' must NOT match a trajectory tagged ['ig_video'] or ['big'].
+    The LIKE-on-JSON implementation produced false positives."""
+    genome.record_trajectory(cell="c1", trajectory_id="exact",
+                              outcome="success", procedure="p", tags=["ig"])
+    genome.record_trajectory(cell="c1", trajectory_id="longer",
+                              outcome="success", procedure="p", tags=["ig_video"])
+    genome.record_trajectory(cell="c1", trajectory_id="prefixed",
+                              outcome="success", procedure="p", tags=["big"])
+
+    results = genome.search_trajectories("p", tag="ig")
+    ids = {r["id"] for r in results}
+    assert ids == {"exact"}, f"expected only 'exact', got {ids}"
+
+
+def test_search_trajectories_tag_special_chars(genome):
+    """Tag containing double quote or backslash must not blow up the query
+    or create false positives. Note: JSON-serialised tags with embedded
+    quotes are stored escaped, and our LIKE pattern will miss them — this
+    is accepted silent failure; callers must pass ASCII tags. The service
+    layer enforces this via Pydantic validator (see models.py:Tag)."""
+    genome.record_trajectory(cell="c1", trajectory_id="t1",
+                              outcome="success", procedure="p", tags=['normal'])
+    # Must not raise. Must not match 'normal'.
+    results = genome.search_trajectories("p", tag='weird"quote')
+    assert results == []
+
+
 def test_get_trajectory_returns_row(genome):
     genome.record_trajectory(
         cell="c1", trajectory_id="lookup_me", outcome="success",

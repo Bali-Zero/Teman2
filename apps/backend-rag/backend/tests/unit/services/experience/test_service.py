@@ -47,6 +47,31 @@ def test_trajectory_query_limit_has_upper_bound():
         TrajectoryQuery(query="x", limit=10_000)
 
 
+@pytest.mark.parametrize("bad_tag", ['weird"quote', 'back\\slash', "with space", "semi;colon"])
+def test_trajectory_record_rejects_non_slug_tags(bad_tag):
+    """Post-review 2026-04-15: tag slug validation at the boundary prevents
+    silent LIKE-pattern misses when a tag contains JSON-unsafe characters."""
+    with pytest.raises(ValidationError):
+        TrajectoryRecord(
+            trajectory_id="t", cell="c", outcome="success",
+            procedure="p", tags=["ok", bad_tag],
+        )
+
+
+def test_trajectory_query_rejects_non_slug_tag_filter():
+    with pytest.raises(ValidationError):
+        TrajectoryQuery(query="x", tag='weird"quote')
+
+
+@pytest.mark.parametrize("good_tag", ["ig", "wa", "visa_expired", "kbli-70209", "ABC123"])
+def test_trajectory_record_accepts_slug_tags(good_tag):
+    rec = TrajectoryRecord(
+        trajectory_id="t", cell="c", outcome="success",
+        procedure="p", tags=[good_tag],
+    )
+    assert good_tag in rec.tags
+
+
 # ─── record() ───────────────────────────────────────────────────────
 
 
