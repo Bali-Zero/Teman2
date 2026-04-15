@@ -1,37 +1,22 @@
-import { Montserrat } from "next/font/google";
-import { NavShell, BZLogo } from "@balizero/core";
-import { SessionInit } from "@/components/funnel/SessionInit";
-import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
-import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
+import { ThemeScope } from "@balizero/core/components/ThemeProvider";
 
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
-
+// Phase 2 migration (design §8 step 4):
+//   - data-funnel="kbli" → all descendants read --accent-funnel = gold (--color-gold-500)
+//   - Montserrat dropped → Inter inherited via --font-sans loaded in root layout
+//   - Legacy --kbli-accent / --kbli-red / --kbli-ink remapped to DS tokens in
+//     kbli-theme.css; consumer pages keep existing inline reads, colors shift
+//     to gold automatically.
 export default function KBLILayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`${montserrat.variable} relative z-1`}
-      style={{
-        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-      }}
+    <ThemeScope
+      funnel="kbli"
+      className="relative z-[1] mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8"
     >
-      <NavShell
-        logo={<BZLogo variant="full" />}
-        items={getFunnelNavItems("kbli")}
-        actions={<HeaderWhatsAppCTA funnel="kbli" />}
-      />
-      <SessionInit funnel="kbli" />
-      <div className="mx-auto max-w-6xl px-4 pt-14 pb-8 sm:px-6 lg:px-8">
-        {children}
-      </div>
-    </div>
+      {children}
+    </ThemeScope>
   );
 }
