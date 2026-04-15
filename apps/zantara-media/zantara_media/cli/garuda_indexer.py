@@ -70,11 +70,11 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
             import asyncpg
             pg = await asyncpg.connect(dsn=os.environ.get("DATABASE_URL", ""))
             row = await pg.fetchrow(
-                "SELECT expiry FROM google_drive_tokens ORDER BY created_at DESC LIMIT 1"
+                "SELECT expires_at FROM google_drive_tokens ORDER BY created_at DESC LIMIT 1"
             )
-            if row and row["expiry"]:
+            if row and row["expires_at"]:
                 from datetime import datetime, timezone
-                days_left = (row["expiry"] - datetime.now(tz=timezone.utc)).days
+                days_left = (row["expires_at"] - datetime.now(tz=timezone.utc)).days
                 if days_left < 7:
                     await send_critical_alert(
                         f"⚠️ GARUDA: Google Drive OAuth token expires in {days_left} days!\n"
