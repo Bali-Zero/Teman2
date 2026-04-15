@@ -140,7 +140,7 @@ jobs:
         run: |
           flyctl ssh console \
             --app nuzantara-rag \
-            --command "cd /app && python -m backend.db.migrate apply-all"
+            --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'"
           echo "✅ Migrations OK"
 
   deploy:
