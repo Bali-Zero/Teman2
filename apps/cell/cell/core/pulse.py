@@ -1,9 +1,13 @@
 """The Pulse — CELL's heartbeat.
 Every 60 seconds: verify DNA → check safety → sense → evaluate → THINK → act → remember."""
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from cell_core.observability.pulse_metrics import PulseMetrics
 
 from cell.core import db as cell_db
 from cell.fast.health_triage import HealthStatus
@@ -59,6 +63,7 @@ class PulseEngine:
         cortex: Any = None,
         ai_intel_sensor: Any = None,
         nlm_effector: Any = None,
+        metrics: PulseMetrics | None = None,
     ) -> None:
         self._dna = dna_loader
         self._safety = safety_gate
@@ -91,6 +96,7 @@ class PulseEngine:
         self._cortex = cortex
         self._ai_intel_sensor = ai_intel_sensor
         self._nlm_effector = nlm_effector
+        self._metrics = metrics
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
@@ -98,6 +104,9 @@ class PulseEngine:
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
         from cell.metabolism.attention_allocator import AttentionCost
         now = datetime.now(timezone.utc)
+        _t_pulse_start = time.monotonic()
+        _m = self._metrics
+        _cell = "cell"
 
         # 1. DNA INTEGRITY
         if self._dna_hash and not self._dna.verify_integrity(self._dna_hash):
@@ -105,12 +114,18 @@ class PulseEngine:
             return PulseResult(timestamp=now, halted=True, halt_reason="DNA integrity check failed")
 
         # 2. SAFETY GATES
+        _t0 = time.monotonic()
         safety = await self._safety.check()
+        if _m:
+            _m.record_phase(_cell, "safety", time.monotonic() - _t0)
         if not safety.can_proceed:
             logger.info(f"Pulse skipped: {safety.reason} — {safety.detail}")
+            if _m:
+                _m.record_pulse(_cell, "green", time.monotonic() - _t_pulse_start, halted=True)
             return PulseResult(timestamp=now, skipped=True, skip_reason=safety.reason)
 
         # 3. SENSE
+        _t0 = time.monotonic()
         reading = await self._health.read()
 
         # 4. EVALUATE (FAST) — aggregate all sensors
@@ -219,6 +234,10 @@ class PulseEngine:
         _severity = {"green": 0, "yellow": 1, "red": 2}
         worst = max(sensor_statuses, key=lambda s: _severity.get(s, 0))
         status = HealthStatus(worst)
+        if _m:
+            _m.record_phase(_cell, "sense", time.monotonic() - _t0)
+            if self._homeostatic:
+                _m.observe_homeostasis(_cell, self._homeostatic.state)
 
         logger.info(
             f"Pulse: health={status.value} (http={http_status.value}), "
@@ -267,6 +286,8 @@ class PulseEngine:
         trend_context = ""
         if self._trend is not None:
             trend = self._trend.detect(self._recent_pulses)
+            if _m:
+                _m.observe_trend(_cell, trend)
             parts = []
             if trend.monotonic_drift:
                 parts.append("⚠ MONOTONIC DRIFT: response time rising every pulse")
@@ -279,6 +300,7 @@ class PulseEngine:
                 logger.info(f"TrendDetector: {trend_context}")
 
         # SLEEP PHASE — dream and consolidate instead of reasoning when asleep
+        _t0 = time.monotonic()
         if (
             self._homeostatic is not None
             and self._homeostatic.is_sleeping()
@@ -324,6 +346,11 @@ class PulseEngine:
                 except Exception as e:
                     logger.warning(f"Cortex hook 4 failed: {e}")
 
+            if _m:
+                _m.record_phase(_cell, "dream", time.monotonic() - _t0)
+                _m.record_pulse(
+                    _cell, status.value, time.monotonic() - _t_pulse_start,
+                )
             return PulseResult(
                 timestamp=now,
                 health_status=status,
@@ -628,6 +655,16 @@ class PulseEngine:
                 await self._cortex.during_idle(idle_state)
             except Exception as e:
                 logger.warning(f"Cortex hook 3 failed: {e}")
+
+        # ── Observability: record full pulse ──
+        if _m:
+            _m.record_pulse(
+                _cell,
+                status.value,
+                time.monotonic() - _t_pulse_start,
+                action_taken=action,
+                thought_tier=thought_tier,
+            )
 
         return PulseResult(
             timestamp=now,
