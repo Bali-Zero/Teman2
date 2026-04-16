@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cell.genome-decay</string>
+
+    <!-- SYMBIOSIS Pilastro 5 (Sogno) — nightly genome skill decay.
+         02:30 WITA (Air local).
+         Ebbinghaus formula: confidence × 0.95^days_unused, min_idle=7,
+         threshold 0.3 → silence (non-destructive valid_to). Scars immune. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/genome_decay.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/antonellosiano/Projects/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/antonellosiano/.pyenv/shims</string>
+        <key>HOME</key>
+        <string>/Users/antonellosiano</string>
+    </dict>
+
+    <!-- Daily 02:30 WITA — dream window (2-6 UTC ~= 10-14 WITA sleep but
+         decay applies when skills are dormant, independent of sleep hours). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/genome-decay.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/genome-decay.stderr.log</string>
+</dict>
+</plist>
