@@ -15,6 +15,8 @@ Features:
 - Email tracking
 """
 
+import base64
+import binascii
 import logging
 import os
 from datetime import datetime, timezone
@@ -130,8 +132,25 @@ class SMTPProvider(EmailProvider):
                     attachment.get("contentType") or attachment.get("content_type", "application/octet-stream")
 
                     if content:
+                        # `content` is the base64-encoded payload from the API caller.
+                        # Decode to raw bytes BEFORE handing to MIMEBase: encode_base64 will
+                        # re-encode them. Skipping the decode produced double-encoded
+                        # attachments — clients saw a base64 string instead of the file,
+                        # surfacing as "PDF rusak / struktur tidak valid" on receipt.
+                        if isinstance(content, str):
+                            try:
+                                payload_bytes = base64.b64decode(content, validate=False)
+                            except (binascii.Error, ValueError):
+                                logger.warning(
+                                    "Attachment %s has non-base64 content; sending raw",
+                                    filename,
+                                )
+                                payload_bytes = content.encode("utf-8")
+                        else:
+                            payload_bytes = content
+
                         part = MIMEBase("application", "octet-stream")
-                        part.set_payload(content)
+                        part.set_payload(payload_bytes)
                         encoders.encode_base64(part)
                         part.add_header(
                             "Content-Disposition",
