@@ -32,7 +32,7 @@ fi
 
 cd "$REPO"
 
-export PYTHONPATH="$CELLCORE:$PYTHONPATH"
+export PYTHONPATH="$CELLCORE:${PYTHONPATH:-}"
 export METABOLIC_DB_PATH="${METABOLIC_DB_PATH:-$HOME/.agent/decisions/organism_metrics.db}"
 
 # Run rollup with Telegram notification
