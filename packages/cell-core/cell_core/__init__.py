@@ -9,6 +9,7 @@ from cell_core.pulse import PulseLoop
 from cell_core.reasoner import ReasonerFramework, TierConfig
 from cell_core.safety import DNAInterpreter, DNAIntegrityError, DNALoader, SafetyGate
 from cell_core.metabolic import MetabolicSnapshot, MetabolicStore, MetricValue, TrendAnalyzer
+from cell_core.observability import CardinalityGuard, CellMetricsExporter, PulseMetrics
 from cell_core.types import (
     CellConfig,
     DNAConfig,
@@ -36,4 +37,5 @@ __all__ = [
     "SelfModel", "SelfModelManager",
     "ReasonerFramework", "TierConfig",
     "MetabolicSnapshot", "MetabolicStore", "MetricValue", "TrendAnalyzer",
+    "PulseMetrics", "CellMetricsExporter", "CardinalityGuard",
 ]

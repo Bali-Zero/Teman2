@@ -1,0 +1,318 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Pulse Rate (pulses/min)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(cell_pulse_total[5m]) * 60",
+          "legendFormat": "{{ cell }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "green", "value": 0.9 }
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "Pulse Duration (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 10, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(cell_pulse_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{ cell }} p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(cell_pulse_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{ cell }} p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(cell_pulse_duration_seconds_bucket[5m]))",
+          "legendFormat": "{{ cell }} p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" }
+      }
+    },
+    {
+      "title": "Phase Duration Heatmap",
+      "type": "heatmap",
+      "gridPos": { "h": 6, "w": 10, "x": 14, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(cell_pulse_phase_duration_seconds_sum[5m]) / rate(cell_pulse_phase_duration_seconds_count[5m])",
+          "legendFormat": "{{ cell }} {{ phase }}"
+        }
+      ]
+    },
+    {
+      "title": "Outcome Distribution",
+      "type": "piechart",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "increase(cell_pulse_outcome_total[1h])",
+          "legendFormat": "{{ cell }} {{ outcome }}"
+        }
+      ]
+    },
+    {
+      "title": "Action Rate",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 6, "y": 6 },
+      "targets": [
+        {
+          "expr": "rate(cell_pulse_action_total[5m]) / rate(cell_pulse_total[5m])",
+          "legendFormat": "{{ cell }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit" }
+      }
+    },
+    {
+      "title": "Thought Tier Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 10, "y": 6 },
+      "targets": [
+        {
+          "expr": "increase(cell_pulse_thought_tier_total[1h])",
+          "legendFormat": "{{ cell }} tier={{ tier }}"
+        }
+      ]
+    },
+    {
+      "title": "Active Alerts",
+      "type": "alertlist",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 6 },
+      "options": {
+        "alertName": "Cell",
+        "showOptions": "current",
+        "stateFilter": { "firing": true, "pending": true }
+      }
+    },
+    {
+      "title": "Stress / Energy / Arousal",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "cell_homeostasis_stress",
+          "legendFormat": "{{ cell }} stress"
+        },
+        {
+          "expr": "cell_homeostasis_energy",
+          "legendFormat": "{{ cell }} energy"
+        },
+        {
+          "expr": "cell_homeostasis_arousal",
+          "legendFormat": "{{ cell }} arousal"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 0.8 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Stress Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 12 },
+      "targets": [
+        {
+          "expr": "cell_homeostasis_stress",
+          "legendFormat": "{{ cell }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "short",
+          "custom": {
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 0.8 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Energy Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 12 },
+      "targets": [
+        {
+          "expr": "cell_homeostasis_energy",
+          "legendFormat": "{{ cell }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "short",
+          "custom": {
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red", "value": 0.2 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Genome Confidence by Type",
+      "type": "bargauge",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "expr": "cell_genome_confidence_avg",
+          "legendFormat": "{{ cell }} {{ entry_type }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "title": "Active / Silenced Ratio",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 18 },
+      "targets": [
+        {
+          "expr": "cell_genome_active / (cell_genome_active + cell_genome_silenced)",
+          "legendFormat": "{{ cell }}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit" }
+      }
+    },
+    {
+      "title": "Genome Growth",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 18 },
+      "targets": [
+        {
+          "expr": "cell_genome_active",
+          "legendFormat": "{{ cell }} active"
+        },
+        {
+          "expr": "cell_genome_silenced",
+          "legendFormat": "{{ cell }} silenced"
+        }
+      ]
+    },
+    {
+      "title": "HGT Throughput",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "increase(cell_hgt_published_total[24h])",
+          "legendFormat": "{{ cell }} published"
+        },
+        {
+          "expr": "increase(cell_hgt_consumed_total[24h])",
+          "legendFormat": "{{ cell }} consumed"
+        }
+      ]
+    },
+    {
+      "title": "HGT Feedback Acceptance",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 24 },
+      "targets": [
+        {
+          "expr": "increase(cell_hgt_feedback_total{outcome='accepted'}[24h])",
+          "legendFormat": "{{ cell }} accepted"
+        },
+        {
+          "expr": "increase(cell_hgt_feedback_total{outcome='rejected'}[24h])",
+          "legendFormat": "{{ cell }} rejected"
+        }
+      ]
+    },
+    {
+      "title": "Trend Anomalies",
+      "type": "state-timeline",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "cell_trend_monotonic_drift",
+          "legendFormat": "{{ cell }} drift"
+        },
+        {
+          "expr": "cell_trend_flapping",
+          "legendFormat": "{{ cell }} flapping"
+        },
+        {
+          "expr": "cell_trend_sustained_degraded",
+          "legendFormat": "{{ cell }} sustained_degraded"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "options": { "0": { "text": "OK", "color": "green" } }, "type": "value" },
+            { "options": { "1": { "text": "ALERT", "color": "red" } }, "type": "value" }
+          ]
+        }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["cell-core", "observability", "organism"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Makassar",
+  "title": "Cell-Core Observability",
+  "uid": "cell-core-observability",
+  "version": 1,
+  "weekStart": ""
+}
