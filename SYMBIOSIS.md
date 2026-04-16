@@ -194,7 +194,7 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 | Condivisione  | `cell:skills` + `cell:feedback` + `garuda:raw`       | Olimpo streams + KG gap routing                    |
 | Confronto     | Non implementato                                     | Consiglio v1 dopo che 3+ agenti condividono        |
 | Sogno         | Design hypothesis + decay scheduler (cron 02:30)     | Prototipo dopo Sprint 5, con metriche before/after |
-| Curiosita'    | Gap detector v1 operativo (69 gap, 8 query)          | Archivio + prompt per curiosita' autonoma          |
+| Curiosita'    | **v1 Curiosity Loop live** (2026-04-16): 56 gap topics, 3 tier dispatchers, CuriosityGrader, propose-only pipeline, 40 tests | First cycle on real gaps, Zero approve/reject flow |
 | Misura        | Implementato v1 (2026-04-16)                         | T0 baseline: TTR=869, DO=2.21, IA=1.0, FE=0.01    |
 | Simbiosi      | Fase 1 (micromanagement)                             | Evolve naturalmente con i pilastri precedenti      |
 

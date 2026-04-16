@@ -7,6 +7,19 @@
 
 ## Critical Gotchas
 
+### Router Registration — Manifest Pattern (PR #63)
+**NEVER edit `router_registration.py` directly.** It reads from `router_manifest.py`.
+
+To add a new router:
+1. Create file in `backend/app/routers/`
+2. Add `RouterEntry` in `backend/app/setup/router_manifest.py` with correct `process_groups`
+3. Run `PYTHONPATH=. pytest backend/tests/setup/test_router_manifest.py -q`
+4. Done. No other file needs editing.
+
+Process groups: `_API` (light, public HTTP via main_api), `_RAG` (heavy, internal via main_rag), `_BOTH` (health checks).
+
+**SCAR:** PRs #54/#55/#60 registered routers only in `include_routers()` (dev) but not `include_light_routers()` (prod), causing silent 404s. The manifest makes this structurally impossible.
+
 ### ABSTAIN Override (reasoning.py)
 `calculate_evidence_score()` returns 0.00 when Gemini answers directly without calling tools. Score < 0.15 = ABSTAIN → blocks all valid business answers.
 
