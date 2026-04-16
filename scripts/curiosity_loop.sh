@@ -27,7 +27,7 @@ if [ ! -x "$PY" ]; then
 fi
 
 cd "$REPO"
-export PYTHONPATH="$REPO/apps/graph-engine/src:$REPO/packages/cell-core:$PYTHONPATH"
+export PYTHONPATH="$REPO/apps/graph-engine/src:$REPO/packages/cell-core:${PYTHONPATH:-}"
 
 exec "$PY" scripts/gap_fill_autonomous.py \
     >> "$LOG_DIR/curiosity-loop.log" 2>&1

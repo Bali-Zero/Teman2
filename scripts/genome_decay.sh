@@ -27,7 +27,7 @@ if [ ! -x "$PY" ]; then
 fi
 
 cd "$REPO"
-export PYTHONPATH="$CELLCORE:$PYTHONPATH"
+export PYTHONPATH="$CELLCORE:${PYTHONPATH:-}"
 
 exec "$PY" scripts/genome_decay_cron.py \
     >> "$LOG_DIR/genome-decay.log" 2>&1

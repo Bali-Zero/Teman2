@@ -78,14 +78,23 @@ test_all() {
     echo "Foreground test (each script runs once, logs to /tmp/<job>-test.log):"
     for job in "${JOBS[@]}"; do
         local plist="$PLIST_DIR/${job}.plist"
+        # Extract first .sh path inside <string>...</string> tags
         local script
-        script=$(grep -A1 'ProgramArguments' "$plist" | grep '.sh' | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        script=$(grep -oE '<string>[^<]+\.sh</string>' "$plist" | head -1 | sed -E 's|<string>(.*)</string>|\1|')
         echo ""
         echo "── $job ── ($script)"
-        if [ -x "$script" ]; then
-            bash "$script" > "/tmp/${job}-test.log" 2>&1 && echo "  ✅ exit 0" || echo "  ❌ exit $? (see /tmp/${job}-test.log)"
-        else
+        if [ -z "$script" ]; then
+            echo "  ⚠️  no .sh found in $plist"
+            continue
+        fi
+        if [ ! -x "$script" ]; then
             echo "  ⚠️  $script not executable"
+            continue
+        fi
+        if bash "$script" > "/tmp/${job}-test.log" 2>&1; then
+            echo "  ✅ exit 0"
+        else
+            echo "  ❌ exit $? (see /tmp/${job}-test.log)"
         fi
     done
 }
