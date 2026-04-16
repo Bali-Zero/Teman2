@@ -97,8 +97,9 @@ Se la cellula partecipa al sistema circolatorio di conoscenza:
 4. [ ] Risponde a domande di traceability? (chi ha chiamato, quando, cosa ha cambiato)
 5. [ ] Produce un evento Redis se la mutazione è significativa per altri organi?
 6. [ ] Ha test in `backend/tests/`? (almeno happy path + 401)
-7. [ ] È registrato in `router_registration.py`?
+7. [ ] **Aggiunto a `router_manifest.py` con `process_groups` corretto** (`_API` per light/public, `_RAG` per heavy/internal, `_BOTH` per entrambi). NON editare `router_registration.py` — legge il manifest automaticamente. (SCAR: PR #54/#55/#60 — 3 router registrati nel posto sbagliato → 404 silenzioso in produzione per settimane)
 8. [ ] La documentazione OpenAPI (`summary=`, `description=`) è leggibile da un umano?
+9. [ ] Verificato con `PYTHONPATH=. pytest backend/tests/setup/test_router_manifest.py -q`?
 
 **Domanda chiave:** questo endpoint è isolato (muore dopo la response) o produce
 conoscenza che persiste? Se produce conoscenza → va in KB o Redis, non solo in PG.
