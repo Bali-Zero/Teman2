@@ -7,9 +7,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from cell_core.observability.pulse_metrics import PulseMetrics
 
 from cell_core.homeostasis import HomeostaticController, TrendDetector
 from cell_core.lifecycle import Maturation
@@ -43,6 +47,8 @@ class PulseLoop:
         homeostasis: HomeostaticController | None = None,
         identity: Any | None = None,  # SelfModelManager
         on_pulse: Callable[[PulseResult], Awaitable[None]] | None = None,
+        metrics: PulseMetrics | None = None,
+        genome: Any | None = None,  # Genome instance for observability
     ) -> None:
         self.config = config
         self.sensors = sensors
@@ -56,6 +62,8 @@ class PulseLoop:
         self.homeostasis = homeostasis or HomeostaticController(config.sleep_hours)
         self.identity = identity
         self.on_pulse = on_pulse
+        self.metrics = metrics
+        self.genome = genome
         self.pulse_count: int = 0
         self._recent_pulses: list[dict[str, Any]] = []
         self._trend_detector = TrendDetector()
@@ -73,10 +81,20 @@ class PulseLoop:
         """One complete lifecycle tick."""
         self.pulse_count += 1
         now = datetime.now(timezone.utc)
+        _t_pulse_start = time.monotonic()
+        _m = self.metrics  # local ref for speed
+        _cell = self.config.name
 
         # 0. SAFETY CHECK
+        _t0 = time.monotonic()
         safety_result = await self.safety.check()
+        if _m:
+            _m.record_phase(_cell, "safety", time.monotonic() - _t0)
         if not safety_result.can_proceed:
+            if _m:
+                _m.record_pulse(
+                    _cell, "green", time.monotonic() - _t_pulse_start, halted=True,
+                )
             return PulseResult(
                 timestamp=now,
                 pulse_number=self.pulse_count,
@@ -85,6 +103,7 @@ class PulseLoop:
             )
 
         # 1. SENSE — collect all sensor readings
+        _t0 = time.monotonic()
         readings: list[SensorReading] = []
         for sensor in self.sensors:
             try:
@@ -96,8 +115,11 @@ class PulseLoop:
                     status="red",
                     metadata={"error": str(e)},
                 ))
+        if _m:
+            _m.record_phase(_cell, "sense", time.monotonic() - _t0)
 
         # 2. EVALUATE — fast homeostatic update
+        _t0 = time.monotonic()
         worst_status = self._worst_status(readings)
         # Use a default response time for homeostasis when not available
         state = self.homeostasis.update(
@@ -106,6 +128,10 @@ class PulseLoop:
             hour_utc=now.hour,
         )
         trend = self._trend_detector.detect(self._recent_pulses)
+        if _m:
+            _m.record_phase(_cell, "evaluate", time.monotonic() - _t0)
+            _m.observe_homeostasis(_cell, state)
+            _m.observe_trend(_cell, trend)
 
         # Store in STM
         for reading in readings:
@@ -126,6 +152,7 @@ class PulseLoop:
             self._recent_pulses = self._recent_pulses[-50:]
 
         # 3. THINK — if needed
+        _t0 = time.monotonic()
         proposal = Proposal(action="none", reason="stable", confidence=0.0, tier_used=-1)
         should_think = (
             worst_status != "green"
@@ -144,8 +171,11 @@ class PulseLoop:
                 ],
             }
             proposal = await self.thinker.think(readings, state, memory_context)
+        if _m:
+            _m.record_phase(_cell, "think", time.monotonic() - _t0)
 
         # 4. ACT — if approved
+        _t0 = time.monotonic()
         action_taken = None
         if proposal.action != "none":
             threshold = self.lifecycle.action_confidence_threshold()
@@ -154,8 +184,11 @@ class PulseLoop:
                 and self.actor.can_execute(proposal.action)
             ):
                 action_taken = await self.actor.act(proposal)
+        if _m:
+            _m.record_phase(_cell, "act", time.monotonic() - _t0)
 
         # 5. REFLECT — store episode if significant
+        _t0 = time.monotonic()
         if action_taken or worst_status != "green":
             emotion = self._derive_emotion(state)
             episode = Episode(
@@ -173,8 +206,11 @@ class PulseLoop:
                 lesson="",
             )
             await self.episodic.store(episode)
+        if _m:
+            _m.record_phase(_cell, "reflect", time.monotonic() - _t0)
 
         # 6. DREAM — during sleep window
+        _t0 = time.monotonic()
         if self.homeostasis.is_sleeping() and self.lifecycle.can_dream():
             recent = await self.episodic.recall_recent(hours=24, limit=50)
             if recent:
@@ -182,8 +218,11 @@ class PulseLoop:
                 for rule in new_rules:
                     await self.ltm.store_rule(rule)
                 await self.episodic.forget_weak(keep=500)
+        if _m:
+            _m.record_phase(_cell, "dream", time.monotonic() - _t0)
 
         # 7. MATURE — lifecycle tick
+        _t0 = time.monotonic()
         self.lifecycle.tick(self.pulse_count)
 
         # Update identity if present
@@ -191,6 +230,21 @@ class PulseLoop:
             self.identity.record_pulse()
             if action_taken:
                 self.identity.record_action(proposal.action)
+        if _m:
+            _m.record_phase(_cell, "mature", time.monotonic() - _t0)
+
+        # ── Observability: record full pulse + genome (every 10 pulses) ──
+        if _m:
+            _m.record_pulse(
+                _cell,
+                worst_status,
+                time.monotonic() - _t_pulse_start,
+                action_taken=action_taken,
+                thought_tier=proposal.tier_used if should_think else None,
+            )
+            if self.genome and self.pulse_count % 10 == 0:
+                _m.observe_genome(_cell, self.genome)
+                _m.observe_genome_tiers(_cell, self.genome)
 
         return PulseResult(
             timestamp=now,
