@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Menu, X, MessageCircle, CheckCheck } from "lucide-react";
 import { routeTitles } from "@/types/navigation";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { useCrmNotifications } from "@/hooks/useCrmNotifications";
 
@@ -127,6 +128,9 @@ export function Header({
         >
           {formatDate()}
         </span>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* WhatsApp badge */}
         {whatsappUnread > 0 && (

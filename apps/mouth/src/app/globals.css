@@ -1,8 +1,9 @@
 @import 'tailwindcss';
+@import '../../../../packages/design-system/tokens/bz-tokens.css';
 @import '../styles/kbli-theme.css';
 
 :root {
-  /* Map design system vars to kbli theme */
+  /* Map semantic aliases to KBLI theme (downstream of bz-tokens) */
   --background: var(--kbli-bg-base);
   --background-secondary: var(--kbli-bg-elevated);
   --background-elevated: var(--kbli-bg-surface);
@@ -18,68 +19,71 @@
   --accent: var(--kbli-accent);
   --accent-hover: var(--kbli-accent-hover);
 
-  /* Warm Depth tokens (Legacy) */
-  --bz-base: #1d273b;
-  --bz-elevated: #243047;
-  --bz-surface: #2a3655;
-  --bz-card: #2a3655;
-  --bz-card-hover: #2f3d5e;
-  --bz-accent: #d4845a;
-  --bz-accent-hover: #bf7350;
-  --bz-accent-warm: #c9a96e;
-  --bz-accent-cool: #5e7fb5;
+  /* Legacy aliases — reference canonical tokens */
+  --bz-base: var(--bz-anthracite-900);
+  --bz-elevated: var(--bz-anthracite-800);
+  --bz-surface: var(--bz-anthracite-700);
+  --bz-card: var(--bz-anthracite-700);
+  --bz-card-hover: var(--bz-anthracite-600);
+  --bz-accent-warm: var(--bz-warm);
+  --bz-accent-cool: var(--bz-cool);
 
-  /* God Tier Anthracite Tokens */
-  --anthracite-base: #1d273b;
-  --anthracite-elevated: #243047;
+  /* Legacy glass aliases */
+  --glass-highlight: var(--bz-glass-highlight);
+  --glass-rim: var(--bz-glass-rim);
 
-  /* Cinematic Border Tokens */
-  --glass-highlight: rgba(255, 255, 255, 0.12);
-  --glass-rim: rgba(255, 255, 255, 0.03);
+  /* Legacy sidebar aliases */
+  --sidebar-active-bg: var(--bz-sidebar-active-bg);
+  --sidebar-active-border: var(--bz-sidebar-active-border);
 
-  /* Typography */
-  --tx-pure: #ffffff;
-  --tx-primary: #f8fafc;
-  --tx-secondary: #94a3b8;
-  --tx-tertiary: #475569;
+  /* Legacy status aliases */
+  --success: var(--bz-success);
+  --warning: var(--bz-warning);
+  --error: var(--bz-error);
 
-  /* Neon Accents */
-  --neon-blue: #3b82f6;
-  --neon-purple: #8b5cf6;
-  --neon-emerald: #10b981;
-  --neon-amber: #f59e0b;
-  --neon-rose: #f43f5e;
-  --neon-cyan: #06b6d4;
-  --bz-copper: #d4845a;
-
-  /* Sidebar */
-  --sidebar-active-bg: rgba(212, 132, 90, 0.08);
-  --sidebar-active-border: rgba(212, 132, 90, 0.3);
-
-  --bz-text-1: #edeae4;
-  --bz-text-2: #8c8884;
-  --bz-text-3: #575350;
-  --bz-border: rgba(255, 255, 255, 0.055);
-  --bz-border-hover: rgba(255, 255, 255, 0.1);
-  --bz-border-accent: rgba(201, 169, 110, 0.18);
-  --bz-green: #4db87a;
-  --bz-red: #d95f5a;
-  --bz-amber: #d4923a;
-  --success: #4db87a;
-  --warning: #d4923a;
-  --error: #d95f5a;
-  --bz-sidebar-width: 216px;
-  --bz-header-height: 48px;
+  /* Batik texture (constant) */
   --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
 }
 
-html {
-  color-scheme: dark;
+/* Light theme KBLI overrides */
+[data-theme="light"] {
+  --kbli-bg-base: var(--bz-bg);
+  --kbli-bg-elevated: var(--bz-bg-elevated);
+  --kbli-bg-surface: var(--bz-bg-surface);
+  --kbli-bg-surface-hover: var(--bz-bg-surface-hover);
+  --kbli-bg-card: var(--bz-bg-card);
+  --kbli-bg-card-hover: var(--bz-bg-card-hover);
+  --kbli-bg-input: var(--bz-bg-input);
+  --kbli-bg-primary: var(--bz-bg);
+  --kbli-bg-secondary: var(--bz-bg-elevated);
+
+  --kbli-text-primary: var(--bz-text-primary);
+  --kbli-text-secondary: var(--bz-text-secondary);
+  --kbli-text-muted: var(--bz-text-muted);
+
+  --kbli-accent: var(--bz-accent);
+  --kbli-accent-hover: var(--bz-accent-hover);
+  --kbli-accent-glow: var(--bz-accent-glow);
+  --kbli-accent-subtle: var(--bz-accent-subtle);
+  --kbli-accent-muted: var(--bz-accent-muted);
+
+  --kbli-border: var(--bz-border);
+  --kbli-border-hover: var(--bz-border-hover);
+  --kbli-border-accent: var(--bz-border-accent);
+
+  --kbli-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.04),
+    0 0 0 1px var(--bz-border);
+  --kbli-shadow-card-hover:
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 16px 40px rgba(0, 0, 0, 0.06),
+    0 0 0 1px var(--bz-border-hover);
 }
 
 body {
-  background: var(--kbli-bg-base);
-  color: var(--kbli-text-primary);
+  background: var(--bz-bg);
+  color: var(--bz-text-primary);
   font-family:
     'Inter',
     -apple-system,
@@ -113,18 +117,27 @@ body {
   100% { transform: scale(1.06) translate(2%, 1%); }
 }
 
-/* Subtle ambient gradients — God Tier Anthracite */
+/* Subtle ambient gradients — God Tier Anthracite (dark only) */
 body::before {
   content: '';
   position: fixed;
   inset: -25vh -25vw;
   background:
     radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
-    /* Blue */ radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
-    /* Purple */ radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.02) 0%, transparent 40%); /* Copper top */
+    radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.02) 0%, transparent 40%);
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: color-dodge;
+}
+
+/* Light mode: softer ambient */
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.015) 0%, transparent 40%);
+  mix-blend-mode: multiply;
 }
 
 /* Noise texture overlay */
@@ -138,6 +151,11 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Light mode: reduce noise */
+[data-theme="light"] body::after {
+  opacity: 0.008;
+}
+
 /* Ensure content above pseudo-elements */
 #__next,
 main,
@@ -148,15 +166,9 @@ main,
 
 /* Premium Liquid Animations */
 @keyframes aurora {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .animate-aurora {
@@ -165,15 +177,9 @@ main,
 }
 
 @keyframes pulse-glow {
-  0% {
-    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
-  }
-  50% {
-    box-shadow: 0 0 35px rgba(212, 132, 90, 0.5);
-  }
-  100% {
-    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
-  }
+  0% { box-shadow: 0 0 10px rgba(212, 132, 90, 0.15); }
+  50% { box-shadow: 0 0 35px rgba(212, 132, 90, 0.5); }
+  100% { box-shadow: 0 0 10px rgba(212, 132, 90, 0.15); }
 }
 
 .animate-pulse-glow {
@@ -181,14 +187,8 @@ main,
 }
 
 @keyframes fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in-up {
@@ -203,12 +203,8 @@ main,
 }
 
 @keyframes holographic-spin {
-  0% {
-    --border-angle: 0deg;
-  }
-  100% {
-    --border-angle: 360deg;
-  }
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
 }
 
 .holographic-card {
@@ -240,28 +236,17 @@ main,
 }
 
 @keyframes progress-grow {
-  from {
-    width: 0%;
-  }
+  from { width: 0%; }
 }
 
-/* ── Zantara Portal Card animations ─────────────────────────── */
+/* Zantara Portal Card animations */
 @keyframes lotusPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
 }
 @keyframes liquidShift {
-  0% {
-    transform: scale(1) translate(0, 0);
-  }
-  100% {
-    transform: scale(1.06) translate(2%, 1%);
-  }
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.06) translate(2%, 1%); }
 }
 
 @layer utilities {
@@ -287,7 +272,7 @@ main,
 
   /* God Tier Anthracite Utilities */
   .crystal-stat-card {
-    @apply bg-gradient-to-br from-[rgba(255,255,255,0.02)] to-[rgba(255,255,255,0.005)] backdrop-blur-2xl rounded-2xl p-5 shadow-[inset_0_1px_0_0_var(--glass-highlight),inset_0_0_0_1px_var(--glass-rim),0_10px_20px_-5px_rgba(0,0,0,0.3)] relative overflow-hidden transition-all duration-300;
+    @apply bg-gradient-to-br from-[rgba(255,255,255,0.02)] to-[rgba(255,255,255,0.005)] backdrop-blur-2xl rounded-2xl p-5 shadow-[inset_0_1px_0_0_var(--bz-glass-highlight),inset_0_0_0_1px_var(--bz-glass-rim),0_10px_20px_-5px_rgba(0,0,0,0.3)] relative overflow-hidden transition-all duration-300;
   }
   .crystal-stat-card:hover {
     @apply -translate-y-0.5 bg-gradient-to-br from-[rgba(255,255,255,0.03)] to-[rgba(255,255,255,0.01)];
@@ -299,7 +284,7 @@ main,
   }
 
   .ledger-container {
-    @apply bg-gradient-to-br from-[rgba(20,28,43,0.5)] to-[rgba(20,28,43,0.8)] border border-[var(--glass-rim)] rounded-[1.25rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_20px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-[48px] flex flex-col overflow-hidden;
+    @apply bg-gradient-to-br from-[rgba(20,28,43,0.5)] to-[rgba(20,28,43,0.8)] border border-[var(--bz-glass-rim)] rounded-[1.25rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_20px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-[48px] flex flex-col overflow-hidden;
   }
 
   .lux-text-gradient {

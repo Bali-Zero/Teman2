@@ -4,6 +4,7 @@ import { ZantaraWidget } from "@/components/ZantaraWidget";
 import { KbliSearchBox } from "./KbliSearchBox";
 import { LatestIntelligence } from "./LatestIntelligence";
 import { HomepageStaticContent } from "./HomepageStaticContent";
+import { FunnelCTAs } from "./FunnelCTAs";
 
 export const metadata: Metadata = {
   title: {
@@ -1067,6 +1068,9 @@ body::after {
 
 `}
       />
+
+      {/* ── Intelligence Tools — 4 Funnel CTAs ── */}
+      <FunnelCTAs />
 
       {/* ── Latest Intelligence (client-side, always fresh) ── */}
       <LatestIntelligence />
