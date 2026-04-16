@@ -25,7 +25,7 @@ if [ ! -x "$PY" ]; then
 fi
 
 cd "$MG"
-export PYTHONPATH="$MG:$PYTHONPATH"
+export PYTHONPATH="$MG:${PYTHONPATH:-}"
 
 # Run council weekly cycle: auto-select topic → deliberate → Telegram report
 exec "$PY" scripts/council_weekly.py \
