@@ -2,6 +2,7 @@
 Test NotificationService.
 """
 
+import base64
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -15,6 +16,7 @@ from backend.app.modules.notifications.models import (
 from backend.app.modules.notifications.service import (
     NotificationService,
     SendGridProvider,
+    SMTPProvider,
 )
 
 
@@ -73,6 +75,57 @@ class TestSendGridProvider:
             # Verify BCC was included in payload
             call_args = mock_post.call_args
             assert "bcc" in str(call_args)
+
+
+class TestSMTPProviderAttachments:
+    """Regression: PDF attachments must NOT be double-base64-encoded."""
+
+    @pytest.mark.asyncio
+    async def test_attachment_payload_decoded_once(self, monkeypatch):
+        """
+        invoice_service sends `content` already base64-encoded. The MIME builder
+        must decode it before set_payload, so encoders.encode_base64 produces
+        exactly one layer. Otherwise clients see a base64 string instead of a
+        PDF and report "PDF rusak / struktur tidak valid".
+        """
+        provider = SMTPProvider()
+        provider.user = "u"
+        provider.password = "p"
+
+        captured = {}
+
+        async def fake_send(msg, **_kwargs):
+            captured["msg"] = msg
+
+        monkeypatch.setattr(
+            "backend.app.modules.notifications.service.aiosmtplib.send",
+            fake_send,
+        )
+
+        raw_pdf = b"%PDF-1.4\n%fake bytes\n%%EOF"
+        b64_input = base64.b64encode(raw_pdf).decode()
+
+        ok = await provider.send_email(
+            to_email="asya@balizero.com",
+            subject="Test",
+            html_body="<p>x</p>",
+            attachments=[{"name": "Invoice.pdf", "content": b64_input}],
+        )
+        assert ok is True
+
+        # Find the application/octet-stream part
+        msg = captured["msg"]
+        parts = [p for p in msg.walk() if p.get_content_type() == "application/octet-stream"]
+        assert parts, "expected an attachment part"
+        att = parts[0]
+
+        # The MIME transfer-encoded payload, when decoded once, must equal raw bytes.
+        # get_payload(decode=True) reverses the Content-Transfer-Encoding header.
+        decoded = att.get_payload(decode=True)
+        assert decoded == raw_pdf, (
+            "Attachment was double-encoded: clients receive a base64 string "
+            "instead of the PDF bytes."
+        )
 
 
 class TestNotificationService:
