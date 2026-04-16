@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.council-weekly</string>
+
+    <!-- SYMBIOSIS Pillar 4 (Confronto) — weekly Consiglio deliberation.
+         Sunday 10:00 WITA (Air local).
+         Dispatches topic to ≥3 distinct LLM runtimes (Claude/Gemini/DeepSeek/Ollama),
+         computes consensus + groupthink detection, synthesizes decision,
+         sends report to Zero via Telegram, stores in SQLite KB type=consiglio. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/apps/mata-garuda/scripts/council_weekly.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/antonellosiano/Projects/nuzantara/apps/mata-garuda</string>
+
+    <!-- VADEMECUM §11: launchd doesn't inherit PATH/HOME — declare explicitly. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/antonellosiano/.pyenv/shims</string>
+        <key>HOME</key>
+        <string>/Users/antonellosiano</string>
+    </dict>
+
+    <!-- Weekly: Sunday 10:00 WITA. Zero is usually at desk by 11:00 to review. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>10</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/council-weekly.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/council-weekly.stderr.log</string>
+</dict>
+</plist>

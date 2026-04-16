@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.graph.curiosity-loop</string>
+
+    <!-- SYMBIOSIS Pillar 6 (Curiosità) — daily KG gap-fill pipeline.
+         04:30 WITA (Air local).
+         gap_detector.scan() → tier dispatch (simple/medium/complex)
+         → Self-RAG grade → propose-only in kg_proposals.
+         Zero approves via `kg-propose apply <id>`. No auto-apply. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/curiosity_loop.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/antonellosiano/Projects/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/antonellosiano/.pyenv/shims</string>
+        <key>HOME</key>
+        <string>/Users/antonellosiano</string>
+    </dict>
+
+    <!-- Daily 04:30 WITA — before office hours, after overnight data settled. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/curiosity-loop.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/curiosity-loop.stderr.log</string>
+</dict>
+</plist>
