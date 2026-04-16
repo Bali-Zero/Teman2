@@ -11,6 +11,7 @@ import {
   DynamicJsonLd,
 } from "@/components/seo";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
 import "./globals.css";
@@ -170,7 +171,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* ⚡ Performance: Preconnect to critical domains */}
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
@@ -229,31 +230,32 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--background)] text-[var(--foreground)]`}
         suppressHydrationWarning
       >
-        <QueryProvider>
-          <WebVitalsMonitor />
-          <ErrorBoundary
-            fallback={
-              <div className="p-8 text-center">
-                Something went wrong. Please refresh the page.
-              </div>
-            }
-          >
-            {children}
-          </ErrorBoundary>
-          <Toaster
-            position="bottom-right"
-            theme="dark"
-            richColors
-            closeButton
-            toastOptions={{
-              style: {
-                background: "var(--background-elevated)",
-                border: "1px solid var(--border)",
-                color: "var(--foreground)",
-              },
-            }}
-          />
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <WebVitalsMonitor />
+            <ErrorBoundary
+              fallback={
+                <div className="p-8 text-center">
+                  Something went wrong. Please refresh the page.
+                </div>
+              }
+            >
+              {children}
+            </ErrorBoundary>
+            <Toaster
+              position="bottom-right"
+              richColors
+              closeButton
+              toastOptions={{
+                style: {
+                  background: "var(--background-elevated)",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
+                },
+              }}
+            />
+          </QueryProvider>
+        </ThemeProvider>
         {/* Service Worker Registration — safe: hardcoded static JS string, no external input */}
         <Script
           id="sw-register"
