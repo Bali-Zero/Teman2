@@ -34,6 +34,10 @@ LKPM_ASSIGNEES: set[str] = {
     "dewaayu.tax@balizero.com",
     "angel.tax@balizero.com",
     "faisha.tax@balizero.com",
+    # Krisna is the Executive Consultant who owns 4 PTs in the PDF Q1 2026
+    # handover ("Handle BY: Krisna"). He doesn't have a .tax@ sub-alias,
+    # so we whitelist his main inbox.
+    "krisna@balizero.com",
 }
 
 
