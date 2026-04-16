@@ -142,8 +142,16 @@ def test_process_gap_dispatch_exception_caught_no_ack():
 def test_run_gap_consumer_processes_batch():
     """run_gap_consumer reads N messages and processes each."""
     msgs = [
-        {"id": "10-0", "data": {"type": "gap.missing_nip", "payload": '{"person_name": "A"}'}},
-        {"id": "11-0", "data": {"type": "gap.stale_official", "payload": '{"nip": "123"}'}},
+        {"id": "10-0", "data": {
+            "id": "uuid-10", "type": "gap.missing_nip", "source": "gap_detector",
+            "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
+            "payload": '{"person_name": "A"}',
+        }},
+        {"id": "11-0", "data": {
+            "id": "uuid-11", "type": "gap.stale_official", "source": "gap_detector",
+            "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
+            "payload": '{"nip": "123"}',
+        }},
     ]
 
     fake_read = MagicMock(return_value=msgs)
@@ -185,7 +193,11 @@ def test_run_gap_consumer_empty_stream_no_op():
 def test_run_gap_consumer_handles_invalid_json_payload():
     """Invalid JSON in payload field → empty dict, still processes."""
     msgs = [
-        {"id": "12-0", "data": {"type": "gap.missing_nip", "payload": "not json {{{"}},
+        {"id": "12-0", "data": {
+            "id": "uuid-12", "type": "gap.missing_nip", "source": "gap_detector",
+            "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
+            "payload": "not json {{{",
+        }},
     ]
     fake_read = MagicMock(return_value=msgs)
     fake_dispatch = MagicMock(return_value={"case_resolved": True})
@@ -204,3 +216,115 @@ def test_run_gap_consumer_handles_invalid_json_payload():
     fake_dispatch.assert_called_once()
     payload = fake_dispatch.call_args.kwargs["payload"]
     assert payload == {"_gap_type": "gap.missing_nip"}
+
+
+# ── legacy stream end-to-end (coerce + dispatch) ───────────────────────
+
+
+def test_run_gap_consumer_routes_legacy_missing_nip_to_lhkpn():
+    """Legacy entry (gap_type=missing_attribute, attribute=nip) reaches
+    lhkpn_harvester via canonical translation."""
+    msgs = [
+        {
+            "id": "100-0",
+            "data": {
+                "request_id": "abc",
+                "gap_type": "missing_attribute",
+                "attribute": "nip",
+                "entity_type": "Official",
+                "entity_name": "Felucia Sengky Ratna",
+                "entity_nip": "",
+                "priority": "2",
+                "ttl_seconds": "86400",
+                "created_at": "2026-04-10T02:54:14",
+            },
+        },
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+    fake_xack = MagicMock()
+
+    stats = run_gap_consumer(
+        max_items=10,
+        stream_read=fake_read,
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    assert stats["read"] == 1
+    assert stats["resolved"] == 1
+    assert fake_dispatch.call_args.kwargs["agent_name"] == "lhkpn_harvester"
+    payload = fake_dispatch.call_args.kwargs["payload"]
+    # Legacy fields preserved + audit marker present
+    assert payload["entity_name"] == "Felucia Sengky Ratna"
+    assert payload["_legacy_source"] == "nexus:gaps:pre-2026-04-14"
+    assert payload["_gap_type"] == "gap.missing_nip"
+
+
+def test_run_gap_consumer_drains_unmappable_legacy_with_ack():
+    """Legacy entry with no canonical mapping is acked + counted as skipped."""
+    msgs = [
+        {
+            "id": "101-0",
+            "data": {
+                "request_id": "xyz",
+                "gap_type": "missing_attribute",
+                "attribute": "profile",
+                "entity_name": "Foo",
+            },
+        },
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_dispatch = MagicMock()
+    fake_xack = MagicMock()
+
+    stats = run_gap_consumer(
+        max_items=10,
+        stream_read=fake_read,
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    assert stats["read"] == 1
+    assert stats["skipped"] == 1
+    assert stats["resolved"] == 0
+    fake_dispatch.assert_not_called()
+    fake_xack.assert_called_once_with("nexus:gaps", "gap-consumer", "101-0")
+
+
+def test_run_gap_consumer_mixed_canonical_and_legacy_batch():
+    """Batch with both shapes: each routed correctly."""
+    msgs = [
+        # canonical
+        {"id": "200-0", "data": {
+            "id": "uuid-1", "type": "gap.stale_official", "source": "gap_detector",
+            "timestamp": "2026-04-16T00:00:00+08:00", "priority": "3",
+            "payload": '{"nip": "999"}',
+        }},
+        # legacy mappable
+        {"id": "201-0", "data": {
+            "gap_type": "missing_attribute", "attribute": "lhkpn",
+            "entity_name": "Bar", "priority": "2",
+        }},
+        # legacy drained
+        {"id": "202-0", "data": {
+            "gap_type": "missing_relation", "from": "X", "to": "Y",
+        }},
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+    fake_xack = MagicMock()
+
+    stats = run_gap_consumer(
+        max_items=10,
+        stream_read=fake_read,
+        dispatch_agent=fake_dispatch,
+        xack=fake_xack,
+    )
+
+    assert stats["read"] == 3
+    assert stats["resolved"] == 2  # canonical + mappable legacy
+    assert stats["skipped"] == 1   # drained legacy
+    assert fake_dispatch.call_count == 2
+    # All three entries got acked (2 via process_gap on resolve, 1 via drain)
+    assert fake_xack.call_count == 3

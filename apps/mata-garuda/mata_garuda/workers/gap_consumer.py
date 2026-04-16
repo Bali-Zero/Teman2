@@ -25,6 +25,7 @@ from typing import Any, Callable, Optional
 
 from mata_garuda.config import STREAM_NEXUS_GAPS
 from mata_garuda.workers.base_worker import stream_ack, stream_read_new
+from mata_garuda.workers.gap_legacy import coerce_to_canonical, is_legacy_shape
 
 logger = logging.getLogger("mata_garuda.workers.gap_consumer")
 
@@ -179,14 +180,28 @@ def run_gap_consumer(
     for i, item in enumerate(items):
         msg_id: str = item["id"]
         data: dict[str, Any] = item["data"]
-        gap_type: str = data.get("type", "")
-        try:
-            raw_payload = data.get("payload", "{}")
-            payload = json.loads(raw_payload)
-            if not isinstance(payload, dict):
+
+        coerced = coerce_to_canonical(msg_id, data)
+        if coerced is None:
+            # Legacy entry with no canonical mapping — drain to avoid PEL bloat.
+            xack(STREAM_NEXUS_GAPS, CONSUMER_GROUP, msg_id)
+            stats["skipped"] += 1
+            continue
+
+        gap_type, payload_seed = coerced
+
+        if is_legacy_shape(data):
+            # Legacy shape: payload is the whole dict (already a real dict).
+            payload: dict[str, Any] = payload_seed
+        else:
+            # Canonical envelope shape: payload is a JSON string field.
+            try:
+                raw_payload = data.get("payload", "{}")
+                payload = json.loads(raw_payload)
+                if not isinstance(payload, dict):
+                    payload = {}
+            except (json.JSONDecodeError, TypeError):
                 payload = {}
-        except (json.JSONDecodeError, TypeError):
-            payload = {}
 
         result = process_gap(
             msg_id=msg_id,
