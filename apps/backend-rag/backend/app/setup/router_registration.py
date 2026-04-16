@@ -405,6 +405,7 @@ def include_light_routers(api: FastAPI) -> None:
         debug,
         documents_proxy,
         event_bus,
+        experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
         feedback,
         google_drive,
@@ -419,6 +420,7 @@ def include_light_routers(api: FastAPI) -> None:
         lkpm,
         media,
         messaging_identity,
+        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 read-only metrics (PR #60)
         newsletter,
         nusantara_health,
         omnichannel,
@@ -437,6 +439,7 @@ def include_light_routers(api: FastAPI) -> None:
         query_analytics,
         session,
         sheets,
+        skill,  # [SKILL] Skill Registry — canonical procedures (PR #55)
         team,
         team_activity,
         team_analytics,
@@ -471,6 +474,11 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(session.router)
     api.include_router(federation.router)
     api.include_router(feedback.router)
+
+    # Genome-backed registries (light: SQLite via cell-core, no ML deps)
+    api.include_router(experience.router)  # [EXP] Experience Library (PR #54)
+    api.include_router(skill.router)  # [SKILL] Skill Registry (PR #55)
+    api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 (PR #60)
 
     # CRM routers (light — DB + auth only)
     api.include_router(crm_clients_documents.router)
