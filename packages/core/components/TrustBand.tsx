@@ -30,19 +30,19 @@ export const TrustBand: FC<TrustBandProps> = ({
       <strong style={{ fontSize: "var(--font-size-2xl)" }}>
         {formatK(clientCount)}
       </strong>
-      <div style={{ color: "var(--color-text-secondary)" }}>Clienti</div>
+      <div style={{ color: "var(--color-text-secondary)" }}>Clients</div>
     </div>
     <div>
       <strong style={{ fontSize: "var(--font-size-2xl)" }}>
         ★ {rating.toFixed(1)}
       </strong>
-      <div style={{ color: "var(--color-text-secondary)" }}>Recensioni</div>
+      <div style={{ color: "var(--color-text-secondary)" }}>Reviews</div>
     </div>
     <div>
       <strong style={{ fontSize: "var(--font-size-2xl)" }}>
         ~{responseMinutes} min
       </strong>
-      <div style={{ color: "var(--color-text-secondary)" }}>Risposta</div>
+      <div style={{ color: "var(--color-text-secondary)" }}>Response</div>
     </div>
   </section>
 );

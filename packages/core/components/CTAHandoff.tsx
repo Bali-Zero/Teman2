@@ -43,7 +43,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
           onClick={onZantaraClick}
           className="btn btn-secondary"
         >
-          Chatta con Zantara
+          Chat with Zantara
         </button>
       ) : null}
       <a
@@ -52,7 +52,7 @@ export const CTAHandoff: FC<CTAHandoffProps> = ({
         target="_blank"
         rel="noreferrer"
       >
-        Parla su WhatsApp
+        Talk on WhatsApp
       </a>
     </div>
   );

@@ -67,7 +67,7 @@ export function TaxCalendarBody({
             background: "var(--surface-raised)",
           }}
         >
-          <option value="">Tutte le reggenze</option>
+          <option value="">All regencies</option>
           {regencies.map((r) => (
             <option key={r} value={r}>
               {r}
@@ -146,7 +146,7 @@ export function TaxCalendarBody({
                 whiteSpace: "nowrap",
               }}
             >
-              Delega a noi
+              Delegate to us
             </a>
           </li>
         ))}
