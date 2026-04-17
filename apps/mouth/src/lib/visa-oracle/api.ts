@@ -5,15 +5,19 @@ import type {
   ChatResponse,
   HandoffResponse,
   VisaRecommendation,
-} from './types';
+} from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'https://nuzantara-rag.fly.dev';
+const API_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://nuzantara-rag.fly.dev";
 
-async function apiFetch<T>(path: string, body: Record<string, unknown>): Promise<T> {
+async function apiFetch<T>(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
@@ -26,23 +30,48 @@ async function apiFetch<T>(path: string, body: Record<string, unknown>): Promise
   return res.json() as Promise<T>;
 }
 
-export async function recommendVisas(answers: QuizAnswers): Promise<RecommendResponse> {
-  return apiFetch<RecommendResponse>('/api/v1/visa-oracle/recommend', {
+export async function recommendVisas(
+  answers: QuizAnswers,
+): Promise<RecommendResponse> {
+  return apiFetch<RecommendResponse>("/api/v1/visa-oracle/recommend", {
     ...answers,
   });
+}
+
+function detectBrowserLanguage(): string {
+  if (typeof navigator === "undefined") return "it";
+  const raw = (navigator.language || "it").toLowerCase();
+  // Take first 2 chars (en-US → en, it-IT → it)
+  const code = raw.slice(0, 2);
+  const supported = [
+    "en",
+    "it",
+    "id",
+    "fr",
+    "es",
+    "de",
+    "ru",
+    "zh",
+    "ko",
+    "ja",
+  ];
+  return supported.includes(code) ? code : "it";
 }
 
 export async function sendChatMessage(
   sessionId: string,
   message: string,
   quizAnswers?: QuizAnswers,
-  conversationHistory?: ChatMessage[]
+  conversationHistory?: ChatMessage[],
 ): Promise<ChatResponse> {
-  return apiFetch<ChatResponse>('/api/v1/visa-oracle/chat', {
+  return apiFetch<ChatResponse>("/api/v1/visa-oracle/chat", {
     session_id: sessionId,
     message,
+    language: detectBrowserLanguage(),
     ...(quizAnswers ? { quiz_answers: quizAnswers } : {}),
-    ...(conversationHistory ? { conversation_history: conversationHistory } : {}),
+    ...(conversationHistory
+      ? { conversation_history: conversationHistory }
+      : {}),
   });
 }
 
@@ -51,9 +80,9 @@ export async function triggerHandoff(
   quizAnswers: QuizAnswers,
   recommendedVisas: VisaRecommendation[],
   messages: ChatMessage[],
-  language?: string
+  language?: string,
 ): Promise<HandoffResponse> {
-  return apiFetch<HandoffResponse>('/api/v1/visa-oracle/handoff', {
+  return apiFetch<HandoffResponse>("/api/v1/visa-oracle/handoff", {
     session_id: sessionId,
     quiz_answers: quizAnswers,
     recommended_visas: recommendedVisas,
