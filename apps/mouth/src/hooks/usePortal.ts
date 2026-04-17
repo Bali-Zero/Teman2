@@ -35,6 +35,15 @@ export function usePortalDashboard() {
   });
 }
 
+export function usePortalDashboardSummary() {
+  return useQuery({
+    queryKey: ["portal", "dashboard", "summary"],
+    queryFn: async () => api.portal.getDashboardSummary(),
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+  });
+}
+
 export function usePortalTimeline(limit: number = 50) {
   return useQuery({
     queryKey: ["portal", "timeline", limit],
