@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { trackPropertyAnalyzeCTA, trackPropertyWACTA } from "@/lib/analytics";
 
 type AnalyzeResponse = {
   eligibility?: string[];
@@ -30,6 +31,7 @@ export function PropertyEligibilityBody() {
       setError("Lat e lng devono essere numeri.");
       return;
     }
+    trackPropertyAnalyzeCTA(lat, lng);
     setLoading(true);
     try {
       const res = await fetch("/api/property/analyze", {
@@ -170,6 +172,7 @@ export function PropertyEligibilityBody() {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-primary"
+              onClick={() => trackPropertyWACTA()}
               style={{
                 padding: "var(--space-2) var(--space-4)",
                 borderRadius: "var(--radius-md)",

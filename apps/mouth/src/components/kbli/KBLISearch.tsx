@@ -6,6 +6,7 @@ import { kbliApi, KBLISearchResult } from "@/lib/api/kbli.api";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
+import { trackKBLISearch } from "@/lib/analytics";
 
 interface Props {
   navigateOnSubmit?: boolean;
@@ -70,6 +71,7 @@ export function KBLISearch({
 
   const handleSelect = (code: string) => {
     setIsOpen(false);
+    trackKBLISearch(query, results.length);
     if (navigateOnSubmit) {
       router.push(`/kbli/${code}`);
     }
@@ -86,6 +88,7 @@ export function KBLISearch({
       if (activeIndex >= 0 && results[activeIndex]) {
         handleSelect(results[activeIndex].code);
       } else if (navigateOnSubmit && query.trim()) {
+        trackKBLISearch(query, results.length);
         router.push(`/kbli?q=${encodeURIComponent(query)}`);
       }
     } else if (e.key === "Escape") {
