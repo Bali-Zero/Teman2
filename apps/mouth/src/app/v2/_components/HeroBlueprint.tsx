@@ -61,10 +61,22 @@ export function HeroBlueprint() {
             <div className="max-w-[560px]">
               {/* Dateline */}
               <div
-                className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-4 md:mb-8"
+                className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-2"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
                 Bali Zero · Dispatch · April 2026 · Kerobokan
+              </div>
+              {/* Tagline */}
+              <div
+                className="font-semibold italic mb-4 md:mb-8"
+                style={{
+                  color: "rgba(255,255,255,0.82)",
+                  fontSize: "clamp(13px, 1.1vw, 15px)",
+                  letterSpacing: "0.02em",
+                  textShadow: "0 1px 10px rgba(0,0,0,0.4)",
+                }}
+              >
+                Your Bali, from Zero.
               </div>
 
               {/* Lede — brand-voice essay opener */}
