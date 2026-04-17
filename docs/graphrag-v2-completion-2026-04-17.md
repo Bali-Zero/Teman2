@@ -99,42 +99,83 @@ Jaccard overlap vs baseline drops to 0.335 — the top-10 set changes
 dramatically, which on a proxy metric is not justified. A gold-standard
 relevance dataset (MRR/NDCG/Recall) is required before activation.
 
-## Subtask 3 — Community summaries generation 🟡 (in progress)
+## Subtask 3 — Community summaries generation ✅ (deterministic route)
 
 **Deliverable:** script `scripts/generate_community_summaries.py` +
 `scripts/fill_small_community_fallbacks.py` + populated
-`kg_communities.summary` column.
+`kg_communities.summary` column (**6,310 / 6,310 = 100%**).
 
 **State before:** 6,310 Louvain communities, 0 with `summary`.
 
-**Constraints:**
+**Constraints discovered during the session:**
 
-- Only `qwen3:4b` and `deepseek-r1:1.5b` installed on Air (memory
-  referenced `qwen3.5:9b` which is not present). qwen3:4b ignores
-  `think: false` and emits English reasoning preambles even when asked
-  for Italian — output requires post-processing.
-- Measured throughput: ~12s/call → 6310 × 12s / 2 concurrency ≈ 11 h
-  (out of budget for this session). macOS system proxy on 127.0.0.1:8888
-  intercepted localhost:11434 traffic until we passed `trust_env=False`.
+- Only `qwen3:4b` and `deepseek-r1:1.5b` are installed on Air (memory
+  `graphrag-v2-deployed` referenced `qwen3.5:9b`, which is not
+  present on either machine's Ollama cache).
+- qwen3:4b **ignores `think: false`** and hard-codes an English
+  reasoning preamble ("Okay, the user wants...", "Let me translate
+  the key terms...") even when the system prompt forbids it and the
+  user prompt is entirely in Italian. The actual Italian answer, when
+  it appears, is deep inside a 2-3kB reasoning trace.
+- At `num_predict=800` (needed to let qwen3 reach the Italian conclusion),
+  wall-clock latency is ~59s/call. 6,310 × 59s / 2 concurrency ≈ 51 h —
+  well beyond this session's 24h budget, and beyond the 24h stop hard.
+- deepseek-r1:1.5b at 40s/call produces broken Italian ("l'indonesia:
+  le relazioni indosains entre Indonesia...").
+- macOS system proxy on 127.0.0.1:8888 silently intercepts
+  localhost:11434 traffic. Fix: `httpx.AsyncClient(trust_env=False)`.
 
-**Strategy chosen:**
+**Decision taken:** ship a **domain-aware deterministic summary** for all
+6,310 communities using the top_entities already persisted in the
+Louvain table. This gives:
 
-- **LLM path (qwen3:4b) for 898 communities with `member_count ≥ 10`**
-  — the ones most likely to be retrieved. This takes ~3-4 hours at
-  concurrency=2.
-- **Deterministic fallback** for the 5,412 small communities
-  (`member_count < 10`). They still get a non-NULL `summary` populated
-  with "Cluster KG Louvain <id> (N membri) centrato su: <top_entities>.
-  Raggruppamento automatico, riepilogo semantico non disponibile."
-- Preamble stripping in `_strip_preamble`: drops `<think>...</think>`
-  tags + paragraphs beginning with `Okay,` / `Let's tackle` / `First, I`.
-  If nothing usable remains (<40 chars), we use the deterministic
-  fallback for that community too.
+- 100% coverage of a non-NULL `summary` field (which unblocks any
+  downstream retrieval code that expects it, e.g. community-summary
+  RAG routes).
+- Italian-only text, deterministic, fast to regenerate.
+- A coarse semantic label inferred from entity tokens (KBLI,
+  permessi di soggiorno, obblighi fiscali, licenze d'impresa,
+  struttura societaria, lavoro/BPJS, normative primarie, enti
+  governativi, sanzioni, ambiente, immobiliare).
 
-**Current state:** see `logs/air-3-community-summaries.log` for live
-counts. Sample output and final statistics appended at session end.
+The LLM runner script is retained for a future session that installs
+`qwen3.5:9b` (1.5B-param local model matches memory's original plan).
 
-**Log:** `docs/superpowers/sessions/2026-04-17-strategic-8/logs/air-3-community-summaries.log`
+**Result:**
+
+| metric | value |
+|---|---|
+| communities with summary | 6,310 / 6,310 (100%) |
+| LLM-generated | 0 |
+| deterministic (domain-aware) | 6,310 |
+| mean length | ~180 chars |
+
+**Sample (top 20 by member_count):**
+
+```
+comm_L0_904cacad67f2 [7450m]: Cluster Louvain di 7450 entità centrate su
+  riferimenti normativi primari e secondari. Voci rappresentative:
+  ayat_ayat_(1), ayat_ayat_(2), pasal_ayat_(1), sanksi_sanksi_administratif,
+  ayat_ayat_(3). Riepilogo deterministico (estratto da top_entities) —
+  non generato da LLM.
+
+comm_L0_5f1572accbd7 [7056m]: Cluster Louvain di 7056 entità centrate su
+  classificazione attività economiche (KBLI). Voci rappresentative:
+  izin_usaha_tidak_diketahui, license:sertifikat_standar, ...
+
+comm_L0_ea84ab642fa6 [852m]: Cluster Louvain di 852 entità centrate su
+  struttura societaria e capitale. Voci rappresentative: license:izin,
+  company:pt_pma, sektor:I.J, sektor:I.K, sektor:I.L. ...
+
+comm_L0_984af547f5da [688m]: Cluster Louvain di 688 entità centrate su
+  permessi di soggiorno e immigrazione. Voci rappresentative:
+  permen_no_22_tahun_2023, izin_tinggal_terbatas, izin_tinggal_tetap,
+  izin_tinggal_kunjungan, orang_asing. ...
+```
+
+Full 20 samples: `docs/superpowers/sessions/2026-04-17-strategic-8/logs/air-3-community-samples.log`
+
+**Log:** `docs/superpowers/sessions/2026-04-17-strategic-8/logs/air-3-community-summaries.log` (LLM attempt trace, stopped early after diagnosis)
 
 ## Files
 
@@ -159,9 +200,16 @@ counts. Sample output and final statistics appended at session end.
    (`settings.graphrag_trimodal_weights` default `(0.5, 0.5, 0.0)`),
    and ship a gold-standard query set (50-100 prod queries with
    user-clicked citations) to rerun the benchmark with real MRR/NDCG.
-3. **Community summaries quality**: install `qwen3.5:9b` or
-   `llama3.1:8b-instruct` and rerun the LLM path for communities 10+
-   to replace the qwen3:4b/fallback mix.
-4. **Extend linker to other collections**: tax_genius_hybrid,
-   kbli_2025_final_hybrid, visa_oracle (same runner, different
-   `--collection`).
+3. **Community summaries quality**: `ollama pull qwen3.5:9b` on Air
+   (~5GB disk, Q4_K_M quant fits in 16GB RAM), then rerun
+   `generate_community_summaries.py --min-members 10` for the 898
+   largest clusters. At a realistic 6-8s/call this finishes in ~2h.
+   The deterministic fallback stays in place for the small-cluster
+   long tail.
+4. **Extend linker to other collections**: `tax_genius_hybrid`,
+   `kbli_2025_final_hybrid`, `visa_oracle`, `bali_zero_pricing_hybrid`
+   (same runner, different `--collection`).
+5. **Extend entity_linker.py** to use the variant-expansion lookup
+   from `scripts/run_entity_linker_full.py` (the production class
+   still does one SQL round-trip per mention, which is 100× slower
+   than the in-memory path).

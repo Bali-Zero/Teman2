@@ -30,12 +30,36 @@ DB_URL = os.environ.get(
 )
 
 
+_DOMAIN_HINTS: list[tuple[tuple[str, ...], str]] = [
+    (("kbli", "klasifikasi", "usaha", "kegiatan"), "classificazione attività economiche (KBLI)"),
+    (("kitas", "kitap", "vitas", "visa", "imigrasi", "izin_tinggal"), "permessi di soggiorno e immigrazione"),
+    (("pph", "ppn", "pajak", "pbb", "bphtb", "spt", "tax"), "obblighi fiscali e tributari"),
+    (("nib", "oss", "siup", "tdp", "izin_usaha", "perizinan"), "licenze e registrazioni d'impresa"),
+    (("pt_pma", "pt_pmdn", "perusahaan", "modal"), "struttura societaria e capitale"),
+    (("ketenagakerjaan", "karyawan", "pekerja", "rptka", "imta", "bpjs"), "lavoro e protezione sociale"),
+    (("uu", "pp", "perpres", "permen", "perda", "pasal", "ayat"), "riferimenti normativi primari e secondari"),
+    (("bkpm", "kemenkumham", "kemenaker", "djp", "bpn"), "enti governativi e ministeri"),
+    (("sanksi", "pencabutan", "pidana"), "sanzioni e conseguenze amministrative"),
+    (("lingkungan", "amdal", "limbah"), "ambiente e valutazione di impatto"),
+    (("properti", "tanah", "bangunan", "imb", "hak_guna"), "diritti immobiliari e urbanistica"),
+]
+
+
+def _infer_domain(top_entities: list[str]) -> str:
+    joined = " ".join(top_entities).lower() if top_entities else ""
+    for keys, label in _DOMAIN_HINTS:
+        if any(key in joined for key in keys):
+            return label
+    return "normative e entità eterogenee"
+
+
 def _fallback(community_id: str, top_entities: list[str], member_count: int) -> str:
-    entities = ", ".join(top_entities[:8]) if top_entities else "voci eterogenee"
+    domain = _infer_domain(top_entities)
+    entities = ", ".join(top_entities[:6]) if top_entities else "voci senza etichetta"
     return (
-        f"Cluster KG Louvain {community_id} ({member_count} membri) centrato su: "
-        f"{entities}. Raggruppamento automatico, riepilogo semantico "
-        f"non disponibile."
+        f"Cluster Louvain di {member_count} entità centrate su {domain}. "
+        f"Voci rappresentative: {entities}. "
+        f"Riepilogo deterministico (estratto da top_entities) — non generato da LLM."
     )
 
 
