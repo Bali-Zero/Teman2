@@ -11,3 +11,4 @@ export {
   WA_CANONICAL,
   type WaDeeplinkArgs,
 } from "./wa-deeplink";
+export { toIcalString, type IcalEvent, type IcalOptions } from "./ical";
