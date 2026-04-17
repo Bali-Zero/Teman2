@@ -14,6 +14,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.portal._rbac import ClientContext, require_client_access
 
 logger = get_logger(__name__)
 
@@ -31,7 +32,13 @@ class PortalDashboardMixin:
     # DASHBOARD
     # ================================================
 
-    async def get_dashboard(self, client_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_dashboard(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """
         Get client dashboard overview.
 
@@ -281,7 +288,13 @@ class PortalDashboardMixin:
     # VISA & IMMIGRATION
     # ================================================
 
-    async def get_visa_status(self, client_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_visa_status(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """
         Get detailed visa and immigration status.
 
@@ -502,7 +515,13 @@ class PortalDashboardMixin:
     # COMPANIES
     # ================================================
 
-    async def get_companies(self, client_id: int) -> list[dict[str, Any]]:
+    @require_client_access
+    async def get_companies(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> list[dict[str, Any]]:
         """Get all companies associated with client."""
         async with self.pool.acquire() as conn:
             companies = await conn.fetch(
@@ -539,7 +558,14 @@ class PortalDashboardMixin:
                 for c in companies
             ]
 
-    async def get_company_detail(self, client_id: int, company_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_company_detail(
+        self,
+        client_id: int,
+        company_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """Get detailed company information."""
         async with self.pool.acquire() as conn:
             # Verify client owns this company
@@ -695,7 +721,14 @@ class PortalDashboardMixin:
                 ],
             }
 
-    async def set_primary_company(self, client_id: int, company_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def set_primary_company(
+        self,
+        client_id: int,
+        company_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """Set a company as primary for the client."""
         async with self.pool.acquire() as conn, conn.transaction():
             # Clear previous primary
@@ -728,7 +761,13 @@ class PortalDashboardMixin:
     # TAXES
     # ================================================
 
-    async def get_tax_overview(self, client_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_tax_overview(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """
         Get tax overview and upcoming deadlines.
 
@@ -820,7 +859,14 @@ class PortalDashboardMixin:
     # TIMELINE
     # ================================================
 
-    async def get_timeline(self, client_id: int, limit: int = 50) -> dict[str, Any]:
+    @require_client_access
+    async def get_timeline(
+        self,
+        client_id: int,
+        limit: int = 50,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """
         Get client activity timeline.
 

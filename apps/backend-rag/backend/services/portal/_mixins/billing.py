@@ -11,6 +11,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.portal._rbac import ClientContext, require_client_access
 
 logger = get_logger(__name__)
 
@@ -28,7 +29,13 @@ class PortalBillingMixin:
     # BILLING
     # ================================================
 
-    async def get_billing(self, client_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_billing(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """
         Get all invoices for a client with summary statistics.
 
@@ -109,7 +116,14 @@ class PortalBillingMixin:
             },
         }
 
-    async def get_invoice_pdf_url(self, client_id: int, invoice_id: int) -> dict[str, str] | None:
+    @require_client_access
+    async def get_invoice_pdf_url(
+        self,
+        client_id: int,
+        invoice_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, str] | None:
         """Get Drive download URL for an invoice PDF. Returns None if not found."""
         async with self.pool.acquire() as conn:
             try:
@@ -139,10 +153,13 @@ class PortalBillingMixin:
     # PROFILE UPDATE
     # ================================================
 
+    @require_client_access
     async def update_profile(
         self,
         client_id: int,
         fields: dict[str, Any],
+        *,
+        current_user: ClientContext,
     ) -> dict[str, Any]:
         """
         Update client profile with whitelisted fields only.

@@ -443,6 +443,11 @@ class TestPortalServiceDashboardHelpers:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
+def _ctx(cid: int) -> dict:
+    """Build a minimal ClientContext for a client viewing its own data."""
+    return {"client_id": cid, "email": f"client-{cid}@example.com"}
+
+
 class TestPortalServiceDashboard:
     @pytest.mark.asyncio
     async def test_get_dashboard_client_not_found(self, mock_pool: tuple) -> None:
@@ -453,7 +458,7 @@ class TestPortalServiceDashboard:
 
         service = PortalService(pool)
         with pytest.raises(ValueError, match="not found"):
-            await service.get_dashboard(999)
+            await service.get_dashboard(999, current_user=_ctx(999))
 
     @pytest.mark.asyncio
     async def test_get_dashboard_success(self, mock_pool: tuple) -> None:
@@ -482,7 +487,7 @@ class TestPortalServiceDashboard:
         conn.fetchval = AsyncMock(return_value=unread)
 
         service = PortalService(pool)
-        result = await service.get_dashboard(1)
+        result = await service.get_dashboard(1, current_user=_ctx(1))
 
         assert result["visa"]["status"] == "none"
         assert result["company"]["totalCompanies"] == 0
@@ -500,7 +505,7 @@ class TestPortalServiceVisaStatus:
 
         service = PortalService(pool)
         with pytest.raises(ValueError, match="not found"):
-            await service.get_visa_status(999)
+            await service.get_visa_status(999, current_user=_ctx(999))
 
 
 class TestPortalServiceCompanies:
@@ -529,7 +534,7 @@ class TestPortalServiceCompanies:
         )
 
         service = PortalService(pool)
-        result = await service.get_companies(1)
+        result = await service.get_companies(1, current_user=_ctx(1))
         assert len(result) == 1
         assert result[0]["name"] == "PT Test"
         assert result[0]["isPrimary"] is True
@@ -544,4 +549,4 @@ class TestPortalServiceCompanies:
 
         service = PortalService(pool)
         with pytest.raises(ValueError, match="not found"):
-            await service.get_company_detail(1, 999)
+            await service.get_company_detail(1, 999, current_user=_ctx(1))
