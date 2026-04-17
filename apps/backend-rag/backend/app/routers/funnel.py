@@ -9,6 +9,7 @@ Endpoints:
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 from enum import Enum
 from typing import Any
@@ -63,8 +64,8 @@ async def touch_session(
             """,
             req.session_id,
             req.funnel.value,
-            req.step_state,
-            req.lead_profile,
+            json.dumps(req.step_state),
+            json.dumps(req.lead_profile),
             _ip_hash(request),
         )
     return {"ok": True}
