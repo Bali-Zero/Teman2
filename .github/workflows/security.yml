@@ -13,9 +13,10 @@ jobs:
   snyk-python:
     name: Snyk Python Security
     runs-on: ubuntu-latest
-    # Advisory-only: Snyk token rotation is blocked on maintainer credentials.
-    # The scan still runs and uploads SARIF; failure does not block PRs.
-    continue-on-error: true
+    # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
+    # listed in .security/exceptions.yaml (see docs/security/CVE_TRIAGE_POLICY.md).
+    # Exceptions are enforced by the "Honour CVE exceptions" step below, which
+    # re-runs Snyk after filtering out accepted CVE ids.
 
     steps:
       - name: Checkout code
@@ -26,9 +27,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run Snyk (Python)
+      - name: Validate CVE exceptions file
+        run: |
+          pip install pyyaml -q
+          python scripts/check_cve_exceptions.py
+
+      - name: Run Snyk (Python, JSON for exception filtering)
         uses: snyk/actions/python@master
-        continue-on-error: true
+        continue-on-error: true # we make the decision in the next step
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -37,6 +43,14 @@ jobs:
             --file=apps/backend-rag/requirements.txt
             --package-manager=pip
             --project-name=nuzantara-backend
+            --json-file-output=snyk-python.json
+            --sarif-file-output=snyk.sarif
+
+      - name: Honour CVE exceptions (fail on un-accepted CVEs)
+        run: |
+          python scripts/filter_snyk_findings.py snyk-python.json
+        env:
+          CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
         uses: github/codeql-action/upload-sarif@v3
@@ -48,8 +62,8 @@ jobs:
   snyk-node:
     name: Snyk Node.js Security
     runs-on: ubuntu-latest
-    # Advisory-only: see snyk-python job comment.
-    continue-on-error: true
+    # Blocking gate — see snyk-python. Exceptions honoured via
+    # .security/exceptions.yaml (docs/security/CVE_TRIAGE_POLICY.md).
 
     steps:
       - name: Checkout code
@@ -60,16 +74,36 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Setup Python (for exception filter)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Snyk (Node.js)
+      - name: Validate CVE exceptions file
+        run: |
+          pip install pyyaml -q
+          python scripts/check_cve_exceptions.py
+
+      - name: Run Snyk (Node.js, JSON for exception filtering)
         uses: snyk/actions/node@master
-        continue-on-error: true
+        continue-on-error: true # we make the decision in the next step
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --all-projects
+          args: |
+            --severity-threshold=high
+            --all-projects
+            --json-file-output=snyk-node.json
+            --sarif-file-output=snyk.sarif
+
+      - name: Honour CVE exceptions (fail on un-accepted CVEs)
+        run: |
+          python scripts/filter_snyk_findings.py snyk-node.json
+        env:
+          CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Snyk results
         uses: github/codeql-action/upload-sarif@v3
@@ -167,11 +201,10 @@ jobs:
   safety:
     name: Safety Dependency Check
     runs-on: ubuntu-latest
-    # Advisory-only: CVE policy (which vulns to accept vs fix) requires
-    # maintainer decisions. The scan still runs and uploads the report;
-    # failure does not block PRs. Re-enable as blocking gate once
-    # apps/backend-rag/requirements.txt is triaged.
-    continue-on-error: true
+    # Blocking gate — HIGH/CRITICAL CVEs fail the job unless the finding is
+    # listed in .security/exceptions.yaml (see docs/security/CVE_TRIAGE_POLICY.md).
+    # Safety CLI exits 0 for "no vulns" and 64 for "vulns found" — we filter
+    # the JSON report against the exception list before deciding.
 
     steps:
       - name: Checkout code
@@ -183,16 +216,11 @@ jobs:
           python-version: "3.11"
 
       - name: Install Safety
-        run: pip install safety
+        run: pip install safety pyyaml -q
 
-      - name: Run Safety check
-        # `--severity` and `--output screen` do not exist in safety 3.x.
-        # Use plain `safety check --file` (exits 0 when 0 vulns, 64 on any
-        # vulnerability). Job has continue-on-error: true — advisory only.
-        run: |
-          safety check \
-            --file apps/backend-rag/requirements.txt \
-            || true
+      - name: Validate CVE exceptions file
+        run: python scripts/check_cve_exceptions.py
+
       - name: Run Safety check (save JSON report)
         run: |
           safety check \
@@ -200,8 +228,15 @@ jobs:
             --save-json safety-report.json \
             || true
 
+      - name: Honour CVE exceptions (fail on un-accepted CVEs)
+        run: |
+          python scripts/filter_safety_findings.py safety-report.json
+        env:
+          CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
+
       - name: Upload Safety results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: safety-report
           path: safety-report.json

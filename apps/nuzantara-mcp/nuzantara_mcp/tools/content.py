@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("visa_specialist")
     async def compose_article(
         topic: str,
         style: str = "informative",
@@ -35,6 +38,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def publish_article(article_id: str) -> dict:
         """
         Publish a composed article to the blog.

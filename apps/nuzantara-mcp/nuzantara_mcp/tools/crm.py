@@ -2,9 +2,12 @@
 
 from typing import Any, Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def list_clients(
         status: Optional[str] = None,
         search: Optional[str] = None,
@@ -34,6 +37,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         return result
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def get_client(client_id: str) -> dict:
         """
         Get full details for a specific client.
@@ -75,6 +79,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         return await _call("/api/crm/clients/", method="POST", json=payload)
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def update_client(client_id: str, updates: dict) -> dict:
         """
         Update a client's information.
@@ -146,6 +151,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         return await _call(f"/api/crm/practices/{practice_id}")
 
     @mcp.tool()
+    @require_role("visa_specialist", "company_setup")
     async def create_practice(
         client_id: str,
         practice_type: str,
@@ -192,6 +198,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         )
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def get_expiry_alerts(days_ahead: int = 90) -> dict:
         """
         Get document/visa/practice expiry alerts.
@@ -214,6 +221,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         return result
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def get_client_timeline(client_id: str, limit: int = 50) -> dict:
         """
         Get the full interaction timeline for a client.
@@ -233,6 +241,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:
         )
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def log_interaction(
         client_id: str,
         interaction_type: str,
