@@ -255,25 +255,26 @@ function Section({
     >
       <div className="max-w-[1400px] mx-auto">
         <div className="mb-8">
-          <div
-            className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
-          >
-            {eyebrow}
-          </div>
           <h2
             className="font-extrabold tracking-tight"
             style={{
               color: "var(--text-primary)",
-              fontSize: "clamp(26px, 2.4vw, 34px)",
+              fontSize: "clamp(36px, 4.2vw, 56px)",
+              lineHeight: 1.05,
             }}
           >
-            {title}
+            {eyebrow}
           </h2>
+          <div
+            className="mt-3 text-[15px] font-semibold"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {title}
+          </div>
           {subtitle ? (
             <p
-              className="mt-2 text-[14px] max-w-2xl"
-              style={{ color: "var(--text-secondary)" }}
+              className="mt-1.5 text-[12px] max-w-2xl"
+              style={{ color: "var(--text-tertiary)" }}
             >
               {subtitle}
             </p>
