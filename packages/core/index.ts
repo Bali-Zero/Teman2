@@ -31,6 +31,9 @@ export { inter } from "./fonts/inter";
 // Utility exports (pre-existing)
 export * from "./utils";
 export * from "./auth";
+
+// Analytics exports
+export * from "./analytics";
 export {
   MatterCard,
   type MatterCardProps,
