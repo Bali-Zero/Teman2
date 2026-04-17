@@ -205,9 +205,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Find matching rate limit
         limit, window = self._get_rate_limit(request.url.path)
 
-        # Check rate limit
+        # Fail-open if the limiter malfunctions beyond its internal Redis fallback —
+        # a hot-path middleware bug must not take the whole API offline.
         rate_limit_key = f"ratelimit:{user_id}:{request.url.path}"
-        allowed, info = rate_limiter.is_allowed(rate_limit_key, limit, window)
+        try:
+            allowed, info = rate_limiter.is_allowed(rate_limit_key, limit, window)
+        except Exception:
+            logger.exception(f"Rate limiter failure, failing open for {request.url.path}")
+            return await call_next(request)
 
         if not allowed:
             logger.warning(f"⚠️ Rate limit exceeded: {user_id} on {request.url.path}")
