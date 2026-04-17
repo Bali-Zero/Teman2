@@ -184,10 +184,25 @@ async def call_claude_with_retry(
 
     def _make_request() -> Any:
         """Make the actual API request"""
+        # Ephemeral prompt caching on the user block — article-composer prompts
+        # are large and largely stable across calls, so caching reduces latency
+        # and rate-limit token burn. On Max OAuth flat-rate the benefit is
+        # headroom + speed, not $$.
         return client.messages.create(
             model=model,
             max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        },
+                    ],
+                },
+            ],
         )
 
     try:

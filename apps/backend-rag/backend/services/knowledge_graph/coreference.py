@@ -332,11 +332,26 @@ class CoreferenceResolver:
 ## ANSWER (just the ID):"""
 
         try:
+            # Ephemeral prompt caching on the user block. Called once per
+            # reference in a chunk — candidate list and context repeat often,
+            # so caching gives a real latency win even at 50 max_tokens. On
+            # Max OAuth flat-rate the benefit is headroom + speed, not $$.
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=50,
                 temperature=0.0,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt,
+                                "cache_control": {"type": "ephemeral"},
+                            },
+                        ],
+                    },
+                ],
             )
 
             result = response.content[0].text.strip()
