@@ -207,7 +207,7 @@ async def subscribe(
         logger.info(f"New subscriber: {request.email} (ID: {subscriber_id})")
         await invalidate_cache("zantara:newsletter:*")
 
-        # TODO: Send confirmation email via Zoho
+        # TODO(#80): Send double-opt-in confirmation email via Brevo (send-email endpoint).
         # await send_confirmation_email(request.email, subscriber_id, confirmation_token)
 
         return SubscribeResponse(

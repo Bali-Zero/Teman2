@@ -217,8 +217,6 @@ class ChangeImpactAnalyzer:
                     impact["additive_changes"].append(f"{item_type}:{item}")
                     impact["test_update_required"] = True
 
-        # TODO: Detect signature changes (more complex AST comparison)
-
         return impact
 
     def _extract_definitions(self, tree: ast.AST) -> dict[str, list[str]]:

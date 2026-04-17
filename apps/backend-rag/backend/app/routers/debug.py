@@ -128,7 +128,7 @@ async def get_logs(
     Returns:
         Logs data
     """
-    # TODO: Integrate with actual logging service
+    # TODO(#79): Wire to the real logging backend (Loki or fly logs --json).
     return {
         "success": True,
         "message": "Log retrieval not yet implemented. Integrate with logging service.",

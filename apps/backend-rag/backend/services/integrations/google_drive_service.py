@@ -738,7 +738,7 @@ class GoogleDriveService:
 
         # Calculate page token from offset (Drive API uses page tokens, not offset)
         # For simplicity, we'll fetch all and paginate in memory for now
-        # TODO: Implement proper page token handling if needed
+        # TODO(#82): Switch to native Drive pageToken pagination (offset is deprecated).
 
         params = {
             "q": query,

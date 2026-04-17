@@ -7,7 +7,6 @@ import logging
 import re
 
 # To add/remove admin access: edit this set + deploy.
-# For DB-driven RBAC, see GitHub issue #TODO.
 CRM_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "admin@balizero.com",
@@ -16,14 +15,12 @@ CRM_ADMIN_EMAILS: set[str] = {
 }
 
 # To add/remove super admin access: edit this set + deploy.
-# For DB-driven RBAC, see GitHub issue #TODO.
 SUPER_ADMIN_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",
 }
 
 # To add/remove full practices view access: edit this set + deploy.
-# For DB-driven RBAC, see GitHub issue #TODO.
 PRACTICES_FULL_VIEW_EMAILS: set[str] = {
     "zero@balizero.com",
     "antonellosiano@gmail.com",
