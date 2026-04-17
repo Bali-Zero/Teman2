@@ -66,6 +66,16 @@ class HealthMonitor:
         self._cold_start_duration: float | None = None
         self._first_request_seen = False
         self._restart_count = self._read_restart_count()
+        self._last_cpu_percent: float = 0.0
+
+        # Prime psutil CPU sampler — first call with interval=None always
+        # returns 0.0 (no prior delta). Called once here so subsequent calls
+        # in the monitoring loop produce meaningful deltas. Safe if psutil
+        # can't inspect our process (e.g. sandboxed test envs).
+        try:
+            psutil.Process().cpu_percent(interval=None)
+        except Exception as exc:  # pragma: no cover - psutil env-dependent
+            logger.debug("cpu_percent primer failed (non-fatal): %s", exc)
 
         # Persistent HTTP client
         self._client: httpx.AsyncClient | None = None
@@ -218,8 +228,10 @@ class HealthMonitor:
                     unit=f"% ({rss_mb:.0f}MB / {_VM_MEMORY_MB}MB)",
                 )
 
-            # CPU: average over a non-blocking interval
-            cpu_percent = process.cpu_percent(interval=None)  # Non-blocking
+            # CPU: average over a non-blocking interval (delta since last call).
+            # Primed in __init__ so the first loop iteration sees a real value.
+            cpu_percent = process.cpu_percent(interval=None)
+            self._last_cpu_percent = cpu_percent
             if cpu_percent > settings.cpu_alert_threshold_percent:
                 await self._send_resource_alert_throttled(
                     "cpu",
@@ -366,8 +378,10 @@ class HealthMonitor:
 
             memory_usage.set(rss_mb)
             cpu_usage.set(cpu_percent)
-        except Exception:
-            pass  # Metrics module may not be imported yet
+        except (ImportError, AttributeError) as exc:
+            # Metrics module may not be imported yet, or names removed.
+            # Any other exception should surface.
+            logger.debug("Resource metrics not available yet: %s", exc)
 
     # =========================================================================
     # Alert helpers
@@ -561,7 +575,10 @@ class HealthMonitor:
                 "memory_rss_mb": round(rss_mb, 1),
                 "memory_vm_limit_mb": _VM_MEMORY_MB,
                 "memory_percent": round((mem_info.rss / _VM_MEMORY_BYTES) * 100, 1),
-                "cpu_percent": process.cpu_percent(interval=None),
+                # Reuse the last value captured by the monitoring loop instead
+                # of calling cpu_percent(interval=None) here — that would reset
+                # psutil's delta window and make the next loop sample read 0.
+                "cpu_percent": round(self._last_cpu_percent, 1),
                 "uptime_seconds": round(time.monotonic() - _BOOT_TIME, 0),
                 "cold_start_seconds": round(self._cold_start_duration, 2)
                 if self._cold_start_duration
