@@ -325,3 +325,227 @@ class RetryableError(NuzantaraBaseError):
     def __init__(self, message: str, retry_after: int | None = None) -> None:
         super().__init__(message, details={"retry_after": retry_after})
         self.retry_after = retry_after
+
+
+# =============================================================================
+# UU PDP (Indonesian Personal Data Protection) Exceptions
+# =============================================================================
+#
+# Indonesia's Undang-Undang Perlindungan Data Pribadi (UU PDP, Law 27/2022)
+# imposes a duty of care on any "data controller" (pengendali data pribadi)
+# processing personal data of Indonesian data subjects. The classes below make
+# PDP-relevant error paths explicit so the control-flow can emit audit trails
+# instead of swallowing the exception silently.
+#
+# All PDP errors expose `pdp_category` (short machine-readable tag) so that
+# log pipelines and middleware can filter/forward them to the PDP audit sink.
+# The `data_subject_id` attribute is *optional* — it should carry the opaque
+# internal identifier (client_id, user_id) of the affected subject, NEVER raw
+# PII like email or NIK. Redaction is the caller's responsibility.
+
+
+class PDPError(NuzantaraBaseError):
+    """Base exception for UU PDP compliance events.
+
+    Sub-classes MUST set ``pdp_category`` to one of the stable tags defined
+    as class attributes on :class:`PDPError` (``AUDIT_REQUIRED``,
+    ``PII_ACCESS``, ``CONSENT``, ``RETENTION``, ``TRANSFER``, ``SUBJECT_REQUEST``).
+    """
+
+    # Stable tags — consumed by audit pipelines / metrics.
+    CATEGORY_AUDIT_REQUIRED = "audit_required"
+    CATEGORY_PII_ACCESS = "pii_access"
+    CATEGORY_CONSENT = "consent"
+    CATEGORY_RETENTION = "retention"
+    CATEGORY_TRANSFER = "transfer"
+    CATEGORY_SUBJECT_REQUEST = "subject_request"
+
+    pdp_category: str = "generic"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        data_subject_id: str | None = None,
+        pdp_category: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        merged: dict[str, Any] = {"pdp_category": pdp_category or self.pdp_category}
+        if data_subject_id is not None:
+            merged["data_subject_id"] = data_subject_id
+        if details:
+            merged.update(details)
+        super().__init__(message, details=merged)
+        self.data_subject_id = data_subject_id
+        if pdp_category is not None:
+            self.pdp_category = pdp_category
+
+
+class PDPAuditRequired(PDPError):
+    """A PDP-relevant step completed without producing the required audit event.
+
+    Raise this when a write to personal data succeeds but the downstream audit
+    sink (DB row, Redis stream, Telegram broadcast) cannot be persisted, so the
+    caller can decide whether to roll back or enqueue a retry.
+    """
+
+    pdp_category = PDPError.CATEGORY_AUDIT_REQUIRED
+
+    def __init__(
+        self,
+        operation: str,
+        reason: str,
+        *,
+        data_subject_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        merged = {"operation": operation, "reason": reason}
+        if details:
+            merged.update(details)
+        super().__init__(
+            f"PDP audit missing for operation '{operation}': {reason}",
+            data_subject_id=data_subject_id,
+            details=merged,
+        )
+        self.operation = operation
+        self.reason = reason
+
+
+class PIIAccessDenied(PDPError):
+    """Access to a field classified as personal data was refused by policy.
+
+    Distinct from :class:`ForbiddenError` (generic RBAC): this records that the
+    denial is rooted in a PDP classification (Art. 16 — lawful basis), not in
+    the actor's role alone.
+    """
+
+    pdp_category = PDPError.CATEGORY_PII_ACCESS
+
+    def __init__(
+        self,
+        field: str,
+        reason: str,
+        *,
+        data_subject_id: str | None = None,
+        actor: str | None = None,
+    ) -> None:
+        super().__init__(
+            f"Access to PII field '{field}' denied: {reason}",
+            data_subject_id=data_subject_id,
+            details={"field": field, "reason": reason, "actor": actor},
+        )
+        self.field = field
+        self.reason = reason
+        self.actor = actor
+
+
+class ConsentMissing(PDPError):
+    """A data-processing step was invoked without a recorded consent basis.
+
+    Applies both to initial consent (Art. 20) and to purpose-limitation breaches
+    (processing outside the consented purpose, Art. 14).
+    """
+
+    pdp_category = PDPError.CATEGORY_CONSENT
+
+    def __init__(
+        self,
+        purpose: str,
+        *,
+        data_subject_id: str | None = None,
+        channel: str | None = None,
+    ) -> None:
+        super().__init__(
+            f"No valid consent for purpose '{purpose}'",
+            data_subject_id=data_subject_id,
+            details={"purpose": purpose, "channel": channel},
+        )
+        self.purpose = purpose
+        self.channel = channel
+
+
+class DataRetentionViolation(PDPError):
+    """Personal data was found stored past its retention ceiling (Art. 45).
+
+    ``max_retention_days`` documents the configured ceiling; ``age_days`` the
+    observed age. Callers SHOULD either purge or escalate.
+    """
+
+    pdp_category = PDPError.CATEGORY_RETENTION
+
+    def __init__(
+        self,
+        resource_type: str,
+        max_retention_days: int,
+        age_days: int,
+        *,
+        data_subject_id: str | None = None,
+    ) -> None:
+        super().__init__(
+            f"Retention exceeded for {resource_type}: {age_days}d > {max_retention_days}d",
+            data_subject_id=data_subject_id,
+            details={
+                "resource_type": resource_type,
+                "max_retention_days": max_retention_days,
+                "age_days": age_days,
+            },
+        )
+        self.resource_type = resource_type
+        self.max_retention_days = max_retention_days
+        self.age_days = age_days
+
+
+class CrossBorderTransferError(PDPError):
+    """An outbound personal-data transfer lacks the safeguards of UU PDP Art. 56.
+
+    Raised by egress guards when destination country is not adequacy-listed and
+    no alternative lawful basis (SCC / binding corporate rules) is declared.
+    """
+
+    pdp_category = PDPError.CATEGORY_TRANSFER
+
+    def __init__(
+        self,
+        destination: str,
+        *,
+        data_subject_id: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        super().__init__(
+            f"Cross-border PDP transfer to '{destination}' not permitted"
+            + (f": {reason}" if reason else ""),
+            data_subject_id=data_subject_id,
+            details={"destination": destination, "reason": reason},
+        )
+        self.destination = destination
+        self.reason = reason
+
+
+class DataSubjectRequestError(PDPError):
+    """A data-subject request (Art. 5–10: access, rectify, erase, portability)
+    failed before it could be fulfilled.
+
+    ``request_type`` is one of ``access`` / ``rectify`` / ``erase`` /
+    ``portability`` / ``restrict`` / ``object``.
+    """
+
+    pdp_category = PDPError.CATEGORY_SUBJECT_REQUEST
+
+    _ALLOWED = frozenset({"access", "rectify", "erase", "portability", "restrict", "object"})
+
+    def __init__(
+        self,
+        request_type: str,
+        reason: str,
+        *,
+        data_subject_id: str | None = None,
+    ) -> None:
+        if request_type not in self._ALLOWED:
+            request_type = "unknown"
+        super().__init__(
+            f"Data subject request '{request_type}' failed: {reason}",
+            data_subject_id=data_subject_id,
+            details={"request_type": request_type, "reason": reason},
+        )
+        self.request_type = request_type
+        self.reason = reason

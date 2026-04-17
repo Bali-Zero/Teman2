@@ -39,6 +39,10 @@ def _parse_date_or_none(date_str: str | None) -> date | None:
     try:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
+        logger.debug(
+            "crm_enhanced_documents.parse_date_invalid",
+            extra={"raw": str(date_str)[:32]},
+        )
         return None
 
 
