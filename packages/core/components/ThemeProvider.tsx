@@ -10,7 +10,12 @@ import {
   type ReactNode,
 } from "react";
 
-export type Theme = "dark" | "light" | "editorial";
+export type Theme =
+  | "dark"
+  | "light"
+  | "editorial"
+  | "operative-light"
+  | "operative-dark";
 export type Funnel = "visa" | "kbli" | "tax" | "property" | null;
 
 interface ThemeContextValue {
@@ -51,8 +56,14 @@ export function ThemeProvider({
   useEffect(() => {
     const stored =
       typeof window !== "undefined" ? localStorage.getItem("theme") : null;
-    if (stored === "dark" || stored === "light" || stored === "editorial") {
-      setThemeState(stored);
+    if (
+      stored === "dark" ||
+      stored === "light" ||
+      stored === "editorial" ||
+      stored === "operative-light" ||
+      stored === "operative-dark"
+    ) {
+      setThemeState(stored as Theme);
       document.documentElement.dataset.theme = stored;
     } else {
       document.documentElement.dataset.theme = defaultTheme;
