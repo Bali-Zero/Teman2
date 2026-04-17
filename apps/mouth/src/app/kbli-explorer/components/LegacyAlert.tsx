@@ -56,7 +56,7 @@ export default function LegacyAlert({
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={onOpenBlackBook}
-              className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#D4B483] text-[#050507] text-sm font-bold hover:bg-[#C4A473] transition-all"
+              className="group flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-accent-sand text-[#050507] text-sm font-bold hover:bg-[#C4A473] transition-all"
             >
               <Download size={16} />
               <span>UNLOCK 2025 BLACK BOOK</span>

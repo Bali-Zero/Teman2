@@ -390,12 +390,12 @@ export default function DashboardPage() {
   // Error state
   if (isError) {
     return (
-      <div className="p-4 rounded-xl border border-[#c45c78]/25 bg-[rgba(196,92,120,0.06)]">
-        <h3 className="font-semibold text-[#c45c78]">Dashboard Error</h3>
-        <p className="text-sm text-[#c45c78]/70 mt-1">Failed to load dashboard data.</p>
+      <div className="p-4 rounded-xl border border-accent-pink-editorial/25 bg-[rgba(196,92,120,0.06)]">
+        <h3 className="font-semibold text-accent-pink-editorial">Dashboard Error</h3>
+        <p className="text-sm text-accent-pink-editorial/70 mt-1">Failed to load dashboard data.</p>
         <button
           onClick={() => refetch()}
-          className="mt-3 px-4 py-2 bg-[#c45c78] text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
+          className="mt-3 px-4 py-2 bg-accent-pink-editorial text-white rounded-lg hover:opacity-90 transition-opacity inline-flex items-center gap-2 text-sm"
         >
           <RefreshCw className="w-4 h-4" />
           Retry

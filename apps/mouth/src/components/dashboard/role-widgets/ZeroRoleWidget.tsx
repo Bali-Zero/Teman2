@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import type { ZeroMetrics, RoleAlert } from "@/types/dashboard-role.types";
 import {
   TrendingUp,
@@ -37,8 +35,8 @@ export function ZeroRoleWidget({ metrics }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-1 mt-1">
-          <TrendingUp size={10} className="text-[#5cb88a]" />
-          <span className="text-[9px] font-semibold text-[#5cb88a]">
+          <TrendingUp size={10} className="text-accent-sage" />
+          <span className="text-[9px] font-semibold text-accent-sage">
             +12% vs last month
           </span>
         </div>
@@ -51,8 +49,8 @@ export function ZeroRoleWidget({ metrics }: Props) {
       <div className="flex flex-col gap-1.5 flex-1">
         {metrics.visti_scadenza > 0 && (
           <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(196,92,120,0.07)] border border-[rgba(196,92,120,0.18)]">
-            <AlertTriangle size={11} className="text-[#c45c78] flex-shrink-0" />
-            <span className="text-[10px] font-semibold text-[#c45c78]">
+            <AlertTriangle size={11} className="text-accent-pink-editorial flex-shrink-0" />
+            <span className="text-[10px] font-semibold text-accent-pink-editorial">
               {metrics.visti_scadenza} visti &lt; 7gg
             </span>
           </div>
@@ -70,8 +68,8 @@ export function ZeroRoleWidget({ metrics }: Props) {
 
         {!hasAlerts && (
           <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(92,184,138,0.06)] border border-[rgba(92,184,138,0.16)]">
-            <CheckCircle2 size={11} className="text-[#5cb88a] flex-shrink-0" />
-            <span className="text-[10px] font-semibold text-[#5cb88a]">
+            <CheckCircle2 size={11} className="text-accent-sage flex-shrink-0" />
+            <span className="text-[10px] font-semibold text-accent-sage">
               No critical alerts
             </span>
           </div>
@@ -84,7 +82,7 @@ export function ZeroRoleWidget({ metrics }: Props) {
             Fly.io {metrics.fly_uptime}%
           </span>
           <span
-            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#5cb88a]"
+            className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-accent-sage"
             style={{ boxShadow: "0 0 4px rgba(92,184,138,0.8)" }}
           />
         </div>

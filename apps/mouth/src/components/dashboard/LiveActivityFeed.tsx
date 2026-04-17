@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import type { LiveActivityEvent } from "@/types/dashboard-role.types";
 
@@ -12,8 +10,8 @@ const TYPE_BORDER: Record<LiveActivityEvent["type"], string> = {
 };
 
 const TAG_COLOR: Record<LiveActivityEvent["type"], string> = {
-  critical: "bg-[rgba(196,92,120,0.16)] text-[#c45c78]",
-  ok: "bg-[rgba(92,184,138,0.16)]  text-[#5cb88a]",
+  critical: "bg-[rgba(196,92,120,0.16)] text-accent-pink-editorial",
+  ok: "bg-[rgba(92,184,138,0.16)]  text-accent-sage",
   warning: "bg-[rgba(184,154,64,0.16)]  text-[#b89a40]",
   info: "bg-[rgba(74,142,196,0.16)]  text-[#4a8ec4]",
   live: "bg-[rgba(72,190,155,0.16)]  text-[#48be9b]",

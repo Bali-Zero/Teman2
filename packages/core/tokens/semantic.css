@@ -65,6 +65,26 @@
   --state-warning: var(--color-state-warning);
   --state-danger: var(--color-state-danger);
   --state-info: var(--color-state-info);
+
+  /* ─── Editorial accents (funnel-agnostic) ──────────────────────
+     Copper/sand/gold/blue palette used across non-funnel UI
+     (marketing, prime, blog, portal chrome). Introduced 2026-04-18
+     to absorb the 600+ Tailwind-arbitrary hex drift that organically
+     emerged for editorial surfaces where the 4 funnel accents are
+     inappropriate. Do NOT consume these from funnel-identity
+     components — those must read --accent-funnel. */
+  --accent-warm: #d4845a;
+  --accent-sand: #d4b483;
+  --accent-gold-muted: #c9a96e;
+  --accent-blue-editorial: #2251ff;
+  --accent-sage: #5cb88a;
+  --accent-pink-editorial: #c45c78;
+  --accent-red-brand: #c23c2c;
+  --surface-editorial-base: #0c0a05;
+  --surface-editorial-elevated: #1a1d24;
+  --surface-deep: #0f1115;
+  --text-silver: #e1e1e3;
+  --text-muted-cool: #9aa0ae;
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works

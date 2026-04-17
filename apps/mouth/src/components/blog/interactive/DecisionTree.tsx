@@ -307,7 +307,7 @@ function QuestionView({
     <div>
       {/* Question */}
       <div className="flex items-start gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-[#2251ff]/20 text-[#2251ff]">
+        <div className="p-2 rounded-lg bg-accent-blue-editorial/20 text-accent-blue-editorial">
           <HelpCircle className="w-5 h-5" />
         </div>
         <div>
@@ -329,7 +329,7 @@ function QuestionView({
             onClick={() => onSelect(option.nextNodeId)}
             className={cn(
               "w-full p-4 rounded-xl text-left",
-              "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#2251ff]/50",
+              "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-accent-blue-editorial/50",
               "transition-all duration-200 group",
             )}
           >
@@ -337,7 +337,7 @@ function QuestionView({
               <div className="flex items-center gap-3">
                 {option.icon && <span className="text-xl">{option.icon}</span>}
                 <div>
-                  <span className="font-medium text-white group-hover:text-[#2251ff] transition-colors">
+                  <span className="font-medium text-white group-hover:text-accent-blue-editorial transition-colors">
                     {option.label}
                   </span>
                   {option.description && (
@@ -347,7 +347,7 @@ function QuestionView({
                   )}
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-[#2251ff] group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-accent-blue-editorial group-hover:translate-x-1 transition-all" />
             </div>
           </motion.button>
         ))}

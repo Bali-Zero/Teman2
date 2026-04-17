@@ -1,5 +1,3 @@
-"use client";
-
 import type { CellPulse } from "@/hooks/useCellStatus";
 
 export function MetabolismBar({ pulse }: { pulse: CellPulse | null }) {

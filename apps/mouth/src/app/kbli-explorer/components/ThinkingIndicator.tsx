@@ -47,7 +47,7 @@ export default function ThinkingIndicator({
 
   return (
     <div className="flex gap-4 md:gap-6 items-start">
-      <div className="w-8 h-8 rounded-full border bg-[#0F1115] border-[#D4B483]/20 text-[#D4B483] flex items-center justify-center shrink-0">
+      <div className="w-8 h-8 rounded-full border bg-surface-deep border-accent-sand/20 text-accent-sand flex items-center justify-center shrink-0">
         <Sparkles size={14} />
       </div>
       <div className="flex-1 space-y-3 pt-1">
@@ -65,7 +65,7 @@ export default function ThinkingIndicator({
                   <stage.icon
                     size={14}
                     className={
-                      idx === activeStage ? "text-[#D4B483]" : "text-[#555]"
+                      idx === activeStage ? "text-accent-sand" : "text-[#555]"
                     }
                   />
                   <span
@@ -88,7 +88,7 @@ export default function ThinkingIndicator({
         </AnimatePresence>
 
         {/* Progress bar */}
-        <div className="h-[2px] w-full bg-[#1A1D24] rounded-full overflow-hidden mt-2">
+        <div className="h-[2px] w-full bg-surface-editorial-elevated rounded-full overflow-hidden mt-2">
           <motion.div
             className="h-full bg-gradient-to-r from-[#D4B483] to-[#C4A473]"
             style={{ width: `${progress}%` }}

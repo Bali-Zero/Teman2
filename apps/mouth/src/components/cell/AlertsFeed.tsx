@@ -1,5 +1,3 @@
-"use client";
-
 import type { CellAlert } from "@/hooks/useCellStatus";
 
 const LEVEL_COLOR: Record<string, string> = {

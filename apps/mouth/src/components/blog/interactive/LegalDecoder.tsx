@@ -293,8 +293,8 @@ export function LegalDecoder({
                       {/* Explanation */}
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <MessageCircle className="w-4 h-4 text-[#2251ff]" />
-                          <span className="text-sm font-medium text-[#2251ff]">
+                          <MessageCircle className="w-4 h-4 text-accent-blue-editorial" />
+                          <span className="text-sm font-medium text-accent-blue-editorial">
                             In Plain English
                           </span>
                         </div>

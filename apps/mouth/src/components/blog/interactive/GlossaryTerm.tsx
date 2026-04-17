@@ -78,8 +78,8 @@ export function GlossaryTerm({
         className={cn(
           "cursor-help transition-colors",
           isHighlight
-            ? "px-1.5 py-0.5 rounded bg-[#2251ff]/10 text-[#2251ff] font-medium"
-            : "border-b border-dotted border-white/40 hover:border-[#2251ff] hover:text-[#2251ff]",
+            ? "px-1.5 py-0.5 rounded bg-accent-blue-editorial/10 text-accent-blue-editorial font-medium"
+            : "border-b border-dotted border-white/40 hover:border-accent-blue-editorial hover:text-accent-blue-editorial",
         )}
       >
         {children || term}
@@ -131,8 +131,8 @@ export function GlossaryTerm({
                   </p>
                 )}
               </div>
-              <div className="p-1 rounded bg-[#2251ff]/20">
-                <BookOpen className="w-3.5 h-3.5 text-[#2251ff]" />
+              <div className="p-1 rounded bg-accent-blue-editorial/20">
+                <BookOpen className="w-3.5 h-3.5 text-accent-blue-editorial" />
               </div>
             </div>
 
@@ -172,7 +172,7 @@ export function GlossaryTerm({
             {articleUrl && (
               <a
                 href={articleUrl}
-                className="mt-3 flex items-center gap-1.5 text-xs text-[#2251ff] hover:underline"
+                className="mt-3 flex items-center gap-1.5 text-xs text-accent-blue-editorial hover:underline"
               >
                 <span>Read full article</span>
                 <ExternalLink className="w-3 h-3" />

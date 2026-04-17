@@ -59,7 +59,7 @@ export default function KBLIExplorerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen w-full bg-[#050507] text-[#E1E1E3] overflow-hidden overflow-x-hidden font-sans selection:bg-[#D4B483]/30 selection:text-[#D4B483]">
+    <div className="h-screen w-full bg-[#050507] text-silver overflow-hidden overflow-x-hidden font-sans selection:bg-accent-sand/30 selection:text-accent-sand">
       <KBLIExplorerJsonLd />
       {/* Texture Layer: Noise/Grain for tactile feel */}
       <div
@@ -72,7 +72,7 @@ export default function KBLIExplorerLayout({
 
       {/* Ambient Lighting: Subtle, deep, atmospheric */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[20%] w-[40%] h-[40%] bg-[#D4B483]/5 rounded-full blur-[150px]" />
+        <div className="absolute top-[-10%] left-[20%] w-[40%] h-[40%] bg-accent-sand/5 rounded-full blur-[150px]" />
         <div className="absolute bottom-[-10%] right-[10%] w-[30%] h-[40%] bg-[#2A3241]/10 rounded-full blur-[120px]" />
       </div>
 
