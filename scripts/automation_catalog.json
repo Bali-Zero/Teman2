@@ -190,6 +190,23 @@
         "npm audit fix"
       ]
     },
+    "portal-deadline-watchdog": {
+      "description": "Every 6h cron: scan visa/passport/practice expiries within 30 days, cross-join with notification_prefs (WA opt-in), send one WhatsApp reminder per (user, deadline) per 7-day window. Dedup via notification_log.",
+      "produces": "WhatsApp reminders, notification_log rows",
+      "consumes": "clients.visa_expiry, clients.passport_expiry, practices.expiry_date, notification_prefs, notification_log",
+      "monitored_by": "Sentinel",
+      "uses_llm": "none (deterministic)",
+      "llm_interface": "OpenClaw (main)",
+      "schedule": "*/6h",
+      "machine": "Pro",
+      "tools_called": [
+        "apps/backend-rag/scripts/portal_deadline_watchdog.py",
+        "WhatsAppService.send_message"
+      ],
+      "apis_called": [
+        "Meta WhatsApp Cloud API"
+      ]
+    },
     "learning-pipeline": {
       "description": "Weekly learning: Phase 1 Conversation Trainer (extract patterns from recent chats), Phase 2 Knowledge Graph Builder (ingest entities+relationships).",
       "produces": "Training data, KG entities",
