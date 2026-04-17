@@ -37,6 +37,7 @@ export const navigation: NavSection[] = [
   {
     // Block 1: Core
     items: [
+      { title: "Inbox", href: "/inbox", icon: "Inbox" },
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
       { title: "Zantara Terminal", href: "/terminal", icon: "Terminal" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
@@ -126,6 +127,7 @@ export const portalNavigation: NavSection[] = [
 
 // Route titles for breadcrumbs and page titles
 export const routeTitles: Record<string, string> = {
+  "/inbox": "Inbox",
   "/dashboard": "Dashboard",
   "/intelligence": "Intelligence Center",
   "/intelligence/visa-oracle": "Visa Oracle",
@@ -152,6 +154,7 @@ export const routeTitles: Record<string, string> = {
   "/hr/leave/request": "Request Leave",
   "/hr/settings": "HR Settings",
   "/analytics": "Analytics",
+  "/analytics/funnel": "Funnel Analytics",
   "/settings": "Settings",
   "/settings/users": "User Management",
   "/dream": "Dream Room",
