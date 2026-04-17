@@ -77,20 +77,51 @@ class MetabolicStore:
         return conn
 
     def _ensure_schema(self) -> None:
-        conn = self._get_conn()
-        conn.executescript(_SCHEMA)
-        conn.commit()
+        """Idempotent schema init + v2 migration (collector_host + metric_scope).
 
-    def store(self, snapshot: MetabolicSnapshot) -> int:
-        """Persist a snapshot. Returns the row id."""
+        Serializes DDL via threading.Lock + BEGIN IMMEDIATE to avoid race when
+        two processes (cron + manual run) open the store concurrently.
+        """
+        with self._write_lock:
+            conn = self._get_conn()
+            conn.executescript(_SCHEMA)
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                cols = {row[1] for row in conn.execute("PRAGMA table_info(metabolic_snapshots)")}
+                if "collector_host" not in cols:
+                    conn.execute("ALTER TABLE metabolic_snapshots ADD COLUMN collector_host TEXT")
+                if "metric_scope" not in cols:
+                    conn.execute("ALTER TABLE metabolic_snapshots ADD COLUMN metric_scope TEXT")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_metabolic_collector_scope "
+                    "ON metabolic_snapshots(collector_host, metric_scope, calculated_at DESC)"
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+
+    def store(
+        self,
+        snapshot: MetabolicSnapshot,
+        collector_host: str | None = None,
+        metric_scope: str | None = None,
+    ) -> int:
+        """Persist a snapshot. Returns the row id.
+
+        v2 schema adds collector_host ('pro'|'air') and metric_scope ('global'|'host').
+        Kept Optional to preserve backwards-compat with legacy callers and tests;
+        production rollup should always pass both.
+        """
         with self._write_lock:
             conn = self._get_conn()
             cursor = conn.execute(
                 """INSERT INTO metabolic_snapshots
                    (calculated_at, ttr_value, ttr_metadata,
                     do_value, do_metadata, ia_value, ia_metadata,
-                    fe_value, fe_metadata)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    fe_value, fe_metadata,
+                    collector_host, metric_scope)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     snapshot.calculated_at,
                     snapshot.ttr.value,
@@ -101,11 +132,16 @@ class MetabolicStore:
                     json.dumps(snapshot.autonomy_index.metadata),
                     snapshot.escalation_freq.value,
                     json.dumps(snapshot.escalation_freq.metadata),
+                    collector_host,
+                    metric_scope,
                 ),
             )
             conn.commit()
             rowid = cursor.lastrowid
-            logger.info(f"[metabolic] stored snapshot at {snapshot.calculated_at} (id={rowid})")
+            logger.info(
+                f"[metabolic] stored snapshot at {snapshot.calculated_at} "
+                f"(id={rowid}, collector={collector_host}, scope={metric_scope})"
+            )
             return rowid
 
     def latest(self, n: int = 1) -> list[MetabolicSnapshot]:
