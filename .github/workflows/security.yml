@@ -193,7 +193,7 @@ jobs:
             || true
 
       - name: Upload Bandit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bandit-report
           path: bandit-report.json
@@ -235,7 +235,7 @@ jobs:
           CVE_EXCEPTIONS_PATH: .security/exceptions.yaml
 
       - name: Upload Safety results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: safety-report
