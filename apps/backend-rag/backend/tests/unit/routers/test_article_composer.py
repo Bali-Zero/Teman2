@@ -41,9 +41,16 @@ from backend.services.article_composer.claude_client import (
 
 @pytest.fixture
 def test_client():
-    """Create FastAPI test client"""
+    """Create FastAPI test client.
+
+    Disables the slowapi rate limiter so tests that hit /compose multiple
+    times in a row don't trip the 10/minute cap meant for real clients.
+    """
     from fastapi import FastAPI
 
+    from backend.app.routers.article_composer import limiter
+
+    limiter.enabled = False
     app = FastAPI()
     app.include_router(router)
     return TestClient(app)
