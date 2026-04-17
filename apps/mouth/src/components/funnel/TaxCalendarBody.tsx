@@ -1,7 +1,8 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { DeadlineBadge } from "@balizero/core";
 import type { TaxDeadline } from "@/app/api/tax-calendar/deadlines";
+import { trackTaxDashboardViewed } from "@/lib/analytics";
 
 export function TaxCalendarBody({
   deadlines,
@@ -12,6 +13,11 @@ export function TaxCalendarBody({
 }) {
   const [kind, setKind] = useState<TaxDeadline["kind"] | "ALL">("ALL");
   const [regency, setRegency] = useState("");
+
+  useEffect(() => {
+    trackTaxDashboardViewed("active", deadlines.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     return deadlines.filter(
