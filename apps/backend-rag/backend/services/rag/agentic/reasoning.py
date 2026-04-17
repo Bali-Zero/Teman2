@@ -47,6 +47,11 @@ from backend.services.rag.agentic._reasoning_evidence import (
     detect_trusted_tool_usage,
     emit_low_confidence_event,
 )
+from backend.services.rag.agentic._reasoning_policy import (
+    detect_llm_has_tools,
+    detect_pricing_data_in_answer,
+    should_apply_low_evidence_policy,
+)
 from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.reasoning_utils import (
     calculate_evidence_score,  # noqa: F401  re-exported for tests that patch reasoning.calculate_evidence_score
@@ -616,53 +621,32 @@ class ReasoningEngine:
             set_span_status("ok")
 
         # ==================== ANSWER CONTENT CHECK ====================
-        # If the LLM produced an answer with specific factual data (prices, numbers),
-        # it likely used tool results or system context. Don't override it.
-        if not trusted_tools_used and state.final_answer:
-            answer_lower = state.final_answer.lower()
-            has_pricing_data = any(
-                marker in answer_lower
-                for marker in [
-                    "rp ",
-                    "rp.",
-                    "idr ",
-                    "usd ",
-                    "20.000.000",
-                    "15.000.000",
-                    "10.000.000",
-                    "5.000.000",
-                    "juta",
-                ]
-            )
-            if has_pricing_data:
-                trusted_tools_used = True
-                logger.info(
-                    "🔍 [Answer Content] Final answer contains pricing data, "
-                    "bypassing evidence check",
-                )
+        # If the LLM produced pricing numbers in the final answer, it
+        # almost certainly used tool output — don't override it.
+        if not trusted_tools_used and detect_pricing_data_in_answer(state.final_answer):
+            trusted_tools_used = True
 
         # ==================== POLICY ENFORCEMENT ====================
-        # If final_answer already exists but evidence is weak, override it
-        # Skip evidence check for general tasks (translation, summarization, etc.)
-        # Also skip if trusted tools were used successfully
-        #
-        # FIX: Also skip if LLM had tools available — it was given the opportunity
-        # to call tools and chose to answer directly. Trust its judgment.
-        has_tools = hasattr(llm_gateway, "_gemini_tools") and bool(llm_gateway._gemini_tools)
-        if has_tools and state.final_answer:
-            logger.info(
-                f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
-                f"and produced answer, skipping strict evidence check",
-            )
-            trusted_tools_used = True
+        # Skip evidence check when the LLM had tools available and chose
+        # to answer directly — trust its judgment.
+        if state.final_answer:
+            has_tools, tool_count = detect_llm_has_tools(llm_gateway)
+            if has_tools:
+                logger.info(
+                    "🔍 [Tools Available] LLM had %d tools and produced answer, "
+                    "skipping strict evidence check",
+                    tool_count,
+                )
+                trusted_tools_used = True
 
         state.trusted_tools_used = trusted_tools_used
 
-        if (
-            state.final_answer
-            and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
-            and not state.skip_rag
-            and not trusted_tools_used
+        if should_apply_low_evidence_policy(
+            final_answer=state.final_answer,
+            evidence_score=evidence_score,
+            abstain_threshold=EvidenceScoreConstants.ABSTAIN_THRESHOLD,
+            skip_rag=state.skip_rag,
+            trusted_tools_used=trusted_tools_used,
         ):
             # TIER 1 vs STRICT ABSTAIN logic
             intent_type = getattr(state, "intent_type", "simple")
@@ -1365,53 +1349,32 @@ Do not invent information. If the context is insufficient, admit it.
             trusted_tools_used = True
 
         # ==================== ANSWER CONTENT CHECK ====================
-        # If the LLM produced an answer with specific factual data (prices, numbers),
-        # it likely used tool results or system context. Don't override it.
-        if not trusted_tools_used and state.final_answer:
-            answer_lower = state.final_answer.lower()
-            has_pricing_data = any(
-                marker in answer_lower
-                for marker in [
-                    "rp ",
-                    "rp.",
-                    "idr ",
-                    "usd ",
-                    "20.000.000",
-                    "15.000.000",
-                    "10.000.000",
-                    "5.000.000",
-                    "juta",
-                ]
-            )
-            if has_pricing_data:
-                trusted_tools_used = True
-                logger.info(
-                    "🔍 [Answer Content] Final answer contains pricing data, "
-                    "bypassing evidence check",
-                )
+        # If the LLM produced pricing numbers in the final answer, it
+        # almost certainly used tool output — don't override it.
+        if not trusted_tools_used and detect_pricing_data_in_answer(state.final_answer):
+            trusted_tools_used = True
 
         # ==================== POLICY ENFORCEMENT ====================
-        # If final_answer already exists but evidence is weak, override it
-        # Skip evidence check for general tasks (translation, summarization, etc.)
-        # Also skip if trusted tools were used successfully
-        #
-        # FIX: Also skip if LLM had tools available — it was given the opportunity
-        # to call tools and chose to answer directly. Trust its judgment.
-        has_tools = hasattr(llm_gateway, "_gemini_tools") and bool(llm_gateway._gemini_tools)
-        if has_tools and state.final_answer:
-            logger.info(
-                f"🔍 [Tools Available] LLM had {len(llm_gateway._gemini_tools)} tools "
-                f"and produced answer, skipping strict evidence check",
-            )
-            trusted_tools_used = True
+        # Skip evidence check when the LLM had tools available and chose
+        # to answer directly — trust its judgment.
+        if state.final_answer:
+            has_tools, tool_count = detect_llm_has_tools(llm_gateway)
+            if has_tools:
+                logger.info(
+                    "🔍 [Tools Available] LLM had %d tools and produced answer, "
+                    "skipping strict evidence check",
+                    tool_count,
+                )
+                trusted_tools_used = True
 
         state.trusted_tools_used = trusted_tools_used
 
-        if (
-            state.final_answer
-            and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
-            and not state.skip_rag
-            and not trusted_tools_used
+        if should_apply_low_evidence_policy(
+            final_answer=state.final_answer,
+            evidence_score=evidence_score,
+            abstain_threshold=EvidenceScoreConstants.ABSTAIN_THRESHOLD,
+            skip_rag=state.skip_rag,
+            trusted_tools_used=trusted_tools_used,
         ):
             # TIER 1 vs STRICT ABSTAIN logic
             intent_type = getattr(state, "intent_type", "simple")
