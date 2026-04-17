@@ -1,0 +1,22 @@
+# CVE exceptions — HIGH/CRITICAL findings temporarily accepted.
+#
+# See docs/security/CVE_TRIAGE_POLICY.md for the approval process and schema.
+#
+# Each entry ignores a single CVE in the Snyk/Safety blocking gates until
+# `expires_at`. A pre-deploy check (`scripts/check_cve_exceptions.py`) refuses
+# to deploy once `expires_at` is in the past — renewal requires an explicit PR.
+#
+# Keep this list SHORT. An exception is a deferred fix, not a permanent pass.
+
+exceptions: []
+#
+# Example (do not keep checked in — copy & fill when adding a real exception):
+#
+# - cve_id: CVE-2025-12345
+#   package: example-package
+#   version: "1.2.3"
+#   reason: "Upstream fix blocked on breaking change in 2.0.0; backport PR #42 merging soon"
+#   approved_by: zero
+#   approved_at: 2026-04-18
+#   expires_at: 2026-07-18
+#   tracking_issue: "#456"

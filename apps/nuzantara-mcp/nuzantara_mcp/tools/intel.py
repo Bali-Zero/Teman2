@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("visa_specialist")
     async def submit_scraper_job(
         sources: list[str],
         topic: Optional[str] = None,
@@ -118,6 +121,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/intel/trends", params={"period": period})
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant")
     async def search_intel(query: str, limit: int = 10) -> dict:
         """
         Search the intelligence database.

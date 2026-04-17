@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant")
     async def track_compliance(
         client_id: str,
         compliance_type: str,
@@ -52,6 +55,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant")
     async def get_compliance_alerts(
         client_id: Optional[str] = None,
         severity: Optional[str] = None,
@@ -76,6 +80,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/agents/compliance/alerts", params=params)
 
     @mcp.tool()
+    @require_role("tax_consultant")
     async def get_client_compliance(client_id: str) -> dict:
         """
         Get all compliance items for a specific client.
@@ -92,6 +97,7 @@ def register(mcp, _call, _call_safe):
         return await _call(f"/api/agents/compliance/client/{client_id}")
 
     @mcp.tool()
+    @require_role("tax_consultant")
     async def get_compliance_summary() -> dict:
         """
         Get a system-wide compliance summary (critical alerts view).
