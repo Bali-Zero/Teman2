@@ -20,6 +20,10 @@ export {
 export { TrustBand, type TrustBandProps } from "./components/TrustBand";
 export { CTAHandoff, type CTAHandoffProps } from "./components/CTAHandoff";
 export { FunnelFrame, type FunnelFrameProps } from "./components/FunnelFrame";
+export {
+  CommandPalette,
+  type CommandAction,
+} from "./components/CommandPalette";
 
 // Font exports
 export { inter } from "./fonts/inter";
