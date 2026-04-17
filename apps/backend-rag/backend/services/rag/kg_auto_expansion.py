@@ -230,9 +230,8 @@ try:
         (r"\bIMB\b", "permit"),
         (r"\bPBG\b", "permit"),
     ]
-    # TODO: Refactor to share a single ENTITY_PATTERNS constant between
-    # entity_extractor.py and kg_auto_expansion.py. Currently duplicated
-    # but validated to be in sync as of 2026-04-03.
+    # TODO(#81): Extract ENTITY_PATTERNS into a shared module so entity_extractor.py
+    # and kg_auto_expansion.py stop drifting. In sync as of 2026-04-03.
 except ImportError:
     # Standalone usage (tests, scripts) — fallback to inline patterns
     _ENTITY_PATTERNS = [
