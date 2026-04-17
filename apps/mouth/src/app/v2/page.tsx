@@ -96,7 +96,7 @@ export default async function HomeV2() {
         <FunnelFeature funnel="property" layout="full" />
         <NewsHero />
         <TopicPills />
-        <LatestNews articles={[]} />
+        <LatestNews articles={latest} />
       </main>
       <Footer />
       <ZantaraFAB />
