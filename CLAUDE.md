@@ -35,36 +35,36 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 26 · **Packages:** 5
 
-| App | Ruolo |
-| --- | ----- |
-| `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
-| `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
-| `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
-| `calendar` | Vercel subdomain satellite app. Part of the Bali Zero workspace ecosystem. |
-| `cell` |  |
-| `drive` | Vercel subdomain satellite app. File management for Bali Zero workspace. |
-| `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
-| `federation` |  |
-| `graph-engine` | Graph processing engine for Knowledge Graph operations. |
-| `kb` |  |
-| `kbli-navigator` |  |
-| `knowledge` | Vercel subdomain satellite app. Knowledge base interface for Bali Zero. |
-| `mail` | Vercel subdomain satellite app. Email interface for Bali Zero workspace. |
-| `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
-| `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
-| `nlm-bridge` |  |
-| `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
+**Apps:** 24 · **Packages:** 5
+
+| App                      | Ruolo                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------- |
+| `admin-dashboard`        | A standalone Next.js application to inspect and control Nuzantara data.                             |
+| `backend-rag`            | **Production-Ready AI-Powered RAG System for Business Intelligence**                                |
+| `bali-intel-scraper`     | Intelligence pipeline for Bali Zero news and regulatory updates.                                    |
+| `calendar`               | Vercel subdomain satellite app. Part of the Bali Zero workspace ecosystem.                          |
+| `cell`                   |                                                                                                     |
+| `drive`                  | Vercel subdomain satellite app. File management for Bali Zero workspace.                            |
+| `evaluator`              | Security and quality evaluation tools for the Nuzantara RAG system.                                 |
+| `graph-engine`           | Graph processing engine for Knowledge Graph operations.                                             |
+| `kb`                     |                                                                                                     |
+| `kbli-navigator`         |                                                                                                     |
+| `knowledge`              | Vercel subdomain satellite app. Knowledge base interface for Bali Zero.                             |
+| `mail`                   | Vercel subdomain satellite app. Email interface for Bali Zero workspace.                            |
+| `mata-garuda`            | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent                          |
+| `mouth`                  | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem       |
+| `nlm-bridge`             |                                                                                                     |
+| `nuzantara-mcp`          | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport.                              |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
-| `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
-| `osint-nexus` |  |
-| `osint-nexus-ui` |  |
-| `team-agent` |  |
-| `war-room` | **Automated Marketing & Journalism Pipeline** |
-| `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
-| `webapp` |  |
-| `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
+| `nuzantara-mcp-browser`  | FastMCP server exposing Nuzantara's stealth Playwright browser manager                              |
+| `osint-nexus`            |                                                                                                     |
+| `osint-nexus-ui`         |                                                                                                     |
+| `team-agent`             |                                                                                                     |
+| `war-room`               | **Automated Marketing & Journalism Pipeline**                                                       |
+| `web`                    | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat).                            |
+| `zantara-media`          | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator.                                      |
+
 <!-- DOCSYNC:LIVING_ORGANS_END -->
 
 See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, cron schedule, and top-of-mind organs.
@@ -72,6 +72,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
+
 - **Backend:** Python 3.11+, FastAPI, 244 routers, 355 services, 662 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
@@ -241,7 +242,9 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 ### Evidence Scoring — `<0.15` ABSTAIN · `0.15-0.60` CAUTIOUS · `>0.60` NORMAL
 
 <!-- DOCSYNC:EMBEDDING_FROZEN_START -->
+
 ### Embedding — `text-embedding-3-small` (1536 dims) FROZEN. Never change without re-indexing plan.
+
 <!-- DOCSYNC:EMBEDDING_FROZEN_END -->
 
 ## 7. MCP Servers
