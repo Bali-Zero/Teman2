@@ -32,6 +32,12 @@ _ENTITY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("peraturan_pemerintah", re.compile(r"PP\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
     ("perpres", re.compile(r"Perpres\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
     ("permen", re.compile(r"Permen\w*\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
+    # CONTEXT-style prefixes observed in legal_unified payloads:
+    # `PP - NO 6624 - TAHUN 2021`, `UU - NO 11 - TAHUN 2020`
+    ("ctx_law", re.compile(
+        r"\b(UU|PP|Perpres|Permen\w*)\s*-\s*NO\s+(\d+)\s*-\s*TAHUN\s+(\d{4})",
+        re.IGNORECASE,
+    )),
     # KBLI codes
     ("kbli", re.compile(r"KBLI\s*(\d{4,5})", re.IGNORECASE)),
     # Visa types
@@ -45,6 +51,57 @@ _ENTITY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     # Government bodies
     ("gov", re.compile(r"\b(BKPM|DJP|Kemenkumham|Kemenaker|Imigrasi|BPN)\b", re.IGNORECASE)),
 ]
+
+# Law-number normalisation: stored `kg_nodes.name` uses many inconsistent
+# forms (`UU 13/2003`, `UU No. 11 Tahun 2020`, `UU 13 2003`, ...). We expand
+# each detected mention into every known variant before doing the lookup.
+_LAW_NORM_RE = re.compile(
+    r"^(UU|PP|PERPRES|PERMEN\w*)\s+(?:NO\.?\s+)?(\d+)\s+(?:TAHUN\s+)?(\d{4})$",
+)
+_LAW_CTX_RE = re.compile(
+    r"^(UU|PP|PERPRES|PERMEN\w*)\s*-\s*NO\s+(\d+)\s*-\s*TAHUN\s+(\d{4})$",
+)
+
+
+def _match_key_variants(mention_text: str) -> list[str]:
+    """Return lower-cased lookup keys for a mention, covering known forms.
+
+    Feeds the in-memory `LOWER(name) -> entity_id` dictionary used by
+    `EntityLinker.link_text`. The first hit wins.
+    """
+    base = mention_text.strip()
+    out = [base]
+    upper = base.upper()
+
+    collapsed = re.sub(r"\s+", " ", base)
+    if collapsed != base:
+        out.append(collapsed)
+
+    m = _LAW_NORM_RE.match(upper) or _LAW_CTX_RE.match(upper)
+    if m:
+        law, num, year = m.group(1), m.group(2), m.group(3)
+        out.extend(
+            [
+                f"{law} {num}/{year}",
+                f"{law} No. {num} Tahun {year}",
+                f"{law} NO. {num} TAHUN {year}",
+                f"{law} No {num} Tahun {year}",
+                f"{law} {num} {year}",
+            ],
+        )
+
+    km = re.match(r"KBLI\s*(\d{4,5})", upper)
+    if km:
+        out.append(f"KBLI {km.group(1)}")
+
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for variant in out:
+        key = variant.lower()
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(key)
+    return deduped
 
 
 def extract_mentions(text: str) -> list[dict[str, str]]:
@@ -81,6 +138,31 @@ class EntityLinker:
     ) -> None:
         self._pool = db_pool
         self._qdrant = qdrant_client
+        # Lazy in-memory index: LOWER(name) -> (entity_id, entity_type).
+        # Populated on first exact-match call; each lookup is O(1) vs a
+        # SQL round-trip per mention. Invalidated by `reload_name_index`.
+        self._name_index: dict[str, tuple[str, str]] | None = None
+
+    async def _load_name_index(self) -> dict[str, tuple[str, str]]:
+        """Load kg_nodes name -> (entity_id, entity_type) into memory."""
+        rows = await self._pool.fetch(
+            "SELECT entity_id, name, entity_type FROM kg_nodes",
+        )
+        idx: dict[str, tuple[str, str]] = {}
+        for row in rows:
+            key = (row["name"] or "").strip().lower()
+            if key and key not in idx:
+                idx[key] = (row["entity_id"], row["entity_type"])
+        logger.info(
+            "EntityLinker name index loaded: %d kg_nodes rows, %d unique keys",
+            len(rows),
+            len(idx),
+        )
+        return idx
+
+    async def reload_name_index(self) -> None:
+        """Force the in-memory name index to be rebuilt on next use."""
+        self._name_index = None
 
     async def _fuzzy_match_entity(
         self,
@@ -134,86 +216,105 @@ class EntityLinker:
         self,
         mention_text: str,
     ) -> dict[str, Any] | None:
-        """Try exact case-insensitive match first (faster than trigram)."""
-        async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT entity_id, name, entity_type "
-                "FROM kg_nodes "
-                "WHERE LOWER(name) = LOWER($1) "
-                "LIMIT 1",
-                mention_text,
-            )
-            if row:
+        """Match a mention against `kg_nodes.name` via the in-memory index.
+
+        On first call, loads the full `kg_nodes` table into a dict once
+        (~100K rows, ~20MB). Subsequent lookups are O(1) per variant
+        instead of a SQL round-trip per mention.
+        """
+        if self._name_index is None:
+            self._name_index = await self._load_name_index()
+
+        for key in _match_key_variants(mention_text):
+            hit = self._name_index.get(key)
+            if hit is not None:
+                entity_id, entity_type = hit
                 return {
-                    "entity_id": row["entity_id"],
-                    "name": row["name"],
-                    "entity_type": row["entity_type"],
+                    "entity_id": entity_id,
+                    "name": key,
+                    "entity_type": entity_type,
                     "similarity": 1.0,
                 }
-            return None
+        return None
+
+    async def _resolve_mentions(
+        self,
+        mentions: list[dict[str, str]],
+        collection_name: str,
+        point_id: str,
+        enable_fuzzy: bool,
+    ) -> list[tuple[str, str, str, str, str, float, str]]:
+        """Resolve mentions to kg_nodes and return insert-ready rows.
+
+        Each row matches the INSERT column order:
+            (mention_id, entity_id, collection_name, point_id,
+             mention_text, confidence, match_type).
+        """
+        rows: list[tuple[str, str, str, str, str, float, str]] = []
+        for mention in mentions:
+            text = mention["text"]
+            entity = await self._exact_match_entity(text)
+            match_type = "exact"
+            if not entity and enable_fuzzy:
+                entity = await self._fuzzy_match_entity(text, entity_type=None, threshold=0.85)
+                match_type = "fuzzy"
+            if not entity:
+                continue
+            mid = hashlib.md5(
+                f"{entity['entity_id']}:{collection_name}:{point_id}".encode(),
+            ).hexdigest()
+            rows.append(
+                (
+                    mid,
+                    entity["entity_id"],
+                    collection_name,
+                    point_id,
+                    text[:500],
+                    float(entity.get("similarity", 0.85)),
+                    match_type,
+                ),
+            )
+        return rows
 
     async def link_text(
         self,
         text: str,
         collection_name: str,
         point_id: str,
+        enable_fuzzy: bool = True,
     ) -> int:
         """Extract and link entity mentions from a single text chunk.
 
-        Returns number of mentions linked.
+        Returns the number of mentions linked (idempotent vs re-runs via the
+        UNIQUE (entity_id, collection_name, point_id) index).
         """
         mentions = extract_mentions(text)
         if not mentions:
             return 0
-
-        linked = 0
-        for mention in mentions:
-            # Try exact match first, then fuzzy
-            entity = await self._exact_match_entity(mention["text"])
-            match_type = "exact"
-            if not entity:
-                entity = await self._fuzzy_match_entity(
-                    mention["text"],
-                    entity_type=None,
-                    threshold=0.85,
+        rows = await self._resolve_mentions(mentions, collection_name, point_id, enable_fuzzy)
+        if not rows:
+            return 0
+        try:
+            async with self._pool.acquire() as conn:
+                await conn.executemany(
+                    "INSERT INTO kg_entity_mentions "
+                    "(mention_id, entity_id, collection_name, point_id, "
+                    "mention_text, confidence, match_type) "
+                    "VALUES ($1, $2, $3, $4, $5, $6, $7) "
+                    "ON CONFLICT (entity_id, collection_name, point_id) DO NOTHING",
+                    rows,
                 )
-                match_type = "fuzzy"
-
-            if not entity:
-                continue
-
-            # Generate stable mention ID
-            mid = hashlib.md5(
-                f"{entity['entity_id']}:{collection_name}:{point_id}".encode(),
-            ).hexdigest()
-
-            try:
-                async with self._pool.acquire() as conn:
-                    await conn.execute(
-                        "INSERT INTO kg_entity_mentions "
-                        "(mention_id, entity_id, collection_name, point_id, "
-                        "mention_text, confidence, match_type) "
-                        "VALUES ($1, $2, $3, $4, $5, $6, $7) "
-                        "ON CONFLICT (entity_id, collection_name, point_id) DO NOTHING",
-                        mid,
-                        entity["entity_id"],
-                        collection_name,
-                        point_id,
-                        mention["text"],
-                        entity.get("similarity", 0.85),
-                        match_type,
-                    )
-                linked += 1
-            except Exception as e:
-                logger.debug("Failed to insert mention %s: %s", mid, e)
-
-        return linked
+        except Exception as e:
+            logger.debug("Failed to batch-insert %d mentions: %s", len(rows), e)
+            return 0
+        return len(rows)
 
     async def link_collection(
         self,
         collection_name: str,
         batch_size: int = 100,
         limit: int | None = None,
+        enable_fuzzy: bool = True,
     ) -> dict[str, Any]:
         """Scan a Qdrant collection and link entity mentions to KG nodes.
 
@@ -221,6 +322,8 @@ class EntityLinker:
             collection_name: Qdrant collection to scan
             batch_size: Points per scroll batch
             limit: Max points to process (None = all)
+            enable_fuzzy: If False, skip the trigram fallback (one SQL round-
+                trip per mention miss) — exact in-memory match only.
 
         Returns:
             Stats dict with points_processed, mentions_created, elapsed_s
@@ -266,7 +369,12 @@ class EntityLinker:
                     continue
 
                 point_id = str(point.id)
-                linked = await self.link_text(content, collection_name, point_id)
+                linked = await self.link_text(
+                    content,
+                    collection_name,
+                    point_id,
+                    enable_fuzzy=enable_fuzzy,
+                )
                 mentions_created += linked
                 points_processed += 1
 
