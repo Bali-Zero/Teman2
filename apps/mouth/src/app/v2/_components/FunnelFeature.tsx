@@ -21,7 +21,7 @@ const FUNNEL_HREF: Record<Exclude<Funnel, null>, string> = {
   visa: "https://visa.balizero.com/",
   kbli: "/kbli",
   tax: "https://tax.balizero.com/",
-  property: "/property",
+  property: "/property/eligibility",
 };
 
 interface FunnelFeatureProps {
