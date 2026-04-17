@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
+import { SessionInit } from "@/components/funnel/SessionInit";
 import { MobileNav } from "./_components/MobileNav";
 import { HeroBlueprint } from "./_components/HeroBlueprint";
 import { SocialProof } from "./_components/SocialProof";
@@ -37,6 +38,7 @@ export default function HomeV2() {
         minHeight: "100vh",
       }}
     >
+      <SessionInit funnel="home" />
       <NavShell
         logo={<BZLogo variant="full" size={36} priority />}
         items={NAV_ITEMS}
