@@ -197,6 +197,44 @@ class ForbiddenError(AuthError):
     pass
 
 
+class PortalAccessDenied(ForbiddenError):
+    """
+    Raised when a Portal service method is called with a client_id that the
+    requester is not authorised to access.
+
+    This is the "defence in depth" boundary: the router layer is still the
+    primary gate (resolves client_id from the JWT via get_current_client),
+    but services re-validate so that a future router regression cannot
+    silently expose one client's data to another.
+
+    Audit 2026-04-18 HIGH-6.
+    """
+
+    def __init__(
+        self,
+        client_id: int,
+        actor_email: str | None = None,
+        actor_client_id: int | None = None,
+        *,
+        method: str | None = None,
+    ) -> None:
+        details: dict[str, Any] = {"client_id": client_id}
+        if actor_email:
+            details["actor_email"] = actor_email
+        if actor_client_id is not None:
+            details["actor_client_id"] = actor_client_id
+        if method:
+            details["method"] = method
+        super().__init__(
+            f"Portal access denied for client_id={client_id}",
+            details=details,
+        )
+        self.client_id = client_id
+        self.actor_email = actor_email
+        self.actor_client_id = actor_client_id
+        self.method = method
+
+
 # =============================================================================
 # Integration Exceptions
 # =============================================================================

@@ -1,7 +1,8 @@
 """Tests for portal profile update."""
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, call
 
 from backend.services.portal.portal_service import PortalService
 
@@ -48,6 +49,7 @@ async def test_update_profile_updates_allowed_fields():
             "whatsapp": "+6281234567890",
             "address": "Jl Raya Seminyak 123",
         },
+        current_user={"client_id": 1, "email": "c1@example.com"},
     )
 
     assert result is not None
@@ -79,6 +81,7 @@ async def test_update_profile_rejects_sensitive_fields():
     result = await service.update_profile(
         client_id=1,
         fields={"full_name": "HACKED", "passport_number": "STOLEN", "phone": "+62999"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
     )
 
     assert result is not None
@@ -100,6 +103,7 @@ async def test_update_profile_empty_fields_noop():
     result = await service.update_profile(
         client_id=1,
         fields={"full_name": "HACKED", "nationality": "RU"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
     )
 
     assert result is not None
@@ -128,6 +132,10 @@ async def test_update_profile_notification_failure_does_not_raise():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.update_profile(client_id=1, fields={"phone": "+62888"})
+    result = await service.update_profile(
+        client_id=1,
+        fields={"phone": "+62888"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
 
     assert result is not None  # Profile returned despite notification failure

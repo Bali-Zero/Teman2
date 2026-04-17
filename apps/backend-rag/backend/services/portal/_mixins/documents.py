@@ -27,6 +27,7 @@ import asyncpg
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
 from backend.services.common.cache import cache_invalidating
+from backend.services.portal._rbac import ClientContext, require_client_access
 from backend.services.portal.document_processing import (
     DocumentOCR,
     ExpiryDetector,
@@ -112,8 +113,13 @@ class PortalDocumentsMixin:
     # DOCUMENTS
     # ================================================
 
+    @require_client_access
     async def get_documents(
-        self, client_id: int, document_type: str | None = None,
+        self,
+        client_id: int,
+        document_type: str | None = None,
+        *,
+        current_user: ClientContext,
     ) -> list[dict[str, Any]]:
         """Get all client-visible documents."""
         async with self.pool.acquire() as conn:
@@ -159,6 +165,7 @@ class PortalDocumentsMixin:
         "zantara:portal_documents:*",
         "zantara:portal_timeline:*",
     ])
+    @require_client_access
     async def upload_document(
         self,
         client_id: int,
@@ -167,6 +174,8 @@ class PortalDocumentsMixin:
         document_type: str,
         mime_type: str | None = None,
         practice_id: int | None = None,
+        *,
+        current_user: ClientContext,
     ) -> dict[str, Any]:
         """
         Upload a document for a client with full processing:
