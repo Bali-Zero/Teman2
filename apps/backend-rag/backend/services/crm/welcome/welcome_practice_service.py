@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from backend.app.core.config import settings
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import (
     ADVISOR_FALLBACK,
@@ -291,7 +292,7 @@ async def _send_email(
         "to": email,
         "subject": subject,
         "body": html_body,
-        "bcc": "zero@balizero.com",
+        "bcc": settings.admin_notification_email,
     }
     # CC the assigned team leader if present and different from recipient
     if advisor_email and advisor_email != email:

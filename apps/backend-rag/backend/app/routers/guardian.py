@@ -19,13 +19,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/guardian", tags=["guardian", "monitoring"])
-
-ADMIN_EMAILS = {"zero@balizero.com", "antonellosiano@gmail.com", "asya@balizero.com"}
 
 
 # ============================================================================
@@ -82,8 +81,8 @@ class RiskScoreHistoryResponse(BaseModel):
 
 
 def _require_admin(current_user: dict) -> None:
-    email = current_user.get("email", "")
-    if email not in ADMIN_EMAILS:
+    email = (current_user.get("email") or "").lower()
+    if email not in settings.admin_emails_set:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",

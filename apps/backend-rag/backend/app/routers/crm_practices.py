@@ -5,7 +5,6 @@ Endpoints for managing practices (KITAS, PT PMA, Visas, etc.)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import asyncio
 import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -15,6 +14,7 @@ import asyncpg
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_practices_user_filter
 from backend.app.services.internal_email import send_internal_email
@@ -184,7 +184,7 @@ async def _notify_hr_bonus_pending(
     )
 
     await send_internal_email(
-        to="asya@balizero.com",
+        to=settings.hr_notification_email,
         subject=f"HR Bonus Pending: {practice_label} — {amount_fmt}",
         body=html_body,
         log_context=f"crm bonus practice={practice_id}",

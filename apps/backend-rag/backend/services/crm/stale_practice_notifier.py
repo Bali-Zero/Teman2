@@ -15,6 +15,7 @@ from typing import Any
 
 import asyncpg
 
+from backend.app.core.config import settings
 from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +27,6 @@ _EMAIL_API_URL = os.getenv(
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
-ADMIN_EMAIL = "zero@balizero.com"
 STALE_DAYS = 7
 
 # Statuses considered "active" (non-terminal)
@@ -247,13 +247,13 @@ class StalePracticeNotifier:
             response = await client.post(
                 _EMAIL_API_URL,
                 headers={"X-API-Key": _EMAIL_API_KEY},
-                json={"to": ADMIN_EMAIL, "subject": subject, "body": body},
+                json={"to": settings.admin_notification_email, "subject": subject, "body": body},
             )
             response.raise_for_status()
 
         logger.info(
             "Admin summary sent",
-            extra={"context": {"to": ADMIN_EMAIL, "stale_count": len(stale)}},
+            extra={"context": {"to": settings.admin_notification_email, "stale_count": len(stale)}},
         )
 
     async def _send_team_leader_alert(
