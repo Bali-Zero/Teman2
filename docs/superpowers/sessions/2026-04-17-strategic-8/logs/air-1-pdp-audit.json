@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-04-17T13:03:14+00:00",
+  "generated_at": "2026-04-17T13:17:35+00:00",
   "scope": "apps/backend-rag/backend",
-  "total": 178,
+  "total": 158,
   "by_severity": {
-    "critical": 8,
-    "high": 37,
+    "critical": 0,
+    "high": 25,
     "medium": 133
   },
   "by_module": {
@@ -15,17 +15,15 @@
     "app/routers/websocket.py": 5,
     "app/setup/app_factory.py": 5,
     "services/memory/orchestrator.py": 5,
-    "app/routers/auth.py": 4,
     "app/routers/intel_analytics.py": 4,
-    "app/utils/crm_utils.py": 3,
     "llm/provider_registry.py": 3,
-    "services/crm/practice_status_listener.py": 3,
     "agents/agents/test_maintainer.py": 3,
     "app/routers/instagram_chat.py": 3,
     "app/routers/portal_notifications.py": 3,
     "services/events/event_bus.py": 3,
     "utils/passport_normalize.py": 3,
     "llm/providers/ollama.py": 2,
+    "services/crm/practice_status_listener.py": 2,
     "agents/agents/test_cleaner.py": 2,
     "app/routers/admin_drive_setup.py": 2,
     "app/routers/prime.py": 2,
@@ -43,24 +41,12 @@
     "services/oracle/cross_notebook_correlator.py": 2,
     "services/oracle/nlm_orchestrator.py": 2,
     "services/rag/evaluation": 2,
-    "app/deps/auth.py": 1,
-    "app/routers/crm_clients_documents.py": 1,
-    "middleware/hybrid_auth.py": 1,
-    "middleware/pii_scanner.py": 1,
     "agents/agents/client_value_predictor.py": 1,
     "agents/services/llm_adapter.py": 1,
-    "app/routers/crm_enhanced.py": 1,
-    "app/routers/crm_enhanced_documents.py": 1,
-    "app/routers/crm_practices.py": 1,
-    "app/routers/crm_shared_memory.py": 1,
     "channels/optimizations.py": 1,
-    "db/repositories/client_repository.py": 1,
     "llm/adapters/registry.py": 1,
     "llm/ollama_client.py": 1,
     "middleware/error_monitoring.py": 1,
-    "services/crm/birthday_notifier_service.py": 1,
-    "services/crm/documents.py": 1,
-    "services/crm/notifiers.py": 1,
     "services/integrations/drive": 1,
     "services/llm_clients/openrouter_client.py": 1,
     "services/portal/_mixins": 1,
@@ -107,93 +93,13 @@
     "services/visa_oracle/visa_oracle_service.py": 1
   },
   "by_kind": {
-    "return_literal": 32,
-    "pass": 103,
-    "return_empty_container": 15,
-    "break": 8,
-    "continue": 20
+    "pass": 92,
+    "return_literal": 26,
+    "continue": 19,
+    "break": 7,
+    "return_empty_container": 14
   },
   "entries": [
-    {
-      "path": "apps/backend-rag/backend/app/deps/auth.py",
-      "line": 153,
-      "end_line": 154,
-      "module": "app/deps/auth.py",
-      "handler_type": "Exception",
-      "body_kind": "return_literal",
-      "severity": "critical",
-      "snippet": "    except Exception:\n        return None\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/auth.py",
-      "line": 260,
-      "end_line": 261,
-      "module": "app/routers/auth.py",
-      "handler_type": "Exception",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "                    except Exception:\n                        pass\n                raise HTTPException(status_code=401, detail=\"Invalid email or PIN\")"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/auth.py",
-      "line": 276,
-      "end_line": 277,
-      "module": "app/routers/auth.py",
-      "handler_type": "Exception",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "                    except Exception:\n                        pass\n                raise HTTPException(status_code=401, detail=\"Account inactive\")"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/auth.py",
-      "line": 293,
-      "end_line": 294,
-      "module": "app/routers/auth.py",
-      "handler_type": "Exception",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "                    except Exception:\n                        pass\n                raise HTTPException(status_code=401, detail=\"Invalid email or PIN\")"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/auth.py",
-      "line": 307,
-      "end_line": 308,
-      "module": "app/routers/auth.py",
-      "handler_type": "Exception",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "                except Exception:\n                    pass\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/crm_clients_documents.py",
-      "line": 328,
-      "end_line": 329,
-      "module": "app/routers/crm_clients_documents.py",
-      "handler_type": "ValueError",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "            except ValueError:\n                pass\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/middleware/hybrid_auth.py",
-      "line": 364,
-      "end_line": 365,
-      "module": "middleware/hybrid_auth.py",
-      "handler_type": "(ImportError, AttributeError)",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "            except (ImportError, AttributeError):\n                pass\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/middleware/pii_scanner.py",
-      "line": 239,
-      "end_line": 240,
-      "module": "middleware/pii_scanner.py",
-      "handler_type": "(json.JSONDecodeError, UnicodeDecodeError)",
-      "body_kind": "pass",
-      "severity": "critical",
-      "snippet": "            except (json.JSONDecodeError, UnicodeDecodeError):\n                pass  # Non-JSON body \u2014 pass through unchanged\n"
-    },
     {
       "path": "apps/backend-rag/backend/agents/agents/client_value_predictor.py",
       "line": 74,
@@ -215,76 +121,6 @@
       "snippet": "        except Exception:\n            pass  # Ollama not responding \u2014 will attempt to start below\n"
     },
     {
-      "path": "apps/backend-rag/backend/app/routers/crm_enhanced.py",
-      "line": 429,
-      "end_line": 430,
-      "module": "app/routers/crm_enhanced.py",
-      "handler_type": "ValueError",
-      "body_kind": "pass",
-      "severity": "high",
-      "snippet": "                except ValueError:\n                    pass\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/crm_enhanced_documents.py",
-      "line": 41,
-      "end_line": 42,
-      "module": "app/routers/crm_enhanced_documents.py",
-      "handler_type": "ValueError",
-      "body_kind": "return_literal",
-      "severity": "high",
-      "snippet": "    except ValueError:\n        return None\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/crm_practices.py",
-      "line": 509,
-      "end_line": 510,
-      "module": "app/routers/crm_practices.py",
-      "handler_type": "(ValueError, IndexError)",
-      "body_kind": "return_literal",
-      "severity": "high",
-      "snippet": "    except (ValueError, IndexError):\n        return None\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/routers/crm_shared_memory.py",
-      "line": 50,
-      "end_line": 52,
-      "module": "app/routers/crm_shared_memory.py",
-      "handler_type": "Exception",
-      "body_kind": "return_empty_container",
-      "severity": "high",
-      "snippet": "    except Exception:\n        # If table doesn't exist or query fails, return empty list\n        return []"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/utils/crm_utils.py",
-      "line": 186,
-      "end_line": 187,
-      "module": "app/utils/crm_utils.py",
-      "handler_type": "json.JSONDecodeError",
-      "body_kind": "pass",
-      "severity": "high",
-      "snippet": "        except json.JSONDecodeError:\n            pass  # Fall through to brace balancing\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/utils/crm_utils.py",
-      "line": 198,
-      "end_line": 199,
-      "module": "app/utils/crm_utils.py",
-      "handler_type": "json.JSONDecodeError",
-      "body_kind": "pass",
-      "severity": "high",
-      "snippet": "        except json.JSONDecodeError:\n            pass  # Fall through to brace balancing\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/app/utils/crm_utils.py",
-      "line": 234,
-      "end_line": 236,
-      "module": "app/utils/crm_utils.py",
-      "handler_type": "json.JSONDecodeError",
-      "body_kind": "break",
-      "severity": "high",
-      "snippet": "                    except json.JSONDecodeError:\n                        # Not valid JSON, try next { in text\n                        break"
-    },
-    {
       "path": "apps/backend-rag/backend/channels/optimizations.py",
       "line": 36,
       "end_line": 37,
@@ -293,16 +129,6 @@
       "body_kind": "return_literal",
       "severity": "high",
       "snippet": "    except Exception:\n        return None\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/db/repositories/client_repository.py",
-      "line": 21,
-      "end_line": 22,
-      "module": "db/repositories/client_repository.py",
-      "handler_type": "(ValueError, TypeError)",
-      "body_kind": "return_literal",
-      "severity": "high",
-      "snippet": "    except (ValueError, TypeError):\n        return None\n"
     },
     {
       "path": "apps/backend-rag/backend/llm/adapters/registry.py",
@@ -385,64 +211,24 @@
       "snippet": "                    except Exception:\n                        pass  # Ignore body parsing errors\n"
     },
     {
-      "path": "apps/backend-rag/backend/services/crm/birthday_notifier_service.py",
-      "line": 223,
-      "end_line": 224,
-      "module": "services/crm/birthday_notifier_service.py",
-      "handler_type": "json.JSONDecodeError",
-      "body_kind": "return_literal",
-      "severity": "high",
-      "snippet": "            except json.JSONDecodeError:\n                return \"\"\n"
-    },
-    {
-      "path": "apps/backend-rag/backend/services/crm/documents.py",
-      "line": 209,
-      "end_line": 210,
-      "module": "services/crm/documents.py",
-      "handler_type": "(ValueError, IndexError)",
-      "body_kind": "continue",
-      "severity": "high",
-      "snippet": "            except (ValueError, IndexError):\n                continue\n    return None"
-    },
-    {
-      "path": "apps/backend-rag/backend/services/crm/notifiers.py",
-      "line": 137,
-      "end_line": 138,
-      "module": "services/crm/notifiers.py",
-      "handler_type": "json.JSONDecodeError",
-      "body_kind": "return_literal",
-      "severity": "high",
-      "snippet": "            except json.JSONDecodeError:\n                return \"\"\n        enrichment = custom_fields.get(\"birthplace_enrichment\", {}).get(\"data\", {})"
-    },
-    {
       "path": "apps/backend-rag/backend/services/crm/practice_status_listener.py",
       "line": 78,
-      "end_line": 79,
+      "end_line": 80,
       "module": "services/crm/practice_status_listener.py",
       "handler_type": "asyncio.CancelledError",
       "body_kind": "pass",
       "severity": "high",
-      "snippet": "            except asyncio.CancelledError:\n                pass\n        await self._close_conn()"
+      "snippet": "            except asyncio.CancelledError:\n                # Cooperative shutdown \u2014 cancellation here is the success path.\n                pass"
     },
     {
       "path": "apps/backend-rag/backend/services/crm/practice_status_listener.py",
-      "line": 90,
-      "end_line": 91,
+      "line": 91,
+      "end_line": 93,
       "module": "services/crm/practice_status_listener.py",
       "handler_type": "asyncio.CancelledError",
       "body_kind": "break",
       "severity": "high",
-      "snippet": "            except asyncio.CancelledError:\n                break\n            except Exception as exc:"
-    },
-    {
-      "path": "apps/backend-rag/backend/services/crm/practice_status_listener.py",
-      "line": 118,
-      "end_line": 119,
-      "module": "services/crm/practice_status_listener.py",
-      "handler_type": "Exception",
-      "body_kind": "pass",
-      "severity": "high",
-      "snippet": "            except Exception:\n                pass\n        self._conn = None"
+      "snippet": "            except asyncio.CancelledError:\n                # Cooperative shutdown \u2014 exit the retry loop cleanly.\n                break"
     },
     {
       "path": "apps/backend-rag/backend/services/integrations/drive/drive_audit.py",
