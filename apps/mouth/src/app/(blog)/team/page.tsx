@@ -1,437 +1,125 @@
-"use client";
-
-import * as React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Users, Phone, Mail, ArrowRight, Sparkles } from "lucide-react";
-import { useTranslation } from "@/i18n";
+import { Phone, ArrowRight } from "lucide-react";
+import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 
-/**
- * Team Page - Bali Zero Team
- * McKinsey-inspired layout showcasing our team
- */
-export default function TeamPage() {
-  const { t } = useTranslation();
+export const metadata: Metadata = {
+  title: "Team · Bali Zero",
+  description:
+    "The Bali Zero team — licensed founders, consultants, tax specialists, notaries and marketing. Real people handling real cases in Bali since 2006.",
+};
 
-  return (
-    <div className="min-h-screen bg-[#051C2C]">
-      {/* Hero Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16 lg:py-24">
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
-            {/* Content - Left Side */}
-            <div className="flex-1">
-              <div className="mb-8">
-                <Image
-                  src="/assets/logo/balizero-logo.png"
-                  alt="Bali Zero"
-                  width={80}
-                  height={80}
-                  className="rounded-full"
-                />
-              </div>
-              <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-                {t("team.hero.label")}
-              </span>
-              <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-                {t("team.hero.title")}{" "}
-                <span className="text-[#e85c41]">
-                  {t("team.hero.titleAccent")}
-                </span>{" "}
-                {t("team.hero.titleSuffix")}
-              </h1>
-              <p className="text-lg text-white/70 mb-8 leading-relaxed">
-                {t("team.hero.subtitle")}
-              </p>
+// ─── Canonical roster (2026-04-18) ──────────────────────────────────────────
+// Keep in sync with apps/mouth/src/app/v2/_components/SocialProof.tsx
+// and the backend HR roster migration (migration_080_hr_team_cleanup.py).
 
-              <div className="flex flex-wrap gap-4">
-                <Link
-                  href="https://wa.me/628213107363"
-                  target="_blank"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
-                >
-                  <Phone className="w-4 h-4" />
-                  {t("common.cta.contactUs")}
-                </Link>
-                <Link
-                  href="/services"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
-                >
-                  {t("common.cta.viewServices")}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Video - Right Side (9:16 aspect ratio) */}
-            <div className="w-full lg:w-auto flex-shrink-0">
-              <div className="relative w-[320px] sm:w-[380px] lg:w-[420px] mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full aspect-[9/16] object-cover cursor-pointer"
-                  onMouseEnter={(e) => {
-                    const video = e.currentTarget;
-                    video.muted = false;
-                    video.volume = 0.5;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.muted = true;
-                  }}
-                >
-                  <source src="/videos/team-hero.mp4" type="video/mp4" />
-                </video>
-                {/* Gradient overlay at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#051C2C] to-transparent pointer-events-none" />
-                {/* Sound hint icon */}
-                <div className="absolute bottom-4 right-4 bg-black/50 rounded-full p-2 pointer-events-none">
-                  <svg
-                    className="w-5 h-5 text-white/70"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Leadership Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">
-              {t("team.sections.leadership")}
-            </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              {t("team.sections.leadershipDesc")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-            {LEADERSHIP.map((member) => (
-              <TeamCard key={member.initials} member={member} size="large" />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Setup Team Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">
-              {t("team.sections.setupTeam")}
-            </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              {t("team.sections.setupTeamDesc")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {SETUP_TEAM.map((member) => (
-              <TeamCard key={member.initials} member={member} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Tax Department Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">
-              {t("team.sections.taxDepartment")}
-            </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              {t("team.sections.taxDepartmentDesc")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {TAX_TEAM.map((member) => (
-              <TeamCard key={member.initials} member={member} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Accounting Department Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">
-              {t("team.sections.accounting")}
-            </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              {t("team.sections.accountingDesc")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {ACCOUNTING_TEAM.map((member) => (
-              <TeamCard key={member.initials} member={member} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Support Team Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="font-serif text-3xl text-white mb-4">
-              {t("team.sections.supportMarketing")}
-            </h2>
-            <p className="text-white/60 max-w-2xl mx-auto">
-              {t("team.sections.supportMarketingDesc")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {SUPPORT_TEAM.map((member) => (
-              <TeamCard key={member.initials} member={member} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Zero AI Section */}
-      <section className="border-b border-white/10 bg-gradient-to-br from-[#0a2540] to-[#051C2C]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="flex flex-col md:flex-row items-center gap-8 justify-center">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2251ff] to-[#e85c41] flex items-center justify-center">
-                <Image
-                  src="/assets/logo/zantara-lotus.png"
-                  alt="Zantara AI"
-                  width={100}
-                  height={100}
-                  className="rounded-full"
-                />
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-[#2251ff] flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-            </div>
-            <div className="text-center md:text-left max-w-xl">
-              <h3 className="font-serif text-2xl text-white mb-2">
-                {t("team.ai.title")}
-              </h3>
-              <p className="text-[#2251ff] font-medium mb-4">
-                {t("team.ai.role")}
-              </p>
-              <p className="text-white/60">{t("team.ai.description")}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact CTA */}
-      <section className="bg-gradient-to-br from-[#e85c41] to-[#d14832]">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">
-              {t("team.cta.title")}
-            </h2>
-            <p className="text-white/80 text-lg mb-8">
-              {t("team.cta.description")}
-            </p>
-
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                href="https://wa.me/628213107363"
-                target="_blank"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-[#e85c41] font-medium hover:bg-white/90 transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                +62 821 3107 363
-              </Link>
-              <a
-                href="mailto:info@balizero.com"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 border-white/40 text-white font-medium hover:bg-white/10 transition-colors"
-              >
-                <Mail className="w-4 h-4" />
-                info@balizero.com
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// Team Card Component
 interface TeamMember {
   name: string;
   initials: string;
   role: string;
   gradient: string;
-  external?: boolean;
-  photo?: string; // Optional photo URL
+  photo?: string;
 }
 
-function TeamCard({
-  member,
-  size = "normal",
-}: {
-  member: TeamMember;
-  size?: "normal" | "large";
-}) {
-  const { t } = useTranslation();
-  const isLarge = size === "large";
-
-  return (
-    <div
-      className={`group rounded-xl border border-white/10 bg-[#0a2540] ${isLarge ? "p-8" : "p-6"} hover:border-[#2251ff]/50 transition-all text-center`}
-    >
-      {/* Avatar - Photo or Initials */}
-      <div
-        className={`${isLarge ? "w-24 h-24" : "w-16 h-16"} rounded-full ${member.gradient} flex items-center justify-center mx-auto mb-4 overflow-hidden`}
-      >
-        {member.photo ? (
-          <Image
-            src={member.photo}
-            alt={member.name}
-            width={isLarge ? 96 : 64}
-            height={isLarge ? 96 : 64}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span
-            className={`${isLarge ? "text-2xl" : "text-lg"} font-bold text-white`}
-          >
-            {member.initials}
-          </span>
-        )}
-      </div>
-
-      {/* Info */}
-      <h3
-        className={`${isLarge ? "text-xl" : "text-base"} font-medium text-white mb-1 group-hover:text-[#2251ff] transition-colors`}
-      >
-        {member.name}
-      </h3>
-      <p className={`${isLarge ? "text-sm" : "text-xs"} text-white/60`}>
-        {member.role}
-        {member.external && (
-          <span className="ml-2 text-[#2251ff]">
-            {t("team.sections.external")}
-          </span>
-        )}
-      </p>
-    </div>
-  );
-}
-
-// Team Data (excluding Amanda and Maria as requested)
 const LEADERSHIP: TeamMember[] = [
+  {
+    name: "Pak Heru",
+    initials: "PH",
+    role: "Komisaris · Founder (30 years)",
+    gradient: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
+    photo: "/static/team/heru-komisaris.jpg",
+  },
   {
     name: "Zainal Abidin",
     initials: "ZA",
-    role: "Chief Executive Officer",
-    gradient: "bg-gradient-to-br from-[#2251ff] to-[#1a41cc]",
+    role: "Chief Executive Officer · Founder",
+    gradient: "linear-gradient(135deg, #ff2d4c 0%, #c8102e 100%)",
+    photo: "/static/team/zainal-ceo.jpg",
   },
   {
     name: "Ruslana",
     initials: "RS",
-    role: "Board Member",
-    gradient: "bg-gradient-to-br from-[#e85c41] to-[#d14832]",
+    role: "Special Advisory",
+    gradient: "linear-gradient(135deg, #e85c41 0%, #d14832 100%)",
     photo: "/static/team/ruslana.jpg",
+  },
+  {
+    name: "Veronika",
+    initials: "VE",
+    role: "Manager",
+    gradient: "linear-gradient(135deg, #2251ff 0%, #1a41cc 100%)",
   },
 ];
 
 const SETUP_TEAM: TeamMember[] = [
   {
-    name: "Vino",
-    initials: "VI",
-    role: "Junior Consultant",
-    gradient: "bg-gradient-to-br from-violet-500 to-purple-600",
-  },
-  {
-    name: "Krisna",
-    initials: "KR",
-    role: "Executive Consultant",
-    gradient: "bg-gradient-to-br from-orange-500 to-amber-600",
-    photo: "/static/team/krisna.png",
-  },
-  {
     name: "Adit",
     initials: "AD",
-    role: "Supervisor (Lead Setup)",
-    gradient: "bg-gradient-to-br from-cyan-500 to-blue-600",
+    role: "Supervisor · Lead Setup",
+    gradient: "linear-gradient(135deg, #06b6d4 0%, #2563eb 100%)",
     photo: "/static/team/adit.png",
   },
   {
     name: "Ari",
     initials: "AR",
-    role: "Specialist Consultant",
-    gradient: "bg-gradient-to-br from-rose-500 to-pink-600",
+    role: "Supervisor",
+    gradient: "linear-gradient(135deg, #f43f5e 0%, #db2777 100%)",
     photo: "/static/team/ari.png",
+  },
+  {
+    name: "Krisna",
+    initials: "KR",
+    role: "Specialist Consultant",
+    gradient: "linear-gradient(135deg, #f97316 0%, #d97706 100%)",
+    photo: "/static/team/krisna.png",
   },
   {
     name: "Dea",
     initials: "DE",
     role: "Executive Consultant",
-    gradient: "bg-gradient-to-br from-indigo-500 to-blue-600",
+    gradient: "linear-gradient(135deg, #6366f1 0%, #2563eb 100%)",
     photo: "/static/team/dea.png",
   },
   {
-    name: "Surya",
-    initials: "SU",
-    role: "Specialist Consultant",
-    gradient: "bg-gradient-to-br from-amber-500 to-orange-600",
+    name: "Vino",
+    initials: "VI",
+    role: "Junior Consultant",
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
   },
   {
-    name: "Damar",
-    initials: "DM",
-    role: "Junior Consultant",
-    gradient: "bg-gradient-to-br from-teal-500 to-emerald-600",
+    name: "Sahira",
+    initials: "SH",
+    role: "Executive Consultant",
+    gradient: "linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)",
+    photo: "/static/team/sahira.png",
   },
 ];
 
 const TAX_TEAM: TeamMember[] = [
   {
-    name: "Veronika",
-    initials: "VE",
-    role: "Tax Manager",
-    gradient: "bg-gradient-to-br from-[#2251ff] to-[#1a41cc]",
-  },
-  {
     name: "Angel",
     initials: "AG",
-    role: "Tax Expert",
-    gradient: "bg-gradient-to-br from-rose-500 to-red-600",
+    role: "Tax Supervisor",
+    gradient: "linear-gradient(135deg, #f43f5e 0%, #dc2626 100%)",
   },
   {
     name: "Kadek",
     initials: "KD",
     role: "Tax Consultant",
-    gradient: "bg-gradient-to-br from-emerald-500 to-green-600",
+    gradient: "linear-gradient(135deg, #10b981 0%, #16a34a 100%)",
   },
   {
     name: "Dewa Ayu",
     initials: "DA",
     role: "Tax Consultant",
-    gradient: "bg-gradient-to-br from-violet-500 to-indigo-600",
+    gradient: "linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%)",
   },
   {
     name: "Faisha",
     initials: "FA",
     role: "Tax Care",
-    gradient: "bg-gradient-to-br from-amber-500 to-yellow-600",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #ca8a04 100%)",
   },
 ];
 
@@ -439,31 +127,347 @@ const ACCOUNTING_TEAM: TeamMember[] = [
   {
     name: "Asya Nadia",
     initials: "AN",
-    role: "Accounting",
-    gradient: "bg-gradient-to-br from-emerald-500 to-teal-600",
+    role: "Accountant",
+    gradient: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)",
     photo: "/static/team/asya.jpg",
   },
-];
-
-const SUPPORT_TEAM: TeamMember[] = [
   {
     name: "Rina",
     initials: "RI",
     role: "Reception",
-    gradient: "bg-gradient-to-br from-pink-500 to-rose-600",
-  },
-  {
-    name: "Nina",
-    initials: "NI",
-    role: "Marketing Advisory",
-    gradient: "bg-gradient-to-br from-orange-500 to-red-600",
-    external: true,
-  },
-  {
-    name: "Sahira",
-    initials: "SH",
-    role: "Marketing Specialist",
-    gradient: "bg-gradient-to-br from-purple-500 to-violet-600",
-    photo: "/static/team/sahira.png",
+    gradient: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
   },
 ];
+
+const MARKETING_TEAM: TeamMember[] = [
+  {
+    name: "Zero",
+    initials: "ZE",
+    role: "SOTA Marketing",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+    photo: "/static/team/zero.jpg",
+  },
+  {
+    name: "Surya",
+    initials: "SU",
+    role: "Marketing Specialist",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)",
+  },
+  {
+    name: "Damar",
+    initials: "DM",
+    role: "Marketing Junior",
+    gradient: "linear-gradient(135deg, #14b8a6 0%, #10b981 100%)",
+  },
+];
+
+// ─── UI helpers ────────────────────────────────────────────────────────────
+
+function TeamCard({
+  member,
+  size = "small",
+}: {
+  member: TeamMember;
+  size?: "large" | "small";
+}) {
+  const isLarge = size === "large";
+  const avatar = isLarge ? 120 : 64;
+
+  return (
+    <div
+      className="group rounded-2xl p-5 transition-all hover:-translate-y-0.5"
+      style={{
+        background:
+          "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
+        border:
+          "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 20%, transparent)",
+        backdropFilter: "blur(20px) saturate(160%)",
+        WebkitBackdropFilter: "blur(20px) saturate(160%)",
+      }}
+    >
+      <div className="flex items-center gap-4">
+        <div
+          className="relative overflow-hidden rounded-full shrink-0 flex items-center justify-center"
+          style={{
+            width: avatar,
+            height: avatar,
+            background: member.gradient,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+          }}
+        >
+          {member.photo ? (
+            <Image
+              src={member.photo}
+              alt={`${member.name} — ${member.role}`}
+              fill
+              sizes={`${avatar}px`}
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <span
+              className="font-extrabold text-white"
+              style={{ fontSize: isLarge ? 38 : 20 }}
+            >
+              {member.initials}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div
+            className={
+              isLarge
+                ? "text-[22px] font-extrabold tracking-tight"
+                : "text-[15px] font-bold tracking-tight"
+            }
+            style={{ color: "var(--text-primary)" }}
+          >
+            {member.name}
+          </div>
+          <div
+            className="text-[12px] mt-1"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {member.role}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({
+  eyebrow,
+  title,
+  subtitle,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        borderBottom: "1px solid var(--border-subtle)",
+        padding: "clamp(48px, 6vw, 80px) clamp(24px, 4vw, 40px)",
+      }}
+    >
+      <div className="max-w-[1400px] mx-auto">
+        <div className="mb-8">
+          <div
+            className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2"
+            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+          >
+            {eyebrow}
+          </div>
+          <h2
+            className="font-extrabold tracking-tight"
+            style={{
+              color: "var(--text-primary)",
+              fontSize: "clamp(26px, 2.4vw, 34px)",
+            }}
+          >
+            {title}
+          </h2>
+          {subtitle ? (
+            <p
+              className="mt-2 text-[14px] max-w-2xl"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
+        <div
+          className="grid gap-4"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────
+
+export default function TeamPage() {
+  return (
+    <div
+      className="min-h-screen"
+      style={{
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+      }}
+    >
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden"
+        style={{ padding: "clamp(64px, 8vw, 120px) clamp(24px, 4vw, 40px)" }}
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div className="flex flex-col lg:flex-row gap-10 items-end justify-between">
+            <div className="max-w-[720px]">
+              <div
+                className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
+                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              >
+                The Team · 18+ specialists · Kerobokan, Bali
+              </div>
+              <h1
+                className="font-extrabold tracking-tight mb-5"
+                style={{
+                  fontSize: "clamp(34px, 5vw, 60px)",
+                  lineHeight: 1.05,
+                  color: "var(--text-primary)",
+                }}
+              >
+                Real people.
+                <br />
+                <span style={{ color: "var(--text-secondary)" }}>
+                  Real licenses. Real files.
+                </span>
+              </h1>
+              <p
+                className="text-[16px] leading-[1.6] mb-6"
+                style={{ color: "var(--text-secondary)", maxWidth: "56ch" }}
+              >
+                Started in Kerobokan in 2006 — two friends, one office, a lot of
+                immigration paperwork. Today the team handles 47 KITAS and 9 PT
+                PMAs every month. AI drafts; licensed Indonesians sign.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="https://wa.me/628213107363"
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[13px] font-semibold"
+                  style={{
+                    background: "var(--accent-funnel, #3a6dff)",
+                    color: "var(--text-on-accent, #fff)",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  <Phone size={14} strokeWidth={2.2} />
+                  Talk to the team
+                </Link>
+                <Link
+                  href="/services"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[13px] font-semibold"
+                  style={{
+                    background: "transparent",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border-default)",
+                  }}
+                >
+                  See services
+                  <ArrowRight size={14} strokeWidth={2.2} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Aggregate trust — same as homepage */}
+            <div
+              className="inline-flex items-center gap-4 px-4 py-2.5 rounded-full flex-wrap"
+              style={{
+                background: "rgba(0,0,0,0.28)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.14)",
+              }}
+            >
+              <span
+                className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span style={{ color: "#fbbf24" }}>★★★★★</span>
+                <span>4.9</span>
+                <span style={{ color: "var(--text-tertiary)" }}>
+                  · 627 Google reviews
+                </span>
+              </span>
+              <span
+                className="h-3.5 w-px"
+                style={{ background: "rgba(255,255,255,0.18)" }}
+              />
+              <span
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                5,000+ cases
+              </span>
+              <span
+                className="h-3.5 w-px"
+                style={{ background: "rgba(255,255,255,0.18)" }}
+              />
+              <span
+                className="text-[12px] font-semibold"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Licensed since 2006
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Leadership */}
+      <Section
+        eyebrow="Leadership"
+        title="The founders, the advisors, the manager"
+        subtitle="The four people who set direction and sign off on every high-risk file."
+      >
+        {LEADERSHIP.map((m) => (
+          <TeamCard key={m.initials} member={m} size="large" />
+        ))}
+      </Section>
+
+      {/* Setup team */}
+      <Section
+        eyebrow="Setup · Visa & Company"
+        title="Your Indonesia operation, end-to-end"
+        subtitle="Visa intake, PT PMA incorporation, KBLI due diligence, OSS filings."
+      >
+        {SETUP_TEAM.map((m) => (
+          <TeamCard key={m.initials} member={m} />
+        ))}
+      </Section>
+
+      {/* Tax */}
+      <Section
+        eyebrow="Tax"
+        title="Licensed konsultan pajak"
+        subtitle="Corporate and personal tax compliance under CoreTax 2026."
+      >
+        {TAX_TEAM.map((m) => (
+          <TeamCard key={m.initials} member={m} />
+        ))}
+      </Section>
+
+      {/* Accounting & reception */}
+      <Section
+        eyebrow="Accounting & Reception"
+        title="The backbone of every month-end"
+      >
+        {ACCOUNTING_TEAM.map((m) => (
+          <TeamCard key={m.initials} member={m} />
+        ))}
+      </Section>
+
+      {/* Marketing */}
+      <Section
+        eyebrow="Marketing"
+        title="The intelligence arm"
+        subtitle="Editorial, content, the Zantara AI layer that keeps the site alive."
+      >
+        {MARKETING_TEAM.map((m) => (
+          <TeamCard key={m.initials} member={m} />
+        ))}
+      </Section>
+
+      <GoogleReviewsBlock limit={6} />
+    </div>
+  );
+}
