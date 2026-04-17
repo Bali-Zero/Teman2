@@ -172,3 +172,41 @@ async def test_wrapper_skeleton():
     # TODO: Implement test logic for wrapper
     # result = await wrapper(...)
     assert True
+
+
+# ═══════════════════════════════════════════════════════════════
+# BatchProcessor — drain task strong-ref + start-lock (S09)
+# ═══════════════════════════════════════════════════════════════
+
+import asyncio as _asyncio  # noqa: E402
+
+import pytest as _pytest  # noqa: E402
+
+
+class _CollectingBatchProcessor(BatchProcessor):
+    """Subclass that echoes items back so we can assert delivery."""
+
+    async def _process_batch_items(self, batch):  # type: ignore[override]
+        return [{"echo": item} for item in batch]
+
+
+@_pytest.mark.asyncio
+async def test_batch_processor_retains_drain_task_reference() -> None:
+    """Regression: the drain task must be tracked on the instance so CPython GC
+    cannot collect it mid-flight."""
+    proc = _CollectingBatchProcessor(batch_size=2, max_wait=0.05)
+    results = await _asyncio.gather(
+        proc.add_request({"i": 1}),
+        proc.add_request({"i": 2}),
+    )
+    assert results == [{"echo": {"i": 1}}, {"echo": {"i": 2}}]
+
+
+@_pytest.mark.asyncio
+async def test_batch_processor_concurrent_producers_do_not_double_drain() -> None:
+    """Regression: TOCTOU on `self.processing` used to let two producers spawn
+    duplicate drain tasks. The start_lock now serialises that."""
+    proc = _CollectingBatchProcessor(batch_size=10, max_wait=0.05)
+    # 20 concurrent producers, single drain task must deliver all 20.
+    results = await _asyncio.gather(*(proc.add_request({"i": i}) for i in range(20)))
+    assert [r["echo"]["i"] for r in results] == list(range(20))

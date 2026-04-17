@@ -427,7 +427,10 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                 try:
                     expiry_date_parsed = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
                 except ValueError:
-                    pass
+                    logger.info(
+                        "crm_enhanced.visa_expiry_unparseable",
+                        extra={"raw_expiry": str(extracted.get("expiry_date"))[:32]},
+                    )
 
             sync_parts: list[str] = []
             sync_params: list[Any] = []
