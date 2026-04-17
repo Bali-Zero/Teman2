@@ -29,8 +29,11 @@ Date: 2025-12-23
 import json
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 from typing import Any
+
+from backend.llm.metrics_emitter import emit_llm_metric
 
 from backend.app.core.config import settings
 
@@ -266,31 +269,27 @@ class GenAIClient:
         """Check if client is available and configured."""
         return self._available and self._client is not None
 
+    # Default request timeout in milliseconds (R2 — prevent indefinite hang on slow models)
+    DEFAULT_TIMEOUT_MS: int = 120_000  # 2 minutes
+
     def _get_config(
         self,
         system_instruction: str | None = None,
         max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
+        timeout_ms: int | None = None,
     ) -> Any:
-        """
-        Build GenerateContentConfig.
-
-        Args:
-            system_instruction: System prompt
-            max_output_tokens: Maximum tokens to generate
-            temperature: Sampling temperature
-            safety_settings: Optional safety settings
-
-        Returns:
-            GenerateContentConfig object
-        """
+        """Build GenerateContentConfig with optional per-request timeout."""
         if not GENAI_AVAILABLE or types is None:
             return None
 
-        config_kwargs = {
+        config_kwargs: dict[str, Any] = {
             "max_output_tokens": max_output_tokens,
             "temperature": temperature,
+            "http_options": types.HttpOptions(
+                timeout=timeout_ms if timeout_ms is not None else self.DEFAULT_TIMEOUT_MS
+            ),
         }
 
         if system_instruction:
@@ -309,6 +308,7 @@ class GenAIClient:
         max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Generate content asynchronously.
@@ -333,8 +333,10 @@ class GenAIClient:
             max_output_tokens=max_output_tokens,
             temperature=temperature,
             safety_settings=safety_settings,
+            timeout_ms=timeout_ms,
         )
 
+        t0 = time.perf_counter()
         try:
             response = await self._client.aio.models.generate_content(
                 model=model,
@@ -342,16 +344,40 @@ class GenAIClient:
                 config=config,
             )
 
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
+            completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            logger.info(
+                "LLM call",
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "latency_ms": latency_ms,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                },
+            )
+            await emit_llm_metric(
+                provider="gemini", model=model, latency_ms=latency_ms,
+                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+            )
             return {
                 "text": response.text,
                 "model": model,
                 "usage": {
-                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
-                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
+                    "input_tokens": prompt_tokens,
+                    "output_tokens": completion_tokens,
                 },
             }
         except Exception as e:
-            logger.error(f"❌ GenAI generate_content failed: {e}")
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.error(
+                "LLM call failed",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+            )
+            await emit_llm_metric(
+                provider="gemini", model=model, latency_ms=latency_ms, status="error",
+            )
             raise
 
     async def generate_content_stream(
@@ -362,6 +388,7 @@ class GenAIClient:
         max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
+        timeout_ms: int | None = None,
     ) -> AsyncGenerator[str, None]:
         """
         Generate content with streaming.
@@ -373,6 +400,7 @@ class GenAIClient:
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             safety_settings: Optional safety settings
+            timeout_ms: Request timeout in milliseconds (default: DEFAULT_TIMEOUT_MS)
 
         Yields:
             Text chunks as they arrive
@@ -386,8 +414,11 @@ class GenAIClient:
             max_output_tokens=max_output_tokens,
             temperature=temperature,
             safety_settings=safety_settings,
+            timeout_ms=timeout_ms,
         )
 
+        t0 = time.perf_counter()
+        chunk_count = 0
         try:
             async for chunk in self._client.aio.models.generate_content_stream(
                 model=model,
@@ -395,9 +426,26 @@ class GenAIClient:
                 config=config,
             ):
                 if chunk.text:
+                    chunk_count += 1
                     yield chunk.text
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "LLM stream",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "chunks": chunk_count},
+            )
+            await emit_llm_metric(
+                provider="gemini", model=model, latency_ms=latency_ms,
+                extra={"chunks": str(chunk_count)},
+            )
         except Exception as e:
-            logger.error(f"❌ GenAI stream failed: {e}")
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.error(
+                "LLM stream failed",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+            )
+            await emit_llm_metric(
+                provider="gemini", model=model, latency_ms=latency_ms, status="error",
+            )
             raise
 
     def create_chat_session(
