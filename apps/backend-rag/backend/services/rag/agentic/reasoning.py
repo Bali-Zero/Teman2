@@ -40,9 +40,16 @@ from backend.app.utils.tracing import (
     trace_span,
 )
 from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic._reasoning_evidence import (
+    compute_evidence_score,
+    detect_substantial_context,
+    detect_trusted_context_markers,
+    detect_trusted_tool_usage,
+    emit_low_confidence_event,
+)
 from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.reasoning_utils import (
-    calculate_evidence_score,
+    calculate_evidence_score,  # noqa: F401  re-exported for tests that patch reasoning.calculate_evidence_score
     get_critical_domain_type,
     is_critical_domain,
     is_valid_tool_call,
@@ -573,31 +580,11 @@ class ReasoningEngine:
             set_span_attribute("tools_executed", tool_execution_counter.get("count", 0))
 
         # ==================== TRUSTED TOOLS CHECK ====================
-        # Check if trusted tools (calculator, pricing, team, crm) were used successfully
-        # These tools provide their own evidence and don't need KB sources
-        # MOVED BEFORE EVIDENCE SCORE: If trusted tools used, skip keyword-based scoring
-        # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM)
-        trusted_tools_used = getattr(state, "trusted_tools_used", False)
-        trusted_tool_names = _TRUSTED_TOOL_NAMES
-        for step in state.steps:
-            if step.action and hasattr(step.action, "tool_name"):
-                if step.action.tool_name in trusted_tool_names and step.observation:
-                    # Tool was used and produced output
-                    obs_lower = step.observation.lower()
-                    # Check for actual content, not "no results" or errors
-                    has_content = (
-                        "error" not in obs_lower
-                        and "not found" not in obs_lower
-                        and "no relevant" not in obs_lower
-                        and len(step.observation) > 50  # Must have substantial content
-                    )
-                    if has_content:
-                        trusted_tools_used = True
-                        logger.info(
-                            f"🔧 [Trusted Tools] {step.action.tool_name} used successfully "
-                            f"(obs_len={len(step.observation)}), bypassing keyword evidence check",
-                        )
-                        break
+        # Check if trusted tools (calculator, pricing, team, crm) were used successfully.
+        # These tools provide their own evidence and don't need KB sources.
+        # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM).
+        trusted_tools_used = getattr(state, "trusted_tools_used", False) or \
+            detect_trusted_tool_usage(state.steps, _TRUSTED_TOOL_NAMES)
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
@@ -608,36 +595,23 @@ class ReasoningEngine:
             "react.evidence_score",
             {"sources_count": sources_count, "trusted_tools_used": trusted_tools_used},
         ):
-            # If trusted tools used successfully, use high evidence score directly
-            if trusted_tools_used:
-                evidence_score = 0.85  # High confidence from trusted tool
-                logger.info(f"🛡️ [Evidence] Trusted tools used: score={evidence_score:.2f}")
-            else:
-                # Calculate evidence score from sources and context (keyword-based)
-                sources = state.sources if hasattr(state, "sources") else None
-                evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
-                logger.info(f"🛡️ [Evidence] Keyword-based score: {evidence_score:.2f}")
+            sources = state.sources if hasattr(state, "sources") else None
+            evidence_score = compute_evidence_score(
+                trusted_tools_used=trusted_tools_used,
+                sources=sources,
+                context_gathered=state.context_gathered,
+                query=query,
+            )
 
             set_span_attribute("evidence_score", evidence_score)
             set_span_attribute("trusted_tools_used", trusted_tools_used)
-            # Store evidence_score in state for downstream use
-            if not hasattr(state, "evidence_score"):
-                state.evidence_score = evidence_score
-            else:
-                state.evidence_score = evidence_score
+            state.evidence_score = evidence_score
 
-            # Bridge: emit rag.low_confidence event if evidence is weak.
-            # Defensive — never break the RAG path on outbox failure.
-            # pool is None here (no db_pool on ReasoningEngine); full wire-up in Task 17.
-            try:
-                from backend.services.bridge.low_confidence_emitter import (
-                    maybe_emit_low_confidence,
-                )
-                pool = getattr(self, "_db_pool", None)
-                if pool is not None:
-                    await maybe_emit_low_confidence(pool, query, evidence_score)
-            except Exception as exc:
-                logger.warning(f"Low-confidence emit skipped: {exc}")
+            await emit_low_confidence_event(
+                getattr(self, "_db_pool", None),
+                query,
+                evidence_score,
+            )
 
             set_span_status("ok")
 
@@ -1347,118 +1321,48 @@ Do not invent information. If the context is insufficient, admit it.
                     state.steps.append(step)
 
         # ==================== TRUSTED TOOLS CHECK (BEFORE EVIDENCE) ====================
-        # Check if trusted tools were used successfully BEFORE calculating evidence score
-        # This ensures RAG-native behavior: tool success = high evidence
-        # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM)
-        trusted_tools_used = getattr(state, "trusted_tools_used", False)
-        trusted_tool_names = _TRUSTED_TOOL_NAMES
-        for step in state.steps:
-            if step.action and hasattr(step.action, "tool_name"):
-                if step.action.tool_name in trusted_tool_names and step.observation:
-                    obs_lower = step.observation.lower()
-                    has_content = (
-                        "error" not in obs_lower
-                        and "not found" not in obs_lower
-                        and "no relevant" not in obs_lower
-                        and len(step.observation) > 50
-                    )
-                    if has_content:
-                        trusted_tools_used = True
-                        logger.info(
-                            f"🔧 [Trusted Tools - Stream] {step.action.tool_name} used successfully "
-                            f"(obs_len={len(step.observation)}), using high evidence score",
-                        )
-                        break
+        # Tool success = high evidence (RAG-native). Also honour
+        # state.trusted_tools_used set by early-exit paths (e.g. CRM).
+        trusted_tools_used = getattr(state, "trusted_tools_used", False) or \
+            detect_trusted_tool_usage(
+                state.steps,
+                _TRUSTED_TOOL_NAMES,
+                log_prefix="Trusted Tools - Stream",
+            )
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
-        # RAG-NATIVE: If trusted tools used, use high evidence score directly
-        if trusted_tools_used:
-            evidence_score = 0.85  # High confidence from trusted tool
-            logger.info(f"🛡️ [Evidence Stream] Trusted tools used: score={evidence_score:.2f}")
-        else:
-            # Calculate evidence score from sources and context (keyword-based)
-            sources = state.sources if hasattr(state, "sources") else None
-            evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
-            logger.info(f"🛡️ [Uncertainty Stream] Evidence Score: {evidence_score:.2f}")
+        sources = state.sources if hasattr(state, "sources") else None
+        evidence_score = compute_evidence_score(
+            trusted_tools_used=trusted_tools_used,
+            sources=sources,
+            context_gathered=state.context_gathered,
+            query=query,
+            log_prefix="Evidence Stream",
+        )
+        state.evidence_score = evidence_score
 
-        # Store evidence_score in state for downstream use
-        if not hasattr(state, "evidence_score"):
-            state.evidence_score = evidence_score
-        else:
-            state.evidence_score = evidence_score
-
-        # Bridge: emit rag.low_confidence event if evidence is weak.
-        # Defensive — never break the RAG path on outbox failure.
-        try:
-            from backend.services.bridge.low_confidence_emitter import (
-                maybe_emit_low_confidence,
-            )
-            pool = getattr(self, "_db_pool", None)
-            if pool is not None:
-                await maybe_emit_low_confidence(pool, query, evidence_score)
-        except Exception as exc:
-            logger.warning(f"Low-confidence emit (streaming) skipped: {exc}")
+        await emit_low_confidence_event(
+            getattr(self, "_db_pool", None),
+            query,
+            evidence_score,
+            log_context="streaming",
+        )
 
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
         # ==================== TRUSTED TOOLS FALLBACK CHECK ====================
-        # Also check context_gathered for tool output patterns (fallback)
-        if not trusted_tools_used and state.context_gathered:
-            context_text = " ".join(state.context_gathered).lower()
-            # Check for pricing tool output patterns
-            if any(
-                marker in context_text
-                for marker in [
-                    "bali_zero_official_prices",
-                    "service_type",
-                    "total_price",
-                    "pricing",
-                    "rp ",
-                    "idr ",
-                    "harga",
-                ]
-            ):
+        # Streaming-only: if no trusted tool detected from steps, scan
+        # context_gathered for pricing/team/KG output markers.
+        if not trusted_tools_used:
+            marker_hit, _ = detect_trusted_context_markers(state.context_gathered)
+            if marker_hit:
                 trusted_tools_used = True
-                logger.info("🔍 [Trusted Tools - Stream] Pricing data found in context_gathered")
-            # Check for team knowledge tool output
-            elif any(
-                marker in context_text
-                for marker in [
-                    "team_member",
-                    "specialties",
-                    "role:",
-                    "department",
-                ]
-            ):
-                trusted_tools_used = True
-                logger.info("🔍 [Trusted Tools - Stream] Team data found in context_gathered")
-            # Check for KG tool output
-            elif any(
-                marker in context_text
-                for marker in [
-                    "subgraph",
-                    "nodes,",
-                    "edges)",
-                    "focus]",
-                    "knowledge graph",
-                ]
-            ):
-                trusted_tools_used = True
-                logger.info(
-                    "🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check",
-                )
 
-        # FIX: Also bypass evidence check when context_gathered has substantial content
-        # from ANY tool. If the ReAct loop gathered context, the LLM had evidence to work with.
-        if not trusted_tools_used and state.context_gathered:
-            total_context_len = sum(len(c) for c in state.context_gathered)
-            if total_context_len > 200:
-                trusted_tools_used = True
-                logger.info(
-                    f"🔍 [Context Evidence] Substantial context gathered ({total_context_len} chars), "
-                    f"bypassing strict evidence check",
-                )
+        # If the ReAct loop gathered substantial context from ANY tool,
+        # the LLM had evidence to work with — bypass strict evidence check.
+        if not trusted_tools_used and detect_substantial_context(state.context_gathered):
+            trusted_tools_used = True
 
         # ==================== ANSWER CONTENT CHECK ====================
         # If the LLM produced an answer with specific factual data (prices, numbers),
