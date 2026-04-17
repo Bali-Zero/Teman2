@@ -189,6 +189,24 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)apps/backend-rag/backend/services/prime/prime_nexus_service\.py$"),
         "prime_nexus_service: base32 geohash alphabet, not a credential",
     ),
+    # geo_service.py:17 — same _BASE32 geohash alphabet, different module.
+    (
+        re.compile(r"(^|/)apps/backend-rag/backend/services/prime/geo_service\.py$"),
+        "geo_service: base32 geohash alphabet, not a credential",
+    ),
+    # graph-engine curiosity CLI: postgresql://postgres:postgres@localhost:5432
+    # default dev connection string fallback (same pattern as backend-rag
+    # dev utilities — see TECH DEBT note above).
+    (
+        re.compile(r"(^|/)apps/graph-engine/src/nuzantara_graph/curiosity/cli\.py$"),
+        "graph-engine curiosity CLI: localhost:5432 dev default, not production",
+    ),
+    # gap_fill_autonomous.py: postgres://postgres:postgres@localhost dev default
+    # for a one-off autonomous gap-fill script.
+    (
+        re.compile(r"(^|/)scripts/gap_fill_autonomous\.py$"),
+        "gap_fill_autonomous: localhost:5432 dev default, not production",
+    ),
     # article_composer error handler: enum values "API_KEY_NOT_CONFIGURED" etc
     # detected as Secret Keyword (false positive on enum names).
     (
