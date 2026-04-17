@@ -92,11 +92,44 @@ def count_test_files() -> int:
     return len(list(tests.rglob("test_*.py")))
 
 
+def _tracked_app_names() -> set[str]:
+    """Return the set of app directories that contain git-tracked files.
+
+    Using `git ls-files apps/` makes the count deterministic across machines:
+    empty directories left behind by old deletes (e.g. `__pycache__`-only
+    remnants on a long-lived dev machine) are ignored on CI's fresh clone and
+    must be ignored here too, otherwise docs_sync --check diverges between
+    local and CI.
+    """
+    try:
+        import subprocess
+        out = subprocess.run(
+            ["git", "ls-files", "apps/"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+        return set()
+    names: set[str] = set()
+    for line in out.splitlines():
+        # "apps/<name>/..."
+        parts = line.split("/", 2)
+        if len(parts) >= 2 and parts[0] == "apps" and parts[1]:
+            names.add(parts[1])
+    return names
+
+
 def count_apps() -> int:
-    """Count directories in apps/ (excluding hidden)."""
+    """Count app directories that have at least one git-tracked file."""
     apps = REPO_ROOT / "apps"
     if not apps.exists():
         return 0
+    tracked = _tracked_app_names()
+    if tracked:
+        return len(tracked)
+    # Fallback when not in a git repo (unlikely in this project)
     return len([p for p in apps.iterdir() if p.is_dir() and not p.name.startswith(".")])
 
 
@@ -109,9 +142,13 @@ def list_apps() -> list[dict[str, str]]:
     apps_dir = REPO_ROOT / "apps"
     if not apps_dir.exists():
         return []
+    tracked = _tracked_app_names()
     result: list[dict[str, str]] = []
     for app_path in sorted(apps_dir.iterdir()):
         if not app_path.is_dir() or app_path.name.startswith("."):
+            continue
+        if tracked and app_path.name not in tracked:
+            # Skip empty / untracked dirs (see _tracked_app_names docstring)
             continue
         overview = ""
         readme = app_path / "README.md"
