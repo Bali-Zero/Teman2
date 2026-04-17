@@ -452,15 +452,16 @@ async def chat(
     from backend.services.rag.hybrid_search import HybridSearchService
 
     # Resolve response language early so every fallback branch (no results,
-    # ABSTAIN, timeout, CAUTIOUS hedging) uses the user's language, not English.
+    # ABSTAIN, timeout, CAUTIOUS hedging) uses the user's language, not the
+    # wrong default.
     #
-    # Priority: message auto-detect > body.language (browser) > Italian default.
+    # Priority: message auto-detect > body.language (browser) > English default.
     #
     # Rationale: "message wins" — if a user deliberately writes in Spanish on
-    # a browser configured in Italian (shared device, traveler, multilingual
-    # user), the act of writing is a stronger language signal than
-    # navigator.language. The browser locale is treated as a fallback for
-    # when detection is inconclusive (short messages, mixed scripts, etc).
+    # a browser configured in English (or any other), the act of writing is a
+    # stronger language signal than navigator.language. Browser locale is the
+    # fallback when detection is inconclusive. Default is English because Bali
+    # Zero serves a foreign / international audience; the site is in English.
     _lang_names = {
         "ru": "Russian", "zh": "Chinese", "ko": "Korean", "ja": "Japanese",
         "id": "Indonesian", "fr": "French", "it": "Italian", "de": "German",
@@ -477,8 +478,8 @@ async def chat(
         # or an unknown code. Use browser locale as the more reliable hint.
         response_lang = _browser_lang
     else:
-        # No signal at all — Italian default (Bali Zero ships Italian-first).
-        response_lang = "it"
+        # No signal at all — English default (international audience).
+        response_lang = "en"
 
     try:
         # Build an enriched query that includes quiz context

@@ -16,7 +16,7 @@ export function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
         }}
       >
         <span>⚠</span>
-        Può variare caso per caso
+        May vary by case
       </span>
     );
   }
@@ -32,7 +32,7 @@ export function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
       }}
     >
       <span>⚑</span>
-      Serve verifica del team
+      Expert review needed
     </span>
   );
 }

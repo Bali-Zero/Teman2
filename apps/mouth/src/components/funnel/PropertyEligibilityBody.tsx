@@ -125,7 +125,7 @@ export function PropertyEligibilityBody() {
     const parsed = parseCoordinates(coord);
     if (!parsed) {
       setError(
-        `Formato non riconosciuto. Prova con decimali (es. -8.65, 115.13), formato Google Maps (es. 8°39'17.4"S 115°08'22.3"E) o un link di Google Maps.`,
+        `Format not recognized. Try decimals (e.g. -8.65, 115.13), Google Maps format (e.g. 8°39'17.4"S 115°08'22.3"E) or a Google Maps link.`,
       );
       return;
     }
@@ -139,12 +139,12 @@ export function PropertyEligibilityBody() {
         body: JSON.stringify({ lat, lng }),
       });
       if (!res.ok) {
-        setError(`Errore ${res.status}: zona non analizzabile.`);
+        setError(`Error ${res.status}: zone not analyzable.`);
         return;
       }
       setResult((await res.json()) as AnalyzeResponse);
     } catch (e) {
-      setError("Errore di rete. Riprova.");
+      setError("Network error. Please retry.");
     } finally {
       setLoading(false);
     }
@@ -162,7 +162,7 @@ export function PropertyEligibilityBody() {
         }}
       >
         <input
-          placeholder={`Incolla da Google Maps (es. 8°39'17.4"S 115°08'22.3"E) o lat, lng`}
+          placeholder={`Paste from Google Maps (e.g. 8°39'17.4"S 115°08'22.3"E) or lat, lng`}
           value={coord}
           onChange={(e) => setCoord(e.target.value)}
           onKeyDown={(e) => {
@@ -193,7 +193,7 @@ export function PropertyEligibilityBody() {
             whiteSpace: "nowrap",
           }}
         >
-          {loading ? "Analizzo…" : "Analizza"}
+          {loading ? "Analyzing…" : "Analyze"}
         </button>
       </div>
       {error ? (
@@ -240,10 +240,10 @@ export function PropertyEligibilityBody() {
           />
           <div style={{ position: "relative" }}>
             <h2 style={{ marginTop: 0, fontSize: "1.5rem" }}>
-              Zona:{" "}
+              Zone:{" "}
               {result.zone?.code
                 ? `${result.zone.code} — ${result.zone.name ?? ""}`
-                : "n/d"}
+                : "n/a"}
               {result.zone?.desa ? ` · ${result.zone.desa}` : ""}
             </h2>
             <p
@@ -267,7 +267,7 @@ export function PropertyEligibilityBody() {
                 }}
               >
                 <span>
-                  Punteggio investimento:{" "}
+                  Investment score:{" "}
                   <strong style={{ color: "var(--text-primary)" }}>
                     {result.verdict.score ?? "—"}/100
                   </strong>
@@ -277,7 +277,7 @@ export function PropertyEligibilityBody() {
                 ) : null}
                 {result.verdict.risk_level ? (
                   <span>
-                    Rischio:{" "}
+                    Risk:{" "}
                     <strong style={{ color: "var(--text-primary)" }}>
                       {result.verdict.risk_level}
                     </strong>
@@ -287,7 +287,7 @@ export function PropertyEligibilityBody() {
             ) : null}
             {opportunities.length ? (
               <div style={{ margin: "var(--space-4) 0" }}>
-                <strong>Opportunità KBLI aperte a PMA:</strong>
+                <strong>KBLI opportunities open to PMA:</strong>
                 <ul
                   style={{
                     marginTop: "var(--space-2)",
@@ -359,7 +359,7 @@ export function PropertyEligibilityBody() {
               }}
             >
               <a
-                href="https://wa.me/628213107363?text=Analisi%20immobile%20Bali%20Zero"
+                href="https://wa.me/628213107363?text=Property%20analysis%20Bali%20Zero"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary"
@@ -373,7 +373,7 @@ export function PropertyEligibilityBody() {
                   fontWeight: 600,
                 }}
               >
-                Parla con Bali Zero
+                Talk to Bali Zero
               </a>
             </div>
           </div>
