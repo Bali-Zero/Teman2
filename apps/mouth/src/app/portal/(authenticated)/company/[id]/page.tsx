@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -22,13 +23,47 @@ import {
   PortalPageLoader,
 } from "@/components/portal";
 
+// Above-fold components: eager (first paint)
 import { EditorialHero } from "@/components/portal/company/EditorialHero";
 import { IdentityRow } from "@/components/portal/company/IdentityRow";
-import { FactBoxes } from "@/components/portal/company/FactBoxes";
-import { DividerLabel } from "@/components/portal/company/DividerLabel";
-import { KeyNumbersColumn } from "@/components/portal/company/KeyNumbersColumn";
-import { PeopleColumn } from "@/components/portal/company/PeopleColumn";
-import { LegalTimeline } from "@/components/portal/company/LegalTimeline";
+
+// Below-fold components: lazy (loaded after first paint)
+// Reduces initial chunk count on /portal/company/[id] — ERR_INSUFFICIENT_RESOURCES mitigation.
+const FactBoxes = dynamic(
+  () =>
+    import("@/components/portal/company/FactBoxes").then((m) => ({
+      default: m.FactBoxes,
+    })),
+  { ssr: false },
+);
+const DividerLabel = dynamic(
+  () =>
+    import("@/components/portal/company/DividerLabel").then((m) => ({
+      default: m.DividerLabel,
+    })),
+  { ssr: false },
+);
+const KeyNumbersColumn = dynamic(
+  () =>
+    import("@/components/portal/company/KeyNumbersColumn").then((m) => ({
+      default: m.KeyNumbersColumn,
+    })),
+  { ssr: false },
+);
+const PeopleColumn = dynamic(
+  () =>
+    import("@/components/portal/company/PeopleColumn").then((m) => ({
+      default: m.PeopleColumn,
+    })),
+  { ssr: false },
+);
+const LegalTimeline = dynamic(
+  () =>
+    import("@/components/portal/company/LegalTimeline").then((m) => ({
+      default: m.LegalTimeline,
+    })),
+  { ssr: false },
+);
 
 function formatDate(d: string): string {
   if (!d) return "—";
