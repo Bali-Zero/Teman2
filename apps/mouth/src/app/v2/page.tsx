@@ -11,6 +11,10 @@ import { NewsHero } from "./_components/NewsHero";
 import { LatestNews } from "./_components/LatestNews";
 import { Footer } from "./_components/Footer";
 import { ZantaraFAB } from "./_components/ZantaraFAB";
+import { getAllArticles } from "@/lib/blog/articles";
+import homepageLayout from "@/content/homepage-layout.json";
+
+export const dynamic = "force-dynamic";
 
 // Phase 1 reference homepage — "safe" palette variant (#0B0B10 night).
 // Compare with /v2-aubergine which uses the contrarian #1A1520.
@@ -18,6 +22,8 @@ export const metadata: Metadata = {
   title: "Bali Zero v2 · Design System Preview",
   robots: { index: false, follow: false },
 };
+
+const LATEST_NEWS_COUNT = 5;
 
 const NAV_ITEMS = [
   { label: "Home", href: "#top" },
@@ -28,7 +34,22 @@ const NAV_ITEMS = [
   { label: "News", href: "#news" },
 ];
 
-export default function HomeV2() {
+export default async function HomeV2() {
+  const { articles } = await getAllArticles({});
+  const layout = homepageLayout as Record<string, string>;
+  const heroSlugs = new Set(
+    ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
+      .map((k) => layout[k])
+      .filter(Boolean),
+  );
+  const preferred = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
+    .map((k) => articles.find((a) => a.slug === layout[k]))
+    .filter(Boolean) as typeof articles;
+  const fallback = articles.filter((a) => !heroSlugs.has(a.slug));
+  const latest = (
+    preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback
+  ).slice(0, LATEST_NEWS_COUNT);
+
   return (
     <div
       id="top"

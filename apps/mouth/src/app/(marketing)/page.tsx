@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { MobileNav } from "../v2/_components/MobileNav";
+import { HomeSearchButton } from "../v2/_components/HomeSearchButton";
 import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
 import { SocialProof } from "../v2/_components/SocialProof";
 import { FunnelFeature } from "../v2/_components/FunnelFeature";
@@ -10,6 +11,14 @@ import { TopicPills } from "../v2/_components/TopicPills";
 import { LatestNews } from "../v2/_components/LatestNews";
 import { Footer } from "../v2/_components/Footer";
 import { ZantaraFAB } from "../v2/_components/ZantaraFAB";
+import { getAllArticles } from "@/lib/blog/articles";
+import homepageLayout from "@/content/homepage-layout.json";
+
+// Force dynamic rendering so / always reflects the freshest MDX covers.
+export const dynamic = "force-dynamic";
+
+// How many cards to show in "Latest from Bali Zero". Auto-adapts grid.
+const LATEST_NEWS_COUNT = 5;
 
 export const metadata: Metadata = {
   title: {
@@ -37,7 +46,23 @@ const NAV_ITEMS = [
   { label: "News", href: "#news" },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { articles } = await getAllArticles({});
+  const layout = homepageLayout as Record<string, string>;
+
+  const heroSlugs = new Set(
+    ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
+      .map((k) => layout[k])
+      .filter(Boolean),
+  );
+  const preferred = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
+    .map((k) => articles.find((a) => a.slug === layout[k]))
+    .filter(Boolean) as typeof articles;
+  const fallback = articles.filter((a) => !heroSlugs.has(a.slug));
+  const latest = (
+    preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback
+  ).slice(0, LATEST_NEWS_COUNT);
+
   return (
     <div
       id="top"
@@ -53,6 +78,7 @@ export default function HomePage() {
         slotAfter={<MobileNav items={NAV_ITEMS} />}
         actions={
           <>
+            <HomeSearchButton />
             <button
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
               style={{
@@ -83,7 +109,7 @@ export default function HomePage() {
         <FunnelFeature funnel="property" layout="full" />
         <NewsHero />
         <TopicPills />
-        <LatestNews />
+        <LatestNews articles={latest} limit={LATEST_NEWS_COUNT} />
       </main>
       <Footer />
       <ZantaraFAB />
