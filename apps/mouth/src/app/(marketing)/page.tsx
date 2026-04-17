@@ -82,24 +82,30 @@ export default async function HomePage() {
         actions={
           <>
             <HomeSearchButton />
-            <button
+            <a
+              href="https://kita.balizero.com/"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
               style={{
                 background: "transparent",
                 color: "var(--text-secondary)",
+                textDecoration: "none",
               }}
             >
               Login
-            </button>
-            <button
+            </a>
+            <a
+              href="https://wa.me/628213107363?text=Hi%20Bali%20Zero%2C%20I%20would%20like%20to%20get%20started."
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
               style={{
                 background: "var(--accent-funnel)",
                 color: "var(--text-on-accent)",
+                textDecoration: "none",
               }}
             >
               Get Started
-            </button>
+            </a>
           </>
         }
       />

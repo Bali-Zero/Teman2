@@ -352,7 +352,16 @@ export function FunnelFeature({
             )}
 
             <div className="flex items-center gap-4 flex-wrap">
-              <button
+              <a
+                href={FUNNEL_HREF[funnel]}
+                target={
+                  FUNNEL_HREF[funnel].startsWith("http") ? "_blank" : undefined
+                }
+                rel={
+                  FUNNEL_HREF[funnel].startsWith("http")
+                    ? "noopener noreferrer"
+                    : undefined
+                }
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-transform hover:-translate-y-0.5"
                 style={{
                   background: "var(--accent-funnel)",
@@ -360,11 +369,12 @@ export function FunnelFeature({
                   fontSize: isFull ? 14 : 12,
                   boxShadow:
                     "0 8px 32px color-mix(in srgb, var(--accent-funnel) 40%, transparent)",
+                  textDecoration: "none",
                 }}
               >
                 {cfg.cta}
                 <ArrowRight size={14} strokeWidth={2} />
-              </button>
+              </a>
 
               {/* Pricing pointer — avoids fixed-price commitment on home.
                 Full pricing lives on the dedicated service detail page. */}
