@@ -15,6 +15,10 @@ redis = ["redis>=5.0"]
 metrics = ["prometheus_client>=0.21"]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 
+[tool.setuptools.packages.find]
+include = ["cell_core*"]
+exclude = ["tests*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
