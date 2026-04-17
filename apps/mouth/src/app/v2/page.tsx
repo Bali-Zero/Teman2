@@ -75,7 +75,7 @@ export default function HomeV2() {
         <FunnelFeature funnel="property" layout="full" />
         <NewsHero />
         <TopicPills />
-        <LatestNews />
+        <LatestNews articles={[]} />
       </main>
       <Footer />
       <ZantaraFAB />

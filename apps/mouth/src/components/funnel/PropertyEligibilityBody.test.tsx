@@ -54,7 +54,7 @@ describe("PropertyEligibilityBody", () => {
     render(<PropertyEligibilityBody />);
     expect(screen.getByPlaceholderText(/Google Maps/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Analizza/i }),
+      screen.getByRole("button", { name: /Analyze/i }),
     ).toBeInTheDocument();
   });
 
@@ -62,9 +62,9 @@ describe("PropertyEligibilityBody", () => {
     render(<PropertyEligibilityBody />);
     const input = screen.getByPlaceholderText(/Google Maps/i);
     fireEvent.change(input, { target: { value: "garbage" } });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
     expect(
-      await screen.findByText(/Formato non riconosciuto/i),
+      await screen.findByText(/Format not recognized/i),
     ).toBeInTheDocument();
   });
 
@@ -78,7 +78,7 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
     expect(screen.getByText(/High-Intensity Mixed Use/)).toBeInTheDocument();
@@ -86,12 +86,12 @@ describe("PropertyEligibilityBody", () => {
     expect(screen.getByText(/KDB: 60%/)).toBeInTheDocument();
     expect(screen.getByText(/KLB: 1,8/)).toBeInTheDocument();
     expect(screen.getByText(/TB: 15 Meter/)).toBeInTheDocument();
-    expect(screen.getByText(/Punteggio investimento:/)).toBeInTheDocument();
+    expect(screen.getByText(/Investment score:/)).toBeInTheDocument();
     expect(screen.getByText(/63\/100/)).toBeInTheDocument();
     expect(screen.getByText(/YELLOW/)).toBeInTheDocument();
     expect(screen.getByText(/MEDIUM/)).toBeInTheDocument();
     expect(
-      screen.getByText(/Opportunità KBLI aperte a PMA:/),
+      screen.getByText(/KBLI opportunities open to PMA:/),
     ).toBeInTheDocument();
     expect(screen.getByText(/Villas/)).toBeInTheDocument();
     expect(screen.getByText(/Software publishing/)).toBeInTheDocument();
@@ -108,11 +108,11 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Errore 502: zona non analizzabile/),
+        screen.getByText(/Error 502: zone not analyzable/),
       ).toBeInTheDocument(),
     );
   });
@@ -127,10 +127,10 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     const waLink = (await screen.findByRole("link", {
-      name: /Parla con Bali Zero/i,
+      name: /Talk to Bali Zero/i,
     })) as HTMLAnchorElement;
     expect(waLink.href).toContain("wa.me/628213107363");
   });
@@ -161,7 +161,7 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     await waitFor(() =>
       expect(
@@ -186,7 +186,7 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     const yellowEl = await screen.findByText(/^YELLOW$/);
     // Pill span has explicit color style (not inherit text-secondary gray)
@@ -205,7 +205,7 @@ describe("PropertyEligibilityBody", () => {
     fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "8°39'17.4\"S 115°08'22.3\"E" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Analyze/i }));
 
     await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
     // Verify backend was called with decimal-converted lat/lng

@@ -39,8 +39,8 @@ export async function recommendVisas(
 }
 
 function detectBrowserLanguage(): string {
-  if (typeof navigator === "undefined") return "it";
-  const raw = (navigator.language || "it").toLowerCase();
+  if (typeof navigator === "undefined") return "en";
+  const raw = (navigator.language || "en").toLowerCase();
   // Take first 2 chars (en-US → en, it-IT → it)
   const code = raw.slice(0, 2);
   const supported = [
@@ -55,7 +55,7 @@ function detectBrowserLanguage(): string {
     "ko",
     "ja",
   ];
-  return supported.includes(code) ? code : "it";
+  return supported.includes(code) ? code : "en";
 }
 
 export async function sendChatMessage(
