@@ -52,6 +52,7 @@ from backend.services.rag.agentic._reasoning_policy import (
     detect_pricing_data_in_answer,
     should_apply_low_evidence_policy,
 )
+from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
 from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.reasoning_utils import (
     calculate_evidence_score,  # noqa: F401  re-exported for tests that patch reasoning.calculate_evidence_score
@@ -178,57 +179,7 @@ class ReasoningEngine:
 
     def _get_localized_stub(self, key: str, language: str) -> str:
         """Get localized stub message for common scenarios."""
-        stubs = {
-            "abstain": {
-                "ITALIAN": "Mi dispiace, non ho trovato informazioni rilevanti per questa domanda.",
-                "INDONESIAN": "Maaf, saya tidak menemukan informasi yang relevan untuk pertanyaan ini.",
-                "ENGLISH": "I'm sorry, I couldn't find relevant information for this question.",
-            },
-            "abstain_detailed": {
-                "ITALIAN": (
-                    "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali.\n\n"
-                    "Posso aiutarti con:\n"
-                    "• Informazioni su visti e KITAS\n"
-                    "• Setup aziendale (PT PMA)\n"
-                    "• Questioni fiscali e legali\n"
-                    "• Procedure e documentazione\n\n"
-                    "Prova a riformulare la domanda o chiedi qualcosa di più specifico!"
-                ),
-                "INDONESIAN": (
-                    "Untuk pertanyaan spesifik ini, saya tidak memiliki informasi terverifikasi yang cukup dalam dokumen resmi.\n\n"
-                    "Saya dapat membantu Anda dengan:\n"
-                    "• Informasi visa dan KITAS\n"
-                    "• Pendirikan perusahaan (PT PMA)\n"
-                    "• Masalah perpajakan dan hukum\n"
-                    "• Prosedur dan dokumentasi\n\n"
-                    "Coba reformulasikan pertanyaan atau tanyakan sesuatu yang lebih spesifik!"
-                ),
-                "ENGLISH": (
-                    "For this specific question, I don't have sufficient verified information in the official documents.\n\n"
-                    "I can help you with:\n"
-                    "• Visa and KITAS information\n"
-                    "• Company setup (PT PMA)\n"
-                    "• Tax and legal matters\n"
-                    "• Procedures and documentation\n\n"
-                    "Try rephrasing the question or ask something more specific!"
-                ),
-            },
-            "error": {
-                "ITALIAN": "Mi dispiace, non sono riuscito a completare la richiesta. Riprova.",
-                "INDONESIAN": "Maaf, saya tidak dapat menyelesaikan permintaan tersebut. Silakan coba lagi.",
-                "ENGLISH": "I'm sorry, I couldn't complete the request. Please try again.",
-            },
-            "confused": {
-                "ITALIAN": "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla? Posso aiutarti con visti, aziende e leggi in Indonesia.",
-                "INDONESIAN": "Maaf, saya tidak mengerti permintaan Anda. Bisakah Anda merumuskannya kembali? Saya dapat membantu Anda dengan visa, perusahaan, dan hukum di Indonesia.",
-                "ENGLISH": "I'm sorry, I didn't quite understand your request. Could you rephrase it? I can help you with visas, companies, and laws in Indonesia.",
-            },
-        }
-        # Fallback order: Requested Lang -> English -> Generic
-        lang_stubs = stubs.get(key, {})
-        return lang_stubs.get(
-            language, lang_stubs.get("ENGLISH", "I'm sorry, I cannot fulfill this request."),
-        )
+        return get_localized_stub(key, language)
 
     async def execute_react_loop(
         self,
