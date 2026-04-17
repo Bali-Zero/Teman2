@@ -77,6 +77,16 @@ jobs:
           pip-audit --strict --skip-editable --requirement requirements.txt \
             --ignore-vuln GHSA-69w3-r845-3855
 
+      - name: Mypy type check (core + models)
+        run: |
+          cd apps/backend-rag
+          pip install mypy
+          # Strict only on the allowlist in pyproject.toml → [[tool.mypy.overrides]].
+          # Everything else is silenced by the backend.* opt-out. See FOLLOWUPS.md
+          # (section "Mypy strict-module expansion") for the modules pending cleanup.
+          PYTHONPATH=. python -m mypy backend/core backend/app/models \
+            --config-file pyproject.toml
+
       - name: Import chain gate
         run: |
           cd apps/backend-rag

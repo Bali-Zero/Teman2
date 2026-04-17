@@ -143,7 +143,7 @@ class BM25Vectorizer:
         self.b = b
         self.min_token_length = min_token_length
         self.max_token_length = max_token_length
-        self.avg_doc_length = 500  # Default average, can be updated
+        self.avg_doc_length: float = 500.0  # Default average, can be updated
 
         logger.info(f"BM25Vectorizer initialized: vocab_size={vocab_size}, k1={k1}, b={b}")
 
