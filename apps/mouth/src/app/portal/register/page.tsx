@@ -102,7 +102,7 @@ function RegisterContent() {
       <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
-          <p className="text-[#9AA0AE]">Validating your invitation...</p>
+          <p className="text-muted-cool">Validating your invitation...</p>
         </div>
       </div>
     );
@@ -128,7 +128,7 @@ function RegisterContent() {
           <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
             Welcome to Bali Zero!
           </h1>
-          <p className="text-[#9AA0AE] mb-6">
+          <p className="text-muted-cool mb-6">
             Your portal account has been activated. Redirecting you to login...
           </p>
           <div className="flex items-center justify-center gap-2 text-[#4FD1C5]">
@@ -150,7 +150,7 @@ function RegisterContent() {
           <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
             Invalid Invitation
           </h1>
-          <p className="text-[#9AA0AE] mb-6">
+          <p className="text-muted-cool mb-6">
             {error ||
               "This invitation link is no longer valid. Please contact your account manager for a new invitation."}
           </p>
@@ -185,7 +185,7 @@ function RegisterContent() {
           <h1 className="text-2xl font-bold text-[#E6E7EB] mb-2">
             Create Your PIN
           </h1>
-          <p className="text-[#9AA0AE]">
+          <p className="text-muted-cool">
             Welcome,{" "}
             <span className="font-medium text-[#E6E7EB]">{clientName}</span>!
             <br />
@@ -202,7 +202,7 @@ function RegisterContent() {
               type="email"
               value={clientEmail}
               disabled
-              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg text-[#9AA0AE]"
+              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg text-muted-cool"
             />
           </div>
 
@@ -218,7 +218,7 @@ function RegisterContent() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Enter PIN"
-              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
+              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-muted-cool"
             />
           </div>
 
@@ -234,7 +234,7 @@ function RegisterContent() {
               value={confirmPin}
               onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
               placeholder="Confirm PIN"
-              className="w-full px-4 py-3 bg-[#1A1D24] border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-[#9AA0AE]"
+              className="w-full px-4 py-3 bg-surface-editorial-elevated border border-white/5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4FD1C5] focus:border-[#4FD1C5]/50 text-center text-2xl tracking-widest text-[#E6E7EB] placeholder:text-muted-cool"
             />
           </div>
 
@@ -249,7 +249,7 @@ function RegisterContent() {
             disabled={isSubmitting || pin.length < 4 || confirmPin.length < 4}
             className={`w-full py-3 rounded-lg font-medium transition-colors ${
               isSubmitting || pin.length < 4 || confirmPin.length < 4
-                ? "bg-[#1A1D24] text-[#9AA0AE] cursor-not-allowed"
+                ? "bg-surface-editorial-elevated text-muted-cool cursor-not-allowed"
                 : "bg-[#4FD1C5] text-[#0B0E13] hover:bg-[#4FD1C5]/80"
             }`}
           >
@@ -264,7 +264,7 @@ function RegisterContent() {
           </button>
         </form>
 
-        <p className="text-xs text-[#9AA0AE] text-center mt-6">
+        <p className="text-xs text-muted-cool text-center mt-6">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
@@ -279,7 +279,7 @@ export default function RegisterPage() {
         <div className="min-h-screen bg-[#2a2a2a] flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-[#4FD1C5] animate-spin mx-auto mb-4" />
-            <p className="text-[#9AA0AE]">Loading...</p>
+            <p className="text-muted-cool">Loading...</p>
           </div>
         </div>
       }

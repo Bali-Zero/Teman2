@@ -1,5 +1,3 @@
-"use client";
-
 import type { CellPulse } from "@/hooks/useCellStatus";
 
 const HEALTH_COLORS: Record<string, string> = {

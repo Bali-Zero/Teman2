@@ -257,7 +257,7 @@ function CommentForm({
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Your name"
             aria-label="Your name"
-            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/50 transition-colors text-sm"
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/50 transition-colors text-sm"
           />
           <textarea
             value={content}
@@ -266,7 +266,7 @@ function CommentForm({
             onBlur={() => setIsFocused(false)}
             placeholder="Add a comment..."
             rows={isFocused || content ? 3 : 1}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/50 transition-all resize-none"
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/50 transition-all resize-none"
           />
         </div>
       </div>
@@ -285,7 +285,7 @@ function CommentForm({
               className={cn(
                 'px-5 py-2 rounded-lg font-medium text-sm transition-all',
                 content.trim() && author.trim()
-                  ? 'bg-[#2251ff] text-white hover:bg-[#1a40cc]'
+                  ? 'bg-accent-blue-editorial text-white hover:bg-[#1a40cc]'
                   : 'bg-white/10 text-white/30 cursor-not-allowed'
               )}
             >
@@ -436,7 +436,7 @@ export function ArticleEngagement({
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-full transition-all border',
               showComments
-                ? 'bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30'
+                ? 'bg-accent-blue-editorial/20 text-accent-blue-editorial border-accent-blue-editorial/30'
                 : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10'
             )}
           >
@@ -452,7 +452,7 @@ export function ArticleEngagement({
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-full transition-all border',
               showShareMenu
-                ? 'bg-[#2251ff]/20 text-[#2251ff] border-[#2251ff]/30'
+                ? 'bg-accent-blue-editorial/20 text-accent-blue-editorial border-accent-blue-editorial/30'
                 : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10 border-white/10'
             )}
           >

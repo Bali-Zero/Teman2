@@ -164,7 +164,7 @@ const InfoTooltip = ({
   return (
     <span
       ref={ref}
-      className="relative group cursor-help border-b border-dashed border-[#D4B483]/40"
+      className="relative group cursor-help border-b border-dashed border-accent-sand/40"
       tabIndex={0}
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -182,7 +182,7 @@ const InfoTooltip = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-[#1A1D24] border border-white/10 rounded text-xs text-[#CCC] w-52 z-50 text-center shadow-xl pointer-events-none ${
+            className={`absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-surface-editorial-elevated border border-white/10 rounded text-xs text-[#CCC] w-52 z-50 text-center shadow-xl pointer-events-none ${
               above ? "bottom-full mb-2" : "top-full mt-2"
             }`}
           >
@@ -237,12 +237,12 @@ const SourceCard = ({
 }: {
   source: { id: string; title: string; type: string; date: string };
 }) => (
-  <div className="group flex items-center gap-4 p-4 rounded-lg bg-[#0F1115]/40 border border-white/5 hover:bg-[#151921] hover:border-[#D4B483]/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
-    <div className="p-2.5 rounded bg-[#1A1D24] text-[#888] group-hover:text-[#D4B483] transition-colors border border-white/5">
+  <div className="group flex items-center gap-4 p-4 rounded-lg bg-surface-deep/40 border border-white/5 hover:bg-[#151921] hover:border-accent-sand/30 transition-all duration-300 cursor-pointer backdrop-blur-sm">
+    <div className="p-2.5 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
       <BookOpen size={14} strokeWidth={1.5} />
     </div>
     <div>
-      <h4 className="text-sm font-medium text-[#E1E1E3] group-hover:text-white font-serif tracking-wide">
+      <h4 className="text-sm font-medium text-silver group-hover:text-white font-serif tracking-wide">
         {source.title}
       </h4>
       <p className="text-[10px] md:text-[10px] uppercase tracking-widest text-[#666] mt-1">
@@ -265,7 +265,7 @@ const ChatMessage = ({
     className={`flex gap-4 md:gap-6 ${role === "ai" ? "items-start" : "items-center flex-row-reverse"}`}
   >
     <div
-      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-[#0F1115] border-[#D4B483]/20 text-[#D4B483]" : "bg-[#1A1D24] border-white/10 text-slate-400"}`}
+      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${role === "ai" ? "bg-surface-deep border-accent-sand/20 text-accent-sand" : "bg-surface-editorial-elevated border-white/10 text-slate-400"}`}
     >
       {role === "ai" ? (
         <Sparkles size={14} />
@@ -303,12 +303,12 @@ const WelcomeOnboarding = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2 }}
-      className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-[#D4B483]/30"
+      className="mb-10 p-1 rounded-xl bg-gradient-to-r from-[#D4B483]/40 via-[#D4B483]/10 to-transparent border border-accent-sand/30"
     >
       <div className="bg-[#050507] rounded-lg p-4 md:p-6 flex flex-col md:flex-row items-center gap-6 text-left">
         <div className="relative shrink-0">
-          <div className="w-16 h-20 bg-[#0A0C10] border border-[#D4B483]/40 rounded shadow-2xl flex items-center justify-center p-2 text-center transform -rotate-2">
-            <div className="text-[5px] uppercase tracking-wider text-[#D4B483]">
+          <div className="w-16 h-20 bg-[#0A0C10] border border-accent-sand/40 rounded shadow-2xl flex items-center justify-center p-2 text-center transform -rotate-2">
+            <div className="text-[5px] uppercase tracking-wider text-accent-sand">
               KBLI 2025 Dossier
             </div>
           </div>
@@ -326,7 +326,7 @@ const WelcomeOnboarding = ({
           </p>
           <button
             onClick={onOpenBlackBook}
-            className="flex items-center gap-2 text-[#D4B483] text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
+            className="flex items-center gap-2 text-accent-sand text-[10px] font-bold uppercase tracking-widest hover:text-white transition-colors group"
           >
             <span>Get the 2025 Black Book</span>
             <ArrowRight
@@ -353,9 +353,9 @@ const WelcomeOnboarding = ({
           <button
             key={chip.label}
             onClick={() => onChipClick(chip.query)}
-            className="group flex items-center gap-3 p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921] transition-all duration-200 text-left"
+            className="group flex items-center gap-3 p-4 min-h-[44px] rounded-lg bg-surface-deep/60 border border-white/5 hover:border-accent-sand/40 hover:bg-[#151921] transition-all duration-200 text-left"
           >
-            <div className="p-2 rounded bg-[#1A1D24] text-[#888] group-hover:text-[#D4B483] transition-colors border border-white/5">
+            <div className="p-2 rounded bg-surface-editorial-elevated text-[#888] group-hover:text-accent-sand transition-colors border border-white/5">
               <Icon size={16} />
             </div>
             <span className="text-sm text-[#CCC] group-hover:text-white transition-colors">
@@ -383,7 +383,7 @@ const WelcomeOnboarding = ({
           },
         ].map((item) => (
           <div key={item.step} className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#D4B483]/10 border border-[#D4B483]/20 text-[#D4B483] text-xs flex items-center justify-center font-mono">
+            <span className="flex-shrink-0 w-7 h-7 rounded-full bg-accent-sand/10 border border-accent-sand/20 text-accent-sand text-xs flex items-center justify-center font-mono">
               {item.step}
             </span>
             <p className="text-sm text-[#999] leading-relaxed">{item.text}</p>
@@ -445,7 +445,7 @@ const AIMessageContent = ({
         {isTyping ? (
           <>
             {textToRender}
-            <span className="inline-block w-[2px] h-[1em] bg-[#D4B483] ml-0.5 animate-pulse" />
+            <span className="inline-block w-[2px] h-[1em] bg-accent-sand ml-0.5 animate-pulse" />
           </>
         ) : (
           renderWithTooltips(msg.content)
@@ -456,7 +456,7 @@ const AIMessageContent = ({
       {isTyping && isLatest && (
         <button
           onClick={skip}
-          className="text-[10px] uppercase tracking-widest text-[#555] hover:text-[#D4B483] transition-colors"
+          className="text-[10px] uppercase tracking-widest text-[#555] hover:text-accent-sand transition-colors"
         >
           Skip &rarr;
         </button>
@@ -489,10 +489,10 @@ const AIMessageContent = ({
                           handleInspect(result.code);
                         }
                       }}
-                      className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-[#0F1115]/60 border transition-all duration-200 ${
+                      className={`group w-full text-left p-4 min-h-[44px] rounded-lg bg-surface-deep/60 border transition-all duration-200 ${
                         isSelected
-                          ? "border-[#D4B483] bg-[#D4B483]/5"
-                          : "border-white/5 hover:border-[#D4B483]/40 hover:bg-[#151921]"
+                          ? "border-accent-sand bg-accent-sand/5"
+                          : "border-white/5 hover:border-accent-sand/40 hover:bg-[#151921]"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -501,7 +501,7 @@ const AIMessageContent = ({
                             <div
                               className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                                 isSelected
-                                  ? "bg-[#D4B483] border-[#D4B483]"
+                                  ? "bg-accent-sand border-accent-sand"
                                   : "border-white/20"
                               }`}
                             >
@@ -510,7 +510,7 @@ const AIMessageContent = ({
                               )}
                             </div>
                           )}
-                          <span className="font-mono text-sm tracking-wider text-[#D4B483] bg-[#D4B483]/10 px-2.5 py-0.5 rounded border border-[#D4B483]/20">
+                          <span className="font-mono text-sm tracking-wider text-accent-sand bg-accent-sand/10 px-2.5 py-0.5 rounded border border-accent-sand/20">
                             {result.code}
                           </span>
                         </div>
@@ -532,14 +532,14 @@ const AIMessageContent = ({
                           />
                         </div>
                       </div>
-                      <h4 className="text-sm font-serif text-[#E1E1E3] group-hover:text-white transition-colors mb-1">
+                      <h4 className="text-sm font-serif text-silver group-hover:text-white transition-colors mb-1">
                         {result.title}
                       </h4>
                       <p className="text-xs text-[#777] leading-relaxed line-clamp-2">
                         {result.description}
                       </p>
                       {!compareMode && (
-                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-[#D4B483] transition-colors">
+                        <div className="flex items-center gap-1 mt-2 text-[10px] text-[#555] group-hover:text-accent-sand transition-colors">
                           <span>View details</span>
                           <ChevronRight size={10} />
                         </div>
@@ -568,14 +568,14 @@ const AIMessageContent = ({
                 <button
                   key={code}
                   onClick={() => handleInspect(code)}
-                  className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-[#D4B483] transition-all"
+                  className="group flex items-center gap-2 px-3 py-2 min-h-[44px] rounded bg-[#151921] border border-white/10 hover:border-accent-sand transition-all"
                 >
-                  <span className="font-mono text-[#D4B483] text-xs">
+                  <span className="font-mono text-accent-sand text-xs">
                     KBLI {code}
                   </span>
                   <ChevronRight
                     size={12}
-                    className="text-[#555] group-hover:text-[#D4B483]"
+                    className="text-[#555] group-hover:text-accent-sand"
                   />
                 </button>
               ))}
@@ -598,7 +598,7 @@ const AIMessageContent = ({
                 <button
                   key={sqIdx}
                   onClick={() => handleSendMessage(sq)}
-                  className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-[#D4B483] bg-[#D4B483]/5 border border-[#D4B483]/20 hover:bg-[#D4B483]/10 hover:border-[#D4B483]/40 transition-all"
+                  className="group flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-full text-xs text-accent-sand bg-accent-sand/5 border border-accent-sand/20 hover:bg-accent-sand/10 hover:border-accent-sand/40 transition-all"
                 >
                   <ArrowRight
                     size={10}
@@ -631,7 +631,7 @@ const InspectorChoreographed = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
+      <div className="h-full flex flex-col items-center justify-center text-accent-sand">
         <Loader2 size={32} className="animate-spin mb-4" />
         <p className="text-xs uppercase tracking-widest opacity-50">
           Loading details...
@@ -712,7 +712,7 @@ const InspectorChoreographed = ({
       {onClose && (
         <button
           onClick={onClose}
-          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-[#1A1D24] text-[#888]"
+          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-surface-editorial-elevated text-[#888]"
         >
           <X size={18} />
         </button>
@@ -739,7 +739,7 @@ const InspectorChoreographed = ({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-[#D4B483]/10 text-[#D4B483] border border-[#D4B483]/20"
+              className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-accent-sand/10 text-accent-sand border border-accent-sand/20"
             >
               KBLI {data.code}
             </motion.span>
@@ -755,7 +755,7 @@ const InspectorChoreographed = ({
           <div className="flex items-center gap-1">
             <button
               onClick={handleCopy}
-              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-[#D4B483] transition-colors"
+              className="p-2 rounded hover:bg-white/5 text-[#666] hover:text-accent-sand transition-colors"
               title="Copy details"
               aria-label="Copy details"
             >
@@ -778,7 +778,7 @@ const InspectorChoreographed = ({
           className="flex items-center justify-between"
         >
           <RiskGauge level={riskLevel} />
-          <span className="text-[10px] uppercase tracking-widest text-[#D4B483]">
+          <span className="text-[10px] uppercase tracking-widest text-accent-sand">
             {data.licensing_status}
           </span>
         </motion.div>
@@ -794,7 +794,7 @@ const InspectorChoreographed = ({
           <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
-          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-[#D4B483]/30 pl-5 italic">
+          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
             &ldquo;{data.description}&rdquo;
           </p>
         </motion.section>
@@ -824,19 +824,19 @@ const InspectorChoreographed = ({
                     className="flex gap-3"
                   >
                     {/* Step number */}
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#0F1115] border border-white/10 text-[10px] text-[#666] flex items-center justify-center font-mono z-10">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-surface-deep border border-white/10 text-[10px] text-[#666] flex items-center justify-center font-mono z-10">
                       {idx + 1}
                     </div>
                     <div
-                      className={`group flex-1 p-4 bg-[#0A0C10] rounded hover:border-[#D4B483]/20 transition-all ${
+                      className={`group flex-1 p-4 bg-[#0A0C10] rounded hover:border-accent-sand/20 transition-all ${
                         idx === 0
-                          ? "border-l-[3px] border border-[#D4B483]/30 border-l-[#D4B483]"
+                          ? "border-l-[3px] border border-accent-sand/30 border-l-[#D4B483]"
                           : "border-l-2 border border-white/5 border-l-white/10"
                       }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span
-                          className={`font-medium text-[#E1E1E3] group-hover:text-white transition-colors ${idx === 0 ? "text-sm" : "text-xs"}`}
+                          className={`font-medium text-silver group-hover:text-white transition-colors ${idx === 0 ? "text-sm" : "text-xs"}`}
                         >
                           {lic.type}
                         </span>
@@ -891,14 +891,14 @@ const InspectorChoreographed = ({
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
-            <div className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#D4B483] border border-[#D4B483]/20">
+            <div className="px-4 py-2 rounded-full bg-surface-deep text-xs text-accent-sand border border-accent-sand/20">
               Sector: {data.sector}
             </div>
             {data.related_codes.map((rel, idx) => (
               <button
                 key={idx}
                 onClick={() => onInspect?.(rel)}
-                className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#888] border border-white/5 hover:border-[#D4B483]/30 hover:text-[#D4B483] cursor-pointer transition-all"
+                className="px-4 py-2 rounded-full bg-surface-deep text-xs text-[#888] border border-white/5 hover:border-accent-sand/30 hover:text-accent-sand cursor-pointer transition-all"
               >
                 {rel}
               </button>
@@ -1115,7 +1115,7 @@ export default function KBLIExplorerPage() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="font-serif text-lg tracking-wide text-[#E1E1E3]">
+              <span className="font-serif text-lg tracking-wide text-silver">
                 Zantara
               </span>
               <span className="text-[9px] uppercase tracking-[0.3em] text-[#444] -mt-1">
@@ -1138,10 +1138,10 @@ export default function KBLIExplorerPage() {
             </h3>
             <button
               onClick={() => setIsBlackBookOpen(true)}
-              className="w-full group p-4 rounded-lg bg-gradient-to-br from-[#D4B483]/20 to-[#0A0C10] border border-[#D4B483]/30 hover:border-[#D4B483] transition-all text-left"
+              className="w-full group p-4 rounded-lg bg-gradient-to-br from-[#D4B483]/20 to-[#0A0C10] border border-accent-sand/30 hover:border-accent-sand transition-all text-left"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded bg-[#0F1115] text-[#D4B483] border border-[#D4B483]/20">
+                <div className="p-2 rounded bg-surface-deep text-accent-sand border border-accent-sand/20">
                   <FileText size={14} />
                 </div>
                 <span className="text-xs font-bold text-white tracking-wide">
@@ -1199,7 +1199,7 @@ export default function KBLIExplorerPage() {
               AZ
             </div>
             <div>
-              <div className="text-xs font-medium text-[#E1E1E3]">
+              <div className="text-xs font-medium text-silver">
                 Business Assistant
               </div>
               <div className="text-[10px] text-[#555] uppercase tracking-wider">
@@ -1228,7 +1228,7 @@ export default function KBLIExplorerPage() {
                 type="text"
                 placeholder=""
                 aria-label="Ask a question about KBLI"
-                className="w-full bg-[#0F1115]/80 backdrop-blur-md text-[#E1E1E3] placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-white/5 focus:border-[#D4B483]/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
+                className="w-full bg-surface-deep/80 backdrop-blur-md text-silver placeholder-[#444] rounded-lg py-4 md:py-5 pl-12 md:pl-14 pr-28 border border-white/5 focus:border-accent-sand/30 focus:ring-1 focus:ring-[#D4B483]/30 focus:outline-none transition-all shadow-2xl font-light tracking-wide min-h-[44px]"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -1257,8 +1257,8 @@ export default function KBLIExplorerPage() {
                     }}
                     className={`p-2 rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${
                       compareMode
-                        ? "bg-[#D4B483]/15 text-[#D4B483]"
-                        : "hover:bg-[#1A1D24] text-[#555] hover:text-[#888]"
+                        ? "bg-accent-sand/15 text-accent-sand"
+                        : "hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888]"
                     }`}
                     title={compareMode ? "Exit compare mode" : "Compare codes"}
                   >
@@ -1270,7 +1270,7 @@ export default function KBLIExplorerPage() {
                   <button
                     type="button"
                     onClick={handleClearConversation}
-                    className="p-2 rounded-md hover:bg-[#1A1D24] text-[#555] hover:text-[#888] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+                    className="p-2 rounded-md hover:bg-surface-editorial-elevated text-[#555] hover:text-[#888] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
                     title="Clear conversation"
                     aria-label="Clear conversation"
                   >
@@ -1280,7 +1280,7 @@ export default function KBLIExplorerPage() {
                 {/* Send */}
                 <button
                   type="submit"
-                  className="p-2 rounded-md hover:bg-[#1A1D24] text-[#D4B483] transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  className="p-2 rounded-md hover:bg-surface-editorial-elevated text-accent-sand transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                   disabled={isChatting}
                 >
                   {isChatting ? (
@@ -1299,7 +1299,7 @@ export default function KBLIExplorerPage() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-full mt-2 left-0 w-full bg-[#0F1115] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
+                  className="absolute top-full mt-2 left-0 w-full bg-surface-deep border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
                 >
                   <div className="p-2 border-b border-white/5 text-[10px] uppercase tracking-widest text-[#555] px-4">
                     Related Results
@@ -1312,12 +1312,12 @@ export default function KBLIExplorerPage() {
                           handleInspect(res.code);
                           setSearchResults([]);
                         }}
-                        className="w-full flex items-center gap-4 px-4 py-3 min-h-[44px] hover:bg-[#1A1D24] border-b border-white/5 last:border-0 text-left transition-colors"
+                        className="w-full flex items-center gap-4 px-4 py-3 min-h-[44px] hover:bg-surface-editorial-elevated border-b border-white/5 last:border-0 text-left transition-colors"
                       >
-                        <span className="font-mono text-[#D4B483] text-xs w-12">
+                        <span className="font-mono text-accent-sand text-xs w-12">
                           {res.code}
                         </span>
-                        <span className="text-sm text-[#E1E1E3] truncate flex-1">
+                        <span className="text-sm text-silver truncate flex-1">
                           {res.title}
                         </span>
                         <ChevronRight size={12} className="text-[#333]" />
@@ -1398,18 +1398,18 @@ export default function KBLIExplorerPage() {
               initial={{ y: 60, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
-              className="sticky bottom-0 left-0 right-0 p-4 bg-[#0A0C10]/95 backdrop-blur-lg border-t border-[#D4B483]/20 z-30"
+              className="sticky bottom-0 left-0 right-0 p-4 bg-[#0A0C10]/95 backdrop-blur-lg border-t border-accent-sand/20 z-30"
             >
               <div className="max-w-3xl mx-auto flex items-center justify-between">
                 <span className="text-sm text-[#CCC]">
-                  <span className="text-[#D4B483] font-mono">
+                  <span className="text-accent-sand font-mono">
                     {compareSelection.length}
                   </span>{" "}
                   codes selected
                 </span>
                 <button
                   onClick={() => setCompareOpen(true)}
-                  className="px-4 py-2 rounded-lg bg-[#D4B483] text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
+                  className="px-4 py-2 rounded-lg bg-accent-sand text-[#050507] text-sm font-medium hover:bg-[#C4A473] transition-colors"
                 >
                   Compare {compareSelection.length} codes &rarr;
                 </button>

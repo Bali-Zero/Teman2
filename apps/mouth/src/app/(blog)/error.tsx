@@ -25,13 +25,13 @@ export default function BlogError({
           </div>
         </div>
         <h2 className="text-2xl font-bold text-white mb-3">Something went wrong</h2>
-        <p className="text-[#9AA0AE] mb-8">
+        <p className="text-muted-cool mb-8">
           We couldn&apos;t load this page. Please try again or go back to the homepage.
         </p>
         <div className="flex justify-center gap-3">
           <button
             onClick={() => reset()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a3fd9] transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-blue-editorial text-white text-sm font-medium hover:bg-[#1a3fd9] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Try Again

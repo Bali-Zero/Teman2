@@ -12,8 +12,8 @@ import type { ArticleCardProps, ArticleCategory } from '@/lib/blog/types';
 // Category color mapping - McKinsey style with blue accent
 const categoryStyles: Record<ArticleCategory, { bg: string; text: string; gradient: string }> = {
   visas: {
-    bg: 'bg-[#2251ff]/10',
-    text: 'text-[#2251ff]',
+    bg: 'bg-accent-blue-editorial/10',
+    text: 'text-accent-blue-editorial',
     gradient: 'from-[#2251ff]/20 to-[#4d73ff]/20',
   },
   business: {
@@ -136,7 +136,7 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
                 </span>
               )}
               {article.aiGenerated && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2251ff]/20 text-[#2251ff]">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-blue-editorial/20 text-accent-blue-editorial">
                   <Sparkles className="w-3 h-3" />
                   AI
                 </span>
@@ -144,7 +144,7 @@ function FeaturedCard({ article, index = 0 }: ArticleCardProps) {
             </div>
 
             {/* Title */}
-            <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 group-hover:text-[#2251ff] transition-colors leading-tight line-clamp-2">
+            <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-3 md:mb-4 group-hover:text-accent-blue-editorial transition-colors leading-tight line-clamp-2">
               {article.title}
             </h2>
 
@@ -223,7 +223,7 @@ function DefaultCard({
               </span>
             )}
             {article.aiGenerated && (
-              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#2251ff]/80 backdrop-blur-sm text-white text-xs font-medium">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-accent-blue-editorial/80 backdrop-blur-sm text-white text-xs font-medium">
                 <Sparkles className="w-3 h-3" />
               </span>
             )}
@@ -246,7 +246,7 @@ function DefaultCard({
         )}
 
         {/* Title */}
-        <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-[#2251ff] transition-colors line-clamp-2">
+        <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
           {article.title}
         </h3>
 
@@ -315,7 +315,7 @@ function CompactCard({ article, index = 0 }: ArticleCardProps) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <CategoryBadge category={article.category} />
-          <h4 className="font-medium text-white text-sm mt-1 mb-1 group-hover:text-[#2251ff] transition-colors line-clamp-2">
+          <h4 className="font-medium text-white text-sm mt-1 mb-1 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
             {article.title}
           </h4>
           <div className="flex items-center gap-2 text-white/40 text-xs">
@@ -358,7 +358,7 @@ function HorizontalCard({ article, index = 0, showCategory = true }: ArticleCard
             </div>
           )}
 
-          <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-[#2251ff] transition-colors line-clamp-2">
+          <h3 className="font-serif text-lg md:text-xl font-semibold text-white mb-2 group-hover:text-accent-blue-editorial transition-colors line-clamp-2">
             {article.title}
           </h3>
 

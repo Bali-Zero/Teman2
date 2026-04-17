@@ -107,7 +107,7 @@ export function DealFlowWizard({ onClose }: { onClose: () => void }) {
               </div>
               <button
                 onClick={() => setStep('investor')}
-                className="w-full py-2.5 rounded-xl bg-[#d4845a] hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors"
+                className="w-full py-2.5 rounded-xl bg-accent-warm hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors"
               >
                 Next: Investor Details
               </button>
@@ -126,21 +126,21 @@ export function DealFlowWizard({ onClose }: { onClose: () => void }) {
                   placeholder="Investor Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-[#d4845a] focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-accent-warm focus:outline-none"
                 />
                 <input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-[#d4845a] focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-accent-warm focus:outline-none"
                 />
                 <input
                   type="text"
                   placeholder="Nationality"
                   value={nationality}
                   onChange={(e) => setNationality(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-[#d4845a] focus:outline-none"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:border-accent-warm focus:outline-none"
                 />
               </div>
               <div className="flex gap-2">
@@ -153,7 +153,7 @@ export function DealFlowWizard({ onClose }: { onClose: () => void }) {
                 <button
                   onClick={handleCreate}
                   disabled={loading}
-                  className="flex-1 py-2.5 rounded-xl bg-[#d4845a] hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-accent-warm hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Creating...' : 'Create Proposal'}
                 </button>
@@ -176,11 +176,11 @@ export function DealFlowWizard({ onClose }: { onClose: () => void }) {
                   type="text"
                   readOnly
                   value={proposalLink}
-                  className="flex-1 bg-transparent text-xs text-[#d4845a] outline-none truncate"
+                  className="flex-1 bg-transparent text-xs text-accent-warm outline-none truncate"
                 />
                 <button
                   onClick={handleCopy}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-[#d4845a] hover:bg-[#c4744a] text-white text-xs font-medium transition-colors"
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-accent-warm hover:bg-[#c4744a] text-white text-xs font-medium transition-colors"
                 >
                   {copied ? 'Copied!' : 'Copy'}
                 </button>

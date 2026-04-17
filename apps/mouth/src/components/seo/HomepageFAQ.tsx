@@ -1,5 +1,3 @@
-"use client";
-
 import { HOMEPAGE_FAQS, generateFAQSchema } from "@/lib/seo/faq-data";
 
 /**

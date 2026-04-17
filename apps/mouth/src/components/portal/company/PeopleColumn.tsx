@@ -1,5 +1,3 @@
-"use client";
-
 import { glassCard, getRoleColor, getInitials } from "./editorial-tokens";
 
 interface Associate {

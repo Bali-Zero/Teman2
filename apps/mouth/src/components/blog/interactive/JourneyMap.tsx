@@ -185,7 +185,7 @@ export function JourneyMap({
                         isCompleted &&
                           "bg-emerald-500/20 border-2 border-emerald-500/50",
                         isCurrent &&
-                          "bg-[#2251ff]/20 border-2 border-[#2251ff]/50 animate-pulse",
+                          "bg-accent-blue-editorial/20 border-2 border-accent-blue-editorial/50 animate-pulse",
                         !isCompleted &&
                           !isCurrent &&
                           "bg-white/5 border-2 border-white/20",
@@ -199,7 +199,7 @@ export function JourneyMap({
                         <span
                           className={cn(
                             "font-bold",
-                            isCurrent ? "text-[#2251ff]" : "text-white/60",
+                            isCurrent ? "text-accent-blue-editorial" : "text-white/60",
                           )}
                         >
                           {index + 1}
@@ -221,10 +221,10 @@ export function JourneyMap({
                               className={cn(
                                 "font-medium transition-colors",
                                 isCompleted && "text-emerald-400",
-                                isCurrent && "text-[#2251ff]",
+                                isCurrent && "text-accent-blue-editorial",
                                 !isCompleted &&
                                   !isCurrent &&
-                                  "text-white group-hover:text-[#2251ff]",
+                                  "text-white group-hover:text-accent-blue-editorial",
                               )}
                             >
                               {step.title}

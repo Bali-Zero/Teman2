@@ -1,5 +1,3 @@
-"use client";
-
 import { MDXRemote, MDXRemoteSerializeResult } from "next-mdx-remote";
 import Image from "next/image";
 import Link from "next/link";
@@ -89,7 +87,7 @@ const mdxComponents = {
     if (isExternal) {
       return (
         <a
-          className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
+          className="text-accent-blue-editorial hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
           target="_blank"
           rel="noopener noreferrer"
           {...props}
@@ -100,7 +98,7 @@ const mdxComponents = {
     return (
       <Link
         href={href}
-        className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
+        className="text-accent-blue-editorial hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
       >
         {props.children}
       </Link>
@@ -123,7 +121,7 @@ const mdxComponents = {
   ),
   blockquote: (props: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
     <blockquote
-      className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl"
+      className="border-l-4 border-accent-blue-editorial pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl"
       {...props}
     />
   ),

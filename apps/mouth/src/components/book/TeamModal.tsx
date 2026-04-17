@@ -45,7 +45,7 @@ export function TeamModal({ member, open, onClose }: TeamModalProps) {
                         className="rounded-full object-cover w-[72px] h-[72px]"
                       />
                     ) : (
-                      <div className="w-[72px] h-[72px] rounded-full bg-[#d4845a]/20 flex items-center justify-center text-[#d4845a] font-bold text-xl font-[family-name:var(--font-spartan)]">
+                      <div className="w-[72px] h-[72px] rounded-full bg-accent-warm/20 flex items-center justify-center text-accent-warm font-bold text-xl font-[family-name:var(--font-spartan)]">
                         {member.name.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -53,7 +53,7 @@ export function TeamModal({ member, open, onClose }: TeamModalProps) {
                       <Dialog.Title className="font-[family-name:var(--font-spartan)] text-xl font-bold text-white">
                         {member.name}
                       </Dialog.Title>
-                      <p className="text-[#d4845a] text-sm font-[family-name:var(--font-montserrat)]">
+                      <p className="text-accent-warm text-sm font-[family-name:var(--font-montserrat)]">
                         {member.role}
                       </p>
                     </div>

@@ -33,10 +33,10 @@ export function ServicePricingCard({
 
   return (
     <LazyMotion features={domAnimation}>
-      <div className="relative border border-white/10 rounded-2xl p-6 bg-white/[0.025] hover:border-[#d4845a]/40 hover:bg-white/[0.04] transition-all group">
+      <div className="relative border border-white/10 rounded-2xl p-6 bg-white/[0.025] hover:border-accent-warm/40 hover:bg-white/[0.04] transition-all group">
         {badge && (
           <div className="absolute -top-3 left-4">
-            <span className="bg-[#d4845a] text-white text-[10px] font-semibold font-[family-name:var(--font-montserrat)] tracking-wider uppercase px-3 py-1 rounded-full">
+            <span className="bg-accent-warm text-white text-[10px] font-semibold font-[family-name:var(--font-montserrat)] tracking-wider uppercase px-3 py-1 rounded-full">
               {badge}
             </span>
           </div>
@@ -55,7 +55,7 @@ export function ServicePricingCard({
             {isLoading ? (
               <div className="h-6 w-20 bg-white/10 rounded-lg animate-pulse" />
             ) : (
-              <span className="font-[family-name:var(--font-spartan)] text-[#d4845a] font-bold text-xl">
+              <span className="font-[family-name:var(--font-spartan)] text-accent-warm font-bold text-xl">
                 {price ?? "—"}
               </span>
             )}
@@ -68,7 +68,7 @@ export function ServicePricingCard({
               key={f}
               className="flex items-start gap-2.5 text-sm text-white/65 font-[family-name:var(--font-montserrat)]"
             >
-              <span className="text-[#d4845a] mt-0.5 flex-shrink-0 text-xs">
+              <span className="text-accent-warm mt-0.5 flex-shrink-0 text-xs">
                 ✦
               </span>
               {f}
@@ -90,7 +90,7 @@ export function ServicePricingCard({
                   key={f}
                   className="flex items-start gap-2.5 text-sm text-white/65 font-[family-name:var(--font-montserrat)]"
                 >
-                  <span className="text-[#d4845a] mt-0.5 flex-shrink-0 text-xs">
+                  <span className="text-accent-warm mt-0.5 flex-shrink-0 text-xs">
                     ✦
                   </span>
                   {f}

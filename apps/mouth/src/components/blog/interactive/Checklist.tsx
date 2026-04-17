@@ -146,7 +146,7 @@ export function Checklist({
       <div className="px-6 py-4 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-[#2251ff]/20 text-[#2251ff]">
+            <div className="p-2 rounded-lg bg-accent-blue-editorial/20 text-accent-blue-editorial">
               <ListChecks className="w-5 h-5" />
             </div>
             <div>

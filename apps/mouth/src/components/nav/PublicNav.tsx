@@ -237,7 +237,7 @@ export function PublicNav({
                         <span>{lang.name}</span>
                         {locale === lang.code && (
                           <svg
-                            className="w-4 h-4 ml-auto text-[#2251ff]"
+                            className="w-4 h-4 ml-auto text-accent-blue-editorial"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -341,7 +341,7 @@ export function PublicNav({
                       }}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
                         locale === lang.code
-                          ? "bg-[#2251ff] text-white"
+                          ? "bg-accent-blue-editorial text-white"
                           : "bg-white/5 text-white/70 hover:bg-white/10"
                       }`}
                     >
