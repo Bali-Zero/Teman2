@@ -310,3 +310,163 @@ class TestFix5OllamaAvailabilityLogging:
         lines = [ln.strip() for ln in src.splitlines()]
         bare = [ln for ln in lines if ln == "except:"]
         assert bare == [], f"Found bare except clauses: {bare}"
+
+
+# ---------------------------------------------------------------------------
+# R1: zantara_ai_client.py — stream retry uses _classify_error / _compute_delay
+# ---------------------------------------------------------------------------
+class TestR1StreamRetryClassification:
+    def test_stream_imports_classify_and_compute(self):
+        """zantara_ai_client must import _classify_error and _compute_delay from retry_handler."""
+        import backend.llm.zantara_ai_client as zac
+
+        assert hasattr(zac, "_classify_error"), "must import _classify_error"
+        assert hasattr(zac, "_compute_delay"), "must import _compute_delay"
+
+    def test_stream_no_raw_backoff_formula(self):
+        """Stream retry must not duplicate raw backoff formula (base_delay * backoff_factor**attempt)."""
+        import inspect
+
+        import backend.llm.zantara_ai_client as zac
+
+        src = inspect.getsource(zac.ZantaraAIClient.stream)
+        # The old duplicated formula was: base_delay * (backoff_factor**attempt)
+        assert "base_delay * (self.retry_handler.backoff_factor**attempt)" not in src, (
+            "Raw backoff formula must be replaced by _compute_delay()"
+        )
+
+
+# ---------------------------------------------------------------------------
+# R2: genai_client.py — DEFAULT_TIMEOUT_MS + HttpOptions in config
+# ---------------------------------------------------------------------------
+class TestR2TimeoutInConfig:
+    def test_default_timeout_ms_exists(self):
+        """GenAIClient must expose DEFAULT_TIMEOUT_MS class attribute."""
+        from backend.llm.genai_client import GenAIClient
+
+        assert hasattr(GenAIClient, "DEFAULT_TIMEOUT_MS")
+        assert GenAIClient.DEFAULT_TIMEOUT_MS > 0
+
+    def test_get_config_includes_http_options(self):
+        """_get_config must embed HttpOptions(timeout=...) in GenerateContentConfig."""
+        from google.genai import types
+
+        from backend.llm.genai_client import GenAIClient
+
+        client = GenAIClient.__new__(GenAIClient)
+        client._available = True
+
+        # Patch genai/types availability
+        config = client._get_config(max_output_tokens=512, temperature=0.5)
+        assert config is not None
+        assert config.http_options is not None
+        assert config.http_options.timeout == GenAIClient.DEFAULT_TIMEOUT_MS
+
+    def test_get_config_custom_timeout(self):
+        """_get_config with explicit timeout_ms overrides the default."""
+        from backend.llm.genai_client import GenAIClient
+
+        client = GenAIClient.__new__(GenAIClient)
+        client._available = True
+
+        config = client._get_config(timeout_ms=5_000)
+        assert config.http_options.timeout == 5_000
+
+    def test_generate_content_signature_has_timeout_ms(self):
+        """generate_content and generate_content_stream must accept timeout_ms kwarg."""
+        import inspect
+
+        from backend.llm.genai_client import GenAIClient
+
+        sig_gen = inspect.signature(GenAIClient.generate_content)
+        sig_stream = inspect.signature(GenAIClient.generate_content_stream)
+        assert "timeout_ms" in sig_gen.parameters
+        assert "timeout_ms" in sig_stream.parameters
+
+
+# ---------------------------------------------------------------------------
+# R5: LLMMetricsEmitter — unit tests
+# ---------------------------------------------------------------------------
+class TestR5MetricsEmitter:
+    @pytest.mark.asyncio
+    async def test_emit_noop_when_redis_unavailable(self):
+        """emit_llm_metric must not raise when Redis is unavailable."""
+        from backend.llm.metrics_emitter import emit_llm_metric
+
+        with patch("backend.llm.metrics_emitter._get_redis", return_value=None):
+            # Should complete without raising
+            await emit_llm_metric(
+                provider="gemini", model="gemini-2.0-flash",
+                latency_ms=250, prompt_tokens=100, completion_tokens=50,
+            )
+
+    @pytest.mark.asyncio
+    async def test_emit_calls_xadd_when_redis_available(self):
+        """emit_llm_metric must call redis.xadd with correct stream key and fields."""
+        from backend.llm.metrics_emitter import _STREAM_KEY, emit_llm_metric
+
+        mock_redis = AsyncMock()
+
+        with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
+            await emit_llm_metric(
+                provider="ollama", model="qwen3.5:9b",
+                latency_ms=420, prompt_tokens=80, completion_tokens=30,
+                status="ok",
+            )
+
+        mock_redis.xadd.assert_called_once()
+        call_args = mock_redis.xadd.call_args
+        assert call_args[0][0] == _STREAM_KEY
+        fields = call_args[0][1]
+        assert fields["provider"] == "ollama"
+        assert fields["model"] == "qwen3.5:9b"
+        assert fields["latency_ms"] == "420"
+        assert fields["prompt_tokens"] == "80"
+        assert fields["completion_tokens"] == "30"
+        assert fields["status"] == "ok"
+
+    @pytest.mark.asyncio
+    async def test_emit_swallows_redis_error(self):
+        """emit_llm_metric must not propagate Redis errors (fire-and-forget)."""
+        from backend.llm.metrics_emitter import emit_llm_metric
+
+        mock_redis = AsyncMock()
+        mock_redis.xadd.side_effect = ConnectionError("Redis down")
+
+        with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
+            # Must not raise
+            await emit_llm_metric(
+                provider="gemini", model="gemini-2.0-flash", latency_ms=100,
+            )
+
+    @pytest.mark.asyncio
+    async def test_emit_error_status(self):
+        """emit_llm_metric with status='error' must persist that field."""
+        from backend.llm.metrics_emitter import emit_llm_metric
+
+        mock_redis = AsyncMock()
+
+        with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
+            await emit_llm_metric(
+                provider="gemini", model="gemini-2.0-flash",
+                latency_ms=50, status="error",
+            )
+
+        fields = mock_redis.xadd.call_args[0][1]
+        assert fields["status"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_emit_extra_fields(self):
+        """emit_llm_metric extra dict is merged into stream fields."""
+        from backend.llm.metrics_emitter import emit_llm_metric
+
+        mock_redis = AsyncMock()
+
+        with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
+            await emit_llm_metric(
+                provider="gemini", model="gemini-2.0-flash",
+                latency_ms=100, extra={"chunks": "12"},
+            )
+
+        fields = mock_redis.xadd.call_args[0][1]
+        assert fields["chunks"] == "12"

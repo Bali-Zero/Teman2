@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 
 from backend.app.core.config import settings
+from backend.llm.metrics_emitter import emit_llm_metric
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,11 @@ async def ollama_generate(
                 "completion_tokens": data.get("eval_count", 0),
             },
         )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
+        )
         return text
 
     except httpx.ConnectError:
@@ -167,6 +173,11 @@ async def ollama_chat(
                 "completion_tokens": data.get("eval_count", 0),
             },
         )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
+        )
         return text
 
     except httpx.ConnectError:
@@ -222,6 +233,11 @@ async def ollama_chat_kg(
                 "prompt_tokens": data.get("prompt_eval_count", 0),
                 "completion_tokens": data.get("eval_count", 0),
             },
+        )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
         )
         return text
 
