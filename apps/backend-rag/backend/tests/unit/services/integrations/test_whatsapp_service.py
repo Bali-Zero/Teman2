@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-
 # ============================================================
 # FIXTURES
 # ============================================================
@@ -32,9 +31,23 @@ def mock_settings():
 
 @pytest.fixture
 def service(mock_settings):
-    with patch("backend.services.integrations.whatsapp_service.settings", mock_settings):
-        from backend.services.integrations.whatsapp_service import WhatsAppService
-        svc = WhatsAppService()
+    # CI test-ordering issue: if an earlier test cleared os.environ and forced
+    # a config reload, the module's top-level `from backend.app.core.config
+    # import settings` binding can be missing by the time this fixture runs.
+    # Import (and if already imported, reload) the module so the top-level
+    # `from backend.app.core.config import settings` runs again, then patch
+    # on the resolved attribute. Proper long-term fix is to make
+    # WhatsAppService read settings lazily (tracked as follow-up).
+    import importlib
+    import sys
+
+    modname = "backend.services.integrations.whatsapp_service"
+    if modname in sys.modules:
+        whatsapp_module = importlib.reload(sys.modules[modname])
+    else:
+        whatsapp_module = importlib.import_module(modname)
+    with patch.object(whatsapp_module, "settings", mock_settings):
+        svc = whatsapp_module.WhatsAppService()
     svc._token = "test-token"
     svc._phone_number_id = "123456789"
     return svc
