@@ -28,14 +28,14 @@ const LEADERSHIP: TeamMember[] = [
     initials: "PH",
     role: "Komisaris · Founder (30 years)",
     gradient: "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
-    photo: "/static/team/heru-komisaris.jpg",
+    photo: "/static/team/zainal-ceo.jpg",
   },
   {
     name: "Zainal Abidin",
     initials: "ZA",
     role: "Chief Executive Officer · Founder",
     gradient: "linear-gradient(135deg, #ff2d4c 0%, #c8102e 100%)",
-    photo: "/static/team/zainal-ceo.jpg",
+    photo: "/static/team/heru-komisaris.jpg",
   },
   {
     name: "Ruslana",

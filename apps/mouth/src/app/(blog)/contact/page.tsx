@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageCircle, MapPin, Clock, ArrowRight } from "lucide-react";
-import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 
 export const metadata: Metadata = {
   title: "Contact · Bali Zero",
@@ -171,8 +170,6 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
-
-      <GoogleReviewsBlock limit={6} />
 
       {/* Hours + useful links */}
       <section
