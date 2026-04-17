@@ -35,3 +35,4 @@ export {
   type MatterCardProps,
   type MatterType,
 } from "./components/MatterCard";
+export { ContextPanel, type ContextTab } from "./components/ContextPanel";
