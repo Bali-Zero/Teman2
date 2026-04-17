@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Send, Loader2, Bot } from "lucide-react";
 import dynamic from "next/dynamic";
+import { trackKBLIChatQuestion } from "@/lib/analytics";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
@@ -50,6 +51,8 @@ export function ZantaraChat({
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || loading) return;
+
+      trackKBLIChatQuestion(codeContext?.code ?? "");
 
       const userMsg: ChatMessage = { role: "user", content: text.trim() };
       setMessages((prev) => [...prev, userMsg]);
