@@ -41,9 +41,9 @@ export default function VisaOracleLayout({
       />
       <SessionInit funnel="visa" />
       {/* NavShell is fixed top (h-14) — push content down */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8 pt-[5.5rem]">
+      <div className="flex-1 max-w-5xl mx-auto w-full px-6 py-8 pt-14">
         {children}
-      </main>
+      </div>
       <ConsentBanner />
     </div>
   );
