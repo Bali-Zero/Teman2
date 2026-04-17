@@ -107,3 +107,10 @@ apscheduler==3.10.4
 # Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
 setuptools>=78.1.1
 langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes
+
+# Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
+# Skill, Metabolic, HGT). Editable install; path is resolved relative to the
+# working directory where `pip install -r` runs. In the Dockerfile that is
+# `/app/apps/backend-rag/`, which resolves `../../packages/cell-core` to
+# `/app/packages/cell-core` (copied earlier in the builder stage).
+-e ../../packages/cell-core

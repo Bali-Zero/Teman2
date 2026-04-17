@@ -161,3 +161,9 @@ setuptools>=78.1.1
 
 # Structured logging
 structlog>=24.1.0
+
+# Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
+# Skill, Metabolic, HGT). Editable install; path is resolved relative to the
+# working directory where `pip install -r` is invoked, which for this
+# requirements file is always `apps/backend-rag/` (CI, Fly build, local venv).
+-e ../../packages/cell-core
