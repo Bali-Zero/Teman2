@@ -31,7 +31,15 @@ _repo_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_repo_root / "packages" / "cell-core"))
 
 from cell_core.metabolic.collector import MetabolicCollector
-from cell_core.metabolic.definitions import ALL_METRICS, MetabolicSnapshot
+from cell_core.metabolic.definitions import (
+    ALL_METRICS,
+    METRIC_AUTONOMY_INDEX,
+    METRIC_ESCALATION_FREQ,
+    METRIC_ONTOLOGY_DENSITY,
+    METRIC_TTR,
+    MetabolicSnapshot,
+    MetricValue,
+)
 from cell_core.metabolic.storage import MetabolicStore
 from cell_core.metabolic.trend import TrendAnalyzer
 
@@ -142,13 +150,76 @@ def try_redis_push(snapshot: MetabolicSnapshot) -> None:
         logger.debug(f"Redis push failed (non-fatal): {e}")
 
 
+def _project_scope(snapshot: MetabolicSnapshot, scope: str) -> MetabolicSnapshot:
+    """Return a copy of `snapshot` with non-scope metrics nulled out.
+
+    Schema v2: global scope exposes TTR+DO only; host scope exposes IA+FE only.
+    Non-scope metrics are replaced with a None MetricValue carrying
+    `metadata.error='not_applicable_by_design'` (distinguishes from collector failures).
+    """
+    not_applicable = {"error": "not_applicable_by_design"}
+
+    def _null_metric(metric_type: str, calculated_at: str) -> MetricValue:
+        return MetricValue(
+            metric_type=metric_type, value=None,
+            calculated_at=calculated_at, metadata=not_applicable,
+        )
+
+    ts = snapshot.calculated_at
+    if scope == "global":
+        return MetabolicSnapshot(
+            ttr=snapshot.ttr,
+            ontology_density=snapshot.ontology_density,
+            autonomy_index=_null_metric(METRIC_AUTONOMY_INDEX, ts),
+            escalation_freq=_null_metric(METRIC_ESCALATION_FREQ, ts),
+            calculated_at=ts,
+        )
+    elif scope == "host":
+        return MetabolicSnapshot(
+            ttr=_null_metric(METRIC_TTR, ts),
+            ontology_density=_null_metric(METRIC_ONTOLOGY_DENSITY, ts),
+            autonomy_index=snapshot.autonomy_index,
+            escalation_freq=snapshot.escalation_freq,
+            calculated_at=ts,
+        )
+    return snapshot
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Metabolic metrics daily rollup")
     parser.add_argument("--dry-run", action="store_true", help="Print snapshot without storing")
     parser.add_argument("--notify", action="store_true", help="Send Telegram report")
     parser.add_argument("--db-path", default=DEFAULT_DB_PATH, help="SQLite DB path")
     parser.add_argument("--pg-dsn", default=PG_DSN, help="PostgreSQL DSN for TTR/DO metrics")
+    parser.add_argument(
+        "--mode",
+        choices=["air", "pro", "auto"],
+        default="auto",
+        help="air=writes global+host rows, pro=writes host row only, auto=decide from PG_DSN",
+    )
+    parser.add_argument(
+        "--collector-host",
+        default=None,
+        help="Host identifier for v2 schema ('pro'|'air'). Default: inferred from hostname.",
+    )
     args = parser.parse_args()
+
+    # Resolve mode: auto → air if PG_DSN set, else pro
+    mode = args.mode
+    if mode == "auto":
+        mode = "air" if args.pg_dsn else "pro"
+
+    # Resolve collector_host: explicit flag > inferred from hostname
+    collector_host = args.collector_host
+    if not collector_host:
+        import socket
+        hostname = socket.gethostname().lower()
+        if "nuzantara-9" in hostname:
+            collector_host = "air"
+        elif "nuzantara" in hostname:
+            collector_host = "pro"
+        else:
+            collector_host = hostname.split(".")[0]
 
     start_time = time.time()
     success = True
@@ -167,9 +238,18 @@ def main() -> None:
             print(json.dumps(snapshot.to_dict(), indent=2))
             return
 
-        # 2. Store
+        # 2. Store — schema v2: write 1 row (pro) or 2 rows (air)
         store = MetabolicStore(db_path=args.db_path)
-        store.store(snapshot)
+        if mode == "air":
+            snap_global = _project_scope(snapshot, "global")
+            snap_host = _project_scope(snapshot, "host")
+            store.store(snap_global, collector_host=collector_host, metric_scope="global")
+            store.store(snap_host, collector_host=collector_host, metric_scope="host")
+        elif mode == "pro":
+            snap_host = _project_scope(snapshot, "host")
+            store.store(snap_host, collector_host=collector_host, metric_scope="host")
+        else:
+            store.store(snapshot, collector_host=collector_host, metric_scope=None)
 
         # 3. Trends
         analyzer = TrendAnalyzer(store)
