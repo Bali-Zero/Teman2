@@ -7,9 +7,23 @@ Redis-backed caching layer for KG operations:
 - KG stats (node/edge counts change rarely)
 
 Falls back to in-memory LRU when Redis is unavailable.
+
+Invalidation model (HIGH-13):
+Historically a reader detected staleness by comparing its cached ``_kg_version``
+with the current counter *on read*. That meant between a successful write and
+the first read on a peer cell, any reader in the middle got a stale hit.
+We now publish an async ``zantara:kg:invalidate`` event on every version bump.
+Peers subscribe at startup and locally wipe the affected keys the moment a
+write lands. If Redis pub/sub is unavailable the lazy on-read check still
+catches stale entries (Legge 4 — graceful degradation), so readers never
+block.
 """
 
+from __future__ import annotations
+
+import asyncio
 import hashlib
+import json
 import logging
 import threading
 from typing import Any
@@ -27,6 +41,27 @@ logger = logging.getLogger(__name__)
 _kg_version: int = 0
 _kg_version_lock = threading.Lock()
 
+# ---------------------------------------------------------------------------
+# Pub/sub invalidation (HIGH-13)
+# ---------------------------------------------------------------------------
+KG_INVALIDATE_CHANNEL = "zantara:kg:invalidate"
+_DEFAULT_INVALIDATE_PATTERNS: tuple[str, ...] = (
+    "zantara:kg:entity:*",
+    "zantara:kg:traverse:*",
+    "zantara:kg:subgraph:*",
+    "zantara:kg:stats",
+)
+# Debounce window in seconds. Multiple writes within this window coalesce into
+# a single publish. Keeps high-throughput ingestion from hammering pub/sub.
+_PUBLISH_DEBOUNCE_SEC = 0.05
+
+_publish_state: dict[str, Any] = {
+    "pending": False,           # there is a scheduled publish not yet fired
+    "last_version": 0,          # last published version (stops duplicate publishes)
+    "task": None,               # asyncio.Task for the in-flight debounced publish
+}
+_publish_state_lock = threading.Lock()
+
 
 def get_kg_version() -> int:
     """Return the current KG version counter."""
@@ -35,9 +70,13 @@ def get_kg_version() -> int:
 
 def increment_kg_version() -> int:
     """
-    Increment the KG version counter (thread-safe).
+    Increment the KG version counter (thread-safe) and schedule a pub/sub
+    invalidation broadcast. Listeners (peer cells) will wipe their local
+    KG cache on receipt.
 
-    Call this after any KG mutation (node/edge addition).
+    Pub/sub failures are swallowed — readers still fall back to on-read
+    version checks. Call-site contract: safe to call from any thread; if no
+    event loop is running, only the in-process counter is updated.
 
     Returns:
         The new version number.
@@ -47,7 +86,79 @@ def increment_kg_version() -> int:
         _kg_version += 1
         new_version = _kg_version
     logger.debug("KG version incremented to %d", new_version)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return new_version
+
+    _schedule_invalidate_publish(loop, new_version)
     return new_version
+
+
+def _schedule_invalidate_publish(loop: asyncio.AbstractEventLoop, version: int) -> None:
+    """Debounced publisher scheduler.
+
+    If a publish is already pending, do nothing — the scheduled task will pick
+    up the freshest version when it fires. Otherwise spawn a debounced task.
+    """
+    with _publish_state_lock:
+        if _publish_state["pending"]:
+            return
+        _publish_state["pending"] = True
+
+    async def _fire() -> None:
+        try:
+            await asyncio.sleep(_PUBLISH_DEBOUNCE_SEC)
+        finally:
+            with _publish_state_lock:
+                _publish_state["pending"] = False
+        await _publish_invalidate(version)
+
+    task = loop.create_task(_fire())
+    with _publish_state_lock:
+        _publish_state["task"] = task
+
+
+async def _publish_invalidate(version: int) -> None:
+    """Publish a single invalidation notice on ``KG_INVALIDATE_CHANNEL``.
+
+    Payload shape:
+        {"version": <int>, "keys": ["zantara:kg:entity:*", ...]}
+
+    Redis down or unconfigured → log at debug level and return (Legge 4).
+    """
+    with _publish_state_lock:
+        if version <= _publish_state["last_version"]:
+            return
+        _publish_state["last_version"] = version
+
+    redis_client = _get_async_redis()
+    if redis_client is None:
+        return
+
+    try:
+        payload = json.dumps({
+            "version": version,
+            "keys": list(_DEFAULT_INVALIDATE_PATTERNS),
+        })
+        subscribers = await redis_client.publish(KG_INVALIDATE_CHANNEL, payload)
+        logger.debug(
+            "Published KG invalidate v=%d → %s subscribers", version, subscribers,
+        )
+    except Exception as exc:
+        logger.warning("KG invalidate publish failed (v=%d): %s", version, exc)
+
+
+def _get_async_redis() -> Any:
+    """Resolve the shared async Redis client via RedisManager (or None)."""
+    try:
+        from backend.core.redis_manager import RedisManager
+
+        return RedisManager.get_instance().get_async_client()
+    except Exception:
+        return None
+
 
 # TTL constants (seconds)
 TTL_ENTITY_RESOLUTION = 600  # 10 min — entities don't change often
@@ -277,3 +388,131 @@ def get_kg_cache() -> KGCache:
     if _kg_cache is None:
         _kg_cache = KGCache()
     return _kg_cache
+
+
+# ---------------------------------------------------------------------------
+# Invalidation listener (HIGH-13 reader side)
+# ---------------------------------------------------------------------------
+
+
+class KGCacheInvalidationListener:
+    """Subscribe to ``zantara:kg:invalidate`` and clear local KG cache on events.
+
+    Started once at app startup via :func:`start_invalidation_listener`. Runs a
+    single background task that consumes the pub/sub stream; each message
+    contains the patterns to clear, so if the publisher ever adds a new
+    namespace (e.g. ``zantara:kg:community:*``) no reader code change is
+    required.
+
+    Graceful degradation: if Redis pub/sub is unavailable or the subscriber
+    connection drops, the listener logs a warning and exits. Readers keep
+    working via the existing on-read version check in
+    :meth:`KGCache.get_subgraph_result`.
+    """
+
+    def __init__(self) -> None:
+        self._task: asyncio.Task[None] | None = None
+        self._stop_event = asyncio.Event()
+
+    async def start(self) -> None:
+        if self._task is not None and not self._task.done():
+            return
+        self._stop_event.clear()
+        self._task = asyncio.create_task(self._run(), name="kg-cache-invalidate-listener")
+
+    async def stop(self) -> None:
+        self._stop_event.set()
+        if self._task is not None:
+            try:
+                await asyncio.wait_for(self._task, timeout=2.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                self._task.cancel()
+            self._task = None
+
+    async def _run(self) -> None:
+        redis_client = _get_async_redis()
+        if redis_client is None:
+            logger.info("KG invalidate listener: Redis unavailable — lazy mode only")
+            return
+
+        pubsub = None
+        try:
+            pubsub = redis_client.pubsub()
+            await pubsub.subscribe(KG_INVALIDATE_CHANNEL)
+            logger.info("KG invalidate listener subscribed to %s", KG_INVALIDATE_CHANNEL)
+
+            while not self._stop_event.is_set():
+                try:
+                    msg = await pubsub.get_message(
+                        ignore_subscribe_messages=True, timeout=1.0,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    logger.warning("KG invalidate listener get_message failed: %s", exc)
+                    await asyncio.sleep(1.0)
+                    continue
+
+                if msg is None:
+                    continue
+                await self._handle_message(msg)
+        except asyncio.CancelledError:
+            logger.info("KG invalidate listener cancelled")
+            raise
+        except Exception as exc:
+            logger.warning("KG invalidate listener crashed: %s", exc)
+        finally:
+            if pubsub is not None:
+                try:
+                    await pubsub.unsubscribe(KG_INVALIDATE_CHANNEL)
+                    await pubsub.close()
+                except Exception:
+                    pass
+
+    async def _handle_message(self, msg: dict[str, Any]) -> None:
+        data = msg.get("data")
+        if isinstance(data, bytes):
+            data = data.decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(data) if data else {}
+        except json.JSONDecodeError:
+            logger.debug("KG invalidate listener: malformed payload %r", data)
+            return
+
+        patterns = parsed.get("keys") or list(_DEFAULT_INVALIDATE_PATTERNS)
+        cache = get_kg_cache()._get_cache()
+        if cache is None:
+            return
+
+        total_cleared = 0
+        for pattern in patterns:
+            try:
+                total_cleared += await cache.clear_pattern(pattern)
+            except Exception as exc:
+                logger.warning(
+                    "KG invalidate listener: clear_pattern %s failed: %s", pattern, exc,
+                )
+        logger.info(
+            "KG invalidate listener: version=%s cleared=%d patterns=%d",
+            parsed.get("version"),
+            total_cleared,
+            len(patterns),
+        )
+
+
+_invalidation_listener: KGCacheInvalidationListener | None = None
+
+
+async def start_invalidation_listener() -> KGCacheInvalidationListener:
+    """Idempotently start the singleton listener. Safe to call at app startup."""
+    global _invalidation_listener
+    if _invalidation_listener is None:
+        _invalidation_listener = KGCacheInvalidationListener()
+    await _invalidation_listener.start()
+    return _invalidation_listener
+
+
+async def stop_invalidation_listener() -> None:
+    """Stop the singleton listener (called on app shutdown)."""
+    if _invalidation_listener is not None:
+        await _invalidation_listener.stop()

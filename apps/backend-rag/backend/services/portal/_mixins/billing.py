@@ -11,6 +11,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
 
@@ -139,6 +140,11 @@ class PortalBillingMixin:
     # PROFILE UPDATE
     # ================================================
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_profile:{client_id}:*",
+        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+        "zantara:portal_messages:*",
+    ])
     async def update_profile(
         self,
         client_id: int,

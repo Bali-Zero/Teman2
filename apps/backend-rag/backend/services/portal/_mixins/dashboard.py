@@ -14,6 +14,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
 
@@ -695,6 +696,10 @@ class PortalDashboardMixin:
                 ],
             }
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_dashboard:{client_id}:*",
+        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+    ])
     async def set_primary_company(self, client_id: int, company_id: int) -> dict[str, Any]:
         """Set a company as primary for the client."""
         async with self.pool.acquire() as conn, conn.transaction():

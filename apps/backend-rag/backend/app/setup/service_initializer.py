@@ -1081,6 +1081,23 @@ async def initialize_services(app: FastAPI) -> None:
     except Exception as e:
         logger.warning(f"RedisManager initialization failed: {e} — Redis features disabled")
 
+    # 0.1 KG cache proactive invalidation listener (HIGH-13).
+    # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
+    # the moment a peer cell increments the KG version. Falls back to the
+    # existing lazy on-read check if Redis is down.
+    try:
+        from backend.services.rag.kg_cache import start_invalidation_listener
+
+        listener = await start_invalidation_listener()
+        app.state.kg_invalidate_listener = listener
+        logger.info("✅ KG cache invalidation listener started")
+    except Exception as e:
+        logger.warning(
+            "KG cache invalidation listener failed to start: %s — "
+            "falling back to lazy version check only",
+            e,
+        )
+
     # 0.5 VASSAL Phase 3: ConfirmationService + ToolAuthorizer wiring.
     # Must happen after RedisManager (the service depends on it) and
     # before anything that calls execute_tool (which reads the module-level
