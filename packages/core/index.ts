@@ -3,6 +3,10 @@ export { BZLogo, type BZLogoVariant } from "./components/BZLogo";
 export { NavShell, type NavItem } from "./components/NavShell";
 export { WhatsAppFAB } from "./components/WhatsAppFAB";
 export {
+  ProgressRing,
+  type ProgressRingProps,
+} from "./components/ProgressRing";
+export {
   ThemeProvider,
   ThemeScope,
   useTheme,
