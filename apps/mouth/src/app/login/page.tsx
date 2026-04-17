@@ -82,7 +82,7 @@ export default function LoginPage() {
         ? redirectParam
         : loginResponse.user?.role === "client"
           ? "/portal"
-          : "/dashboard";
+          : "/inbox";
       logger.info("Redirect path determined", {
         component: "LoginPage",
         action: "handleLogin",
