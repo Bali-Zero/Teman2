@@ -18,15 +18,22 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { usePortalDashboard, usePortalTimeline } from '@/hooks';
+import {
+  usePortalDashboard,
+  usePortalDashboardSummary,
+  usePortalTimeline,
+} from '@/hooks';
 import { PortalCardSkeleton, PortalPageLoader, PortalListSkeleton } from '@/components/portal';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { TimelineEntry } from '@/lib/api/types/timeline.types';
+import type { DashboardSummary } from '@/lib/api/portal/portal.types';
+import { DeadlineBadge } from '@balizero/core';
 
 export default function PortalHomePage() {
   const router = useRouter();
   const { data: dashboard, isLoading: isLoadingDashboard, isError, error } = usePortalDashboard();
+  const { data: summary } = usePortalDashboardSummary();
   const { data: timelineData, isLoading: isLoadingTimeline } = usePortalTimeline(20);
 
   const timeline = timelineData?.entries || [];
@@ -121,6 +128,9 @@ export default function PortalHomePage() {
         <h1 className="text-3xl font-bold tracking-tight lux-text-gradient">Welcome Back</h1>
         <p className="text-[var(--tx-secondary)] mt-1">Here is your Bali life overview.</p>
       </section>
+
+      {/* V2 Matter-First Hero Cards */}
+      <HeroCards summary={summary} onOpenMatter={(id) => router.push(`/portal/matters/${id}`)} />
 
       {/* Status Cards (Traffic Lights) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -536,5 +546,107 @@ function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean
         )}
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// V2 Matter-First Hero Cards
+// ============================================================================
+
+function HeroCards({
+  summary,
+  onOpenMatter,
+}: {
+  summary: DashboardSummary | undefined;
+  onOpenMatter: (id: number | string) => void;
+}) {
+  if (!summary) return null;
+
+  const empty =
+    summary.open_actions.length === 0 &&
+    summary.upcoming_deadlines.length === 0 &&
+    (summary.unread_messages ?? 0) === 0;
+
+  if (empty) {
+    return (
+      <section className="crystal-stat-card !flex !flex-col items-center justify-center p-8 text-center">
+        <CheckCircle2 className="w-10 h-10 text-[var(--neon-emerald)] mb-3" />
+        <h2 className="text-xl font-bold text-[var(--tx-pure)]">All caught up</h2>
+        <p className="text-sm text-[var(--tx-secondary)] mt-1">
+          No open actions, no deadlines in the next 30 days.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Open Actions
+        </h2>
+        {summary.open_actions.length === 0 ? (
+          <p className="text-sm text-[var(--tx-secondary)] italic">None pending</p>
+        ) : (
+          <ul className="space-y-2">
+            {summary.open_actions.slice(0, 5).map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenMatter(a.id)}
+                  className="text-left text-sm text-[var(--tx-primary)] hover:text-[var(--bz-copper)] transition-colors w-full truncate"
+                >
+                  {a.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
+
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Deadlines · Next 30 days
+        </h2>
+        {summary.upcoming_deadlines.length === 0 ? (
+          <p className="text-sm text-[var(--tx-secondary)] italic">No upcoming deadlines</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {summary.upcoming_deadlines.slice(0, 5).map((d) => (
+              <li key={d.id} className="flex items-center gap-2 text-sm">
+                {d.due_date && <DeadlineBadge date={new Date(d.due_date)} />}
+                <span className="text-[var(--tx-primary)] truncate">{d.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <a
+          href="/api/portal/deadlines/ical"
+          download
+          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper)] hover:text-white transition-colors"
+        >
+          Export iCal →
+        </a>
+      </article>
+
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Team Messages
+        </h2>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <span className="text-4xl font-bold text-[var(--tx-pure)]">
+            {summary.unread_messages}
+          </span>
+          <span className="text-xs text-[var(--tx-secondary)] mt-1">unread</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => { window.location.href = '/portal/messages'; }}
+          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper)] hover:text-white transition-colors self-start"
+        >
+          Open →
+        </button>
+      </article>
+    </section>
   );
 }
