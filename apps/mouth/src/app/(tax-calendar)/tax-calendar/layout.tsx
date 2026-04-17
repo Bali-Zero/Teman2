@@ -6,7 +6,7 @@ import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
   title: "Tax Compliance Calendar · Bali Zero",
-  description: "Deadlines, reminder e compliance fiscale per business in Bali.",
+  description: "Deadlines, reminders and compliance for businesses in Bali.",
 };
 
 export default function TaxCalendarLayout({
