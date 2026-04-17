@@ -6,27 +6,40 @@ import json
 import logging
 import re
 
-# To add/remove admin access: edit this set + deploy.
-CRM_ADMIN_EMAILS: set[str] = {
-    "zero@balizero.com",
-    "admin@balizero.com",
-    "admin@zantara.io",
-    "damar@balizero.com",
-}
+from backend.app.core.config import settings
 
-# To add/remove super admin access: edit this set + deploy.
-SUPER_ADMIN_EMAILS: set[str] = {
-    "zero@balizero.com",
-    "antonellosiano@gmail.com",
-}
+# CRM-specific admin additions on top of the global allowlist
+# (`settings.admin_emails_set`). The global set covers zero/asya/antonellosiano;
+# these are CRM-domain roles that are NOT global admins. HIGH-7 (audit 2026-04-18).
+CRM_EXTRA_ADMIN_EMAILS: frozenset[str] = frozenset(
+    {
+        "admin@balizero.com",
+        "admin@zantara.io",
+        "damar@balizero.com",
+    },
+)
 
-# To add/remove full practices view access: edit this set + deploy.
-PRACTICES_FULL_VIEW_EMAILS: set[str] = {
-    "zero@balizero.com",
-    "antonellosiano@gmail.com",
-    "asya@balizero.com",
-    "ruslana@balizero.com",
-}
+# Practices accounting role — sees full practice history for audit/reconciliation.
+# Separate from admin because accounting users are not admins for everything else.
+PRACTICES_EXTRA_VIEW_EMAILS: frozenset[str] = frozenset({"ruslana@balizero.com"})
+
+
+def _crm_admin_emails() -> frozenset[str]:
+    """Effective CRM admin allowlist — union of global admins and CRM extras."""
+    return settings.admin_emails_set | CRM_EXTRA_ADMIN_EMAILS
+
+
+def _practices_full_view_emails() -> frozenset[str]:
+    """Effective practices-full-view allowlist — global admins + accounting."""
+    return settings.admin_emails_set | PRACTICES_EXTRA_VIEW_EMAILS
+
+
+# Backwards-compatibility aliases — some call sites still expect the old names.
+# These are intentionally thin wrappers: point future code at the helpers above
+# so that a config change propagates without redefining the set.
+def _crm_admin_emails_compat() -> frozenset[str]:
+    return _crm_admin_emails()
+
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +49,9 @@ def is_crm_admin(user: dict) -> bool:
     if not user:
         return False
     email = (user.get("email") or "").lower().strip()
-    if email in CRM_ADMIN_EMAILS:
+    if email in _crm_admin_emails():
         return True
-    if email in PRACTICES_FULL_VIEW_EMAILS:
+    if email in _practices_full_view_emails():
         return True
     role = (user.get("role") or "").lower().strip()
     return role in ("admin", "board member", "ceo", "founder")
@@ -48,24 +61,21 @@ def can_view_all_practices(user: dict) -> bool:
     """
     Check if a user can see ALL practices (admin, super admin, accounting).
 
-    Users not in PRACTICES_FULL_VIEW_EMAILS and not role=admin see only
+    Users not in the practices-full-view allowlist and not role=admin see only
     practices where the client is assigned to them.
     """
     if not user:
         return False
 
-    email = user.get("email", "").lower()
-    role = user.get("role", "").lower()
+    email = (user.get("email") or "").lower()
+    role = (user.get("role") or "").lower()
 
     # Explicit full-view list (admin + accounting)
-    if email in PRACTICES_FULL_VIEW_EMAILS:
+    if email in _practices_full_view_emails():
         return True
 
     # Role-based: admin and board/management roles see everything
-    if role in ("admin", "board member", "ceo", "founder"):
-        return True
-
-    return False
+    return role in ("admin", "board member", "ceo", "founder")
 
 
 def can_view_all_clients(user: dict) -> bool:
@@ -82,13 +92,17 @@ def can_view_all_clients(user: dict) -> bool:
 
 def is_super_admin(user: dict) -> bool:
     """
-    Check if a user is a super admin (e.g. Zero).
+    Check if a user is a super admin (e.g. Zero, Antonello).
+
+    Super admin is the global admin set (`settings.admin_emails_set`) minus
+    the CRM-specific additions. We accept the global set as the super-admin
+    boundary — if a user is a global admin they can always impersonate.
     """
     if not user:
         return False
 
-    email = user.get("email", "").lower()
-    return email in SUPER_ADMIN_EMAILS
+    email = (user.get("email") or "").lower()
+    return email in settings.admin_emails_set
 
 
 async def verify_client_access(

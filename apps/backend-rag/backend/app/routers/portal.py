@@ -21,6 +21,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
@@ -67,9 +68,11 @@ class PortalResponse(BaseModel):
 
 
 # Superusers that can impersonate any client via ?as_client=<id>.
-# Kept explicit (email-based) rather than "role=Founder" to avoid privilege
-# creep — adding/removing a name here is an auditable code change.
-SUPERUSER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
+# Sourced from settings.admin_emails_set (HIGH-7, audit 2026-04-18) — was
+# previously hardcoded to {"zero@balizero.com"}. Using a getter so ADMIN_EMAILS
+# env var changes propagate without a module reload.
+def _superuser_emails() -> frozenset[str]:
+    return settings.admin_emails_set
 
 
 async def _log_impersonation(
@@ -129,7 +132,7 @@ async def get_current_client(
     user = request.state.user
     user_email = (user.get("email") or "").lower()
     user_id = user.get("id") or user.get("user_id")
-    is_superuser = user_email in SUPERUSER_EMAILS
+    is_superuser = user_email in _superuser_emails()
 
     # ---- Superuser impersonation path ----
     if is_superuser:

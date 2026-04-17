@@ -854,9 +854,10 @@ async def list_permissions(
 
         # Filter out hidden admins unless the requester is one of them
         if not is_super_admin(current_user):
-            from backend.app.utils.crm_utils import SUPER_ADMIN_EMAILS
+            from backend.app.core.config import settings
 
-            permissions = [p for p in permissions if p.get("email") not in SUPER_ADMIN_EMAILS]
+            hidden = settings.admin_emails_set
+            permissions = [p for p in permissions if (p.get("email") or "").lower() not in hidden]
 
         return [PermissionItem(**p) for p in permissions]
 

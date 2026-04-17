@@ -12,7 +12,7 @@ from fastapi import Depends, HTTPException
 
 from backend.app.deps.auth import get_current_user
 from backend.app.utils.crm_utils import (
-    PRACTICES_FULL_VIEW_EMAILS,
+    _practices_full_view_emails,
     can_view_all_practices,
     is_crm_admin,
     is_super_admin,
@@ -20,8 +20,10 @@ from backend.app.utils.crm_utils import (
 
 logger = logging.getLogger(__name__)
 
-# Emails with full client list visibility (mirrors PRACTICES_FULL_VIEW_EMAILS)
-CLIENTS_FULL_VIEW_EMAILS: set[str] = PRACTICES_FULL_VIEW_EMAILS
+
+def _clients_full_view_emails() -> frozenset[str]:
+    """Emails with full client list visibility — mirrors practices full view."""
+    return _practices_full_view_emails()
 
 __all__ = [
     "require_crm_admin",
