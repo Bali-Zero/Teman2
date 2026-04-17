@@ -65,14 +65,16 @@ jobs:
       - name: pip-audit
         run: |
           pip install pip-audit
-          # requirements.txt references cell-core as `-e ../../packages/cell-core`
-          # (path relative to the requirements file's dir), so pip-audit must
-          # run from `apps/backend-rag/` — otherwise pip's editable resolver
-          # can't find the workspace package and aborts the whole audit.
+          # Run from apps/backend-rag/ so the `-e ../../packages/cell-core`
+          # line in requirements.txt resolves during pip-audit's dry-run
+          # install. `--skip-editable` then excludes cell-core from the
+          # vulnerability lookup itself: it's a first-party workspace
+          # package (not on PyPI), so "Dependency not found on PyPI" is
+          # the expected — and irrelevant — answer for it.
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
           cd apps/backend-rag
-          pip-audit --strict --requirement requirements.txt \
+          pip-audit --strict --skip-editable --requirement requirements.txt \
             --ignore-vuln GHSA-69w3-r845-3855
 
       - name: Import chain gate
