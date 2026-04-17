@@ -84,6 +84,9 @@ vi.mock("@/lib/api", () => ({
     getToken: mockGetToken,
     getUserProfile: mockGetUserProfile,
     getProfile: mockGetProfile,
+    portal: {
+      getProfile: mockGetProfile,
+    },
     logout: mockLogout,
   },
 }));
@@ -102,6 +105,7 @@ describe("PortalLayout", () => {
     mockGetToken.mockReturnValue("test-token");
     mockGetUserProfile.mockReturnValue(null);
     mockGetProfile.mockResolvedValue({
+      fullName: "Test User",
       name: "Test User",
       email: "test@example.com",
       avatar: null,
@@ -112,8 +116,10 @@ describe("PortalLayout", () => {
     vi.restoreAllMocks();
   });
 
-  it("should redirect to login when no token", async () => {
+  it("should redirect to login when no token and no cookie session", async () => {
     mockGetToken.mockReturnValue(null);
+    // Cookie-based SSO fallback also fails (no valid session)
+    mockGetProfile.mockRejectedValue(new Error("401 Unauthorized"));
 
     render(
       <PortalLayout>
@@ -146,7 +152,7 @@ describe("PortalLayout", () => {
   it("should load user profile from API when not stored", async () => {
     mockGetUserProfile.mockReturnValue(null);
     mockGetProfile.mockResolvedValue({
-      name: "API User",
+      fullName: "API User",
       email: "api@example.com",
     });
 
