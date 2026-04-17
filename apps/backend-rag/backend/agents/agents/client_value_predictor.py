@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.agents.services.client_scoring import ClientScoringService
 from backend.agents.services.client_segmentation import ClientSegmentationService
@@ -271,8 +272,6 @@ class ClientValuePredictor:
 
             if settings.slack_webhook_url:
                 try:
-                    import httpx
-
                     async with httpx.AsyncClient(timeout=10.0) as client:
                         await client.post(
                             settings.slack_webhook_url,
@@ -287,7 +286,7 @@ Errors: {len(results["errors"])}
 All clients scored and segmented automatically!""",
                             },
                         )
-                except Exception as e:
+                except (httpx.HTTPError, OSError) as e:
                     logger.error(f"Failed to send Slack notification: {e}", exc_info=True)
 
             return results
