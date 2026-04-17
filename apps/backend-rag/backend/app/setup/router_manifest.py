@@ -19,8 +19,8 @@ HOW TO ADD A NEW ROUTER:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -168,6 +168,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Federation / Feedback ──
     RouterEntry(name="federation", process_groups=_API, tags=("agent",)),
     RouterEntry(name="feedback",   process_groups=_API, tags=("core",)),
+
+    # ── Funnel (cross-funnel lead tracking, pre-auth) ──
+    RouterEntry(name="funnel", process_groups=_API, tags=("funnel",)),
 
     # ── Google Drive / Integrations ──
     RouterEntry(name="google_drive", process_groups=_API, tags=("integrations",)),
