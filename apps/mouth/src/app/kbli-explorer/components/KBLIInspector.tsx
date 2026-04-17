@@ -78,7 +78,7 @@ const KBLIInspector = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-[#D4B483]">
+      <div className="h-full flex flex-col items-center justify-center text-accent-sand">
         <Loader2 size={32} className="animate-spin mb-4" />
         <p className="text-xs uppercase tracking-widest opacity-50">
           Loading details...
@@ -115,7 +115,7 @@ const KBLIInspector = ({
       {onClose && (
         <button
           onClick={onClose}
-          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-[#1A1D24] text-[#888]"
+          className="md:hidden absolute top-4 right-4 z-10 p-2 rounded-full bg-surface-editorial-elevated text-[#888]"
         >
           <X size={18} />
         </button>
@@ -129,7 +129,7 @@ const KBLIInspector = ({
 
       <div className="p-6 md:p-8 border-b border-white/5 bg-gradient-to-b from-[#0F1115] to-[#050507]">
         <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-[#D4B483]/10 text-[#D4B483] border border-[#D4B483]/20">
+          <span className="px-3 py-1 rounded text-xs font-mono tracking-wider bg-accent-sand/10 text-accent-sand border border-accent-sand/20">
             KBLI {data.code}
           </span>
           <span className={pmaBadge.className}>{pmaBadge.label}</span>
@@ -141,11 +141,11 @@ const KBLIInspector = ({
         <div className="space-y-3">
           <div className="flex justify-between items-center text-[11px] md:text-[10px] uppercase tracking-widest text-[#666]">
             <span className={riskBadge.className}>{riskBadge.label}</span>
-            <span className="text-[#D4B483]">{data.licensing_status}</span>
+            <span className="text-accent-sand">{data.licensing_status}</span>
           </div>
-          <div className="h-[2px] w-full bg-[#1A1D24] relative">
+          <div className="h-[2px] w-full bg-surface-editorial-elevated relative">
             <div
-              className="absolute top-0 left-0 h-full bg-[#D4B483] shadow-[0_0_10px_rgba(212,180,131,0.3)] transition-all duration-1000"
+              className="absolute top-0 left-0 h-full bg-accent-sand shadow-[0_0_10px_rgba(212,180,131,0.3)] transition-all duration-1000"
               style={{
                 width: data.risk_profile.toLowerCase().includes("tinggi")
                   ? "90%"
@@ -163,7 +163,7 @@ const KBLIInspector = ({
           <h3 className="text-[11px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-[#555] mb-4 flex items-center gap-2">
             <FileText size={12} /> Official Description
           </h3>
-          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-[#D4B483]/30 pl-5 italic">
+          <p className="text-sm text-[#CCC] leading-loose font-light border-l border-accent-sand/30 pl-5 italic">
             &ldquo;{data.description}&rdquo;
           </p>
         </section>
@@ -218,10 +218,10 @@ const KBLIInspector = ({
               {data.licenses.map((lic, idx) => (
                 <div
                   key={idx}
-                  className="group p-4 bg-[#0A0C10] rounded border border-white/5 hover:border-[#D4B483]/20 transition-all"
+                  className="group p-4 bg-[#0A0C10] rounded border border-white/5 hover:border-accent-sand/20 transition-all"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm font-medium text-[#E1E1E3] group-hover:text-white transition-colors">
+                    <span className="text-sm font-medium text-silver group-hover:text-white transition-colors">
                       {lic.type}
                     </span>
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-[#151921] text-[#888] border border-white/5">
@@ -268,14 +268,14 @@ const KBLIInspector = ({
             <Activity size={12} /> Related Business Codes
           </h3>
           <div className="flex flex-wrap gap-2">
-            <div className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#D4B483] border border-[#D4B483]/20">
+            <div className="px-4 py-2 rounded-full bg-surface-deep text-xs text-accent-sand border border-accent-sand/20">
               Sector: {data.sector}
             </div>
             {data.related_codes.map((rel, idx) => (
               <button
                 key={idx}
                 onClick={() => onInspect?.(rel)}
-                className="px-4 py-2 rounded-full bg-[#0F1115] text-xs text-[#888] border border-white/5 hover:border-[#D4B483]/30 hover:text-[#D4B483] cursor-pointer transition-all"
+                className="px-4 py-2 rounded-full bg-surface-deep text-xs text-[#888] border border-white/5 hover:border-accent-sand/30 hover:text-accent-sand cursor-pointer transition-all"
               >
                 {rel}
               </button>

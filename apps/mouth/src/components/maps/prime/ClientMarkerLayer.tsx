@@ -41,7 +41,7 @@ export function IntelligenceFeatureCount() {
 
   const count = intelligenceData?.features?.length ?? 0;
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#d4845a]/20 text-[#d4845a]">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-warm/20 text-accent-warm">
       {count} {count === 1 ? 'result' : 'results'}
     </span>
   );

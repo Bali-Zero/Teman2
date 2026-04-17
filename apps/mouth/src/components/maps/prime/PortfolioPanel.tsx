@@ -148,7 +148,7 @@ export function PortfolioPanel({ clientId }: { clientId: number | null }) {
                   Suggestions
                 </div>
                 {data.suggestions.map((s, i) => (
-                  <div key={i} className="text-[10px] text-[#d4845a] mb-0.5">
+                  <div key={i} className="text-[10px] text-accent-warm mb-0.5">
                     &#x2192; {s}
                   </div>
                 ))}

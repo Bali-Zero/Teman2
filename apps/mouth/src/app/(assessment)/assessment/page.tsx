@@ -369,7 +369,7 @@ export default function AssessmentPage() {
                 {BLOCK_TITLES[activeBlock]}
               </div>
               <div
-                className={`font-mono text-lg tabular-nums ${isOvertime ? "text-[#c23c2c] animate-pulse" : remaining < 300 ? "text-amber-400" : "text-white/80"}`}
+                className={`font-mono text-lg tabular-nums ${isOvertime ? "text-accent-red-brand animate-pulse" : remaining < 300 ? "text-amber-400" : "text-white/80"}`}
               >
                 {isOvertime ? "+" : ""}
                 {formatTime(isOvertime ? elapsed - limit : remaining)}
@@ -391,7 +391,7 @@ export default function AssessmentPage() {
                 className="w-40 h-40 rounded-full shadow-2xl shadow-[#c23c2c]/20"
               />
               <div className="space-y-2">
-                <div className="text-xs uppercase tracking-[0.3em] text-[#c23c2c] font-semibold">
+                <div className="text-xs uppercase tracking-[0.3em] text-accent-red-brand font-semibold">
                   Bali Zero — Official
                 </div>
                 <h1 className="text-4xl font-bold tracking-tight">
@@ -416,7 +416,7 @@ export default function AssessmentPage() {
                 <ul className="space-y-2 ml-4">
                   {BLOCK_TITLES.map((t, i) => (
                     <li key={t} className="flex items-start gap-2">
-                      <span className="text-[#c23c2c] font-mono text-xs mt-0.5 shrink-0">
+                      <span className="text-accent-red-brand font-mono text-xs mt-0.5 shrink-0">
                         {String(i + 1).padStart(2, "0")}
                       </span>
                       <div>
@@ -447,7 +447,7 @@ export default function AssessmentPage() {
 
             <button
               onClick={() => setPhase("briefing")}
-              className="bg-[#c23c2c] hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
+              className="bg-accent-red-brand hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
             >
               Mulai — Baca Briefing
             </button>
@@ -483,7 +483,7 @@ export default function AssessmentPage() {
                   href="/assessment/briefing"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto text-[#c23c2c] hover:text-[#e04535] text-sm font-medium"
+                  className="ml-auto text-accent-red-brand hover:text-[#e04535] text-sm font-medium"
                 >
                   Buka Briefing &rarr;
                 </a>
@@ -505,7 +505,7 @@ export default function AssessmentPage() {
                   href="https://github.com/balizero/nuzantara"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-auto text-[#c23c2c] hover:text-[#e04535] text-sm font-medium"
+                  className="ml-auto text-accent-red-brand hover:text-[#e04535] text-sm font-medium"
                 >
                   Buka Repository &rarr;
                 </a>
@@ -522,7 +522,7 @@ export default function AssessmentPage() {
                 setPhase("blocks");
                 startBlock(0);
               }}
-              className="bg-[#c23c2c] hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
+              className="bg-accent-red-brand hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
             >
               Saya Siap — Mulai Blok 1
             </button>
@@ -589,7 +589,7 @@ export default function AssessmentPage() {
                       onChange={(e) => updateAnswer(q.id, e.target.value)}
                       placeholder={q.placeholder}
                       rows={8}
-                      className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#c23c2c]/50 focus:border-[#c23c2c]/30 resize-y min-h-[120px] font-mono"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#c23c2c]/50 focus:border-accent-red-brand/30 resize-y min-h-[120px] font-mono"
                     />
                   </div>
                 ))}
@@ -607,7 +607,7 @@ export default function AssessmentPage() {
                   <button
                     onClick={() => submitBlock(activeBlock)}
                     disabled={blocks[activeBlock].submitting}
-                    className="bg-[#c23c2c] hover:bg-[#a83225] disabled:bg-white/10 disabled:text-white/30 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+                    className="bg-accent-red-brand hover:bg-[#a83225] disabled:bg-white/10 disabled:text-white/30 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     {blocks[activeBlock].submitting ? (
                       <>
@@ -629,7 +629,7 @@ export default function AssessmentPage() {
                 {activeBlock < 2 && !blocks[activeBlock + 1].startedAt && (
                   <button
                     onClick={() => startBlock(activeBlock + 1)}
-                    className="bg-[#c23c2c] hover:bg-[#a83225] text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors mt-4"
+                    className="bg-accent-red-brand hover:bg-[#a83225] text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors mt-4"
                   >
                     Lanjut ke Blok {activeBlock + 2}
                   </button>
@@ -657,7 +657,7 @@ export default function AssessmentPage() {
                       onChange={(e) => setBonusAnswer(e.target.value)}
                       placeholder="Visimu untuk Bali Zero..."
                       rows={8}
-                      className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#c23c2c]/50 focus:border-[#c23c2c]/30 resize-y min-h-[120px] font-mono"
+                      className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-sm text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#c23c2c]/50 focus:border-accent-red-brand/30 resize-y min-h-[120px] font-mono"
                     />
                     <div className="flex justify-between">
                       <button
@@ -668,7 +668,7 @@ export default function AssessmentPage() {
                       </button>
                       <button
                         onClick={submitBonus}
-                        className="bg-[#c23c2c] hover:bg-[#a83225] text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
+                        className="bg-accent-red-brand hover:bg-[#a83225] text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors"
                       >
                         Kirim Bonus
                       </button>
@@ -681,7 +681,7 @@ export default function AssessmentPage() {
                     </div>
                     <button
                       onClick={() => setPhase("done")}
-                      className="bg-[#c23c2c] hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors w-full"
+                      className="bg-accent-red-brand hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors w-full"
                     >
                       Selesai
                     </button>

@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import type { DashboardStatConfig } from "@/types/dashboard-role.types";
 
@@ -11,8 +9,8 @@ const COLOR_CLASS: Record<DashboardStatConfig["colorVariant"], string> = {
 };
 
 const VALUE_COLOR: Record<DashboardStatConfig["colorVariant"], string> = {
-  green: "text-[#5cb88a]",
-  red: "text-[#c45c78]",
+  green: "text-accent-sage",
+  red: "text-accent-pink-editorial",
   yellow: "text-[#b89a40]",
   blue: "text-[#4a8ec4]",
 };

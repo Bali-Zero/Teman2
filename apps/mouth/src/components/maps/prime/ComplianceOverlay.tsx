@@ -26,7 +26,7 @@ function computeZoneDensities(features: IntelligenceFeature[]): ZoneDensity[] {
 function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
-      <p className={`text-lg font-bold ${accent ? 'text-[#d4845a]' : 'text-white'}`}>{value}</p>
+      <p className={`text-lg font-bold ${accent ? 'text-accent-warm' : 'text-white'}`}>{value}</p>
       <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{label}</p>
     </div>
   );
@@ -57,7 +57,7 @@ function ZoneDensityRow({ rank, density }: { rank: number; density: ZoneDensity 
             KBLI mismatch
           </span>
         )}
-        <span className="text-xs font-medium text-[#d4845a]">{density.count}</span>
+        <span className="text-xs font-medium text-accent-warm">{density.count}</span>
       </div>
     </div>
   );
@@ -90,7 +90,7 @@ export function ComplianceOverlay() {
           <span className="text-sm font-semibold text-white">Intelligence Layer</span>
         </div>
         {!isLoadingIntelligence && !isAuthError && featureCount > 0 && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#d4845a]/20 text-[#d4845a]">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-warm/20 text-accent-warm">
             {featureCount} entities
           </span>
         )}
@@ -137,7 +137,7 @@ export function ComplianceOverlay() {
             href="/api/prime/v2/health"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 mt-3 text-xs text-[#d4845a] hover:text-[#e09070] transition-colors"
+            className="inline-flex items-center gap-1 mt-3 text-xs text-accent-warm hover:text-[#e09070] transition-colors"
           >
             &#x25B6; Run geocoding
           </a>
@@ -181,7 +181,7 @@ export function ComplianceOverlay() {
               href="/api/prime/v2/health"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-[#d4845a] transition-colors"
+              className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-accent-warm transition-colors"
             >
               &#x25B6; Check geocoding status
             </a>

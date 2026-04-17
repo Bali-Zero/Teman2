@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import type { MarketingMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
 interface Props {
@@ -23,7 +21,7 @@ export function MarketingRoleWidget({ metrics }: Props) {
           ✍️ {metrics.articoli_in_review} articoli in review
         </div>
       )}
-      <div className="px-2 py-1.5 rounded-lg bg-[rgba(92,184,138,0.08)] border border-[rgba(92,184,138,0.20)] text-[9px] font-semibold text-[#5cb88a]">
+      <div className="px-2 py-1.5 rounded-lg bg-[rgba(92,184,138,0.08)] border border-[rgba(92,184,138,0.20)] text-[9px] font-semibold text-accent-sage">
         📝 {metrics.articoli_pubblicati} pubblicati
       </div>
       {metrics.lead_nuovi > 0 && (

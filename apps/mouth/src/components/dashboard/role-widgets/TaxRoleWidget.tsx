@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import type { TaxMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
 interface Props {
@@ -16,17 +14,17 @@ export function TaxRoleWidget({ metrics }: Props) {
       {metrics.prossima_scadenza && (
         <>
           <span className="text-[10px] text-white/50">Prossima scadenza</span>
-          <span className="text-lg font-black text-[#c45c78] leading-none">
+          <span className="text-lg font-black text-accent-pink-editorial leading-none">
             {metrics.prossima_scadenza}
           </span>
         </>
       )}
       <div className="h-px bg-white/[0.06]" />
-      <div className="px-2 py-1.5 rounded-lg bg-[rgba(92,184,138,0.08)] border border-[rgba(92,184,138,0.20)] text-[9px] font-semibold text-[#5cb88a]">
+      <div className="px-2 py-1.5 rounded-lg bg-[rgba(92,184,138,0.08)] border border-[rgba(92,184,138,0.20)] text-[9px] font-semibold text-accent-sage">
         ✓ {metrics.clienti_compliant} clienti compliant
       </div>
       {metrics.scadenze_7gg > 0 && (
-        <div className="px-2 py-1.5 rounded-lg bg-[rgba(196,92,120,0.09)] border border-[rgba(196,92,120,0.22)] text-[9px] font-semibold text-[#c45c78]">
+        <div className="px-2 py-1.5 rounded-lg bg-[rgba(196,92,120,0.09)] border border-[rgba(196,92,120,0.22)] text-[9px] font-semibold text-accent-pink-editorial">
           🚨 {metrics.scadenze_7gg} scadenze &lt;7gg
         </div>
       )}

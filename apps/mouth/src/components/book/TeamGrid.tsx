@@ -31,7 +31,7 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.5) }}
               viewport={{ once: true }}
-              className="group text-center p-4 rounded-xl border border-white/5 hover:border-[#d4845a]/40 transition-all bg-white/[0.02] hover:bg-white/[0.05]"
+              className="group text-center p-4 rounded-xl border border-white/5 hover:border-accent-warm/40 transition-all bg-white/[0.02] hover:bg-white/[0.05]"
             >
               <div className="w-16 h-16 rounded-full mx-auto mb-3 overflow-hidden flex items-center justify-center ring-2 ring-[#d4845a]/20 group-hover:ring-[#d4845a]/50 transition-all">
                 {member.photo ? (
@@ -50,7 +50,7 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
                         "linear-gradient(135deg, #1a1410 0%, #2a1f14 50%, #1a1410 100%)",
                     }}
                   >
-                    <span className="text-[#d4845a] font-bold text-base font-[family-name:var(--font-spartan)] select-none">
+                    <span className="text-accent-warm font-bold text-base font-[family-name:var(--font-spartan)] select-none">
                       {member.name
                         .split(" ")
                         .map((w) => w[0])
@@ -64,7 +64,7 @@ export function TeamGrid({ locale = "en" }: TeamGridProps) {
               <p className="font-[family-name:var(--font-spartan)] text-white text-sm font-semibold leading-tight">
                 {member.name}
               </p>
-              <p className="font-[family-name:var(--font-montserrat)] text-[#d4845a]/70 text-[10px] mt-0.5 uppercase tracking-wider">
+              <p className="font-[family-name:var(--font-montserrat)] text-accent-warm/70 text-[10px] mt-0.5 uppercase tracking-wider">
                 {t.teamDepts[member.department]}
               </p>
               <p className="font-[family-name:var(--font-montserrat)] text-white/40 text-xs mt-0.5">

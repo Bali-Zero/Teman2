@@ -123,7 +123,7 @@ function DensitySection({ zoneCode }: { zoneCode: string }) {
             <div key={sector} className="flex items-center gap-2">
               <span className="text-[10px] text-slate-500 w-24 shrink-0 truncate">{label}</span>
               <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-[#d4845a]/70" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full bg-accent-warm/70" style={{ width: `${pct}%` }} />
               </div>
               <span className="text-[10px] text-slate-500 tabular-nums w-6 text-right">
                 {count}
@@ -144,7 +144,7 @@ export function InvestmentAnalysisPanel() {
     return (
       <div className="px-4 py-6 text-center">
         <div className="inline-flex items-center gap-2">
-          <div className="w-4 h-4 border-2 border-[#d4845a] border-t-transparent rounded-full animate-spin" />
+          <div className="w-4 h-4 border-2 border-accent-warm border-t-transparent rounded-full animate-spin" />
           <span className="text-xs text-slate-400">Analyzing investment potential...</span>
         </div>
       </div>
@@ -231,7 +231,7 @@ export function InvestmentAnalysisPanel() {
       {verdict.label !== 'RED' && (
         <button
           onClick={() => setShowDealFlow(true)}
-          className="w-full text-center py-2.5 rounded-xl bg-[#d4845a] hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors"
+          className="w-full text-center py-2.5 rounded-xl bg-accent-warm hover:bg-[#c4744a] text-white text-sm font-semibold transition-colors"
         >
           Start Investment
         </button>

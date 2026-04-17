@@ -82,7 +82,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                     slug === "visa" && visaColors
                       ? `${visaColors.bg} ${visaColors.border}`
                       : pkg.popular
-                        ? "border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]"
+                        ? "border-accent-blue-editorial bg-accent-blue-editorial/10 hover:border-accent-blue-editorial"
                         : "border-white/10 bg-[#0a2540] hover:border-white/30"
                   }`}
                   onClick={() => setSelectedPackage(pkg)}
@@ -92,7 +92,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                       className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
                         slug === "visa" && visaColors
                           ? visaColors.badge
-                          : "bg-[#2251ff]"
+                          : "bg-accent-blue-editorial"
                       }`}
                     >
                       Most Popular
@@ -107,7 +107,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
 
                   <div className="mb-6">
                     {pkg.price === "Contact" ? (
-                      <span className="text-2xl font-bold text-[#2251ff]">
+                      <span className="text-2xl font-bold text-accent-blue-editorial">
                         Contact for quote
                       </span>
                     ) : (
@@ -137,7 +137,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
                       slug === "visa" && visaColors
                         ? `${visaColors.badge} text-white hover:opacity-90`
                         : pkg.popular
-                          ? "bg-[#2251ff] text-white hover:bg-[#1a41cc]"
+                          ? "bg-accent-blue-editorial text-white hover:bg-[#1a41cc]"
                           : "border border-white/20 text-white hover:bg-white/10"
                     }`}
                   >
@@ -177,7 +177,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
             <div className="p-8">
               {/* Header */}
               {selectedPackage.popular && (
-                <span className="inline-block px-3 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium mb-4">
+                <span className="inline-block px-3 py-1 rounded-full bg-accent-blue-editorial text-white text-xs font-medium mb-4">
                   Most Popular
                 </span>
               )}
@@ -191,7 +191,7 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
               {/* Price */}
               <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
                 {selectedPackage.price === "Contact" ? (
-                  <span className="text-2xl font-bold text-[#2251ff]">
+                  <span className="text-2xl font-bold text-accent-blue-editorial">
                     Contact for quote
                   </span>
                 ) : (
