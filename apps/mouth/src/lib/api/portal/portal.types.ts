@@ -544,3 +544,35 @@ export interface NotificationsResponse {
   notifications: PortalNotification[];
   unread_count: number;
 }
+
+// V2 Matter-first dashboard summary (3 hero cards)
+export interface DashboardSummaryAction {
+  id: number | string;
+  title: string;
+  type: string | null;
+  pending_from_client: string | null;
+  status: string | null;
+}
+
+export interface DashboardSummaryDeadline {
+  id: string;
+  label: string;
+  due_date: string | null;
+  kind: string | null;
+}
+
+export interface DashboardSummary {
+  open_actions: DashboardSummaryAction[];
+  upcoming_deadlines: DashboardSummaryDeadline[];
+  unread_messages: number;
+}
+
+export interface PortalMatter {
+  id: number;
+  title: string;
+  type: "visa" | "company" | "tax" | "property" | "other";
+  progress: number;
+  pending_docs: string[];
+  next_deadline: string | null;
+  next_step: string | null;
+}
