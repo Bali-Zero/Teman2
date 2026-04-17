@@ -1,0 +1,44 @@
+/*
+ * Layer 3 — Theme: Aubergine (contrarian differentiator)
+ *
+ * #1A1520 warm red-violet near-black. Inspired by Mast Brothers chocolate,
+ * Le Labo, De Bethune, and the volcanic obsidian of Indonesian temple stone.
+ * The red-violet undertone harmonizes with the Visa funnel red (--color-red-500)
+ * instead of fighting it. Differentiates from every premium SaaS / fintech
+ * baseline (Linear, Stripe, Vercel all pick neutral-cool blacks).
+ *
+ * Trade-off: gold shifts slightly orange on warm base — cyan re-tuned to
+ * teal-ward #0891B2 to restore harmony. Most teams will reject this as "too
+ * much personality for a legal product" — which is why picking it IS the
+ * differentiation move.
+ *
+ * Cap: ≤40 declarations.
+ */
+
+[data-theme="aubergine"] {
+  --surface-base: #1a1520;
+  --surface-raised: rgba(255, 255, 255, 0.035);
+  --surface-sunken: rgba(0, 0, 0, 0.45);
+  --surface-overlay: rgba(26, 21, 32, 0.72);
+  --surface-scrim: rgba(26, 21, 32, 0.92);
+
+  --text-primary: rgba(255, 255, 255, 0.94);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.28);
+  --text-on-accent: #ffffff;
+
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --nav-bg: rgba(26, 21, 32, 0.6);
+  --footer-bg: #150f1a;
+  --footer-text: var(--text-tertiary);
+}
+
+/* Cyan re-tuned to teal-ward so it doesn't clash with aubergine warmth.
+   Only applies when the Tax funnel is active under the aubergine theme. */
+[data-theme="aubergine"] [data-funnel="tax"] {
+  --accent-funnel: #0891b2;
+  --accent-funnel-text: #22d3ee;
+}
