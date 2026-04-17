@@ -17,7 +17,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from backend.app.dependencies import get_current_user
 from backend.core.cache import invalidate_cache
 from backend.services.experience.models import (
-    TrajectoryOutcome,
     TrajectoryQuery,
     TrajectoryRecord,
     TrajectoryResult,
