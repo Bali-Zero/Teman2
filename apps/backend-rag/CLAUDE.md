@@ -23,6 +23,15 @@ docker build -f apps/backend-rag/Dockerfile -t rag-test .
 
 Authoritative `.dockerignore` is at repo root (`/.dockerignore`); `apps/backend-rag/.dockerignore` is retained but IGNORED by Fly.
 
+### SQLite Persistence — `/data` Volume on `api` Process (PR #75)
+
+The `api` process has a persistent Fly volume (`nuzantara_api_data → /data`). Two SQLite databases live there:
+
+- `EXPERIENCE_DB_PATH=/data/experience.db` — Genome (Experience/Skill)
+- `METABOLIC_DB_PATH=/data/organism_metrics.db` — Metabolic snapshots
+
+Both env vars are set in `fly.toml [env]`. Data survives rolling deploys. The `rag` process has its own separate volume (`nuzantara_rag_data`).
+
 ### Router Registration — Manifest Pattern (PR #63)
 
 **NEVER edit `router_registration.py` directly.** It reads from `router_manifest.py`.
