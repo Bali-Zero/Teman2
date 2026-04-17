@@ -105,8 +105,13 @@ RUN find /home/nuzantara/.local -type d -name __pycache__ -exec rm -rf {} + 2>/d
     && find /home/nuzantara/.local -type d -name "test" -exec rm -rf {} + 2>/dev/null || true \
     && rm -rf /home/nuzantara/.local/share/playwright 2>/dev/null || true
 
-# Change ownership of all files to non-root user
-RUN chown -R nuzantara:nuzantara /app
+# Change ownership of all files to non-root user.
+# CRITICAL: includes /home/nuzantara so that the `claude` CLI (Claude Code)
+# can create its cache under ~/.claude. Without this, the CLI hangs on
+# first invocation waiting for writable HOME (see commit message of
+# the preceding Dockerfile change for full context).
+RUN mkdir -p /home/nuzantara/.claude \
+    && chown -R nuzantara:nuzantara /app /home/nuzantara
 
 # Switch to non-root user
 USER nuzantara
