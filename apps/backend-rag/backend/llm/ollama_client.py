@@ -15,11 +15,13 @@ S04 Solidification: persistent httpx.AsyncClient (was transient per-call).
 """
 
 import logging
+import time
 from typing import Any
 
 import httpx
 
 from backend.app.core.config import settings
+from backend.llm.metrics_emitter import emit_llm_metric
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ async def ollama_generate(
     if system:
         payload["system"] = system
 
+    t0 = time.perf_counter()
     try:
         client = _get_client()
         response = await client.post(
@@ -95,7 +98,24 @@ async def ollama_generate(
         )
         response.raise_for_status()
         data = response.json()
-        return data.get("response", "").strip()
+        text = data.get("response", "").strip()
+        latency_ms = round((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "LLM call",
+            extra={
+                "provider": "ollama",
+                "model": model,
+                "latency_ms": latency_ms,
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "completion_tokens": data.get("eval_count", 0),
+            },
+        )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
+        )
+        return text
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -131,6 +151,7 @@ async def ollama_chat(
         },
     }
 
+    t0 = time.perf_counter()
     try:
         client = _get_client()
         response = await client.post(
@@ -140,7 +161,24 @@ async def ollama_chat(
         )
         response.raise_for_status()
         data = response.json()
-        return data.get("message", {}).get("content", "").strip()
+        text = data.get("message", {}).get("content", "").strip()
+        latency_ms = round((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "LLM call",
+            extra={
+                "provider": "ollama",
+                "model": model,
+                "latency_ms": latency_ms,
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "completion_tokens": data.get("eval_count", 0),
+            },
+        )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
+        )
+        return text
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -167,6 +205,7 @@ async def ollama_chat_kg(
 
     Returns raw JSON string, or None if unavailable/failed.
     """
+    t0 = time.perf_counter()
     try:
         client = _get_client()
         resp = await client.post(
@@ -182,7 +221,25 @@ async def ollama_chat_kg(
             timeout=timeout,
         )
         resp.raise_for_status()
-        return resp.json().get("message", {}).get("content", "").strip() or None
+        data = resp.json()
+        text = data.get("message", {}).get("content", "").strip() or None
+        latency_ms = round((time.perf_counter() - t0) * 1000)
+        logger.info(
+            "LLM call",
+            extra={
+                "provider": "ollama",
+                "model": model,
+                "latency_ms": latency_ms,
+                "prompt_tokens": data.get("prompt_eval_count", 0),
+                "completion_tokens": data.get("eval_count", 0),
+            },
+        )
+        await emit_llm_metric(
+            provider="ollama", model=model, latency_ms=latency_ms,
+            prompt_tokens=data.get("prompt_eval_count", 0),
+            completion_tokens=data.get("eval_count", 0),
+        )
+        return text
 
     except httpx.ConnectError:
         logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
@@ -206,5 +263,6 @@ async def is_ollama_available(model: str | None = None) -> bool:
             models = [m["name"] for m in response.json().get("models", [])]
             return any(model in m for m in models)
         return True
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Ollama availability check failed: {e}")
         return False
