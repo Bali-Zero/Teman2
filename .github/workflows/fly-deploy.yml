@@ -63,14 +63,16 @@ jobs:
 
       - name: Ruff lint (blocking only on deploy-critical issues)
         run: |
-          # Block only on issues that would actually break the running backend:
+          # Block only on issues that would actually break the running backend
+          # or that silently rot the codebase:
+          #   F401 — unused import (dead code; also catches typo'd re-exports)
           #   F821 — undefined name (runtime NameError)
           #   F822 — undefined export in __all__ (ImportError on `from X import *`)
           #   F823 — local variable referenced before assignment
-          # Style issues (E501 long lines, I001 import order, F401 unused imports,
-          # E402 late imports, W293 whitespace) are tracked by the full lint
-          # step below in informational mode — they shouldn't block a deploy.
-          ruff check backend/app/ --select F821,F822,F823 --output-format=concise
+          # Style issues (E501 long lines, I001 import order, E402 late imports,
+          # W293 whitespace) are tracked by the full lint step below in
+          # informational mode — they shouldn't block a deploy.
+          ruff check backend/app/ --select F401,F821,F822,F823 --output-format=concise
           echo "✅ Deploy-critical lint OK"
 
       - name: Ruff full lint (informational — non-blocking)
@@ -248,3 +250,52 @@ jobs:
             -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
             -d "text=${MESSAGE}" \
             -d "parse_mode=Markdown" || true
+
+  # ---------------------------------------------------------------------------
+  # Edge-case coverage: upstream crashes *before* post-deploy-health runs.
+  #
+  # The `post-deploy-health` job chains `needs: deploy`, so when the `deploy` or
+  # `run-migrations` jobs fail outright (flyctl crash, network error, image
+  # build fail, timeout), GitHub Actions marks `post-deploy-health` as SKIPPED
+  # — not failed — and none of its Telegram alerts or rollback steps ever fire.
+  #
+  # This job watches those upstream failures and sends the Telegram notification
+  # that would otherwise be silently swallowed. No rollback is issued: if
+  # `run-migrations` or `deploy` crash, no new Fly release has shipped yet, so
+  # the previous release remains live. We only need visibility.
+  #
+  # The `if:` guard uses `always()` so the job still evaluates when upstream
+  # jobs fail/skip (otherwise GitHub skips it too). The inner expression then
+  # fires the alert only when one of the two upstream jobs actually failed.
+  # ---------------------------------------------------------------------------
+  deploy-failure-alert:
+    name: Alert on deploy/migration crash (pre-health)
+    needs: [run-migrations, deploy]
+    if: |
+      always() &&
+      (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine failing stage
+        id: stage
+        run: |
+          if [ "${{ needs.run-migrations.result }}" = "failure" ]; then
+            echo "stage=run-migrations" >> $GITHUB_OUTPUT
+            echo "icon=🧬" >> $GITHUB_OUTPUT
+            echo "detail=DB migration failed before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          else
+            echo "stage=deploy" >> $GITHUB_OUTPUT
+            echo "icon=🚨" >> $GITHUB_OUTPUT
+            echo "detail=flyctl deploy crashed before the rolling swap reached health check. Previous release still live." >> $GITHUB_OUTPUT
+          fi
+
+      - name: Telegram alert (deploy crash before health)
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MESSAGE="${{ steps.stage.outputs.icon }} *Deploy Nuzantara CRASH*%0A%0AStage fallito: \`${{ steps.stage.outputs.stage }}\`%0A${{ steps.stage.outputs.detail }}%0A%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0ARun: ${RUN_URL}%0A%0A⚠️ Nessun rollback necessario (vecchia release ancora attiva). Controlla i log del run."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true" || true

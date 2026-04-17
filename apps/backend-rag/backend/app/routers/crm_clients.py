@@ -5,7 +5,6 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -15,7 +14,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from pydantic import BaseModel, EmailStr, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.deps.crm_access import can_view_all_clients, get_crm_user_filter
+from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.services.crm.audit_logger import audit_change, audit_logger
 from backend.app.services.crm.metrics import metrics_collector, track_client_creation
 from backend.app.utils.crm_utils import (

@@ -3,7 +3,6 @@ JWT Authentication Router
 Real email+PIN authentication using bcrypt and JWT tokens
 """
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 

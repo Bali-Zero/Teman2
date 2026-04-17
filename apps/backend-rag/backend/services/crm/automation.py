@@ -152,8 +152,13 @@ async def _send_with_brevo_fallback(
             response.raise_for_status()
         logger.info(f"Email sent to {to_email} via Brevo")
         return
-    except Exception as brevo_error:
+    except (httpx.HTTPError, httpx.InvalidURL) as brevo_error:
         logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+    except Exception as brevo_error:  # noqa: BLE001 — defensive fallback before Zoho retry
+        logger.warning(
+            f"Brevo failed for {to_email} (unexpected error), trying Zoho: {brevo_error}",
+            exc_info=True,
+        )
 
     await zoho_email_service.send_email(
         to_email=to_email,
@@ -251,8 +256,13 @@ class ProcessAutomationService:
                     )
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to send process start email to client: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error sending process start email to client: {e}",
+                        exc_info=True,
+                    )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 
@@ -267,8 +277,13 @@ class ProcessAutomationService:
                     logger.info(
                         f"Process start notification sent to team leader {team_leader_email}",
                     )
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to send notification to team leader: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error notifying team leader: {e}",
+                        exc_info=True,
+                    )
 
             await _log_activity(
                 self.db_pool,
@@ -468,8 +483,13 @@ class CompletedProcessService:
                         documents=uploaded_docs,
                     )
                     client_notified = True
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to send completion email to client: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error sending completion email to client: {e}",
+                        exc_info=True,
+                    )
 
             team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
             team_notified = False
@@ -481,8 +501,13 @@ class CompletedProcessService:
                         practice_data=practice_data,
                     )
                     team_notified = True
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to notify team leader: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error notifying team leader about completion: {e}",
+                        exc_info=True,
+                    )
 
             await _log_activity(
                 self.db_pool,
@@ -542,8 +567,13 @@ class CompletedProcessService:
                         drive_file_url=result["file_url"],
                     )
 
-            except Exception as e:
+            except (httpx.HTTPError, ValueError) as e:
                 logger.error(f"Failed to upload {doc['filename']}: {e}")
+            except Exception as e:  # noqa: BLE001 — single-doc failure must not stop bulk upload
+                logger.error(
+                    f"Unexpected error uploading {doc['filename']}: {e}",
+                    exc_info=True,
+                )
 
         return uploaded
 
@@ -725,8 +755,13 @@ class WaitingDocumentsService:
                     logger.info(
                         f"Waiting docs notification sent to team leader {team_leader_email}",
                     )
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to notify team leader: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error notifying team leader (waiting docs): {e}",
+                        exc_info=True,
+                    )
             else:
                 logger.warning(f"No team leader assigned for practice {practice_id}")
 
@@ -739,8 +774,13 @@ class WaitingDocumentsService:
                     )
                     results["client_notified"] = True
                     logger.info(f"Document request email sent to client {client_data['email']}")
-                except Exception as e:
+                except (httpx.HTTPError, ValueError) as e:
                     logger.error(f"Failed to send document request to client: {e}", exc_info=True)
+                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                    logger.error(
+                        f"Unexpected error sending document request to client: {e}",
+                        exc_info=True,
+                    )
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 

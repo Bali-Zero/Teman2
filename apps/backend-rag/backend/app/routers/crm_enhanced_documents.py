@@ -6,7 +6,6 @@ Provides: document CRUD, categories, OCR status, visa extraction,
 document upload (Base64 + Google Drive), document soft-delete.
 """
 
-import asyncio
 import base64
 import hashlib
 from datetime import date, datetime

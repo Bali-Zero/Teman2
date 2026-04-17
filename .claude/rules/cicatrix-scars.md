@@ -5,6 +5,49 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: Deploy crash before health check went unalerted (Air A3, 2026-04-18)
+
+_Discovered: 2026-04-18 audit (CRIT-3) · Patched: 2026-04-18 via `devops/deploy-rollback-hardening`_
+
+**TRAUMA:** In `.github/workflows/fly-deploy.yml`, the `post-deploy-health` job
+chained `needs: deploy`. Its rollback + Telegram notification steps used
+`if: failure() && steps.health_check.outputs.healthy == 'false'`. If `deploy`
+itself crashed (flyctl error, network failure, image build fail, timeout) *before*
+any machine was swapped, GitHub Actions marked `post-deploy-health` as
+**skipped** (not failed) due to upstream-dependency failure — so neither the
+rollback nor the Telegram alert fired. The previous release kept serving
+traffic (no new bits had shipped), but Zero had no visibility that the deploy
+had aborted.
+
+**ANTIBODY:** New sibling job `deploy-failure-alert` (see fly-deploy.yml):
+
+```yaml
+needs: [run-migrations, deploy]
+if: |
+  always() &&
+  (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
+```
+
+It runs when *either* `run-migrations` or `deploy` fails, distinguishes the
+failing stage in the Telegram message, and deliberately does **not** issue a
+rollback (no new release exists to roll back from). Includes a link to the GH
+run for quick triage.
+
+**GOTCHA:**
+
+- The `if:` must use `always()` — without it, GitHub skips the job because its
+  upstream deps failed. With `always()`, the inner expression then decides
+  whether to fire.
+- Do NOT collapse this into `post-deploy-health`: the two cases need *different*
+  behavior (rollback vs. no rollback) and GitHub's skipped-vs-failed semantics
+  only let one of them see an upstream failure cleanly.
+- `pre-deploy-gate` failures are still handled by the gate's own Telegram step;
+  if the gate fails, `run-migrations` and `deploy` are marked *skipped* (not
+  failure), so `deploy-failure-alert` correctly stays silent — no duplicate
+  alert.
+
+---
+
 ### ✅ RESOLVED: Dockerfile cell-core missing (PR #56 → PR #62 → monorepo workspace promotion)
 
 _Discovered: 2026-04-15 · Patched: 2026-04-16 via PR #62 · Fully resolved: 2026-04-17 via cell-core-workspace PR_

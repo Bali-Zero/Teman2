@@ -94,8 +94,11 @@ async def _resolve_desa_code_from_latlng(lat: float, lng: float, gmaps_api_key: 
                 if len(val) == 10 and val.isdigit() and val.startswith("51"):
                     return val
         return None
-    except Exception as e:
+    except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.warning(f"⚠️ [Zoning] Google Maps geocoding failed: {e}")
+        return None
+    except Exception as e:  # noqa: BLE001 — geocoding is optional; fall through to next provider
+        logger.warning(f"⚠️ [Zoning] Google Maps geocoding failed unexpectedly: {e}", exc_info=True)
         return None
 
 
@@ -121,8 +124,11 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
             logger.warning(f"⚠️ [Zoning] Badung API error for {desa_code}: {resp.status_code}")
             return 0
         data = resp.json()
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         logger.warning(f"⚠️ [Zoning] Badung fetch failed: {e}")
+        return 0
+    except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
+        logger.warning(f"⚠️ [Zoning] Badung fetch failed unexpectedly: {e}", exc_info=True)
         return 0
 
     features = data.get("features", []) if isinstance(data, dict) else []
@@ -176,8 +182,11 @@ async def _fetch_gistaru_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
             logger.warning(f"⚠️ [Zoning] GISTARU API error for {desa_code}: {resp.status_code}")
             return 0
         data = resp.json()
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         logger.warning(f"⚠️ [Zoning] GISTARU fetch failed: {e}")
+        return 0
+    except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
+        logger.warning(f"⚠️ [Zoning] GISTARU fetch failed unexpectedly: {e}", exc_info=True)
         return 0
 
     features = data.get("features", []) if isinstance(data, dict) else []
@@ -241,8 +250,11 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
                 except (ValueError, IndexError):
                     count = len(rows)
             return count or len(rows)
-    except Exception as e:
-        logger.error(f"❌ [Zoning] Batch insert failed: {e}")
+    except asyncpg.PostgresError as e:
+        logger.error(f"❌ [Zoning] Batch insert failed (DB): {e}")
+        return 0
+    except Exception as e:  # noqa: BLE001 — insert failure must not crash ingestion job
+        logger.error(f"❌ [Zoning] Batch insert failed (unexpected): {e}", exc_info=True)
         return 0
 
 
@@ -265,8 +277,11 @@ async def _check_existing_zoning(
             if row:
                 return dict(row)
         return None
-    except Exception as e:
+    except asyncpg.PostgresError as e:
         logger.error(f"❌ [Zoning] DB check failed: {e}")
+        return None
+    except Exception as e:  # noqa: BLE001 — cache-lookup failure must fall through to live providers
+        logger.error(f"❌ [Zoning] DB check failed unexpectedly: {e}", exc_info=True)
         return None
 
 
@@ -524,8 +539,13 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                     logger.info(
                         f"[Property/legacy] Got {kg_sources} requirements from KG for {prop_type}",
                     )
-        except Exception as e:
-            logger.warning(f"[Property/legacy] KG query failed, using fallback: {e}")
+        except asyncpg.PostgresError as e:
+            logger.warning(f"[Property/legacy] KG query failed (DB), using fallback: {e}")
+        except Exception as e:  # noqa: BLE001 — fallback below runs on any KG failure
+            logger.warning(
+                f"[Property/legacy] KG query failed unexpectedly, using fallback: {e}",
+                exc_info=True,
+            )
 
     # Fallback to hardcoded if KG empty
     if not requirements:
