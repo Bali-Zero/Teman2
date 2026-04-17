@@ -8,7 +8,7 @@ import { MessageCircle } from "lucide-react";
  */
 export function WhatsAppFAB({
   phone = "628213107363",
-  message = "Hi Bali Zero, I would like to get in touch.",
+  message = "Ciao Bali Zero, vorrei un contatto.",
 }: {
   phone?: string;
   message?: string;
@@ -19,7 +19,7 @@ export function WhatsAppFAB({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Chat with us on WhatsApp"
+      aria-label="Parla con noi su WhatsApp"
       className="fab-whatsapp fixed z-[500] flex items-center gap-3 rounded-full transition-all hover:-translate-y-1 hover:scale-[1.03] group"
       style={{
         background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)",
@@ -67,7 +67,7 @@ export function WhatsAppFAB({
             letterSpacing: "0.02em",
           }}
         >
-          Chat with us
+          Parla con noi
         </span>
         <span
           className="mt-1"
@@ -79,7 +79,7 @@ export function WhatsAppFAB({
             textTransform: "uppercase",
           }}
         >
-          WhatsApp · Reply &lt; 5 min
+          WhatsApp · Risposta &lt; 5 min
         </span>
       </span>
     </a>
