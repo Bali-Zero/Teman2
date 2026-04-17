@@ -45,6 +45,8 @@ export {
 // Portal hooks
 export {
   usePortalDashboard,
+  usePortalDashboardSummary,
+  usePortalMatters,
   usePortalTimeline,
   usePortalProfile,
   useVisaStatus,
