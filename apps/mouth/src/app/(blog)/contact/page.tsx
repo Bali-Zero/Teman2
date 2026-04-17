@@ -1,407 +1,285 @@
-"use client";
-
-import * as React from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Phone,
   Mail,
+  MessageCircle,
   MapPin,
   Clock,
-  Send,
-  MessageCircle,
-  Instagram,
-  CheckCircle,
-  Loader2,
+  ArrowRight,
 } from "lucide-react";
-import { useTranslation } from "@/i18n";
+import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 
-/**
- * Contact Page - Bali Zero
- * McKinsey-inspired layout with contact form
- */
+export const metadata: Metadata = {
+  title: "Contact · Bali Zero",
+  description:
+    "Talk to the Bali Zero team in Kerobokan. WhatsApp, email, office — every channel staffed by licensed Indonesian consultants.",
+};
+
+const CHANNELS = [
+  {
+    icon: MessageCircle,
+    title: "WhatsApp",
+    value: "+62 821 3107 363",
+    href: "https://wa.me/628213107363",
+    note: "Fastest response — usually under 15 minutes.",
+    accent: "#22c55e",
+  },
+  {
+    icon: Mail,
+    title: "Email",
+    value: "info@balizero.com",
+    href: "mailto:info@balizero.com",
+    note: "For documents, scans, and longer threads.",
+    accent: "#3a6dff",
+  },
+  {
+    icon: MapPin,
+    title: "Office",
+    value: "Kerobokan, Bali",
+    href: "https://maps.app.goo.gl/whiMUTNchcDR5naz8",
+    note: "By appointment — exact address shared on confirmation.",
+    accent: "#f59e0b",
+  },
+  {
+    icon: Phone,
+    title: "Phone",
+    value: "+62 821 3107 363",
+    href: "tel:+628213107363",
+    note: "English · Italian · Bahasa Indonesia.",
+    accent: "#a78bfa",
+  },
+];
+
 export default function ContactPage() {
-  const { t } = useTranslation();
-  const [formState, setFormState] = React.useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [formData, setFormData] = React.useState({
-    name: "",
-    email: "",
-    phone: "",
-    service: "",
-    message: "",
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormState("loading");
-
-    // Simulate form submission (replace with actual API call)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // Redirect to WhatsApp with message
-    const message = encodeURIComponent(
-      `Hi Bali Zero! I'm ${formData.name}.\n\nService interested: ${formData.service || "General inquiry"}\n\nMessage: ${formData.message}\n\nEmail: ${formData.email}${formData.phone ? `\nPhone: ${formData.phone}` : ""}`,
-    );
-    window.open(`https://wa.me/628213107363?text=${message}`, "_blank");
-    setFormState("success");
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
   return (
-    <div className="min-h-screen bg-[#051C2C]">
-      {/* Hero Section */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            <div className="mb-8">
-              <Image
-                src="/assets/logo/balizero-logo.png"
-                alt="Bali Zero"
-                width={80}
-                height={80}
-                className="rounded-full"
-              />
-            </div>
-            <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-              {t("contact.hero.label")}
+    <div
+      className="min-h-screen"
+      style={{
+        background: "var(--surface-base)",
+        color: "var(--text-primary)",
+      }}
+    >
+      {/* Hero */}
+      <section
+        style={{
+          padding: "clamp(64px, 8vw, 120px) clamp(24px, 4vw, 40px) 40px",
+        }}
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div
+            className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
+            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+          >
+            Contact · Kerobokan, Bali · WITA (UTC+8)
+          </div>
+          <h1
+            className="font-extrabold tracking-tight mb-5"
+            style={{
+              fontSize: "clamp(34px, 5vw, 60px)",
+              lineHeight: 1.05,
+              color: "var(--text-primary)",
+              maxWidth: "20ch",
+            }}
+          >
+            Talk to a real person.
+            <br />
+            <span style={{ color: "var(--text-secondary)" }}>
+              Usually within 15 minutes.
             </span>
-            <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              {t("contact.hero.title")}{" "}
-              <span className="text-[#e85c41]">
-                {t("contact.hero.titleAccent")}
-              </span>
-            </h1>
-            <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              {t("contact.hero.subtitle")}
-            </p>
+          </h1>
+          <p
+            className="text-[16px] leading-[1.6] mb-4"
+            style={{ color: "var(--text-secondary)", maxWidth: "60ch" }}
+          >
+            No bots in the first reply. WhatsApp is the fastest channel —
+            staffed Mon-Fri 9:00-17:00 WITA, Sat 10:00-14:00. Email for
+            documents. Office visits by appointment.
+          </p>
+        </div>
+      </section>
+
+      {/* Channels */}
+      <section
+        style={{
+          borderBottom: "1px solid var(--border-subtle)",
+          padding: "0 clamp(24px, 4vw, 40px) clamp(48px, 6vw, 80px)",
+        }}
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div
+            className="grid gap-4"
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            }}
+          >
+            {CHANNELS.map((c) => (
+              <Link
+                key={c.title}
+                href={c.href}
+                target={c.href.startsWith("http") ? "_blank" : undefined}
+                className="group relative rounded-2xl p-6 transition-all hover:-translate-y-1 overflow-hidden"
+                style={{
+                  background: `color-mix(in srgb, ${c.accent} 8%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${c.accent} 30%, transparent)`,
+                  boxShadow: `0 10px 30px color-mix(in srgb, ${c.accent} 15%, transparent)`,
+                  backdropFilter: "blur(20px) saturate(160%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                }}
+              >
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                  style={{
+                    background: `color-mix(in srgb, ${c.accent} 18%, transparent)`,
+                    border: `1px solid color-mix(in srgb, ${c.accent} 45%, transparent)`,
+                    color: c.accent,
+                  }}
+                >
+                  <c.icon size={20} strokeWidth={2} />
+                </div>
+                <div
+                  className="text-[11px] font-semibold uppercase tracking-[0.18em] mb-1.5"
+                  style={{ color: c.accent }}
+                >
+                  {c.title}
+                </div>
+                <div
+                  className="text-[18px] font-bold tracking-tight mb-2 break-words"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {c.value}
+                </div>
+                <div
+                  className="text-[12.5px] leading-[1.5]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {c.note}
+                </div>
+                <div
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold mt-4 opacity-80 group-hover:opacity-100 transition"
+                  style={{ color: c.accent }}
+                >
+                  Open
+                  <ArrowRight size={12} strokeWidth={2.2} />
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Main Content */}
-      <section className="border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-            {/* Contact Info */}
-            <div>
-              <h2 className="font-serif text-2xl text-white mb-8">
-                {t("contact.info.getInTouch")}
-              </h2>
+      <GoogleReviewsBlock limit={6} />
 
-              <div className="space-y-6">
-                {/* WhatsApp */}
-                <a
-                  href="https://wa.me/628213107363"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-4 p-6 rounded-xl border border-white/10 bg-[#0a2540] hover:border-[#25D366]/50 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-[#25D366]/10 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-6 h-6 text-[#25D366]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium mb-1 group-hover:text-[#25D366] transition-colors">
-                      {t("contact.info.whatsapp")}
-                    </h3>
-                    <p className="text-white/60 text-sm mb-2">
-                      {t("contact.info.whatsappDesc")}
-                    </p>
-                    <p className="text-[#25D366] font-medium">
-                      +62 821 3107 363
-                    </p>
-                  </div>
-                </a>
-
-                {/* Email */}
-                <a
-                  href="mailto:info@balizero.com"
-                  className="flex items-start gap-4 p-6 rounded-xl border border-white/10 bg-[#0a2540] hover:border-[#2251ff]/50 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-[#2251ff]/10 flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-6 h-6 text-[#2251ff]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium mb-1 group-hover:text-[#2251ff] transition-colors">
-                      {t("contact.info.email")}
-                    </h3>
-                    <p className="text-white/60 text-sm mb-2">
-                      {t("contact.info.emailDesc")}
-                    </p>
-                    <p className="text-[#2251ff] font-medium">
-                      info@balizero.com
-                    </p>
-                  </div>
-                </a>
-
-                {/* Instagram */}
-                <a
-                  href="https://instagram.com/balizero0"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-4 p-6 rounded-xl border border-white/10 bg-[#0a2540] hover:border-[#E4405F]/50 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-[#E4405F]/10 flex items-center justify-center flex-shrink-0">
-                    <Instagram className="w-6 h-6 text-[#E4405F]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium mb-1 group-hover:text-[#E4405F] transition-colors">
-                      {t("contact.info.instagram")}
-                    </h3>
-                    <p className="text-white/60 text-sm mb-2">
-                      {t("contact.info.instagramDesc")}
-                    </p>
-                    <p className="text-[#E4405F] font-medium">@balizero0</p>
-                  </div>
-                </a>
-
-                {/* Office */}
-                <div className="flex items-start gap-4 p-6 rounded-xl border border-white/10 bg-[#0a2540]">
-                  <div className="w-12 h-12 rounded-lg bg-[#e85c41]/10 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-6 h-6 text-[#e85c41]" />
-                  </div>
-                  <div>
-                    <h3 className="text-white font-medium mb-1">
-                      {t("contact.info.officeLocation")}
-                    </h3>
-                    <p className="text-white/60 text-sm mb-2">
-                      {t("contact.info.officeDesc")}
-                    </p>
-                    <p className="text-white/80">
-                      {t("contact.info.officeAddress")}
-                    </p>
-                    <p className="text-white/50 text-sm mt-1">
-                      {t("contact.info.officeNote")}
-                    </p>
-                  </div>
-                </div>
+      {/* Hours + useful links */}
+      <section
+        style={{ padding: "clamp(48px, 6vw, 80px) clamp(24px, 4vw, 40px)" }}
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div className="grid gap-8 md:grid-cols-2">
+            {/* Hours */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 18%, transparent)",
+              }}
+            >
+              <div
+                className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4"
+                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              >
+                <Clock size={13} strokeWidth={2.2} /> Office hours · WITA
               </div>
-
-              {/* Office Hours */}
-              <div className="mt-8 p-6 rounded-xl border border-white/10 bg-[#0a2540]">
-                <div className="flex items-center gap-3 mb-4">
-                  <Clock className="w-5 h-5 text-[#2251ff]" />
-                  <h3 className="text-white font-medium">
-                    {t("contact.hours.title")}
-                  </h3>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-white/60">
-                      {t("contact.hours.monFri")}
+              <ul
+                className="space-y-2.5 text-[14px]"
+                style={{ listStyle: "none", padding: 0, margin: 0 }}
+              >
+                {[
+                  ["Monday — Friday", "09:00 — 17:00"],
+                  ["Saturday", "10:00 — 14:00"],
+                  ["Sunday", "Closed"],
+                  ["Public holidays", "Closed (Nyepi, Galungan, Idul Fitri)"],
+                ].map(([day, time]) => (
+                  <li
+                    key={day}
+                    className="flex justify-between gap-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    <span>{day}</span>
+                    <span
+                      className="font-semibold"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {time}
                     </span>
-                    <span className="text-white">
-                      {t("contact.hours.monFriHours")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">
-                      {t("contact.hours.saturday")}
-                    </span>
-                    <span className="text-white">
-                      {t("contact.hours.saturdayHours")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">
-                      {t("contact.hours.sunday")}
-                    </span>
-                    <span className="text-white/40">
-                      {t("contact.hours.sundayClosed")}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-white/10 mt-2">
-                    <span className="text-white/40 text-xs">
-                      {t("contact.hours.timezone")}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Contact Form */}
-            <div>
-              <h2 className="font-serif text-2xl text-white mb-8">
-                {t("contact.form.title")}
-              </h2>
-
-              {formState === "success" ? (
-                <div className="p-8 rounded-xl border border-[#22c55e]/30 bg-[#22c55e]/10 text-center">
-                  <CheckCircle className="w-16 h-16 text-[#22c55e] mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-white mb-2">
-                    {t("contact.success.title")}
-                  </h3>
-                  <p className="text-white/60 mb-6">
-                    {t("contact.success.description")}
-                  </p>
-                  <button
-                    onClick={() => setFormState("idle")}
-                    className="text-[#2251ff] hover:text-[#1a41cc] font-medium"
-                  >
-                    {t("common.cta.sendAnother")}
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Name */}
-                  <div>
-                    <label
-                      htmlFor="name"
-                      className="block text-sm font-medium text-white/80 mb-2"
+            {/* Before you write */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
+                border:
+                  "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 18%, transparent)",
+              }}
+            >
+              <div
+                className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4"
+                style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+              >
+                Before you write
+              </div>
+              <p
+                className="text-[14px] leading-[1.6] mb-4"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Most questions already have an answer in our AI tools. Try one
+                of these first — if the AI can't resolve it, the team steps in.
+              </p>
+              <ul
+                className="space-y-2 text-[13.5px]"
+                style={{ listStyle: "none", padding: 0, margin: 0 }}
+              >
+                {[
+                  {
+                    href: "/visa-oracle",
+                    label: "Visa Oracle — KITAS, Golden Visa, Digital Nomad",
+                  },
+                  {
+                    href: "/kbli",
+                    label: "KBLI 2025 — find eligible PT PMA codes",
+                  },
+                  {
+                    href: "/tax-calendar",
+                    label: "Tax Calendar — 2026 deadlines per regency",
+                  },
+                  {
+                    href: "/property/eligibility",
+                    label: "Property Eligibility — zoning + risk for any plot",
+                  },
+                ].map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="inline-flex items-center gap-2 hover:underline"
+                      style={{ color: "var(--text-primary)" }}
                     >
-                      {t("contact.form.fullName")}{" "}
-                      <span className="text-[#e85c41]">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-[#2251ff] transition-colors"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  {/* Email */}
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-white/80 mb-2"
-                    >
-                      {t("contact.form.emailAddress")}{" "}
-                      <span className="text-[#e85c41]">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-[#2251ff] transition-colors"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-
-                  {/* Phone */}
-                  <div>
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium text-white/80 mb-2"
-                    >
-                      {t("contact.form.phone")}
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-[#2251ff] transition-colors"
-                      placeholder="+62 xxx xxxx xxxx"
-                    />
-                  </div>
-
-                  {/* Service */}
-                  <div>
-                    <label
-                      htmlFor="service"
-                      className="block text-sm font-medium text-white/80 mb-2"
-                    >
-                      {t("contact.form.service")}
-                    </label>
-                    <select
-                      id="service"
-                      name="service"
-                      value={formData.service}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white focus:outline-none focus:border-[#2251ff] transition-colors"
-                    >
-                      <option value="">
-                        {t("contact.form.servicePlaceholder")}
-                      </option>
-                      <option value="Visa Services">
-                        {t("contact.form.serviceVisa")}
-                      </option>
-                      <option value="Company Setup">
-                        {t("contact.form.serviceCompany")}
-                      </option>
-                      <option value="Tax Consulting">
-                        {t("contact.form.serviceTax")}
-                      </option>
-                      <option value="Real Estate">
-                        {t("contact.form.serviceRealEstate")}
-                      </option>
-                      <option value="Multiple Services">
-                        {t("contact.form.serviceMultiple")}
-                      </option>
-                      <option value="Other">
-                        {t("contact.form.serviceOther")}
-                      </option>
-                    </select>
-                  </div>
-
-                  {/* Message */}
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className="block text-sm font-medium text-white/80 mb-2"
-                    >
-                      {t("contact.form.message")}{" "}
-                      <span className="text-[#e85c41]">*</span>
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      required
-                      rows={5}
-                      value={formData.message}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg bg-[#0a2540] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:border-[#2251ff] transition-colors resize-none"
-                      placeholder={t("contact.form.messagePlaceholder")}
-                    />
-                  </div>
-
-                  {/* Submit */}
-                  <button
-                    type="submit"
-                    disabled={formState === "loading"}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {formState === "loading" ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        {t("common.cta.sending")}
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" />
-                        {t("common.cta.sendMessage")}
-                      </>
-                    )}
-                  </button>
-
-                  <p className="text-center text-white/40 text-sm">
-                    {t("contact.form.responseTime")}
-                  </p>
-                </form>
-              )}
+                      <ArrowRight size={12} strokeWidth={2.2} />
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Zantara AI CTA */}
     </div>
   );
 }
