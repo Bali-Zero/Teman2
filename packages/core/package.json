@@ -1,0 +1,23 @@
+{
+  "name": "@balizero/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bali Zero design system foundation — tokens, primitives, and shared components.",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./index.ts",
+    "./tokens/index.css": "./tokens/index.css",
+    "./tailwind/theme.css": "./tailwind/theme.css",
+    "./effects/grain.css": "./effects/grain.css",
+    "./effects/shimmer.css": "./effects/shimmer.css",
+    "./fonts/inter": "./fonts/inter.ts",
+    "./components/BZLogo": "./components/BZLogo.tsx",
+    "./components/NavShell": "./components/NavShell.tsx",
+    "./components/ThemeProvider": "./components/ThemeProvider.tsx",
+    "./utils": "./utils/index.ts"
+  }
+}
