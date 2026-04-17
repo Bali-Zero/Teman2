@@ -3,6 +3,7 @@ Analytics API Router
 Exposes historical analytics endpoints and unified dashboard for founder consumption.
 
 Endpoints:
+- POST /api/analytics/funnel-event           - Ingest funnel event (public, 11 whitelisted events)
 - GET /api/analytics/dashboard               - Unified analytics dashboard (cached)
 - GET /api/analytics/completion-rates
 - GET /api/analytics/response-times
@@ -11,6 +12,8 @@ Endpoints:
 - GET /api/analytics/monthly-report/{year}/{month}
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import time
@@ -18,8 +21,10 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.deps.database import get_database_pool as get_database_pool_dep
 from backend.services.analytics.historical_analytics import (
     calculate_completion_rate,
     calculate_response_times,
@@ -31,6 +36,65 @@ from backend.services.analytics.historical_analytics import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
+
+# ---------------------------------------------------------------------------
+# F-19: Funnel event ingest (public — no auth required)
+# ---------------------------------------------------------------------------
+
+ALLOWED_EVENTS: frozenset[str] = frozenset(
+    {
+        "visa_quiz_completed",
+        "visa_result_viewed",
+        "visa_chat_question",
+        "visa_whatsapp_cta",
+        "visa_calling_block",
+        "kbli_code_viewed",
+        "kbli_search",
+        "kbli_chat_question",
+        "tax_dashboard_viewed",
+        "property_cta_clicked",
+        "property_chat_question",
+    }
+)
+
+
+class FunnelEvent(BaseModel):
+    session_id: str = Field(min_length=32, max_length=64)
+    event: str
+    payload: dict = Field(default_factory=dict)
+
+
+@router.post("/funnel-event")
+async def ingest_funnel_event(
+    req: FunnelEvent,
+    pool=Depends(get_database_pool_dep),
+) -> dict[str, Any]:
+    """
+    Ingest a funnel analytics event. Never blocks the UX: unknown events
+    return ok=False instead of raising an error.
+    """
+    if req.event not in ALLOWED_EVENTS:
+        return {"ok": False, "reason": "unknown_event"}
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE funnel_sessions
+            SET step_state = step_state || jsonb_build_object(
+                    'last_event', $2::text,
+                    'last_event_at', to_jsonb(NOW())
+                ),
+                last_touched_at = NOW()
+            WHERE session_id = $1
+            """,
+            req.session_id,
+            req.event,
+        )
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Founder-only endpoints
+# ---------------------------------------------------------------------------
 
 
 def verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
