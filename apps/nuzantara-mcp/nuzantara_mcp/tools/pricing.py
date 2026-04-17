@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("company_setup")
     async def calculate_pricing(
         service_type: str,
         complexity: str = "standard",

@@ -89,19 +89,23 @@ jobs:
             --junit-xml=test-results-gate.xml
           echo "✅ Core tests OK"
 
+      - name: Verify CVE exception file is not stale (blocking)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install pyyaml -q
+          python scripts/check_cve_exceptions.py
+
       - name: Check Dependabot critical vulnerabilities
         run: |
-          pip install safety -q
+          pip install safety pyyaml -q
           safety check -r requirements.txt \
-            --ignore 70612 \
-            --output text \
-            --short-report 2>/dev/null || {
-            echo "⚠️ Vulnerabilità trovate — controlla output sopra"
-            # Non blocchiamo per ora: solo segnaliamo (--continue-on-error sotto)
-            exit 0
-          }
-          echo "✅ No critical vulnerabilities"
-        continue-on-error: true
+            --save-json safety-deploy-report.json \
+            || true
+          # Route through the same filter CI uses, so an expired or missing
+          # exception fails the deploy gate — not just advisory.
+          CVE_EXCEPTIONS_PATH=${{ github.workspace }}/.security/exceptions.yaml \
+            python ${{ github.workspace }}/scripts/filter_safety_findings.py \
+            safety-deploy-report.json
 
       - name: Check migration status (informational)
         run: |

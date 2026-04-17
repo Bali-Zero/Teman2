@@ -2,6 +2,8 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
@@ -20,6 +22,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def get_portal_visa_status(client_id: str) -> dict:
         """
         Get visa status with detailed timeline for a client.
