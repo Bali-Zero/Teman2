@@ -40,22 +40,22 @@ export function ConsentBanner() {
           className="text-sm text-center sm:text-left"
           style={{ color: "var(--tx-secondary)" }}
         >
-          Usiamo dati di sessione per fornirti guida sui visti. Continuando,
-          accetti la nostra{" "}
+          We use session data to provide visa guidance. By continuing, you agree
+          to our{" "}
           <Link
             href="/visa-oracle/privacy"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
-            Informativa privacy
+            Privacy Policy
           </Link>{" "}
-          e i{" "}
+          and{" "}
           <Link
             href="/visa-oracle/terms"
             className="underline hover:opacity-80 transition-opacity"
             style={{ color: "var(--bz-accent)" }}
           >
-            Termini di servizio
+            Terms of Service
           </Link>
           .
         </p>
@@ -67,7 +67,7 @@ export function ConsentBanner() {
             color: "#ffffff",
           }}
         >
-          Ho capito
+          Got it
         </button>
       </div>
     </div>

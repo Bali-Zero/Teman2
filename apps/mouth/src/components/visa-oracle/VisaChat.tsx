@@ -19,12 +19,12 @@ import { WhatsAppCTA } from "./WhatsAppCTA";
 import { trackVisaChatQuestion, trackVisaWhatsAppCTA } from "@/lib/analytics";
 
 const FALLBACK_WA_URL =
-  "https://wa.me/628213107363?text=Ciao%2C%20ho%20usato%20Visa%20Oracle.";
+  "https://wa.me/628213107363?text=Hi%2C%20I%20used%20Visa%20Oracle.";
 
 const INITIAL_SYSTEM_MESSAGE: ChatMessage = {
   role: "system",
   content:
-    "Ti fornisco informazioni basate sui dati attuali dell'immigrazione indonesiana. Per la tua situazione specifica, il nostro team può darti una guida definitiva.",
+    "I provide information based on current Indonesian immigration data. For your specific situation, our team can give definitive guidance.",
 };
 
 interface VisaChatProps {
@@ -167,7 +167,7 @@ export function VisaChat({
           className="text-base font-semibold"
           style={{ color: "var(--tx-primary)" }}
         >
-          Chat Visa Oracle
+          Visa Oracle Chat
         </h2>
         <QuestionCounter remaining={remaining} />
       </div>
@@ -287,8 +287,8 @@ export function VisaChat({
           onKeyDown={handleKeyDown}
           placeholder={
             remaining > 0
-              ? "Fai una domanda sui visti indonesiani..."
-              : "Domande esaurite"
+              ? "Ask about Indonesian visas..."
+              : "No questions remaining"
           }
           disabled={loading || remaining <= 0}
           className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none transition-colors disabled:opacity-50"
@@ -307,7 +307,7 @@ export function VisaChat({
             color: "#fff",
           }}
         >
-          Invia
+          Send
         </button>
       </div>
 
