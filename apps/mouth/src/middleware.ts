@@ -362,7 +362,7 @@ export function middleware(request: NextRequest) {
         drive: "/documents",
         knowledge: "/knowledge",
       };
-      const targetRoute = subdomainRouteMap[subdomain] || "/dashboard";
+      const targetRoute = subdomainRouteMap[subdomain] || "/inbox";
       // Preserve any path after the root (e.g. calendar.balizero.com/event/123 → /calendar/event/123)
       const deepPath =
         pathname === "/" ? targetRoute : `${targetRoute}${pathname}`;
