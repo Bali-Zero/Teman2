@@ -254,7 +254,8 @@ class TestGuardian:
                 else:
                     logger.error(f"Ollama Error: {resp.text}")
                     return ""
-        except Exception as e:
+        except (httpx.HTTPError, OSError, ValueError) as e:
+            # ValueError covers malformed JSON from resp.json()
             logger.error(f"Failed to call Ollama: {e}")
             return ""
 
