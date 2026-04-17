@@ -33,11 +33,19 @@ primary_region = 'sin'
   PYTHONUNBUFFERED = '1'
   RAG_WORKER_URL = 'http://rag.process.nuzantara-rag.internal:8080'
   ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://mail.balizero.com,https://calendar.balizero.com,https://drive.balizero.com,https://knowledge.balizero.com,https://nuzantara-mouth.vercel.app'
+  # SQLite persistence paths (mounted volume /data on api process, PR #75)
+  EXPERIENCE_DB_PATH = '/data/experience.db'
+  METABOLIC_DB_PATH = '/data/organism_metrics.db'
 
 [[mounts]]
   source = 'nuzantara_rag_data'
   destination = '/data'
   processes = ['rag']
+
+[[mounts]]
+  source = 'nuzantara_api_data'
+  destination = '/data'
+  processes = ['api']
 
 [http_service]
   internal_port = 8080
