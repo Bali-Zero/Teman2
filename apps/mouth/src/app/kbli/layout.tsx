@@ -1,6 +1,8 @@
 import { Montserrat } from "next/font/google";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
+import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
+import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -23,20 +25,8 @@ export default function KBLILayout({
     >
       <NavShell
         logo={<BZLogo variant="full" />}
-        items={[
-          { label: "Home", href: "https://balizero.com/" },
-          { label: "Visa", href: "https://visa.balizero.com/" },
-          { label: "Tax", href: "https://tax.balizero.com/" },
-        ]}
-        actions={
-          <a
-            href="https://wa.me/628213107363"
-            className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold"
-            style={{ background: "var(--kbli-accent)", color: "#fff" }}
-          >
-            WhatsApp
-          </a>
-        }
+        items={getFunnelNavItems("kbli")}
+        actions={<HeaderWhatsAppCTA funnel="kbli" />}
       />
       <SessionInit funnel="kbli" />
       <div className="mx-auto max-w-6xl px-4 pt-14 pb-8 sm:px-6 lg:px-8">
