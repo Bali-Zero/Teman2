@@ -1,3 +1,9 @@
+# NOTE (2026-04-16, PR #62): Fly builds `nuzantara-rag` with build context at
+# monorepo root (see .github/workflows/fly-deploy.yml `--dockerfile` flag).
+# The authoritative dockerignore for the deployed image is /.dockerignore at
+# repo root. This file is retained for local `docker build` runs that use
+# `apps/backend-rag/` as the explicit build context, but is IGNORED by Fly.
+
 # Exclude everything first
 *
 
