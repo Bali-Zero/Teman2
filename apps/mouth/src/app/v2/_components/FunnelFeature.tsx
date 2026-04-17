@@ -17,7 +17,7 @@ import type { Funnel } from "@balizero/core/components/ThemeProvider";
 
 type LayoutMode = "full" | "half";
 
-const FUNNEL_HREF: Record<string, string> = {
+const FUNNEL_HREF: Record<Exclude<Funnel, null>, string> = {
   visa: "https://visa.balizero.com/",
   kbli: "/kbli",
   tax: "https://tax.balizero.com/",
@@ -369,7 +369,7 @@ export function FunnelFeature({
               {/* Pricing pointer — avoids fixed-price commitment on home.
                 Full pricing lives on the dedicated service detail page. */}
               <a
-                href={FUNNEL_HREF[funnel] ?? "/"}
+                href={FUNNEL_HREF[funnel]}
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 transition-all hover:-translate-y-0.5"
                 style={{
                   background:
