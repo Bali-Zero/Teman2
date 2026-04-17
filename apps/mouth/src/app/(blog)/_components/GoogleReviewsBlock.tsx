@@ -16,11 +16,6 @@ const REVIEWS = [
     country: "USA · Founder",
   },
   {
-    text: "First agent who actually explained CoreTax to me instead of just filing. Now I sleep at night during SPT season.",
-    author: "Claudia M.",
-    country: "Germany · Expat resident",
-  },
-  {
     text: "Golden Visa in 11 weeks, every step documented in English. I had one point of contact from start to finish. Rare in Bali.",
     author: "Sergey K.",
     country: "Russia · Golden Visa",
