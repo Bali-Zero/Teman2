@@ -86,7 +86,7 @@ const CONFIGS: Record<
     priceUnit: "/ visa",
     location: "Seminyak, Bali",
     bgImage: "/assets/art/hero-visa.jpg",
-    bgFit: "contain",
+    bgFit: "cover",
     bgPosition: "center center",
   },
   kbli: {
@@ -119,7 +119,7 @@ const CONFIGS: Record<
     priceUnit: "/ company",
     location: "Kuta, Bali",
     bgImage: "/assets/art/hero-kbli.jpg",
-    bgFit: "contain",
+    bgFit: "cover",
     bgPosition: "center center",
   },
   tax: {

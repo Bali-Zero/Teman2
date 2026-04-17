@@ -62,6 +62,7 @@ const TEAM: TeamMember[] = [
     name: "Adit",
     role: "Supervisor Lead",
     department: "Setup",
+    photo: "/static/team/adit.png",
     initials: "AD",
     accent: "#f59e0b",
   },
@@ -396,17 +397,6 @@ export function SocialProof() {
                       {m.role} · {m.department}
                     </div>
                   </div>
-
-                  <span
-                    className="text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded"
-                    style={{
-                      background: `color-mix(in srgb, ${m.accent} 15%, transparent)`,
-                      color: m.accent,
-                      border: `1px solid color-mix(in srgb, ${m.accent} 35%, transparent)`,
-                    }}
-                  >
-                    Licensed
-                  </span>
                 </li>
               ))}
             </ul>
