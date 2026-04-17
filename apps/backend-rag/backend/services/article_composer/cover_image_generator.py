@@ -124,6 +124,31 @@ class CoverImageGenerator:
     def __init__(self) -> None:
         self._fireworks_key = os.getenv("FIREWORKS_API_KEY")
         self._ideogram_key = os.getenv("IDEOGRAM_API_KEY")
+        # Persistent HTTP client (Golden Rule #10). Opening an AsyncClient per
+        # call forfeits TLS session resumption and connection pooling — at
+        # our article-cover generation rate (minutes apart) that's fine in
+        # latency terms, but 3 distinct `async with httpx.AsyncClient(...)`
+        # blocks in this file forced a new TCP+TLS handshake every time.
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Lazy-create the shared async client.
+
+        Not called from __init__ because there's no running loop yet at
+        construction time in some call sites (router module import).
+        """
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=90.0,
+                limits=httpx.Limits(max_connections=4, max_keepalive_connections=2),
+            )
+        return self._client
+
+    async def aclose(self) -> None:
+        """Close the internal async client. Safe to call multiple times."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -210,39 +235,42 @@ class CoverImageGenerator:
         if slug:
             url = f"/static/news/{slug}.jpg"
         else:
-            # Fallback: use a hash-based filename
-            name_hash = hashlib.md5(title.encode()).hexdigest()[:12]
+            # Fallback: use a hash-based filename. MD5 is non-cryptographic
+            # here — just a deterministic short id for filenames.
+            name_hash = hashlib.md5(title.encode(), usedforsecurity=False).hexdigest()[:12]
             url = f"/static/news/{name_hash}.jpg"
 
         return {"url": url, "bytes": result["bytes"], "prompt": result["prompt"]}
 
     async def _fireworks(self, prompt: str) -> bytes | None:
         """Generate via Fireworks.ai Flux Dev API. Returns raw JPEG bytes."""
+        client = self._get_client()
         try:
-            async with httpx.AsyncClient(timeout=90) as client:
-                resp = await client.post(
-                    "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
-                    headers={
-                        "Authorization": f"Bearer {self._fireworks_key}",
-                        "Content-Type": "application/json",
-                        "Accept": "image/jpeg",
-                    },
-                    json={
-                        "prompt": prompt,
-                        "width": 1344,
-                        "height": 768,
-                        "steps": 28,
-                        "cfg_scale": 3.5,
-                    },
-                )
-                resp.raise_for_status()
-                img_bytes = resp.content
-                if len(img_bytes) > 5000:
-                    logger.info(f"[CoverImage] Fireworks Flux Dev: {len(img_bytes)} bytes")
-                    return img_bytes
-                logger.warning(f"[CoverImage] Fireworks response too small: {len(img_bytes)} bytes")
+            resp = await client.post(
+                "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
+                headers={
+                    "Authorization": f"Bearer {self._fireworks_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "image/jpeg",
+                },
+                json={
+                    "prompt": prompt,
+                    "width": 1344,
+                    "height": 768,
+                    "steps": 28,
+                    "cfg_scale": 3.5,
+                },
+            )
+            resp.raise_for_status()
+            img_bytes = resp.content
+            if len(img_bytes) > 5000:
+                logger.info(f"[CoverImage] Fireworks Flux Dev: {len(img_bytes)} bytes")
+                return img_bytes
+            logger.warning(f"[CoverImage] Fireworks response too small: {len(img_bytes)} bytes")
+        except httpx.HTTPError as exc:
+            logger.debug(f"[CoverImage] Fireworks HTTP error: {exc}")
         except Exception as exc:
-            logger.debug(f"[CoverImage] Fireworks error: {exc}")
+            logger.warning(f"[CoverImage] Fireworks unexpected error: {exc}", exc_info=True)
         return None
 
     async def _pollinations(self, prompt: str) -> bytes | None:
@@ -251,6 +279,7 @@ class CoverImageGenerator:
 
         encoded_prompt = urllib.parse.quote(prompt)
         seed = int(time.time()) % 99999
+        client = self._get_client()
 
         for model in ["sana", "turbo"]:
             try:
@@ -258,13 +287,17 @@ class CoverImageGenerator:
                     f"https://image.pollinations.ai/prompt/{encoded_prompt}"
                     f"?width=1200&height=630&seed={seed}&nologo=true&model={model}"
                 )
-                async with httpx.AsyncClient(timeout=90) as client:
-                    resp = await client.get(url, headers={"User-Agent": "BaliZero/1.0"})
-                    if resp.status_code == 200 and len(resp.content) > 5000:
-                        logger.info(f"[CoverImage] Pollinations [{model}]: {len(resp.content)} bytes")
-                        return resp.content
+                resp = await client.get(url, headers={"User-Agent": "BaliZero/1.0"})
+                if resp.status_code == 200 and len(resp.content) > 5000:
+                    logger.info(f"[CoverImage] Pollinations [{model}]: {len(resp.content)} bytes")
+                    return resp.content
+            except httpx.HTTPError as exc:
+                logger.debug(f"[CoverImage] Pollinations [{model}] HTTP error: {exc}")
             except Exception as exc:
-                logger.debug(f"[CoverImage] Pollinations [{model}] error: {exc}")
+                logger.warning(
+                    f"[CoverImage] Pollinations [{model}] unexpected error: {exc}",
+                    exc_info=True,
+                )
         return None
 
     # ------------------------------------------------------------------
