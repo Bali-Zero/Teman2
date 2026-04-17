@@ -1,139 +1,53 @@
-# Only include mouth and exclude everything else
-# First include everything we need
-!apps/mouth/
-!apps/mouth/**/*
+# Build context: monorepo root (used by flyctl deploy --dockerfile apps/backend-rag/Dockerfile)
+# Whitelist approach: exclude everything, then re-include what the backend image needs.
 
-# Then exclude everything else at the root level
 *
 
-# Exclude other apps
-apps/backend/
-apps/webapp-vite/
-apps/admin/
-apps/api-gateway/
-apps/mobile/
+# Backend-rag (the Docker image)
+!apps/backend-rag/backend/
+!apps/backend-rag/scripts/
+!apps/backend-rag/training-data/
+!apps/backend-rag/requirements-prod.txt
+!apps/backend-rag/requirements.txt
+!apps/backend-rag/Dockerfile
+!apps/backend-rag/*.py
 
-# Exclude all other directories
-scripts/
-docs/
-tests/
-test/
-data/
-chroma_data/
-chromadb/
-oracle-data/
+# cell-core package (editable install target)
+!packages/cell-core/
 
-# Git
-/.git
-.gitignore
+# Exclude noise inside included dirs
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.DS_Store
+**/*.log
+**/.pytest_cache/
+**/.venv/
+**/venv/
+**/node_modules/
 
-# Dependencies
-/node_modules
-apps/*/node_modules
-**/node_modules
+# Tests and dev-only files (not needed in runtime image)
+apps/backend-rag/backend/tests/
+apps/backend-rag/backend/.env*
+packages/cell-core/tests/
 
-# Environment files
-.env
-.env.*
-.envrc
-*.pem
-*.key
-*credentials*.json
-google_credentials.json
+# Secrets (defense in depth)
+**/google_credentials.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/.env
+**/.env.*
 
-# Build artifacts
-dist
-build
-.next
-.cache
-*.tsbuildinfo
-
-# Development files
-README.md
-*.md
-docs/
-scripts/
-test/
-tests/
-__tests__/
-*.test.js
-*.test.ts
-*.spec.js
-*.spec.ts
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Temporary folders
-tmp/
-temp/
-.tmp/
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Docker files
-Dockerfile*
-docker-compose*
-deploy/fly.toml
-
-# Local data
-data/
-chroma_data/
-chromadb/
-oracle-data/
-
-# Test files
-test-*.js
-test-*.cjs
-zantara-*.js
-zantara-*.cjs
-
-# Backup files
-*.backup
-*.bak
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# MacOS
-.AppleDouble
-.LSOverride
-
-# Windows
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
+# Large binaries
+**/*.pdf
+**/*.docx
+**/*.xlsx
+**/*.zip
+**/*.tar.gz
+**/*.jpg
+**/*.png
+**/*.gif
+**/*.mp4
+**/*.mov

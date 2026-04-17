@@ -161,13 +161,14 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy (rolling strategy)
-        working-directory: apps/backend-rag
+      - name: Deploy (rolling strategy, monorepo context)
         run: |
           flyctl deploy \
             --strategy rolling \
             --app nuzantara-rag \
-            --remote-only
+            --remote-only \
+            --dockerfile apps/backend-rag/Dockerfile \
+            --config apps/backend-rag/fly.toml
 
   post-deploy-health:
     name: Post-deploy health check + rollback
