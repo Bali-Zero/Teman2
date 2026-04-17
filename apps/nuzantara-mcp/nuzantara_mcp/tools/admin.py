@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("admin", "visa_specialist", "tax_consultant", "company_setup")
     async def clock_in(member_id: Optional[str] = None) -> dict:
         """
         Clock in a team member (start of work).
@@ -23,6 +26,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("admin", "visa_specialist", "tax_consultant", "company_setup")
     async def clock_out(member_id: Optional[str] = None) -> dict:
         """
         Clock out a team member (end of work).
@@ -41,6 +45,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("admin")
     async def get_team_hours(period: str = "weekly") -> dict:
         """
         Get team working hours summary.
@@ -56,6 +61,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("admin")
     async def get_admin_logs(limit: int = 50) -> dict:
         """
         Get admin activity audit logs.

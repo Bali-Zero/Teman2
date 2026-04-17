@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("visa_specialist", "company_setup")
     async def search_kbli(query: str, limit: int = 10) -> dict:
         """
         Search Indonesian business activity codes (KBLI 2025).
@@ -28,6 +31,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("company_setup")
     async def inspect_kbli(code: str) -> dict:
         """
         Get deep details for a specific KBLI code.
@@ -44,6 +48,7 @@ def register(mcp, _call, _call_safe):
         return await _call(f"/api/v1/kbli-notebook/inspect/{code}")
 
     @mcp.tool()
+    @require_role("company_setup")
     async def chat_kbli(query: str) -> dict:
         """
         AI-powered KBLI consultation chat.
@@ -64,6 +69,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def ask_legal(
         question: str,
         user_id: str = "mcp-agent",
@@ -92,6 +98,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/agentic-rag/query", method="POST", json=payload)
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def list_visa_types() -> dict:
         """
         List all available visa types for Indonesia.
@@ -102,6 +109,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/knowledge/visa-types")
 
     @mcp.tool()
+    @require_role("visa_specialist")
     async def get_visa_details(visa_code: str) -> dict:
         """
         Get detailed information about a specific visa type.
