@@ -209,19 +209,46 @@ class BatchProcessor:
     def __init__(self, batch_size: int = 10, max_wait: float = 0.1) -> None:
         self.batch_size = batch_size
         self.max_wait = max_wait
-        self.queue = asyncio.Queue()
+        self.queue: asyncio.Queue = asyncio.Queue()
         self.processing = False
+        # Strong ref on the batch-drain task; without this, concurrent
+        # add_request callers could drop the Task before it starts draining
+        # and the event loop's weak ref would let it be collected, stranding
+        # futures forever.
+        self._batch_task: asyncio.Task | None = None
+        # Guard the `if not self.processing: create_task()` TOCTOU window —
+        # two concurrent add_request coroutines can otherwise both see
+        # processing=False and spawn duplicate drainers for the same queue.
+        self._start_lock: asyncio.Lock = asyncio.Lock()
 
     async def add_request(self, request_data: dict[str, Any]) -> Any:
         """Add request to batch and wait for result"""
-        future = asyncio.Future()
+        future: asyncio.Future = asyncio.Future()
         await self.queue.put((request_data, future))
 
-        # Start processing if not already running
+        # Start the batch drainer if not already running. The start_lock
+        # prevents duplicate drainers when two producers arrive at the
+        # same tick.
         if not self.processing:
-            asyncio.create_task(self._process_batch())
+            async with self._start_lock:
+                if not self.processing and (
+                    self._batch_task is None or self._batch_task.done()
+                ):
+                    self._batch_task = asyncio.create_task(
+                        self._process_batch(),
+                        name="batch-processor-drain",
+                    )
+                    self._batch_task.add_done_callback(self._on_batch_done)
 
         return await future
+
+    def _on_batch_done(self, task: asyncio.Task) -> None:
+        """Clear the strong ref and surface exceptions from the batch drainer."""
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error("BatchProcessor drain task failed: %s", exc, exc_info=exc)
 
     async def _process_batch(self) -> None:
         """Process requests in batches"""
