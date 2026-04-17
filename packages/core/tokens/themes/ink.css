@@ -1,0 +1,24 @@
+/* Opzione 1 — "Ink Blue" #0E1014.
+   Colder-premium, Stripe/Wise territory. Pairs cleanly with warm hero
+   photography (neon, sunset, gold) without cryogenic pitch-black. */
+
+[data-theme="ink"] {
+  --surface-base: #0e1014;
+  --surface-raised: rgba(255, 255, 255, 0.028);
+  --surface-sunken: rgba(0, 0, 0, 0.4);
+  --surface-overlay: rgba(14, 16, 20, 0.62);
+  --surface-scrim: rgba(0, 0, 0, 0.7);
+
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.52);
+  --text-tertiary: rgba(255, 255, 255, 0.28);
+  --text-on-accent: #ffffff;
+
+  --border-subtle: rgba(255, 255, 255, 0.035);
+  --border-default: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --nav-bg: rgba(14, 16, 20, 0.62);
+  --footer-bg: #0a0d12;
+  --footer-text: var(--text-tertiary);
+}
