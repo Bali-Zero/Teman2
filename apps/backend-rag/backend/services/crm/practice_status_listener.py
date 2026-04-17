@@ -184,8 +184,13 @@ class PracticeStatusListener:
         assigned_to = data.get("assigned_to") or "asya@balizero.com"
         try:
             await self._send_payment_emails(practice_id, triggered_by=assigned_to)
-        except Exception as exc:
+        except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
             logger.error(f"M4 payment email failed for practice {practice_id}: {exc}", exc_info=True)
+        except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
+            logger.error(
+                f"M4 payment email unexpected error for practice {practice_id}: {exc}",
+                exc_info=True,
+            )
 
     async def _send_payment_emails(self, practice_id: int, triggered_by: str) -> None:
         """Fetch practice + client data, send payment confirmation emails."""
@@ -229,8 +234,13 @@ Questions? Reply to this email or reach us on WhatsApp.
             try:
                 await self._send_via_internal_api(client_email, subject, body)
                 logger.info(f"M4: payment confirmation sent to client {client_email}")
-            except Exception as exc:
+            except httpx.HTTPError as exc:
                 logger.error(f"M4: failed to email client {client_email}: {exc}", exc_info=True)
+            except Exception as exc:  # noqa: BLE001 — must continue to the team email below
+                logger.error(
+                    f"M4: unexpected error emailing client {client_email}: {exc}",
+                    exc_info=True,
+                )
 
         # ── Email 2: Team member — with Asya in CC ───────────────────────
         if team_member_email:
@@ -264,8 +274,13 @@ Zantara CRM 🤖
                     cc="asya@balizero.com",
                 )
                 logger.info(f"M4: team notification sent to {team_member_email} (CC: asya)")
-            except Exception as exc:
+            except httpx.HTTPError as exc:
                 logger.error(f"M4: failed to email team member {team_member_email}: {exc}", exc_info=True)
+            except Exception as exc:  # noqa: BLE001 — notification failure never blocks the listener
+                logger.error(
+                    f"M4: unexpected error emailing team member {team_member_email}: {exc}",
+                    exc_info=True,
+                )
 
     # ── M5 handler ────────────────────────────────────────────────────────
 
@@ -289,9 +304,15 @@ Zantara CRM 🤖
             else:
                 # Other milestones: submitted, approved, completed
                 await self._send_milestone_email(practice_id, new_status, assigned_to)
-        except Exception as exc:
+        except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
             logger.error(
                 f"M5: status milestone handler failed for practice {practice_id} "
+                f"new_status={new_status}: {exc}",
+                exc_info=True,
+            )
+        except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
+            logger.error(
+                f"M5: status milestone handler unexpected error for practice {practice_id} "
                 f"new_status={new_status}: {exc}",
                 exc_info=True,
             )
@@ -317,8 +338,13 @@ Zantara CRM 🤖
         try:
             await self._send_via_internal_api(client_email, subject, body)
             logger.info(f"M5: milestone '{status}' email sent to {client_email} (practice {practice_id})")
-        except Exception as exc:
+        except httpx.HTTPError as exc:
             logger.error(f"M5: milestone email failed for {client_email}: {exc}", exc_info=True)
+        except Exception as exc:  # noqa: BLE001 — milestone notification failure never propagates
+            logger.error(
+                f"M5: milestone email unexpected error for {client_email}: {exc}",
+                exc_info=True,
+            )
 
     async def _send_via_internal_api(
         self,
