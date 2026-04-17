@@ -18,48 +18,83 @@ def _reset_llm_cache() -> None:
 
 
 class TestGetLlmForReasoning:
-    """Tests for get_llm_for_reasoning function."""
+    """Tests for get_llm_for_reasoning function.
 
-    def test_openai_preferred(self) -> None:
+    After the OAuth migration (2026-04-17), preference order is:
+    1. Claude via Max OAuth subprocess (primary) — unless
+       ``KG_REASONING_PROVIDER=openai``.
+    2. OpenAI GPT-4o-mini (explicit opt-in or fallback when Claude
+       LangChain wrapper is unavailable).
+    ``ANTHROPIC_API_KEY`` is never consulted.
+    """
+
+    def test_claude_oauth_preferred(self) -> None:
+        """Default path returns the OAuth-backed Claude chat model."""
         from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
         mock_llm = MagicMock()
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key", "ANTHROPIC_API_KEY": ""}):
-            with patch("backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI", return_value=mock_llm) as mock_cls:
+        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "", "ANTHROPIC_API_KEY": ""}, clear=False):
+            with patch(
+                "backend.llm.claude_oauth_langchain.build_claude_oauth_chat_model",
+                return_value=mock_llm,
+            ) as mock_builder:
+                result = get_llm_for_reasoning()
+                assert result is mock_llm
+                mock_builder.assert_called_once_with(model="claude-sonnet-4-6")
+
+    def test_openai_explicit_optin(self) -> None:
+        """``KG_REASONING_PROVIDER=openai`` skips the Claude path entirely."""
+        from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
+
+        mock_llm = MagicMock()
+        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "openai", "OPENAI_API_KEY": "k"}):
+            with patch(
+                "backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI",
+                return_value=mock_llm,
+            ) as mock_cls:
                 result = get_llm_for_reasoning()
                 assert result is mock_llm
                 mock_cls.assert_called_once_with(
                     model="gpt-4o-mini",
                     temperature=0.2,
-                    api_key="test-key",
+                    api_key="k",
                 )
 
-    def test_anthropic_fallback(self) -> None:
+    def test_openai_fallback_when_claude_import_fails(self) -> None:
+        """Falls back to OpenAI if the Claude OAuth wrapper can't be built."""
         from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
         mock_llm = MagicMock()
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "ANTHROPIC_API_KEY": "test-anthropic"}):
-            with patch("backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI", None):
-                with patch("backend.services.rag.kg_langgraph_orchestrator.ChatAnthropic", return_value=mock_llm) as mock_cls:
+        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "", "OPENAI_API_KEY": "k"}):
+            with patch(
+                "backend.llm.claude_oauth_langchain.build_claude_oauth_chat_model",
+                side_effect=ImportError("no langchain-core"),
+            ):
+                with patch(
+                    "backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI",
+                    return_value=mock_llm,
+                ):
                     result = get_llm_for_reasoning()
                     assert result is mock_llm
-                    mock_cls.assert_called_once()
 
     def test_no_llm_raises(self) -> None:
+        """No Claude, no OpenAI → explicit ValueError."""
         from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "", "ANTHROPIC_API_KEY": ""}):
+        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "openai", "OPENAI_API_KEY": ""}):
             with patch("backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI", None):
-                with patch("backend.services.rag.kg_langgraph_orchestrator.ChatAnthropic", None):
-                    with pytest.raises(ValueError, match="No LLM available"):
-                        get_llm_for_reasoning()
+                with pytest.raises(ValueError, match="No LLM available"):
+                    get_llm_for_reasoning()
 
     def test_singleton_caching(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
         mock_llm = MagicMock()
-        with patch.dict(os.environ, {"OPENAI_API_KEY": "key", "ANTHROPIC_API_KEY": ""}):
-            with patch("backend.services.rag.kg_langgraph_orchestrator.ChatOpenAI", return_value=mock_llm):
+        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "", "ANTHROPIC_API_KEY": ""}):
+            with patch(
+                "backend.llm.claude_oauth_langchain.build_claude_oauth_chat_model",
+                return_value=mock_llm,
+            ):
                 first = get_llm_for_reasoning()
                 second = get_llm_for_reasoning()
                 assert first is second

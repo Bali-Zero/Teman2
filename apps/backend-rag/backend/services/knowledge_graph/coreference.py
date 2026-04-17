@@ -9,12 +9,16 @@ Resolves references like:
 """
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import anthropic
-
+from backend.llm.claude_oauth_client import (
+    ClaudeOAuthError,
+    ClaudeOAuthNotAvailable,
+    complete_async,
+)
 from backend.services.knowledge_graph.extractor import ExtractedEntity
 from backend.services.knowledge_graph.ontology import EntityType
 
@@ -119,22 +123,32 @@ class CoreferenceResolver:
     def __init__(
         self,
         use_llm: bool = True,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         api_key: str | None = None,
     ) -> None:
         """
-        Initialize Coreference Resolver
+        Initialize Coreference Resolver.
 
         Args:
-            use_llm: Use LLM for disambiguation
-            model: Claude model to use
-            api_key: Anthropic API key
+            use_llm: Use LLM for disambiguation.
+            model: Claude model slug forwarded to the OAuth subprocess
+                (``claude -p --model ...``).
+            api_key: **Ignored** — kept only for signature compatibility.
+                Claude is now called via the Max OAuth subprocess
+                (``backend.llm.claude_oauth_client``), not the SDK. Passing
+                an API key logs a policy violation.
         """
         self.use_llm = use_llm
         self.model = model
 
-        if use_llm:
-            self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        if api_key:
+            logger.error(
+                "🚨 CoreferenceResolver received api_key argument. It is ignored "
+                "(project policy: Max OAuth only, see feedback_claude_oauth_only.md).",
+            )
+
+        # No SDK client — calls go through complete_async() at request time.
+        self.client = None  # retained attribute for tests that patch it
 
         # Entity cache for cross-chunk consistency (Prompt Cache)
         self.entity_cache: dict[str, EntityCluster] = {}
@@ -142,8 +156,9 @@ class CoreferenceResolver:
         # Compile reference patterns
         self._compile_patterns()
 
-        logger.warning(
-            f"CoreferenceResolver initialized, use_llm={use_llm} - DEPRECATED: Anthropic/Claude removed",
+        logger.info(
+            "CoreferenceResolver initialized, use_llm=%s (Claude via Max OAuth)",
+            use_llm,
         )
 
     def _compile_patterns(self) -> None:
@@ -332,22 +347,30 @@ class CoreferenceResolver:
 ## ANSWER (just the ID):"""
 
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=50,
-                temperature=0.0,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            result = response.content[0].text.strip()
+            # Claude via Max OAuth subprocess (no SDK). The CLI has no
+            # ``temperature`` / ``max_tokens`` flags — we rely on the
+            # prompt-level "ANSWER (just the ID)" discipline to keep the
+            # completion short. This is a change from the SDK behavior
+            # (temperature=0.0, max_tokens=50) — in practice the CLI
+            # still returns short IDs, and any stray prose is discarded
+            # by the "NONE"/ID check below.
+            resp = await complete_async(prompt, model=self.model)
+            result = (resp.text or "").strip()
 
             if result == "NONE" or not result:
                 return None
 
-            return result
+            # Defensive: the CLI may return extra prose around the ID.
+            # Take the first non-empty line and strip it of trailing
+            # punctuation / quotes.
+            first_line = result.splitlines()[0].strip().strip('"`\' .')
+            return first_line or None
 
+        except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
+            logger.error("LLM resolution failed (OAuth): %s", e)
+            return self._resolve_heuristic(reference, candidates)
         except Exception as e:
-            logger.error(f"LLM resolution failed: {e}")
+            logger.error("LLM resolution failed: %s", e)
             return self._resolve_heuristic(reference, candidates)
 
     def _resolve_heuristic(
