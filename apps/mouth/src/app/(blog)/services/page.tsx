@@ -73,7 +73,7 @@ const SERVICES: Service[] = [
     tagline: "CoreTax 2026, PPh, PPN, BPJS, LKPM",
     description:
       "Corporate and personal tax compliance under CoreTax 2026 — filed, not guessed.",
-    accent: "#3b82f6",
+    accent: "#38bdf8",
     icon: TrendingUp,
     bullets: [
       "12+ filing types · monthly + annual",
@@ -143,7 +143,7 @@ export default function ServicesPage() {
               maxWidth: "22ch",
             }}
           >
-            Four products.
+            Four missions.
             <br />
             <span style={{ color: "var(--text-secondary)" }}>
               One licensed Indonesian team.
@@ -208,13 +208,8 @@ export default function ServicesPage() {
           borderBottom: "1px solid var(--border-subtle)",
         }}
       >
-        <div className="max-w-[1400px] mx-auto">
-          <div
-            className="grid gap-5"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-            }}
-          >
+        <div className="max-w-[1100px] mx-auto">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {SERVICES.map((s) => (
               <div
                 key={s.slug}
@@ -364,40 +359,43 @@ export default function ServicesPage() {
             }}
           >
             {[
-              [
-                "01",
-                "Scope it",
-                "WhatsApp or Visa Oracle for a first read — free, under 15 min.",
-              ],
-              [
-                "02",
-                "AI drafts",
-                "The AI reads your case against every primary source we track.",
-              ],
-              [
-                "03",
-                "Licensed sign-off",
-                "A konsultan imigrasi, konsultan pajak or notary reviews and signs.",
-              ],
-              [
-                "04",
-                "Filed + cited",
-                "Every filing comes with a source trail — no black-box guidance.",
-              ],
-            ].map(([n, title, body]) => (
+              {
+                n: "01",
+                title: "Scope it",
+                body: "WhatsApp or Visa Oracle for a first read — free, under 15 min.",
+                accent: "#c8102e",
+              },
+              {
+                n: "02",
+                title: "AI drafts",
+                body: "The AI reads your case against every primary source we track.",
+                accent: "#d4a017",
+              },
+              {
+                n: "03",
+                title: "Licensed sign-off",
+                body: "A konsultan imigrasi, konsultan pajak or notary reviews and signs.",
+                accent: "#38bdf8",
+              },
+              {
+                n: "04",
+                title: "Filed + cited",
+                body: "Every filing comes with a source trail — no black-box guidance.",
+                accent: "#22c55e",
+              },
+            ].map(({ n, title, body, accent }) => (
               <li
                 key={n}
                 className="rounded-2xl p-5"
                 style={{
-                  background:
-                    "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
-                  border:
-                    "1px solid color-mix(in srgb, var(--accent-funnel, #3a6dff) 18%, transparent)",
+                  background: `color-mix(in srgb, ${accent} 8%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${accent} 28%, transparent)`,
+                  boxShadow: `0 10px 24px color-mix(in srgb, ${accent} 14%, transparent)`,
                 }}
               >
                 <div
                   className="text-[11px] font-bold tracking-[0.18em]"
-                  style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
+                  style={{ color: accent }}
                 >
                   {n}
                 </div>
