@@ -181,6 +181,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # ========================================================================
             "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
             "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
+            # ========================================================================
+            # FUNNEL HUB — PRE-AUTH LEAD TRACKING (v2 L1 Funnel Hub)
+            # ========================================================================
+            "/api/funnel/session/touch",  # BUSINESS: Pre-auth lead cookie bz_session touch — anonymous UUID, no PII. Required for cross-funnel session attribution (visa/kbli/tax/property/home).
+            "/api/funnel/session/convert",  # BUSINESS: Lead→client conversion bridge (called by portal login flow). Takes session_id + client_id.
+            "/api/analytics/funnel-event",  # BUSINESS: 11 whitelisted funnel events (see packages/core/analytics/funnel-view.ts FUNNEL_EVENTS). No PII — session_id only.
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
             "/api/prime/zones-geojson",  # BUSINESS: Zone polygon GeoJSON for 3D map rendering (public)
             "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)

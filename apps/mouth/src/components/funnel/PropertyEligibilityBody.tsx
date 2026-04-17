@@ -2,12 +2,35 @@
 import { useState } from "react";
 import { trackPropertyAnalyzeCTA, trackPropertyWACTA } from "@/lib/analytics";
 
+type AnalyzeVerdict = {
+  can_invest?: boolean;
+  risk_level?: "LOW" | "MEDIUM" | "HIGH" | string;
+  score?: number;
+  label?: "GREEN" | "YELLOW" | "RED" | string;
+};
+
+type AnalyzeZone = {
+  code?: string;
+  name?: string;
+  desa?: string;
+  kecamatan?: string;
+  kdb?: string;
+  klb?: string;
+  tb?: string;
+};
+
+type AnalyzeOpportunity = {
+  title_en?: string;
+  category_en?: string;
+  pma_open?: boolean;
+};
+
 type AnalyzeResponse = {
-  eligibility?: string[];
-  tax?: { pbb_rate?: number; bphtb_rate?: number };
-  risk?: { total?: number };
-  token?: string;
-  // backend may return more — we display defensively
+  status?: string;
+  zone?: AnalyzeZone;
+  verdict?: AnalyzeVerdict;
+  opportunities?: AnalyzeOpportunity[];
+  sea_distance_m?: number;
   [key: string]: unknown;
 };
 
@@ -119,10 +142,11 @@ export function PropertyEligibilityBody() {
           }}
         >
           <h2 style={{ marginTop: 0, fontSize: "1.5rem" }}>
-            Struttura eligible:{" "}
-            {result.eligibility && result.eligibility.length
-              ? result.eligibility.join(", ")
+            Zona:{" "}
+            {result.zone?.code
+              ? `${result.zone.code} — ${result.zone.name ?? ""}`
               : "n/d"}
+            {result.zone?.desa ? ` · ${result.zone.desa}` : ""}
           </h2>
           <p
             style={{
@@ -130,17 +154,40 @@ export function PropertyEligibilityBody() {
               margin: "var(--space-2) 0",
             }}
           >
-            PBB: {result.tax?.pbb_rate ?? "—"}% · BPHTB:{" "}
-            {result.tax?.bphtb_rate ?? "—"}%
+            KDB: {result.zone?.kdb ?? "—"} · KLB: {result.zone?.klb ?? "—"} ·
+            TB: {result.zone?.tb ?? "—"}
           </p>
-          <p
-            style={{
-              color: "var(--text-secondary)",
-              margin: "var(--space-2) 0",
-            }}
-          >
-            Risk score: {result.risk?.total ?? "—"}/100
-          </p>
+          {result.verdict ? (
+            <p
+              style={{
+                color: "var(--text-secondary)",
+                margin: "var(--space-2) 0",
+              }}
+            >
+              Investment score: {result.verdict.score ?? "—"}/100 ·{" "}
+              {result.verdict.label ?? "—"} · Risk:{" "}
+              {result.verdict.risk_level ?? "—"}
+            </p>
+          ) : null}
+          {result.opportunities && result.opportunities.length ? (
+            <div style={{ margin: "var(--space-4) 0" }}>
+              <strong>Opportunità KBLI aperte a PMA:</strong>
+              <ul
+                style={{
+                  marginTop: "var(--space-2)",
+                  paddingLeft: "var(--space-5, 1.25rem)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                {result.opportunities.slice(0, 5).map((o, i) => (
+                  <li key={i}>
+                    {o.title_en}
+                    {o.category_en ? ` · ${o.category_en}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div
             style={{
               display: "flex",
@@ -149,24 +196,6 @@ export function PropertyEligibilityBody() {
               flexWrap: "wrap",
             }}
           >
-            {result.token ? (
-              <a
-                href={`https://prime.balizero.com/proposal/${result.token}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn"
-                style={{
-                  padding: "var(--space-2) var(--space-4)",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--surface-base, transparent)",
-                  border: "1px solid var(--color-border-subtle)",
-                  color: "var(--text-primary)",
-                  textDecoration: "none",
-                }}
-              >
-                Vedi zona su Prime 3D
-              </a>
-            ) : null}
             <a
               href="https://wa.me/628213107363?text=Property%20analysis%20Bali%20Zero"
               target="_blank"
