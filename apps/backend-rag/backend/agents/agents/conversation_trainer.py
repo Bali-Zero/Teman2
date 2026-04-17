@@ -384,7 +384,9 @@ async def run_conversation_trainer(days_back: int = 7) -> None:
                             "text": f"🤖 New prompt improvement PR created: {pr_branch}\n\nAnalyzed {ANALYSIS_CONVERSATIONS_LIMIT} top conversations, found actionable improvements!",
                         },
                     )
-            except Exception as e:
+            except (httpx.HTTPError, OSError) as e:
+                # Slack down or network blip — cron must still succeed,
+                # but do not swallow cancellation/system-exit.
                 logger.error(f"Failed to send Slack notification: {e}", exc_info=True)
 
     except Exception as e:

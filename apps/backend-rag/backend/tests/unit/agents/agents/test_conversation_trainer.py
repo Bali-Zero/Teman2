@@ -113,3 +113,89 @@ class TestConversationTrainer:
         result = await conversation_trainer.analyze_winning_patterns(days_back=0)
         # Should use default
         assert result is None or isinstance(result, dict)
+
+
+class TestSlackNotifyErrorHandling:
+    """S11: verify run_conversation_trainer handles Slack failures with narrow exceptions."""
+
+    @pytest.mark.asyncio
+    async def test_slack_notify_swallows_httpx_error(self, monkeypatch):
+        """httpx.HTTPError from the Slack post must not crash the cron."""
+        import httpx
+
+        from backend.agents.agents import conversation_trainer as mod
+
+        mock_trainer = MagicMock()
+        mock_trainer.analyze_winning_patterns = AsyncMock(return_value={"x": 1})
+        mock_trainer.generate_prompt_update = AsyncMock(return_value="prompt")
+        mock_trainer.create_improvement_pr = AsyncMock(return_value="auto/branch")
+
+        fake_app = MagicMock()
+        fake_app.state.db_pool = None
+        main_cloud = MagicMock(app=fake_app)
+        monkeypatch.setitem(sys.modules, "backend.app.main_cloud", main_cloud)
+
+        fake_settings = MagicMock(slack_webhook_url="https://hooks.slack/x")
+        core_config = MagicMock(settings=fake_settings)
+        monkeypatch.setitem(sys.modules, "backend.app.core.config", core_config)
+
+        class _BoomClient:
+            def __init__(self, *a, **kw):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def post(self, *a, **kw):
+                raise httpx.ConnectError("slack down")
+
+        with patch.object(mod, "ConversationTrainer", return_value=mock_trainer), patch.object(
+            httpx, "AsyncClient", _BoomClient,
+        ):
+            # Must not raise
+            await mod.run_conversation_trainer(days_back=1)
+
+    @pytest.mark.asyncio
+    async def test_slack_notify_does_not_swallow_cancelled_error(self, monkeypatch):
+        """asyncio.CancelledError must propagate (cooperative shutdown)."""
+        import asyncio
+
+        import httpx
+
+        from backend.agents.agents import conversation_trainer as mod
+
+        mock_trainer = MagicMock()
+        mock_trainer.analyze_winning_patterns = AsyncMock(return_value={"x": 1})
+        mock_trainer.generate_prompt_update = AsyncMock(return_value="prompt")
+        mock_trainer.create_improvement_pr = AsyncMock(return_value="auto/branch")
+
+        fake_app = MagicMock()
+        fake_app.state.db_pool = None
+        main_cloud = MagicMock(app=fake_app)
+        monkeypatch.setitem(sys.modules, "backend.app.main_cloud", main_cloud)
+
+        fake_settings = MagicMock(slack_webhook_url="https://hooks.slack/x")
+        core_config = MagicMock(settings=fake_settings)
+        monkeypatch.setitem(sys.modules, "backend.app.core.config", core_config)
+
+        class _CancelClient:
+            def __init__(self, *a, **kw):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def post(self, *a, **kw):
+                raise asyncio.CancelledError
+
+        with patch.object(mod, "ConversationTrainer", return_value=mock_trainer), patch.object(
+            httpx, "AsyncClient", _CancelClient,
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                await mod.run_conversation_trainer(days_back=1)
