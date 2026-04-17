@@ -448,3 +448,153 @@ class TestExceptionHierarchyChains:
         ]
         for exc in auth_exceptions:
             assert isinstance(exc, AuthError), f"{type(exc).__name__} not an AuthError"
+
+
+# =============================================================================
+# UU PDP Exceptions
+# =============================================================================
+
+from backend.core.exceptions import (  # noqa: E402 — co-located to keep diff local
+    ConsentMissing,
+    CrossBorderTransferError,
+    DataRetentionViolation,
+    DataSubjectRequestError,
+    PDPAuditRequired,
+    PDPError,
+    PIIAccessDenied,
+)
+
+
+class TestPDPError:
+    def test_pdp_error_is_nuzantara_base(self) -> None:
+        err = PDPError("oops")
+        assert isinstance(err, NuzantaraBaseError)
+        assert err.details["pdp_category"] == "generic"
+
+    def test_pdp_error_with_subject_and_category(self) -> None:
+        err = PDPError(
+            "failure",
+            data_subject_id="client_42",
+            pdp_category=PDPError.CATEGORY_PII_ACCESS,
+            details={"extra": True},
+        )
+        assert err.data_subject_id == "client_42"
+        assert err.pdp_category == PDPError.CATEGORY_PII_ACCESS
+        assert err.details["data_subject_id"] == "client_42"
+        assert err.details["pdp_category"] == PDPError.CATEGORY_PII_ACCESS
+        assert err.details["extra"] is True
+
+    def test_pdp_error_does_not_leak_none_subject(self) -> None:
+        err = PDPError("x")
+        assert "data_subject_id" not in err.details
+
+
+class TestPDPAuditRequired:
+    def test_construction(self) -> None:
+        err = PDPAuditRequired(
+            "client_update",
+            "redis audit stream unavailable",
+            data_subject_id="client_7",
+        )
+        assert isinstance(err, PDPError)
+        assert err.operation == "client_update"
+        assert err.reason == "redis audit stream unavailable"
+        assert err.details["operation"] == "client_update"
+        assert err.details["reason"] == "redis audit stream unavailable"
+        assert err.pdp_category == PDPError.CATEGORY_AUDIT_REQUIRED
+
+    def test_merges_extra_details(self) -> None:
+        err = PDPAuditRequired("op", "why", details={"trace_id": "t-1"})
+        assert err.details["trace_id"] == "t-1"
+
+
+class TestPIIAccessDenied:
+    def test_construction(self) -> None:
+        err = PIIAccessDenied(
+            "passport_number",
+            "actor lacks pii_read permission",
+            data_subject_id="client_9",
+            actor="user:42",
+        )
+        assert err.field == "passport_number"
+        assert err.actor == "user:42"
+        assert err.pdp_category == PDPError.CATEGORY_PII_ACCESS
+        assert "passport_number" in str(err)
+
+    def test_is_pdp_error_not_auth_error(self) -> None:
+        # PII denial is a PDP event, not a generic auth failure.
+        err = PIIAccessDenied("email", "policy")
+        assert isinstance(err, PDPError)
+        assert not isinstance(err, AuthError)
+
+
+class TestConsentMissing:
+    def test_construction(self) -> None:
+        err = ConsentMissing(
+            "marketing_email",
+            data_subject_id="client_3",
+            channel="email",
+        )
+        assert err.purpose == "marketing_email"
+        assert err.channel == "email"
+        assert err.pdp_category == PDPError.CATEGORY_CONSENT
+        assert err.details["purpose"] == "marketing_email"
+
+
+class TestDataRetentionViolation:
+    def test_construction(self) -> None:
+        err = DataRetentionViolation(
+            resource_type="passport_scan",
+            max_retention_days=180,
+            age_days=220,
+            data_subject_id="client_1",
+        )
+        assert err.resource_type == "passport_scan"
+        assert err.max_retention_days == 180
+        assert err.age_days == 220
+        assert err.pdp_category == PDPError.CATEGORY_RETENTION
+        assert "220d > 180d" in str(err)
+
+
+class TestCrossBorderTransferError:
+    def test_construction(self) -> None:
+        err = CrossBorderTransferError(
+            destination="us",
+            data_subject_id="client_5",
+            reason="no SCC in place",
+        )
+        assert err.destination == "us"
+        assert err.reason == "no SCC in place"
+        assert err.pdp_category == PDPError.CATEGORY_TRANSFER
+
+
+class TestDataSubjectRequestError:
+    def test_valid_request_type(self) -> None:
+        err = DataSubjectRequestError(
+            "erase",
+            "client still has active practice",
+            data_subject_id="client_2",
+        )
+        assert err.request_type == "erase"
+        assert err.pdp_category == PDPError.CATEGORY_SUBJECT_REQUEST
+
+    def test_unknown_request_type_normalised(self) -> None:
+        err = DataSubjectRequestError("teleport", "nope")
+        assert err.request_type == "unknown"
+
+
+class TestPDPHierarchyCatchable:
+    def test_all_pdp_errors_catchable_by_pdp_error(self) -> None:
+        pdp_exceptions = [
+            PDPAuditRequired("op", "r"),
+            PIIAccessDenied("f", "r"),
+            ConsentMissing("purpose"),
+            DataRetentionViolation("t", 1, 2),
+            CrossBorderTransferError("us"),
+            DataSubjectRequestError("erase", "r"),
+        ]
+        for exc in pdp_exceptions:
+            assert isinstance(exc, PDPError), f"{type(exc).__name__} not a PDPError"
+            assert isinstance(exc, NuzantaraBaseError)
+            # Every PDP error carries a stable machine-readable tag.
+            assert exc.details["pdp_category"] == exc.pdp_category
