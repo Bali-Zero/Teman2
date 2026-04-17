@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
+import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
+import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 import { ConsentBanner } from "@/components/visa-oracle/ConsentBanner";
-import { VisaHeaderWhatsApp } from "@/components/visa-oracle/VisaHeaderWhatsApp";
 
 export const metadata: Metadata = {
   title: "Visa Oracle — What visa do you need for Indonesia?",
@@ -25,12 +26,8 @@ export default function VisaOracleLayout({
     >
       <NavShell
         logo={<BZLogo variant="full" />}
-        items={[
-          { label: "Home", href: "https://balizero.com/" },
-          { label: "KBLI", href: "/kbli" },
-          { label: "Tax", href: "https://tax.balizero.com/" },
-        ]}
-        actions={<VisaHeaderWhatsApp />}
+        items={getFunnelNavItems("visa")}
+        actions={<HeaderWhatsAppCTA funnel="visa" />}
       />
       <SessionInit funnel="visa" />
       {/* NavShell is fixed top (h-14) — push content down */}
