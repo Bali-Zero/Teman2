@@ -41,7 +41,7 @@ function LocaleSwitcher({
           onClick={() => onChange(l)}
           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all font-[family-name:var(--font-montserrat)] ${
             locale === l
-              ? "bg-[#d4845a] text-white"
+              ? "bg-accent-warm text-white"
               : "text-white/50 hover:text-white"
           }`}
         >
@@ -87,7 +87,7 @@ function ServicesSection({ locale }: { locale: Locale }) {
             onClick={() => setActiveCategory(cat)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all font-[family-name:var(--font-montserrat)] border ${
               activeCategory === cat
-                ? "bg-[#d4845a] border-[#d4845a] text-white"
+                ? "bg-accent-warm border-accent-warm text-white"
                 : "border-white/15 text-white/55 hover:border-white/30 hover:text-white/80"
             }`}
           >
@@ -129,7 +129,7 @@ function ServicesSection({ locale }: { locale: Locale }) {
           href="https://balizero.com/services"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-[#d4845a] font-[family-name:var(--font-montserrat)] text-sm hover:text-[#e09870] transition-colors group"
+          className="inline-flex items-center gap-2 text-accent-warm font-[family-name:var(--font-montserrat)] text-sm hover:text-[#e09870] transition-colors group"
         >
           <span>View all services on balizero.com/services</span>
           <span className="group-hover:translate-x-1 transition-transform">
@@ -181,7 +181,7 @@ export function BookPage({ initialChapter }: BookPageProps) {
         <div className="relative z-10 flex flex-col items-center text-center px-8">
           {/* Logo circolare */}
           <div className="mb-8 relative">
-            <div className="w-40 h-40 md:w-52 md:h-52 rounded-full overflow-hidden border-2 border-[#d4845a]/40 shadow-[0_0_48px_rgba(212,132,90,0.35)] bg-black flex items-center justify-center">
+            <div className="w-40 h-40 md:w-52 md:h-52 rounded-full overflow-hidden border-2 border-accent-warm/40 shadow-[0_0_48px_rgba(212,132,90,0.35)] bg-black flex items-center justify-center">
               <Image
                 src="/static/balizero-logo-clean.png"
                 alt="Bali Zero"
@@ -192,7 +192,7 @@ export function BookPage({ initialChapter }: BookPageProps) {
               />
             </div>
           </div>
-          <p className="font-[family-name:var(--font-montserrat)] text-[#d4845a] tracking-[0.3em] text-xs uppercase mb-4">
+          <p className="font-[family-name:var(--font-montserrat)] text-accent-warm tracking-[0.3em] text-xs uppercase mb-4">
             {t.coverTagline}
           </p>
           <p className="font-[family-name:var(--font-montserrat)] text-white/55 text-lg max-w-sm">
@@ -306,13 +306,13 @@ export function BookPage({ initialChapter }: BookPageProps) {
                   key={s.l}
                   className="border border-white/8 rounded-2xl p-5 bg-white/[0.015]"
                 >
-                  <p className="font-[family-name:var(--font-spartan)] text-[#d4845a] font-black text-3xl mb-1">
+                  <p className="font-[family-name:var(--font-spartan)] text-accent-warm font-black text-3xl mb-1">
                     {s.n}
                   </p>
                   {isKbli ? (
                     <a
                       href={STATS.kbliNavigatorUrl}
-                      className="font-[family-name:var(--font-montserrat)] text-white/50 text-xs leading-snug hover:text-[#d4845a] transition-colors underline underline-offset-2"
+                      className="font-[family-name:var(--font-montserrat)] text-white/50 text-xs leading-snug hover:text-accent-warm transition-colors underline underline-offset-2"
                     >
                       {s.l} ↗
                     </a>

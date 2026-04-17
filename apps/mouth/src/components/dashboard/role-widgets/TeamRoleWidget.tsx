@@ -1,5 +1,3 @@
-"use client";
-import React from "react";
 import type { TeamMetrics, RoleAlert } from "@/types/dashboard-role.types";
 
 interface Props {
@@ -13,13 +11,13 @@ export function TeamRoleWidget({ metrics }: Props) {
       <span className="text-[9px] font-bold text-white/40 tracking-[.12em]">
         LE MIE PRATICHE
       </span>
-      <span className="text-2xl font-black text-[#5cb88a] leading-none">
+      <span className="text-2xl font-black text-accent-sage leading-none">
         {metrics.pratiche_assegnate}
       </span>
       <span className="text-[10px] text-white/50">pratiche assegnate</span>
       <div className="h-px bg-white/[0.06]" />
       {metrics.prossima_scadenza && (
-        <div className="px-2 py-1.5 rounded-lg bg-[rgba(196,92,120,0.09)] border border-[rgba(196,92,120,0.22)] text-[9px] font-semibold text-[#c45c78]">
+        <div className="px-2 py-1.5 rounded-lg bg-[rgba(196,92,120,0.09)] border border-[rgba(196,92,120,0.22)] text-[9px] font-semibold text-accent-pink-editorial">
           ⏰ Scadenza: {metrics.prossima_scadenza}
         </div>
       )}

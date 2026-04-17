@@ -294,8 +294,8 @@ function AskZantaraContent({
       {/* Header */}
       <div className="px-4 py-3 border-b border-white/10 bg-gradient-to-r from-[#2251ff]/10 to-transparent">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-[#2251ff]/20">
-            <Sparkles className="w-4 h-4 text-[#2251ff]" />
+          <div className="p-1.5 rounded-lg bg-accent-blue-editorial/20">
+            <Sparkles className="w-4 h-4 text-accent-blue-editorial" />
           </div>
           <div>
             <h4 className="font-medium text-white text-sm">Ask Zantara</h4>
@@ -357,7 +357,7 @@ function AskZantaraContent({
             <div
               className={cn(
                 'max-w-[85%] p-3 rounded-xl text-sm',
-                message.role === 'user' ? 'bg-[#2251ff] text-white' : 'bg-white/10 text-white/80'
+                message.role === 'user' ? 'bg-accent-blue-editorial text-white' : 'bg-white/10 text-white/80'
               )}
             >
               <p className="whitespace-pre-wrap">{message.content}</p>
@@ -370,7 +370,7 @@ function AskZantaraContent({
                     <a
                       key={i}
                       href={source.url}
-                      className="flex items-center gap-1 text-xs text-[#2251ff] hover:underline"
+                      className="flex items-center gap-1 text-xs text-accent-blue-editorial hover:underline"
                     >
                       <ExternalLink className="w-3 h-3" />
                       {source.title}
@@ -433,7 +433,7 @@ function AskZantaraContent({
                 'w-full px-4 py-2.5 pr-12 rounded-xl',
                 'bg-white/5 border border-white/10',
                 'text-white placeholder:text-white/30',
-                'focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/20',
+                'focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/20',
                 'transition-colors disabled:opacity-50'
               )}
             />
@@ -442,7 +442,7 @@ function AskZantaraContent({
               disabled={!input.trim() || isLoading}
               className={cn(
                 'absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg',
-                'text-white/40 hover:text-[#2251ff] hover:bg-[#2251ff]/10',
+                'text-white/40 hover:text-accent-blue-editorial hover:bg-accent-blue-editorial/10',
                 'transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
               )}
             >

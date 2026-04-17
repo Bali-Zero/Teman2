@@ -89,7 +89,7 @@ export default function ProposalPage() {
       <div className="max-w-lg mx-auto px-4 py-8 pb-28 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4845a]/20 text-[#d4845a] text-xs font-medium">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-warm/20 text-accent-warm text-xs font-medium">
             Bali Zero Investment Proposal
           </div>
           <h1 className="text-xl font-bold">

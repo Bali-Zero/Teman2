@@ -21,6 +21,18 @@
   --color-accent: var(--accent-funnel);
   --color-accent-text: var(--accent-funnel-text);
   --color-accent-zantara: var(--accent-zantara);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-sand: var(--accent-sand);
+  --color-accent-gold-muted: var(--accent-gold-muted);
+  --color-accent-blue-editorial: var(--accent-blue-editorial);
+  --color-accent-sage: var(--accent-sage);
+  --color-accent-pink-editorial: var(--accent-pink-editorial);
+  --color-accent-red-brand: var(--accent-red-brand);
+  --color-surface-editorial-base: var(--surface-editorial-base);
+  --color-surface-editorial-elevated: var(--surface-editorial-elevated);
+  --color-surface-deep: var(--surface-deep);
+  --color-text-silver: var(--text-silver);
+  --color-text-muted-cool: var(--text-muted-cool);
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);
   --color-border-strong: var(--border-strong);

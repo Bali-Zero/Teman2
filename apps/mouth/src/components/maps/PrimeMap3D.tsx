@@ -18,257 +18,17 @@ import Image from 'next/image';
 import { PrimeZantaraChat } from './PrimeZantaraChat';
 import { logger } from '@/lib/logger';
 import { PrimeNexusContext } from '@/contexts/PrimeNexusContext';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-interface Coordinate {
-  lat: number;
-  lng: number;
-  altitude?: number;
-}
-
-interface BusinessOpportunity {
-  code?: string;
-  title_en: string;
-  title_id?: string;
-  pma_open?: boolean;
-  category_en: string;
-}
-
-interface BuildingCodes {
-  zone_name_id: string;
-  kdb_pct: number;
-  klb_ratio: number;
-  kdh_pct: number;
-  ktb_pct: number;
-  height_limit: string;
-  max_height_meters: number | null;
-  setback: string;
-  notes: string;
-}
-
-interface ZoningInfo {
-  status: 'found' | 'outside_coverage' | 'error';
-  district?: string;
-  subdistrict?: string;
-  zone_code?: string;
-  zone_name?: string;
-  zone_label_en?: string;
-  zone_color_hex?: string;
-  zone_type?: string;
-  zone_description_en?: string;
-  is_restricted?: boolean;
-  businesses?: BusinessOpportunity[];
-  overlays?: Record<string, string>;
-  building_codes?: BuildingCodes;
-  allowed_kbli?: string[];
-  risk_score?: number;
-  avg_price_per_are?: number;
-  intel_articles?: IntelArticle[];
-  source?: string;
-  message?: string;
-}
-
-interface IntelArticle {
-  title: string;
-  source_url: string;
-  category?: string;
-  source_name?: string;
-  published_at?: string;
-  relevance_score?: number;
-}
-
-/** Google Maps 3D Element (beta API — no official typings) */
-interface Map3DElementInstance {
-  center: { lat: number; lng: number; altitude: number };
-  tilt: number;
-  range: number;
-  heading: number;
-  append: (child: HTMLElement) => void;
-  appendChild: (child: Node) => Node;
-  addEventListener: (type: string, handler: (event: Map3DClickEvent) => void) => void;
-}
-
-interface Map3DClickEvent {
-  position?: { lat: number; lng: number };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Google Maps beta constructors from importLibrary have no typings
-type GoogleMapsConstructor = new (...args: unknown[]) => any;
-
-interface MapLayers {
-  zoneColors: boolean;
-  extrusion: boolean;
-  kkop: boolean;
-  lp2b: boolean;
-  tsunami: boolean;
-  floodRisk: boolean;
-  templeBuffer: boolean;
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const ZONE_COLORS: Record<string, string> = {
-  'K-1': '#E8472A',
-  'K-2': '#E8472A',
-  'K-3': '#E8472A',
-  'C-1': '#F0826E',
-  'C-2': '#F0826E',
-  W: '#FFA5FF',
-  'W-1': '#FFA5FF',
-  'W-2': '#FF85F5',
-  'R-2': '#FF7D00',
-  'R-3': '#FF9D30',
-  'R-4': '#FFB860',
-  'P-1': '#C8C83C',
-  'P-2': '#D4D44A',
-  'P-3': '#C8C83C',
-  'P-4': '#BEB82E',
-  KT: '#A855F7',
-  KPI: '#690000',
-  'SPU-1': '#D4845A',
-  'SPU-2': '#D4845A',
-  'SPU-3': '#D4845A',
-  'SPU-4': '#D4845A',
-  HL: '#224027',
-  'KS-4': '#224027',
-  THR: '#224027',
-  TWA: '#224027',
-  EM: '#2D966E',
-  PS: '#05D7D7',
-  SS: '#05D7D7',
-  SP: '#05D7D7',
-  LS: '#F59E0B',
-  CB: '#B45309',
-  'RTH-2': '#3BA062',
-  'RTH-3': '#3BA062',
-  'RTH-4': '#3BA062',
-  'RTH-5': '#3BA062',
-  'RTH-7': '#6B7280',
-  'RTH-8': '#3BA062',
-  RTNH: '#9CA3AF',
-  BA: '#97DBF2',
-  BJ: '#9CA3AF',
-  TR: '#6B7280',
-  HK: '#9B00FF',
-  'PL-3': '#6B7280',
-  'PL-4': '#6B7280',
-  PTL: '#6B7280',
-  'IK-1': '#507DD2',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  'F&B': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  Hospitality: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  Wellness: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  Property: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  Retail: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
-  Creative: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
-  Technology: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
-  Education: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-  Services: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-  Industry: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  Finance: 'bg-teal-500/20 text-teal-300 border-teal-500/30',
-  Healthcare: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-};
-
-function formatPrice(pricePerAre: number): string {
-  if (!pricePerAre || pricePerAre === 0) return '—';
-  const billions = pricePerAre / 1_000_000_000;
-  if (billions >= 1) return `Rp ${billions.toFixed(1)}B / are`;
-  const millions = pricePerAre / 1_000_000;
-  return `Rp ${millions.toFixed(0)}M / are`;
-}
-
-// ─── Accordion Section ───────────────────────────────────────────────────────
-
-function AccordionSection({
-  id,
-  icon,
-  title,
-  defaultOpen = false,
-  children,
-  hasContent = true,
-}: {
-  id: string;
-  icon: React.ReactNode;
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-  hasContent?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  if (!hasContent) return null;
-
-  return (
-    <div className="border-b border-white/5 last:border-0">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors group"
-      >
-        <div className="flex items-center gap-2.5">
-          <span
-            className={`transition-colors ${open ? 'text-[#d4845a]' : 'text-slate-500 group-hover:text-slate-400'}`}
-          >
-            {icon}
-          </span>
-          <span
-            className={`text-sm font-semibold tracking-tight transition-colors ${open ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'}`}
-          >
-            {title}
-          </span>
-        </div>
-        <svg
-          className={`w-3.5 h-3.5 transition-all duration-200 ${open ? 'rotate-180 text-[#d4845a]' : 'text-slate-600'}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && <div className="px-4 pb-4">{children}</div>}
-    </div>
-  );
-}
-
-// ─── Layer Toggle ─────────────────────────────────────────────────────────────
-
-function LayerToggle({
-  label,
-  icon,
-  enabled,
-  onChange,
-  disabled = false,
-}: {
-  label: string;
-  icon: string;
-  enabled: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-40' : ''}`}>
-      <div className="flex items-center gap-2">
-        <span className="text-sm">{icon}</span>
-        <span className="text-xs text-slate-300">{label}</span>
-        {disabled && <span className="text-[10px] text-slate-600 ml-1">soon</span>}
-      </div>
-      <button
-        disabled={disabled}
-        onClick={() => !disabled && onChange(!enabled)}
-        className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${enabled ? 'bg-[#d4845a]' : 'bg-white/10'}`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${enabled ? 'translate-x-4' : 'translate-x-0'}`}
-        />
-      </button>
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+import { AccordionSection, LayerToggle } from './MapControls';
+import { ZONE_COLORS, CATEGORY_COLORS } from './mapConstants';
+import { formatPrice } from './mapHelpers';
+import type {
+  Coordinate,
+  ZoningInfo,
+  Map3DElementInstance,
+  Map3DClickEvent,
+  GoogleMapsConstructor,
+  MapLayers,
+} from './mapTypes';
 
 export default function PrimeMap3D() {
   // Optional: connect to PrimeNexusContext when mounted inside PrimeNexusLayout.
@@ -766,7 +526,7 @@ export default function PrimeMap3D() {
         {/* Resize handle */}
         <div
           onMouseDown={startResize}
-          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-[#d4845a]/40 transition-colors z-10"
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize bg-transparent hover:bg-accent-warm/40 transition-colors z-10"
         />
 
         {/* Header */}
@@ -788,7 +548,7 @@ export default function PrimeMap3D() {
               onClick={() => setSidebarTab('data')}
               className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
                 sidebarTab === 'data'
-                  ? 'text-white border-b-2 border-[#d4845a]'
+                  ? 'text-white border-b-2 border-accent-warm'
                   : 'text-slate-500 hover:text-slate-400'
               }`}
             >
@@ -798,7 +558,7 @@ export default function PrimeMap3D() {
               onClick={() => setSidebarTab('chat')}
               className={`flex-1 py-2 text-xs font-semibold tracking-wide transition-colors ${
                 sidebarTab === 'chat'
-                  ? 'text-white border-b-2 border-[#d4845a]'
+                  ? 'text-white border-b-2 border-accent-warm'
                   : 'text-slate-500 hover:text-slate-400'
               }`}
             >
@@ -812,7 +572,7 @@ export default function PrimeMap3D() {
           <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {/* Loading state */}
             {isAnalyzing && (
-              <div className="flex items-center gap-3 px-4 py-4 text-[#d4845a]">
+              <div className="flex items-center gap-3 px-4 py-4 text-accent-warm">
                 <svg className="animate-spin h-4 w-4 flex-shrink-0" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
@@ -1036,7 +796,7 @@ export default function PrimeMap3D() {
                                     <div
                                       className={`w-full rounded-t transition-all ${
                                         h <= (zoningResult.building_codes?.max_height_meters ?? 0)
-                                          ? 'bg-[#d4845a]/60'
+                                          ? 'bg-accent-warm/60'
                                           : 'bg-white/5'
                                       }`}
                                       style={{ height: `${(h / 15) * 100}%` }}
@@ -1047,7 +807,7 @@ export default function PrimeMap3D() {
                               </div>
                               <div className="text-[10px] text-center text-slate-500">
                                 Zone max:{' '}
-                                <span className="text-[#d4845a] font-semibold">
+                                <span className="text-accent-warm font-semibold">
                                   {zoningResult.building_codes.max_height_meters}m
                                 </span>{' '}
                                 | KLB:{' '}
@@ -1191,7 +951,7 @@ export default function PrimeMap3D() {
         {/* CTA — sticky bottom */}
         {zoningResult?.status === 'found' && (
           <div className="flex-shrink-0 px-4 py-4 border-t border-white/10 bg-black">
-            <button className="w-full bg-[#d4845a] hover:bg-[#c27348] text-white font-semibold py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-[#d4845a]/20">
+            <button className="w-full bg-accent-warm hover:bg-[#c27348] text-white font-semibold py-2.5 rounded-xl transition-colors text-sm shadow-lg shadow-[#d4845a]/20">
               Get a Free Business Setup Quote →
             </button>
           </div>
@@ -1255,7 +1015,7 @@ export default function PrimeMap3D() {
                 });
               }}
               placeholder="Search location or -8.644, 115.148…"
-              className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-[#d4845a]/60 text-sm"
+              className="w-full pl-9 pr-4 py-2.5 bg-black/85 backdrop-blur-xl text-white placeholder-slate-500 rounded-xl border border-white/15 shadow-2xl focus:outline-none focus:border-accent-warm/60 text-sm"
             />
           </div>
         </div>
@@ -1298,7 +1058,7 @@ export default function PrimeMap3D() {
                     onChange={(e) => setKbliSearchQuery(e.target.value)}
                     placeholder="Search Business (e.g. Gym)"
                     aria-label="Search business type"
-                    className="w-full pl-3 pr-8 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#d4845a]/50"
+                    className="w-full pl-3 pr-8 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none focus:border-accent-warm/50"
                   />
                   <button
                     type="submit"
@@ -1399,7 +1159,7 @@ export default function PrimeMap3D() {
           {/* Filter button */}
           <button
             onClick={() => setShowFilters((s) => !s)}
-            className={`w-10 h-10 rounded-xl backdrop-blur-xl border shadow-lg flex items-center justify-center transition-colors ${showFilters ? 'bg-[#d4845a] border-[#d4845a]/60 text-white' : 'bg-black/80 border-white/20 text-slate-400 hover:text-white hover:border-white/30'}`}
+            className={`w-10 h-10 rounded-xl backdrop-blur-xl border shadow-lg flex items-center justify-center transition-colors ${showFilters ? 'bg-accent-warm border-accent-warm/60 text-white' : 'bg-black/80 border-white/20 text-slate-400 hover:text-white hover:border-white/30'}`}
             title="Map layers"
             aria-label="Toggle map layers"
           >

@@ -62,7 +62,7 @@ export function StatsCounter({ locale = "en" }: StatsCounterProps) {
             viewport={{ once: true }}
             className="text-center"
           >
-            <div className="font-[family-name:var(--font-spartan)] text-4xl md:text-5xl font-black text-[#d4845a] mb-2">
+            <div className="font-[family-name:var(--font-spartan)] text-4xl md:text-5xl font-black text-accent-warm mb-2">
               <CountUp
                 end={stat.value}
                 suffix={stat.suffix}

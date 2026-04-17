@@ -38,7 +38,7 @@ export function RoleWidget({ role, userId }: RoleWidgetProps) {
       )}
 
       {isError && (
-        <p className="text-[10px] text-[#c45c78]">
+        <p className="text-[10px] text-accent-pink-editorial">
           Errore nel caricamento dati.
         </p>
       )}

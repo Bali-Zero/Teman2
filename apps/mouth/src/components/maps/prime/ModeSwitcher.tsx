@@ -31,7 +31,7 @@ export function ModeSwitcher() {
           }}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
             mode === m.key
-              ? 'bg-[#d4845a] text-white shadow-sm'
+              ? 'bg-accent-warm text-white shadow-sm'
               : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
           title={m.requiresAuth ? `${m.label} — Requires admin login` : m.label}

@@ -237,14 +237,14 @@ export default async function ServiceDetailPage({
                 {/* Key Info */}
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div className="bg-[#0a2540] rounded-lg p-4">
-                    <Clock className="w-5 h-5 text-[#2251ff] mb-2" />
+                    <Clock className="w-5 h-5 text-accent-blue-editorial mb-2" />
                     <p className="text-white/40 text-xs uppercase tracking-wider">
                       Timeline
                     </p>
                     <p className="text-white font-medium">{service.timeline}</p>
                   </div>
                   <div className="bg-[#0a2540] rounded-lg p-4">
-                    <FileText className="w-5 h-5 text-[#2251ff] mb-2" />
+                    <FileText className="w-5 h-5 text-accent-blue-editorial mb-2" />
                     <p className="text-white/40 text-xs uppercase tracking-wider">
                       Documents
                     </p>
@@ -253,7 +253,7 @@ export default async function ServiceDetailPage({
                     </p>
                   </div>
                   <div className="bg-[#0a2540] rounded-lg p-4">
-                    <AlertCircle className="w-5 h-5 text-[#2251ff] mb-2" />
+                    <AlertCircle className="w-5 h-5 text-accent-blue-editorial mb-2" />
                     <p className="text-white/40 text-xs uppercase tracking-wider">
                       Validity
                     </p>
@@ -357,7 +357,7 @@ export default async function ServiceDetailPage({
                       key={i}
                       className="flex items-start gap-2 text-white/70 text-sm"
                     >
-                      <FileText className="w-4 h-4 text-[#2251ff] mt-0.5 flex-shrink-0" />
+                      <FileText className="w-4 h-4 text-accent-blue-editorial mt-0.5 flex-shrink-0" />
                       {doc}
                     </li>
                   ))}
@@ -418,13 +418,13 @@ export default async function ServiceDetailPage({
                   const SvcIcon = svc.icon;
                   return (
                     <Link key={key} href={`/services/${key}`} className="group">
-                      <div className="rounded-xl border border-white/10 bg-[#0a2540] p-6 hover:border-[#2251ff]/50 transition-all">
+                      <div className="rounded-xl border border-white/10 bg-[#0a2540] p-6 hover:border-accent-blue-editorial/50 transition-all">
                         <div
                           className={`w-12 h-12 rounded-lg ${svc.bgColor} flex items-center justify-center mb-4`}
                         >
                           <SvcIcon className={`w-6 h-6 ${svc.iconColor}`} />
                         </div>
-                        <h3 className="text-white font-medium mb-2 group-hover:text-[#2251ff] transition-colors">
+                        <h3 className="text-white font-medium mb-2 group-hover:text-accent-blue-editorial transition-colors">
                           {svc.name}
                         </h3>
                         <p className="text-white/50 text-sm">{svc.tagline}</p>

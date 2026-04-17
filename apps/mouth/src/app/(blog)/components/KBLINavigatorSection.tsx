@@ -29,7 +29,7 @@ export default function KBLINavigatorSection() {
 
           {/* Right: Content */}
           <div className="bg-gradient-to-br from-[#0a2540] to-[#051C2C] p-10 lg:p-16 flex flex-col justify-center">
-            <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4">
+            <span className="text-accent-blue-editorial text-xs font-semibold uppercase tracking-wider mb-4">
               Featured Tool
             </span>
             <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4 leading-tight">
@@ -72,7 +72,7 @@ export default function KBLINavigatorSection() {
               className="inline-flex items-center gap-3 text-white group w-fit"
             >
               <span className="text-lg font-medium">Explore Navigator</span>
-              <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center group-hover:bg-[#2251ff] group-hover:border-[#2251ff] transition-all duration-300">
+              <span className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center group-hover:bg-accent-blue-editorial group-hover:border-accent-blue-editorial transition-all duration-300">
                 <ArrowRight className="w-4 h-4" />
               </span>
             </Link>

@@ -366,7 +366,7 @@ function FieldInput({
               'w-full px-4 py-2.5 rounded-lg',
               'bg-white/5 border border-white/10',
               'text-white font-mono',
-              'focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/20',
+              'focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/20',
               'transition-colors',
               field.unit && 'pr-16'
             )}
@@ -414,7 +414,7 @@ function FieldInput({
               'w-full px-4 py-2.5 rounded-lg appearance-none',
               'bg-white/5 border border-white/10',
               'text-white',
-              'focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/20',
+              'focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/20',
               'transition-colors cursor-pointer'
             )}
           >
@@ -434,7 +434,7 @@ function FieldInput({
             className={cn(
               'w-5 h-5 rounded border flex items-center justify-center transition-colors',
               boolValue
-                ? 'bg-[#2251ff] border-[#2251ff]'
+                ? 'bg-accent-blue-editorial border-accent-blue-editorial'
                 : 'bg-white/5 border-white/20 group-hover:border-white/40'
             )}
             onClick={() => onChange(!boolValue)}

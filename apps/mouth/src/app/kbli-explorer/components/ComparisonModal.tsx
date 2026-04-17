@@ -45,12 +45,12 @@ export default function ComparisonModal({
     switch (col) {
       case "Code":
         return (
-          <span className="font-mono text-[#D4B483] text-xs">
+          <span className="font-mono text-accent-sand text-xs">
             {detail.code}
           </span>
         );
       case "Title":
-        return <span className="text-sm text-[#E1E1E3]">{detail.title}</span>;
+        return <span className="text-sm text-silver">{detail.title}</span>;
       case "PMA Status": {
         const badge = getPmaBadge(detail.pma_status);
         return <span className={badge.className}>{badge.label}</span>;
@@ -107,7 +107,7 @@ export default function ComparisonModal({
                 </Dialog.Description>
               </div>
               <Dialog.Close asChild>
-                <button className="p-2 rounded-lg hover:bg-[#1A1D24] text-[#888] hover:text-white transition-colors" aria-label="Close comparison">
+                <button className="p-2 rounded-lg hover:bg-surface-editorial-elevated text-[#888] hover:text-white transition-colors" aria-label="Close comparison">
                   <X size={18} />
                 </button>
               </Dialog.Close>
@@ -116,7 +116,7 @@ export default function ComparisonModal({
             {/* Table */}
             <div className="flex-1 overflow-auto custom-scrollbar p-6">
               {loading ? (
-                <div className="flex items-center justify-center py-20 text-[#D4B483]">
+                <div className="flex items-center justify-center py-20 text-accent-sand">
                   <Loader2 size={24} className="animate-spin mr-3" />
                   <span className="text-sm">Loading details...</span>
                 </div>
@@ -130,7 +130,7 @@ export default function ComparisonModal({
                       {details.map((d, i) => (
                         <th
                           key={i}
-                          className="text-left text-[10px] uppercase tracking-widest text-[#D4B483] py-3 px-3 border-b border-white/5"
+                          className="text-left text-[10px] uppercase tracking-widest text-accent-sand py-3 px-3 border-b border-white/5"
                         >
                           {d?.code || codes[i]}
                         </th>

@@ -104,7 +104,7 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
             key={s.id}
             href={`/kbli/sectors/${s.id}`}
             className={`group relative rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl p-4.5
-                       transition-all duration-500 hover:border-[#d4845a]/40 hover:bg-white/[0.06]
+                       transition-all duration-500 hover:border-accent-warm/40 hover:bg-white/[0.06]
                        hover:shadow-[0_8px_40px_rgba(212,132,90,0.15),inset_0_1px_0_rgba(255,255,255,0.06)]
                        hover:-translate-y-1
                        shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.04)]
@@ -115,7 +115,7 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
             {/* Icon & Section Code */}
             <div className="flex items-start justify-between mb-2">
               <div
-                className={`inline-flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)] text-zinc-400 group-hover:text-[#d4845a] group-hover:bg-[#d4845a]/15 group-hover:border-[#d4845a]/40 group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)] transition-all duration-500 ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "h-12 w-12" : "h-10 w-10"}`}
+                className={`inline-flex items-center justify-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_8px_rgba(0,0,0,0.2)] text-zinc-400 group-hover:text-accent-warm group-hover:bg-accent-warm/15 group-hover:border-accent-warm/40 group-hover:shadow-[0_0_25px_rgba(212,132,90,0.2),inset_0_1px_0_rgba(212,132,90,0.1)] transition-all duration-500 ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "h-12 w-12" : "h-10 w-10"}`}
               >
                 <div
                   className={`drop-shadow-md group-hover:scale-110 transition-transform duration-500 flex items-center justify-center ${iconSize === "text-2xl" || iconSize === "text-3xl" ? "scale-125" : "scale-100"}`}
@@ -123,13 +123,13 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
                   {SECTOR_ICONS[s.id] || <HelpCircle strokeWidth={1.5} />}
                 </div>
               </div>
-              <div className="text-[10px] font-bold tracking-wider uppercase text-[#d4845a] opacity-80 group-hover:opacity-100 transition-opacity">
+              <div className="text-[10px] font-bold tracking-wider uppercase text-accent-warm opacity-80 group-hover:opacity-100 transition-opacity">
                 Section {s.id}
               </div>
             </div>
 
             {/* Sector Name */}
-            <div className="text-sm font-bold leading-snug text-white transition-colors group-hover:text-[#d4845a] flex-grow drop-shadow-sm mt-1">
+            <div className="text-sm font-bold leading-snug text-white transition-colors group-hover:text-accent-warm flex-grow drop-shadow-sm mt-1">
               {s.nameEn}
             </div>
 
@@ -140,7 +140,7 @@ export function KBLISectorGrid({ sections }: { sections: KBLISection[] }) {
                   {s.codeCount} {s.codeCount === 1 ? "code" : "codes"}
                 </span>
                 {tier === "xl" && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4845a] animate-pulse">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-accent-warm animate-pulse">
                     Large
                   </span>
                 )}
