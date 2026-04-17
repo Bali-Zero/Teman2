@@ -97,9 +97,15 @@ function PrimeNexusInner() {
   );
 }
 
-export default function PrimeNexusLayout() {
+import type { PrimeMode } from '@/contexts/PrimeNexusContext';
+
+export interface PrimeNexusLayoutProps {
+  initialMode?: PrimeMode;
+}
+
+export default function PrimeNexusLayout({ initialMode }: PrimeNexusLayoutProps = {}) {
   return (
-    <PrimeNexusProvider>
+    <PrimeNexusProvider initialMode={initialMode}>
       <PrimeNexusInner />
     </PrimeNexusProvider>
   );
