@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Home,
+  Inbox,
   MessageSquare,
   MessageCircle,
   Mail,
@@ -33,6 +34,7 @@ import { cn } from '@/lib/utils';
 // Icon mapping
 const iconMap: Record<string, React.ElementType> = {
   Home,
+  Inbox,
   MessageSquare,
   MessageCircle,
   Mail,
