@@ -393,67 +393,71 @@ export function FunnelFeature({
               </a>
             </div>
 
-            {/* Search input + chips — merged into glass card */}
-            <div
-              className="relative rounded-2xl overflow-hidden mt-8 mb-4"
-              style={{
-                background: "color-mix(in srgb, #000 35%, transparent)",
-                border:
-                  "1px solid color-mix(in srgb, var(--accent-funnel) 32%, transparent)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow:
-                  "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 30px color-mix(in srgb, var(--accent-funnel) 15%, transparent)",
-              }}
-            >
-              <div className="flex items-center gap-3 px-4 py-3">
-                <Search
-                  size={isFull ? 18 : 14}
-                  strokeWidth={2}
-                  style={{ color: "var(--accent-funnel-text)" }}
-                />
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={cfg.searchPlaceholder}
-                  className="flex-1 bg-transparent outline-none"
-                  style={{
-                    color: "var(--text-primary)",
-                    fontSize: isFull ? 14 : 12,
-                  }}
-                />
-                <kbd
-                  className="hidden md:inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    color: "var(--text-tertiary)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                  }}
-                >
-                  ⌘K
-                </kbd>
+            {/* Search input + chips — merged into glass card (hidden in full homepage layout) */}
+            {!isFull && (
+              <div
+                className="relative rounded-2xl overflow-hidden mt-8 mb-4"
+                style={{
+                  background: "color-mix(in srgb, #000 35%, transparent)",
+                  border:
+                    "1px solid color-mix(in srgb, var(--accent-funnel) 32%, transparent)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 30px color-mix(in srgb, var(--accent-funnel) 15%, transparent)",
+                }}
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Search
+                    size={14}
+                    strokeWidth={2}
+                    style={{ color: "var(--accent-funnel-text)" }}
+                  />
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={cfg.searchPlaceholder}
+                    className="flex-1 bg-transparent outline-none"
+                    style={{
+                      color: "var(--text-primary)",
+                      fontSize: 12,
+                    }}
+                  />
+                  <kbd
+                    className="hidden md:inline-flex items-center px-2 py-0.5 text-[10px] font-mono rounded"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      color: "var(--text-tertiary)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    ⌘K
+                  </kbd>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-wrap gap-1.5">
-              {cfg.searchSuggestions.slice(0, 4).map((sug) => (
-                <button
-                  key={sug}
-                  onClick={() => setQuery(sug)}
-                  className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
-                  style={{
-                    background:
-                      "color-mix(in srgb, var(--accent-funnel) 10%, transparent)",
-                    border:
-                      "1px solid color-mix(in srgb, var(--accent-funnel) 28%, transparent)",
-                    color: "var(--accent-funnel-text)",
-                  }}
-                >
-                  {sug}
-                </button>
-              ))}
-            </div>
+            {!isFull && (
+              <div className="flex flex-wrap gap-1.5">
+                {cfg.searchSuggestions.slice(0, 4).map((sug) => (
+                  <button
+                    key={sug}
+                    onClick={() => setQuery(sug)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
+                    style={{
+                      background:
+                        "color-mix(in srgb, var(--accent-funnel) 10%, transparent)",
+                      border:
+                        "1px solid color-mix(in srgb, var(--accent-funnel) 28%, transparent)",
+                      color: "var(--accent-funnel-text)",
+                    }}
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
