@@ -199,9 +199,7 @@ export default function ContactPage() {
               >
                 {[
                   ["Monday — Friday", "09:00 — 17:00"],
-                  ["Saturday", "Closed"],
-                  ["Sunday", "Closed"],
-                  ["Public holidays", "Closed (Nyepi, Galungan, Idul Fitri)"],
+                  ["Saturday, Sunday, Public holidays", "Closed"],
                 ].map(([day, time]) => (
                   <li
                     key={day}
