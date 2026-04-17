@@ -7,9 +7,12 @@ export const FUNNEL_EVENTS = [
   "kbli_code_viewed",
   "kbli_search",
   "kbli_chat_question",
+  "kbli_whatsapp_cta",
   "tax_dashboard_viewed",
+  "tax_whatsapp_cta",
   "property_cta_clicked",
   "property_chat_question",
+  "property_whatsapp_cta",
 ] as const;
 
 export type FunnelEventName = (typeof FUNNEL_EVENTS)[number];
