@@ -82,7 +82,7 @@ function CoverImage({ src, alt }: { src: string; alt: string }) {
     return (
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] flex items-center justify-center">
         <div className="text-center px-8">
-          <Sparkles className="w-12 h-12 text-[#2251ff]/40 mx-auto mb-3" />
+          <Sparkles className="w-12 h-12 text-[color-mix(in_srgb,var(--accent-funnel,#3a6dff)_40%,transparent)] mx-auto mb-3" />
           <p className="text-white/60 text-sm font-medium max-w-md">{alt}</p>
         </div>
       </div>
@@ -152,7 +152,9 @@ export function ArticleClient({
     async function fetchArticle() {
       setLoading(true);
       try {
-        const data = await api.blog.getArticle<ArticleWithMDX & { relatedArticles?: ArticleListItem[] }>(category, slug);
+        const data = await api.blog.getArticle<
+          ArticleWithMDX & { relatedArticles?: ArticleListItem[] }
+        >(category, slug);
         setArticle(data);
         setRelatedArticles(data.relatedArticles || []);
       } catch (err) {
@@ -220,10 +222,10 @@ export function ArticleClient({
             Article not found
           </h1>
           <Link
-            href="/insights"
-            className="text-[#2251ff] hover:text-[#4d73ff]"
+            href="/news"
+            className="text-[var(--accent-funnel-text,#5c8aff)] hover:opacity-80"
           >
-            Back to Insights
+            Back to News
           </Link>
         </div>
       </div>
@@ -247,18 +249,18 @@ export function ArticleClient({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back link */}
           <Link
-            href="/insights"
+            href="/news"
             className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors mb-8"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to Insights
+            Back to News
           </Link>
 
           {/* Category & badges */}
           <div className="flex flex-wrap items-center gap-3 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <CategoryBadge category={article.category} />
             {article.aiGenerated && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#2251ff]/20 text-[#2251ff]">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[color-mix(in_srgb,var(--accent-funnel,#3a6dff)_20%,transparent)] text-[var(--accent-funnel-text,#5c8aff)]">
                 <Sparkles className="w-3 h-3" />
                 AI Generated
               </span>
@@ -417,13 +419,13 @@ export function ArticleClient({
                       a: ({ href, children }) => (
                         <a
                           href={href}
-                          className="text-[#2251ff] hover:text-[#4d73ff] underline underline-offset-2 transition-colors"
+                          className="text-[var(--accent-funnel-text,#5c8aff)] hover:opacity-80 underline underline-offset-2 transition-colors"
                         >
                           {children}
                         </a>
                       ),
                       blockquote: ({ children }) => (
-                        <blockquote className="border-l-4 border-[#2251ff] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl">
+                        <blockquote className="border-l-4 border-[var(--accent-funnel,#3a6dff)] pl-6 py-3 my-6 italic text-white/70 bg-white/5 rounded-r-lg text-xl">
                           {children}
                         </blockquote>
                       ),
