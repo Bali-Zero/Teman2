@@ -371,11 +371,11 @@ async def compose_article(
         # Call Claude with retry logic
         logger.info(
             "Calling Claude API",
-            extra={"request_id": request_id, "model": "claude-sonnet-4-20250514"},
+            extra={"request_id": request_id, "model": "claude-sonnet-4-6"},
         )
         message = await call_claude_with_retry(
             prompt=prompt,
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
             max_tokens=4096,
         )
 
@@ -527,7 +527,7 @@ async def compose_status() -> dict[str, Any]:
     return {
         "configured": bool(api_key),
         "api_key_set": bool(api_key),
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "estimated_cost_per_article": "$0.02-0.05",
         "cache_enabled": cache_service.enabled,
         "rate_limit": "10 requests/minute per IP",
