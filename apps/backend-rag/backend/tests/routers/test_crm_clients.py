@@ -216,7 +216,7 @@ class TestUpdateClient:
         with (
             patch("backend.app.routers.crm_clients.verify_client_access", AsyncMock()),
             patch("backend.services.portal.portal_notification_service.PortalNotificationService", return_value=notification_service),
-            patch("backend.app.routers.crm_clients.asyncio.create_task", MagicMock()),
+            patch("backend.app.routers.crm_clients.spawn", MagicMock()),
         ):
             response = client.patch("/api/crm/clients/1", json={"full_name": "Updated Name"})
 

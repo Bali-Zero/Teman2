@@ -107,8 +107,12 @@ def drive_operation(operation_name: str) -> Callable:
                     try:
                         size_bytes = int(result["size"])
                         drive_file_size_bytes.labels(operation=operation_name).observe(size_bytes)
-                    except (ValueError, TypeError):
-                        pass  # size field not a valid integer — skip metric recording
+                    except (ValueError, TypeError) as size_exc:
+                        logger.debug(
+                            "drive_audit: size field not a valid integer for %s: %s",
+                            operation_name,
+                            size_exc,
+                        )
 
                 return result
 
