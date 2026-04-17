@@ -215,17 +215,17 @@ export default function ServicesPage() {
                 key={s.slug}
                 className="relative rounded-2xl p-6 overflow-hidden"
                 style={{
-                  background: `color-mix(in srgb, ${s.accent} 8%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${s.accent} 30%, transparent)`,
-                  boxShadow: `0 10px 40px color-mix(in srgb, ${s.accent} 15%, transparent), inset 0 1px 0 rgba(255,255,255,0.06)`,
-                  backdropFilter: "blur(20px) saturate(160%)",
-                  WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                  background: `color-mix(in srgb, ${s.accent} 22%, transparent)`,
+                  border: `1px solid color-mix(in srgb, ${s.accent} 60%, transparent)`,
+                  boxShadow: `0 16px 48px color-mix(in srgb, ${s.accent} 32%, transparent), inset 0 1px 0 rgba(255,255,255,0.08)`,
+                  backdropFilter: "blur(20px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
                 }}
               >
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{
-                    background: `radial-gradient(ellipse 60% 40% at 20% 10%, color-mix(in srgb, ${s.accent} 25%, transparent) 0%, transparent 60%)`,
+                    background: `radial-gradient(ellipse 70% 50% at 20% 10%, color-mix(in srgb, ${s.accent} 42%, transparent) 0%, transparent 65%)`,
                   }}
                   aria-hidden="true"
                 />
