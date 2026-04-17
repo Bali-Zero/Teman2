@@ -5,9 +5,9 @@ import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
 
 export const metadata: Metadata = {
-  title: "Property Eligibility · Bali Zero",
+  title: "Idoneità Immobile · Bali Zero",
   description:
-    "Zoning, struttura legale, tassazione e risk score per immobili in Bali.",
+    "Zoning, struttura legale, tassazione e punteggio di rischio per immobili a Bali.",
 };
 
 export default function PropertyLayout({
