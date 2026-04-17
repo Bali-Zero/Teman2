@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { CTAHandoff } from '@balizero/core';
 
 interface ProposalData {
   token: string;
@@ -81,8 +82,11 @@ export default function ProposalPage() {
   const verdictClass = VERDICT_COLORS[data.verdict_label] || VERDICT_COLORS.YELLOW;
 
   return (
-    <div className="min-h-screen bg-[#0c0c0e] text-white">
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+    <div
+      data-theme="operative-light"
+      className="min-h-screen bg-[#0c0c0e] text-white"
+    >
+      <div className="max-w-lg mx-auto px-4 py-8 pb-28 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4845a]/20 text-[#d4845a] text-xs font-medium">
@@ -136,20 +140,21 @@ export default function ProposalPage() {
           </div>
         </div>
 
-        {/* CTA */}
-        <a
-          href="https://balizero.com/contact"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full text-center py-3 rounded-xl bg-[#d4845a] hover:bg-[#c4744a] text-white font-semibold transition-colors"
-        >
-          Request Consultation
-        </a>
-
         <p className="text-[10px] text-slate-600 text-center">
           Powered by Bali Zero Prime Intelligence
         </p>
       </div>
+      <CTAHandoff
+        source="prime-proposal"
+        sessionId={data.token}
+        payload={{
+          zone_code: data.zone_code,
+          zone_name: data.zone_name,
+          verdict: data.verdict_label,
+          score: data.verdict_score,
+          kbli: data.kbli_code ?? undefined,
+        }}
+      />
     </div>
   );
 }
