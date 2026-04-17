@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   Users,
   Search,
@@ -19,6 +20,7 @@ import {
   UserPlus,
   LayoutGrid,
   List,
+  Map as MapIcon,
   Table2,
   X,
   SortAsc,
@@ -26,6 +28,11 @@ import {
   AlertCircle,
   BarChart3,
 } from 'lucide-react';
+
+const PrimeNexusLayout = dynamic(
+  () => import('@/components/maps/prime/PrimeNexusLayout'),
+  { ssr: false, loading: () => <div style={{ padding: 24 }}>Caricamento mappa…</div> },
+);
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
@@ -58,7 +65,7 @@ type SortField =
   | 'passport_expiry'
   | 'active_practices';
 type SortOrder = 'asc' | 'desc';
-type ViewMode = 'list' | 'kanban' | 'table';
+type ViewMode = 'list' | 'kanban' | 'table' | 'map';
 
 interface Filters {
   status: string;
@@ -544,6 +551,23 @@ function ClientsListContent() {
             >
               <Table2 className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className="p-2 rounded-md transition-all"
+              style={
+                viewMode === 'map'
+                  ? {
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: 'var(--bz-text-1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    }
+                  : { color: 'var(--bz-text-2)' }
+              }
+              title="Map View (Prime 3D)"
+              aria-label="Switch to map view"
+            >
+              <MapIcon className="w-4 h-4" />
+            </button>
           </div>
 
           <Button
@@ -991,7 +1015,19 @@ function ClientsListContent() {
       )}
 
       {/* CONTENT AREA */}
-      {isLoading && !clients.length ? (
+      {viewMode === 'map' ? (
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{
+            border: '1px solid rgba(255,255,255,0.1)',
+            height: 'calc(100vh - 220px)',
+            minHeight: '480px',
+          }}
+          aria-label="Clients on Prime 3D map"
+        >
+          <PrimeNexusLayout initialMode="crm" />
+        </div>
+      ) : isLoading && !clients.length ? (
         <div
           className="rounded-xl p-12 text-center backdrop-blur-sm"
           style={{

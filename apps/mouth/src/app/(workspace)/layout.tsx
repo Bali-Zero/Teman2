@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
 import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
+import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
@@ -246,6 +247,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       </div>
       {!isTerminalPage && <CellWidget />}
       {!isTerminalPage && <WorkspaceAssistant />}
+      <KitaCommandPalette />
     </ToastProvider>
   );
 }
