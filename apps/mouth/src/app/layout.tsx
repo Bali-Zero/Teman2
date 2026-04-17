@@ -17,10 +17,14 @@ import { inter } from "@balizero/core/fonts/inter";
 import { LazyToaster } from "@/components/providers/LazyToaster";
 import "./globals.css";
 
-// Pre-paint theme script — sets data-theme before React hydrates to prevent FOUC.
-// Three-coupled-changes procedure, design doc §5. Must be inline; next/script
-// strategy="beforeInteractive" is insufficient in App Router.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='dark';}})();`;
+// Pre-paint theme script — persona-aware, sets data-theme before React hydrates
+// to prevent FOUC. Design 2026-04-17-v2-subdomain-rollout §3 (L1/L2/L3 persona).
+// Precedence: localStorage('bz-theme') > hostname persona > editorial default.
+//   kita., prime.                 → operative-dark (workspace + 3D)
+//   my., zantara.                 → operative-light (client self-service)
+//   balizero, visa., tax., /kbli  → editorial (public funnel)
+// Must be inline; next/script strategy="beforeInteractive" is insufficient in App Router.
+const themeInitScript = `(function(){try{var stored=localStorage.getItem('bz-theme');var host=location.hostname;var t=stored;if(!t){if(host.indexOf('kita.')===0||host.indexOf('prime.')===0)t='operative-dark';else if(host.indexOf('my.')===0||host.indexOf('zantara.')===0)t='operative-light';else t='editorial';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='editorial';}})();`;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -224,7 +228,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <QueryProvider>
-          <ThemeProvider defaultTheme="dark">
+          <ThemeProvider defaultTheme="editorial">
             <WebVitalsMonitor />
             <ErrorBoundary
               fallback={
