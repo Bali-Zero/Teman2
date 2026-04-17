@@ -356,7 +356,7 @@ def test_compose_status_configured(test_client):
         data = response.json()
         assert data["configured"] is True
         assert data["api_key_set"] is True
-        assert data["model"] == "claude-sonnet-4-20250514"
+        assert data["model"] == "claude-sonnet-4-6"
 
 
 def test_compose_status_not_configured(test_client):

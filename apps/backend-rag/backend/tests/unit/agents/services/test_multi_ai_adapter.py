@@ -119,48 +119,73 @@ class TestGeminiAdapter:
 # ClaudeAdapter
 # ============================================================================
 class TestClaudeAdapter:
-    """Tests for ClaudeAdapter."""
+    """Tests for ClaudeAdapter (Max OAuth subprocess edition).
 
-    @patch.dict("os.environ", {"ANTHROPIC_API_KEY": "", "CLAUDE_API_KEY": ""}, clear=False)
-    @patch("backend.agents.services.multi_ai_adapter.anthropic", create=True)
-    def test_init_no_key(self, mock_anthropic: MagicMock) -> None:
-        """Without API key, should attempt default init."""
-        # Simulate import success but init failure
-        import sys
-        mock_mod = MagicMock()
-        mock_mod.Anthropic.side_effect = Exception("no key")
-        sys.modules["anthropic"] = mock_mod
-        try:
-            adapter = ClaudeAdapter(api_key=None)
-            # client may or may not be set depending on init path
-            assert isinstance(adapter.model, str)
-        finally:
-            del sys.modules["anthropic"]
+    Post-OAuth-migration (2026-04-17): the adapter no longer uses the
+    ``anthropic`` SDK. All calls go through
+    :func:`backend.llm.claude_oauth_client.complete_async`.
+    """
 
-    @pytest.mark.asyncio
-    async def test_generate_no_client_raises(self) -> None:
-        adapter = ClaudeAdapter.__new__(ClaudeAdapter)
-        adapter.client = None
-        adapter.model = "test-model"
-        with pytest.raises(RuntimeError, match="Claude client not initialized"):
-            await adapter.generate("test")
+    def test_init_default_model(self) -> None:
+        adapter = ClaudeAdapter()
+        # Default bumped away from the retired ``claude-3-opus-20240229``.
+        assert adapter.model == "claude-sonnet-4-6"
+        # ``client`` is a truthy sentinel post-migration (no SDK handle).
+        assert adapter.client is True
+
+    def test_init_custom_model(self) -> None:
+        adapter = ClaudeAdapter(model="claude-haiku-4-5-20251001")
+        assert adapter.model == "claude-haiku-4-5-20251001"
+
+    def test_init_api_key_is_ignored(self, caplog: Any) -> None:
+        """Passing api_key must NOT authenticate the adapter; it just logs."""
+        import logging as _logging
+
+        with caplog.at_level(_logging.ERROR):
+            adapter = ClaudeAdapter(api_key="pretend-key")
+        assert adapter.client is True  # still ready — via OAuth
+        assert any("ignored" in rec.message.lower() for rec in caplog.records)
 
     @pytest.mark.asyncio
     async def test_generate_success(self) -> None:
-        adapter = ClaudeAdapter.__new__(ClaudeAdapter)
-        adapter.model = "claude-3-opus-20240229"
+        from backend.llm.claude_oauth_client import ClaudeOAuthResponse
 
-        mock_message = MagicMock()
-        mock_message.content = [MagicMock(text="Claude response")]
-        mock_message.usage = MagicMock(input_tokens=100, output_tokens=200)
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_message
-        adapter.client = mock_client
+        adapter = ClaudeAdapter(model="claude-sonnet-4-6")
+        fake = ClaudeOAuthResponse(
+            text="Claude response",
+            token_label="token_1",
+            elapsed_s=0.01,
+            attempts=1,
+        )
 
-        result = await adapter.generate("test prompt")
+        with patch(
+            "backend.llm.claude_oauth_client.complete_async",
+            new_callable=AsyncMock,
+            return_value=fake,
+        ) as mock_complete:
+            result = await adapter.generate("test prompt")
+
+        mock_complete.assert_awaited_once_with("test prompt", model="claude-sonnet-4-6")
         assert result.text == "Claude response"
         assert result.tool_used == AITool.CLAUDE
-        assert result.tokens_used == 300
+        # tokens = len("test prompt")//4 + len("Claude response")//4
+        assert result.tokens_used == (len("test prompt") // 4) + (len("Claude response") // 4)
+        assert result.metadata["token_label"] == "token_1"
+        assert result.metadata["transport"] == "max_oauth_subprocess"
+
+    @pytest.mark.asyncio
+    async def test_generate_oauth_error_propagates(self) -> None:
+        from backend.llm.claude_oauth_client import ClaudeOAuthError
+
+        adapter = ClaudeAdapter()
+
+        with patch(
+            "backend.llm.claude_oauth_client.complete_async",
+            new_callable=AsyncMock,
+            side_effect=ClaudeOAuthError("all tokens exhausted"),
+        ):
+            with pytest.raises(ClaudeOAuthError, match="exhausted"):
+                await adapter.generate("test")
 
 
 # ============================================================================

@@ -127,71 +127,78 @@ class GeminiAdapter:
 
 
 class ClaudeAdapter:
-    """Adapter for Anthropic Claude API - Claude Max (Opus)
+    """Adapter for Claude via Max plan OAuth subprocess.
 
-    Usa abbonamento Claude invece di API key separata.
-    L'API key può essere collegata all'account con abbonamento.
+    Calls go through ``backend.llm.claude_oauth_client.complete_async``
+    (i.e. ``claude -p`` with ``CLAUDE_CODE_OAUTH_TOKEN_*`` fallback). No
+    ``ANTHROPIC_API_KEY``, no ``anthropic`` SDK — project policy
+    (``memory/feedback_claude_oauth_only.md``): Max plan is flat-rate, the
+    API key would double-bill.
     """
 
-    def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229") -> None:
-        # Prova prima API key esplicita, poi env var, poi cerca in configurazioni comuni
-        self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
-        self.model = model
-        self.client = None
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
+        """Construct a ClaudeAdapter.
 
-        # Prova a inizializzare anche senza API key esplicita
-        # (potrebbe essere gestita dall'abbonamento)
-        try:
-            import anthropic
-
-            if self.api_key:
-                self.client = anthropic.Anthropic(api_key=self.api_key)
-                logger.info("✅ Claude Max configurato con API key")
-            else:
-                # Prova senza API key (potrebbe usare credenziali di sistema/abbonamento)
-                try:
-                    self.client = anthropic.Anthropic()
-                    logger.info("✅ Claude Max configurato con abbonamento/credenziali di sistema")
-                except Exception:
-                    logger.info("ℹ️ Claude Max: configura ANTHROPIC_API_KEY o usa abbonamento")
-        except ImportError:
-            logger.warning("⚠️ anthropic package not installed. Install with: pip install anthropic")
-        except Exception as e:
-            logger.debug(f"Claude initialization: {e}")
-
-    async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> AIResponse:
-        """Generate using Claude API (con abbonamento)"""
-        import time
-
-        if not self.client:
-            raise RuntimeError(
-                "Claude client not initialized. "
-                "Configura ANTHROPIC_API_KEY o usa abbonamento Claude.",
+        Args:
+            api_key: **Ignored**. Kept only for signature compatibility
+                with legacy callers; passing it logs a policy violation.
+            model: Claude model slug (defaults to ``claude-sonnet-4-6``).
+                Forwarded to ``claude -p --model``.
+        """
+        if api_key is not None or os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY"):
+            logger.error(
+                "🚨 ClaudeAdapter saw an API key (argument or env). It is ignored. "
+                "Max plan OAuth only — see feedback_claude_oauth_only.md.",
             )
 
+        # Default bumped away from the retired ``claude-3-opus-20240229``.
+        self.model = model or "claude-sonnet-4-6"
+
+        # The ``client`` attribute is retained so callers that still check
+        # ``adapter.client`` don't crash; it's not used internally.
+        self.client = True  # truthy sentinel — OAuth subprocess is always "available"
+        logger.info("✅ ClaudeAdapter ready via Max OAuth (model=%s)", self.model)
+
+    async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> AIResponse:
+        """Generate a completion via Claude Max OAuth subprocess."""
+        import time
+
+        # Import lazily so that a top-of-file import never drags in
+        # anything that depends on the OAuth subprocess at module load.
+        from backend.llm.claude_oauth_client import (
+            ClaudeOAuthError,
+            ClaudeOAuthNotAvailable,
+            complete_async,
+        )
+
+        del context  # not used; kept for interface compatibility
         start_time = time.time()
 
         try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=8192,  # Claude Max supports up to 8192 tokens
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            response_text = message.content[0].text
-            tokens_used = message.usage.input_tokens + message.usage.output_tokens
-
-            return AIResponse(
-                text=response_text,
-                tool_used=AITool.CLAUDE,
-                tokens_used=tokens_used,
-                response_time=time.time() - start_time,
-                metadata={"model": self.model},
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Claude API failed: {e}")
+            resp = await complete_async(prompt, model=self.model)
+        except ClaudeOAuthNotAvailable as e:
+            logger.error("❌ claude CLI not available: %s", e)
             raise
+        except ClaudeOAuthError as e:
+            logger.error("❌ Claude OAuth failed: %s", e)
+            raise
+
+        # ``claude -p`` does not surface usage counters. Estimate with the
+        # industry ~4 chars/token heuristic so downstream metrics still
+        # see a sensible number.
+        tokens_used = max(1, len(prompt) // 4) + max(1, len(resp.text) // 4)
+
+        return AIResponse(
+            text=resp.text,
+            tool_used=AITool.CLAUDE,
+            tokens_used=tokens_used,
+            response_time=time.time() - start_time,
+            metadata={
+                "model": self.model,
+                "token_label": resp.token_label,
+                "transport": "max_oauth_subprocess",
+            },
+        )
 
 
 class CursorAdapter:
@@ -254,7 +261,10 @@ class MultiAIAdapter:
         # Initialize other adapters
         self.gemini = GeminiAdapter()
         # Claude Max (Opus) - Primary AI tool
-        self.claude = ClaudeAdapter(model="claude-3-opus-20240229")
+        # MultiAIAdapter uses Claude as the "primary" tier — sonnet-4-6 is
+        # the right balance of quality/speed for orchestration/council work.
+        # Opus 4.7 is reserved for critical tasks invoked elsewhere.
+        self.claude = ClaudeAdapter(model="claude-sonnet-4-6")
 
         # Cursor adapter (IDE integration)
         try:

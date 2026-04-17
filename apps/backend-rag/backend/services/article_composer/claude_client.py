@@ -1,20 +1,31 @@
 """
-Claude API Client with Retry Logic and Circuit Breaker
+Claude client for article_composer — Max-plan OAuth subprocess edition.
 
-Best Practices 2026 Implementation:
-- Retry with exponential backoff
-- Circuit breaker for resilience
-- Connection pooling
-- Structured error handling
+Previously this wrapped ``anthropic.Anthropic`` (pay-as-you-go API key).
+Project policy forbids ``ANTHROPIC_API_KEY`` — all Claude calls must go
+through the Max OAuth token via ``claude -p`` (see
+``memory/feedback_claude_oauth_only.md``).
+
+This module now:
+- calls ``backend.llm.claude_oauth_client.complete_async`` instead of the
+  SDK,
+- returns a lightweight object that mimics the subset of
+  ``anthropic.types.Message`` actually consumed by the caller
+  (``content[0].text``, ``usage.input_tokens``, ``usage.output_tokens``),
+  so ``app/routers/article_composer.py`` keeps working unchanged,
+- keeps the tenacity retry + circuit breaker for defense-in-depth on
+  transient subprocess failures,
+- drops the anthropic SDK import entirely — `get_anthropic_client` is
+  gone, replaced by ``None``-returning compatibility shim only used by
+  tests that import the symbol.
 """
 
 import logging
-import os
 import time
+from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-import anthropic
 from tenacity import (
     before_sleep_log,
     retry,
@@ -23,13 +34,61 @@ from tenacity import (
     wait_exponential,
 )
 
-if TYPE_CHECKING:
-    from anthropic.types import Message
-else:
-    # Runtime type hint - use Any to avoid import issues
-    Message = type(None)  # Will be replaced at runtime
+from backend.llm.claude_oauth_client import (
+    ClaudeOAuthError,
+    ClaudeOAuthNotAvailable,
+    complete_async,
+)
+
+# The caller touches only these attributes on the return value:
+# - message.content[0].text
+# - message.usage.input_tokens
+# - message.usage.output_tokens
+#
+# We reproduce that shape with plain dataclasses so the router keeps
+# working unchanged.
+
+
+@dataclass(frozen=True)
+class _TextBlock:
+    text: str
+    type: str = "text"
+
+
+@dataclass(frozen=True)
+class _Usage:
+    input_tokens: int
+    output_tokens: int
+
+
+@dataclass(frozen=True)
+class ClaudeOAuthMessage:
+    """Minimal drop-in for anthropic.types.Message consumed by callers.
+
+    Exposes the same attribute tree (``content[0].text``, ``usage.*``) but
+    carries no SDK dependency.
+    """
+
+    content: list[_TextBlock]
+    usage: _Usage
+    model: str
+    token_label: str
+
+    @property
+    def input_text(self) -> str:
+        return self.content[0].text if self.content else ""
+
+
+# Backward-compatible export so
+# `from backend.services.article_composer import Message` keeps working
+# without dragging in the anthropic SDK at import time.
+Message = ClaudeOAuthMessage  # type: ignore[misc]
 
 logger = logging.getLogger(__name__)
+
+
+class ClaudeClientError(RuntimeError):
+    """Raised for any retryable transport error from the OAuth subprocess."""
 
 
 class CircuitState(Enum):
@@ -57,22 +116,17 @@ class CircuitBreaker:
         self.last_failure_time: float | None = None
         self.half_open_calls = 0
 
-    def call(self, func: Any, *args, **kwargs) -> Any:
-        """Execute function with circuit breaker protection"""
+    async def call(self, func: Any, *args, **kwargs) -> Any:
+        """Execute async function with circuit breaker protection."""
         if self.state == CircuitState.OPEN:
             if self._should_attempt_reset():
                 self.state = CircuitState.HALF_OPEN
                 self.half_open_calls = 0
             else:
-                raise anthropic.APIError(
-                    message="Circuit breaker is OPEN - service unavailable",
-                    response=None,
-                    body=None,
-                    request=None,
-                )
+                raise ClaudeClientError("Circuit breaker is OPEN - service unavailable")
 
         try:
-            result = func(*args, **kwargs)
+            result = await func(*args, **kwargs)
             self._on_success()
             return result
         except Exception:
@@ -115,127 +169,107 @@ class CircuitBreaker:
 _claude_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
 
 
-# Global Anthropic client instance (connection pooling)
-_anthropic_client: anthropic.Anthropic | None = None
+# Rough token-count estimate: the OAuth subprocess has no usage telemetry
+# (Claude CLI prints only the completion). We approximate tokens as
+# ``len(text) // 4``, which is the industry rule-of-thumb and what
+# ``backend.llm.token_estimator`` uses under the hood.
+def _estimate_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
 
 
-def get_anthropic_client() -> anthropic.Anthropic:
+def get_anthropic_client() -> None:
+    """Removed — kept only as a shim that raises, so callers fail loudly.
+
+    This module no longer uses ``anthropic.Anthropic``. All Claude traffic
+    goes via ``backend.llm.claude_oauth_client``. Any code still calling
+    this helper is on the wrong path.
     """
-    Get or create Anthropic client singleton with connection pooling.
-
-    Best Practice: Reuse client instance instead of creating new one each time.
-    """
-    global _anthropic_client
-
-    if _anthropic_client is None:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY environment variable not set")
-
-        _anthropic_client = anthropic.Anthropic(
-            api_key=api_key,
-            max_retries=0,  # We handle retries ourselves with tenacity
-            timeout=30.0,  # 30 second timeout
-        )
-        logger.info("Initialized Anthropic client with connection pooling")
-
-    return _anthropic_client
+    raise RuntimeError(
+        "get_anthropic_client() is removed: Claude goes via Max OAuth now. "
+        "Use call_claude_with_retry() or backend.llm.claude_oauth_client.",
+    )
 
 
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(
-        (
-            anthropic.RateLimitError,
-            anthropic.APIConnectionError,
-            anthropic.APITimeoutError,
-        ),
-    ),
+    retry=retry_if_exception_type((ClaudeClientError, ClaudeOAuthError)),
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
 async def call_claude_with_retry(
     prompt: str,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     max_tokens: int = 4096,
-) -> "Message":
-    """
-    Call Claude API with automatic retry on transient errors.
+) -> ClaudeOAuthMessage:
+    """Call Claude via Max OAuth with automatic retry on transient errors.
 
-    Best Practices 2026:
-    - Exponential backoff (2s, 4s, 8s)
-    - Retry only on transient errors (rate limit, connection, timeout)
-    - Circuit breaker protection
-    - Structured error logging
+    Behavioral contract preserved from the SDK version:
+    - Exponential backoff (2s, 4s, 8s), max 3 attempts on transient errors.
+    - Circuit breaker protection (5 failures → OPEN for 60s).
+    - Returns an object exposing ``content[0].text`` and
+      ``usage.{input,output}_tokens`` just like the old Anthropic
+      ``Message``, so the caller in
+      ``app/routers/article_composer.py`` is untouched.
+
+    Changes from the SDK version:
+    - No ``cache_control`` — the ``claude -p`` CLI doesn't surface the
+      request-body builder. The cache win is deferred until we move to a
+      different transport (Claude Agent SDK or raw HTTP via OAuth).
+    - ``usage.*`` are estimates (``len(text)//4``); the CLI doesn't return
+      usage metadata.
+    - ``max_tokens`` is **ignored** (the CLI has no flag for it). Left in
+      the signature for drop-in compatibility.
 
     Args:
-        prompt: The prompt to send to Claude
-        model: Model to use (default: claude-sonnet-4-20250514)
-        max_tokens: Maximum tokens to generate
+        prompt: The prompt to send to Claude.
+        model: Model slug forwarded to ``claude -p --model``.
+        max_tokens: Accepted but ignored (kept for API compat).
 
     Returns:
-        Claude API response message
-
-    Raises:
-        anthropic.APIError: For non-retryable errors or after max retries
+        :class:`ClaudeOAuthMessage` — SDK-shaped response wrapper.
     """
-    client = get_anthropic_client()
+    del max_tokens  # retained for API compat; CLI has no max_tokens flag
 
-    def _make_request() -> Any:
-        """Make the actual API request"""
-        return client.messages.create(
+    async def _make_request() -> ClaudeOAuthMessage:
+        try:
+            resp = await complete_async(prompt, model=model)
+        except ClaudeOAuthNotAvailable:
+            raise
+        except ClaudeOAuthError as exc:
+            # Let tenacity retry transient OAuth failures.
+            raise ClaudeClientError(str(exc)) from exc
+
+        return ClaudeOAuthMessage(
+            content=[_TextBlock(text=resp.text)],
+            usage=_Usage(
+                input_tokens=_estimate_tokens(prompt),
+                output_tokens=_estimate_tokens(resp.text),
+            ),
             model=model,
-            max_tokens=max_tokens,
-            messages=[{"role": "user", "content": prompt}],
+            token_label=resp.token_label,
         )
 
     try:
-        # Use circuit breaker
-        message = _claude_circuit_breaker.call(_make_request)
-
-        logger.info(
-            "Claude API call successful",
-            extra={
-                "model": model,
-                "input_tokens": message.usage.input_tokens,
-                "output_tokens": message.usage.output_tokens,
-            },
-        )
-
-        return message
-
-    except anthropic.RateLimitError as e:
+        message = await _claude_circuit_breaker.call(_make_request)
+    except ClaudeOAuthNotAvailable as exc:
+        logger.error("claude CLI missing, no retry possible: %s", exc)
+        raise
+    except ClaudeClientError as exc:
         logger.warning(
-            f"Rate limit hit, retrying: {e}",
-            extra={
-                "error_type": "RateLimitError",
-                "retry_after": getattr(e, "retry_after", None),
-            },
+            "Transient Claude error, tenacity will retry: %s",
+            exc,
+            extra={"error_type": "ClaudeClientError"},
         )
         raise
 
-    except anthropic.APIConnectionError as e:
-        logger.warning(
-            f"Connection error, retrying: {e}",
-            extra={"error_type": "APIConnectionError"},
-        )
-        raise
-
-    except anthropic.APITimeoutError as e:
-        logger.warning(
-            f"Timeout error, retrying: {e}",
-            extra={"error_type": "APITimeoutError"},
-        )
-        raise
-
-    except anthropic.APIError as e:
-        # Non-retryable errors (authentication, invalid request, etc.)
-        logger.error(
-            f"Claude API error (non-retryable): {e}",
-            extra={
-                "error_type": type(e).__name__,
-                "error_message": str(e),
-            },
-        )
-        raise
+    logger.info(
+        "Claude OAuth call successful",
+        extra={
+            "model": message.model,
+            "input_tokens": message.usage.input_tokens,
+            "output_tokens": message.usage.output_tokens,
+            "token_label": message.token_label,
+        },
+    )
+    return message
