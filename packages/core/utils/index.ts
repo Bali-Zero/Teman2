@@ -6,3 +6,8 @@ export {
 } from "./expiry";
 export { formatIDR, formatUSD, formatCurrency } from "./currency";
 export { formatDate, formatTime, formatRelative } from "./date";
+export {
+  buildWaDeeplink,
+  WA_CANONICAL,
+  type WaDeeplinkArgs,
+} from "./wa-deeplink";
