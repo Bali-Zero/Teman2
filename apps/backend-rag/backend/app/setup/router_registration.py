@@ -63,10 +63,9 @@ def include_routers(api: FastAPI) -> None:
         episodic_memory,
         event_bus,  # [EVENT] EventBus monitoring
         experience,  # [EXP] Experience Library — trajectory recording/query
-        skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
-        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 — 4 metabolic metrics (read-only)
         federation,
         feedback,
+        funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         google_drive,
         handlers,
         health,
@@ -85,6 +84,7 @@ def include_routers(api: FastAPI) -> None:
         lkpm,
         media,
         messaging_identity,
+        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 — 4 metabolic metrics (read-only)
         monitoring_rag,  # [NEW] RAG Retrieval Quality Monitoring
         naga,  # [NAGA] Deep research engine
         news,
@@ -109,6 +109,7 @@ def include_routers(api: FastAPI) -> None:
         query_analytics,
         session,
         sheets,
+        skill,  # [SKILL] Skill Registry — canonical procedures (Sprint 5.2 W3-4)
         team,
         team_activity,
         team_analytics,
@@ -163,6 +164,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
     api.include_router(federation.router)
     api.include_router(feedback.router)
+    api.include_router(funnel.router)  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
 
     # CRM routers
     api.include_router(crm_clients.router)
@@ -408,6 +410,7 @@ def include_light_routers(api: FastAPI) -> None:
         experience,  # [EXP] Experience Library — trajectory recording/query (PR #54)
         federation,
         feedback,
+        funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
         google_drive,
         handlers,
         health,
@@ -474,6 +477,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(session.router)
     api.include_router(federation.router)
     api.include_router(feedback.router)
+    api.include_router(funnel.router)  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)
@@ -652,8 +656,6 @@ def include_heavy_routers(api: FastAPI) -> None:
         dynamic_pricing,
         episodic_memory,
         experience,  # [EXP] Experience Library
-        skill,  # [SKILL] Skill Registry
-        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7
         handlers,
         health,
         ingest,
@@ -666,11 +668,13 @@ def include_heavy_routers(api: FastAPI) -> None:
         knowledge_visa,
         lam_memory,
         legal_ingest,
+        metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7
         monitoring_rag,
         naga,
         news,
         oracle_ingest,
         oracle_universal,
+        skill,  # [SKILL] Skill Registry
         voice,
         whatsapp_chat,
     )
