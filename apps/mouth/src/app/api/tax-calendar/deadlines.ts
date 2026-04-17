@@ -13,24 +13,25 @@ export const TAX_DEADLINES: TaxDeadline[] = [
   {
     id: "pph25-monthly",
     kind: "PPh",
-    title: "PPh 25 mensile",
+    title: "PPh 25 — monthly",
     date: "2026-05-15T00:00:00Z",
     description:
-      "Pagamento entro il 15 del mese seguente (JCSS 2025 cambio da 10 a 15).",
+      "Payment due by the 15th of the following month (JCSS 2025 shifted it from the 10th to the 15th).",
   },
   {
     id: "ppn-monthly",
     kind: "PPN",
     title: "PPN SPT Masa",
     date: "2026-05-31T00:00:00Z",
-    description: "SPT Masa PPN entro fine mese successivo.",
+    description: "VAT return (SPT Masa) due by the end of the following month.",
   },
   {
     id: "lkpm-q1",
     kind: "LKPM",
     title: "LKPM Q1 2026",
     date: "2026-07-10T00:00:00Z",
-    description: "Laporan Kegiatan Penanaman Modal, trimestrale.",
+    description:
+      "Quarterly investment activity report (Laporan Kegiatan Penanaman Modal).",
   },
   {
     id: "pb1-badung",
@@ -38,7 +39,7 @@ export const TAX_DEADLINES: TaxDeadline[] = [
     title: "PB1 Badung",
     date: "2026-05-10T00:00:00Z",
     regency: "Badung",
-    description: "Pajak Hotel/Restoran 10%.",
+    description: "Hotel and restaurant tax, 10%.",
   },
   {
     id: "pb1-gianyar",
@@ -46,14 +47,14 @@ export const TAX_DEADLINES: TaxDeadline[] = [
     title: "PB1 Gianyar",
     date: "2026-05-15T00:00:00Z",
     regency: "Gianyar",
-    description: "PB1 reggenza Gianyar.",
+    description: "PB1 for Gianyar regency.",
   },
   {
     id: "spt-individual-2026",
     kind: "PPh",
-    title: "SPT Tahunan Individuale 2025",
+    title: "SPT Tahunan — Individual 2025",
     date: "2026-04-30T00:00:00Z",
-    description: "Estesa a 30 aprile (era 31 marzo).",
+    description: "Extended to April 30 (was March 31).",
   },
 ];
 
