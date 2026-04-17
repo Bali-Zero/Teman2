@@ -18,22 +18,27 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy requirements (path relative to monorepo root)
-COPY apps/backend-rag/requirements-prod.txt .
+# Copy the cell-core workspace package (referenced as editable dep from
+# apps/backend-rag/requirements-prod.txt as `-e ../../packages/cell-core`).
+# Must be in place BEFORE pip install -r resolves that line.
+COPY packages/cell-core /app/packages/cell-core
+
+# Copy backend-rag directory (requirements files + any build-time helpers).
+# Keeping the whole dir lets `pip install -r requirements-prod.txt` run
+# from `/app/apps/backend-rag/` so the relative `-e ../../packages/cell-core`
+# in the requirements file resolves to `/app/packages/cell-core` — the same
+# path used by local dev and by CI (tests.yml, fly-deploy.yml). Single
+# declaration site for cell-core, no more duplicated workaround.
+COPY apps/backend-rag /app/apps/backend-rag
 
 # Install Python dependencies (skip Playwright browsers to save ~500MB)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+WORKDIR /app/apps/backend-rag
 RUN pip install --no-cache-dir --user -r requirements-prod.txt \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
     && find /root/.local -type f -name "*.pyo" -delete
-
-# cell-core (DNA-recording package: Genome, Experience, Skill, Metabolic, HGT).
-# Installed editable AFTER the large ML pip layer so cell-core changes don't
-# invalidate that cache. Editable install matches the pattern used in CI
-# (tests.yml + fly-deploy.yml gate). Closes PR #56 scar.
-COPY packages/cell-core /app/packages/cell-core
-RUN pip install --no-cache-dir --user -e /app/packages/cell-core
+WORKDIR /app
 
 # ========================================
 # Stage 2: Runtime Stage
