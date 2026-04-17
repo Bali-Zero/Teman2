@@ -1,23 +1,22 @@
-"""
-Claude client for article_composer — Max-plan OAuth subprocess edition.
+"""LLM client for article_composer — now DeepSeek, previously Claude.
 
-Previously this wrapped ``anthropic.Anthropic`` (pay-as-you-go API key).
-Project policy forbids ``ANTHROPIC_API_KEY`` — all Claude calls must go
-through the Max OAuth token via ``claude -p`` (see
-``memory/feedback_claude_oauth_only.md``).
+History:
+- v1: wrapped ``anthropic.Anthropic`` (pay-as-you-go API key).
+- v2: switched to Claude Max OAuth via ``claude -p`` subprocess
+  (``backend.llm.claude_oauth_client``) per project policy
+  ``memory/feedback_claude_oauth_only.md``.
+- v3 (this file): migrated to DeepSeek (``deepseek-chat``) because the
+  ``claude`` CLI hangs inside the Fly container on Linux non-TTY
+  (``memory/feedback_claude_cli_linux_hang.md``). DeepSeek is ~100x
+  cheaper than Claude Sonnet for structured JSON output and returns
+  clean usage counters.
 
-This module now:
-- calls ``backend.llm.claude_oauth_client.complete_async`` instead of the
-  SDK,
-- returns a lightweight object that mimics the subset of
-  ``anthropic.types.Message`` actually consumed by the caller
-  (``content[0].text``, ``usage.input_tokens``, ``usage.output_tokens``),
-  so ``app/routers/article_composer.py`` keeps working unchanged,
-- keeps the tenacity retry + circuit breaker for defense-in-depth on
-  transient subprocess failures,
-- drops the anthropic SDK import entirely — `get_anthropic_client` is
-  gone, replaced by ``None``-returning compatibility shim only used by
-  tests that import the symbol.
+Public symbols preserved for router/backward-compat:
+- ``call_claude_with_retry`` — same signature, internally calls DeepSeek.
+- ``ClaudeClientError`` — same retryable exception class.
+- ``ClaudeOAuthMessage`` (alias ``Message``) — same response shape
+  (``content[0].text``, ``usage.input_tokens``, ``usage.output_tokens``).
+- ``get_anthropic_client`` — still raises on call (unchanged).
 """
 
 import logging
@@ -34,19 +33,11 @@ from tenacity import (
     wait_exponential,
 )
 
-from backend.llm.claude_oauth_client import (
-    ClaudeOAuthError,
-    ClaudeOAuthNotAvailable,
+from backend.llm.deepseek_client import (
+    DeepSeekAuthError,
+    DeepSeekError,
     complete_async,
 )
-
-# The caller touches only these attributes on the return value:
-# - message.content[0].text
-# - message.usage.input_tokens
-# - message.usage.output_tokens
-#
-# We reproduce that shape with plain dataclasses so the router keeps
-# working unchanged.
 
 
 @dataclass(frozen=True)
@@ -65,8 +56,9 @@ class _Usage:
 class ClaudeOAuthMessage:
     """Minimal drop-in for anthropic.types.Message consumed by callers.
 
-    Exposes the same attribute tree (``content[0].text``, ``usage.*``) but
-    carries no SDK dependency.
+    Name retained for backward compatibility with the Claude-era code; the
+    payload now comes from DeepSeek. Router only touches
+    ``content[0].text`` and ``usage.{input,output}_tokens``.
     """
 
     content: list[_TextBlock]
@@ -79,24 +71,25 @@ class ClaudeOAuthMessage:
         return self.content[0].text if self.content else ""
 
 
-# Backward-compatible export so
-# `from backend.services.article_composer import Message` keeps working
-# without dragging in the anthropic SDK at import time.
-Message = ClaudeOAuthMessage  # type: ignore[misc]
+Message = ClaudeOAuthMessage  # backward-compat alias
 
 logger = logging.getLogger(__name__)
 
 
 class ClaudeClientError(RuntimeError):
-    """Raised for any retryable transport error from the OAuth subprocess."""
+    """Raised for retryable transport errors from the LLM client.
+
+    Name retained from the Claude era. Now wraps transient DeepSeek HTTP
+    errors so tenacity can retry them.
+    """
 
 
 class CircuitState(Enum):
     """Circuit breaker states"""
 
-    CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failing, reject requests
-    HALF_OPEN = "half_open"  # Testing if service recovered
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
 
 
 class CircuitBreaker:
@@ -165,106 +158,81 @@ class CircuitBreaker:
             )
 
 
-# Global circuit breaker instance
-_claude_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
-
-
-# Rough token-count estimate: the OAuth subprocess has no usage telemetry
-# (Claude CLI prints only the completion). We approximate tokens as
-# ``len(text) // 4``, which is the industry rule-of-thumb and what
-# ``backend.llm.token_estimator`` uses under the hood.
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+_llm_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
 
 
 def get_anthropic_client() -> None:
     """Removed — kept only as a shim that raises, so callers fail loudly.
 
-    This module no longer uses ``anthropic.Anthropic``. All Claude traffic
-    goes via ``backend.llm.claude_oauth_client``. Any code still calling
-    this helper is on the wrong path.
+    This module has no Anthropic SDK dependency. Use
+    :func:`call_claude_with_retry` or ``backend.llm.deepseek_client``.
     """
     raise RuntimeError(
-        "get_anthropic_client() is removed: Claude goes via Max OAuth now. "
-        "Use call_claude_with_retry() or backend.llm.claude_oauth_client.",
+        "get_anthropic_client() is removed. article_composer now uses DeepSeek "
+        "via backend.llm.deepseek_client. Call call_claude_with_retry() instead.",
     )
 
 
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type((ClaudeClientError, ClaudeOAuthError)),
+    retry=retry_if_exception_type((ClaudeClientError, DeepSeekError)),
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
 async def call_claude_with_retry(
     prompt: str,
-    model: str = "claude-sonnet-4-6",
+    model: str = "deepseek-chat",
     max_tokens: int = 4096,
 ) -> ClaudeOAuthMessage:
-    """Call Claude via Max OAuth with automatic retry on transient errors.
+    """Call DeepSeek with automatic retry on transient errors.
 
-    Behavioral contract preserved from the SDK version:
-    - Exponential backoff (2s, 4s, 8s), max 3 attempts on transient errors.
-    - Circuit breaker protection (5 failures → OPEN for 60s).
-    - Returns an object exposing ``content[0].text`` and
-      ``usage.{input,output}_tokens`` just like the old Anthropic
-      ``Message``, so the caller in
-      ``app/routers/article_composer.py`` is untouched.
-
-    Changes from the SDK version:
-    - No ``cache_control`` — the ``claude -p`` CLI doesn't surface the
-      request-body builder. The cache win is deferred until we move to a
-      different transport (Claude Agent SDK or raw HTTP via OAuth).
-    - ``usage.*`` are estimates (``len(text)//4``); the CLI doesn't return
-      usage metadata.
-    - ``max_tokens`` is **ignored** (the CLI has no flag for it). Left in
-      the signature for drop-in compatibility.
-
-    Args:
-        prompt: The prompt to send to Claude.
-        model: Model slug forwarded to ``claude -p --model``.
-        max_tokens: Accepted but ignored (kept for API compat).
-
-    Returns:
-        :class:`ClaudeOAuthMessage` — SDK-shaped response wrapper.
+    Signature kept for drop-in compatibility with the router that still
+    imports this symbol. The ``model`` default changed from
+    ``claude-sonnet-4-6`` to ``deepseek-chat``. The return object still
+    exposes ``content[0].text`` and ``usage.{input,output}_tokens`` so the
+    router needs no changes to its happy path.
     """
-    del max_tokens  # retained for API compat; CLI has no max_tokens flag
 
     async def _make_request() -> ClaudeOAuthMessage:
         try:
-            resp = await complete_async(prompt, model=model)
-        except ClaudeOAuthNotAvailable:
+            resp = await complete_async(
+                prompt,
+                model=model,
+                max_tokens=max_tokens,
+                temperature=0.3,
+                response_format={"type": "json_object"},
+            )
+        except DeepSeekAuthError:
             raise
-        except ClaudeOAuthError as exc:
-            # Let tenacity retry transient OAuth failures.
+        except DeepSeekError as exc:
             raise ClaudeClientError(str(exc)) from exc
 
         return ClaudeOAuthMessage(
             content=[_TextBlock(text=resp.text)],
             usage=_Usage(
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(resp.text),
+                input_tokens=resp.input_tokens,
+                output_tokens=resp.output_tokens,
             ),
-            model=model,
-            token_label=resp.token_label,
+            model=resp.model,
+            token_label=f"deepseek_cache_hit={resp.cache_hit_tokens}",
         )
 
     try:
-        message = await _claude_circuit_breaker.call(_make_request)
-    except ClaudeOAuthNotAvailable as exc:
-        logger.error("claude CLI missing, no retry possible: %s", exc)
+        message = await _llm_circuit_breaker.call(_make_request)
+    except DeepSeekAuthError as exc:
+        logger.error("DeepSeek auth failed, no retry possible: %s", exc)
         raise
     except ClaudeClientError as exc:
         logger.warning(
-            "Transient Claude error, tenacity will retry: %s",
+            "Transient DeepSeek error, tenacity will retry: %s",
             exc,
             extra={"error_type": "ClaudeClientError"},
         )
         raise
 
     logger.info(
-        "Claude OAuth call successful",
+        "DeepSeek call successful",
         extra={
             "model": message.model,
             "input_tokens": message.usage.input_tokens,

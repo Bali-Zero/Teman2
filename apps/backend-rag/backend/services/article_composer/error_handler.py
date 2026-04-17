@@ -14,9 +14,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
-import anthropic
+import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel
+
+from backend.llm.deepseek_client import DeepSeekAuthError, DeepSeekError
 
 logger = logging.getLogger(__name__)
 
@@ -85,17 +87,10 @@ def handle_anthropic_error(
     category: str | None = None,
     request_id: str | None = None,
 ) -> HTTPException:
-    """
-    Handle Anthropic API errors with structured responses.
+    """Handle LLM API errors with structured responses.
 
-    Args:
-        error: The exception that occurred
-        article_title: Article title for context
-        category: Article category for context
-        request_id: Request ID for tracing
-
-    Returns:
-        HTTPException with structured error details
+    Name retained from the Claude era for router backward-compat. Now
+    maps DeepSeek / httpx errors to structured ``APIError`` responses.
     """
     error_context = {
         "article_title": article_title,
@@ -104,77 +99,69 @@ def handle_anthropic_error(
         "error_message": str(error),
     }
 
-    if isinstance(error, anthropic.RateLimitError):
+    if isinstance(error, DeepSeekAuthError):
         api_error = APIError.create(
-            code=ErrorCode.RATE_LIMIT_EXCEEDED,
-            message="Claude API rate limit exceeded",
+            code=ErrorCode.API_KEY_NOT_CONFIGURED,
+            message="Invalid or missing DEEPSEEK_API_KEY",
             details={
                 **error_context,
-                "retry_after": getattr(error, "retry_after", None),
-                "suggestion": "Please retry after the rate limit resets",
+                "suggestion": "Check the DEEPSEEK_API_KEY environment variable",
             },
             request_id=request_id,
         )
-        logger.warning(
-            "Rate limit exceeded",
-            extra={
-                **error_context,
-                "retry_after": getattr(error, "retry_after", None),
-            },
-        )
-        return HTTPException(status_code=429, detail=api_error.model_dump())
+        logger.error("DeepSeek auth error", extra=error_context)
+        return HTTPException(status_code=401, detail=api_error.model_dump())
 
-    if isinstance(error, anthropic.APITimeoutError):
-        # Check before APIConnectionError (APITimeoutError subclasses it)
+    if isinstance(error, httpx.TimeoutException):
         api_error = APIError.create(
             code=ErrorCode.API_TIMEOUT,
-            message="Claude API request timed out",
+            message="DeepSeek request timed out",
             details={
                 **error_context,
                 "suggestion": "Request took too long, please retry",
             },
             request_id=request_id,
         )
-        logger.error("API timeout", extra=error_context)
+        logger.error("DeepSeek timeout", extra=error_context)
         return HTTPException(status_code=504, detail=api_error.model_dump())
 
-    if isinstance(error, anthropic.APIConnectionError):
+    if isinstance(error, httpx.ConnectError):
         api_error = APIError.create(
             code=ErrorCode.API_CONNECTION_ERROR,
-            message="Failed to connect to Claude API",
+            message="Failed to connect to DeepSeek API",
             details={
                 **error_context,
-                "suggestion": "Check your internet connection and retry",
+                "suggestion": "Check network connectivity and retry",
             },
             request_id=request_id,
         )
-        logger.error("API connection error", extra=error_context, exc_info=True)
+        logger.error("DeepSeek connection error", extra=error_context, exc_info=True)
         return HTTPException(status_code=503, detail=api_error.model_dump())
 
-    if isinstance(error, anthropic.AuthenticationError):
+    msg = str(error).lower()
+    if isinstance(error, DeepSeekError) and ("429" in msg or "rate" in msg):
         api_error = APIError.create(
-            code=ErrorCode.API_KEY_NOT_CONFIGURED,
-            message="Invalid or missing Anthropic API key",
+            code=ErrorCode.RATE_LIMIT_EXCEEDED,
+            message="DeepSeek API rate limit exceeded",
             details={
                 **error_context,
-                "suggestion": "Check your ANTHROPIC_API_KEY environment variable",
+                "suggestion": "Please retry after a short backoff",
             },
             request_id=request_id,
         )
-        logger.error("Authentication error", extra=error_context)
-        return HTTPException(status_code=401, detail=api_error.model_dump())
+        logger.warning("DeepSeek rate limit", extra=error_context)
+        return HTTPException(status_code=429, detail=api_error.model_dump())
 
-    # Generic API error
     api_error = APIError.create(
         code=ErrorCode.API_ERROR,
-        message=f"Claude API error: {str(error)}",
+        message=f"LLM API error: {str(error)}",
         details={
             **error_context,
             "traceback": traceback.format_exc(),
         },
         request_id=request_id,
     )
-    logger.error("API error", extra=error_context, exc_info=True)
+    logger.error("LLM API error", extra=error_context, exc_info=True)
     return HTTPException(status_code=500, detail=api_error.model_dump())
 
 
