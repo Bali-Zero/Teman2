@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 import asyncpg
 
 from backend.services.bridge.outbox import insert_outbox_event
+from backend.services.common.background import spawn
 
 logger = logging.getLogger(__name__)
 
@@ -148,12 +149,12 @@ def register_handlers(
                 f"🆕 New client created: id={client_id}, email={email}"
             )
             # Create Drive folder in background (non-blocking)
-            asyncio.create_task(
+            spawn(
                 _create_drive_folder(db_pool, client_id),
                 name=f"drive_folder_{client_id}",
             )
             # Log CRM interaction
-            asyncio.create_task(
+            spawn(
                 _log_interaction(
                     db_pool, client_id,
                     "system",
@@ -225,19 +226,19 @@ def register_handlers(
 
         # On completion: check if client has other expiring docs
         if new_status == "completed" and client_id:
-            asyncio.create_task(
+            spawn(
                 _check_client_expiry_on_completion(db_pool, client_id, practice_id),
                 name=f"expiry_check_{client_id}",
             )
             # Predictive engine: mini-scan for this client on completion
-            asyncio.create_task(
+            spawn(
                 _run_predictive_scan_for_client(db_pool, client_id),
                 name=f"predictive_scan_{client_id}",
             )
 
         # On cancellation: log for analytics
         if new_status == "cancelled":
-            asyncio.create_task(
+            spawn(
                 _log_interaction(
                     db_pool, client_id,
                     "system",
@@ -294,7 +295,7 @@ def register_handlers(
 
         # High/critical: Telegram alert
         if severity in ("high", "critical"):
-            asyncio.create_task(
+            spawn(
                 _send_admin_telegram(
                     f"⚠️ Compliance Alert [{severity.upper()}]",
                     f"Client #{client_id}\nType: {alert_type}\n{message[:300]}",
@@ -304,7 +305,7 @@ def register_handlers(
 
         # Log in CRM
         if client_id:
-            asyncio.create_task(
+            spawn(
                 _log_interaction(
                     db_pool, client_id,
                     "compliance",

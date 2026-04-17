@@ -191,7 +191,7 @@ class TestUpdatePractice:
             patch("backend.app.routers.crm_practices.validate_transition", return_value=None),
             patch("backend.app.routers.crm_practices.invalidate_cache", AsyncMock()),
             patch("backend.services.portal.portal_notification_service.PortalNotificationService", return_value=notification_service),
-            patch("backend.app.routers.crm_practices.asyncio.create_task", MagicMock()),
+            patch("backend.app.routers.crm_practices.spawn", MagicMock()),
         ):
             response = client.patch("/api/crm/practices/10", json={"status": "on_process"})
 

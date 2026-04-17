@@ -23,6 +23,7 @@ from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_database_operation, log_success
 from backend.core.cache import cached, invalidate_cache
+from backend.services.common.background import spawn
 from backend.services.crm.practice_state_machine import (
     InvalidTransitionError,
     normalize_state,
@@ -1124,7 +1125,7 @@ async def update_practice(
                         updated_practice.get("practice_type_id"),
                     )
                     practice_type = (pt_row["code"] if pt_row else None) or "Practice"
-                    asyncio.create_task(
+                    spawn(
                         notif_service.notify_practice_status_changed(
                             client_id=practice_client_id,
                             practice_id=practice_id,
@@ -1182,7 +1183,7 @@ async def update_practice(
                 from backend.services.crm.waiting_documents_service import WaitingDocumentsService
 
                 waiting_docs_service = WaitingDocumentsService(db_pool)
-                asyncio.create_task(
+                spawn(
                     waiting_docs_service.trigger_on_waiting_documents(
                         practice_id=practice_id,
                         triggered_by=user_email,
@@ -1194,7 +1195,7 @@ async def update_practice(
             if updates.status == "sending_invoice" and old_status != "sending_invoice":
                 invoice_service = InvoiceAutomationService(db_pool)
                 # Run in background to not block the response
-                asyncio.create_task(
+                spawn(
                     invoice_service.trigger_on_sending_invoice(
                         practice_id=practice_id,
                         triggered_by=user_email,
@@ -1210,7 +1211,7 @@ async def update_practice(
                 from backend.services.crm.completed_process_service import CompletedProcessService
 
                 completion_service = CompletedProcessService(db_pool)
-                asyncio.create_task(
+                spawn(
                     completion_service.trigger_on_completed(
                         practice_id=practice_id,
                         triggered_by=user_email,
@@ -1221,7 +1222,7 @@ async def update_practice(
                 )
 
                 # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
-                asyncio.create_task(
+                spawn(
                     _create_hr_bonus_on_completed(db_pool, practice_id, updated_practice),
                 )
 

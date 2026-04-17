@@ -24,6 +24,8 @@ from typing import Any
 
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 
+from backend.services.common.background import spawn
+
 logger = logging.getLogger(__name__)
 
 
@@ -439,10 +441,10 @@ class RetrievalQualityMonitor:
 
             # Schedule async flush if thresholds exceeded
             try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._maybe_flush())
+                asyncio.get_running_loop()
+                spawn(self._maybe_flush(), name="rag_eval_maybe_flush")
             except RuntimeError:
-                pass  # No event loop — flush will happen on next async call
+                logger.debug("no running event loop — flush deferred to next async call")
 
             # Check for low score
             if retrieval_score < self._alert_thresholds.min_score:
@@ -512,10 +514,10 @@ class RetrievalQualityMonitor:
 
             # Schedule async flush if thresholds exceeded
             try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._maybe_flush())
+                asyncio.get_running_loop()
+                spawn(self._maybe_flush(), name="rag_eval_abstain_flush")
             except RuntimeError:
-                pass  # No event loop — flush will happen on next async call
+                logger.debug("no running event loop — abstain flush deferred")
 
             logger.info(f"Recorded ABSTAIN: domain={domain}, reason={reason}")
 

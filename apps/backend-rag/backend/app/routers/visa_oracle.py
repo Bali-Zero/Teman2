@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.app.dependencies import get_database_pool
+from backend.services.common.background import spawn
 from backend.services.visa_oracle.visa_oracle_service import get_visa_oracle_service
 
 logger = logging.getLogger(__name__)
@@ -422,7 +423,7 @@ async def recommend(
         )
         # Persist session non-blocking
         ip_hash = service.hash_ip(request.client.host if request.client else "unknown")
-        asyncio.create_task(
+        spawn(
             _persist_session_create(
                 db_pool, session_id, body.model_dump(), visas, ip_hash,
             )
@@ -665,10 +666,10 @@ async def chat(
         )
 
         # Persist Q&A non-blocking
-        asyncio.create_task(
+        spawn(
             _persist_session_append_message(db_pool, body.session_id, "user", body.message)
         )
-        asyncio.create_task(
+        spawn(
             _persist_session_append_message(db_pool, body.session_id, "assistant", answer_text)
         )
 
@@ -753,7 +754,7 @@ async def handoff(
             )
 
         # Mark handoff in session non-blocking
-        asyncio.create_task(_persist_session_handoff(db_pool, body.session_id))
+        spawn(_persist_session_handoff(db_pool, body.session_id))
 
         return HandoffResponse(
             success=True,

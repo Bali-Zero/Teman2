@@ -16,6 +16,8 @@ from typing import Any, TypeVar
 
 import asyncpg
 
+from backend.services.common.background import spawn
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -107,12 +109,12 @@ def cache_crm_result(ttl: int = 300, key_prefix: str = "") -> Any:
 
 def invalidate_client_cache(client_id: int) -> None:
     """Invalida tutta la cache relativa a un cliente."""
-    asyncio.create_task(crm_cache.clear_pattern(f"client:{client_id}"))
+    spawn(crm_cache.clear_pattern(f"client:{client_id}"), name=f"cache_inv_client_{client_id}")
 
 
 def invalidate_practice_cache(practice_id: int) -> None:
     """Invalida tutta la cache relativa a una pratica."""
-    asyncio.create_task(crm_cache.clear_pattern(f"practice:{practice_id}"))
+    spawn(crm_cache.clear_pattern(f"practice:{practice_id}"), name=f"cache_inv_practice_{practice_id}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
