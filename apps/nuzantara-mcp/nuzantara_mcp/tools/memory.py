@@ -7,12 +7,15 @@ to the MCP agent layer via the /api/memory/lam/* backend endpoints.
 import logging
 from typing import Any, Callable, Optional
 
+from nuzantara_mcp.auth import require_role
+
 logger = logging.getLogger("nuzantara-mcp.memory")
 
 
 def register(mcp, _call: Callable, _call_safe: Callable) -> None:
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup", "admin")
     async def save_episode(
         content: str,
         agent: str = "main",
@@ -52,6 +55,7 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
         )
 
     @mcp.tool()
+    @require_role("visa_specialist", "tax_consultant", "company_setup")
     async def recall_similar(
         query: str,
         limit: int = 5,
@@ -100,6 +104,7 @@ def register(mcp, _call: Callable, _call_safe: Callable) -> None:
         return await _call_safe("/api/memory/lam/episodes", params=params)
 
     @mcp.tool()
+    @require_role("admin")
     async def delete_episode(episode_id: str) -> dict:
         """
         Delete a specific LAM memory episode by ID.

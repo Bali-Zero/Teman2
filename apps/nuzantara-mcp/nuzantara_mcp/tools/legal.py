@@ -2,9 +2,12 @@
 
 from typing import Optional
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
+    @require_role("admin")
     async def ingest_regulation(
         url: str,
         tipo: str,
@@ -50,6 +53,7 @@ def register(mcp, _call, _call_safe):
         return await _call("/api/legal/ingest-full", method="POST", json=payload)
 
     @mcp.tool()
+    @require_role("admin")
     async def get_ingest_status(job_id: str) -> dict:
         """
         Poll the status of a legal regulation ingestion job.

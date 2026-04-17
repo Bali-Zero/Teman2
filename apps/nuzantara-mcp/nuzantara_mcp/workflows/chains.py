@@ -94,7 +94,20 @@ async def _reflect_and_save(
     """
     Post-chain reflection: save an episodic memory of what just happened.
     Called at the end of every chain to build the LAM's long-term memory.
+
+    Also emits Prometheus-shaped metrics (run counter, step counters, error
+    buckets) to ``$NUZANTARA_MCP_METRICS_PATH`` for Grafana to scrape. See
+    ``nuzantara_mcp.workflows.metrics`` and ``docs/observability/README.md``.
     """
+    # Metrics — emitted first so a reflection save failure never loses telemetry.
+    try:
+        from nuzantara_mcp.workflows.metrics import get_metrics
+
+        metrics = get_metrics()
+        metrics.record_from_log(chain_name, outcome, log)
+    except Exception:
+        logger.debug("metrics emission failed for chain '%s'", chain_name, exc_info=True)
+
     try:
         errors = [s.get("detail") for s in log if s.get("status") == "error"]
         content = (

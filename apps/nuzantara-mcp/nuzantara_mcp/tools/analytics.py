@@ -1,5 +1,7 @@
 """Analytics Tools - 8 tools for business intelligence and team monitoring."""
 
+from nuzantara_mcp.auth import require_role
+
 
 def register(mcp, _call, _call_safe):
     @mcp.tool()
@@ -49,6 +51,7 @@ def register(mcp, _call, _call_safe):
         )
 
     @mcp.tool()
+    @require_role("tax_consultant")
     async def get_revenue_analytics(period: str = "30d") -> dict:
         """
         Get revenue analytics.
