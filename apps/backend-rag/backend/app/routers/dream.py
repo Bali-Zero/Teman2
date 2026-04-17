@@ -61,7 +61,7 @@ MOCK_DB: dict[str, Any] = {}
 @router.post("/state")
 async def save_state(user_id: str, state: dict[str, Any]) -> dict[str, Any]:
     """Persist Dream Room state (Articles, Inspirations, etc.)"""
-    # TODO: Replace with real DB call (e.g. Postgres JSONB or Redis)
+    # TODO(#77): Replace in-memory MOCK_DB with Postgres JSONB persistence.
     MOCK_DB[user_id] = state
     logger.info(f"Saved state for user {user_id}")
     return {
@@ -81,7 +81,7 @@ async def get_state(user_id: str) -> dict[str, Any]:
 async def scrape_url(request: ScrapingRequest) -> dict[str, Any]:
     """
     Mock scraper for now.
-    TODO: Integrate with Firecrawl or standard BeautifulSoup scraper.
+    TODO(#78): Integrate with Firecrawl (or httpx + BeautifulSoup fallback).
     """
     # Mock delay
     import asyncio

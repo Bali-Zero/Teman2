@@ -229,8 +229,8 @@ class TextChunker:
             # Fall back to standard semantic chunking
             return self.semantic_chunk(text, metadata)
 
-        # TODO: Implement page-aware chunking
-        # For now, use semantic chunking
+        # TODO(#76): Implement page-aware chunking (respect page_markers boundaries,
+        # record metadata["page"] per chunk).
         return self.semantic_chunk(text, metadata)
 
 
