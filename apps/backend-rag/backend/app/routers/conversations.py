@@ -10,7 +10,6 @@ User identity is taken from JWT token, NOT from request parameters.
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Any

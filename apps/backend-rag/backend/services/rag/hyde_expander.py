@@ -18,6 +18,9 @@ import json
 import logging
 from typing import Any
 
+import httpx
+from redis.exceptions import RedisError
+
 logger = logging.getLogger(__name__)
 
 # HyDE generation prompt — domain-specific for Indonesian business services
@@ -139,8 +142,10 @@ class HyDEExpander:
                 )
                 if result:
                     return result
-            except Exception as exc:
+            except (httpx.HTTPError, ConnectionError, TimeoutError) as exc:
                 logger.debug("HyDE: Ollama failed (%s), trying fallback", exc)
+            except Exception as exc:  # noqa: BLE001 — HyDE is optional; degrade to empty document
+                logger.debug("HyDE: Ollama failed unexpectedly (%s), trying fallback", exc)
 
         # Stub for when no LLM is available — return empty for graceful degradation
         logger.debug("HyDE: no LLM available, returning empty")
@@ -158,8 +163,10 @@ class HyDEExpander:
                 vector = await self._embedding.embed(doc)
                 if vector and len(vector) == 1536:
                     vectors.append(vector)
-            except Exception as exc:
+            except (httpx.HTTPError, ValueError, TimeoutError) as exc:
                 logger.warning("HyDE: embedding failed for doc (%s)", exc)
+            except Exception as exc:  # noqa: BLE001 — skip bad doc, continue embedding others
+                logger.warning("HyDE: embedding failed unexpectedly for doc (%s)", exc, exc_info=True)
 
         return vectors
 
@@ -177,8 +184,11 @@ class HyDEExpander:
             data = await self._redis.get(key)
             if data:
                 return json.loads(data)
-        except Exception:
+        except (RedisError, json.JSONDecodeError, TypeError):
+            # cache miss on redis/parse error is fine — caller will recompute
             pass
+        except Exception:  # noqa: BLE001 — cache read must never surface to caller
+            logger.debug("HyDE: cache get failed unexpectedly", exc_info=True)
         return None
 
     async def _set_cached(self, key: str, vectors: list[list[float]]) -> None:
@@ -187,5 +197,7 @@ class HyDEExpander:
             return
         try:
             await self._redis.set(key, json.dumps(vectors), ex=CACHE_TTL)
-        except Exception as exc:
+        except (RedisError, TypeError, ValueError) as exc:
             logger.debug("HyDE: cache set failed (%s)", exc)
+        except Exception as exc:  # noqa: BLE001 — cache write is best-effort
+            logger.debug("HyDE: cache set failed unexpectedly (%s)", exc)

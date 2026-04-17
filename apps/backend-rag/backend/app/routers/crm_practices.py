@@ -5,7 +5,6 @@ Endpoints for managing practices (KITAS, PT PMA, Visas, etc.)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
-import asyncio
 import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
