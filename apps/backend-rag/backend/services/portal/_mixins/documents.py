@@ -25,6 +25,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.background import spawn
 from backend.services.portal.document_processing import (
     DocumentOCR,
     ExpiryDetector,
@@ -424,7 +425,7 @@ class PortalDocumentsMixin:
                 if file_id_for_ocr:
                     doc_category = self._classify_document_category(document_type, file_name)
                     folder_hint = self._get_drive_folder_for_category(doc_category)
-                    asyncio.create_task(
+                    spawn(
                         dispatch_ocr_by_folder(
                             db_pool=self.pool,
                             client_id=client_id,
@@ -442,7 +443,7 @@ class PortalDocumentsMixin:
             # =========================================================================
             # STEP 7: NOTIFY ASSIGNED LEAD
             # =========================================================================
-            asyncio.create_task(
+            spawn(
                 self._notify_lead_about_document(
                     client_id=client_id,
                     document_name=file_name,

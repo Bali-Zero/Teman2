@@ -76,8 +76,7 @@ class PracticeStatusListener:
             try:
                 await self._task
             except asyncio.CancelledError:
-                # Cooperative shutdown — cancellation here is the success path.
-                pass
+                logger.debug("practice_status_listener task cancelled during stop() — expected")
         await self._close_conn()
         logger.info("✅ PracticeStatusListener stopped")
 
@@ -89,7 +88,7 @@ class PracticeStatusListener:
             try:
                 await self._connect_and_listen()
             except asyncio.CancelledError:
-                # Cooperative shutdown — exit the retry loop cleanly.
+                logger.debug("practice_status_listener retry loop cancelled — exiting cleanly")
                 break
             except Exception as exc:
                 logger.error(f"PracticeStatusListener error, reconnecting in {_RECONNECT_DELAY_S}s: {exc}", exc_info=True)

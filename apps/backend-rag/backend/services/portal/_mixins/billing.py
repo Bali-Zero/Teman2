@@ -118,7 +118,13 @@ class PortalBillingMixin:
                     invoice_id,
                     client_id,
                 )
-            except Exception:
+            except (asyncpg.PostgresError, ConnectionError) as db_exc:
+                logger.warning(
+                    "billing: get_invoice_pdf_url DB error for client=%s invoice=%s: %s",
+                    client_id,
+                    invoice_id,
+                    db_exc,
+                )
                 return None
 
         if not row or (not row["drive_web_link"] and not row["drive_file_id"]):

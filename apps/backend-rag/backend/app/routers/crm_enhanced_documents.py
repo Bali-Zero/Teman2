@@ -26,6 +26,7 @@ from backend.app.routers.crm_enhanced import (
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
+from backend.services.common.background import spawn
 from backend.services.crm.document_categorizer import CATEGORY_TO_FOLDER, auto_categorize_document
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 
@@ -182,7 +183,7 @@ async def create_document(
             )
 
             notif_service = PortalNotificationService(pool)
-            asyncio.create_task(
+            spawn(
                 notif_service.notify_document_uploaded(
                     client_id=client_id,
                     document_type=data.document_type,

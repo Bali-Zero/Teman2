@@ -19,6 +19,7 @@ from backend.app.dependencies import get_database_pool
 from backend.app.models import UserProfile
 from backend.app.utils.cookie_auth import clear_auth_cookies, set_auth_cookies
 from backend.app.utils.logging_utils import get_logger, log_error, log_warning
+from backend.services.common.background import spawn
 
 logger = get_logger(__name__)
 
@@ -393,7 +394,7 @@ async def login(
 
             # PANOPTICON: Auto clock-in on team login
             if user["role"] != "client":
-                asyncio.create_task(
+                spawn(
                     _auto_clockin_if_needed(db_pool, str(user["id"]), user["email"], user["role"]),
                     name=f"auto-clockin:{user['email']}",
                 )

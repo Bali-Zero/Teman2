@@ -184,16 +184,16 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                 try:
                     # Try to extract error detail from response body
                     error_detail = None
+                    import json as _json
+
                     try:
                         if hasattr(response, "body"):
                             body = response.body
                             if isinstance(body, bytes):
-                                import json
-
-                                body_json = json.loads(body.decode())
+                                body_json = _json.loads(body.decode())
                                 error_detail = body_json.get("detail", body_json.get("message"))
-                    except Exception:
-                        pass  # Ignore body parsing errors
+                    except (_json.JSONDecodeError, UnicodeDecodeError, AttributeError) as parse_exc:
+                        logger.debug("could not parse error response body: %s", parse_exc)
 
                     await alert_service.send_http_error_alert(
                         status_code=status_code,

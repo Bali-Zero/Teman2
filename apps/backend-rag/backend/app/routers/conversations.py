@@ -25,6 +25,7 @@ from backend.core.cache import invalidate_cache
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success, log_warning
+from backend.services.common.background import spawn
 from backend.services.crm.conversation_title_generator import generate_conversation_title
 from backend.services.memory import MemoryOrchestrator, get_memory_cache
 
@@ -291,12 +292,13 @@ async def save_conversation(
                                 )
 
                                 if first_user_msg:
-                                    asyncio.create_task(
+                                    spawn(
                                         _generate_and_update_title(
                                             conversation_id=conversation_id,
                                             first_user_message=first_user_msg,
                                             db_pool=db_pool,
                                         ),
+                                        name=f"conv_title:{conversation_id}",
                                     )
                                     logger.info(
                                         f"🎯 Triggered async title generation for conversation {conversation_id}",

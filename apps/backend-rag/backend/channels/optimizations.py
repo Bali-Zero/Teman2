@@ -33,7 +33,11 @@ def _get_redis_client() -> Any | None:
 
         manager = RedisManager.get_instance()
         return manager.get_async_client()
-    except Exception:
+    except (ImportError, RuntimeError, AttributeError) as exc:
+        logger.debug("redis client unavailable: %s", exc)
+        return None
+    except Exception as exc:
+        logger.warning("unexpected error getting redis client", exc_info=exc)
         return None
 
 
