@@ -126,3 +126,56 @@ def test_none_values_stored(store):
     assert results[0].ttr.value is None
     assert results[0].ttr.metadata == {"error": "pg_down"}
     assert results[0].autonomy_index.value == 0.15
+
+
+def test_schema_v2_migration_idempotent(tmp_path):
+    """_ensure_schema is idempotent: re-open store, columns still present, no error."""
+    import sqlite3
+    db_path = str(tmp_path / "v2_idempotent.db")
+
+    # First open: creates + migrates
+    store1 = MetabolicStore(db_path=db_path)
+    store1.store(_make_snapshot(), collector_host="pro", metric_scope="host")
+    del store1
+
+    # Second open: migration re-runs, must not raise "duplicate column"
+    store2 = MetabolicStore(db_path=db_path)
+    store2.store(_make_snapshot(ts="2026-04-17T12:00:00+00:00"), collector_host="air", metric_scope="global")
+
+    conn = sqlite3.connect(db_path)
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(metabolic_snapshots)")}
+    conn.close()
+    assert "collector_host" in cols
+    assert "metric_scope" in cols
+    assert store2.stats()["total_snapshots"] == 2
+
+
+def test_store_with_collector_host_and_scope(store):
+    """store() persists collector_host + metric_scope; queryable via raw SQL."""
+    import sqlite3
+    store.store(_make_snapshot(ts="2026-04-17T12:00:00+00:00"), collector_host="pro", metric_scope="host")
+    store.store(_make_snapshot(ts="2026-04-17T12:00:01+00:00"), collector_host="air", metric_scope="global")
+    store.store(_make_snapshot(ts="2026-04-17T12:00:02+00:00"), collector_host="air", metric_scope="host")
+
+    conn = sqlite3.connect(store._db_path)
+    pro_host = conn.execute(
+        "SELECT COUNT(*) FROM metabolic_snapshots WHERE collector_host='pro' AND metric_scope='host'"
+    ).fetchone()[0]
+    air_global = conn.execute(
+        "SELECT COUNT(*) FROM metabolic_snapshots WHERE collector_host='air' AND metric_scope='global'"
+    ).fetchone()[0]
+    air_host = conn.execute(
+        "SELECT COUNT(*) FROM metabolic_snapshots WHERE collector_host='air' AND metric_scope='host'"
+    ).fetchone()[0]
+    conn.close()
+
+    assert pro_host == 1
+    assert air_global == 1
+    assert air_host == 1
+
+
+def test_store_legacy_call_without_scope_still_works(store):
+    """Legacy callers (no collector_host/metric_scope) still persist (backcompat)."""
+    store.store(_make_snapshot())
+    results = store.latest(1)
+    assert results[0].ttr.value == 3.0
