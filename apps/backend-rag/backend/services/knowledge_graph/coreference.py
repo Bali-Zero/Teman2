@@ -123,7 +123,7 @@ class CoreferenceResolver:
     def __init__(
         self,
         use_llm: bool = True,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         api_key: str | None = None,
     ) -> None:
         """

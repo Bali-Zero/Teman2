@@ -57,7 +57,7 @@ from backend.services.rag.kg_subgraph_visa import (
 def mock_llm():
     """Mock LLM for reasoning tasks."""
     llm = MagicMock()
-    llm.model = "claude-sonnet-4-5-20250929"
+    llm.model = "claude-sonnet-4-6"
     return llm
 
 
