@@ -18,7 +18,14 @@ def _parse_date(value: str | date | None) -> date | None:
         return value
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as exc:
+        # UU PDP audit: malformed date from upstream client payload. Returning
+        # None is safe (column accepts NULL) but the original value must be
+        # traceable for data-quality investigation.
+        logger.debug(
+            "client_repository.parse_date_failed",
+            extra={"error_type": type(exc).__name__, "raw": str(value)[:32]},
+        )
         return None
 
 
