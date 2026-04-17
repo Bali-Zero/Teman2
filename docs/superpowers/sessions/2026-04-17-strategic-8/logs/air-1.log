@@ -1,0 +1,28 @@
+=== Air-1 UU PDP Coverage Push ===
+Machine: antonellosiano@Nuzantara-9.local
+Started: 2026-04-17T13:02:31Z
+Branch:  compliance/pdp-coverage-push
+Base:    origin/main (8d84e1d64)
+---
+
+=== Audit Results (13:03:27) ===
+Total silent handlers: 178
+Severity: critical=8 high=37 medium=133
+Kinds: pass=103 return_literal=32 continue=20 return_empty_container=15 break=8
+Top module: services/rag/agentic (16)
+Note: memory '943 silent exceptions' counted all except-Exception occurrences.
+      AST-based audit flags only truly silent handlers (no re-raise, no log).
+No module >500 → proceed.
+
+=== BASELINE Coverage (pre-typing, 13:12:54) ===
+Scope: 7 critical-path modules
+
+Module                                   Stmts  Miss  Cover
+backend/app/deps/auth.py                    97    50  48.45%
+backend/app/routers/auth.py                217   160  26.27%
+backend/app/routers/crm_clients_documents  350    90  74.29%
+backend/app/utils/crm_utils.py              98    85  13.27%
+backend/core/exceptions.py                 168     0 100.00%
+backend/middleware/hybrid_auth.py          208    33  84.13%
+backend/middleware/pii_scanner.py           94    48  48.94%
+TOTAL                                     1232   466  62.18%
