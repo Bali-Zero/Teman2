@@ -249,3 +249,24 @@ async def test_dispatch_uses_ip_when_no_authenticated_user(
 
     kwargs_key = limiter_mock.is_allowed.call_args.args[0]
     assert "203.0.113.5" in kwargs_key
+
+
+@pytest.mark.asyncio
+async def test_dispatch_fails_open_when_limiter_raises(
+    middleware: RateLimitMiddleware, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the limiter itself raises (beyond the internal Redis fallback), the request
+    must still flow through — we don't want to 500 every request when rate-limiting
+    has an internal bug. This is a hot-path middleware; availability > strictness."""
+    limiter_mock = MagicMock()
+    limiter_mock.is_allowed = MagicMock(side_effect=RuntimeError("storage exploded"))
+    monkeypatch.setattr("backend.middleware.rate_limiter.rate_limiter", limiter_mock)
+
+    request = _make_request("/api/crm/clients", user={"email": "u@bali.com"})
+    response = MagicMock(headers={})
+    call_next = AsyncMock(return_value=response)
+
+    result = await middleware.dispatch(request, call_next)
+
+    assert result is response
+    call_next.assert_awaited_once_with(request)
