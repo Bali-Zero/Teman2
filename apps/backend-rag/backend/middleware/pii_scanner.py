@@ -236,8 +236,20 @@ class PIIScannerMiddleware:
                         f"[PIIScanner] Redacted {total_redacted} PII entities from agentic response on {path}"
                     )
                 redacted_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                pass  # Non-JSON body — pass through unchanged
+            except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+                # UU PDP audit: an agentic endpoint declared JSON but returned
+                # an unparsable body. Pass-through is safe (no redaction can
+                # happen on bytes we can't decode) — but we MUST record it so
+                # the PII-redaction coverage gap is traceable.
+                logger.warning(
+                    "pii_scanner.unparsable_response_body",
+                    extra={
+                        "path": path,
+                        "error_type": type(exc).__name__,
+                        "content_type": content_type,
+                        "body_len": len(raw_body),
+                    },
+                )
 
         # Update Content-Length if body changed
         updated_headers = []

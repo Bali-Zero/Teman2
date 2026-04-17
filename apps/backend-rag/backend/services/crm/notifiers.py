@@ -134,7 +134,11 @@ class BirthdayNotifierService:
         if isinstance(custom_fields, str):
             try:
                 custom_fields = json.loads(custom_fields)
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                logger.debug(
+                    "crm_notifiers.custom_fields_parse_failed",
+                    extra={"reason": str(exc)[:80]},
+                )
                 return ""
         enrichment = custom_fields.get("birthplace_enrichment", {}).get("data", {})
         if not enrichment:
