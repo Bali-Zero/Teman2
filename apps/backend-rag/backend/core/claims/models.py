@@ -5,6 +5,7 @@ NLM pipelines. Any change here propagates to all consumers.
 """
 
 from dataclasses import asdict, dataclass, field
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Claim categories — 15 canonical types per spec section 3
@@ -71,8 +72,8 @@ class ClaimRecord:
     geographic_scope: str = "NATIONAL"
     affected_visa_types: list[str] = field(default_factory=list)
     affected_services: list[str] = field(default_factory=list)
-    flags: dict = field(default_factory=dict)
+    flags: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict, omitting falsy values."""
         return {k: v for k, v in asdict(self).items() if v}

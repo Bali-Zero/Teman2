@@ -107,7 +107,7 @@ class PluginOutput(BaseModel):
     # Backward compatibility
     ok: bool | None = Field(None, description="Legacy success field")
 
-    def __init__(self, **data) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize and set ok field for backward compatibility"""
         super().__init__(**data)
         if self.ok is None:
@@ -219,7 +219,7 @@ class Plugin(ABC):
         """
         return True
 
-    def _validate_config(self):
+    def _validate_config(self) -> None:
         """
         Validate plugin configuration against schema
 
@@ -233,7 +233,7 @@ class Plugin(ABC):
                 f"Config schema defined for {self.metadata.name} but validation not implemented",
             )
 
-    async def on_load(self):
+    async def on_load(self) -> None:
         """
         Called when plugin is loaded. Override for setup.
         Use this for:
@@ -243,7 +243,7 @@ class Plugin(ABC):
         """
         logger.debug(f"Loading plugin: {self.metadata.name}")
 
-    async def on_unload(self):
+    async def on_unload(self) -> None:
         """
         Called when plugin is unloaded. Override for cleanup.
         Use this for:
