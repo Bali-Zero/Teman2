@@ -1,6 +1,8 @@
-# ZANTARA RAG Backend - Fly.io Deployment (OPTIMIZED FOR <8GB)
-# Multi-stage build for security and optimization
-# Python 3.11 + FastAPI + Qdrant + Sentence Transformers
+# ZANTARA RAG Backend — Fly.io Deployment (OPTIMIZED FOR <8GB)
+# Multi-stage build. Python 3.11 + FastAPI + Qdrant + Sentence Transformers.
+#
+# BUILD CONTEXT: monorepo root (set by `flyctl deploy --dockerfile apps/backend-rag/Dockerfile --config apps/backend-rag/fly.toml` in .github/workflows/fly-deploy.yml).
+# Local: `docker build -f apps/backend-rag/Dockerfile -t rag-test .` FROM repo root, not from apps/backend-rag/.
 
 # ========================================
 # Stage 1: Build Stage
@@ -16,16 +18,22 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy requirements
-COPY requirements-prod.txt .
+# Copy requirements (path relative to monorepo root)
+COPY apps/backend-rag/requirements-prod.txt .
 
 # Install Python dependencies (skip Playwright browsers to save ~500MB)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-# Install directly from committed requirements-prod.txt
 RUN pip install --no-cache-dir --user -r requirements-prod.txt \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
     && find /root/.local -type f -name "*.pyo" -delete
+
+# cell-core (DNA-recording package: Genome, Experience, Skill, Metabolic, HGT).
+# Installed editable AFTER the large ML pip layer so cell-core changes don't
+# invalidate that cache. Editable install matches the pattern used in CI
+# (tests.yml + fly-deploy.yml gate). Closes PR #56 scar.
+COPY packages/cell-core /app/packages/cell-core
+RUN pip install --no-cache-dir --user -e /app/packages/cell-core
 
 # ========================================
 # Stage 2: Runtime Stage
@@ -47,19 +55,19 @@ WORKDIR /app
 # Copy Python dependencies from builder stage
 COPY --from=builder /root/.local /home/nuzantara/.local
 
-# Copy application code
-COPY backend ./backend
-COPY scripts ./scripts
-COPY training-data ./training-data
-COPY *.py ./
+# Copy editable cell-core source (required for .egg-link to resolve at runtime)
+COPY --from=builder /app/packages /app/packages
 
-# Set Python path to include /app, /app/backend, and user site-packages
-# This aligns with local development structure
-ENV PYTHONPATH=/app:/app/backend:/home/nuzantara/.local/lib/python3.11/site-packages
+# Copy application code (paths relative to monorepo root)
+COPY apps/backend-rag/backend ./backend
+COPY apps/backend-rag/scripts ./scripts
+COPY apps/backend-rag/training-data ./training-data
+COPY apps/backend-rag/*.py ./
+
+# Set Python path (cell-core included for explicit import resolution)
+ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/home/nuzantara/.local/lib/python3.11/site-packages
 ENV PATH=/home/nuzantara/.local/bin:$PATH
-# Prevent Python from writing .pyc files (forces fresh module loading)
 ENV PYTHONDONTWRITEBYTECODE=1
-# Skip Playwright browser installation at runtime
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # Aggressive cleanup to reduce image size
@@ -83,9 +91,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Start uvicorn from root directory using module path
-# Bind to 0.0.0.0 (all IPv4 interfaces, Fly.io compatible)
-# Use PORT env var (set by Fly.io, defaults to 8080)
-# CRITICAL: Use 1 worker only - each worker loads ~2GB of ML models (torch, sentence-transformers)
-# With 4GB VM, 2 workers = OOM kill. DO NOT change to --workers 2 without upgrading VM to 8GB.
+# Start uvicorn from root directory using module path.
+# Bind to 0.0.0.0 (all IPv4 interfaces, Fly.io compatible). Use PORT env var.
+# CRITICAL: 1 worker only — each worker loads ~2GB of ML models.
+# fly.toml [processes] overrides CMD at runtime (main_api:app for api, main_rag:app for rag).
 CMD sh -c "uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1"

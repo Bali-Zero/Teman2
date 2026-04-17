@@ -89,7 +89,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t nuzantara-rag:${{ github.sha }} \
-            -f apps/backend-rag/Dockerfile apps/backend-rag
+            -f apps/backend-rag/Dockerfile .
 
       - name: Run Snyk (Docker)
         uses: snyk/actions/docker@master
