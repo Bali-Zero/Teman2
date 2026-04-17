@@ -88,8 +88,14 @@ export const PrimeNexusContext = createContext<PrimeNexusContextType | null>(nul
 
 // ─── Provider ───────────────────────────────────────────────────────
 
-export function PrimeNexusProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<PrimeMode>('invest');
+export function PrimeNexusProvider({
+  children,
+  initialMode = 'invest',
+}: {
+  children: React.ReactNode;
+  initialMode?: PrimeMode;
+}) {
+  const [mode, setMode] = useState<PrimeMode>(initialMode);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
