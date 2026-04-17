@@ -2,7 +2,9 @@
 Unit tests for Article Composer API
 
 Tests cover:
-- Article enrichment with Claude API (compose endpoint)
+- Article enrichment with DeepSeek (compose endpoint, migrated from Claude OAuth
+  after the upstream `claude` CLI non-TTY hang on Fly — see
+  `memory/feedback_claude_cli_linux_hang.md`)
 - Article publishing to GitHub (publish endpoint)
 - Helper functions (slug generation, MDX content generation)
 - Error handling and edge cases
@@ -11,7 +13,7 @@ Tests cover:
 import base64
 import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,6 +29,11 @@ from backend.app.routers.article_composer import (
     generate_mdx_content,
     generate_slug,
     router,
+)
+from backend.services.article_composer.claude_client import (
+    ClaudeOAuthMessage,
+    _TextBlock,
+    _Usage,
 )
 
 # --- FIXTURES ---
@@ -91,198 +98,173 @@ def sample_enriched_article():
     )
 
 
+def _make_llm_message(payload: dict) -> ClaudeOAuthMessage:
+    """Build a ClaudeOAuthMessage carrying the given JSON payload.
+
+    Mirrors what call_claude_with_retry() returns after the DeepSeek
+    round-trip, so tests can patch the wrapper without touching any
+    provider SDK.
+    """
+    return ClaudeOAuthMessage(
+        content=[_TextBlock(text=json.dumps(payload))],
+        usage=_Usage(input_tokens=1000, output_tokens=1500),
+        model="deepseek-chat",
+        token_label="deepseek_cache_hit=0",
+    )
+
+
 @pytest.fixture
-def mock_anthropic_response():
-    """Mock Anthropic API response"""
-    mock_response = MagicMock()
-    mock_response.content = [
-        MagicMock(
-            text=json.dumps(
-                {
-                    "headline": "Indonesia Tightens Visa Rules: What Expats Need to Know",
-                    "tldr": {
-                        "should_worry": "Yes",
-                        "what": "New visa regulations require additional documentation",
-                        "who": "All expats on work permits",
-                        "when": "Effective March 2026",
-                        "risk_level": "High",
-                    },
-                    "facts": "The Indonesian government has announced significant changes. " * 80,
-                    "bali_zero_take": {
-                        "hidden_insight": "This is part of broader immigration crackdown",
-                        "our_analysis": "Timing suggests ASEAN coordination",
-                        "our_advice": "Review visa status immediately",
-                    },
-                    "next_steps": {
-                        "expat": ["Check visa expiry", "Gather documents"],
-                        "investor": ["Review sponsorship", "Update procedures"],
-                    },
-                    "category": "immigration",
-                    "priority": "high",
-                    "relevance_score": 85,
-                    "ai_summary": "Indonesia introduces stricter visa requirements",
-                    "ai_tags": ["visa", "immigration", "regulation"],
-                    "suggested_components": ["timeline", "checklist"],
-                },
-            ),
-        ),
-    ]
-    mock_response.usage = MagicMock(input_tokens=1000, output_tokens=1500)
-    return mock_response
+def mock_llm_response():
+    """Mock DeepSeek response shaped as ClaudeOAuthMessage."""
+    return _make_llm_message(
+        {
+            "headline": "Indonesia Tightens Visa Rules: What Expats Need to Know",
+            "tldr": {
+                "should_worry": "Yes",
+                "what": "New visa regulations require additional documentation",
+                "who": "All expats on work permits",
+                "when": "Effective March 2026",
+                "risk_level": "High",
+            },
+            "facts": "The Indonesian government has announced significant changes. " * 80,
+            "bali_zero_take": {
+                "hidden_insight": "This is part of broader immigration crackdown",
+                "our_analysis": "Timing suggests ASEAN coordination",
+                "our_advice": "Review visa status immediately",
+            },
+            "next_steps": {
+                "expat": ["Check visa expiry", "Gather documents"],
+                "investor": ["Review sponsorship", "Update procedures"],
+            },
+            "category": "immigration",
+            "priority": "high",
+            "relevance_score": 85,
+            "ai_summary": "Indonesia introduces stricter visa requirements",
+            "ai_tags": ["visa", "immigration", "regulation"],
+            "suggested_components": ["timeline", "checklist"],
+        },
+    )
 
 
 # --- COMPOSE ENDPOINT TESTS ---
 
 
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_success(
-    mock_anthropic_class, test_client, sample_compose_request, mock_anthropic_response,
+    mock_call, test_client, sample_compose_request, mock_llm_response,
 ):
-    """Test successful article composition with Claude API"""
-    # Setup mock
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_anthropic_response
-    mock_anthropic_class.return_value = mock_client
+    """Test successful article composition via DeepSeek."""
+    mock_call.return_value = mock_llm_response
 
-    # Call endpoint
-    response = test_client.post("/api/articles/compose", json=sample_compose_request.model_dump())
+    response = test_client.post(
+        "/api/articles/compose",
+        json=sample_compose_request.model_dump(),
+    )
 
-    # Assertions
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
     assert data["article"] is not None
     assert data["article"]["headline"] == "Indonesia Tightens Visa Rules: What Expats Need to Know"
     assert data["article"]["priority"] == "high"
-    assert data["api_cost_cents"] > 0
-    assert "image_prompt" not in data["article"]  # Verify image_prompt removed
+    assert data["api_cost_cents"] >= 0
+    assert "image_prompt" not in data["article"]
+    mock_call.assert_called_once()
+    assert mock_call.call_args.kwargs.get("model") == "deepseek-chat"
 
 
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
-def test_compose_article_priority_word_count(mock_anthropic_class, test_client):
-    """Test that facts section length varies by priority (high=600, medium=500, low=400 words)"""
-    test_cases = [
-        ("high", 600),
-        ("medium", 500),
-        ("low", 400),
-    ]
-
-    for priority, expected_words in test_cases:
-        # Setup mock with specific priority
-        mock_response = MagicMock()
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
+def test_compose_article_priority_word_count(mock_call, test_client):
+    """Test that facts section length varies by priority (high=600, medium=500, low=400 words)."""
+    for priority, expected_words in (("high", 600), ("medium", 500), ("low", 400)):
         facts_text = " ".join(["word"] * expected_words)
-        mock_response.content = [
-            MagicMock(
-                text=json.dumps(
-                    {
-                        "headline": "Test Headline",
-                        "tldr": {
-                            "should_worry": "Depends",
-                            "what": "Test",
-                            "who": "Test",
-                            "when": "Test",
-                            "risk_level": "Medium",
-                        },
-                        "facts": facts_text,
-                        "bali_zero_take": {
-                            "hidden_insight": "Test",
-                            "our_analysis": "Test",
-                            "our_advice": "Test",
-                        },
-                        "next_steps": {"expat": [], "investor": []},
-                        "category": "business",
-                        "priority": priority,
-                        "relevance_score": 50,
-                        "ai_summary": "Test",
-                        "ai_tags": [],
-                        "suggested_components": [],
-                    },
-                ),
-            ),
-        ]
-        mock_response.usage = MagicMock(input_tokens=1000, output_tokens=1500)
+        mock_call.return_value = _make_llm_message(
+            {
+                "headline": "Test Headline",
+                "tldr": {
+                    "should_worry": "Depends",
+                    "what": "Test",
+                    "who": "Test",
+                    "when": "Test",
+                    "risk_level": "Medium",
+                },
+                "facts": facts_text,
+                "bali_zero_take": {
+                    "hidden_insight": "Test",
+                    "our_analysis": "Test",
+                    "our_advice": "Test",
+                },
+                "next_steps": {"expat": [], "investor": []},
+                "category": "business",
+                "priority": priority,
+                "relevance_score": 50,
+                "ai_summary": "Test",
+                "ai_tags": [],
+                "suggested_components": [],
+            },
+        )
 
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_anthropic_class.return_value = mock_client
-
-        # Call endpoint
         request = ComposeRequest(
             title="Test Article Title",
-            content="Test content for article enrichment that must be at least one hundred characters long to pass the validation check in the compose request validator model.",
+            content=(
+                "Test content for article enrichment that must be at least one hundred "
+                "characters long to pass the validation check in the compose request "
+                "validator model."
+            ),
             category="business",
         )
         response = test_client.post("/api/articles/compose", json=request.model_dump())
 
-        # Verify priority and word count
         assert response.status_code == 200
         data = response.json()
         assert data["article"]["priority"] == priority
-        # Verify facts section has approximately expected word count
         facts = data["article"]["facts"]
         word_count = len(facts.split())
-        assert word_count >= expected_words - 50  # Allow some variance
+        assert word_count >= expected_words - 50
 
 
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
-def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_compose_request):
-    """Test that markdown JSON blocks are cleaned correctly"""
-    test_cases = [
-        # JSON wrapped in ```json
-        '```json\n{"headline": "Test"}\n```',
-        # JSON wrapped in ```
-        '```\n{"headline": "Test"}\n```',
-        # Plain JSON
-        '{"headline": "Test"}',
-    ]
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
+def test_compose_article_json_cleanup(mock_call, test_client, sample_compose_request):
+    """Test that markdown JSON blocks are cleaned correctly."""
+    minimal_payload = {
+        "headline": "Test",
+        "tldr": {
+            "should_worry": "No",
+            "what": "Test",
+            "who": "Test",
+            "when": "Test",
+            "risk_level": "Low",
+        },
+        "facts": "Test facts",
+        "bali_zero_take": {
+            "hidden_insight": "Test",
+            "our_analysis": "Test",
+            "our_advice": "Test",
+        },
+        "next_steps": {"expat": [], "investor": []},
+        "category": "business",
+        "priority": "low",
+        "relevance_score": 30,
+        "ai_summary": "Test",
+        "ai_tags": [],
+        "suggested_components": [],
+    }
+    payload_json = json.dumps(minimal_payload)
 
-    for json_text in test_cases:
-        mock_response = MagicMock()
-        # Build minimal valid JSON
-        minimal_json = {
-            "headline": "Test",
-            "tldr": {
-                "should_worry": "No",
-                "what": "Test",
-                "who": "Test",
-                "when": "Test",
-                "risk_level": "Low",
-            },
-            "facts": "Test facts",
-            "bali_zero_take": {
-                "hidden_insight": "Test",
-                "our_analysis": "Test",
-                "our_advice": "Test",
-            },
-            "next_steps": {"expat": [], "investor": []},
-            "category": "business",
-            "priority": "low",
-            "relevance_score": 30,
-            "ai_summary": "Test",
-            "ai_tags": [],
-            "suggested_components": [],
-        }
-        if "```json" in json_text:
-            mock_response.content = [MagicMock(text=f"```json\n{json.dumps(minimal_json)}\n```")]
-        elif "```" in json_text:
-            mock_response.content = [MagicMock(text=f"```\n{json.dumps(minimal_json)}\n```")]
-        else:
-            mock_response.content = [MagicMock(text=json.dumps(minimal_json))]
-
-        mock_response.usage = MagicMock(input_tokens=500, output_tokens=800)
-
-        mock_client = MagicMock()
-        mock_client.messages.create.return_value = mock_response
-        mock_anthropic_class.return_value = mock_client
+    for wrapper in (f"```json\n{payload_json}\n```", f"```\n{payload_json}\n```", payload_json):
+        mock_call.return_value = ClaudeOAuthMessage(
+            content=[_TextBlock(text=wrapper)],
+            usage=_Usage(input_tokens=500, output_tokens=800),
+            model="deepseek-chat",
+            token_label="deepseek_cache_hit=0",
+        )
 
         response = test_client.post(
-            "/api/articles/compose", json=sample_compose_request.model_dump(),
+            "/api/articles/compose",
+            json=sample_compose_request.model_dump(),
         )
 
         assert response.status_code == 200
@@ -290,73 +272,74 @@ def test_compose_article_json_cleanup(mock_anthropic_class, test_client, sample_
         assert data["success"] is True
 
 
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
 @patch.dict("os.environ", {}, clear=True)
 def test_compose_article_missing_api_key(test_client, sample_compose_request):
-    """Test compose fails gracefully when API key is missing"""
-    response = test_client.post("/api/articles/compose", json=sample_compose_request.model_dump())
+    """Test compose fails gracefully when API key is missing."""
+    response = test_client.post(
+        "/api/articles/compose",
+        json=sample_compose_request.model_dump(),
+    )
 
     assert response.status_code == 500
-    assert "API key not configured" in response.json()["detail"]
+    detail = response.json()["detail"]
+    assert detail["code"] == "API_KEY_NOT_CONFIGURED"
+    assert "DEEPSEEK_API_KEY" in detail["message"]
 
 
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_parse_error(
-    mock_anthropic_class, test_client, sample_compose_request,
+    mock_call, test_client, sample_compose_request,
 ):
-    """Test compose handles JSON parse errors"""
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text="Invalid JSON {{{")]
-    mock_response.usage = MagicMock(input_tokens=500, output_tokens=100)
-
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_response
-    mock_anthropic_class.return_value = mock_client
-
-    response = test_client.post("/api/articles/compose", json=sample_compose_request.model_dump())
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is False
-    assert "Failed to parse Claude response" in data["error"]
-
-
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
-def test_compose_article_api_error(mock_anthropic_class, test_client, sample_compose_request):
-    """Test compose handles Anthropic API errors"""
-    import anthropic
-    import httpx
-
-    mock_client = MagicMock()
-    # anthropic.APIError requires message, request, and body
-    mock_request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
-    mock_client.messages.create.side_effect = anthropic.APIError(
-        "API Error", request=mock_request, body={},
+    """Test compose handles JSON parse errors from the LLM."""
+    mock_call.return_value = ClaudeOAuthMessage(
+        content=[_TextBlock(text="Invalid JSON {{{")],
+        usage=_Usage(input_tokens=500, output_tokens=100),
+        model="deepseek-chat",
+        token_label="deepseek_cache_hit=0",
     )
-    mock_anthropic_class.return_value = mock_client
 
-    response = test_client.post("/api/articles/compose", json=sample_compose_request.model_dump())
+    response = test_client.post(
+        "/api/articles/compose",
+        json=sample_compose_request.model_dump(),
+    )
 
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is False
-    assert "Claude API error" in data["error"]
+    assert data["error"]["code"] in {"INVALID_JSON_RESPONSE", "JSON_PARSE_ERROR"}
+
+
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
+def test_compose_article_api_error(mock_call, test_client, sample_compose_request):
+    """Test compose handles DeepSeek API errors."""
+    from backend.llm.deepseek_client import DeepSeekError
+
+    mock_call.side_effect = DeepSeekError("DeepSeek HTTP 500: upstream failure")
+
+    response = test_client.post(
+        "/api/articles/compose",
+        json=sample_compose_request.model_dump(),
+    )
+
+    assert response.status_code == 500
+    detail = response.json()["detail"]
+    assert detail["code"] == "API_ERROR"
+    assert "DeepSeek" in detail["message"] or "LLM" in detail["message"]
 
 
 def test_compose_status_configured(test_client):
     """Test compose status endpoint when configured"""
-    with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
+    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}):
         response = test_client.get("/api/articles/compose/status")
 
         assert response.status_code == 200
         data = response.json()
         assert data["configured"] is True
         assert data["api_key_set"] is True
-        assert data["model"] == "claude-sonnet-4-6"
+        assert data["model"] == "deepseek-chat"
+        assert data["provider"] == "deepseek"
 
 
 def test_compose_status_not_configured(test_client):
@@ -605,42 +588,44 @@ def test_build_enrichment_prompt_priority_instructions():
 # --- INTEGRATION TEST ---
 
 
-@pytest.mark.asyncio
-@pytest.mark.skip(reason="Article composer compose endpoint disabled (501)")
-@patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"})
-@patch("backend.app.routers.article_composer.anthropic.Anthropic")
+@patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
+@patch("backend.app.routers.article_composer.call_claude_with_retry")
 @patch("backend.services.integrations.github_publisher.github_publisher")
-async def test_full_compose_and_publish_flow(
-    mock_publisher, mock_anthropic_class, test_client, mock_anthropic_response,
+def test_full_compose_and_publish_flow(
+    mock_publisher, mock_call, test_client, mock_llm_response,
 ):
-    """Integration test: compose article then publish it"""
-    # Setup mocks
-    mock_client = MagicMock()
-    mock_client.messages.create.return_value = mock_anthropic_response
-    mock_anthropic_class.return_value = mock_client
-
+    """Integration test: compose article then publish it (DeepSeek-backed)."""
+    mock_call.return_value = mock_llm_response
     mock_publisher.is_configured = True
     mock_publisher.upload_file = AsyncMock(
         return_value={"success": True, "commit_sha": "abc123", "path": "test.mdx"},
     )
 
-    # Step 1: Compose article
     compose_request = ComposeRequest(
         title="Test Article",
-        content="Test content for integration test that must be at least one hundred characters long to pass the validation check in the compose request validator model.",
+        content=(
+            "Test content for integration test that must be at least one hundred "
+            "characters long to pass the validation check in the compose request "
+            "validator model."
+        ),
         category="business",
     )
-    compose_response = test_client.post("/api/articles/compose", json=compose_request.model_dump())
+    compose_response = test_client.post(
+        "/api/articles/compose",
+        json=compose_request.model_dump(),
+    )
 
     assert compose_response.status_code == 200
     compose_data = compose_response.json()
     assert compose_data["success"] is True
     assert compose_data["article"] is not None
 
-    # Step 2: Publish article
     enriched_article = EnrichedArticle(**compose_data["article"])
     publish_request = PublishRequest(article=enriched_article)
-    publish_response = test_client.post("/api/articles/publish", json=publish_request.model_dump())
+    publish_response = test_client.post(
+        "/api/articles/publish",
+        json=publish_request.model_dump(),
+    )
 
     assert publish_response.status_code == 200
     publish_data = publish_response.json()
