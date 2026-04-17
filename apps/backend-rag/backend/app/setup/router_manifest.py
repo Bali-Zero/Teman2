@@ -312,6 +312,10 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="workflow_analytics", process_groups=_API, tags=("analytics",)),
     RouterEntry(name="workflow_queue",     process_groups=_API, tags=("infra",)),
 
+    # ── Workspace (kita team ops) ──
+    RouterEntry(name="workspace_inbox",     process_groups=_API, tags=("workspace",)),
+    RouterEntry(name="workspace_analytics", process_groups=_API, tags=("workspace", "analytics")),
+
     # ── Zoho ──
     RouterEntry(name="zoho_email", process_groups=_API, tags=("integrations",)),
 
