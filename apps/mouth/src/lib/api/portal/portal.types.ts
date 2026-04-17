@@ -566,3 +566,13 @@ export interface DashboardSummary {
   upcoming_deadlines: DashboardSummaryDeadline[];
   unread_messages: number;
 }
+
+export interface PortalMatter {
+  id: number;
+  title: string;
+  type: "visa" | "company" | "tax" | "property" | "other";
+  progress: number;
+  pending_docs: string[];
+  next_deadline: string | null;
+  next_step: string | null;
+}

@@ -46,6 +46,7 @@ export {
 export {
   usePortalDashboard,
   usePortalDashboardSummary,
+  usePortalMatters,
   usePortalTimeline,
   usePortalProfile,
   useVisaStatus,

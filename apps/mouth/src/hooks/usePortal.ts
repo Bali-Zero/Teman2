@@ -44,6 +44,14 @@ export function usePortalDashboardSummary() {
   });
 }
 
+export function usePortalMatters() {
+  return useQuery({
+    queryKey: ["portal", "matters"],
+    queryFn: async () => api.portal.listMatters(),
+    staleTime: 60 * 1000,
+  });
+}
+
 export function usePortalTimeline(limit: number = 50) {
   return useQuery({
     queryKey: ["portal", "timeline", limit],
