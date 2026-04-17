@@ -10,7 +10,7 @@ export default function PropertyPage() {
     >
       <header style={{ marginBottom: "var(--space-6)" }}>
         <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: 0 }}>
-          Property Eligibility
+          Idoneità Immobile
         </h1>
         <p
           style={{
@@ -19,9 +19,10 @@ export default function PropertyPage() {
             maxWidth: "56ch",
           }}
         >
-          Inserisci coordinate di un plot a Bali: riceverai struttura legale
-          eligible (Hak Pakai / HGB via PMA / rental 30y), tassazione (PBB,
-          BPHTB) e risk score (tsunami, flood, saturation, erosion).
+          Inserisci le coordinate di un lotto a Bali: riceverai struttura legale
+          idonea (Hak Pakai / HGB via PMA / affitto 30 anni), tassazione (PBB,
+          BPHTB) e punteggio di rischio (tsunami, alluvioni, saturazione,
+          erosione).
         </p>
       </header>
       <PropertyEligibilityBody />
