@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { ConsentBanner } from "@/components/visa-oracle/ConsentBanner";
+import { VisaHeaderWhatsApp } from "@/components/visa-oracle/VisaHeaderWhatsApp";
 
 export const metadata: Metadata = {
   title: "Visa Oracle — What visa do you need for Indonesia?",
@@ -29,15 +30,7 @@ export default function VisaOracleLayout({
           { label: "KBLI", href: "/kbli" },
           { label: "Tax", href: "https://tax.balizero.com/" },
         ]}
-        actions={
-          <a
-            href="https://wa.me/628213107363"
-            className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold"
-            style={{ background: "var(--bz-accent)", color: "#fff" }}
-          >
-            WhatsApp
-          </a>
-        }
+        actions={<VisaHeaderWhatsApp />}
       />
       <SessionInit funnel="visa" />
       {/* NavShell is fixed top (h-14) — push content down */}
