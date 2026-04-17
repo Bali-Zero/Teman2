@@ -46,6 +46,13 @@ skip_glob = ["*/migrations/*", "*/.venv/*"]
 # ============================================================================
 # MYPY - Static Type Checker
 # ============================================================================
+# Gradual enforcement strategy: STRICT on the stable layers that downstream
+# code depends on (backend/core + backend/app/models), permissive elsewhere.
+# The CI gate (.github/workflows/tests.yml) runs:
+#   mypy backend/core backend/app/models --config-file pyproject.toml
+# Strict flags below are the global defaults; an opt-out override at the end
+# silences everything outside the strict-module allowlist. New modules should
+# be added to that allowlist incrementally as they become clean.
 [tool.mypy]
 python_version = "3.11"
 explicit_package_bases = true
@@ -72,6 +79,32 @@ exclude = [
     "^tests/",
     "^\\.venv/"
 ]
+
+# ----------------------------------------------------------------------------
+# Strict-module allowlist. Files with >5 pre-existing errors are intentionally
+# excluded here and left permissive via the backend.* opt-out below; their
+# cleanup is tracked in FOLLOWUPS.md.
+# ----------------------------------------------------------------------------
+[[tool.mypy.overrides]]
+module = [
+    "backend.core.bm25_vectorizer",
+    "backend.core.collection_registry",
+    "backend.core.exceptions",
+    "backend.core.legal_config",
+    "backend.core.claims.*",
+    "backend.core.legal.chunker",
+    "backend.core.legal.cleaner",
+    "backend.core.plugins.plugin",
+    "backend.app.models.*",
+]
+ignore_errors = false
+
+# Opt OUT every other backend module from strict checking until we migrate
+# it. The CLI command above only type-checks the strict allowlist, but this
+# guard keeps editor/IDE runs quiet as well.
+[[tool.mypy.overrides]]
+module = "backend.*"
+ignore_errors = true
 
 # Per-module options
 [[tool.mypy.overrides]]

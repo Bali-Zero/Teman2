@@ -9,6 +9,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 from backend.core.claims.confidence import classify_confidence, compute_confidence
 from backend.core.claims.models import ClaimRecord
@@ -26,7 +27,7 @@ def extract_claims_from_response(
     response_text: str,
     source_ids: list[str],
     query_cluster: str,
-    sources_metadata: dict | None = None,
+    sources_metadata: dict[str, Any] | None = None,
 ) -> list[ClaimRecord]:
     """Extract atomic claims from a research response.
 
