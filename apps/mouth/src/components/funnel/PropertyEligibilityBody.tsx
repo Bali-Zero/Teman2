@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { trackPropertyAnalyzeCTA, trackPropertyWACTA } from "@/lib/analytics";
+import { parseCoordinates } from "./parse-coordinates";
 
 type AnalyzeVerdict = {
   can_invest?: boolean;
@@ -43,17 +44,14 @@ export function PropertyEligibilityBody() {
   async function analyze() {
     setError(null);
     setResult(null);
-    const parts = coord.split(",").map((s) => s.trim());
-    if (parts.length !== 2) {
-      setError("Inserisci nel formato: lat, lng (es. -8.65, 115.13)");
+    const parsed = parseCoordinates(coord);
+    if (!parsed) {
+      setError(
+        `Formato non riconosciuto. Prova con decimali (es. -8.65, 115.13), formato Google Maps (es. 8°39'17.4"S 115°08'22.3"E) o un link di Google Maps.`,
+      );
       return;
     }
-    const lat = Number(parts[0]);
-    const lng = Number(parts[1]);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      setError("Lat e lng devono essere numeri.");
-      return;
-    }
+    const { lat, lng } = parsed;
     trackPropertyAnalyzeCTA(lat, lng);
     setLoading(true);
     try {
@@ -86,7 +84,7 @@ export function PropertyEligibilityBody() {
         }}
       >
         <input
-          placeholder="Lat, Lng (es. -8.65, 115.13)"
+          placeholder={`Incolla da Google Maps (es. 8°39'17.4"S 115°08'22.3"E) o lat, lng`}
           value={coord}
           onChange={(e) => setCoord(e.target.value)}
           onKeyDown={(e) => {

@@ -52,7 +52,7 @@ describe("PropertyEligibilityBody", () => {
 
   it("renders input + analyze button on mount", () => {
     render(<PropertyEligibilityBody />);
-    expect(screen.getByPlaceholderText(/Lat, Lng/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Google Maps/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Analizza/i }),
     ).toBeInTheDocument();
@@ -60,11 +60,11 @@ describe("PropertyEligibilityBody", () => {
 
   it("rejects bad input with error message", async () => {
     render(<PropertyEligibilityBody />);
-    const input = screen.getByPlaceholderText(/Lat, Lng/i);
+    const input = screen.getByPlaceholderText(/Google Maps/i);
     fireEvent.change(input, { target: { value: "garbage" } });
     fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
     expect(
-      await screen.findByText(/Inserisci nel formato/i),
+      await screen.findByText(/Formato non riconosciuto/i),
     ).toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe("PropertyEligibilityBody", () => {
     } as Response);
 
     render(<PropertyEligibilityBody />);
-    fireEvent.change(screen.getByPlaceholderText(/Lat, Lng/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
@@ -104,7 +104,7 @@ describe("PropertyEligibilityBody", () => {
     } as Response);
 
     render(<PropertyEligibilityBody />);
-    fireEvent.change(screen.getByPlaceholderText(/Lat, Lng/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
@@ -123,7 +123,7 @@ describe("PropertyEligibilityBody", () => {
     } as Response);
 
     render(<PropertyEligibilityBody />);
-    fireEvent.change(screen.getByPlaceholderText(/Lat, Lng/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
       target: { value: "-8.65, 115.13" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
@@ -132,5 +132,25 @@ describe("PropertyEligibilityBody", () => {
       name: /Parla con Bali Zero/i,
     })) as HTMLAnchorElement;
     expect(waLink.href).toContain("wa.me/628213107363");
+  });
+
+  it("accepts Google Maps DMS paste (8°39'17.4\"S 115°08'22.3\"E)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => PROD_SHAPE_RESPONSE,
+    } as Response);
+
+    render(<PropertyEligibilityBody />);
+    fireEvent.change(screen.getByPlaceholderText(/Google Maps/i), {
+      target: { value: "8°39'17.4\"S 115°08'22.3\"E" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Analizza/i }));
+
+    await waitFor(() => expect(screen.getByText(/C-1/)).toBeInTheDocument());
+    // Verify backend was called with decimal-converted lat/lng
+    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body);
+    expect(body.lat).toBeCloseTo(-8.6548, 3);
+    expect(body.lng).toBeCloseTo(115.1395, 3);
   });
 });

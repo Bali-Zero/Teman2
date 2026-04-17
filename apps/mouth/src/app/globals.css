@@ -644,6 +644,16 @@ main,
 }
 
 /* ── v2 FABs — pill+label on desktop, compact icon-only on mobile ───── */
+
+/* Hide global WhatsApp FAB inside L1 funnels (visa/kbli/tax/property).
+   Those pages already ship a dedicated HeaderWhatsAppCTA in the NavShell
+   + a CTAHandoff sticky bottom inside FunnelFrame — a 3rd floating
+   button would be redundant visual noise. Selector targets the
+   data-funnel attribute that FunnelFrame sets on its root <div>. */
+:has([data-funnel]) .fab-whatsapp {
+  display: none;
+}
+
 .fab-whatsapp,
 .fab-zantara {
   bottom: 20px;
