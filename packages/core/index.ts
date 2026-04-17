@@ -17,6 +17,7 @@ export {
   type Theme,
   type Funnel,
 } from "./components/ThemeProvider";
+export { TrustBand, type TrustBandProps } from "./components/TrustBand";
 
 // Font exports
 export { inter } from "./fonts/inter";
