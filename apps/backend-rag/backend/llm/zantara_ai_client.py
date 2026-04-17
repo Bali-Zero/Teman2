@@ -23,7 +23,7 @@ from backend.app.core.config import settings
 from backend.llm.fallback_messages import get_fallback_message
 from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from backend.llm.prompt_manager import PromptManager
-from backend.llm.retry_handler import RetryHandler
+from backend.llm.retry_handler import RetryHandler, _classify_error, _compute_delay
 from backend.llm.token_estimator import TokenEstimator
 
 logger = logging.getLogger(__name__)
@@ -501,8 +501,8 @@ class ZantaraAIClient:
                 await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
             return
 
-        # Custom retry logic for streaming
-        # RetryHandler.execute_with_retry is not compatible with async generators (streams)
+        # Streaming retry: cannot use execute_with_retry (async generator incompatibility).
+        # Uses shared _classify_error / _compute_delay from retry_handler for consistent backoff.
         last_exception = None
         for attempt in range(self.retry_handler.max_retries):
             try:
@@ -572,16 +572,36 @@ class ZantaraAIClient:
                 # Check if retryable (using RetryHandler logic implicitly via similar checks)
                 # But here we just retry all exceptions except auth ones caught above
 
-            # Retry logic
+            # Retry decision — use shared classification/delay logic from RetryHandler
             if attempt < self.retry_handler.max_retries - 1:
-                delay = self.retry_handler.base_delay * (self.retry_handler.backoff_factor**attempt)
+                err_class = _classify_error(str(last_exception or ""))
+                if err_class == "permanent":
+                    logger.error(
+                        "LLM stream permanent error",
+                        extra={"user_id": user_id, "attempt": attempt + 1, "error": str(last_exception)},
+                    )
+                    break
+                delay = _compute_delay(
+                    err_class, attempt,
+                    self.retry_handler.base_delay,
+                    self.retry_handler.backoff_factor,
+                )
                 logger.warning(
-                    f"⚠️ Stream failed (attempt {attempt + 1}/{self.retry_handler.max_retries}): {last_exception}. Retrying in {delay}s...",
+                    "LLM stream retry",
+                    extra={
+                        "user_id": user_id,
+                        "attempt": attempt + 1,
+                        "max_retries": self.retry_handler.max_retries,
+                        "error_class": err_class,
+                        "delay_s": round(delay, 2),
+                        "error": str(last_exception),
+                    },
                 )
                 await asyncio.sleep(delay)
             else:
                 logger.error(
-                    f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}",
+                    "LLM stream exhausted",
+                    extra={"user_id": user_id, "error": str(last_exception)},
                 )
 
         # If all retries failed, send fallback
