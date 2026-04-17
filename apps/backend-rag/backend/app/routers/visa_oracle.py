@@ -287,20 +287,38 @@ def _detect_language(text: str) -> str:
     id_markers = {"saya", "apa", "bagaimana", "tolong", "bisa", "mau", "untuk", "visa"}
     if sum(1 for w in id_markers if f" {w} " in f" {lower} ") >= 2:
         return "id"
-    # French
-    fr_markers = {"je", "mon", "comment", "bonjour", "merci", "besoin", "pour", "obtenir", "quel"}
+    # French — function words + common visa verbs. Avoid words shared with
+    # Italian/Spanish ("visa", "pour" ambiguous).
+    fr_markers = {
+        "je", "mon", "comment", "bonjour", "merci", "besoin", "obtenir",
+        "quel", "faire", "suis", "voudrais", "veux", "aller", "mes",
+        "avec", "cette", "quelle", "prendre", "étape", "demande",
+    }
     if sum(1 for w in fr_markers if f" {w} " in f" {lower} ") >= 2:
         return "fr"
-    # Italian
-    it_markers = {"il", "come", "posso", "vorrei", "quanto", "bisogno"}
+    # Italian — function words + visa-chat common verbs.
+    it_markers = {
+        "il", "come", "posso", "vorrei", "quanto", "bisogno", "voglio",
+        "vorrebbe", "cosa", "mio", "mia", "sono", "serve", "fare",
+        "visto", "anni", "soggiorno", "lavorare", "aprire", "vivere",
+        "turismo", "famiglia", "due", "tre", "meglio", "quale",
+    }
     if sum(1 for w in it_markers if f" {w} " in f" {lower} ") >= 2:
         return "it"
     # German
-    de_markers = {"ich", "wie", "brauche", "visum", "kann", "mein"}
+    de_markers = {
+        "ich", "wie", "brauche", "visum", "kann", "mein", "möchte",
+        "für", "arbeit", "bali", "welches", "wohnen", "nach", "eine",
+        "muss", "lang", "jahr",
+    }
     if sum(1 for w in de_markers if f" {w} " in f" {lower} ") >= 2:
         return "de"
     # Spanish
-    es_markers = {"necesito", "como", "puedo", "quiero", "visa"}
+    es_markers = {
+        "necesito", "como", "puedo", "quiero", "abrir", "trabajar",
+        "vivir", "cuanto", "cuánto", "años", "meses", "tengo",
+        "para", "una", "que", "qué", "mi", "tener", "tiempo",
+    }
     if sum(1 for w in es_markers if f" {w} " in f" {lower} ") >= 2:
         return "es"
 
@@ -435,19 +453,32 @@ async def chat(
 
     # Resolve response language early so every fallback branch (no results,
     # ABSTAIN, timeout, CAUTIOUS hedging) uses the user's language, not English.
-    # Priority: explicit body.language (from client) > auto-detect from message
-    # > Italian default (Bali Zero ships Italian-first).
+    #
+    # Priority: message auto-detect > body.language (browser) > Italian default.
+    #
+    # Rationale: "message wins" — if a user deliberately writes in Spanish on
+    # a browser configured in Italian (shared device, traveler, multilingual
+    # user), the act of writing is a stronger language signal than
+    # navigator.language. The browser locale is treated as a fallback for
+    # when detection is inconclusive (short messages, mixed scripts, etc).
     _lang_names = {
         "ru": "Russian", "zh": "Chinese", "ko": "Korean", "ja": "Japanese",
         "id": "Indonesian", "fr": "French", "it": "Italian", "de": "German",
         "es": "Spanish", "en": "English",
     }
-    _requested_lang = (body.language or "").strip().lower()[:2]
-    if _requested_lang in _lang_names:
-        response_lang = _requested_lang
+    _detected = _detect_language(body.message)
+    _browser_lang = (body.language or "").strip().lower()[:2]
+    if _detected in _lang_names and _detected != "en":
+        # Detector is confident about a non-English language (script or
+        # keyword-rich). Trust it.
+        response_lang = _detected
+    elif _browser_lang in _lang_names:
+        # Detector returned "en" (its default when no strong markers found)
+        # or an unknown code. Use browser locale as the more reliable hint.
+        response_lang = _browser_lang
     else:
-        _detected = _detect_language(body.message)
-        response_lang = _detected if _detected in _lang_names else "it"
+        # No signal at all — Italian default (Bali Zero ships Italian-first).
+        response_lang = "it"
 
     try:
         # Build an enriched query that includes quiz context
