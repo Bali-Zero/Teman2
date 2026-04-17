@@ -13,12 +13,10 @@ Decisions:
   D3: Circuit breaker on BATARA/GISTARU (3 failures → skip 5min)
 """
 
-import contextlib
 import json
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
@@ -26,722 +24,25 @@ import asyncpg
 import httpx
 
 from backend.services.kbli_eye import KBLIEye
+from backend.services.prime.geo_service import (
+    RESTRICTED_ZONES,
+    ZONE_COLORS_MAP,
+    ZONE_LABELS,
+    calculate_building_yield,
+    encode_geohash,
+    rgb_string_to_hex,
+)
+from backend.services.prime.property_service import (
+    calculate_investment_score,
+    classify_activity,
+    is_investor_relevant,
+)
+from backend.services.prime.tax_service import (
+    calculate_property_eligibility,
+    calculate_property_tax,
+)
 
 logger = logging.getLogger(__name__)
-
-# =============================================================================
-# GEOHASH — lightweight implementation (no external dependency)
-# Precision 8 ≈ 38m x 19m, Precision 6 ≈ 1.2km x 0.6km
-# =============================================================================
-_BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
-
-
-def encode_geohash(lat: float, lng: float, precision: int = 8) -> str:
-    """Encode lat/lng to geohash string at given precision."""
-    lat_range = (-90.0, 90.0)
-    lng_range = (-180.0, 180.0)
-    bits = [16, 8, 4, 2, 1]
-    hash_chars: list[str] = []
-    ch = 0
-    bit = 0
-    is_lng = True
-
-    while len(hash_chars) < precision:
-        if is_lng:
-            mid = (lng_range[0] + lng_range[1]) / 2
-            if lng >= mid:
-                ch |= bits[bit]
-                lng_range = (mid, lng_range[1])
-            else:
-                lng_range = (lng_range[0], mid)
-        else:
-            mid = (lat_range[0] + lat_range[1]) / 2
-            if lat >= mid:
-                ch |= bits[bit]
-                lat_range = (mid, lat_range[1])
-            else:
-                lat_range = (lat_range[0], mid)
-        is_lng = not is_lng
-        if bit < 4:
-            bit += 1
-        else:
-            hash_chars.append(_BASE32[ch])
-            ch = 0
-            bit = 0
-
-    return "".join(hash_chars)
-
-
-# =============================================================================
-# BUILDING CODES — loaded once from JSON
-# =============================================================================
-_BUILDING_CODES_PATH = (
-    Path(__file__).parent.parent.parent / "data" / "master_building_codes_complete.json"
-)
-try:
-    with open(_BUILDING_CODES_PATH, encoding="utf-8") as _f:
-        _BUILDING_CODES: dict[str, dict[str, str]] = json.load(_f)
-    logger.info("✅ [PrimeNexus] Loaded building codes for %d zone types", len(_BUILDING_CODES))
-except (OSError, json.JSONDecodeError) as _e:
-    _BUILDING_CODES = {}
-    logger.warning("⚠️ [PrimeNexus] Could not load building codes: %s", _e)
-except Exception as _e:
-    _BUILDING_CODES = {}
-    logger.exception("⚠️ [PrimeNexus] Unexpected error loading building codes")
-
-
-def parse_tb_to_meters(tb_str: str | None) -> float | None:
-    """Parse TB height strings like '15 Meter', '4 Meter', '8m' → float meters."""
-    if not tb_str or tb_str.strip().upper() == "N/A":
-        return None
-    import re
-    m = re.match(r"(\d+(?:[.,]\d+)?)", tb_str.strip())
-    if m:
-        return float(m.group(1).replace(",", "."))
-    return None
-
-
-def calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
-    """Return building limit summary for a zone code."""
-    data = _BUILDING_CODES.get(zone_code)
-    if not data:
-        return None
-
-    def _parse_pct(val: str) -> float:
-        return float(val.replace(",", ".").replace("%", "").strip())
-
-    try:
-        return {
-            "zone_name_id": data.get("name", ""),
-            "kdb_pct": _parse_pct(data.get("KDB", "0")),
-            "klb_ratio": _parse_pct(data.get("KLB", "0")),
-            "kdh_pct": _parse_pct(data.get("KDH", "0")),
-            "ktb_pct": _parse_pct(data.get("KTB", "0")),
-            "height_limit": data.get("TB", "—"),
-            "max_height_meters": parse_tb_to_meters(data.get("TB")),
-            "setback": data.get("GSB", "—"),
-            "notes": data.get("note", ""),
-        }
-    except (ValueError, TypeError, AttributeError) as exc:
-        logger.warning("⚠️ [PrimeNexus] Building codes parse error for %s: %s", zone_code, exc)
-        return None
-    except Exception as exc:
-        logger.exception("⚠️ [PrimeNexus] Unexpected error parsing building codes for %s", zone_code)
-        return None
-
-
-# =============================================================================
-# ZONE LABELS + COLORS + RESTRICTED SETS
-# =============================================================================
-ZONE_LABELS: dict[str, dict[str, str]] = {
-    "K-1": {"label_en": "City Commercial Zone", "desc_en": "Large-scale commerce — shopping centers, hotels, offices"},
-    "K-2": {"label_en": "District Commercial Zone", "desc_en": "Mid-scale commerce — restaurants, retail, professional services"},
-    "K-3": {"label_en": "Neighborhood Commercial Zone", "desc_en": "Small-scale commerce — cafés, boutiques, studios, wellness"},
-    "C-1": {"label_en": "High-Density Mixed-Use Zone", "desc_en": "Hotels + residences + offices in the same area"},
-    "C-2": {"label_en": "Medium Mixed-Use Zone", "desc_en": "Villas, cafés, and wellness businesses side by side"},
-    "W": {"label_en": "Tourism Zone", "desc_en": "Hotels, resorts, restaurants, entertainment — tourism focus"},
-    "W-1": {"label_en": "Tourism Zone (Type 1)", "desc_en": "Primary tourism area — resorts and large hotels"},
-    "W-2": {"label_en": "Tourism Zone (Type 2)", "desc_en": "Secondary tourism area — boutique stays, restaurants"},
-    "R-2": {"label_en": "High-Density Residential", "desc_en": "Dense housing — limited commercial activity permitted"},
-    "R-3": {"label_en": "Medium-Density Residential", "desc_en": "Suburban housing — villa rentals and homestays possible"},
-    "R-4": {"label_en": "Low-Density Residential", "desc_en": "Spacious housing — luxury villas and land investment"},
-    "KPI": {"label_en": "Industrial Zone", "desc_en": "Manufacturing, food processing, craft production"},
-    "KT": {"label_en": "Office / Business Park Zone", "desc_en": "Professional offices — consulting, tech, finance"},
-    "SPU-1": {"label_en": "City Public Facility Zone", "desc_en": "Major public services — hospitals, universities"},
-    "SPU-2": {"label_en": "District Public Facility", "desc_en": "District services — clinics, schools"},
-    "SPU-3": {"label_en": "Village Public Facility", "desc_en": "Local services — community centers, worship"},
-    "SPU-4": {"label_en": "Neighborhood Facility", "desc_en": "Smallest-scale public facilities"},
-    "P-1": {"label_en": "Crop Farming Zone", "desc_en": "Protected agricultural land — no development permitted"},
-    "P-2": {"label_en": "Horticulture Zone", "desc_en": "Fruit & vegetable farming — no development"},
-    "P-3": {"label_en": "Plantation Zone", "desc_en": "Estate crops — no development"},
-    "P-4": {"label_en": "Livestock Zone", "desc_en": "Animal husbandry — no development"},
-    "HL": {"label_en": "Protected Forest", "desc_en": "Conservation forest — strictly no development"},
-    "PS": {"label_en": "Riparian Buffer Zone", "desc_en": "Riverbank protection — no development"},
-    "SS": {"label_en": "River Buffer Zone", "desc_en": "Streamside protection — no development"},
-    "SP": {"label_en": "Coastal Buffer Zone", "desc_en": "Beachfront protection — no development"},
-    "CB": {"label_en": "Cultural Heritage Zone", "desc_en": "Historical & cultural protection — strictly regulated"},
-    "LS": {"label_en": "Spiritual & Sacred Zone", "desc_en": "Balinese sacred sites — no commercial activity"},
-    "EM": {"label_en": "Mangrove Ecosystem", "desc_en": "Mangrove forest — protected, no development"},
-    "TWA": {"label_en": "Nature Tourism Reserve", "desc_en": "Wildlife area — restricted access"},
-    "THR": {"label_en": "City Forest Park", "desc_en": "Protected urban forest"},
-    "KS-4": {"label_en": "Forest Reserve Park", "desc_en": "Protected nature reserve"},
-    "BA": {"label_en": "Water Body", "desc_en": "River, lake, or sea — no development"},
-    "BJ": {"label_en": "Road Infrastructure", "desc_en": "Public road right-of-way"},
-    "TR": {"label_en": "Transportation Zone", "desc_en": "Airports, ports, terminals"},
-    "RTH-2": {"label_en": "City Park", "desc_en": "Public green space — parks and gardens"},
-    "RTH-3": {"label_en": "District Park", "desc_en": "Neighborhood green space"},
-    "RTH-4": {"label_en": "Village Park", "desc_en": "Local green space"},
-    "RTH-5": {"label_en": "Block Park", "desc_en": "Small local green space"},
-    "RTH-7": {"label_en": "Cemetery", "desc_en": "Public cemetery"},
-    "RTH-8": {"label_en": "Green Corridor", "desc_en": "Roadside or canal green strip"},
-    "RTNH": {"label_en": "Non-Green Open Space", "desc_en": "Plazas, parking, paved open areas"},
-    "HK": {"label_en": "Defense & Security Zone", "desc_en": "Military / government security area"},
-    "PL-3": {"label_en": "Water Treatment Facility", "desc_en": "Public infrastructure — no development"},
-    "PL-4": {"label_en": "Wastewater Facility", "desc_en": "Public infrastructure — no development"},
-    "PTL": {"label_en": "Power Generation Zone", "desc_en": "Energy infrastructure — no development"},
-    "IK-1": {"label_en": "Capture Fishery Zone", "desc_en": "Coastal fishing zone — no land development"},
-}
-
-RESTRICTED_ZONES = {
-    "HL", "PS", "CB", "LS", "EM", "BA", "BJ", "HK",
-    "RTH-2", "RTH-3", "RTH-4", "KS-4", "IK-1",
-    "P-1", "P-2", "P-3", "P-4", "PL-3", "PL-4", "PTL",
-}
-
-ZONE_COLORS_MAP: dict[str, str] = {
-    "K-1": "#E8472A", "K-2": "#E8472A", "K-3": "#E8472A",
-    "C-1": "#F0826E", "C-2": "#F0826E",
-    "W": "#FFA5FF", "W-1": "#FFA5FF", "W-2": "#FF85F5",
-    "R-2": "#FF7D00", "R-3": "#FF9D30", "R-4": "#FFB860",
-    "P-1": "#C8C83C", "P-2": "#D4D44A", "P-3": "#C8C83C", "P-4": "#BEB82E",
-    "KT": "#A855F7", "KPI": "#690000",
-    "SPU-1": "#D4845A", "SPU-2": "#D4845A", "SPU-3": "#D4845A", "SPU-4": "#D4845A",
-    "HL": "#224027", "KS-4": "#224027", "THR": "#224027", "TWA": "#224027",
-    "EM": "#2D966E", "PS": "#05D7D7", "SS": "#05D7D7", "SP": "#05D7D7",
-    "LS": "#F59E0B", "CB": "#B45309",
-    "RTH-2": "#3BA062", "RTH-3": "#3BA062", "RTH-4": "#3BA062",
-    "RTH-5": "#3BA062", "RTH-7": "#6B7280", "RTH-8": "#3BA062",
-    "RTNH": "#9CA3AF", "BA": "#97DBF2", "BJ": "#9CA3AF", "TR": "#6B7280",
-    "HK": "#9B00FF", "PL-3": "#6B7280", "PL-4": "#6B7280", "PTL": "#6B7280",
-    "IK-1": "#507DD2",
-}
-
-# =============================================================================
-# ACTIVITY CLASSIFICATION (extracted from prime.py)
-# =============================================================================
-_SKIP_PATTERNS = [
-    "local resident", "employee", "official residence", "boarding house",
-    "single house", "cluster house", "coupled house", "dormitory", "townhouse",
-    "septic tank", "wastewater", "irrigation", "cleanwater", "trash can",
-    "toilet facility", "parking area", "pedestrian lane", "disability access",
-    "loading unloading", "road network", "road complete", "bike lane",
-    "public road access", "pavement area", "lot area", "building height",
-    "minimum gsb", "minimum kdh", "maximum kdb", "maximum klb", "maximum ktb",
-    "road dimension", "road equipment", "trash", "zone_requirement",
-    "car trading", "car spare parts", "motorcycle trade", "motorcycle maintenance",
-    "wholesale trade of fishery", "wholesale of motor vehicle",
-    "wholesale trade of food", "wholesale of household",
-    "wholesale of machinery", "wholesale of building material",
-    "wholesale of agricultural", "wholesale of fuel",
-    "village government", "government service", "public service office",
-    "fire station", "police", "military", "cemetery", "funeral",
-    "religious", "worship", "mosque", "temple", "church",
-    "television broadcasting",
-]
-
-_ACTIVITY_CATEGORIES: list[tuple[list[str], str]] = [
-    (["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"], "Hospitality"),
-    (["restaurant", "café", "cafe", " bar ", "bakery", "catering", "food court",
-      "food, beverage, and tobacco trade in shop", "trade of various goods in a store"], "F&B"),
-    (["spa ", "beauty salon", "beauty center", "beauty treatment",
-      "wellness center", "yoga", "fitness center", "gym", "massage"], "Wellness"),
-    (["boutique ", "retail of", "specialty store", "fashion", "jewelry",
-      "artisan craft", "souvenir", "art gallery", "gallery"], "Retail"),
-    (["consulting", "consultant", "law firm", "notary", "accounting firm",
-      "financial advisor", "professional service"], "Services"),
-    (["real estate", "property development", "land development",
-      "co-working space", "serviced apartment"], "Property"),
-    (["software", "information technology", "it service", "digital",
-      "programming", "data center", "startup"], "Technology"),
-    (["school", "international school", "university", "college",
-      "training center", "language course", "vocational"], "Education"),
-    (["hospital", "clinic", "medical center", "dental",
-      "healthcare facility", "pharmaceutical"], "Healthcare"),
-    (["food processing", "garment", "handicraft", "artisan manufacturing",
-      "waste management", "recycling"], "Industry"),
-    (["design studio", "creative agency", "photography studio",
-      "film production", "music studio", "architecture"], "Creative"),
-    (["restaurant and café", "café and restaurant", "coffee shop",
-      "juice bar", "fine dining", "bistro", "lounge"], "F&B"),
-]
-
-
-def classify_activity(name: str) -> str:
-    """Map an activity name to an investor-friendly category."""
-    lower = name.lower()
-    for keywords, category in _ACTIVITY_CATEGORIES:
-        if any(kw in lower for kw in keywords):
-            return category
-    return "Other"
-
-
-def is_investor_relevant(name: str) -> bool:
-    """Filter out non-investor-relevant activities."""
-    lower = name.lower()
-    if any(pat in lower for pat in _SKIP_PATTERNS):
-        return False
-    if lower.startswith("wholesale") and "fuel" not in lower:
-        return False
-    infra_kw = ["road network", "road dimension", "pavement", "minimum jb", "minimum jbs", "minimum gsb"]
-    return not any(kw in lower for kw in infra_kw)
-
-
-def rgb_string_to_hex(rgb_str: str) -> str:
-    """Convert '250 211 140' → '#fad38c'."""
-    try:
-        parts = [int(x) for x in rgb_str.replace(",", " ").split()]
-        if len(parts) == 3:
-            return "#{:02x}{:02x}{:02x}".format(*parts)
-    except (ValueError, AttributeError):
-        pass
-    return "#6B7280"
-
-
-# =============================================================================
-# ZONE-KBLI COMPATIBILITY (extracted from dashboard.py)
-# =============================================================================
-NON_BUILDABLE_ZONES: set[str] = {
-    "BA", "BJ", "SS", "SP", "LS", "P-1", "P-2",
-    "RTH-1", "RTH-2", "RTH-4", "RTH-7", "RTNH",
-    "PL-1", "PL-3", "PL-4",
-}
-
-_ZONE_KBLI_IDEAL: dict[str, set[str]] = {
-    "55": {"W-", "C-"}, "56": {"K-", "C-"}, "47": {"K-", "C-"},
-    "68": {"R-", "K-", "C-"}, "70": {"KT", "K-", "C-"},
-    "62": {"KT", "K-", "C-"}, "77": {"K-", "C-"},
-    "79": {"W-", "K-", "C-"}, "96": {"W-", "K-", "C-"},
-    "90": {"W-", "C-", "SPU"}, "91": {"W-", "SPU", "C-"},
-    "85": {"SPU", "C-"}, "93": {"W-", "SPU", "C-"},
-}
-
-_ZONE_KBLI_TOLERATED: dict[str, set[str]] = {
-    "55": {"R-"}, "56": {"W-"}, "47": {"R-"},
-}
-
-_ZONE_KBLI_ACCEPTABLE: dict[str, set[str]] = {
-    "55": {"K-"}, "56": {"R-"}, "68": {"W-"}, "77": {"W-"}, "79": {"R-"},
-}
-
-_NIGHTLIFE_CODES: set[str] = {"56301", "56302"}
-_NIGHTLIFE_IDEAL_ZONES: set[str] = {"K-", "W-", "C-"}
-_NIGHTLIFE_PENALTY_ZONES: set[str] = {"R-"}
-
-
-def _zone_matches_prefix(zone_code: str, prefixes: set[str]) -> bool:
-    return any(zone_code.startswith(p) for p in prefixes)
-
-
-def calculate_zone_kbli_fit(zone_code: str | None, kbli_code: str | None) -> tuple[int, str]:
-    """Zone-KBLI compatibility score (0-20) + tier label."""
-    if not zone_code or not kbli_code:
-        return 12, "unknown"
-    prefix = kbli_code[:2]
-    if zone_code in NON_BUILDABLE_ZONES:
-        return 0, "incompatible"
-    if kbli_code in _NIGHTLIFE_CODES:
-        if _zone_matches_prefix(zone_code, _NIGHTLIFE_IDEAL_ZONES):
-            return 20, "ideal"
-        if _zone_matches_prefix(zone_code, _NIGHTLIFE_PENALTY_ZONES):
-            return 2, "poor"
-        return 8, "tolerated"
-    ideal = _ZONE_KBLI_IDEAL.get(prefix)
-    if ideal and _zone_matches_prefix(zone_code, ideal):
-        return 20, "ideal"
-    acceptable = _ZONE_KBLI_ACCEPTABLE.get(prefix)
-    if acceptable and _zone_matches_prefix(zone_code, acceptable):
-        return 12, "acceptable"
-    tolerated = _ZONE_KBLI_TOLERATED.get(prefix)
-    if tolerated and _zone_matches_prefix(zone_code, tolerated):
-        return 8, "tolerated"
-    return 4, "poor"
-
-
-def calculate_investment_score(
-    zone_data: dict[str, Any] | None,
-    kbli_state: str | None,
-    kbli_code: str | None,
-    roi_data: dict[str, Any] | None,
-    geo_data: dict[str, Any] | None,
-    oss_risk: str | None = None,
-) -> dict[str, Any]:
-    """3-Layer investment scoring engine. Extracted from dashboard.py."""
-    zone_code = zone_data.get("code") if zone_data else None
-    overlays = zone_data.get("overlays", {}) if zone_data else {}
-    zone_source = zone_data.get("source", "") if zone_data else ""
-
-    # Layer 1: Hard Blocks
-    hard_blocks: list[str] = []
-    if kbli_state == "REJECTED":
-        hard_blocks.append("KBLI chiuso a PMA (Perpres 10/2021)")
-    if zone_code and zone_code in NON_BUILDABLE_ZONES:
-        hard_blocks.append(f"Zona {zone_code} non edificabile")
-    if overlays.get("LP2B_2") or overlays.get("lp2b_2"):
-        hard_blocks.append("Terreno agricolo protetto (LP2B)")
-    if zone_data and zone_source == "unavailable":
-        hard_blocks.append("Nessun dato zona disponibile")
-
-    klb_raw = zone_data.get("klb", "N/A") if zone_data else "N/A"
-    klb_val: float | None = None
-    if klb_raw and klb_raw != "N/A":
-        with contextlib.suppress(ValueError, TypeError):
-            klb_val = float(str(klb_raw).replace(",", "."))
-    if klb_val is not None and klb_val < 0.05:
-        hard_blocks.append(f"KLB {klb_raw} — costruibilità quasi nulla")
-
-    if overlays.get("KKOP_1"):
-        tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
-        tb_meters: float | None = None
-        with contextlib.suppress(ValueError, TypeError, IndexError):
-            tb_meters = float(str(tb_raw).split()[0].replace(",", "."))
-        if tb_meters is not None and tb_meters <= 4.0:
-            hard_blocks.append(f"KKOP + TB {tb_raw} — altezza edificio troppo limitata")
-
-    if hard_blocks:
-        return {
-            "verdict": "RED", "can_invest": False, "score": 0,
-            "breakdown": {}, "modifiers": [], "hard_blocks": hard_blocks,
-        }
-
-    # Layer 2: Composite Score (0-100)
-    breakdown: dict[str, dict[str, Any]] = {}
-
-    roi_val: float | None = None
-    if roi_data and not roi_data.get("error"):
-        roi_val = roi_data.get("golden_strategy", {}).get("roi")
-    roi_score: int | None = None
-    if roi_val is not None:
-        roi_score = 30 if roi_val >= 12 else 22 if roi_val >= 8 else 12 if roi_val >= 4 else 0
-    breakdown["roi"] = {"score": roi_score, "max": 30, "value": roi_val}
-
-    zone_kbli_raw, zone_kbli_tier = calculate_zone_kbli_fit(zone_code, kbli_code)
-    zone_kbli_score: int | None = round(zone_kbli_raw * 15 / 20)
-    breakdown["zone_kbli_fit"] = {"score": zone_kbli_score, "max": 15, "tier": zone_kbli_tier}
-
-    klb_score: int | None = None
-    if klb_val is not None:
-        klb_score = 10 if klb_val >= 2.0 else 8 if klb_val >= 1.2 else 5 if klb_val >= 0.6 else 2 if klb_val >= 0.2 else 0
-    breakdown["building_capacity"] = {"score": klb_score, "max": 10, "klb": klb_val}
-
-    bey_val: float | None = None
-    if roi_data and not roi_data.get("error"):
-        bey_val = roi_data.get("golden_strategy", {}).get("bey")
-    bey_score: int | None = None
-    if bey_val is not None:
-        bey_score = 15 if bey_val <= 5 else 12 if bey_val <= 8 else 6 if bey_val <= 12 else 0
-    breakdown["break_even"] = {"score": bey_score, "max": 15, "value": bey_val}
-
-    # Risk score: prefer numeric risk_score (0-1), fallback to string flood_risk
-    risk_val = geo_data.get("risk_score") if geo_data else None
-    flood = geo_data.get("flood_risk") if geo_data else None
-    if risk_val is not None:
-        risk_points = 10 if risk_val < 0.2 else 8 if risk_val < 0.4 else 5 if risk_val < 0.6 else 2 if risk_val < 0.8 else 0
-    elif flood is not None:
-        risk_points = {"safe": 10, "check": 5, "high": 0}.get(str(flood), 7)
-    else:
-        risk_points = 7
-    breakdown["risk"] = {"score": risk_points, "max": 10, "value": risk_val, "flood_risk": flood}
-
-    density_1km = geo_data.get("densita_1km") if geo_data else None
-    if density_1km is not None:
-        market_score = 10 if 30 <= density_1km <= 70 else 6 if density_1km < 30 else 3
-    else:
-        market_score = 5
-    breakdown["market"] = {"score": market_score, "max": 10, "value": density_1km}
-
-    if kbli_state == "APPROVED":
-        reg_base = 10
-    elif kbli_state == "WARNING":
-        reg_base = 5
-    elif kbli_state is None:
-        reg_base = 7
-    else:
-        reg_base = 0
-    oss_penalty = 3 if oss_risk == "Tinggi" else 2 if oss_risk == "Menengah Tinggi" else 0
-    reg_score = max(0, reg_base - oss_penalty)
-    breakdown["regulatory"] = {"score": reg_score, "max": 10, "state": kbli_state, "oss_risk": oss_risk}
-
-    ws = geo_data.get("walk_score") if geo_data else None
-    ws_score = 5 if ws is not None and ws >= 65 else 3 if ws is not None and ws >= 35 else 1 if ws is not None else 2
-    breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
-
-    _all_scores = [roi_score, zone_kbli_score, klb_score, bey_score, risk_points, market_score, reg_score, ws_score]
-    _all_maxes = [30, 15, 10, 15, 10, 10, 10, 5]
-    earned = sum(s for s in _all_scores if s is not None)
-    available = sum(m for s, m in zip(_all_scores, _all_maxes, strict=True) if s is not None)
-    score = round(earned / available * 100) if available > 0 else 0
-
-    # Layer 3: Contextual Modifiers
-    modifiers: list[str] = []
-    _excluded = []
-    if roi_score is None:
-        _excluded.append("ROI")
-    if klb_score is None:
-        _excluded.append("KLB")
-    if bey_score is None:
-        _excluded.append("Break-Even")
-    if _excluded:
-        modifiers.append(f"Esclusi dal calcolo: {', '.join(_excluded)} (dati mancanti)")
-
-    _OVERLAY_PENALTIES: dict[str, tuple[int, str]] = {
-        "KKOP_1": (12, "Zona Keselamatan Operasi Penerbangan — altezza edifici limitata"),
-        "SEMPDN": (8, "Sempadan pantai/sungai — fascia protetta, costruzione limitata"),
-        "KRB_03": (7, "Kawasan Rawan Bencana — zona rischio disastri naturali"),
-        "RESAIR": (6, "Resapan Air — zona ricarica acquiferi, impermeabilizzazione limitata"),
-        "TEB_05": (5, "Zona Taman Hutan — restrizioni ambientali"),
-        "CAGBUD": (5, "Cagar Budaya — vincoli patrimonio culturale"),
-        "HANKAM": (10, "Zona Pertahanan/Keamanan — area militare/sicurezza"),
-    }
-    overlay_penalty_total = 0
-    for ov_key, ov_val in overlays.items():
-        if ov_val and ov_key in _OVERLAY_PENALTIES:
-            penalty, desc = _OVERLAY_PENALTIES[ov_key]
-            overlay_penalty_total += penalty
-            modifiers.append(f"-{penalty}: {desc}")
-    if overlay_penalty_total > 0:
-        score -= min(overlay_penalty_total, 25)
-
-    if zone_kbli_tier == "tolerated":
-        modifiers.append("⚠️ Gray zone: attività comune ma non normativamente ideale. Verificare IMB/PBG.")
-    if zone_code and zone_code.startswith("W-2") and kbli_code and kbli_code.startswith("55"):
-        tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
-        modifiers.append(f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB: {tb_raw}")
-        score -= 3
-
-    # Sea distance modifiers (replaces boolean sea_view)
-    sea_dist = geo_data.get("sea_distance_m") if geo_data else None
-    sea_view = geo_data.get("sea_view", False) if geo_data else False
-    if sea_dist is not None:
-        if sea_dist < 200:
-            score += 5
-            modifiers.append(f"+5: premium prossimità mare ({sea_dist:.0f}m dalla costa)")
-            score -= 3
-            modifiers.append("-3: rischio tsunami (< 200m dalla costa)")
-        elif sea_dist < 1000:
-            score += 3
-            modifiers.append(f"+3: zona costiera ({sea_dist:.0f}m dalla costa)")
-    elif sea_view and score >= 55:
-        score += 5
-        modifiers.append("+5: potenziale premium vista mare")
-
-    gistaru_cap = zone_source == "gistaru_rdtr"
-    if gistaru_cap:
-        modifiers.append("CAP: dati zona da GISTARU (parametri KDB/KLB mancanti)")
-
-    score = max(0, min(100, score))
-
-    if gistaru_cap and score >= 65:
-        verdict = "YELLOW"
-    elif score >= 65:
-        verdict = "GREEN"
-    elif score >= 35:
-        verdict = "YELLOW"
-    else:
-        verdict = "RED"
-
-    return {
-        "verdict": verdict, "can_invest": verdict != "RED", "score": score,
-        "breakdown": breakdown, "modifiers": modifiers, "hard_blocks": [],
-    }
-
-
-# =============================================================================
-# PROPERTY TAX CALCULATOR (PBB + BPHTB)
-# =============================================================================
-_NPOPTKP_BY_KABUPATEN: dict[str, int] = {
-    "Badung": 80_000_000,
-    "Denpasar": 80_000_000,
-    "Gianyar": 60_000_000,
-    "Tabanan": 60_000_000,
-    "Karangasem": 60_000_000,
-    "Klungkung": 60_000_000,
-    "Bangli": 60_000_000,
-    "Buleleng": 60_000_000,
-    "Jembrana": 60_000_000,
-}
-_DEFAULT_NPOPTKP = 60_000_000
-
-
-def calculate_property_tax(
-    njop_total_idr: float,
-    kabupaten: str | None = None,
-) -> dict[str, Any]:
-    """Calculate Indonesian property taxes (PBB annual + BPHTB acquisition).
-
-    PBB rates (Pajak Bumi dan Bangunan):
-      - NJOP < 1B IDR: 0.1%
-      - 1B <= NJOP < 10B: 0.2%
-      - NJOP >= 10B: 0.3%
-
-    BPHTB (Bea Perolehan Hak atas Tanah dan Bangunan):
-      - 5% of (NJOP - NPOPTKP)
-      - NPOPTKP varies by kabupaten (60-80M IDR)
-    """
-    notes: list[str] = []
-
-    # PBB rate tiers
-    if njop_total_idr < 1_000_000_000:
-        pbb_rate = 0.001  # 0.1%
-    elif njop_total_idr < 10_000_000_000:
-        pbb_rate = 0.002  # 0.2%
-    else:
-        pbb_rate = 0.003  # 0.3%
-
-    annual_pbb = njop_total_idr * pbb_rate
-
-    # BPHTB
-    kab_key = kabupaten.strip().title() if kabupaten else None
-    npoptkp = _NPOPTKP_BY_KABUPATEN.get(kab_key or "", _DEFAULT_NPOPTKP)
-    bphtb_base = max(0, njop_total_idr - npoptkp)
-    acquisition_bphtb = bphtb_base * 0.05
-
-    if kab_key and kab_key not in _NPOPTKP_BY_KABUPATEN:
-        notes.append(f"Kabupaten '{kabupaten}' non riconosciuto — usato NPOPTKP default {_DEFAULT_NPOPTKP:,.0f} IDR")
-
-    return {
-        "annual_pbb": round(annual_pbb),
-        "pbb_rate_pct": pbb_rate * 100,
-        "acquisition_bphtb": round(acquisition_bphtb),
-        "npoptkp_applied": npoptkp,
-        "njop_used": njop_total_idr,
-        "notes": notes,
-    }
-
-
-# =============================================================================
-# PROPERTY ELIGIBILITY FOR FOREIGNERS
-# =============================================================================
-def calculate_property_eligibility(
-    nationality: str,
-    zone_code: str | None = None,
-    njop_total_idr: float | None = None,
-) -> dict[str, Any]:
-    """Determine property ownership eligibility based on nationality.
-
-    Based on UUPA (Undang-Undang Pokok Agraria), PP 18/2021, and
-    the Knowledge Graph property subgraph rules.
-    """
-    nat = nationality.strip().upper()
-    is_foreigner = nat in ("WNA", "FOREIGNER", "FOREIGN", "ASING")
-
-    bphtb_estimate = round(njop_total_idr * 0.05) if njop_total_idr else None
-
-    if is_foreigner:
-        allowed_types = [
-            {
-                "type": "hak_pakai",
-                "label": "Hak Pakai (Right to Use)",
-                "duration": "30 years (renewable +20 +30 years)",
-                "requirements": [
-                    "Valid KITAS or KITAP residence permit",
-                    "Notary deed (Akta Notaris)",
-                    "BPN certificate verification",
-                    "BPHTB tax payment (5%)",
-                ],
-                "estimated_costs": {
-                    "bphtb_5pct": bphtb_estimate,
-                    "notary_fee_approx_idr": 5_000_000,
-                    "bpn_registration_idr": 1_000_000,
-                },
-                "notes": "Most common path for foreign property ownership in Bali",
-            },
-            {
-                "type": "hgb_via_pma",
-                "label": "HGB via PT PMA (Building Rights via Foreign Company)",
-                "duration": "30 years (renewable +20 +30 years)",
-                "requirements": [
-                    "Established PT PMA company",
-                    "Minimum investment 10B IDR (company-level)",
-                    "Company deed and KBLI registration",
-                    "BPN certificate verification",
-                    "BPHTB tax payment (5%)",
-                ],
-                "estimated_costs": {
-                    "bphtb_5pct": bphtb_estimate,
-                    "pma_setup_approx_idr": 50_000_000,
-                },
-                "notes": "For commercial property — requires PT PMA company (cross-domain: company setup)",
-            },
-            {
-                "type": "rental",
-                "label": "Rental / Leasehold (Sewa)",
-                "duration": "1-25 years (negotiable)",
-                "requirements": [
-                    "Rental agreement (Surat Perjanjian Sewa)",
-                    "Passport copy",
-                    "Security deposit (typically 1-3 months)",
-                ],
-                "estimated_costs": {
-                    "deposit_months": 3,
-                },
-                "notes": "Simplest option — no ownership transfer, no BPHTB",
-            },
-        ]
-        blocked_types = [
-            {
-                "type": "hak_milik",
-                "label": "Hak Milik (Full Ownership)",
-                "reason": "Reserved for Indonesian citizens only (UUPA Art. 21)",
-            },
-        ]
-        nationality_class = "WNA"
-    else:
-        allowed_types = [
-            {
-                "type": "hak_milik",
-                "label": "Hak Milik (Full Ownership)",
-                "duration": "Perpetual",
-                "requirements": ["Indonesian citizenship (WNI)", "Notary deed", "BPN registration"],
-                "estimated_costs": {
-                    "bphtb_5pct": bphtb_estimate,
-                    "notary_fee_approx_idr": 5_000_000,
-                },
-                "notes": "Strongest title — full ownership rights",
-            },
-            {
-                "type": "hak_pakai",
-                "label": "Hak Pakai (Right to Use)",
-                "duration": "30 years (renewable)",
-                "requirements": ["Notary deed", "BPN registration"],
-                "estimated_costs": {"bphtb_5pct": bphtb_estimate},
-                "notes": "Also available to Indonesian citizens",
-            },
-            {
-                "type": "hgb",
-                "label": "HGB (Building Rights)",
-                "duration": "30 years (renewable)",
-                "requirements": ["Notary deed", "BPN registration"],
-                "estimated_costs": {"bphtb_5pct": bphtb_estimate},
-                "notes": "For commercial/business property",
-            },
-            {
-                "type": "rental",
-                "label": "Rental / Leasehold (Sewa)",
-                "duration": "1-25 years",
-                "requirements": ["Rental agreement"],
-                "estimated_costs": {"deposit_months": 1},
-                "notes": "Simplest option",
-            },
-        ]
-        blocked_types = []
-        nationality_class = "WNI"
-
-    result: dict[str, Any] = {
-        "nationality_class": nationality_class,
-        "allowed_types": allowed_types,
-        "blocked_types": blocked_types,
-    }
-
-    # Zone-based warnings
-    if zone_code and zone_code in RESTRICTED_ZONES:
-        result["zone_warning"] = (
-            f"Zone {zone_code} is restricted — property acquisition may face "
-            "additional regulatory barriers or be prohibited entirely."
-        )
-    if zone_code and zone_code in NON_BUILDABLE_ZONES:
-        result["zone_warning"] = (
-            f"Zone {zone_code} is non-buildable — only land investment possible, "
-            "no construction permits (IMB/PBG) will be issued."
-        )
-
-    if is_foreigner:
-        result["cross_domain_note"] = (
-            "HGB via PT PMA requires company formation — "
-            "see company setup workflow for requirements and timeline."
-        )
-
-    return result
-
 
 # =============================================================================
 # BATARA + GISTARU API CONSTANTS
@@ -885,7 +186,7 @@ class PrimeNexusService:
                 dist = round(float(row["dist_m"]), 1)
         except (asyncpg.PostgresError, OSError) as exc:
             logger.debug("[PrimeNexus] Sea distance query skipped: %s", exc)
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Unexpected error in sea distance query")
 
         # Cache result (24h)
@@ -1060,7 +361,7 @@ class PrimeNexusService:
             logger.warning("⚠️ [PrimeNexus] BATARA response parse error (%s,%s): %s", lat, lng, exc)
             self._record_batara_failure()
             return None
-        except Exception as exc:
+        except Exception:
             logger.exception("⚠️ [PrimeNexus] BATARA query unexpected error (%s,%s)", lat, lng)
             self._record_batara_failure()
             return None
@@ -1137,7 +438,7 @@ class PrimeNexusService:
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("⚠️ [PrimeNexus] GISTARU response parse error: %s", exc)
             self._record_gistaru_failure()
-        except Exception as exc:
+        except Exception:
             logger.exception("⚠️ [PrimeNexus] GISTARU query unexpected error")
             self._record_gistaru_failure()
         return None
@@ -1166,7 +467,7 @@ class PrimeNexusService:
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS fallback failed: %s", exc)
                 return None
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] PostGIS fallback unexpected error")
                 return None
         else:
@@ -1182,7 +483,7 @@ class PrimeNexusService:
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS pool query failed: %s", exc)
                 return None
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] PostGIS pool query unexpected error")
                 return None
 
@@ -1211,7 +512,7 @@ class PrimeNexusService:
                     return float(row["avg_price_per_are"])
             except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
                 logger.debug("[PrimeNexus] Price lookup skipped: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Price lookup unexpected error")
         else:
             try:
@@ -1226,7 +527,7 @@ class PrimeNexusService:
                         return float(row["avg_price_per_are"])
             except (asyncpg.PostgresError, OSError, ValueError, TypeError) as exc:
                 logger.debug("[PrimeNexus] Price pool lookup skipped: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Price pool lookup unexpected error")
         return None
 
@@ -1644,7 +945,7 @@ class PrimeNexusService:
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             logger.debug("[PrimeNexus] Intel search parse error: %s", exc)
             return []
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Intel search unexpected error")
             return []
 
@@ -1684,7 +985,7 @@ class PrimeNexusService:
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Intelligence fallback failed: %s", exc)
                 return {"type": "FeatureCollection", "features": [], "stats": stats}
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Intelligence fallback unexpected error")
                 return {"type": "FeatureCollection", "features": [], "stats": stats}
 
@@ -1696,7 +997,7 @@ class PrimeNexusService:
                 )
         except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Intelligence query failed: %s", exc)
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Intelligence query unexpected error")
 
         return {"type": "FeatureCollection", "features": [], "stats": stats}
@@ -1809,7 +1110,7 @@ class PrimeNexusService:
                         total += cnt
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Density query failed: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Density query unexpected error")
 
         # Compute saturation index
@@ -1930,7 +1231,7 @@ class PrimeNexusService:
                                            "detail": f"{recent_act} recent, {prior_act} prior"})
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Predict query failed: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Predict query unexpected error")
 
         trend = "improving" if trend_score >= 1 else "declining" if trend_score <= -1 else "stable"
@@ -2022,7 +1323,7 @@ class PrimeNexusService:
                         })
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Temporal query failed: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Temporal query unexpected error")
 
         trend = "stable"
@@ -2097,7 +1398,7 @@ class PrimeNexusService:
                         })
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Regulations SQL query failed: %s", exc)
-            except Exception as exc:
+            except Exception:
                 logger.exception("[PrimeNexus] Regulations SQL unexpected error")
 
         # Source 2: Qdrant semantic search (reuse _search_intel)
@@ -2119,7 +1420,7 @@ class PrimeNexusService:
                 })
         except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.debug("[PrimeNexus] Regulations Qdrant failed: %s", exc)
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Regulations Qdrant unexpected error")
 
         # Sort by published_at desc, cap at limit
@@ -2244,7 +1545,7 @@ class PrimeNexusService:
         except (json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.warning("[PrimeNexus] Get proposal parse error: %s", exc)
             return None
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Get proposal unexpected error")
             return None
 
@@ -2332,7 +1633,7 @@ class PrimeNexusService:
 
         except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Portfolio query failed: %s", exc)
-        except Exception as exc:
+        except Exception:
             logger.exception("[PrimeNexus] Portfolio query unexpected error")
 
         # Risk concentration
