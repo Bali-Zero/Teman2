@@ -24,7 +24,7 @@ import asyncio
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from backend.app.core.constants import EvidenceScoreConstants
-from backend.app.metrics import (
+from backend.app.metrics import (  # noqa: F401  re-exported for tests that patch reasoning.<metric>
     abstain_decision_total,
     strict_abstain_critical_total,
     tier1_fallback_activated_total,
@@ -60,6 +60,15 @@ from backend.services.rag.agentic._reasoning_policy import (
     should_apply_low_evidence_policy,
 )
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
+from backend.services.rag.agentic._reasoning_tier1 import (
+    TRANSPARENCY_INSTRUCTION_FINAL,
+    TRANSPARENCY_INSTRUCTION_NO_CONTEXT,
+    build_tier1_prompt,
+    emit_strict_abstain_metrics,
+    emit_tier1_activation_metrics,
+    emit_tier1_failure_metrics,
+    emit_tier1_success_metrics,
+)
 from backend.services.rag.agentic.query_helpers import detect_query_language
 from backend.services.rag.agentic.reasoning_utils import (
     calculate_evidence_score,  # noqa: F401  re-exported for tests that patch reasoning.calculate_evidence_score
@@ -549,48 +558,19 @@ class ReasoningEngine:
                     f"🛡️ [Uncertainty] Overriding existing answer due to low evidence for critical domain "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                 )
-                strict_abstain_critical_total.labels(
-                    intent_type=intent_type, domain_type=domain_type,
-                ).inc()
-                abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                emit_strict_abstain_metrics(intent_type, domain_type)
                 # Use localized ABSTAIN message
                 state.final_answer = self._get_localized_stub("abstain_detailed", language)
             else:
                 # TIER 1: Regenerate with Transparency Protocol
-                has_context = bool(state.context_gathered)
-                tier1_fallback_activated_total.labels(
-                    intent_type=intent_type, has_context=str(has_context).lower(),
-                ).inc()
+                emit_tier1_activation_metrics(
+                    intent_type, has_context=bool(state.context_gathered),
+                )
                 logger.info(
                     f"🌊 [Tier 1] Regenerating answer with Transparency Protocol "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type})",
                 )
-                transparency_instruction = """
-[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
-CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-"""
-
-                context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
-                newline = "\n"
-                context_section = (
-                    f"Retrieved Context (limited):{newline}{context}"
-                    if context
-                    else "No verified documents found in internal knowledge base."
-                )
-                final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-{context_section}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
+                final_prompt = build_tier1_prompt(query, state.context_gathered)
                 tier1_start_time = time.time()
                 try:
                     (
@@ -607,19 +587,17 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     )
                     accumulated_usage = accumulated_usage + final_usage
                     tier1_duration = time.time() - tier1_start_time
-                    tier1_response_duration.observe(tier1_duration)
-                    tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                    emit_tier1_success_metrics(intent_type, tier1_duration)
                     logger.info(
                         f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
                 except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
-                    tier1_response_duration.observe(tier1_duration)
-                    error_type = type(e).__name__
-                    tier1_fallback_failed_total.labels(
-                        intent_type=intent_type, error_type=error_type,
-                    ).inc()
-                    logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
+                    emit_tier1_failure_metrics(intent_type, tier1_duration, e)
+                    logger.error(
+                        f"Failed to regenerate Tier 1 answer: {type(e).__name__}",
+                        exc_info=True,
+                    )
                     state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
@@ -648,10 +626,10 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         f"🛡️ [Uncertainty] Triggered STRICT ABSTAIN for critical domain "
                         f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                     )
-                    strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type,
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    emit_strict_abstain_metrics(intent_type, domain_type)
+                    # Historic behaviour: this branch uses a hardcoded Italian
+                    # message (not get_localized_stub("abstain_detailed")),
+                    # differing from the policy-override branch above. Preserved.
                     state.final_answer = (
                         "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
                         "Posso aiutarti con:\n"
@@ -663,45 +641,20 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     )
                 else:
                     # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
-                    has_context = bool(state.context_gathered)
-                    tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context=str(has_context).lower(),
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    emit_tier1_activation_metrics(
+                        intent_type,
+                        has_context=bool(state.context_gathered),
+                        also_emit_abstain_decision=True,
+                    )
                     logger.info(
                         f"🌊 [Tier 1] Low evidence ({evidence_score:.2f}) for non-critical query, "
                         f"using General Intelligence fallback",
                     )
-                    # Inject Transparency Protocol instruction into prompt
-                    transparency_instruction = """
-[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
-CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with this EXACT phrase (translated to user's language):
-   "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-5. If the question is about Bali Zero services, pricing, or specific procedures, suggest contacting the team for verified information.
-"""
-
-                    # Use minimal context (what we have) but allow LLM to use general knowledge
-                    context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
-                    context_section = (
-                        f"Retrieved Context (limited):\n{context}"
-                        if context
-                        else "No verified documents found in internal knowledge base."
+                    final_prompt = build_tier1_prompt(
+                        query,
+                        state.context_gathered,
+                        transparency_instruction=TRANSPARENCY_INSTRUCTION_FINAL,
                     )
-
-                    final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-{context_section}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
                     tier1_start_time = time.time()
                     try:
                         (
@@ -718,20 +671,15 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         )
                         accumulated_usage = accumulated_usage + final_usage
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        emit_tier1_success_metrics(intent_type, tier1_duration)
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        error_type = type(e).__name__
-                        tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type,
-                        ).inc()
+                        emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {error_type}",
+                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
                             exc_info=True,
                         )
                         # Fallback to ABSTAIN if LLM fails
@@ -814,39 +762,25 @@ Make it feel natural and helpful, not forced.
                     logger.warning(
                         f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
                     )
-                    strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type,
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
-                    tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context="false",
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    emit_tier1_activation_metrics(
+                        intent_type,
+                        has_context=False,
+                        also_emit_abstain_decision=True,
+                    )
                     logger.info(
                         "🌊 [Tier 1] No context gathered for non-critical query, "
                         "using General Intelligence fallback",
                     )
-                    transparency_instruction = """
-[SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
-CRITICAL INSTRUCTION: No verified documents were found in the internal knowledge base.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-"""
-
-                    final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
+                    final_prompt = build_tier1_prompt(
+                        query,
+                        None,
+                        transparency_instruction=TRANSPARENCY_INSTRUCTION_NO_CONTEXT,
+                        include_context_section=False,
+                    )
                     tier1_start_time = time.time()
                     try:
                         (
@@ -863,20 +797,15 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         )
                         accumulated_usage = accumulated_usage + final_usage
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        emit_tier1_success_metrics(intent_type, tier1_duration)
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        error_type = type(e).__name__
-                        tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type,
-                        ).inc()
+                        emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {error_type}",
+                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
                             exc_info=True,
                         )
                         state.final_answer = self._get_localized_stub("abstain", language)
@@ -1211,47 +1140,20 @@ Do not invent information. If the context is insufficient, admit it.
                     f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence for critical domain "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                 )
-                strict_abstain_critical_total.labels(
-                    intent_type=intent_type, domain_type=domain_type,
-                ).inc()
-                abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                emit_strict_abstain_metrics(intent_type, domain_type)
                 state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # TIER 1: Regenerate with Transparency Protocol (streaming)
-                has_context = bool(state.context_gathered)
-                tier1_fallback_activated_total.labels(
-                    intent_type=intent_type, has_context=str(has_context).lower(),
-                ).inc()
-                abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                emit_tier1_activation_metrics(
+                    intent_type,
+                    has_context=bool(state.context_gathered),
+                    also_emit_abstain_decision=True,
+                )
                 logger.info(
                     f"🌊 [Tier 1 Stream] Regenerating answer with Transparency Protocol "
                     f"(Score: {evidence_score:.2f}, Intent: {intent_type})",
                 )
-                transparency_instruction = """
-[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
-CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-"""
-
-                context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
-                context_section = (
-                    f"Retrieved Context (limited):\n{context}"
-                    if context
-                    else "No verified documents found in internal knowledge base."
-                )
-                final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-{context_section}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
+                final_prompt = build_tier1_prompt(query, state.context_gathered)
                 tier1_start_time = time.time()
                 try:
                     state.final_answer, _, _, _ = await llm_gateway.send_message(
@@ -1262,19 +1164,17 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         enable_function_calling=False,
                     )
                     tier1_duration = time.time() - tier1_start_time
-                    tier1_response_duration.observe(tier1_duration)
-                    tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                    emit_tier1_success_metrics(intent_type, tier1_duration)
                     logger.info(
                         f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
                 except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                     tier1_duration = time.time() - tier1_start_time
-                    tier1_response_duration.observe(tier1_duration)
-                    error_type = type(e).__name__
-                    tier1_fallback_failed_total.labels(
-                        intent_type=intent_type, error_type=error_type,
-                    ).inc()
-                    logger.error(f"Failed to regenerate Tier 1 answer: {error_type}", exc_info=True)
+                    emit_tier1_failure_metrics(intent_type, tier1_duration, e)
+                    logger.error(
+                        f"Failed to regenerate Tier 1 answer: {type(e).__name__}",
+                        exc_info=True,
+                    )
                     state.final_answer = self._get_localized_stub("abstain", language)
         elif state.skip_rag and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
@@ -1304,10 +1204,9 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                         f"🛡️ [Uncertainty Stream] Triggered STRICT ABSTAIN for critical domain "
                         f"(Score: {evidence_score:.2f}, Intent: {intent_type}, Domain: {domain_type})",
                     )
-                    strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type,
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    emit_strict_abstain_metrics(intent_type, domain_type)
+                    # Historic behaviour: hardcoded Italian message here, same
+                    # as the sync final-answer-generation branch above.
                     state.final_answer = (
                         "Per questa domanda specifica non ho informazioni verificate sufficienti nei documenti ufficiali. "
                         "Posso aiutarti con:\n"
@@ -1319,45 +1218,20 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                     )
                 else:
                     # TIER 1: Fluid Fallback - Use General Intelligence with Transparency Protocol
-                    has_context = bool(state.context_gathered)
-                    tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context=str(has_context).lower(),
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    emit_tier1_activation_metrics(
+                        intent_type,
+                        has_context=bool(state.context_gathered),
+                        also_emit_abstain_decision=True,
+                    )
                     logger.info(
                         f"🌊 [Tier 1 Stream] Low evidence ({evidence_score:.2f}) for non-critical query, "
                         f"using General Intelligence fallback",
                     )
-                    # Inject Transparency Protocol instruction into prompt
-                    transparency_instruction = """
-[SYSTEM NOTICE: LOW CONFIDENCE RETRIEVAL]
-CRITICAL INSTRUCTION: The internal search for verified documents yielded low or no results.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with this EXACT phrase (translated to user's language):
-   "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-5. If the question is about Bali Zero services, pricing, or specific procedures, suggest contacting the team for verified information.
-"""
-
-                    # Use minimal context (what we have) but allow LLM to use general knowledge
-                    context = "\n\n".join(state.context_gathered) if state.context_gathered else ""
-                    context_section = (
-                        f"Retrieved Context (limited):\n{context}"
-                        if context
-                        else "No verified documents found in internal knowledge base."
+                    final_prompt = build_tier1_prompt(
+                        query,
+                        state.context_gathered,
+                        transparency_instruction=TRANSPARENCY_INSTRUCTION_FINAL,
                     )
-
-                    final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-{context_section}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
                     tier1_start_time = time.time()
                     try:
                         state.final_answer, _, _, _ = await llm_gateway.send_message(
@@ -1368,23 +1242,17 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             enable_function_calling=False,
                         )
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        emit_tier1_success_metrics(intent_type, tier1_duration)
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        error_type = type(e).__name__
-                        tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type,
-                        ).inc()
+                        emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {error_type}",
+                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
                             exc_info=True,
                         )
-                        # Fallback to ABSTAIN if LLM fails
                         state.final_answer = self._get_localized_stub("abstain", language)
             else:
                 # Generate answer with optional warning for weak evidence
@@ -1452,39 +1320,25 @@ Make it feel natural and helpful, not forced.
                     logger.warning(
                         f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
                     )
-                    strict_abstain_critical_total.labels(
-                        intent_type=intent_type, domain_type=domain_type,
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="strict_abstain").inc()
+                    emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
                 else:
                     # TIER 1: No context but non-critical - use General Intelligence
-                    tier1_fallback_activated_total.labels(
-                        intent_type=intent_type, has_context="false",
-                    ).inc()
-                    abstain_decision_total.labels(decision_type="tier1_fallback").inc()
+                    emit_tier1_activation_metrics(
+                        intent_type,
+                        has_context=False,
+                        also_emit_abstain_decision=True,
+                    )
                     logger.info(
                         "🌊 [Tier 1 Stream] No context gathered for non-critical query, "
                         "using General Intelligence fallback",
                     )
-                    transparency_instruction = """
-[SYSTEM NOTICE: NO INTERNAL DOCUMENTS FOUND]
-CRITICAL INSTRUCTION: No verified documents were found in the internal knowledge base.
-
-1. DO NOT say "I cannot answer" or "Mi dispiace, non ho trovato".
-2. Answer the user's question using your GENERAL KNOWLEDGE.
-3. MUST START your response with: "Non ho trovato documenti interni verificati su questo specifico punto, ma basandomi sulla mia conoscenza generale..."
-4. Be helpful but clearly distinguish between "Internal Verified Fact" (missing) and "General Knowledge" (present).
-"""
-
-                    final_prompt = f"""
-{transparency_instruction}
-
-User Query: {query}
-
-Provide a helpful answer using your general knowledge, but clearly state that this is not verified internal information.
-"""
-
+                    final_prompt = build_tier1_prompt(
+                        query,
+                        None,
+                        transparency_instruction=TRANSPARENCY_INSTRUCTION_NO_CONTEXT,
+                        include_context_section=False,
+                    )
                     tier1_start_time = time.time()
                     try:
                         state.final_answer, _, _, _ = await llm_gateway.send_message(
@@ -1495,20 +1349,15 @@ Provide a helpful answer using your general knowledge, but clearly state that th
                             enable_function_calling=False,
                         )
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        tier1_fallback_success_total.labels(intent_type=intent_type).inc()
+                        emit_tier1_success_metrics(intent_type, tier1_duration)
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
                     except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
                         tier1_duration = time.time() - tier1_start_time
-                        tier1_response_duration.observe(tier1_duration)
-                        error_type = type(e).__name__
-                        tier1_fallback_failed_total.labels(
-                            intent_type=intent_type, error_type=error_type,
-                        ).inc()
+                        emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
-                            f"Failed to generate Tier 1 fallback answer: {error_type}",
+                            f"Failed to generate Tier 1 fallback answer: {type(e).__name__}",
                             exc_info=True,
                         )
                         state.final_answer = self._get_localized_stub("abstain", language)
