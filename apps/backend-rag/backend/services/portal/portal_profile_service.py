@@ -12,6 +12,7 @@ when invited via the existing invite flow.
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
 
@@ -26,6 +27,9 @@ class PortalProfileService:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_profile:{client_id}:*",
+    ])
     async def ensure_portal_profile(
         self,
         client_id: int,

@@ -10,6 +10,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.common.cache import cache_invalidating
+
 
 class PortalMessagingMixin:
     """Messaging (portal_messages) and client preferences (client_preferences)."""
@@ -79,6 +81,10 @@ class PortalMessagingMixin:
                 "unread_count": unread,
             }
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
+        "zantara:portal_messages:*",
+    ])
     async def send_message(
         self,
         client_id: int,
@@ -114,6 +120,9 @@ class PortalMessagingMixin:
                 "created_at": message["created_at"].isoformat(),
             }
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
+    ])
     async def mark_message_read(self, client_id: int, message_id: int) -> dict[str, Any]:
         """Mark a message as read."""
         async with self.pool.acquire() as conn:
@@ -162,6 +171,9 @@ class PortalMessagingMixin:
                 "timezone": prefs["timezone"],
             }
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_preferences:{client_id}:*",
+    ])
     async def update_preferences(
         self,
         client_id: int,

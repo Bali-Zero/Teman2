@@ -26,6 +26,7 @@ import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
+from backend.services.common.cache import cache_invalidating
 from backend.services.portal.document_processing import (
     DocumentOCR,
     ExpiryDetector,
@@ -153,6 +154,11 @@ class PortalDocumentsMixin:
                 for d in documents
             ]
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_documents:{client_id}:*",
+        "zantara:portal_documents:*",
+        "zantara:portal_timeline:*",
+    ])
     async def upload_document(
         self,
         client_id: int,

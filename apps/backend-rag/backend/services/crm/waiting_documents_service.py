@@ -13,6 +13,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 from backend.services.crm.welcome.welcome_templates import PRACTICE_DOCUMENT_CHECKLISTS
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
@@ -32,6 +33,10 @@ class WaitingDocumentsService:
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+    ])
     async def trigger_on_waiting_documents(
         self,
         practice_id: int,
