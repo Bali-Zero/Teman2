@@ -56,16 +56,16 @@ except ImportError:
     logger.warning("langgraph-checkpoint-postgres not installed, checkpointing disabled")
 
 try:
-    from langchain_anthropic import ChatAnthropic
-except ImportError:
-    ChatAnthropic = None  # type: ignore[assignment,misc]
-    logger.warning("langchain-anthropic not installed, Claude reasoning unavailable")
-
-try:
     from langchain_openai import ChatOpenAI
 except ImportError:
     ChatOpenAI = None  # type: ignore[assignment,misc]
     logger.warning("langchain-openai not installed, OpenAI reasoning unavailable")
+
+# We no longer use ``langchain_anthropic``. Claude reasoning now goes
+# through ``backend.llm.claude_oauth_langchain.build_claude_oauth_chat_model``,
+# which shells out to ``claude -p`` with Max OAuth tokens. Imported lazily
+# inside :func:`get_llm_for_reasoning` so LangChain Core is only loaded
+# when needed.
 
 # ============================================================================
 # LLM Configuration
@@ -76,60 +76,60 @@ _cached_reasoning_llm: Any | None = None
 
 
 def get_llm_for_reasoning() -> Any:
-    """
-    Get LLM instance for reasoning tasks (cached singleton).
+    """Return the cached LangChain chat model used by KG reasoning nodes.
 
-    Returns the same LLM instance across calls to reuse HTTP connection pools.
-    Uses OpenAI GPT-4o-mini for reasoning (fast + cheap).
+    Preference order:
 
-    Returns:
-        LangChain LLM instance
+    1. **Claude via Max OAuth** (``claude -p`` subprocess) — the project's
+       primary reasoning path per ``feedback_claude_oauth_only.md``. This
+       is preferred whenever the ``claude`` CLI is available. Opt-out with
+       ``KG_REASONING_PROVIDER=openai``.
+    2. **OpenAI GPT-4o-mini** — fallback for environments without the CLI
+       (e.g. Fly.io workers until we ship the CLI into the image). Used if
+       ``OPENAI_API_KEY`` is set.
+
+    ``ANTHROPIC_API_KEY`` is **never** consulted — it would mean billing
+    against the pay-as-you-go key while the Max plan is already paid.
     """
     global _cached_reasoning_llm
     if _cached_reasoning_llm is not None:
         return _cached_reasoning_llm
 
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    provider = (os.getenv("KG_REASONING_PROVIDER") or "").strip().lower()
     openai_key = os.getenv("OPENAI_API_KEY")
 
-    # OAuth MIGRATION PENDING: the legacy comment here said "Prefer OpenAI
-    # (Anthropic key is invalid in this project)". That diagnosis was wrong:
-    # project policy is NO ANTHROPIC_API_KEY — Claude must go through the Max
-    # OAuth token, not a pay-as-you-go key. See
-    # memory/feedback_claude_oauth_only.md. Until this path is migrated to
-    # Claude-via-OAuth (subprocess `claude -p` pattern from cron-agent.sh),
-    # OpenAI GPT-4o-mini remains the de-facto reasoning LLM for KG.
-    # TODO(OAuth): replace ChatAnthropic(api_key=...) with a LangChain-
-    # compatible wrapper around `claude -p` and make Claude the primary.
+    if provider != "openai":
+        try:
+            from backend.llm.claude_oauth_langchain import (  # noqa: PLC0415
+                build_claude_oauth_chat_model,
+            )
+
+            _cached_reasoning_llm = build_claude_oauth_chat_model(model="claude-sonnet-4-6")
+            logger.info("🤖 [LLM] KG reasoning: Claude via Max OAuth (sonnet-4-6, singleton)")
+            return _cached_reasoning_llm
+        except Exception as exc:  # ImportError, missing langchain-core, etc.
+            logger.warning(
+                "Claude OAuth LLM unavailable (%s); falling back to OpenAI.",
+                exc,
+            )
+
     if openai_key and ChatOpenAI is not None:
         logger.info(
-            "🤖 [LLM] Using OpenAI GPT-4o-mini for reasoning (singleton) — "
-            "Claude path pending OAuth migration",
+            "🤖 [LLM] KG reasoning: OpenAI GPT-4o-mini (singleton, OAuth-Claude unavailable)",
         )
         _cached_reasoning_llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0.2,
             api_key=openai_key,
         )
-    elif anthropic_key and ChatAnthropic is not None:
-        logger.error(
-            "🚨 [LLM] KG reasoning falling back to ChatAnthropic(api_key=...). "
-            "This violates project policy (Max OAuth only). "
-            "See memory/feedback_claude_oauth_only.md. Billing against API key.",
-        )
-        _cached_reasoning_llm = ChatAnthropic(
-            model="claude-sonnet-4-5-20250929",
-            temperature=0.2,
-            api_key=anthropic_key,
-        )
-    else:
-        raise ValueError(
-            "No LLM available for KG reasoning. "
-            f"OPENAI_API_KEY={'set' if openai_key else 'missing'} (lib={'ok' if ChatOpenAI else 'missing'}), "
-            f"ANTHROPIC_API_KEY={'set' if anthropic_key else 'missing'} (lib={'ok' if ChatAnthropic else 'missing'})",
-        )
+        return _cached_reasoning_llm
 
-    return _cached_reasoning_llm
+    raise ValueError(
+        "No LLM available for KG reasoning. "
+        "Install langchain-core (for Claude OAuth) or set OPENAI_API_KEY. "
+        "Never set ANTHROPIC_API_KEY — project policy forbids it "
+        "(memory/feedback_claude_oauth_only.md).",
+    )
 
 
 # ============================================================================
