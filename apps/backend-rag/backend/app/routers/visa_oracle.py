@@ -78,6 +78,33 @@ CONFIDENCE_ABSTAIN = "ABSTAIN"
 CONFIDENCE_CAUTIOUS = "CAUTIOUS"
 CONFIDENCE_NORMAL = "NORMAL"
 
+# Obsolete visa codes (retired by PERMENKUMHAM 22/2023 visa reform).
+# When a user asks about one of these, we expand the RAG query with the
+# likely current replacement so embedding/BM25 can match the docs we do
+# have, then the LLM applies the REGULATORY ACCURACY rule in
+# SYSTEM_PROMPT to flag the code as obsolete and redirect.
+#
+# Mapping intent: obsolete_code -> (primary_replacement, context_hint)
+OBSOLETE_VISA_CODES: dict[str, tuple[str, str]] = {
+    # B211A/B211 were the multi-purpose visit visas (tourism + light
+    # business). Post-reform the tourism replacement is C1 (Visa Wisata),
+    # business is C2/C10. C1 is the most common single-intent swap.
+    "B211A": ("C1", "C1 Visa Wisata tourism C2 business visit"),
+    "B211": ("C1", "C1 Visa Wisata tourism C2 business visit"),
+}
+
+
+def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
+    """Return (obsolete_code, expansion_hint) if the message mentions a
+    retired visa code that needs query expansion + regulatory flagging.
+    Matches word-boundary (B211 won't match B2115 etc.)."""
+    import re
+    upper = text.upper()
+    for code, (_replacement, hint) in OBSOLETE_VISA_CODES.items():
+        if re.search(rf"\b{re.escape(code)}\b", upper):
+            return code, hint
+    return None
+
 # Telegram chat ID for Damar / team lead notifications
 TELEGRAM_LEAD_CHAT_ID = 1125336968
 
@@ -448,7 +475,24 @@ async def chat(
             if history_lines:
                 history_ctx = "[Previous conversation:\n" + "\n".join(history_lines) + "]\n\n"
 
-        enriched_query = f"{quiz_ctx}{body.message}"
+        # Detect obsolete visa codes (B211A etc). If present, expand the
+        # RAG query with hints toward the current replacement so we match
+        # something relevant in the KB. Also force CAUTIOUS min-confidence
+        # downstream: we have enough pretraining knowledge + SYSTEM_PROMPT
+        # guidance to correct the code mention, even if the KB top_score
+        # is weak (KB is thin on ex-codes precisely because they no longer
+        # exist).
+        obsolete_hit = _detect_obsolete_code(body.message)
+        if obsolete_hit:
+            code, hint = obsolete_hit
+            enriched_query = f"{quiz_ctx}{body.message} {hint}"
+            logger.info(
+                "visa-oracle /chat: obsolete code %s detected, expanded query session=%s",
+                code,
+                body.session_id[:12],
+            )
+        else:
+            enriched_query = f"{quiz_ctx}{body.message}"
 
         # --- Hybrid search ---
         search_service = HybridSearchService()
@@ -485,6 +529,20 @@ async def chat(
             confidence = CONFIDENCE_CAUTIOUS
         else:
             confidence = CONFIDENCE_NORMAL
+
+        # If the user mentioned an obsolete code, DON'T ABSTAIN even with weak
+        # scores. We have enough pretraining context + SYSTEM_PROMPT rules to
+        # correctly flag the code as obsolete and redirect. Promote to CAUTIOUS
+        # so the hedging prefix is emitted too.
+        if obsolete_hit and confidence == CONFIDENCE_ABSTAIN:
+            confidence = CONFIDENCE_CAUTIOUS
+            logger.info(
+                "visa-oracle /chat: promoted ABSTAIN→CAUTIOUS due to obsolete "
+                "code %s (top_score=%.3f) session=%s",
+                obsolete_hit[0],
+                top_score,
+                body.session_id[:12],
+            )
 
         if confidence == CONFIDENCE_ABSTAIN:
             logger.info(
