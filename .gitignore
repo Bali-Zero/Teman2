@@ -522,8 +522,10 @@ apps/backend-rag/scripts/ready_to_curl.json
 apps/backend-rag/openapi.json
 apps/evaluator/articles_indexing_state.json
 apps/evaluator/indexing_state.json
-apps/evaluator/nlm_nb2_*.json
-apps/evaluator/nlm_nb2_*.jsonl
+apps/evaluator/nlm_nb*_*.json
+apps/evaluator/nlm_nb*_*.jsonl
+apps/evaluator/nlm_deep_research/*_state.json
+apps/evaluator/nlm_deep_research/coverage_matrix.json
 apps/mouth/scripts/kbli_data_backup.json
 apps/mouth/scripts/kbli_english_keywords.json
 scripts/.rag_canary/
