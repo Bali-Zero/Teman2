@@ -24,7 +24,7 @@ Usage:
 import asyncio
 import logging
 import time
-from collections import defaultdict
+from collections import OrderedDict
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -90,16 +90,60 @@ class MemoryOrchestrator:
         self._circuit_breaker_failures = 0
         self._circuit_breaker_threshold = 5
 
-        # Race condition protection: read-write locks per user
-        # Write locks: exclusive access for process_conversation
-        # Read semaphores: allow concurrent reads in get_user_context
-        self._write_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self._read_semaphores: dict[str, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(10),  # Allow 10 concurrent reads per user
-        )
+        # Race condition protection: read-write locks per user.
+        # Write locks: exclusive access for process_conversation.
+        # Read semaphores: allow concurrent reads in get_user_context.
+        #
+        # Bounded LRU: with `defaultdict(asyncio.Lock)` every distinct
+        # user_email seen in one process leaked a Lock/Semaphore forever,
+        # which is a slow but guaranteed memory growth on long-lived Fly.io
+        # workers. OrderedDict with an eviction cap keeps per-user locking
+        # semantics for the working set and drops cold entries.
+        self._write_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+        self._read_semaphores: OrderedDict[str, asyncio.Semaphore] = OrderedDict()
+        self._max_lock_entries = 2048
+        self._read_concurrency_per_user = 10
         self._lock_timeout = 5.0  # seconds
 
         logger.info("📝 MemoryOrchestrator created")
+
+    def _get_write_lock(self, user_email: str) -> asyncio.Lock:
+        """Return the write lock for a user, evicting cold entries if over cap.
+
+        Moves the user to the end of the OrderedDict (most-recently-used).
+        When the dict exceeds ``_max_lock_entries``, the least-recently-used
+        entry is popped. An unlocked Lock has no holders, so dropping it is
+        safe — the next caller for that user just gets a fresh one.
+        """
+        lock = self._write_locks.get(user_email)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._write_locks[user_email] = lock
+            while len(self._write_locks) > self._max_lock_entries:
+                evicted_email, evicted_lock = self._write_locks.popitem(last=False)
+                if evicted_lock.locked():
+                    # Put it back at the front — can't safely evict a held lock.
+                    self._write_locks[evicted_email] = evicted_lock
+                    self._write_locks.move_to_end(evicted_email, last=False)
+                    break
+        else:
+            self._write_locks.move_to_end(user_email)
+        return lock
+
+    def _get_read_semaphore(self, user_email: str) -> asyncio.Semaphore:
+        """Return the read semaphore for a user, evicting cold entries if over cap."""
+        sem = self._read_semaphores.get(user_email)
+        if sem is None:
+            sem = asyncio.Semaphore(self._read_concurrency_per_user)
+            self._read_semaphores[user_email] = sem
+            while len(self._read_semaphores) > self._max_lock_entries:
+                evicted_email, evicted_sem = self._read_semaphores.popitem(last=False)
+                # A Semaphore is safe to evict even if currently acquired —
+                # callers already hold a live reference.
+                _ = evicted_email, evicted_sem
+        else:
+            self._read_semaphores.move_to_end(user_email)
+        return sem
 
     @property
     def is_initialized(self) -> bool:
@@ -336,7 +380,7 @@ class MemoryOrchestrator:
         if not user_email:
             return MemoryContext(user_id="", has_data=False)
 
-        semaphore = self._read_semaphores[user_email]
+        semaphore = self._get_read_semaphore(user_email)
 
         if self._status == MemoryServiceStatus.DEGRADED:
             # In degraded mode, return limited context
@@ -493,7 +537,7 @@ class MemoryOrchestrator:
 
         self._ensure_initialized()
 
-        lock = self._write_locks[user_email]
+        lock = self._get_write_lock(user_email)
 
         try:
             # Acquire write lock with timeout
