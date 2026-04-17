@@ -143,6 +143,46 @@ HEDGING_PREFIX_BY_LANG: dict[str, str] = {
     ),
 }
 
+# Localized ABSTAIN fallback (top_score < 0.30 or no results — handoff to team)
+ABSTAIN_FALLBACK_BY_LANG: dict[str, str] = {
+    "en": (
+        "I don't have reliable context to answer that specifically. "
+        "Contact our Bali Zero team on WhatsApp (+62 821-3107-363) — "
+        "we'll give you a tailored answer in minutes."
+    ),
+    "it": (
+        "Non ho informazioni sufficienti per rispondere con precisione "
+        "a questa domanda specifica. Scrivi al nostro team Bali Zero su "
+        "WhatsApp (+62 821-3107-363) — ti rispondiamo in pochi minuti "
+        "con una guida su misura."
+    ),
+    "id": (
+        "Saya belum punya informasi spesifik untuk menjawab pertanyaan ini. "
+        "Hubungi tim Bali Zero di WhatsApp (+62 821-3107-363) — kami akan "
+        "memberi jawaban yang disesuaikan dalam beberapa menit."
+    ),
+    "fr": (
+        "Je n'ai pas d'informations fiables pour répondre précisément à "
+        "cette question. Contacte l'équipe Bali Zero sur WhatsApp "
+        "(+62 821-3107-363) — réponse sur mesure en quelques minutes."
+    ),
+    "es": (
+        "No tengo información suficiente para responder con precisión a "
+        "esta pregunta. Escribe al equipo Bali Zero por WhatsApp "
+        "(+62 821-3107-363) — te respondemos a medida en pocos minutos."
+    ),
+    "de": (
+        "Ich habe keine zuverlässigen Informationen, um diese Frage "
+        "präzise zu beantworten. Schreib dem Bali Zero Team auf WhatsApp "
+        "(+62 821-3107-363) — maßgeschneiderte Antwort in wenigen Minuten."
+    ),
+    "ru": (
+        "У меня нет достоверной информации, чтобы точно ответить на "
+        "этот вопрос. Напишите в команду Bali Zero в WhatsApp "
+        "(+62 821-3107-363) — индивидуальный ответ за несколько минут."
+    ),
+}
+
 # Localized timeout fallback when Gemini takes >30s
 TIMEOUT_FALLBACK_BY_LANG: dict[str, str] = {
     "en": (
@@ -352,6 +392,22 @@ async def chat(
     from backend.llm.genai_client import get_genai_client
     from backend.services.rag.hybrid_search import HybridSearchService
 
+    # Resolve response language early so every fallback branch (no results,
+    # ABSTAIN, timeout, CAUTIOUS hedging) uses the user's language, not English.
+    # Priority: explicit body.language (from client) > auto-detect from message
+    # > Italian default (Bali Zero ships Italian-first).
+    _lang_names = {
+        "ru": "Russian", "zh": "Chinese", "ko": "Korean", "ja": "Japanese",
+        "id": "Indonesian", "fr": "French", "it": "Italian", "de": "German",
+        "es": "Spanish", "en": "English",
+    }
+    _requested_lang = (body.language or "").strip().lower()[:2]
+    if _requested_lang in _lang_names:
+        response_lang = _requested_lang
+    else:
+        _detected = _detect_language(body.message)
+        response_lang = _detected if _detected in _lang_names else "it"
+
     try:
         # Build an enriched query that includes quiz context
         quiz_ctx = ""
@@ -394,9 +450,8 @@ async def chat(
             logger.info("visa-oracle /chat: no results for session=%s", body.session_id[:12])
             return ChatResponse(
                 success=True,
-                answer=(
-                    "I don't have specific information about that. "
-                    "Please contact our team directly via WhatsApp for personalised advice."
+                answer=ABSTAIN_FALLBACK_BY_LANG.get(
+                    response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]
                 ),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
@@ -425,9 +480,8 @@ async def chat(
             )
             return ChatResponse(
                 success=True,
-                answer=(
-                    "I couldn't find reliable information to answer that question. "
-                    "Please contact our specialists directly via WhatsApp."
+                answer=ABSTAIN_FALLBACK_BY_LANG.get(
+                    response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]
                 ),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
@@ -450,23 +504,8 @@ async def chat(
                 "the information with the Bali Zero team, as regulations may change."
             )
 
-        # Resolve response language. Priority:
-        #   1. Explicit body.language from the client (browser locale or UI toggle)
-        #   2. Auto-detect from message content
-        #   3. Italian default (Bali Zero ships Italian-first; English users
-        #      typically write longer / detectable messages anyway).
-        lang_names = {
-            "ru": "Russian", "zh": "Chinese", "ko": "Korean",
-            "ja": "Japanese", "id": "Indonesian", "fr": "French",
-            "it": "Italian", "de": "German", "es": "Spanish", "en": "English",
-        }
-        requested_lang = (body.language or "").strip().lower()[:2]
-        if requested_lang in lang_names:
-            response_lang = requested_lang
-        else:
-            detected_lang = _detect_language(body.message)
-            response_lang = detected_lang if detected_lang in lang_names else "it"
-        lang_name = lang_names[response_lang]
+        # response_lang already resolved at handler entry. Inject lang instruction.
+        lang_name = _lang_names[response_lang]
         system += (
             f"\n\nIMPORTANT: Respond in {lang_name}. The entire answer, "
             f"including section headings and labels, must be in {lang_name}. "
