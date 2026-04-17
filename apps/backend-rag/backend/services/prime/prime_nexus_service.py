@@ -24,20 +24,27 @@ import asyncpg
 import httpx
 
 from backend.services.kbli_eye import KBLIEye
-from backend.services.prime.geo_service import (
+
+# Backward-compat re-exports: tests (and possibly external consumers) still
+# import these symbols from prime_nexus_service after the #87 refactor split
+# the service into geo/property/tax modules. Marked noqa so ruff F401 doesn't
+# strip them; they are part of the module's public surface.
+from backend.services.prime.geo_service import (  # noqa: F401
     RESTRICTED_ZONES,
     ZONE_COLORS_MAP,
     ZONE_LABELS,
     calculate_building_yield,
     encode_geohash,
+    parse_tb_to_meters,
     rgb_string_to_hex,
 )
-from backend.services.prime.property_service import (
+from backend.services.prime.property_service import (  # noqa: F401
     calculate_investment_score,
+    calculate_zone_kbli_fit,
     classify_activity,
     is_investor_relevant,
 )
-from backend.services.prime.tax_service import (
+from backend.services.prime.tax_service import (  # noqa: F401
     calculate_property_eligibility,
     calculate_property_tax,
 )
