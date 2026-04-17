@@ -65,16 +65,19 @@ jobs:
       - name: pip-audit
         run: |
           pip install pip-audit
-          # Run from apps/backend-rag/ so the `-e ../../packages/cell-core`
-          # line in requirements.txt resolves during pip-audit's dry-run
-          # install. `--skip-editable` then excludes cell-core from the
-          # vulnerability lookup itself: it's a first-party workspace
-          # package (not on PyPI), so "Dependency not found on PyPI" is
-          # the expected — and irrelevant — answer for it.
+          # pip-audit's `--skip-editable` skips the VULN LOOKUP for editable
+          # entries but still performs a dry-run resolve that then audits
+          # the resolved package by name, so `-e ../../packages/cell-core`
+          # surfaces as a hard failure ("Dependency not found on PyPI")
+          # under `--strict`. Strip cell-core out of the requirements file
+          # we hand to pip-audit — it's a first-party workspace package
+          # with no upstream PyPI metadata, so auditing it against PyPI
+          # would be meaningless either way.
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
           cd apps/backend-rag
-          pip-audit --strict --skip-editable --requirement requirements.txt \
+          grep -v '^-e \.\./\.\./packages/cell-core' requirements.txt > /tmp/requirements-audit.txt
+          pip-audit --strict --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855
 
       - name: Mypy type check (core + models)
