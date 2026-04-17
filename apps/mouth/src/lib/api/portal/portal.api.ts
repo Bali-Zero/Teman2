@@ -27,6 +27,8 @@ import type {
   DriveFilesResponse,
   BillingResponse,
   NotificationsResponse,
+  DashboardSummary,
+  PortalMatter,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -42,6 +44,20 @@ export class PortalApi {
       PortalApiResponse<PortalDashboard>
     >("/api/portal/dashboard", { method: "GET" });
     return response.data!;
+  }
+
+  async getDashboardSummary(): Promise<DashboardSummary> {
+    return this.client.request<DashboardSummary>(
+      "/api/portal/dashboard/summary",
+      { method: "GET" },
+    );
+  }
+
+  async listMatters(): Promise<{ matters: PortalMatter[] }> {
+    return this.client.request<{ matters: PortalMatter[] }>(
+      "/api/portal/matters",
+      { method: "GET" },
+    );
   }
 
   async getTimeline(limit: number = 50): Promise<TimelineResponse> {

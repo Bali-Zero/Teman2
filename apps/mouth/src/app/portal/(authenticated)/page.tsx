@@ -8,6 +8,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import {
   CheckCircle2,
   AlertTriangle,
@@ -15,18 +16,29 @@ import {
   ChevronRight,
   FileText,
   MessageCircle,
-  Briefcase,
 } from 'lucide-react';
+
+const TimelineItem = dynamic(
+  () => import('./_components/TimelineItem').then((m) => m.TimelineItem),
+  { ssr: false },
+);
 import { cn } from '@/lib/utils';
-import { usePortalDashboard, usePortalTimeline } from '@/hooks';
+import {
+  usePortalDashboard,
+  usePortalDashboardSummary,
+  usePortalTimeline,
+} from '@/hooks';
 import { PortalCardSkeleton, PortalPageLoader, PortalListSkeleton } from '@/components/portal';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { TimelineEntry } from '@/lib/api/types/timeline.types';
+import type { DashboardSummary } from '@/lib/api/portal/portal.types';
+import { DeadlineBadge } from '@balizero/core';
 
 export default function PortalHomePage() {
   const router = useRouter();
   const { data: dashboard, isLoading: isLoadingDashboard, isError, error } = usePortalDashboard();
+  const { data: summary } = usePortalDashboardSummary();
   const { data: timelineData, isLoading: isLoadingTimeline } = usePortalTimeline(20);
 
   const timeline = timelineData?.entries || [];
@@ -121,6 +133,9 @@ export default function PortalHomePage() {
         <h1 className="text-3xl font-bold tracking-tight lux-text-gradient">Welcome Back</h1>
         <p className="text-[var(--tx-secondary)] mt-1">Here is your Bali life overview.</p>
       </section>
+
+      {/* V2 Matter-First Hero Cards */}
+      <HeroCards summary={summary} onOpenMatter={(id) => router.push(`/portal/matters/${id}`)} />
 
       {/* Status Cards (Traffic Lights) */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -388,153 +403,105 @@ function StatusCard({
   );
 }
 
-function TimelineItem({ entry, isLast }: { entry: TimelineEntry; isLast: boolean }) {
-  const isFuture =
-    'isFuture' in entry ? Boolean((entry as unknown as { isFuture?: boolean }).isFuture) : false;
 
-  const getIcon = () => {
-    switch (entry.type) {
-      case 'message':
-        return <MessageCircle className="w-4 h-4" />;
-      case 'document':
-        return <FileText className="w-4 h-4" />;
-      case 'practice':
-        return <Briefcase className="w-4 h-4" />;
-      case 'deadline':
-        return <AlertTriangle className="w-4 h-4" />;
-      default:
-        return <Clock className="w-4 h-4" />;
-    }
-  };
+// ============================================================================
+// V2 Matter-First Hero Cards
+// ============================================================================
 
-  const getBgColor = () => {
-    if (isFuture) return 'bg-[rgba(245,158,11,0.15)] text-[var(--neon-amber)]';
-    switch (entry.type) {
-      case 'message':
-        return 'bg-[rgba(59,130,246,0.15)] text-[var(--neon-blue)]';
-      case 'deadline':
-        return 'bg-[rgba(244,63,94,0.15)] text-[var(--neon-rose)]';
-      default:
-        return 'text-[var(--tx-secondary)]';
-    }
-  };
+function HeroCards({
+  summary,
+  onOpenMatter,
+}: {
+  summary: DashboardSummary | undefined;
+  onOpenMatter: (id: number | string) => void;
+}) {
+  if (!summary) return null;
 
-  const getDotStyle = (): React.CSSProperties => {
-    if (isFuture)
-      return {
-        background: 'rgba(245,158,11,0.1)',
-        color: 'var(--neon-amber)',
-        borderColor: 'var(--neon-amber)',
-      };
-    switch (entry.type) {
-      case 'message':
-        return {
-          background: 'rgba(59,130,246,0.1)',
-          color: 'var(--neon-blue)',
-          borderColor: 'var(--neon-blue)',
-        };
-      case 'deadline':
-        return {
-          background: 'rgba(244,63,94,0.1)',
-          color: 'var(--neon-rose)',
-          borderColor: 'var(--neon-rose)',
-        };
-      default:
-        return {
-          background: 'var(--glass-rim)',
-          color: 'var(--tx-secondary)',
-          borderColor: 'rgba(255,255,255,0.1)',
-        };
-    }
-  };
+  const empty =
+    summary.open_actions.length === 0 &&
+    summary.upcoming_deadlines.length === 0 &&
+    (summary.unread_messages ?? 0) === 0;
+
+  if (empty) {
+    return (
+      <section className="crystal-stat-card !flex !flex-col items-center justify-center p-8 text-center">
+        <CheckCircle2 className="w-10 h-10 text-[var(--neon-emerald)] mb-3" />
+        <h2 className="text-xl font-bold text-[var(--tx-pure)]">All caught up</h2>
+        <p className="text-sm text-[var(--tx-secondary)] mt-1">
+          No open actions, no deadlines in the next 30 days.
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <div className="relative pl-6">
-      <div
-        className="absolute -left-[9px] top-0 w-4 h-4 rounded-full flex items-center justify-center border-2 border-[var(--anthracite-base)] shadow-[0_0_10px_currentColor]"
-        style={getDotStyle()}
-      >
-        {/* Dot only */}
-      </div>
-
-      <div
-        className="crystal-stat-card !border !p-4 !shadow-none"
-        style={{
-          background: isFuture ? 'rgba(245,158,11,0.02)' : 'rgba(255,255,255,0.02)',
-          borderColor: isFuture ? 'rgba(245,158,11,0.2)' : 'var(--glass-rim)',
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div
-            className={cn(
-              'p-1.5 rounded-lg border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)]',
-              getBgColor()
-            )}
-          >
-            {getIcon()}
-          </div>
-          <span
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)]"
-            title={new Date(entry.occurredAt).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-          >
-            {new Date(entry.occurredAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })}
-            {isFuture && ' (Upcoming)'}
-          </span>
-          {(() => {
-            const diff = Math.round((new Date(entry.occurredAt).getTime() - Date.now()) / 86400000);
-            if (diff === 0)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold">
-                  Today
-                </span>
-              );
-            if (diff > 0)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-semibold">
-                  ⏰ In {diff}d
-                </span>
-              );
-            const abs = Math.abs(diff);
-            if (abs <= 7)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-2)] font-semibold">
-                  {abs}d ago
-                </span>
-              );
-            if (abs <= 30)
-              return (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--bz-text-2)] font-semibold">
-                  {Math.floor(abs / 7)}w ago
-                </span>
-              );
-            return null;
-          })()}
-        </div>
-
-        <h3 className="font-bold text-[var(--tx-pure)] text-sm">{entry.title}</h3>
-        <p className="text-xs mt-1.5 text-[var(--tx-secondary)] line-clamp-2">
-          {entry.description}
-        </p>
-
-        {entry.type === 'message' && entry.status === 'team_to_client' && (
-          <button
-            type="button"
-            onClick={() => { window.location.href = '/portal/chat'; }}
-            className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center text-[var(--bz-copper)] hover:text-white transition-colors cursor-pointer w-fit inline-flex"
-          >
-            Reply <ChevronRight className="w-3 h-3 ml-1" />
-          </button>
+    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Open Actions
+        </h2>
+        {summary.open_actions.length === 0 ? (
+          <p className="text-sm text-[var(--tx-secondary)] italic">None pending</p>
+        ) : (
+          <ul className="space-y-2">
+            {summary.open_actions.slice(0, 5).map((a) => (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenMatter(a.id)}
+                  className="text-left text-sm text-[var(--tx-primary)] hover:text-[var(--bz-copper)] transition-colors w-full truncate"
+                >
+                  {a.title}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
-    </div>
+      </article>
+
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Deadlines · Next 30 days
+        </h2>
+        {summary.upcoming_deadlines.length === 0 ? (
+          <p className="text-sm text-[var(--tx-secondary)] italic">No upcoming deadlines</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {summary.upcoming_deadlines.slice(0, 5).map((d) => (
+              <li key={d.id} className="flex items-center gap-2 text-sm">
+                {d.due_date && <DeadlineBadge date={new Date(d.due_date)} />}
+                <span className="text-[var(--tx-primary)] truncate">{d.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <a
+          href="/api/portal/deadlines/ical"
+          download
+          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper)] hover:text-white transition-colors"
+        >
+          Export iCal →
+        </a>
+      </article>
+
+      <article className="crystal-stat-card !flex !flex-col p-5 min-h-[180px]">
+        <h2 className="text-[10px] font-bold uppercase tracking-widest text-[var(--tx-secondary)] mb-3">
+          Team Messages
+        </h2>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <span className="text-4xl font-bold text-[var(--tx-pure)]">
+            {summary.unread_messages}
+          </span>
+          <span className="text-xs text-[var(--tx-secondary)] mt-1">unread</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => { window.location.href = '/portal/messages'; }}
+          className="mt-auto text-[10px] uppercase tracking-widest font-bold text-[var(--bz-copper)] hover:text-white transition-colors self-start"
+        >
+          Open →
+        </button>
+      </article>
+    </section>
   );
 }
