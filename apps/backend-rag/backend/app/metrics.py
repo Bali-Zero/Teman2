@@ -747,7 +747,8 @@ qdrant_search_latency_seconds = safe_register_histogram(
 llm_tokens_total = safe_register_counter(
     "zantara_llm_tokens_total",
     "Total LLM tokens used by model, provider, and type",
-    ["model", "provider", "type"],  # type: input|output
+    # label "type" holds "input" or "output"
+    ["model", "provider", "type"],
 )
 
 # Database Active Connections (Gauge)
