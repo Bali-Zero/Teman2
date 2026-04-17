@@ -5,6 +5,7 @@ from typing import Any
 import asyncpg
 
 from backend.db.base_repository import BaseRepository
+from backend.services.common.cache import cache_invalidating
 from backend.utils.query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,10 @@ class ClientRepository(BaseRepository):
             )
             raise
 
+    @cache_invalidating([
+        "zantara:crm_clients_stats:*",
+        "zantara:crm_clients:*",
+    ])
     async def create_client_with_details(
         self,
         client_data: dict[str, Any],

@@ -645,6 +645,21 @@ Return ONLY valid JSON, no markdown."""
             if kg_extraction_result:
                 result["kg_extraction"] = kg_extraction_result
 
+            # Semantic cache: wipe the legal domain so next reader sees fresh answers
+            # within the next request, rather than waiting the 4h per-domain TTL.
+            try:
+                from backend.services.caching.semantic_cache import (
+                    DOMAIN_LEGAL,
+                    invalidate_by_domain,
+                )
+
+                await invalidate_by_domain(DOMAIN_LEGAL)
+            except Exception as cache_exc:
+                logger.debug(
+                    "Semantic cache legal-domain invalidation skipped: %s",
+                    cache_exc,
+                )
+
             return result
 
         except Exception as e:

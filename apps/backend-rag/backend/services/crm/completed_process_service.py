@@ -14,6 +14,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
 
@@ -34,6 +35,11 @@ class CompletedProcessService:
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+        "zantara:crm_documents:*",
+    ])
     async def trigger_on_completed(
         self,
         practice_id: int,

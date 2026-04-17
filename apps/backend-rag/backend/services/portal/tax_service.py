@@ -6,6 +6,7 @@ import structlog
 from asyncpg import Pool
 
 from backend.schemas.portal import TaxObligation, TaxSummary
+from backend.services.common.cache import cache_invalidating
 
 logger = structlog.get_logger(__name__)
 
@@ -88,6 +89,10 @@ class TaxService:
                 status=status,
             )
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_tax:{client_id}:*",
+        lambda self, client_id, *a, **k: f"zantara:portal_timeline:{client_id}:*",
+    ])
     async def create_obligation(
         self,
         client_id: int,
@@ -141,6 +146,10 @@ class TaxService:
             )
             return TaxObligation(**dict(row))
 
+    @cache_invalidating([
+        "zantara:portal_tax:*",
+        "zantara:portal_timeline:*",
+    ])
     async def update_status(
         self, obligation_id: int, new_status: str, amount_paid: float | None = None,
     ) -> TaxObligation | None:

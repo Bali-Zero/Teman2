@@ -18,6 +18,7 @@ import asyncpg
 import httpx
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -203,6 +204,11 @@ class ProcessAutomationService:
         from backend.services.integrations.zoho_email_service import ZohoEmailService
         self.zoho_email_service = ZohoEmailService(db_pool)
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+        "zantara:crm_activity:*",
+    ])
     async def trigger_on_process_start(
         self,
         practice_id: int,
@@ -438,6 +444,11 @@ class CompletedProcessService:
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+        "zantara:crm_documents:*",
+    ])
     async def trigger_on_completed(
         self,
         practice_id: int,
@@ -707,6 +718,10 @@ class WaitingDocumentsService:
         from backend.services.integrations.zoho_email_service import ZohoEmailService
         self.zoho_email_service = ZohoEmailService(db_pool)
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+    ])
     async def trigger_on_waiting_documents(
         self,
         practice_id: int,

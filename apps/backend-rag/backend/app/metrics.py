@@ -73,6 +73,18 @@ cache_set_operations = safe_register_counter(
     "zantara_cache_set_operations_total", "Total cache set operations",
 )
 
+# Cache invalidation discipline (per @cache_invalidating decorator)
+cache_invalidation_total = safe_register_counter(
+    "zantara_cache_invalidation_total",
+    "Cache invalidation operations triggered by service-layer mutations",
+    ["namespace", "status"],  # namespace = second key segment, status = success|error
+)
+cache_invalidation_error_total = safe_register_counter(
+    "zantara_cache_invalidation_error_total",
+    "Cache invalidation failures (Redis/cache backend errors swallowed by decorator)",
+    ["namespace"],
+)
+
 # FAQ Cache Metrics (exact match, < 1ms lookup)
 faq_cache_hits_total = safe_register_counter(
     "zantara_faq_cache_hits_total",

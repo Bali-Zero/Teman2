@@ -109,7 +109,7 @@ def register_handlers(
 
         # Invalidate CRM cache
         try:
-            from backend.app.services.cache_service import invalidate_cache
+            from backend.core.cache import invalidate_cache
             await invalidate_cache("zantara:crm_clients_stats:*")
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
@@ -190,7 +190,7 @@ def register_handlers(
 
         # Invalidate practice cache
         try:
-            from backend.app.services.cache_service import invalidate_cache
+            from backend.core.cache import invalidate_cache
             await invalidate_cache("zantara:crm_practices:*")
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
