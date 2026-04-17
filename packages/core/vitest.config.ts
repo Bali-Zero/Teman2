@@ -13,5 +13,8 @@ export default defineConfig({
     ],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**"],
+    deps: {
+      inline: ["@testing-library/react"],
+    },
   },
 });
