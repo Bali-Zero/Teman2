@@ -7,6 +7,10 @@ export {
   type ProgressRingProps,
 } from "./components/ProgressRing";
 export {
+  DeadlineBadge,
+  type DeadlineBadgeProps,
+} from "./components/DeadlineBadge";
+export {
   ThemeProvider,
   ThemeScope,
   useTheme,
