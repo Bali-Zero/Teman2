@@ -65,9 +65,14 @@ jobs:
       - name: pip-audit
         run: |
           pip install pip-audit
+          # requirements.txt references cell-core as `-e ../../packages/cell-core`
+          # (path relative to the requirements file's dir), so pip-audit must
+          # run from `apps/backend-rag/` — otherwise pip's editable resolver
+          # can't find the workspace package and aborts the whole audit.
           # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
           # with rationale for each. Review that file before adding new entries.
-          pip-audit --strict --requirement apps/backend-rag/requirements.txt \
+          cd apps/backend-rag
+          pip-audit --strict --requirement requirements.txt \
             --ignore-vuln GHSA-69w3-r845-3855
 
       - name: Import chain gate
