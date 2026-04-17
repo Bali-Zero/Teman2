@@ -834,7 +834,6 @@ class PortalDashboardMixin:
             - entries: list of TimelineEntry
             - lastUpdated: timestamp
         """
-        import time
 
         entries = []
 

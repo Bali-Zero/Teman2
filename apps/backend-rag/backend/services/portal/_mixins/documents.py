@@ -19,9 +19,7 @@ Depends on PortalService for:
 """
 
 import asyncio
-import json
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg

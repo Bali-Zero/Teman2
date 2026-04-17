@@ -1,30 +1,34 @@
 """
-Client Portal Service
+Client Portal Service (façade).
 
-Provides client-scoped data access for:
-- Dashboard overview
-- Visa & immigration status
-- Company & licenses
-- Tax deadlines
-- Documents (with OCR, virus scan, Google Drive upload)
-- Messages
-- Preferences
+PortalService composes four internal mixins, each owning a cohesive slice of
+the portal API surface:
+
+    - PortalDashboardMixin   dashboard / visa / companies / tax / timeline
+    - PortalDocumentsMixin   documents list + upload pipeline (virus / OCR / Drive)
+    - PortalBillingMixin     invoices + profile update
+    - PortalMessagingMixin   messages + preferences
+
+This module keeps only:
+    - the PortalService class itself (MRO composition + constructor + shared
+      state: pool, _metrics, _upload_rate_limits, rate-limit constants)
+    - DB-error classifiers shared across mixins
+      (_is_undefined_column_error / _is_undefined_table_error)
+    - cross-cutting operations (cleanup_orphaned_documents, get_upload_metrics,
+      health_check)
+    - backward-compat re-exports of document_processing helpers so existing
+      callers can keep doing
+      `from backend.services.portal.portal_service import VirusScanner`.
 """
 
-import asyncio
-import io
-import json
-import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
 
-# Document processing helpers extracted to dedicated module.
-# Re-exported here for backward compatibility: existing callers can keep
-# `from backend.services.portal.portal_service import VirusScanner`.
+# Re-exported for backward compatibility — see module docstring.
 from backend.services.portal.document_processing import (
     MAGIC_AVAILABLE,
     PDF_VISION_AVAILABLE,
@@ -39,6 +43,17 @@ from backend.services.portal._mixins.documents import PortalDocumentsMixin
 from backend.services.portal._mixins.messaging import PortalMessagingMixin
 
 logger = get_logger(__name__)
+
+__all__ = [
+    "PortalService",
+    # Re-exports for backward compatibility:
+    "VirusScanner",
+    "DocumentOCR",
+    "ExpiryDetector",
+    "PDF_VISION_AVAILABLE",
+    "PYMUPDF_AVAILABLE",
+    "MAGIC_AVAILABLE",
+]
 
 
 class PortalService(
