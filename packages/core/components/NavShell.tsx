@@ -36,10 +36,17 @@ export function NavShell({
 }: NavShellProps) {
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-[300] flex items-center px-5 md:px-10 h-14 backdrop-blur-xl"
+      className="flex items-center px-5 md:px-10 h-14 backdrop-blur-xl"
       style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        width: "100%",
+        zIndex: 300,
         background: "var(--nav-bg)",
         borderBottom: "1px solid var(--nav-border)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       }}
     >
       <div className="mr-auto opacity-75 transition-opacity hover:opacity-100">
