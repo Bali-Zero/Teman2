@@ -76,6 +76,7 @@ class PracticeStatusListener:
             try:
                 await self._task
             except asyncio.CancelledError:
+                # Cooperative shutdown — cancellation here is the success path.
                 pass
         await self._close_conn()
         logger.info("✅ PracticeStatusListener stopped")
@@ -88,6 +89,7 @@ class PracticeStatusListener:
             try:
                 await self._connect_and_listen()
             except asyncio.CancelledError:
+                # Cooperative shutdown — exit the retry loop cleanly.
                 break
             except Exception as exc:
                 logger.error(f"PracticeStatusListener error, reconnecting in {_RECONNECT_DELAY_S}s: {exc}", exc_info=True)
@@ -115,8 +117,13 @@ class PracticeStatusListener:
             try:
                 await self._conn.remove_listener("practice_changed", self._on_notification)
                 await self._conn.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                # UU PDP audit: cleanup failure must be visible so orphaned
+                # PG listener connections can be correlated with retries.
+                logger.warning(
+                    "practice_status_listener.close_failed",
+                    extra={"error_type": type(exc).__name__, "error": str(exc)[:120]},
+                )
         self._conn = None
 
     # ── Notification callback ─────────────────────────────────────────────

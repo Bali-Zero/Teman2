@@ -203,6 +203,24 @@ async def test_create_save_task_returns_none_for_empty_answer(handler: MemoryHan
     assert result is None
 
 
+@pytest.mark.asyncio
+async def test_create_save_task_retains_strong_ref(
+    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+) -> None:
+    """Regression (S09): caller drops the Task, but handler must keep a
+    strong ref so CPython can't GC the coroutine mid-save."""
+    handler._memory_orchestrator = mock_orchestrator
+    # Simulate caller that ignores the return value.
+    handler.create_save_task(user_id="user@test.com", query="q", answer="a")
+    assert len(handler._inflight_tasks) == 1
+    # Drain.
+    await asyncio.sleep(0)
+    for task in list(handler._inflight_tasks):
+        await task
+    await asyncio.sleep(0)
+    assert len(handler._inflight_tasks) == 0
+
+
 # ============================================================
 # Lazy MemoryOrchestrator init
 # ============================================================

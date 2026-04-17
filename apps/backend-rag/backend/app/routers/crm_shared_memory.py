@@ -47,8 +47,13 @@ async def _get_practice_codes(conn: asyncpg.Connection) -> list[str]:
     try:
         rows = await conn.fetch("SELECT code FROM practice_types WHERE active = true")
         return [row["code"] for row in rows]
-    except Exception:
-        # If table doesn't exist or query fails, return empty list
+    except Exception as exc:
+        # If table doesn't exist or query fails, return empty list.
+        # UU PDP audit: log so stale CRM memory reads are traceable.
+        logger.warning(
+            "crm_shared_memory.practice_codes_query_failed",
+            extra={"error_type": type(exc).__name__, "error": str(exc)[:200]},
+        )
         return []
 
 
