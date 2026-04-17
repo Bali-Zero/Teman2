@@ -260,6 +260,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="portal_matters",          process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_invite",           process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_notifications",    process_groups=_API, tags=("portal",)),
+    RouterEntry(name="portal_notification_prefs", process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_process_timeline", process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_taxes",            process_groups=_API, tags=("portal",)),
     RouterEntry(name="portal_visa",             process_groups=_API, tags=("portal",)),
