@@ -26,6 +26,19 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@balizero/core/analytics": path.resolve(
+        __dirname,
+        "../../packages/core/analytics/index.ts",
+      ),
+      "@balizero/core/auth": path.resolve(
+        __dirname,
+        "../../packages/core/auth/index.ts",
+      ),
+      "@balizero/core/utils": path.resolve(
+        __dirname,
+        "../../packages/core/utils/index.ts",
+      ),
+      "@balizero/core": path.resolve(__dirname, "../../packages/core/index.ts"),
     },
   },
 });
