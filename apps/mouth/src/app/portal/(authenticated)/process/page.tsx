@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, memo } from "react";
+import dynamic from "next/dynamic";
 import {
   Loader2,
   FileText,
@@ -19,15 +20,46 @@ import { logger } from "@/lib/logger";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { FileUploadField } from "@/components/documents/FileUploadField";
 import type { ClientRequiredDocument } from "@/lib/types/required-documents";
-import { ProcessStepper } from "@/components/portal";
+
+// Lazy: Dialog is only used inside modals (not first paint)
+const Dialog = dynamic(
+  () => import("@/components/ui/dialog").then((m) => ({ default: m.Dialog })),
+  { ssr: false },
+);
+const DialogContent = dynamic(
+  () =>
+    import("@/components/ui/dialog").then((m) => ({
+      default: m.DialogContent,
+    })),
+  { ssr: false },
+);
+const DialogHeader = dynamic(
+  () =>
+    import("@/components/ui/dialog").then((m) => ({ default: m.DialogHeader })),
+  { ssr: false },
+);
+const DialogTitle = dynamic(
+  () =>
+    import("@/components/ui/dialog").then((m) => ({ default: m.DialogTitle })),
+  { ssr: false },
+);
+
+// Lazy: FileUploadField only renders when user clicks upload (not first paint)
+const FileUploadField = dynamic(
+  () =>
+    import("@/components/documents/FileUploadField").then((m) => ({
+      default: m.FileUploadField,
+    })),
+  { ssr: false },
+);
+
+// Lazy: ProcessStepper is below fold (timeline view, below document list)
+const ProcessStepper = dynamic(
+  () =>
+    import("@/components/portal").then((m) => ({ default: m.ProcessStepper })),
+  { ssr: false },
+);
 import { usePortalProcessTimeline } from "@/hooks/usePortalProcessTimeline";
 
 // Status configurations
