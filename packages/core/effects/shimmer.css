@@ -1,0 +1,46 @@
+/*
+ * Shimmer text-gradient utility.
+ * Apply the .bz-shimmer class to any element — it takes over background/color.
+ * Duration resolves to 0s under prefers-reduced-motion (defined in primitives.css).
+ */
+
+.bz-shimmer {
+  background: linear-gradient(
+    110deg,
+    var(--accent-funnel) 0%,
+    #ffffff 35%,
+    var(--accent-funnel) 50%,
+    #ffffff 65%,
+    var(--accent-funnel) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter: drop-shadow(
+    0 0 32px color-mix(in srgb, var(--accent-funnel) 40%, transparent)
+  );
+  animation: bz-shimmer-slide var(--motion-duration-shimmer) ease-in-out
+    infinite;
+}
+
+@keyframes bz-shimmer-slide {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* General pulse — reusable for state indicators, motion demos.
+   Respects prefers-reduced-motion via the duration variables. */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}

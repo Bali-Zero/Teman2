@@ -1,0 +1,24 @@
+/* Opzione 2 — "Warm Graphite" #121016.
+   Graphite with 3% red-violet undertone. Boutique legal + AI seam.
+   Pairs with red Visa, gold KBLI, cyan Tax, green Property equally. */
+
+[data-theme="graphite"] {
+  --surface-base: #121016;
+  --surface-raised: rgba(255, 255, 255, 0.035);
+  --surface-sunken: rgba(0, 0, 0, 0.42);
+  --surface-overlay: rgba(18, 16, 22, 0.65);
+  --surface-scrim: rgba(0, 0, 0, 0.7);
+
+  --text-primary: rgba(255, 255, 255, 0.93);
+  --text-secondary: rgba(255, 255, 255, 0.54);
+  --text-tertiary: rgba(255, 255, 255, 0.3);
+  --text-on-accent: #ffffff;
+
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.17);
+
+  --nav-bg: rgba(18, 16, 22, 0.65);
+  --footer-bg: #0e0c12;
+  --footer-text: var(--text-tertiary);
+}
