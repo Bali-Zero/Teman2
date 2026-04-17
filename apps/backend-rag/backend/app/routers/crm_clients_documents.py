@@ -326,7 +326,16 @@ Use null for unclear fields. Return ONLY JSON."""
                 if datetime.strptime(expiry, "%Y-%m-%d").date() < date.today():
                     warnings.append("Passport is expired")
             except ValueError:
-                pass
+                # UU PDP audit: document OCR returned a non-ISO expiry date.
+                # Surfacing the mis-parse as a warning preserves traceability
+                # without rejecting the whole extraction.
+                warnings.append(
+                    "Passport expiry date format unrecognised — manual review required"
+                )
+                logger.info(
+                    "crm.passport_ocr.invalid_expiry_format",
+                    extra={"raw_expiry": str(expiry)[:32]},
+                )
 
         # Preview mode — return without persisting
         if request.client_id is None:

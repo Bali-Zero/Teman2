@@ -183,8 +183,12 @@ def extract_json_from_llm_response(text: str) -> dict | None:
     if code_fence_match:
         try:
             return json.loads(code_fence_match.group(1).strip())
-        except json.JSONDecodeError:
-            pass  # Fall through to brace balancing
+        except json.JSONDecodeError as exc:
+            logger.debug(
+                "crm_utils.extract_json.fence_parse_failed",
+                extra={"reason": str(exc)[:80]},
+            )
+            # Fall through to truncated-fence and then brace balancing
 
     # Method 1b: Handle truncated code fence (no closing ```)
     # This happens when Gemini's response is cut off
@@ -195,8 +199,12 @@ def extract_json_from_llm_response(text: str) -> dict | None:
         content = re.sub(r"`+$", "", content)
         try:
             return json.loads(content)
-        except json.JSONDecodeError:
-            pass  # Fall through to brace balancing
+        except json.JSONDecodeError as exc:
+            logger.debug(
+                "crm_utils.extract_json.truncated_fence_parse_failed",
+                extra={"reason": str(exc)[:80]},
+            )
+            # Fall through to brace balancing
 
     # Method 2: Find JSON by matching balanced braces
     # This handles chain-of-thought text before/after the JSON
@@ -231,7 +239,11 @@ def extract_json_from_llm_response(text: str) -> dict | None:
                     try:
                         candidate = text[start_idx : i + 1]
                         return json.loads(candidate)
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as exc:
+                        logger.debug(
+                            "crm_utils.extract_json.brace_candidate_invalid",
+                            extra={"start": start_idx, "reason": str(exc)[:80]},
+                        )
                         # Not valid JSON, try next { in text
                         break
 
