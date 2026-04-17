@@ -14,6 +14,21 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+// Mock Next.js font loader (next/font/google)
+// Required by @balizero/core barrel which re-exports fonts/inter.ts
+vi.mock("next/font/google", () => ({
+  Inter: () => ({
+    className: "mock-inter",
+    variable: "--font-inter",
+    style: { fontFamily: "Inter" },
+  }),
+  Montserrat: () => ({
+    className: "mock-montserrat",
+    variable: "--font-montserrat",
+    style: { fontFamily: "Montserrat" },
+  }),
+}));
+
 // Mock Next.js Image component
 vi.mock("next/image", () => ({
   default: ({
