@@ -19,6 +19,7 @@
     "./components/NavShell": "./components/NavShell.tsx",
     "./components/ThemeProvider": "./components/ThemeProvider.tsx",
     "./utils": "./utils/index.ts",
-    "./auth": "./auth/index.ts"
+    "./auth": "./auth/index.ts",
+    "./analytics": "./analytics/index.ts"
   }
 }
