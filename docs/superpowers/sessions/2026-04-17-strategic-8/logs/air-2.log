@@ -1,0 +1,36 @@
+# S09 Services Layer Solidification — Air-2 session log
+
+Branch: solidification/s09-services
+Worktree: .worktrees/s09-services
+Start: 2026-04-17 21:01 WITA
+
+## Checkpoint T+0h — Setup
+- Worktree created from origin/main (8d84e1d64).
+- Audit script at scripts/s09_audit.py.
+- Audit JSON at docs/superpowers/sessions/2026-04-17-strategic-8/logs/air-2-s09-audit.json.
+
+## Audit summary (423 files, 99,032 LOC)
+- 0 bare `except:` (clean)
+- 778 `except Exception:` (broad catches — big surface)
+- 47 files instantiate `httpx.AsyncClient()` inline (violates Golden Rule #10)
+- 41 files >50 LOC without a logger
+- 3 TODO/FIXME markers
+
+## Top candidates (post-filter: excluded crm/, events/, attendance_monitor)
+1. prime/prime_nexus_service.py         — 1472 LOC, 26 broad except, 1 httpx inline
+2. rag/agentic/orchestrator_core.py     — 1221 LOC, 19 broad except
+3. rag/agentic/tools.py                 —  962 LOC, 13 broad except, 1 httpx inline
+4. misc/autonomous_scheduler.py         —  617 LOC, 20 broad except, 1 httpx inline
+5. integrations/zoho_email_service.py   —  944 LOC,  6 broad except, 1 httpx inline
+6. integrations/google_drive_service.py —  856 LOC,  2 broad except, 1 httpx inline
+7. search/search_service.py             — 1142 LOC,  8 broad except
+8. portal/_mixins/dashboard.py          —  932 LOC, 14 broad except
+9. monitoring/health_monitor.py         —  469 LOC, 16 broad except, 1 httpx inline
+10. memory/orchestrator.py              —  538 LOC, 19 broad except
+
+## Off-limits (enforced by scope)
+- services/events/   (already solidified — EventBus)
+- services/crm/      (S08 CRM)
+- backend/database/  (S07)
+- cron wrapper scripts (S10)
+
