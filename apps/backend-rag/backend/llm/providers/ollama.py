@@ -39,33 +39,13 @@ class OllamaProvider(LLMProvider):
         self._base_url = base_url.rstrip("/")
         self._api_url = f"{self._base_url}/api/generate"
         self._available = False
+        self._async_client: httpx.AsyncClient | None = None  # S12: initialized before _init_client
         self._init_client()
 
-    def _init_client(self):
-        """Check if Ollama is available"""
-        try:
-            # Quick health check
-
-            async def check():
-                try:
-                    async with httpx.AsyncClient(timeout=2.0) as client:
-                        response = await client.get(f"{self._base_url}/api/tags")
-                        if response.status_code == 200:
-                            models = response.json().get("models", [])
-                            model_names = [m.get("name", "") for m in models]
-                            return any(
-                                self._model in name or name in self._model for name in model_names
-                            )
-                except Exception:
-                    return False
-                return False
-
-            # Skip sync health check — let first request determine availability
-            self._available = True
-            logger.info(f"OllamaProvider initialized: model={self._model} (availability checked on first use)")
-        except Exception as e:
-            logger.warning(f"Failed to initialize OllamaProvider: {e}")
-            self._available = False
+    def _init_client(self) -> None:
+        """Mark provider available; actual connectivity checked on first use."""
+        self._available = True
+        logger.info(f"OllamaProvider initialized: model={self._model} (connectivity verified on first request)")
 
     @property
     def name(self) -> str:

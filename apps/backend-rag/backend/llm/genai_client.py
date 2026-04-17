@@ -29,6 +29,7 @@ Date: 2025-12-23
 import json
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -335,6 +336,7 @@ class GenAIClient:
             safety_settings=safety_settings,
         )
 
+        t0 = time.perf_counter()
         try:
             response = await self._client.aio.models.generate_content(
                 model=model,
@@ -342,16 +344,33 @@ class GenAIClient:
                 config=config,
             )
 
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
+            completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            logger.info(
+                "LLM call",
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "latency_ms": latency_ms,
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                },
+            )
             return {
                 "text": response.text,
                 "model": model,
                 "usage": {
-                    "input_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
-                    "output_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
+                    "input_tokens": prompt_tokens,
+                    "output_tokens": completion_tokens,
                 },
             }
         except Exception as e:
-            logger.error(f"❌ GenAI generate_content failed: {e}")
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.error(
+                "LLM call failed",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+            )
             raise
 
     async def generate_content_stream(
@@ -388,6 +407,8 @@ class GenAIClient:
             safety_settings=safety_settings,
         )
 
+        t0 = time.perf_counter()
+        chunk_count = 0
         try:
             async for chunk in self._client.aio.models.generate_content_stream(
                 model=model,
@@ -395,9 +416,19 @@ class GenAIClient:
                 config=config,
             ):
                 if chunk.text:
+                    chunk_count += 1
                     yield chunk.text
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.info(
+                "LLM stream",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "chunks": chunk_count},
+            )
         except Exception as e:
-            logger.error(f"❌ GenAI stream failed: {e}")
+            latency_ms = round((time.perf_counter() - t0) * 1000)
+            logger.error(
+                "LLM stream failed",
+                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+            )
             raise
 
     def create_chat_session(
