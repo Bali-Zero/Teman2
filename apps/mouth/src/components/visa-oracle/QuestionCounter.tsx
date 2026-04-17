@@ -31,7 +31,9 @@ export function QuestionCounter({ remaining }: QuestionCounterProps) {
 
       {/* Label */}
       <span className="text-xs">
-        {remaining} question{remaining !== 1 ? "s" : ""} remaining
+        {remaining === 1
+          ? "1 domanda rimanente"
+          : `${remaining} domande rimanenti`}
       </span>
     </div>
   );
