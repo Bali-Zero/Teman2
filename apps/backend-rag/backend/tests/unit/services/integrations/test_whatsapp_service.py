@@ -34,14 +34,18 @@ def service(mock_settings):
     # CI test-ordering issue: if an earlier test cleared os.environ and forced
     # a config reload, the module's top-level `from backend.app.core.config
     # import settings` binding can be missing by the time this fixture runs.
-    # Reload the module to re-establish it, then patch on the resolved
-    # attribute. Proper fix is to make the service read settings lazily
-    # (tracked as follow-up).
+    # Import (and if already imported, reload) the module so the top-level
+    # `from backend.app.core.config import settings` runs again, then patch
+    # on the resolved attribute. Proper long-term fix is to make
+    # WhatsAppService read settings lazily (tracked as follow-up).
     import importlib
+    import sys
 
-    from backend.services.integrations import whatsapp_service as whatsapp_module
-
-    importlib.reload(whatsapp_module)
+    modname = "backend.services.integrations.whatsapp_service"
+    if modname in sys.modules:
+        whatsapp_module = importlib.reload(sys.modules[modname])
+    else:
+        whatsapp_module = importlib.import_module(modname)
     with patch.object(whatsapp_module, "settings", mock_settings):
         svc = whatsapp_module.WhatsAppService()
     svc._token = "test-token"

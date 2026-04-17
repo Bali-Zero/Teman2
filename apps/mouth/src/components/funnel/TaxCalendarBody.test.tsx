@@ -88,9 +88,13 @@ describe("TaxCalendarBody", () => {
     expect(ical.getAttribute("download")).toBe("bali-tax-deadlines.ics");
   });
 
-  it("Delega a noi WA CTA present per deadline — correct WA deeplink + intent text", () => {
+  it("Delegate to us WA CTA present per deadline — correct WA deeplink + intent text", () => {
+    // Commit a9502d4b5 renamed the CTA from "Delega a noi" → "Delegate to us"
+    // as part of the tax-calendar English canonicalisation. The WA deeplink
+    // query keeps the Italian "Delega%20Bali%20Zero%20SPT" intent string —
+    // that's the literal text the operator searches for in WhatsApp.
     render(<TaxCalendarBody deadlines={DEADLINES} regencies={REGENCIES} />);
-    const links = screen.getAllByRole("link", { name: /Delega a noi/i });
+    const links = screen.getAllByRole("link", { name: /Delegate to us/i });
     expect(links.length).toBeGreaterThanOrEqual(4);
     expect(links[0].getAttribute("href")).toContain("wa.me/628213107363");
     expect(links[0].getAttribute("href")).toContain(

@@ -207,6 +207,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)scripts/gap_fill_autonomous\.py$"),
         "gap_fill_autonomous: localhost:5432 dev default, not production",
     ),
+    # Self-reference: this file documents postgres:postgres@localhost:5432
+    # as part of the rule comments. detect-secrets flags the literal; the
+    # auto-triage engine is the SOLE consumer of these URLs so marking this
+    # file as a known FP is correct.
+    (
+        re.compile(r"(^|/)scripts/detect_secrets_auto_triage\.py$"),
+        "detect_secrets_auto_triage: documents the postgres:postgres@localhost URL as part of its own rule docstring",
+    ),
     # article_composer error handler: enum values "API_KEY_NOT_CONFIGURED" etc
     # detected as Secret Keyword (false positive on enum names).
     (
