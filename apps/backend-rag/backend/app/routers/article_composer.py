@@ -13,7 +13,7 @@ Best Practices 2026 Implementation:
 - Improved logging
 
 For marketing team to create articles manually with:
-- Claude enrichment (Anthropic API)
+- DeepSeek enrichment (DeepSeek API, ~100x cheaper than Claude Sonnet)
 - Image generation
 - SEO optimization
 """
@@ -26,7 +26,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-import anthropic
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from prometheus_client import REGISTRY, Counter, Histogram
 from pydantic import BaseModel, Field
@@ -34,6 +34,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from backend.app.core.config import settings
+from backend.llm.deepseek_client import DeepSeekAuthError, DeepSeekError
 from backend.services.article_composer import (
     APIError,
     ComposeRequestValidator,
@@ -299,33 +300,20 @@ async def compose_article(
     background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
 ) -> ComposeResponse:
-    """
-    Compose/enrich an article with Bali Zero style.
+    """Compose/enrich an article with Bali Zero style via DeepSeek.
 
-    NOTE: This endpoint is currently disabled. Article composition with Claude/Anthropic
-    has been removed. Use alternative enrichment methods.
+    Migrated from Claude Max OAuth (which hangs inside Fly containers on
+    Linux non-TTY — see ``memory/feedback_claude_cli_linux_hang.md``) to
+    ``deepseek-chat`` (~100x cheaper, structured JSON output, clean exit).
     """
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "success": False,
-            "error": {
-                "code": "SERVICE_DISABLED",
-                "message": "Article composer service has been disabled. Claude/Anthropic integration removed.",
-            },
-            "request_id": request_id,
-        },
-    )
-
-    # Original implementation disabled - Anthropic/Claude removed
     start_time = time.time()
 
-    # Validate API key
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    # Validate API key (DeepSeek — migrated from Claude OAuth)
+    api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         error = APIError.create(
             code=ErrorCode.API_KEY_NOT_CONFIGURED,
-            message="ANTHROPIC_API_KEY not configured",
+            message="DEEPSEEK_API_KEY not configured",
             request_id=request_id,
         )
         article_compose_payloads.labels(status="error", category=payload.category).inc()
@@ -371,11 +359,11 @@ async def compose_article(
         # Call Claude with retry logic
         logger.info(
             "Calling Claude API",
-            extra={"request_id": request_id, "model": "claude-sonnet-4-6"},
+            extra={"request_id": request_id, "model": "deepseek-chat"},
         )
         message = await call_claude_with_retry(
             prompt=prompt,
-            model="claude-sonnet-4-6",
+            model="deepseek-chat",
             max_tokens=4096,
         )
 
@@ -400,10 +388,12 @@ async def compose_article(
             article_compose_payloads.labels(status="json_error", category=payload.category).inc()
             return ComposeResponse(success=False, error=error, request_id=request_id)
 
-        # Calculate approximate cost (Claude Sonnet: $3/$15 per 1M tokens)
+        # Calculate approximate cost.
+        # DeepSeek V3.2 `deepseek-chat`: $0.28/1M input (cache miss),
+        # $0.42/1M output. That's ~100x cheaper than Claude Sonnet 4.6.
         input_tokens = message.usage.input_tokens
         output_tokens = message.usage.output_tokens
-        cost_cents = input_tokens * 0.0003 + output_tokens * 0.0015  # cents
+        cost_cents = input_tokens * 0.000028 + output_tokens * 0.000042  # cents
 
         # Build enriched article
         enriched = EnrichedArticle(
@@ -483,7 +473,7 @@ async def compose_article(
             request_id=request_id,
         )
 
-    except anthropic.APIError as e:
+    except (DeepSeekError, DeepSeekAuthError, httpx.HTTPError) as e:
         error = handle_anthropic_error(e, payload.title, payload.category, request_id)
         article_compose_payloads.labels(status="api_error", category=payload.category).inc()
         log_error_with_context(
@@ -522,13 +512,14 @@ async def compose_article(
 @router.get("/compose/status")
 async def compose_status() -> dict[str, Any]:
     """Check if article composer is properly configured"""
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = os.getenv("DEEPSEEK_API_KEY")
 
     return {
         "configured": bool(api_key),
         "api_key_set": bool(api_key),
-        "model": "claude-sonnet-4-6",
-        "estimated_cost_per_article": "$0.02-0.05",
+        "provider": "deepseek",
+        "model": "deepseek-chat",
+        "estimated_cost_per_article": "$0.0001-0.0005",
         "cache_enabled": cache_service.enabled,
         "rate_limit": "10 requests/minute per IP",
     }

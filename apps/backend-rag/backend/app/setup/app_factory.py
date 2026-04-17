@@ -453,6 +453,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing Ollama client: {e}")
 
+    try:
+        from backend.llm.deepseek_client import close_deepseek_client
+
+        await close_deepseek_client()
+        logger.info("✅ DeepSeek module client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing DeepSeek client: {e}")
+
     logger.info("✅ ZANTARA shutdown complete")
 
 
