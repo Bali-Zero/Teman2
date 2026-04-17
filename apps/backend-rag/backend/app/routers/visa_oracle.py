@@ -45,6 +45,7 @@ class ChatRequest(BaseModel):
     message: str
     quiz_answers: dict | None = None
     conversation_history: list | None = None
+    language: str | None = None  # ISO 639-1 override from client; if set, wins over auto-detect
 
 
 class ChatResponse(BaseModel):
@@ -81,17 +82,98 @@ CONFIDENCE_NORMAL = "NORMAL"
 TELEGRAM_LEAD_CHAT_ID = 1125336968
 
 SYSTEM_PROMPT = (
-    "You are an Indonesian visa specialist. "
-    "Answer ONLY based on the context below. "
-    "Never say 'you should' or 'you must'. "
-    "Use 'typically requires', 'the standard process involves'."
+    "You are Bali Zero's Indonesian visa specialist — a concrete, practical "
+    "advisor for foreigners who want to live, work, or invest in Bali. "
+    "You represent Bali Zero: a licensed local team that actually processes "
+    "these visas for 5000+ clients every year. You are NOT a generic wiki. "
+    "\n\n"
+    "STYLE:\n"
+    "- Be concrete and specific. Give real numbers (stay days, extension "
+    "limits, fees) only when they're in the context.\n"
+    "- Skip boilerplate like 'Based on the provided context'. Just answer.\n"
+    "- Never say 'you should' or 'you must'. Use 'tipicamente richiede', "
+    "'il processo standard prevede', 'typically requires', 'the standard "
+    "process involves'.\n"
+    "- Close with a concrete next step: suggest contacting Bali Zero via "
+    "WhatsApp for the actual application, OR offer to check a specific "
+    "scenario the user mentioned.\n"
+    "- Answer ONLY based on the context below — if the context doesn't "
+    "cover the question, say so briefly and redirect to the team.\n"
+    "\n"
+    "LANGUAGE: ALWAYS respond in the user's language (see language "
+    "instruction below). Never mix languages in the same response."
 )
 
-HEDGING_PREFIX = (
-    "Please note: the following information is based on available sources but "
-    "may not be fully up-to-date. Verify with a qualified immigration specialist. "
-    "\n\n"
-)
+# Localized hedging prefix — prepended when confidence = CAUTIOUS.
+HEDGING_PREFIX_BY_LANG: dict[str, str] = {
+    "en": (
+        "Please note: the information below is based on available sources "
+        "but may not be fully up-to-date. Verify with the Bali Zero team "
+        "before acting.\n\n"
+    ),
+    "it": (
+        "Nota: le informazioni che seguono si basano sulle fonti disponibili "
+        "e potrebbero non essere del tutto aggiornate. Verifica con il team "
+        "Bali Zero prima di procedere.\n\n"
+    ),
+    "id": (
+        "Catatan: informasi berikut berdasarkan sumber yang tersedia dan "
+        "mungkin belum sepenuhnya terbaru. Konfirmasi dengan tim Bali Zero "
+        "sebelum bertindak.\n\n"
+    ),
+    "fr": (
+        "Note : les informations ci-dessous sont basées sur les sources "
+        "disponibles et peuvent ne pas être entièrement à jour. Vérifie avec "
+        "l'équipe Bali Zero avant d'agir.\n\n"
+    ),
+    "es": (
+        "Nota: la información a continuación se basa en fuentes disponibles "
+        "y puede no estar totalmente actualizada. Verifica con el equipo "
+        "Bali Zero antes de actuar.\n\n"
+    ),
+    "de": (
+        "Hinweis: Die folgenden Informationen basieren auf verfügbaren "
+        "Quellen und sind möglicherweise nicht vollständig aktuell. Prüfe "
+        "mit dem Bali Zero Team, bevor du handelst.\n\n"
+    ),
+    "ru": (
+        "Обратите внимание: информация ниже основана на доступных "
+        "источниках и может быть не полностью актуальна. Уточните в "
+        "команде Bali Zero перед действием.\n\n"
+    ),
+}
+
+# Localized timeout fallback when Gemini takes >30s
+TIMEOUT_FALLBACK_BY_LANG: dict[str, str] = {
+    "en": (
+        "Our AI is taking longer than usual. Please try again or contact "
+        "us on WhatsApp (+62 821-3107-363) for immediate assistance."
+    ),
+    "it": (
+        "La nostra AI sta impiegando più tempo del solito. Riprova oppure "
+        "scrivici su WhatsApp (+62 821-3107-363) per assistenza immediata."
+    ),
+    "id": (
+        "AI kami membutuhkan waktu lebih lama. Silakan coba lagi atau "
+        "hubungi WhatsApp (+62 821-3107-363) untuk bantuan langsung."
+    ),
+    "fr": (
+        "Notre IA prend plus de temps que d'habitude. Réessaie ou "
+        "contacte-nous sur WhatsApp (+62 821-3107-363)."
+    ),
+    "es": (
+        "Nuestra IA está tardando más de lo habitual. Inténtalo de nuevo o "
+        "escríbenos por WhatsApp (+62 821-3107-363)."
+    ),
+    "de": (
+        "Unsere KI braucht länger als üblich. Versuche es erneut oder "
+        "schreib uns auf WhatsApp (+62 821-3107-363)."
+    ),
+    "ru": (
+        "Наш ИИ отвечает дольше обычного. Повторите попытку или напишите "
+        "нам в WhatsApp (+62 821-3107-363)."
+    ),
+}
 
 
 def _parse_family(family_str: str) -> bool:
@@ -368,16 +450,28 @@ async def chat(
                 "the information with the Bali Zero team, as regulations may change."
             )
 
-        # Auto-detect user language and instruct LLM to respond in it
-        detected_lang = _detect_language(body.message)
-        if detected_lang != "en":
-            lang_names = {
-                "ru": "Russian", "zh": "Chinese", "ko": "Korean",
-                "ja": "Japanese", "id": "Indonesian", "fr": "French",
-                "it": "Italian", "de": "German", "es": "Spanish",
-            }
-            lang_name = lang_names.get(detected_lang, detected_lang)
-            system += f"\n\nIMPORTANT: The user is writing in {lang_name}. Respond in {lang_name}."
+        # Resolve response language. Priority:
+        #   1. Explicit body.language from the client (browser locale or UI toggle)
+        #   2. Auto-detect from message content
+        #   3. Italian default (Bali Zero ships Italian-first; English users
+        #      typically write longer / detectable messages anyway).
+        lang_names = {
+            "ru": "Russian", "zh": "Chinese", "ko": "Korean",
+            "ja": "Japanese", "id": "Indonesian", "fr": "French",
+            "it": "Italian", "de": "German", "es": "Spanish", "en": "English",
+        }
+        requested_lang = (body.language or "").strip().lower()[:2]
+        if requested_lang in lang_names:
+            response_lang = requested_lang
+        else:
+            detected_lang = _detect_language(body.message)
+            response_lang = detected_lang if detected_lang in lang_names else "it"
+        lang_name = lang_names[response_lang]
+        system += (
+            f"\n\nIMPORTANT: Respond in {lang_name}. The entire answer, "
+            f"including section headings and labels, must be in {lang_name}. "
+            "Never respond in English when the user's language is different."
+        )
 
         prompt = (
             f"{system}\n\n"
@@ -405,9 +499,8 @@ async def chat(
             )
             return ChatResponse(
                 success=True,
-                answer=(
-                    "Our AI is taking longer than usual to respond. "
-                    "Please try again or contact us on WhatsApp for immediate assistance."
+                answer=TIMEOUT_FALLBACK_BY_LANG.get(
+                    response_lang, TIMEOUT_FALLBACK_BY_LANG["en"]
                 ),
                 confidence=CONFIDENCE_CAUTIOUS,
                 sources=sources,
@@ -415,7 +508,12 @@ async def chat(
             )
 
         if confidence == CONFIDENCE_CAUTIOUS:
-            answer_text = HEDGING_PREFIX + answer_text
+            answer_text = (
+                HEDGING_PREFIX_BY_LANG.get(
+                    response_lang, HEDGING_PREFIX_BY_LANG["en"]
+                )
+                + answer_text
+            )
 
         logger.info(
             "visa-oracle /chat: confidence=%s session=%s",
