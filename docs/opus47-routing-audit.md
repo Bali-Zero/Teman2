@@ -150,3 +150,74 @@ Per the task spec we did not:
 - Cost script: `scripts/cost_baseline.py`
 - Baseline JSON: `docs/superpowers/sessions/2026-04-17-strategic-8/logs/pro-2-baseline.json`
 - Session log: `docs/superpowers/sessions/2026-04-17-strategic-8/logs/pro-2.log`
+
+---
+
+## 8. Addendum 2026-04-17 — OAuth-only policy
+
+After the audit landed the operator clarified a **binding project policy**
+(see `~/.claude/projects/-Users-nuzantara/memory/feedback_claude_oauth_only.md`):
+
+> **Mai ANTHROPIC_API_KEY. Sempre e solo Claude Max OAuth token.**
+
+The Max plan is already paid flat-rate. Any Claude call that goes via API key
+double-bills (flat-rate + pay-as-you-go). This reshapes the recommendations:
+
+### What this changes
+
+- **P0.1 `cache_control` saving is NOT monetary.** $–26% in §4 assumes
+  pay-as-you-go billing. On Max flat-rate the dollar saving is 0. The real
+  benefits of caching are now **latency** + **rate-limit headroom** against
+  the Max token bucket. `cache_control` is still worth doing — just for a
+  different reason.
+- **P0.3 "Decide on KG Anthropic key" is resolved.** The answer is neither
+  "rinnova la key" nor "lascia OpenAI". The answer is **migrate the KG
+  reasoning path to Claude-via-OAuth**, same way `scripts/cron-agent.sh`
+  does it for Tier 2 cron jobs (`CLAUDE_CODE_OAUTH_TOKEN_{1,2,3}` + `claude
+  -p` subprocess with 3-token fallback). Until that migration lands,
+  OpenAI GPT-4o-mini remains the de-facto LLM for KG reasoning, as
+  documented in code comments.
+- **P1.4/P1.5/P1.6 model-bump items are unblocked** only *after* OAuth
+  migration. Bumping `claude-sonnet-4-20250514` → `claude-sonnet-4-6` today
+  just bumps the wrong billing path.
+
+### The 3 Anthropic-SDK call sites
+
+All three currently instantiate `anthropic.Anthropic(...)` directly and
+**cannot** accept a Max OAuth token (SDK requires API key). They are:
+
+| File | Instantiation |
+|---|---|
+| `services/article_composer/claude_client.py:135` | `anthropic.Anthropic(api_key=api_key)` with explicit `ValueError` if no key. |
+| `services/knowledge_graph/coreference.py:122` | `anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()` (picks up env). |
+| `agents/services/multi_ai_adapter.py:144` | Same dual-mode pattern as coreference. |
+
+Plus the LangChain wrapper `ChatAnthropic(..., api_key=anthropic_key)` in
+`services/rag/kg_langgraph_orchestrator.py:106` (currently a dead branch
+because OpenAI wins the `if`).
+
+### Applied in this session (commits on `opus47-routing-audit`)
+
+1. **`23673a89a` — `feat(claude): cache_control ephemeral on 2 active Claude paths`**
+   Adds `cache_control: {"type": "ephemeral"}` to the two hot `messages.create`
+   calls in `claude_client.py` and `coreference.py`. Pure latency/headroom win.
+2. **(this commit) — `chore(claude): policy guard + OAuth-migration markers`**
+   - Loud `logger.error` every time the 3 API-key paths execute.
+   - `TODO(OAuth):` markers on the 3 SDK call sites + the LangChain branch.
+   - `ClaudeAdapter` docstring rewritten to point at the OAuth migration.
+   - Legacy "Anthropic key is invalid in this project" comment in
+     `kg_langgraph_orchestrator.py` replaced with an accurate "OAuth
+     migration pending" note.
+
+### What's NOT applied in this session
+
+Full OAuth migration (replacing `anthropic.Anthropic` with `claude -p`
+subprocess + LangChain `BaseLLM` adapter wrapping the same) is a larger
+refactor with:
+
+- new test surface (subprocess mocking, 3-token fallback matrix)
+- behavior changes (no streaming from `claude -p --output-format=text`,
+  need to check `--output-format=json` + parse)
+- security implications (token file handling, stderr scrubbing)
+
+It belongs in a dedicated session, tracked as a follow-up.

@@ -127,17 +127,39 @@ class GeminiAdapter:
 
 
 class ClaudeAdapter:
-    """Adapter for Anthropic Claude API - Claude Max (Opus)
+    """Adapter for Anthropic Claude API.
 
-    Usa abbonamento Claude invece di API key separata.
-    L'API key può essere collegata all'account con abbonamento.
+    !!! OAUTH MIGRATION PENDING !!!
+    This adapter currently instantiates ``anthropic.Anthropic()`` which
+    relies on ``ANTHROPIC_API_KEY``. Project policy
+    (``memory/feedback_claude_oauth_only.md``) requires all Claude
+    integrations to use the Max plan OAuth token, not a pay-as-you-go API
+    key, because the flat-rate is already paid. Replicate the pattern used
+    in ``scripts/cron-agent.sh`` (``CLAUDE_CODE_OAUTH_TOKEN_*`` + ``claude
+    -p`` subprocess) when refactoring.
+
+    TODO(OAuth): drop ``anthropic.Anthropic()`` in favor of a subprocess
+    call to ``claude -p`` using the Max OAuth token. Tracked in the
+    Pro-2 §7 audit (``docs/opus47-routing-audit.md``).
     """
 
+    # TODO(OAuth + model-bump): ``claude-3-opus-20240229`` is retired.
+    # After OAuth migration, pick the current default from CLAUDE.md §13
+    # (``claude-opus-4-7`` for critical tasks, ``claude-sonnet-4-6`` for RAG,
+    # ``claude-haiku-4-5-20251001`` for routing/classification).
     def __init__(self, api_key: str | None = None, model: str = "claude-3-opus-20240229") -> None:
         # Prova prima API key esplicita, poi env var, poi cerca in configurazioni comuni
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
         self.model = model
         self.client = None
+
+        if self.api_key:
+            logger.error(
+                "🚨 ClaudeAdapter initialized with ANTHROPIC_API_KEY — "
+                "this violates project policy (Max plan OAuth only). "
+                "See memory/feedback_claude_oauth_only.md. "
+                "Adapter will still work, but bills against the API key — migrate ASAP.",
+            )
 
         # Prova a inizializzare anche senza API key esplicita
         # (potrebbe essere gestita dall'abbonamento)
@@ -146,7 +168,7 @@ class ClaudeAdapter:
 
             if self.api_key:
                 self.client = anthropic.Anthropic(api_key=self.api_key)
-                logger.info("✅ Claude Max configurato con API key")
+                logger.info("✅ Claude Max configurato con API key (OAuth migration pending)")
             else:
                 # Prova senza API key (potrebbe usare credenziali di sistema/abbonamento)
                 try:
@@ -254,6 +276,8 @@ class MultiAIAdapter:
         # Initialize other adapters
         self.gemini = GeminiAdapter()
         # Claude Max (Opus) - Primary AI tool
+        # TODO(OAuth + model-bump): drop retired claude-3-opus-20240229
+        # once this adapter moves to Max OAuth (see ClaudeAdapter docstring).
         self.claude = ClaudeAdapter(model="claude-3-opus-20240229")
 
         # Cursor adapter (IDE integration)

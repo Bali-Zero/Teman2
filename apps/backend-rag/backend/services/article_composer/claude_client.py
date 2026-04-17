@@ -124,6 +124,18 @@ def get_anthropic_client() -> anthropic.Anthropic:
     Get or create Anthropic client singleton with connection pooling.
 
     Best Practice: Reuse client instance instead of creating new one each time.
+
+    !!! OAUTH MIGRATION PENDING !!!
+    Project policy forbids ``ANTHROPIC_API_KEY`` (see
+    ``memory/feedback_claude_oauth_only.md``): Claude integrations must use
+    the Max plan OAuth token, not a pay-as-you-go key, because the flat-rate
+    is already paid. The SDK has no OAuth-token mode, so the migration path
+    is to replace this client with a subprocess wrapper around ``claude -p``
+    (see ``scripts/cron-agent.sh`` for the 3-token fallback pattern).
+
+    TODO(OAuth): drop ``anthropic.Anthropic(api_key=...)`` in favor of a
+    ``claude -p``-based backend. Tracked in the Pro-2 §7 audit
+    (``docs/opus47-routing-audit.md``).
     """
     global _anthropic_client
 
@@ -132,12 +144,18 @@ def get_anthropic_client() -> anthropic.Anthropic:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable not set")
 
+        logger.error(
+            "🚨 article_composer.claude_client using ANTHROPIC_API_KEY. "
+            "This violates project policy (Max OAuth only). "
+            "See memory/feedback_claude_oauth_only.md. Billing against API key.",
+        )
+
         _anthropic_client = anthropic.Anthropic(
             api_key=api_key,
             max_retries=0,  # We handle retries ourselves with tenacity
             timeout=30.0,  # 30 second timeout
         )
-        logger.info("Initialized Anthropic client with connection pooling")
+        logger.info("Initialized Anthropic client with connection pooling (OAuth migration pending)")
 
     return _anthropic_client
 

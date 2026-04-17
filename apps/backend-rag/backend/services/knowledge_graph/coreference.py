@@ -9,6 +9,7 @@ Resolves references like:
 """
 
 import logging
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -134,6 +135,17 @@ class CoreferenceResolver:
         self.model = model
 
         if use_llm:
+            # OAUTH MIGRATION PENDING — project policy forbids
+            # ANTHROPIC_API_KEY (see memory/feedback_claude_oauth_only.md).
+            # anthropic.Anthropic() silently picks it up from the env.
+            # TODO(OAuth): replace with subprocess(claude -p) using Max
+            # OAuth token, pattern from scripts/cron-agent.sh.
+            if api_key or os.getenv("ANTHROPIC_API_KEY"):
+                logger.error(
+                    "🚨 CoreferenceResolver using ANTHROPIC_API_KEY. "
+                    "This violates project policy (Max OAuth only). "
+                    "See memory/feedback_claude_oauth_only.md.",
+                )
             self.client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
 
         # Entity cache for cross-chunk consistency (Prompt Cache)

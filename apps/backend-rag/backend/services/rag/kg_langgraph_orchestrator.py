@@ -92,16 +92,31 @@ def get_llm_for_reasoning() -> Any:
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
-    # Prefer OpenAI (Anthropic key is invalid in this project)
+    # OAuth MIGRATION PENDING: the legacy comment here said "Prefer OpenAI
+    # (Anthropic key is invalid in this project)". That diagnosis was wrong:
+    # project policy is NO ANTHROPIC_API_KEY — Claude must go through the Max
+    # OAuth token, not a pay-as-you-go key. See
+    # memory/feedback_claude_oauth_only.md. Until this path is migrated to
+    # Claude-via-OAuth (subprocess `claude -p` pattern from cron-agent.sh),
+    # OpenAI GPT-4o-mini remains the de-facto reasoning LLM for KG.
+    # TODO(OAuth): replace ChatAnthropic(api_key=...) with a LangChain-
+    # compatible wrapper around `claude -p` and make Claude the primary.
     if openai_key and ChatOpenAI is not None:
-        logger.info("🤖 [LLM] Using OpenAI GPT-4o-mini for reasoning (singleton)")
+        logger.info(
+            "🤖 [LLM] Using OpenAI GPT-4o-mini for reasoning (singleton) — "
+            "Claude path pending OAuth migration",
+        )
         _cached_reasoning_llm = ChatOpenAI(
             model="gpt-4o-mini",
             temperature=0.2,
             api_key=openai_key,
         )
     elif anthropic_key and ChatAnthropic is not None:
-        logger.info("🤖 [LLM] Using Claude Sonnet 4.5 for reasoning (singleton)")
+        logger.error(
+            "🚨 [LLM] KG reasoning falling back to ChatAnthropic(api_key=...). "
+            "This violates project policy (Max OAuth only). "
+            "See memory/feedback_claude_oauth_only.md. Billing against API key.",
+        )
         _cached_reasoning_llm = ChatAnthropic(
             model="claude-sonnet-4-5-20250929",
             temperature=0.2,
