@@ -45,8 +45,8 @@ class LegalCleaner:
                 logger.debug(f"Removed {matches_before} matches of pattern: {pattern.pattern[:50]}")
 
         # Step 2: Normalize whitespace
-        for pattern, replacement in WHITESPACE_FIXES:
-            cleaned = re.sub(pattern, replacement, cleaned)
+        for ws_pattern, replacement in WHITESPACE_FIXES:
+            cleaned = re.sub(ws_pattern, replacement, cleaned)
 
         # Step 3: Remove "Salinan sesuai dengan aslinya" footer (more aggressive)
         cleaned = re.sub(
