@@ -35,6 +35,15 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import re  # noqa: E402
 
+def _require_env(name: str) -> str:
+    import os as _os
+    val = _os.environ.get(name)
+    if not val:
+        raise SystemExit(f"{name} env var is required (no hardcoded fallback for security)")
+    return val
+
+
+
 # Re-declared from backend/services/knowledge_graph/entity_linker.py to avoid
 # importing the whole backend.services.* init chain (which boots Settings).
 _ENTITY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
@@ -87,18 +96,9 @@ logging.basicConfig(
 logger = logging.getLogger("entity_linker_full")
 
 
-DB_URL_DEFAULT = os.environ.get(
-    "ENTITY_LINKER_DB_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-)
-QDRANT_URL_DEFAULT = os.environ.get(
-    "QDRANT_URL",
-    "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333",
-)
-QDRANT_API_KEY_DEFAULT = os.environ.get(
-    "QDRANT_API_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.2GbFS6QDLq-6pbM9yrvhndsWwtEiCY0iueNvPNKjj1k",
-)
+DB_URL_DEFAULT = _require_env("ENTITY_LINKER_DB_URL")
+QDRANT_URL_DEFAULT = _require_env("QDRANT_URL")
+QDRANT_API_KEY_DEFAULT = _require_env("QDRANT_API_KEY")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 

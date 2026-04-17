@@ -47,6 +47,15 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from qdrant_client import AsyncQdrantClient  # noqa: E402
 
+def _require_env(name: str) -> str:
+    import os as _os
+    val = _os.environ.get(name)
+    if not val:
+        raise SystemExit(f"{name} env var is required (no hardcoded fallback for security)")
+    return val
+
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -55,18 +64,9 @@ logging.basicConfig(
 logger = logging.getLogger("benchmark_trimodal")
 
 
-DB_URL = os.environ.get(
-    "ENTITY_LINKER_DB_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-)
-QDRANT_URL = os.environ.get(
-    "QDRANT_URL",
-    "https://5575d2b7-d895-4697-86e5-5c7ceae3ca74.us-east4-0.gcp.cloud.qdrant.io:6333",
-)
-QDRANT_API_KEY = os.environ.get(
-    "QDRANT_API_KEY",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.2GbFS6QDLq-6pbM9yrvhndsWwtEiCY0iueNvPNKjj1k",
-)
+DB_URL = _require_env("ENTITY_LINKER_DB_URL")
+QDRANT_URL = _require_env("QDRANT_URL")
+QDRANT_API_KEY = _require_env("QDRANT_API_KEY")
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 RRF_K = 60

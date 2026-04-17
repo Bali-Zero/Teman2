@@ -23,11 +23,17 @@ import sys
 
 import asyncpg
 
+def _require_env(name: str) -> str:
+    import os as _os
+    val = _os.environ.get(name)
+    if not val:
+        raise SystemExit(f"{name} env var is required (no hardcoded fallback for security)")
+    return val
 
-DB_URL = os.environ.get(
-    "ENTITY_LINKER_DB_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-)
+
+
+
+DB_URL = _require_env("ENTITY_LINKER_DB_URL")
 
 
 _DOMAIN_HINTS: list[tuple[tuple[str, ...], str]] = [

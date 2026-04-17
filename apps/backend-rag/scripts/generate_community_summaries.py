@@ -30,6 +30,15 @@ from typing import Any
 import asyncpg
 import httpx
 
+def _require_env(name: str) -> str:
+    import os as _os
+    val = _os.environ.get(name)
+    if not val:
+        raise SystemExit(f"{name} env var is required (no hardcoded fallback for security)")
+    return val
+
+
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,10 +48,7 @@ logging.basicConfig(
 logger = logging.getLogger("community_summaries")
 
 
-DB_URL = os.environ.get(
-    "ENTITY_LINKER_DB_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-)
+DB_URL = _require_env("ENTITY_LINKER_DB_URL")
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
