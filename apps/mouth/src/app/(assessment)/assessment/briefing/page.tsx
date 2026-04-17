@@ -26,7 +26,7 @@ export default function BriefingPage() {
           </div>
           <a
             href="/assessment"
-            className="text-[#c23c2c] hover:text-[#e04535] text-sm font-medium"
+            className="text-accent-red-brand hover:text-[#e04535] text-sm font-medium"
           >
             &larr; Kembali ke Assessment
           </a>
@@ -43,7 +43,7 @@ export default function BriefingPage() {
               alt="Bali Zero"
               className="w-32 h-32 rounded-full shadow-2xl shadow-[#c23c2c]/20"
             />
-            <div className="text-xs uppercase tracking-[0.3em] text-[#c23c2c] font-semibold">
+            <div className="text-xs uppercase tracking-[0.3em] text-accent-red-brand font-semibold">
               Bali Zero — Official
             </div>
           </div>
@@ -90,7 +90,7 @@ export default function BriefingPage() {
                 berpikir, menjawab, dan mengambil keputusan
               </strong>{" "}
               tanpa intervensi manusia untuk 70% operasi harian. Sistem itu
-              bernama <strong className="text-[#c23c2c]">Nuzantara</strong>.
+              bernama <strong className="text-accent-red-brand">Nuzantara</strong>.
             </p>
           </section>
 
@@ -367,7 +367,7 @@ CLOUD (Vercel)                          │ - Sentinel (03:00)           │
           <div className="text-center border-t border-white/5 pt-8">
             <a
               href="/assessment"
-              className="inline-block bg-[#c23c2c] hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
+              className="inline-block bg-accent-red-brand hover:bg-[#a83225] text-white px-8 py-3 rounded-lg font-medium transition-colors"
             >
               &larr; Kembali ke Assessment
             </a>

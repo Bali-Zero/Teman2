@@ -1,5 +1,3 @@
-"use client";
-
 import type { Locale } from "./book-data";
 
 interface TimelineComponentProps {

@@ -66,7 +66,7 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
             onClick={() => setPeriod(p)}
             className={`flex-1 py-1 rounded-lg text-xs font-medium transition-all ${
               period === p
-                ? 'bg-[#d4845a] text-white'
+                ? 'bg-accent-warm text-white'
                 : 'text-slate-500 hover:text-white hover:bg-white/5'
             }`}
           >

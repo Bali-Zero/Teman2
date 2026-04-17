@@ -1,5 +1,3 @@
-"use client";
-
 export interface ChatRecordingOverlayProps {
   isRecording: boolean;
   recordingTime: number;

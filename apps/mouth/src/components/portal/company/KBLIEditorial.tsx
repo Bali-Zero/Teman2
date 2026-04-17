@@ -1,5 +1,3 @@
-"use client";
-
 interface KBLIEditorialProps {
   kbliCode?: string;
   kbliDescription?: string;

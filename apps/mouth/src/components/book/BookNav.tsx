@@ -21,7 +21,7 @@ export function BookNav({
       <aside className="fixed left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex flex-col items-center gap-3">
         <div className="w-px bg-white/10 absolute left-1/2 -translate-x-1/2 top-0 bottom-0 -z-10" />
         <div
-          className="w-px bg-[#d4845a] absolute left-1/2 -translate-x-1/2 top-0 origin-top transition-transform duration-500 -z-10"
+          className="w-px bg-accent-warm absolute left-1/2 -translate-x-1/2 top-0 origin-top transition-transform duration-500 -z-10"
           style={{
             transform: `scaleY(${activeIndex / (CHAPTERS.length - 1)})`,
             height: "100%",
@@ -35,7 +35,7 @@ export function BookNav({
             title={chapterNames?.[i] ?? chapter.title}
             className={`w-2.5 h-2.5 rounded-full transition-all duration-300 border ${
               activeChapter === chapter.id
-                ? "bg-[#d4845a] border-[#d4845a] scale-125"
+                ? "bg-accent-warm border-accent-warm scale-125"
                 : "bg-transparent border-white/30 hover:border-white/60"
             }`}
           />

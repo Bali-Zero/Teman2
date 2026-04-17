@@ -70,7 +70,7 @@ export function PortalBottomNav() {
                 "flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative",
                 isActive
                   ? "text-[var(--accent)] font-medium"
-                  : "text-[#9AA0AE] hover:text-[#E6E7EB]",
+                  : "text-muted-cool hover:text-[#E6E7EB]",
               )}
             >
               <div className="relative">

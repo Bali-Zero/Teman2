@@ -1,5 +1,3 @@
-"use client";
-
 import { glassCard, computeAge } from "./editorial-tokens";
 
 interface FactBoxesProps {

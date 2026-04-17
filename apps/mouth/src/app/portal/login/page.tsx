@@ -111,7 +111,7 @@ export default function UpgradedLoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.1 }}
-          className="absolute inset-0 z-50 bg-[#c9a96e]/10 flex items-center justify-center backdrop-blur-md"
+          className="absolute inset-0 z-50 bg-accent-gold-muted/10 flex items-center justify-center backdrop-blur-md"
         >
           <div className="text-center group">
             <h1
@@ -1180,7 +1180,7 @@ export default function UpgradedLoginPage() {
             className="mb-8 text-center"
           >
             <p
-              className={`${cormorant.className} text-[13px] uppercase tracking-[4px] mb-2 text-[#c9a96e]/55 font-light`}
+              className={`${cormorant.className} text-[13px] uppercase tracking-[4px] mb-2 text-accent-gold-muted/55 font-light`}
             >
               Turn On
             </p>
@@ -1239,7 +1239,7 @@ export default function UpgradedLoginPage() {
                     >
                       <div className="space-y-2">
                         <label
-                          className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[#c9a96e]/50 font-bold`}
+                          className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-accent-gold-muted/50 font-bold`}
                         >
                           Corporate Email
                         </label>
@@ -1252,7 +1252,7 @@ export default function UpgradedLoginPage() {
                           placeholder="client@company.com"
                           required
                           autoFocus
-                          className="w-full rounded-xl px-4 py-4 text-[13px] outline-none transition-all bg-white/5 border border-[#c9a96e]/20 text-[#f0ece4] focus:border-[#c9a96e]/60 focus:bg-white/10 focus:shadow-[0_0_15px_rgba(201,169,110,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full rounded-xl px-4 py-4 text-[13px] outline-none transition-all bg-white/5 border border-accent-gold-muted/20 text-[#f0ece4] focus:border-accent-gold-muted/60 focus:bg-white/10 focus:shadow-[0_0_15px_rgba(201,169,110,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
 
@@ -1282,7 +1282,7 @@ export default function UpgradedLoginPage() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <label
-                            className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-[#c9a96e]/50 font-bold`}
+                            className={`${cormorant.className} block text-[10px] uppercase tracking-[2.5px] text-accent-gold-muted/50 font-bold`}
                           >
                             Access PIN
                           </label>
@@ -1292,7 +1292,7 @@ export default function UpgradedLoginPage() {
                               playClickSound();
                               setStep("email");
                             }}
-                            className="text-[11px] text-[#c9a96e]/50 hover:text-[#c9a96e] transition-colors"
+                            className="text-[11px] text-accent-gold-muted/50 hover:text-accent-gold-muted transition-colors"
                           >
                             ← {email.split("@")[0]}
                           </button>
@@ -1316,7 +1316,7 @@ export default function UpgradedLoginPage() {
                           required
                           autoFocus
                           maxLength={6}
-                          className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-white/5 border border-[#c9a96e]/20 text-[#f0ece4] focus:border-[#c9a96e]/60 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-white/5 border border-accent-gold-muted/20 text-[#f0ece4] focus:border-accent-gold-muted/60 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
 
@@ -1347,7 +1347,7 @@ export default function UpgradedLoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5, duration: 2 }}
-            className={`${cormorant.className} text-center mt-6 text-[9px] tracking-[3px] uppercase text-[#c9a96e]/20 font-bold`}
+            className={`${cormorant.className} text-center mt-6 text-[9px] tracking-[3px] uppercase text-accent-gold-muted/20 font-bold`}
           >
             Bali Zero · Private Client Portal
           </motion.p>

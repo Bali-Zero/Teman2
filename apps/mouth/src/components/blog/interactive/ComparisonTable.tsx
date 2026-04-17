@@ -154,7 +154,7 @@ function SimpleComparisonTableContent({
                   key={idx}
                   className={cn(
                     "text-left p-4 min-w-[180px]",
-                    item.highlight && "bg-[#2251ff]/10",
+                    item.highlight && "bg-accent-blue-editorial/10",
                   )}
                 >
                   <div className="font-medium text-white">{item.name}</div>
@@ -182,7 +182,7 @@ function SimpleComparisonTableContent({
                     key={colIdx}
                     className={cn(
                       "p-4 text-sm text-white/80",
-                      item.highlight && "bg-[#2251ff]/5",
+                      item.highlight && "bg-accent-blue-editorial/5",
                     )}
                   >
                     {item.values?.[key] || "—"}
@@ -316,7 +316,7 @@ export function ComparisonTable({
               className={cn(
                 "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors",
                 showDifferencesOnly
-                  ? "bg-[#2251ff]/20 text-[#2251ff]"
+                  ? "bg-accent-blue-editorial/20 text-accent-blue-editorial"
                   : "bg-white/5 text-white/60 hover:bg-white/10",
               )}
             >
