@@ -19,6 +19,7 @@ export {
 } from "./components/ThemeProvider";
 export { TrustBand, type TrustBandProps } from "./components/TrustBand";
 export { CTAHandoff, type CTAHandoffProps } from "./components/CTAHandoff";
+export { FunnelFrame, type FunnelFrameProps } from "./components/FunnelFrame";
 
 // Font exports
 export { inter } from "./fonts/inter";
