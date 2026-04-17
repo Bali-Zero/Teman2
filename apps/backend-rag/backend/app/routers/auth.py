@@ -257,8 +257,17 @@ async def login(
                 if brute_force:
                     try:
                         await brute_force.record_failure(client_ip or "", request.email)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        # UU PDP audit: failure to record a brute-force attempt
+                        # must not hide the underlying error, even though the
+                        # 401 path still proceeds (graceful degradation).
+                        logger.warning(
+                            "auth.brute_force_record_failed",
+                            extra={
+                                "error_type": type(exc).__name__,
+                                "client_ip": client_ip or "unknown",
+                            },
+                        )
                 raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
             if not user["active"]:
@@ -273,8 +282,17 @@ async def login(
                 if brute_force:
                     try:
                         await brute_force.record_failure(client_ip or "", request.email)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        # UU PDP audit: failure to record a brute-force attempt
+                        # must not hide the underlying error, even though the
+                        # 401 path still proceeds (graceful degradation).
+                        logger.warning(
+                            "auth.brute_force_record_failed",
+                            extra={
+                                "error_type": type(exc).__name__,
+                                "client_ip": client_ip or "unknown",
+                            },
+                        )
                 raise HTTPException(status_code=401, detail="Account inactive")
 
             # Verify PIN
@@ -290,8 +308,17 @@ async def login(
                 if brute_force:
                     try:
                         await brute_force.record_failure(client_ip or "", request.email)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        # UU PDP audit: failure to record a brute-force attempt
+                        # must not hide the underlying error, even though the
+                        # 401 path still proceeds (graceful degradation).
+                        logger.warning(
+                            "auth.brute_force_record_failed",
+                            extra={
+                                "error_type": type(exc).__name__,
+                                "client_ip": client_ip or "unknown",
+                            },
+                        )
                 raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
             # Update last login
@@ -304,8 +331,16 @@ async def login(
             if brute_force:
                 try:
                     await brute_force.clear_on_success(client_ip or "", request.email)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # UU PDP audit: failing to clear the counter only inflates
+                    # lockout risk on the next attempt; login itself proceeds.
+                    logger.warning(
+                        "auth.brute_force_clear_failed",
+                        extra={
+                            "error_type": type(exc).__name__,
+                            "client_ip": client_ip or "unknown",
+                        },
+                    )
 
             # Create JWT token with role-specific data
             jwt_data = {

@@ -150,7 +150,14 @@ def get_current_user_optional(
         if exc.status_code == 401:
             return None
         raise
-    except Exception:
+    except Exception as exc:
+        # UU PDP audit: an unexpected exception in the optional auth path
+        # still leaves the caller anonymous, but MUST be traceable.
+        logger.warning(
+            "auth.optional_user_failed",
+            extra={"error_type": type(exc).__name__, "error": str(exc)},
+            exc_info=False,
+        )
         return None
 
 

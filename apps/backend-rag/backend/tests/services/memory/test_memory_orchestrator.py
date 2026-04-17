@@ -164,3 +164,69 @@ class TestMemoryOrchestratorProperties:
         orch = _make_orchestrator()
         with pytest.raises(RuntimeError, match="not initialized"):
             orch._ensure_initialized()
+
+
+# ═══════════════════════════════════════════════════════════════
+# Bounded lock/semaphore LRU (S09)
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestBoundedLockLRU:
+    """Regression guard: per-user locks must not grow unbounded."""
+
+    def test_write_lock_reuses_entry_for_same_user(self) -> None:
+        orch = _make_orchestrator()
+        first = orch._get_write_lock("alice@x.com")
+        second = orch._get_write_lock("alice@x.com")
+        assert first is second
+
+    def test_write_lock_evicts_oldest_over_cap(self) -> None:
+        orch = _make_orchestrator()
+        orch._max_lock_entries = 3
+        for i in range(5):
+            orch._get_write_lock(f"user{i}@x.com")
+        assert len(orch._write_locks) == 3
+        assert "user0@x.com" not in orch._write_locks
+        assert "user1@x.com" not in orch._write_locks
+        assert "user4@x.com" in orch._write_locks
+
+    def test_write_lock_lru_reorder(self) -> None:
+        orch = _make_orchestrator()
+        orch._max_lock_entries = 3
+        for name in ("a", "b", "c"):
+            orch._get_write_lock(name)
+        # Touch "a" → it should survive the next insert
+        orch._get_write_lock("a")
+        orch._get_write_lock("d")
+        assert set(orch._write_locks.keys()) == {"a", "c", "d"}
+
+    def test_write_lock_skips_evicting_held_lock(self) -> None:
+        """A locked entry must not be evicted — would strand the holder."""
+        import asyncio
+
+        async def _run() -> None:
+            orch = _make_orchestrator()
+            orch._max_lock_entries = 2
+            held = orch._get_write_lock("holder@x.com")
+            await held.acquire()
+            try:
+                orch._get_write_lock("a@x.com")
+                orch._get_write_lock("b@x.com")  # would evict "holder" (oldest) but it's locked
+                assert "holder@x.com" in orch._write_locks
+            finally:
+                held.release()
+
+        asyncio.run(_run())
+
+    def test_read_semaphore_reuses_entry(self) -> None:
+        orch = _make_orchestrator()
+        first = orch._get_read_semaphore("alice@x.com")
+        second = orch._get_read_semaphore("alice@x.com")
+        assert first is second
+
+    def test_read_semaphore_evicts_over_cap(self) -> None:
+        orch = _make_orchestrator()
+        orch._max_lock_entries = 3
+        for i in range(5):
+            orch._get_read_semaphore(f"user{i}@x.com")
+        assert len(orch._read_semaphores) == 3

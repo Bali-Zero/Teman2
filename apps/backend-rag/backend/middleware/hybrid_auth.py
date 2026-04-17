@@ -361,8 +361,14 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 public_endpoint_access_by_ip.labels(
                     endpoint=request.url.path, client_ip=client_ip,
                 ).inc()
-            except (ImportError, AttributeError):
-                pass
+            except (ImportError, AttributeError) as exc:
+                # Metrics subsystem not wired in this deployment (e.g. tests,
+                # minimal CI). Log once per process at debug — a missing
+                # counter must NOT break a public endpoint.
+                logger.debug(
+                    "hybrid_auth.public_metrics_unavailable",
+                    extra={"error_type": type(exc).__name__},
+                )
 
             response = await call_next(request)
             response.headers["X-Auth-Type"] = "public"

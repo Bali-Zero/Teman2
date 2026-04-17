@@ -206,7 +206,11 @@ def extract_expiry_date(filename: str) -> str | None:
                 date_obj = datetime.strptime(date_str, date_format)
                 if 1900 <= date_obj.year <= 2100:
                     return date_obj.strftime("%Y-%m-%d")
-            except (ValueError, IndexError):
+            except (ValueError, IndexError) as exc:
+                logger.debug(
+                    "crm_documents.filename_date_pattern_mismatch",
+                    extra={"pattern": pattern, "error_type": type(exc).__name__},
+                )
                 continue
     return None
 

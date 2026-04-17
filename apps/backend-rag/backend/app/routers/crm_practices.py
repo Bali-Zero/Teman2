@@ -506,7 +506,11 @@ def _parse_month_param(month: str | None) -> tuple[datetime, datetime] | None:
         else:
             end = datetime(year, m + 1, 1, tzinfo=timezone.utc)
         return start, end
-    except (ValueError, IndexError):
+    except (ValueError, IndexError) as exc:
+        logger.debug(
+            "crm_practices.month_param_invalid",
+            extra={"raw_month": str(month)[:16], "error_type": type(exc).__name__},
+        )
         return None
 
 

@@ -48,6 +48,11 @@ class MemoryHandler:
         self._memory_orchestrator: MemoryOrchestrator | None = None
         self._memory_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._lock_timeout = lock_timeout
+        # Strong refs to in-flight save tasks. Callers (orchestrator.py)
+        # drop the Task returned by create_save_task, so without this set
+        # the event loop's weak reference would let CPython GC some of
+        # the background saves before they actually write to PostgreSQL.
+        self._inflight_tasks: set[asyncio.Task] = set()
 
     def _evict_stale_locks(self) -> None:
         """Remove unlocked entries from _memory_locks to bound memory usage."""
@@ -199,10 +204,17 @@ class MemoryHandler:
 
         task = asyncio.create_task(
             self.save_conversation_memory(user_id, query, answer, metrics_collector),
+            name=f"memory-save:{user_id}",
         )
-        task.add_done_callback(
-            lambda t: (
-                logger.error(f"Memory save failed: {t.exception()}") if t.exception() else None
-            ),
-        )
+        self._inflight_tasks.add(task)
+        task.add_done_callback(self._on_save_task_done)
         return task
+
+    def _on_save_task_done(self, task: asyncio.Task) -> None:
+        """Drop the strong ref once done and surface any exception."""
+        self._inflight_tasks.discard(task)
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error("Memory save task failed: %s", exc, exc_info=exc)

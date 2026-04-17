@@ -45,6 +45,10 @@ class GoldenRouterService:
         self.routes_cache = []  # Cache in-memory delle rotte attive
         self.route_embeddings = None  # Matrix of embeddings for routes
         self.similarity_threshold = 0.85
+        # Strong reference for the embeddings background task — without
+        # this the event loop's weak ref lets CPython GC the task
+        # mid-generation on a busy server, leaving `route_embeddings` None.
+        self._embeddings_task: asyncio.Task | None = None
 
     async def _get_db_pool(self) -> Any:
         """Get or create DB pool"""
@@ -93,16 +97,32 @@ class GoldenRouterService:
                 canonical_queries.append(row["canonical_query"])
 
             if canonical_queries:
-                # Generate embeddings in background to avoid blocking startup
-                import asyncio
-
-                asyncio.create_task(self._generate_embeddings_background(canonical_queries))
+                # Generate embeddings in background to avoid blocking startup.
+                # Keep a strong ref on self so the task survives GC until done.
+                self._embeddings_task = asyncio.create_task(
+                    self._generate_embeddings_background(canonical_queries),
+                    name="golden-router-embeddings",
+                )
+                self._embeddings_task.add_done_callback(self._on_embeddings_done)
                 logger.info(
                     f"🌟 Loaded {len(self.routes_cache)} Golden Routes (Embeddings generating in background...)",
                 )
             else:
                 logger.warning("⚠️ No Golden Routes found in DB")
                 self.route_embeddings = None
+
+    def _on_embeddings_done(self, task: asyncio.Task) -> None:
+        """Clear the strong ref once the background task finishes and log errors."""
+        self._embeddings_task = None
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error(
+                "Golden Router embeddings background task failed: %s",
+                exc,
+                exc_info=exc,
+            )
 
     async def _generate_embeddings_background(self, queries: list[str]) -> None:
         """Generate embeddings in background with caching"""
