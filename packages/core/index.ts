@@ -26,3 +26,8 @@ export { inter } from "./fonts/inter";
 
 // Utility exports (pre-existing)
 export * from "./utils";
+export {
+  MatterCard,
+  type MatterCardProps,
+  type MatterType,
+} from "./components/MatterCard";
