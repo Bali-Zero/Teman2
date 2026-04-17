@@ -35,7 +35,10 @@ class PipelineConfig:
     """Configuration for KG Pipeline"""
 
     # Model settings
-    model: str = "claude-sonnet-4-20250514"
+    # Bumped away from the retired sonnet-4 (2025-05-14). Claude extraction
+    # goes through the Max OAuth subprocess now (no SDK), so ``api_key`` is
+    # kept for back-compat but ignored. See coreference.py for details.
+    model: str = "claude-sonnet-4-6"
     api_key: str | None = None
 
     # Extractor type: "claude" or "gemini"

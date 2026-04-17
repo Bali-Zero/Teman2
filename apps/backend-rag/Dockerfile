@@ -45,10 +45,32 @@ WORKDIR /app
 # ========================================
 FROM python:3.11-slim
 
-# Install only runtime dependencies (curl for healthcheck)
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install runtime dependencies:
+# - curl + ca-certificates: healthcheck + HTTPS to Node repo
+# - gnupg (build-only, removed after): Node.js repo GPG verification
+# - nodejs 20.x: required by the `claude` CLI (Claude Code),
+#   used by backend/llm/claude_oauth_client.py for Max OAuth calls.
+# - @anthropic-ai/claude-code: Claude CLI installed globally.
+#
+# Project policy forbids ANTHROPIC_API_KEY (see
+# memory/feedback_claude_oauth_only.md) — Max plan OAuth via `claude -p`
+# subprocess is the only approved Claude transport.
+# Image-size impact: Node.js ~90MB + CLI ~40MB ≈ +130MB on ~2GB base.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
+    && npm install -g @anthropic-ai/claude-code \
+    && npm cache clean --force \
+    && apt-get remove -y gnupg \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* /root/.npm \
+    && which claude && claude --version
 
 # Create non-root user for security
 RUN useradd -m -u 1000 nuzantara && \
