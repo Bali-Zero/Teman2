@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Search, Newspaper } from "lucide-react";
 import type { ArticleListItem } from "@/lib/blog/types";
+import { NewsHero } from "@/app/v2/_components/NewsHero";
 
 interface NewsPageClientProps {
   articles: ArticleListItem[];
@@ -112,8 +113,7 @@ export default function NewsPageClient({
     );
   }, [articles, query]);
 
-  const heroArticle = filtered[0];
-  const secondaryArticles = filtered.slice(1, 5);
+  // NewsHero carousel uses the top 5; grid shows the rest.
   const gridArticles = filtered.slice(5, 17);
 
   return (
@@ -124,63 +124,18 @@ export default function NewsPageClient({
         color: "var(--text-primary)",
       }}
     >
-      {/* Hero */}
+      {/* Hero — NewsHero carousel (reused from homepage) */}
+      <NewsHero articles={articles.slice(0, 5)} />
+
+      {/* Search bar strip */}
       <section
-        className="relative"
         style={{
-          padding:
-            "clamp(56px, 7vw, 96px) clamp(24px, 4vw, 40px) clamp(32px, 4vw, 48px)",
+          padding: "clamp(20px, 3vw, 32px) clamp(24px, 4vw, 40px) 8px",
         }}
       >
-        {/* Big logo top-right overlay */}
-        <div
-          className="absolute top-6 right-6 md:top-8 md:right-8 pointer-events-none select-none opacity-90"
-          aria-hidden
-        >
-          <Image
-            src="/static/balizero-logo.png"
-            alt=""
-            width={140}
-            height={140}
-            className="w-20 h-20 md:w-28 md:h-28"
-            priority
-          />
-        </div>
-
         <div className="max-w-[1400px] mx-auto">
-          <div
-            className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-5"
-            style={{ color: "var(--accent-funnel-text, #5c8aff)" }}
-          >
-            Newsroom · Indonesia Intelligence
-          </div>
-          <h1
-            className="font-extrabold tracking-tight mb-5"
-            style={{
-              fontSize: "clamp(34px, 5vw, 60px)",
-              lineHeight: 1.05,
-              color: "var(--text-primary)",
-              maxWidth: "22ch",
-            }}
-          >
-            Visa, tax, business, property.
-            <br />
-            <span style={{ color: "var(--text-secondary)" }}>
-              Explained as if you had a consultant.
-            </span>
-          </h1>
-          <p
-            className="text-[16px] leading-[1.6] mb-6"
-            style={{ color: "var(--text-secondary)", maxWidth: "60ch" }}
-          >
-            Indonesia regulations shift fast. We turn the messy updates into
-            pieces our own team would read — with the calendar date, the article
-            of law, and the practical consequence for expats and investors.
-          </p>
-
-          {/* Inline search */}
           <label
-            className="flex items-center gap-3 rounded-full pl-4 pr-2 py-2 max-w-[560px]"
+            className="flex items-center gap-3 rounded-full pl-4 pr-2 py-2 max-w-[720px] mx-auto"
             style={{
               background:
                 "color-mix(in srgb, var(--accent-funnel, #3a6dff) 6%, transparent)",
@@ -248,146 +203,6 @@ export default function NewsPageClient({
           ))}
         </div>
       </section>
-
-      {/* Featured hero + secondary collage */}
-      {heroArticle && (
-        <section
-          style={{
-            padding:
-              "clamp(40px, 5vw, 64px) clamp(24px, 4vw, 40px) clamp(24px, 3vw, 32px)",
-          }}
-        >
-          <div className="max-w-[1400px] mx-auto">
-            <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-              {/* Main */}
-              <Link
-                href={`/${heroArticle.category}/${heroArticle.slug}`}
-                className="group relative rounded-3xl overflow-hidden block"
-                style={{
-                  aspectRatio: "16 / 10",
-                  border: "1px solid var(--border-subtle)",
-                  background:
-                    "color-mix(in srgb, var(--accent-funnel, #3a6dff) 4%, transparent)",
-                }}
-              >
-                {heroArticle.coverImage ? (
-                  <Image
-                    src={heroArticle.coverImage}
-                    alt={heroArticle.title || ""}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 1024px) 100vw, 860px"
-                    priority
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Newspaper
-                      size={48}
-                      style={{ color: "var(--text-tertiary)" }}
-                    />
-                  </div>
-                )}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.78) 100%)",
-                  }}
-                />
-                <div className="absolute inset-x-0 bottom-0 p-6 md:p-8">
-                  <div
-                    className="text-[11px] font-semibold uppercase tracking-[0.22em] mb-3"
-                    style={{
-                      color: CATEGORY_ACCENT[heroArticle.category] || "#d4a017",
-                    }}
-                  >
-                    {formatCategory(heroArticle.category)}
-                  </div>
-                  <h2
-                    className="font-extrabold tracking-tight mb-2 text-white"
-                    style={{
-                      fontSize: "clamp(22px, 2.6vw, 34px)",
-                      lineHeight: 1.15,
-                      maxWidth: "24ch",
-                    }}
-                  >
-                    {heroArticle.title}
-                  </h2>
-                  {heroArticle.excerpt && (
-                    <p
-                      className="text-[14px] leading-[1.55] line-clamp-2"
-                      style={{
-                        color: "rgba(255,255,255,0.78)",
-                        maxWidth: "60ch",
-                      }}
-                    >
-                      {heroArticle.excerpt
-                        .replace(/^#+\s*/gm, "")
-                        .replace(/\*\*|__|\*|_/g, "")
-                        .trim()}
-                    </p>
-                  )}
-                </div>
-              </Link>
-
-              {/* Secondary stack */}
-              <div className="grid gap-4">
-                {secondaryArticles.map((a) => (
-                  <Link
-                    key={a.id}
-                    href={`/${a.category}/${a.slug}`}
-                    className="group relative rounded-2xl overflow-hidden flex gap-4"
-                    style={{
-                      aspectRatio: "16 / 6",
-                      border: "1px solid var(--border-subtle)",
-                      background:
-                        "color-mix(in srgb, var(--accent-funnel, #3a6dff) 4%, transparent)",
-                    }}
-                  >
-                    {a.coverImage ? (
-                      <div className="relative w-[42%] shrink-0">
-                        <Image
-                          src={a.coverImage}
-                          alt={a.title || ""}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 1024px) 40vw, 200px"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className="w-[42%] shrink-0 flex items-center justify-center"
-                        style={{ background: "var(--surface-elev-1)" }}
-                      >
-                        <Newspaper
-                          size={24}
-                          style={{ color: "var(--text-tertiary)" }}
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 py-3 pr-4 flex flex-col justify-center min-w-0">
-                      <div
-                        className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-1.5"
-                        style={{
-                          color: CATEGORY_ACCENT[a.category] || "#d4a017",
-                        }}
-                      >
-                        {formatCategory(a.category)}
-                      </div>
-                      <h3
-                        className="text-[14.5px] font-bold tracking-tight leading-[1.25] line-clamp-3"
-                        style={{ color: "var(--text-primary)" }}
-                      >
-                        {a.title}
-                      </h3>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Section cards (6 colorful) */}
       <section
