@@ -21,7 +21,7 @@ export default function TaxCalendarPage() {
             margin: "var(--space-2) 0 0",
           }}
         >
-          Deadlines, reminder e compliance fiscale per business a Bali.
+          Deadlines, reminders and compliance for businesses in Bali.
         </p>
       </header>
       <TaxCalendarBody deadlines={deadlines} regencies={regencies} />
