@@ -6,6 +6,8 @@
 import type { AnalyticsProperties } from "./types/common";
 import { logger } from "./logger";
 import { toError } from "./types/common";
+import { trackFunnelEvent } from "@balizero/core/analytics";
+import { getOrCreateSessionId } from "@balizero/core/auth";
 
 export interface AnalyticsEvent {
   event_name: string;
@@ -264,6 +266,10 @@ export function trackVisaQuizCompleted(answers: {
     family: answers.family,
   });
   trackEvent("visa_quiz_completed", answers);
+  void trackFunnelEvent("visa_quiz_completed", {
+    sessionId: getOrCreateSessionId(),
+    payload: answers,
+  });
 }
 
 /** Track visa recommendation result viewed */
@@ -280,6 +286,10 @@ export function trackVisaResultViewed(
     top_visa: topVisa,
     visa_count: visaCount,
   });
+  void trackFunnelEvent("visa_result_viewed", {
+    sessionId: getOrCreateSessionId(),
+    payload: { top_visa: topVisa, visa_count: visaCount },
+  });
 }
 
 /** Track chat question sent in Visa Oracle */
@@ -289,6 +299,10 @@ export function trackVisaChatQuestion(remaining: number): void {
     questions_remaining: remaining,
   });
   trackEvent("visa_chat_question", { questions_remaining: remaining });
+  void trackFunnelEvent("visa_chat_question", {
+    sessionId: getOrCreateSessionId(),
+    payload: { questions_remaining: remaining },
+  });
 }
 
 /** Track WhatsApp CTA shown or clicked */
@@ -302,6 +316,10 @@ export function trackVisaWhatsAppCTA(
     trigger,
   });
   trackEvent("visa_whatsapp_cta", { action, trigger });
+  void trackFunnelEvent("visa_whatsapp_cta", {
+    sessionId: getOrCreateSessionId(),
+    payload: { action, trigger },
+  });
 }
 
 /** Track calling visa block shown */
@@ -311,6 +329,10 @@ export function trackVisaCallingBlock(nationality: string): void {
     nationality,
   });
   trackEvent("visa_calling_block", { nationality });
+  void trackFunnelEvent("visa_calling_block", {
+    sessionId: getOrCreateSessionId(),
+    payload: { nationality },
+  });
 }
 
 // --- KBLI Navigator ---
@@ -323,6 +345,10 @@ export function trackKBLICodeViewed(code: string, tier: string): void {
     tier,
   });
   trackEvent("kbli_code_viewed", { kbli_code: code, tier });
+  void trackFunnelEvent("kbli_code_viewed", {
+    sessionId: getOrCreateSessionId(),
+    payload: { kbli_code: code, tier },
+  });
 }
 
 /** Track KBLI search performed */
@@ -336,6 +362,10 @@ export function trackKBLISearch(query: string, resultCount: number): void {
     query_length: query.length,
     result_count: resultCount,
   });
+  void trackFunnelEvent("kbli_search", {
+    sessionId: getOrCreateSessionId(),
+    payload: { query_length: query.length, result_count: resultCount },
+  });
 }
 
 /** Track ZantaraChat question on KBLI page */
@@ -345,6 +375,10 @@ export function trackKBLIChatQuestion(code: string): void {
     kbli_code: code,
   });
   trackEvent("kbli_chat_question", { kbli_code: code });
+  void trackFunnelEvent("kbli_chat_question", {
+    sessionId: getOrCreateSessionId(),
+    payload: { kbli_code: code },
+  });
 }
 
 // --- Tax ---
@@ -363,6 +397,10 @@ export function trackTaxDashboardViewed(
     tax_status: status,
     obligation_count: obligationCount,
   });
+  void trackFunnelEvent("tax_dashboard_viewed", {
+    sessionId: getOrCreateSessionId(),
+    payload: { tax_status: status, obligation_count: obligationCount },
+  });
 }
 
 // --- Property ---
@@ -378,6 +416,25 @@ export function trackPropertyCTA(articleSlug: string, ctaType: string): void {
     article_slug: articleSlug,
     cta_type: ctaType,
   });
+  void trackFunnelEvent("property_cta_clicked", {
+    sessionId: getOrCreateSessionId(),
+    payload: { article_slug: articleSlug, cta_type: ctaType },
+  });
+}
+
+/** Track property analyze button clicked */
+export function trackPropertyAnalyzeCTA(lat: number, lng: number): void {
+  sendGA4Event("property_cta_clicked", {
+    event_category: "Property",
+    cta_type: "analyze",
+    lat,
+    lng,
+  });
+  trackEvent("property_cta_clicked", { cta_type: "analyze", lat, lng });
+  void trackFunnelEvent("property_cta_clicked", {
+    sessionId: getOrCreateSessionId(),
+    payload: { cta_type: "analyze", lat, lng },
+  });
 }
 
 /** Track AskZantara question on property article */
@@ -387,4 +444,21 @@ export function trackPropertyChatQuestion(articleSlug: string): void {
     article_slug: articleSlug,
   });
   trackEvent("property_chat_question", { article_slug: articleSlug });
+  void trackFunnelEvent("property_chat_question", {
+    sessionId: getOrCreateSessionId(),
+    payload: { article_slug: articleSlug },
+  });
+}
+
+/** Track property WA CTA click (placeholder for property_chat_question) */
+export function trackPropertyWACTA(): void {
+  sendGA4Event("property_chat_question", {
+    event_category: "Property",
+    cta_type: "whatsapp",
+  });
+  trackEvent("property_chat_question", { cta_type: "whatsapp" });
+  void trackFunnelEvent("property_chat_question", {
+    sessionId: getOrCreateSessionId(),
+    payload: { cta_type: "whatsapp" },
+  });
 }

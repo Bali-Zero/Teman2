@@ -52,6 +52,7 @@ const PORTAL_DOMAIN = "my.balizero.com";
 const MOBILE_DOMAIN = "mo.balizero.com";
 const ZANTARA_DOMAIN = "zantara.balizero.com";
 const VISA_DOMAIN = "visa.balizero.com";
+const TAX_DOMAIN = "tax.balizero.com";
 const ASSESSMENT_DOMAIN = "subhi.balizero.com";
 // SSO subdomains: all *.balizero.com apps that share auth via cookie
 const SSO_SUBDOMAINS = ["mail", "calendar", "drive", "knowledge"];
@@ -167,11 +168,14 @@ export function middleware(request: NextRequest) {
   const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
   const isVisaDomain =
     hostname.includes("visa.balizero") || hostname === VISA_DOMAIN;
+  const isTaxDomain =
+    hostname.includes("tax.balizero") || hostname === TAX_DOMAIN;
   const isPublicDomain =
     hostname.includes(PUBLIC_DOMAIN) &&
     !hostname.includes("kita") &&
     !hostname.includes("my") &&
     !hostname.includes("visa") &&
+    !hostname.includes("tax") &&
     !isSSOSubdomain &&
     subdomain !== "prime";
   const isAppDomain =
@@ -242,6 +246,21 @@ export function middleware(request: NextRequest) {
       rewriteUrl.pathname = "/visa-oracle";
     } else if (!pathname.startsWith("/visa-oracle")) {
       rewriteUrl.pathname = `/visa-oracle${pathname}`;
+    }
+    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
+    rewriteResponse.headers.set("x-pathname", pathname);
+    return rewriteResponse;
+  }
+
+  // === TAX DOMAIN (tax.balizero.com) ===
+  // Dedicated Tax Compliance Calendar webapp — rewrites all paths to /tax-calendar/* prefix.
+  // The route group (tax-calendar) lives at /tax-calendar/* to avoid conflicts with existing routes.
+  if (isTaxDomain) {
+    const rewriteUrl = request.nextUrl.clone();
+    if (pathname === "/" || pathname === "") {
+      rewriteUrl.pathname = "/tax-calendar";
+    } else if (!pathname.startsWith("/tax-calendar")) {
+      rewriteUrl.pathname = `/tax-calendar${pathname}`;
     }
     const rewriteResponse = NextResponse.rewrite(rewriteUrl);
     rewriteResponse.headers.set("x-pathname", pathname);

@@ -1,45 +1,40 @@
-import { Montserrat } from "next/font/google";
+import type { Metadata } from "next";
 import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-montserrat",
-  display: "swap",
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
+export const metadata: Metadata = {
+  title: "Property Eligibility · Bali Zero",
+  description:
+    "Zoning, struttura legale, tassazione e risk score per immobili in Bali.",
+};
 
-export default function KBLILayout({
+export default function PropertyLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={`${montserrat.variable} relative z-1`}
-      style={{
-        fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-      }}
-    >
+    <div className="min-h-screen flex flex-col">
       <NavShell
         logo={<BZLogo variant="full" />}
         items={[
           { label: "Home", href: "https://balizero.com/" },
           { label: "Visa", href: "https://visa.balizero.com/" },
+          { label: "KBLI", href: "/kbli" },
           { label: "Tax", href: "https://tax.balizero.com/" },
         ]}
         actions={
           <a
             href="https://wa.me/628213107363"
             className="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold"
-            style={{ background: "var(--kbli-accent)", color: "#fff" }}
+            style={{ background: "var(--accent-funnel)", color: "#fff" }}
           >
             WhatsApp
           </a>
         }
       />
-      <SessionInit funnel="kbli" />
-      <div className="mx-auto max-w-6xl px-4 pt-14 pb-8 sm:px-6 lg:px-8">
+      <SessionInit funnel="property" />
+      <div className="mx-auto max-w-6xl w-full px-4 pt-14 pb-8 sm:px-6 lg:px-8 flex-1">
         {children}
       </div>
     </div>
