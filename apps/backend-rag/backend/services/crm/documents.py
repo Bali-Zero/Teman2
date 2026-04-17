@@ -12,6 +12,7 @@ from typing import Any
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
 
 logger = get_logger(__name__)
@@ -314,6 +315,11 @@ class DocumentUploadService:
             uploaded_by=uploaded_by_email,
         )
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:documents:*",
+        "zantara:crm_documents:*",
+        "zantara:portal_documents:*",
+    ])
     async def _upload_document(
         self,
         client_id: int,

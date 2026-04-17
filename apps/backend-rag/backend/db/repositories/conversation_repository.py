@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success
 from backend.db.base_repository import BaseRepository
+from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
 
@@ -15,6 +16,10 @@ logger = get_logger(__name__)
 class ConversationRepository(BaseRepository):
     """Repository for conversation persistence operations"""
 
+    @cache_invalidating([
+        lambda self, session_id, *a, **k: f"zantara:conversations:{session_id}:*",
+        "zantara:conversations:*",
+    ])
     async def save_messages(
         self,
         session_id: str,
@@ -150,6 +155,9 @@ class ConversationRepository(BaseRepository):
             log_error(logger, "Failed to retrieve messages", error=e, exc_info=True)
             return []
 
+    @cache_invalidating([
+        "zantara:conversations:*",
+    ])
     async def cleanup_old_conversations(self, days: int = 30) -> int:
         """
         Delete conversations older than specified days
@@ -188,6 +196,9 @@ class ConversationRepository(BaseRepository):
             log_error(logger, "Failed to cleanup conversations", error=e, exc_info=True)
             return 0
 
+    @cache_invalidating([
+        "zantara:conversations:*",
+    ])
     async def anonymize_user_data(self, days: int = 7) -> int:
         """
         Anonymize user_id for conversations older than specified days

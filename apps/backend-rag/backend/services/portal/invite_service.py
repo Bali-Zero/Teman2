@@ -15,6 +15,7 @@ import asyncpg
 import bcrypt
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
 
@@ -29,6 +30,10 @@ class InviteService:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
+        "zantara:portal_invitations:*",
+    ])
     async def create_invitation(
         self,
         client_id: int,
@@ -142,6 +147,10 @@ class InviteService:
                 "email": result["email"],
             }
 
+    @cache_invalidating([
+        "zantara:portal_invitations:*",
+        "zantara:crm_clients:*",
+    ])
     async def complete_registration(
         self,
         token: str,
@@ -294,6 +303,10 @@ class InviteService:
                 for row in rows
             ]
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
+        "zantara:portal_invitations:*",
+    ])
     async def resend_invitation(
         self,
         client_id: int,

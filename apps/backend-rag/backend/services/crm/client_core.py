@@ -26,6 +26,7 @@ from backend.app.core.exceptions import (
     ValidationError,
 )
 from backend.app.utils.error_sanitizer import sanitize_error_message
+from backend.services.common.cache import cache_invalidating
 from backend.services.crm.cache_query import (
     CRMQueryOptimizer,
     crm_cache,
@@ -646,6 +647,10 @@ class EnhancedCRMService:
 
     # ==================== CLIENT OPERATIONS ====================
 
+    @cache_invalidating([
+        "zantara:crm_clients_stats:*",
+        "zantara:crm_clients:*",
+    ])
     async def create_client(
         self,
         client_data: dict[str, Any],
@@ -710,6 +715,11 @@ class EnhancedCRMService:
             logger.exception(f"Failed to create client: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create client", operation="insert")
 
+    @cache_invalidating([
+        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+        "zantara:crm_clients_stats:*",
+        "zantara:crm_clients:*",
+    ])
     async def update_client(
         self,
         client_id: int,
@@ -826,6 +836,9 @@ class EnhancedCRMService:
 
     # ==================== PRACTICE OPERATIONS ====================
 
+    @cache_invalidating([
+        "zantara:crm_practices:*",
+    ])
     async def create_practice(
         self,
         practice_data: dict[str, Any],
@@ -883,6 +896,10 @@ class EnhancedCRMService:
             logger.exception(f"Failed to create practice: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create practice", operation="insert")
 
+    @cache_invalidating([
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        "zantara:crm_practices:*",
+    ])
     async def update_practice_status(
         self,
         practice_id: int,
@@ -942,6 +959,10 @@ class EnhancedCRMService:
 
     # ==================== BATCH OPERATIONS ====================
 
+    @cache_invalidating([
+        "zantara:crm_clients_stats:*",
+        "zantara:crm_clients:*",
+    ])
     async def batch_create_clients(
         self, clients: list[dict[str, Any]], user_id: str | None = None,
     ) -> list[int]:

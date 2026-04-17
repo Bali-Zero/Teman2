@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 import asyncpg as _asyncpg
 from langgraph.graph import END, StateGraph
 
+from backend.services.common.cache import cache_invalidating
 from backend.services.crm.validators import normalize_phone_e164
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,10 @@ class ClientIdentityResolver:
                 email,
             )
 
+    @cache_invalidating([
+        "zantara:messaging_identity:*",
+        lambda self, channel, identifier, client_id: f"zantara:crm_client:{client_id}:*",
+    ])
     async def link_messaging_user_to_client(
         self, channel: str, identifier: str, client_id: int,
     ) -> bool:
@@ -190,6 +195,10 @@ class ClientIdentityResolver:
 
             return success
 
+    @cache_invalidating([
+        "zantara:crm_clients_stats:*",
+        "zantara:crm_clients:*",
+    ])
     async def resolve_or_create_client(
         self, channel: str, identifier: str, client_data: dict[str, Any] | None = None,
     ) -> tuple[int, bool]:
