@@ -18,6 +18,8 @@ from typing import Any
 
 import asyncpg
 
+from backend.services.common.background import spawn
+
 logger = logging.getLogger("zantara.workflow.queue")
 
 # Visibility timeout must be > kill_timeout (300s = 5min) + max chain duration (8min)
@@ -194,7 +196,7 @@ async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:
                     job = await _dequeue_one(conn)
 
             if job:
-                asyncio.create_task(_process_job(job, db_pool, app_state))
+                spawn(_process_job(job, db_pool, app_state), name=f"workflow_job_{job.get('id', 'unknown')}")
             else:
                 await asyncio.sleep(WORKER_POLL_INTERVAL_SECONDS)
 

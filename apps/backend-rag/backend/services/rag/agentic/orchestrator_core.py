@@ -26,6 +26,7 @@ from backend.app.utils.tracing import set_span_attribute, set_span_status, trace
 from backend.db.repositories.query_analytics_repository import QueryAnalyticsRepository
 from backend.db.repositories.workflow_analytics_repository import WorkflowAnalyticsRepository
 from backend.prompts.channel_overlays import build_channel_context
+from backend.services.common.background import spawn
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.rag.agentic.entity_extractor import EntityExtractionService
 from backend.services.rag.agentic.llm_gateway import LLMGateway
@@ -464,12 +465,13 @@ class OrchestratorCore:
             system_context_for_prompt += "\n" + workflow_str
 
             # Phase 4: Track workflow generation (fire-and-forget)
-            asyncio.create_task(
+            spawn(
                 self._track_workflow(
                     query=query,
                     workflow=workflow,
                     execution_time_ms=int((time.time() - langgraph_start) * 1000),
                 ),
+                name="orchestrator_track_workflow",
             )
 
         total_time = time.time() - start_time
@@ -739,8 +741,9 @@ class OrchestratorCore:
                     )
                     crag_decision = _crag_router.route(query_plan)
             else:
-                asyncio.create_task(
+                spawn(
                     self._run_query_planner_shadow(query, user_context),
+                    name="orchestrator_query_planner_shadow",
                 )
 
         # 2. Check gates (security, greeting, etc.)
@@ -837,8 +840,9 @@ class OrchestratorCore:
                     from backend.services.oracle.cross_notebook_correlator import (
                         get_correlator,
                     )
-                    asyncio.create_task(
+                    spawn(
                         get_correlator().query_async(query),
+                        name="orchestrator_cross_notebook",
                     )
                     logger.debug(
                         "ARCH-4: cross-notebook task launched for %d domains: %s",
@@ -1054,7 +1058,7 @@ class OrchestratorCore:
                 for s in sources
                 if isinstance(s, dict)
             ]
-            asyncio.create_task(
+            spawn(
                 self._kg_auto_expansion.expand_from_response(
                     response_text=result.answer,  # NOT used for extraction
                     evidence_score=evidence_score_val,

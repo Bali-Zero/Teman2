@@ -26,6 +26,7 @@ from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.cache import cached, invalidate_cache
 from backend.db.repositories.client_repository import ClientRepository
+from backend.services.common.background import spawn
 from backend.services.crm.client_service import ClientService
 
 logger = get_logger(__name__)
@@ -820,7 +821,7 @@ async def update_client(
                 )
 
                 notif_service = PortalNotificationService(db_pool)
-                asyncio.create_task(
+                spawn(
                     notif_service.notify_profile_updated(
                         client_id=client_id,
                         updated_fields=updated_field_names,

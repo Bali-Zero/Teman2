@@ -284,7 +284,11 @@ class OpenRouterClient:
                         content = delta.get("content", "")
                         if content:
                             yield content
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as decode_exc:
+                        logger.debug(
+                            "openrouter stream: skipping malformed chunk: %s",
+                            decode_exc,
+                        )
                         continue
 
     async def check_credits(self) -> dict:
