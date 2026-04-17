@@ -45,7 +45,7 @@ class WindsurfAdapter:
                     if result.returncode == 0:
                         logger.info(f"✅ Windsurf trovato: {path}")
                         return path
-                except Exception:
+                except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
                     continue
         return self.windsurf_paths[0]  # Default al primo path
 
@@ -62,7 +62,7 @@ class WindsurfAdapter:
                 logger.info(f"✅ Windsurf disponibile: {version}")
                 return True
             return False
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.debug(f"Windsurf non disponibile: {e}")
             return False
 
@@ -76,7 +76,7 @@ class WindsurfAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.warning(f"⚠️ Could not open file in Windsurf: {e}")
             return False
 
@@ -89,7 +89,7 @@ class WindsurfAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.warning(f"⚠️ Could not open folder in Windsurf: {e}")
             return False
 

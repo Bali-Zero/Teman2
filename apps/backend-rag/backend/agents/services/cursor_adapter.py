@@ -41,7 +41,7 @@ class CursorAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.warning(f"⚠️ Could not open file in Cursor: {e}")
             return False
 
@@ -54,7 +54,7 @@ class CursorAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.warning(f"⚠️ Could not open folder in Cursor: {e}")
             return False
 
@@ -70,7 +70,7 @@ class CursorAdapter:
             if result.returncode == 0:
                 return result.stdout
             return None
-        except Exception as e:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
             logger.warning(f"⚠️ Cursor diff failed: {e}")
             return None
 
@@ -81,7 +81,7 @@ class CursorAdapter:
                 f.write(rules)
             logger.info(f"✅ Updated .cursorrules at {self.cursor_rules_file}")
             return True
-        except Exception as e:
+        except OSError as e:
             logger.error(f"❌ Failed to update .cursorrules: {e}")
             return False
 
@@ -92,7 +92,7 @@ class CursorAdapter:
                 with open(self.cursor_rules_file) as f:
                     return f.read()
             return None
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"⚠️ Could not read .cursorrules: {e}")
             return None
 
@@ -105,7 +105,7 @@ class CursorAdapter:
                 timeout=5.0,
             )
             return result.returncode == 0
-        except Exception:
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
             return False
 
 
