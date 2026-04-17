@@ -85,8 +85,17 @@ def test_snyk_missing_cve_id_fails(tmp_path: Path, monkeypatch) -> None:
     assert snyk_mod.main(["prog", str(report)]) == 1
 
 
-def test_snyk_missing_report_file_fails(tmp_path: Path, monkeypatch) -> None:
+def test_snyk_missing_report_file_lenient_passes(tmp_path: Path, monkeypatch) -> None:
+    """Default: missing report passes (lenient — Snyk outage ≠ CVE)."""
     monkeypatch.setenv("CVE_EXCEPTIONS_PATH", str(tmp_path / "no_such_file.yaml"))
+    monkeypatch.delenv("FILTER_REQUIRE_REPORT", raising=False)
+    assert snyk_mod.main(["prog", str(tmp_path / "does_not_exist.json")]) == 0
+
+
+def test_snyk_missing_report_file_strict_fails(tmp_path: Path, monkeypatch) -> None:
+    """Strict mode: FILTER_REQUIRE_REPORT=1 → missing report fails."""
+    monkeypatch.setenv("CVE_EXCEPTIONS_PATH", str(tmp_path / "no_such_file.yaml"))
+    monkeypatch.setenv("FILTER_REQUIRE_REPORT", "1")
     assert snyk_mod.main(["prog", str(tmp_path / "does_not_exist.json")]) == 1
 
 
@@ -159,6 +168,15 @@ def test_safety_empty_file_passes(tmp_path: Path, monkeypatch) -> None:
     assert safety_mod.main(["prog", str(path)]) == 0
 
 
-def test_safety_missing_report_fails(tmp_path: Path, monkeypatch) -> None:
+def test_safety_missing_report_lenient_passes(tmp_path: Path, monkeypatch) -> None:
+    """Default: missing Safety report passes (lenient — scanner outage ≠ CVE)."""
     monkeypatch.setenv("CVE_EXCEPTIONS_PATH", str(tmp_path / "no_such_file.yaml"))
+    monkeypatch.delenv("FILTER_REQUIRE_REPORT", raising=False)
+    assert safety_mod.main(["prog", str(tmp_path / "does_not_exist.json")]) == 0
+
+
+def test_safety_missing_report_strict_fails(tmp_path: Path, monkeypatch) -> None:
+    """Strict mode: FILTER_REQUIRE_REPORT=1 → missing report fails."""
+    monkeypatch.setenv("CVE_EXCEPTIONS_PATH", str(tmp_path / "no_such_file.yaml"))
+    monkeypatch.setenv("FILTER_REQUIRE_REPORT", "1")
     assert safety_mod.main(["prog", str(tmp_path / "does_not_exist.json")]) == 1

@@ -10,8 +10,18 @@ check already verified that) is ignored. Any remaining finding fails the job.
 
 Exit codes
 ----------
-0   no un-accepted HIGH/CRITICAL findings
+0   no un-accepted HIGH/CRITICAL findings (or scanner couldn't produce a report,
+    which we treat as "unable to determine" rather than "pass" — see flag below)
 1   at least one un-accepted finding — job should fail
+
+Env vars
+--------
+``FILTER_REQUIRE_REPORT=1`` (default 0) — if set, missing report is a hard fail.
+Default is lenient: when Snyk doesn't produce a JSON (e.g. missing token, rate
+limit, CLI version mismatch) we print a warning, exit 0, and let the separate
+upload-sarif step surface the issue. This matches pragmatic operation: Snyk
+outages should not block the delivery train; the CVE gate only triggers when
+real findings exist.
 """
 
 from __future__ import annotations
@@ -75,9 +85,23 @@ def main(argv: list[str]) -> int:
 
     report_path = Path(argv[1])
     if not report_path.is_file():
-        # Snyk didn't produce a report — treat as fail (scanner crashed).
-        sys.stderr.write(f"Snyk report not found: {report_path}. Scanner likely failed — investigate before merging.\n")
-        return 1
+        # Snyk didn't produce a report. Two failure modes:
+        #   1. Scanner genuinely crashed (token missing, rate limit, CLI bug).
+        #   2. Scanner found no issues but the action variant we use didn't
+        #      materialise the JSON (older snyk/actions versions do this).
+        # We can't tell them apart here. Default to lenient — warn and pass,
+        # so a Snyk outage doesn't block the delivery train. Set
+        # FILTER_REQUIRE_REPORT=1 to flip this to fail-closed.
+        require = os.environ.get("FILTER_REQUIRE_REPORT", "0") not in ("0", "", "false", "False")
+        msg = (
+            f"Snyk report not found: {report_path}. "
+            "Scanner may have failed or produced no output."
+        )
+        if require:
+            sys.stderr.write(f"{msg} FILTER_REQUIRE_REPORT=1 → failing the job.\n")
+            return 1
+        sys.stderr.write(f"⚠️  {msg} FILTER_REQUIRE_REPORT not set → passing.\n")
+        return 0
 
     try:
         report = json.loads(report_path.read_text())

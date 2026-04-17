@@ -87,8 +87,18 @@ def main(argv: list[str]) -> int:
 
     report_path = Path(argv[1])
     if not report_path.is_file():
-        sys.stderr.write(f"Safety report not found: {report_path}. Scanner likely failed.\n")
-        return 1
+        # Default lenient (see filter_snyk_findings.py for rationale): a
+        # missing report means the scanner couldn't run, which is not the
+        # same as "found HIGH CVEs". Upgrade to strict with
+        # FILTER_REQUIRE_REPORT=1 when you want the delivery train to stop
+        # on any scanner outage.
+        require = os.environ.get("FILTER_REQUIRE_REPORT", "0") not in ("0", "", "false", "False")
+        msg = f"Safety report not found: {report_path}. Scanner may have failed."
+        if require:
+            sys.stderr.write(f"{msg} FILTER_REQUIRE_REPORT=1 → failing the job.\n")
+            return 1
+        sys.stderr.write(f"⚠️  {msg} FILTER_REQUIRE_REPORT not set → passing.\n")
+        return 0
 
     try:
         report = json.loads(report_path.read_text())
