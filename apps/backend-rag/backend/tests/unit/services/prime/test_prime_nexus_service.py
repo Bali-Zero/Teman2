@@ -13,16 +13,13 @@ Covers:
 - PrimeNexusService (circuit breaker, resolve pipeline, analyze, etc.)
 """
 
-import json
 import logging
 import time
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.prime.prime_nexus_service import (
-    NON_BUILDABLE_ZONES,
     RESTRICTED_ZONES,
     ZONE_COLORS_MAP,
     ZONE_LABELS,
@@ -114,7 +111,7 @@ class TestCalculateBuildingYield:
     def test_unknown_zone_returns_none(self) -> None:
         assert calculate_building_yield("ZZZZZZ") is None
 
-    @patch("backend.services.prime.prime_nexus_service._BUILDING_CODES", {
+    @patch("backend.services.prime.geo_service._BUILDING_CODES", {
         "K-1": {
             "name": "Kawasan Komersial 1",
             "KDB": "70",
@@ -135,7 +132,7 @@ class TestCalculateBuildingYield:
         assert result["max_height_meters"] == 15.0
         assert result["notes"] == "test note"
 
-    @patch("backend.services.prime.prime_nexus_service._BUILDING_CODES", {
+    @patch("backend.services.prime.geo_service._BUILDING_CODES", {
         "BAD": {"name": "Bad", "KDB": "not_a_number"},
     })
     def test_parse_error_returns_none(self) -> None:

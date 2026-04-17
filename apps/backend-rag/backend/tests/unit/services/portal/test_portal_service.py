@@ -135,15 +135,15 @@ class TestDocumentOCR:
 
     @pytest.mark.asyncio
     async def test_extract_from_pdf_no_vision(self) -> None:
-        with patch("backend.services.portal.portal_service.PDF_VISION_AVAILABLE", False):
-            with patch("backend.services.portal.portal_service.PYMUPDF_AVAILABLE", False):
+        with patch("backend.services.portal.document_processing.PDF_VISION_AVAILABLE", False):
+            with patch("backend.services.portal.document_processing.PYMUPDF_AVAILABLE", False):
                 result = await self.ocr._extract_from_pdf(b"%PDF-content")
                 assert result["success"] is False
                 assert "not available" in result["error"]
 
     @pytest.mark.asyncio
     async def test_extract_from_image_no_vision(self) -> None:
-        with patch("backend.services.portal.portal_service.PDF_VISION_AVAILABLE", False):
+        with patch("backend.services.portal.document_processing.PDF_VISION_AVAILABLE", False):
             result = await self.ocr._extract_from_image(b"\x89PNG")
             assert result["success"] is False
             assert "not available" in result["error"]

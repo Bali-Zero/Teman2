@@ -129,8 +129,8 @@ class TestDocumentOCR:
         assert "Unsupported MIME type" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("backend.services.portal.portal_service.PDF_VISION_AVAILABLE", False)
-    @patch("backend.services.portal.portal_service.PYMUPDF_AVAILABLE", False)
+    @patch("backend.services.portal.document_processing.PDF_VISION_AVAILABLE", False)
+    @patch("backend.services.portal.document_processing.PYMUPDF_AVAILABLE", False)
     async def test_extract_from_pdf_no_services(self):
         """PDF extraction fails gracefully without vision/pymupdf."""
         result = await DocumentOCR._extract_from_pdf(b"%PDF-1.4 content")
@@ -138,7 +138,7 @@ class TestDocumentOCR:
         assert "not available" in result["error"]
 
     @pytest.mark.asyncio
-    @patch("backend.services.portal.portal_service.PDF_VISION_AVAILABLE", False)
+    @patch("backend.services.portal.document_processing.PDF_VISION_AVAILABLE", False)
     async def test_extract_from_image_no_vision(self):
         """Image extraction fails gracefully without vision service."""
         result = await DocumentOCR._extract_from_image(b"\x89PNG fake image")
@@ -147,13 +147,13 @@ class TestDocumentOCR:
 
     def test_detect_mime_type_fallback(self):
         """MIME detection uses extension fallback when magic unavailable."""
-        with patch("backend.services.portal.portal_service.MAGIC_AVAILABLE", False):
+        with patch("backend.services.portal.document_processing.MAGIC_AVAILABLE", False):
             mime = DocumentOCR._detect_mime_type(b"content", "test.pdf")
             assert mime == "application/pdf"
 
     def test_detect_mime_type_unknown_extension(self):
         """Unknown extension returns octet-stream."""
-        with patch("backend.services.portal.portal_service.MAGIC_AVAILABLE", False):
+        with patch("backend.services.portal.document_processing.MAGIC_AVAILABLE", False):
             mime = DocumentOCR._detect_mime_type(b"content", "file.xyz123")
             assert mime == "application/octet-stream"
 
