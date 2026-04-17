@@ -7,10 +7,28 @@
 
 ## Critical Gotchas
 
+### Docker Build Context — Monorepo Root (PR #62)
+
+The Dockerfile expects build context at **monorepo root**, not `apps/backend-rag/`.
+Fly uses this via `flyctl deploy --dockerfile apps/backend-rag/Dockerfile --config apps/backend-rag/fly.toml` in `.github/workflows/fly-deploy.yml`.
+
+**Local `docker build` — RUN FROM REPO ROOT:**
+
+```bash
+cd "$(git rev-parse --show-toplevel)"
+docker build -f apps/backend-rag/Dockerfile -t rag-test .
+```
+
+**Do NOT** `cd apps/backend-rag && docker build -t rag-test .` — that excludes `packages/cell-core/` from context and breaks the cell-core editable install.
+
+Authoritative `.dockerignore` is at repo root (`/.dockerignore`); `apps/backend-rag/.dockerignore` is retained but IGNORED by Fly.
+
 ### Router Registration — Manifest Pattern (PR #63)
+
 **NEVER edit `router_registration.py` directly.** It reads from `router_manifest.py`.
 
 To add a new router:
+
 1. Create file in `backend/app/routers/`
 2. Add `RouterEntry` in `backend/app/setup/router_manifest.py` with correct `process_groups`
 3. Run `PYTHONPATH=. pytest backend/tests/setup/test_router_manifest.py -q`
@@ -21,23 +39,28 @@ Process groups: `_API` (light, public HTTP via main_api), `_RAG` (heavy, interna
 **SCAR:** PRs #54/#55/#60 registered routers only in `include_routers()` (dev) but not `include_light_routers()` (prod), causing silent 404s. The manifest makes this structurally impossible.
 
 ### ABSTAIN Override (reasoning.py)
+
 `calculate_evidence_score()` returns 0.00 when Gemini answers directly without calling tools. Score < 0.15 = ABSTAIN → blocks all valid business answers.
 
 **Three-layer fix** (both streaming + non-streaming paths in `reasoning.py`):
+
 1. `intent_classifier.py`: 17 pricing keywords in `GENERAL_TASK_KEYWORDS` trigger `skip_rag=True`
 2. If `final_answer` contains pricing markers (Rp, IDR, USD), set `trusted_tools_used = True`
 3. **KEY**: If LLM had `_gemini_tools` configured and produced `final_answer`, trust it → `trusted_tools_used = True`
 
 ### Rogue AI Import Removal
+
 AI refactors (Gemini/Windsurf) silently remove `Any` from `typing` imports. `dependencies.py` is imported by EVERY router — missing `Any` crashes entire app at startup.
 
 **Prevention**: Always run before deploy:
+
 ```bash
 python -c "from backend.app.dependencies import get_current_user; print('OK')"
 PYTHONPATH=. pytest backend/tests/services/rag/ -q
 ```
 
 ### Service Injection Pattern (avoid circular imports)
+
 Use `get_service()` lazy loading pattern, NOT direct imports between services. Circular imports between services will crash FastAPI startup silently.
 
 ---
@@ -45,14 +68,17 @@ Use `get_service()` lazy loading pattern, NOT direct imports between services. C
 ## Pricing Rules (ABSOLUTE)
 
 ### HAS_FEE in KG ≠ Bali Zero Prices
+
 KG `HAS_FEE` relations (~1,500) contain government PNBP fees and legal regulation costs extracted from imigrasi.go.id — NOT Bali Zero service prices.
 
 **Bali Zero prices are ONLY in:**
+
 - File: `backend/data/bali_zero_official_prices_2025.json`
 - Tool: `PricingTool` (Tool #2)
 - Loaded by: `PricingService._load_prices()`
 
 **Rules enforced in `prompt_builder.py:47-66`:**
+
 1. ONLY use prices from `get_pricing` tool
 2. NEVER invent, estimate, or guess ANY price
 3. If price not in tool → "Questo costo specifico è da verificare con il team"
@@ -61,12 +87,12 @@ KG `HAS_FEE` relations (~1,500) contain government PNBP fees and legal regulatio
 
 ## Model Configuration
 
-| Use Case | Model | Fallback | Notes |
-|----------|-------|----------|-------|
-| KBLI chat | `claude-haiku-4-5-20251001` | Gemini Flash | In `kbli_notebook.py` |
-| RAG orchestrator | Gemini 2.5 Flash | Gemini 2.0 Flash | Primary reasoning |
-| Embedding | `text-embedding-3-small` | NONE | **FROZEN** — changing invalidates 93K+ vectors |
-| Evidence threshold | 0.15 | — | Below = ABSTAIN |
+| Use Case           | Model                       | Fallback         | Notes                                          |
+| ------------------ | --------------------------- | ---------------- | ---------------------------------------------- |
+| KBLI chat          | `claude-haiku-4-5-20251001` | Gemini Flash     | In `kbli_notebook.py`                          |
+| RAG orchestrator   | Gemini 2.5 Flash            | Gemini 2.0 Flash | Primary reasoning                              |
+| Embedding          | `text-embedding-3-small`    | NONE             | **FROZEN** — changing invalidates 93K+ vectors |
+| Evidence threshold | 0.15                        | —                | Below = ABSTAIN                                |
 
 ---
 
