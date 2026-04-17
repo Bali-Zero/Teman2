@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
     from backend.services.analytics.attendance_monitor import AttendanceMonitor
 
+from backend.services.common.background import spawn
+
 logger = logging.getLogger(__name__)
 
 # Bali timezone
@@ -156,7 +158,7 @@ class TeamTimesheetService:
             # by the email call. AttendanceMonitor handles its own threshold and
             # exempt-list logic.
             if self.attendance_monitor is not None:
-                asyncio.create_task(
+                spawn(
                     self.attendance_monitor.check_late_checkin(email, now),
                     name=f"late-checkin-alert:{email}",
                 )

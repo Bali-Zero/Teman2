@@ -11,6 +11,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.dependencies import get_current_user, get_database_pool
+from backend.services.common.background import spawn
 
 logger = logging.getLogger(__name__)
 
@@ -879,8 +880,6 @@ async def sync_company_drive_folder(
 
     # Trigger OCR in background for newly added docs
     if ocr_tasks and primary_client_id:
-        import asyncio
-
         async def _run_ocr_tasks() -> None:
             try:
                 from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
@@ -902,7 +901,7 @@ async def sync_company_drive_folder(
             except Exception as e:
                 logger.error(f"[sync-drive] OCR background task error: {e}")
 
-        asyncio.create_task(_run_ocr_tasks())
+        spawn(_run_ocr_tasks(), name="company_router_ocr_tasks")
         logger.info(f"[sync-drive] Queued {len(ocr_tasks)} OCR tasks in background")
 
     return {
