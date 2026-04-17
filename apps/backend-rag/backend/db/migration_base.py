@@ -22,6 +22,130 @@ class MigrationError(Exception):
     pass
 
 
+class MigrationIrreversibleError(MigrationError):
+    """Raised when a migration explicitly has no safe rollback path.
+
+    Use this in rollback_sql or a custom rollback hook when the operation
+    (e.g., DROP COLUMN with data loss, denormalization) cannot be reversed.
+    Raising this is preferable to silently ignoring rollback — it forces
+    the caller to acknowledge the irreversibility.
+    """
+
+    pass
+
+
+# All migration_*.py files that existed before 2026-04-18 are grandfathered:
+# they were written before the rollback requirement was introduced and are
+# applied manually (the automated loader only reads db/migrations_v2/*.sql).
+# New migrations (migration_number > 111) MUST supply rollback_sql.
+LEGACY_NO_ROLLBACK_WHITELIST: frozenset[str] = frozenset({
+    "migration_001",
+    "migration_007",
+    "migration_010",
+    "migration_012",
+    "migration_013",
+    "migration_014",
+    "migration_015",
+    "migration_016",
+    "migration_018",
+    "migration_019",
+    "migration_020",
+    "migration_021a_baseline",
+    "migration_021b_add_bm25_sparse_vectors",
+    "migration_022",
+    "migration_025",
+    "migration_026",
+    "migration_027_team_memory_facts",
+    "migration_028_knowledge_graph_schema",
+    "migration_029_kg_source_chunks",
+    "migration_030_zoho_email",
+    "migration_031_client_portal",
+    "migration_031b_hybrid_collections",
+    "migration_032_drop_legacy_kg_tables",
+    "migration_033_newsletter",
+    "migration_034_google_drive_tokens",
+    "migration_035_kbli_blueprints",
+    "migration_036_team_departments",
+    "migration_037_folder_access_rules",
+    "migration_038_news_items",
+    "migration_040_email_activity_log",
+    "migration_041_clients_missing_columns",
+    "migration_041b_team_activity_logging",
+    "migration_042_passport_enrichment",
+    "migration_043_fix_visa_types_from_qdrant",
+    "migration_043b_knowledge_activity_log",
+    "migration_044_seed_practice_types",
+    "migration_050_client_memory_sync",
+    "migration_051_client_messaging_link",
+    "migration_052_openclaw_message_logs",
+    "migration_054_practice_required_documents",
+    "migration_055_kg_performance_indexes",
+    "migration_060_x_monitored_tweets",
+    "migration_061_documents_ocr_status",
+    "migration_062_client_drive_subfolders",
+    "migration_063_lkpm_reports",
+    "migration_064_kg_reverse_traversal_index",
+    "migration_065_cell_organism_tables",
+    "migration_066_populate_practice_types_from_pricing",
+    "migration_067_clients_soft_delete_indexes",
+    "migration_068_hr_payroll",
+    "migration_069_audit_logs",
+    "migration_069b_hr_bonus_rates_alignment",
+    "migration_070_conversation_history",
+    "migration_070b_legal_ingest_jobs",
+    "migration_071_notification_alerts",
+    "migration_072_welcome_email_queue",
+    "migration_073_visa_lifecycle",
+    "migration_074_content_hash",
+    "migration_075_practice_status_notify",
+    "migration_076_event_bus_triggers",
+    "migration_076b_hr_leave_balances_seed",
+    "migration_077_kg_staging_tables",
+    "migration_077b_post_publish_queue",
+    "migration_078_ppq_step_tracking",
+    "migration_079_naga_tables",
+    "migration_080a_visa_oracle_sessions",
+    "migration_080b_renewal_dedup",
+    "migration_080c_hr_team_cleanup",
+    "migration_081_naga_claim_quality",
+    "migration_081b_prime_nexus_geo",
+    "migration_084a_nlm_verification_log",
+    "migration_084b_client_perf_indexes",
+    "migration_085a_prime_proposals",
+    "migration_085b_check_no_empty_strings",
+    "migration_086_channel_dlq",
+    "migration_087_normalize_practice_states",
+    "migration_088_kg_gin_indexes",
+    "migration_089_api_key_records",
+    "migration_090_security_audit_log",
+    "migration_091_client_consent_log",
+    "migration_092a_attendance_late_incidents",
+    "migration_092b_coastline_distance",
+    "migration_093_lkpm_assigns_and_oss_creds",
+    "migration_094_conversation_threads",
+    "migration_095_backfill_threads",
+    "migration_096_kg_communities",
+    "migration_097_entity_mentions",
+    "migration_098a_owner_weekly_cashout",
+    "migration_098b_guardian_decisions",
+    "migration_099_hr_bonus_historical",
+    "migration_100a_lkpm_company_id",
+    "migration_100b_widen_gender_column",
+    "migration_100c_olympus_tables",
+    "migration_101_critical_indexes",
+    "migration_102_materialized_views",
+    "migration_103_pg_tuning",
+    "migration_104_olympus_v3_columns",
+    "migration_105_covering_indexes",
+    "migration_106_news_dedup_constraint",
+    "migration_107_bridge_outbox",
+    "migration_108_kg_proposals",
+    "migration_109_funnel_sessions",
+    "migration_110_notification_prefs",
+    "migration_111_notification_log",
+})
+
+
 class BaseMigration:
     """
     Base class for all database migrations.
@@ -30,8 +154,9 @@ class BaseMigration:
     - Transaction management with automatic rollback
     - Migration tracking (prevents duplicate execution)
     - SQL validation
-    - Verification hooks
+    - Verification hooks (verify_apply, verify_rollback)
     - Consistent error handling
+    - Rollback enforcement for post-2026-04-18 migrations
     """
 
     MIGRATIONS_DIR = Path(__file__).parent / "migrations_v2"
@@ -50,6 +175,7 @@ class BaseMigration:
         description: str,
         dependencies: list[int] | None = None,
         rollback_sql: str | None = None,
+        _sql_dir: Path | None = None,
     ) -> None:
         """
         Initialize migration.
@@ -59,27 +185,48 @@ class BaseMigration:
             sql_file: Name of SQL file in db/migrations/ directory
             description: Human-readable description of migration
             dependencies: List of migration numbers that must be applied first
+            rollback_sql: SQL to reverse this migration. Required for migration_number > 111.
+                          Use MigrationIrreversibleError inside a rollback hook when truly
+                          one-way (e.g., DROP COLUMN with data loss).
+            _sql_dir: Override SQL directory (for testing only)
         """
         self.migration_number = migration_number
-        self.sql_file = self.MIGRATIONS_DIR / sql_file
+        sql_dir = _sql_dir if _sql_dir is not None else self.MIGRATIONS_DIR
+        self.sql_file = sql_dir / sql_file
         self.description = description
         self.dependencies = dependencies or []
         self.rollback_sql = rollback_sql
+
         # Extract base name from SQL file (remove .sql extension)
         sql_base_name = sql_file.replace(".sql", "")
         # Remove any migration number prefix if it exists (e.g., "001_fix_missing_tables" -> "fix_missing_tables")
-        # Check for 3-digit prefix pattern (001_, 007_, etc.)
         sql_base_name = re.sub(r"^\d{3}_", "", sql_base_name)
         self.migration_name = f"{migration_number:03d}_{sql_base_name}"
 
         if not self.sql_file.exists():
             raise MigrationError(f"SQL file not found: {self.sql_file}")
 
+        # Enforce rollback_sql for migrations created after the cutoff (> 111).
+        # Legacy migrations are grandfathered via LEGACY_NO_ROLLBACK_WHITELIST.
+        stem = self.sql_file.stem  # e.g., "200_new_feature"
+        # Reconstruct what migration_name would look like as a stem key
+        migration_stem = f"migration_{migration_number:03d}_{sql_base_name}".rstrip("_")
+        is_legacy = (
+            migration_number <= 111
+            or migration_stem in LEGACY_NO_ROLLBACK_WHITELIST
+        )
+        if not is_legacy and rollback_sql is None:
+            raise ValueError(
+                f"Migration {migration_number} ({self.migration_name}) must supply "
+                "`rollback_sql`. Post-2026-04-18 migrations require an explicit rollback. "
+                "If the migration is truly irreversible, raise MigrationIrreversibleError "
+                "inside the rollback SQL comment or supply a compensating migration reference."
+            )
+
     def _sanitize_db_url(self, url: str) -> str:
         """Sanitize database URL for logging (hide credentials)"""
         parsed = urlparse(url)
         if parsed.password:
-            # Replace password with ***
             safe_url = f"{parsed.scheme}://{parsed.username}:***@{parsed.hostname}"
             if parsed.port:
                 safe_url += f":{parsed.port}"
@@ -213,6 +360,24 @@ class BaseMigration:
         """
         return True
 
+    async def verify_apply(self, conn: asyncpg.Connection | None) -> bool:
+        """
+        Verify post-apply state. Override in subclasses for custom checks.
+
+        Returns:
+            True if post-apply verification passes.
+        """
+        return True
+
+    async def verify_rollback(self, conn: asyncpg.Connection | None) -> bool:
+        """
+        Verify post-rollback state. Override in subclasses for custom checks.
+
+        Returns:
+            True if post-rollback verification passes.
+        """
+        return True
+
     async def apply(self) -> bool:
         """
         Apply migration with transaction and automatic rollback.
@@ -273,6 +438,9 @@ class BaseMigration:
                 # Verify migration
                 if not await self.verify(conn):
                     raise MigrationError(f"Verification failed for {self.migration_name}")
+
+                if not await self.verify_apply(conn):
+                    raise MigrationError(f"verify_apply failed for {self.migration_name}")
 
                 # Log migration
                 execution_time_ms = int((time.time() - start_time) * 1000)
