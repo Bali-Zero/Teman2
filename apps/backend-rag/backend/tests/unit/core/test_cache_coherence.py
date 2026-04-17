@@ -183,8 +183,9 @@ class TestSemanticCacheL2:
 
         stats = get_cache_stats()
         assert "l2_backend" in stats
-        assert "l2_ttl" in stats
-        assert stats["l2_ttl"] == 3600
+        assert "l2_default_ttl" in stats
+        assert stats["l2_default_ttl"] == 3600
+        assert "domain_ttls" in stats
         assert "l2_prefix" in stats
 
     def test_backward_compat_alias(self) -> None:
