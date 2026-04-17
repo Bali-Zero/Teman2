@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { NavShell, BZLogo, WhatsAppFAB } from "@balizero/core";
 import { ZantaraFAB } from "@/app/v2/_components/ZantaraFAB";
-import { PublicFooter } from "@/components/nav/PublicFooter";
+import { Footer } from "@/app/v2/_components/Footer";
 import { I18nProvider } from "@/i18n";
 
 const BLOG_NAV_ITEMS = [
@@ -50,7 +50,7 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
           }
         />
         <main className="flex-1 pt-14">{children}</main>
-        <PublicFooter />
+        <Footer />
         <ZantaraFAB />
         <WhatsAppFAB />
       </div>

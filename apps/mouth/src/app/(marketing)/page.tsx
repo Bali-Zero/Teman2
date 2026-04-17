@@ -55,6 +55,9 @@ export default async function HomePage() {
       .map((k) => layout[k])
       .filter(Boolean),
   );
+  const heroArticles = ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
+    .map((k) => articles.find((a) => a.slug === layout[k]))
+    .filter(Boolean) as typeof articles;
   const preferred = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
     .map((k) => articles.find((a) => a.slug === layout[k]))
     .filter(Boolean) as typeof articles;
@@ -102,12 +105,12 @@ export default async function HomePage() {
       />
       <main id="main-content">
         <HeroBlueprint />
-        <SocialProof />
         <FunnelFeature funnel="visa" layout="full" />
         <FunnelFeature funnel="kbli" layout="full" />
         <FunnelFeature funnel="tax" layout="full" />
         <FunnelFeature funnel="property" layout="full" />
-        <NewsHero />
+        <SocialProof />
+        <NewsHero articles={heroArticles} />
         <TopicPills />
         <LatestNews articles={latest} limit={LATEST_NEWS_COUNT} />
       </main>
