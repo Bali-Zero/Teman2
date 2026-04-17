@@ -22,6 +22,7 @@ from typing import Any
 from backend.app.core.config import settings
 from backend.core.bm25_vectorizer import BM25Vectorizer, get_bm25_vectorizer
 from backend.core.cache import cached
+from backend.core.exceptions import QdrantError
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.collection_manager import CollectionManager
 
@@ -95,8 +96,14 @@ class HybridSearchService:
                 self._bm25_vectorizer = bm25_vectorizer or get_bm25_vectorizer()
                 self._bm25_enabled = True
                 logger.info("BM25 vectorizer initialized for hybrid search")
-            except Exception as e:
-                logger.warning(f"Failed to initialize BM25 vectorizer: {e}")
+            except (ImportError, RuntimeError, FileNotFoundError, ValueError) as e:
+                logger.warning(f"Failed to initialize BM25 vectorizer (import/runtime): {e}")
+                self._bm25_enabled = False
+            except Exception as e:  # noqa: BLE001 — hybrid must degrade to dense-only, never crash init
+                logger.warning(
+                    f"Failed to initialize BM25 vectorizer (unexpected): {e}",
+                    exc_info=True,
+                )
                 self._bm25_enabled = False
         else:
             logger.info("BM25 disabled via settings")
@@ -135,8 +142,11 @@ class HybridSearchService:
             sparse_vectors = self._bm25_vectorizer.generate_batch_sparse_vectors(texts)
             logger.debug(f"Generated BM25 vectors for {len(texts)} texts")
             return sparse_vectors
-        except Exception as e:
-            logger.error(f"Failed to compute BM25 vectors: {e}")
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to compute BM25 vectors (vectorizer error): {e}")
+            return [{"indices": [], "values": []} for _ in texts]
+        except Exception as e:  # noqa: BLE001 — caller expects empty-vector fallback on any failure
+            logger.error(f"Failed to compute BM25 vectors (unexpected): {e}", exc_info=True)
             return [{"indices": [], "values": []} for _ in texts]
 
     def compute_bm25_query_vector(self, query: str) -> dict[str, Any]:
@@ -167,8 +177,11 @@ class HybridSearchService:
                 f"Generated BM25 query vector with {len(sparse_vector.get('indices', []))} tokens",
             )
             return sparse_vector
-        except Exception as e:
-            logger.error(f"Failed to compute BM25 query vector: {e}")
+        except (ValueError, RuntimeError, AttributeError) as e:
+            logger.error(f"Failed to compute BM25 query vector (vectorizer error): {e}")
+            return {"indices": [], "values": []}
+        except Exception as e:  # noqa: BLE001 — caller degrades to dense-only on any failure
+            logger.error(f"Failed to compute BM25 query vector (unexpected): {e}", exc_info=True)
             return {"indices": [], "values": []}
 
     def reciprocal_rank_fusion(
@@ -461,9 +474,15 @@ class HybridSearchService:
                         f"Native hybrid search completed: {raw_results.get('total_found', 0)} results",
                     )
 
-                except Exception as e:
+                except (QdrantError, ValueError, TypeError, AttributeError) as e:
                     logger.warning(
-                        f"Native hybrid search failed: {e}, falling back to manual fusion",
+                        f"Native hybrid search failed ({type(e).__name__}): {e}, falling back to manual fusion",
+                    )
+                    has_native_hybrid = False
+                except Exception as e:  # noqa: BLE001 — manual fusion fallback must still run on unknown errors
+                    logger.warning(
+                        f"Native hybrid search failed (unexpected): {e}, falling back to manual fusion",
+                        exc_info=True,
                     )
                     has_native_hybrid = False
 
@@ -499,9 +518,20 @@ class HybridSearchService:
                 "duration_ms": round(elapsed * 1000, 2),
             }
 
-        except Exception as e:
-            logger.error(f"Hybrid search failed: {e}", exc_info=True)
-            # Graceful degradation: return empty results
+        except (QdrantError, ValueError, TypeError) as e:
+            logger.error(f"Hybrid search failed ({type(e).__name__}): {e}", exc_info=True)
+            return {
+                "results": [],
+                "query": query,
+                "collection": collection,
+                "total_results": 0,
+                "search_type": "error",
+                "bm25_enabled": False,
+                "alpha": alpha,
+                "error": str(e),
+            }
+        except Exception as e:  # noqa: BLE001 — search must never propagate to the caller
+            logger.error(f"Hybrid search failed (unexpected): {e}", exc_info=True)
             return {
                 "results": [],
                 "query": query,
@@ -568,8 +598,10 @@ class HybridSearchService:
                 )
                 sparse_formatted = self._format_results(sparse_results)
                 bm25_used = True
-            except Exception as e:
-                logger.warning(f"Sparse search not available: {e}")
+            except (QdrantError, AttributeError, ValueError) as e:
+                logger.warning(f"Sparse search not available ({type(e).__name__}): {e}")
+            except Exception as e:  # noqa: BLE001 — dense path continues on any sparse error
+                logger.warning(f"Sparse search not available (unexpected): {e}", exc_info=True)
 
         # Fuse results
         if sparse_formatted:
@@ -681,8 +713,20 @@ class HybridSearchService:
                 "duration_ms": round(elapsed * 1000, 2),
             }
 
-        except Exception as e:
-            logger.error(f"Dense search failed: {e}")
+        except (QdrantError, ValueError, TypeError) as e:
+            logger.error(f"Dense search failed ({type(e).__name__}): {e}")
+            return {
+                "results": [],
+                "query": query,
+                "collection": collection,
+                "total_results": 0,
+                "search_type": "error",
+                "bm25_enabled": False,
+                "alpha": 1.0,
+                "error": str(e),
+            }
+        except Exception as e:  # noqa: BLE001 — caller must receive a structured error, never an exception
+            logger.error(f"Dense search failed (unexpected): {e}", exc_info=True)
             return {
                 "results": [],
                 "query": query,

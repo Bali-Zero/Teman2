@@ -11,6 +11,7 @@ Author: Nuzantara Team
 Date: 2026-02-16
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -183,8 +184,13 @@ Example output: ["variant 1", "variant 2"]"""
                 client = get_genai_client()
                 if client.is_available:
                     self._genai_client = client
-            except Exception as e:
-                logger.warning(f"Failed to initialize GenAI client: {e}")
+            except (ImportError, AttributeError, RuntimeError) as e:
+                logger.warning(f"Failed to initialize GenAI client (import/runtime): {e}")
+            except Exception as e:  # noqa: BLE001 — expansion must degrade gracefully if LLM absent
+                logger.warning(
+                    f"Failed to initialize GenAI client (unexpected): {e}",
+                    exc_info=True,
+                )
         return self._genai_client
 
     def _generate_cache_key(self, query: str, method: str) -> str:
@@ -254,10 +260,17 @@ Example output: ["variant 1", "variant 2"]"""
 
             return result
 
-        except Exception as e:
+        except (json.JSONDecodeError, KeyError, ValueError, asyncio.TimeoutError) as e:
             logger.warning(
-                f"Query expansion failed, returning original: {e}",
+                f"Query expansion failed (parse/timeout), returning original: {e}",
                 extra={"query": query[:50], "error": str(e)},
+            )
+            return [query]
+        except Exception as e:  # noqa: BLE001 — expansion is best-effort; never block the search pipeline
+            logger.warning(
+                f"Query expansion failed (unexpected), returning original: {e}",
+                extra={"query": query[:50], "error": str(e)},
+                exc_info=True,
             )
             return [query]
 
@@ -344,8 +357,11 @@ Example output: ["variant 1", "variant 2"]"""
 
             return result
 
-        except Exception as e:
-            logger.warning(f"Translation failed: {e}")
+        except (json.JSONDecodeError, KeyError, ValueError, asyncio.TimeoutError) as e:
+            logger.warning(f"Translation failed (parse/timeout): {e}")
+            return []
+        except Exception as e:  # noqa: BLE001 — translation is best-effort; never crash retrieval
+            logger.warning(f"Translation failed (unexpected): {e}", exc_info=True)
             return []
 
     def _dictionary_translate(self, query: str, languages: list[str]) -> set[str]:
@@ -430,8 +446,10 @@ Return ONLY a JSON object with language codes as keys:
 
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
-        except Exception as e:
-            logger.debug(f"LLM translation failed: {e}")
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            logger.debug(f"LLM translation failed (parse/data): {e}")
+        except Exception as e:  # noqa: BLE001 — LLM translation is best-effort; dictionary path continues
+            logger.debug(f"LLM translation failed (unexpected): {e}")
 
         return variants
 
@@ -523,8 +541,10 @@ Return ONLY a JSON object with language codes as keys:
 
         except asyncio.TimeoutError:
             logger.debug("LLM rephrasing timeout")
-        except Exception as e:
-            logger.debug(f"LLM rephrasing failed: {e}")
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            logger.debug(f"LLM rephrasing failed (parse/data): {e}")
+        except Exception as e:  # noqa: BLE001 — rephrasing is best-effort; caller uses whatever variants exist
+            logger.debug(f"LLM rephrasing failed (unexpected): {e}")
 
         return variants[:num_variants]
 
