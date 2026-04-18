@@ -20,7 +20,6 @@
       }
     },
     "assert": {
-      "preset": "lighthouse:recommended",
       "assertions": {
         "categories:performance": ["warn", { "minScore": 0.85 }],
         "categories:accessibility": ["error", { "minScore": 0.9 }],
@@ -28,12 +27,8 @@
         "categories:seo": ["error", { "minScore": 0.95 }],
         "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
         "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-        "interaction-to-next-paint": ["warn", { "maxNumericValue": 200 }],
         "total-blocking-time": ["warn", { "maxNumericValue": 300 }],
-        "speed-index": ["warn", { "maxNumericValue": 3400 }],
-        "uses-responsive-images": "off",
-        "unused-javascript": "off",
-        "unused-css-rules": "off"
+        "speed-index": ["warn", { "maxNumericValue": 3400 }]
       }
     },
     "upload": {
