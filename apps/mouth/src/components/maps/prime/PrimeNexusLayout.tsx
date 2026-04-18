@@ -8,6 +8,7 @@ import {
 } from "@/contexts/PrimeNexusContext";
 import { PrimeMapSkeleton } from "./PrimeMapSkeleton";
 import { PrimeUrlStateBridge } from "./PrimeUrlStateBridge";
+import { PrimeLayerLegend } from "./PrimeLayerLegend";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { ClientMarkerLayer } from "./ClientMarkerLayer";
 
@@ -74,6 +75,9 @@ function PrimeNexusInner() {
 
       {/* Headless intelligence data fetcher — active in CRM/INTEL mode */}
       <ClientMarkerLayer />
+
+      {/* PF3a — interactive layer legend (top-left) */}
+      <PrimeLayerLegend />
 
       {/* Mode Switcher — floating top-right */}
       <div className="absolute top-4 right-4 z-30">
