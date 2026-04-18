@@ -275,3 +275,47 @@ async def test_retrain_gated_by_autotune_flag(db_pool: asyncpg.Pool) -> None:
                 await conn.execute(
                     "DELETE FROM system_settings WHERE key='compliance_alert_autotune_enabled'",
                 )
+
+
+@pytest.mark.asyncio
+async def test_team_blocked_on_null_assigned_client(db_pool: asyncpg.Pool) -> None:
+    """Team member is denied GET /{id} and POST /{id}/outcome for unassigned (NULL) clients."""
+    # Insert a client with assigned_to = NULL (no owner)
+    async with db_pool.acquire() as conn:
+        client_id = await conn.fetchval(
+            "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+            "Unassigned Client",
+            f"null-{uuid4().hex[:6]}@example.com",
+        )
+        alert_id = f"a_null_{uuid4().hex[:6]}"
+        await conn.execute(
+            "INSERT INTO compliance_alerts "
+            "(alert_id, client_id, category, severity, status, deadline, "
+            " days_until, dedup_key) "
+            "VALUES ($1, $2, 'visa_expiry', 'urgent', 'pending', $3, 7, $4)",
+            alert_id,
+            client_id,
+            date.today() + timedelta(days=7),
+            f"visa:{client_id}:{alert_id}",
+        )
+    try:
+        app = make_app(_TEAM_USER, db_pool)
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as ac:
+            # GET detail → 403 (NULL assigned_to must be denied)
+            r1 = await ac.get(f"/api/compliance/alerts/{alert_id}")
+            assert r1.status_code == 403, f"Expected 403 on GET, got {r1.status_code}: {r1.text}"
+
+            # POST outcome → 403
+            r2 = await ac.post(
+                f"/api/compliance/alerts/{alert_id}/outcome",
+                json={"outcome": "acted"},
+            )
+            assert r2.status_code == 403, f"Expected 403 on POST outcome, got {r2.status_code}: {r2.text}"
+    finally:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id
+            )
+            await conn.execute("DELETE FROM clients WHERE id = $1", client_id)
