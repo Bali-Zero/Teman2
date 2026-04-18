@@ -174,12 +174,17 @@ class AlertFeedback:
     ) -> None:
         """Persist threshold update and write audit row."""
         key = f"compliance_alert_threshold_urgent_{category}"
-        await self._exec(
+        result = await self._exec(
             "execute",
             "UPDATE system_settings SET value = $1, updated_at = NOW() WHERE key = $2",
             str(new),
             key,
         )
+        if result == "UPDATE 0":
+            logger.warning(
+                "system_settings key %r not found — threshold not saved (seeding missed?)",
+                key,
+            )
 
         # guardian_decisions audit (table may not exist in local dev).
         # Use a savepoint so that a missing-table error doesn't abort the outer
@@ -208,7 +213,7 @@ class AlertFeedback:
         else:
             # connection / tx mode (tests) — use a savepoint to protect the outer tx
             try:
-                async with conn.transaction(isolation="read_committed"):
+                async with conn.transaction():  # savepoint — isolation inherited from outer TX
                     await conn.execute(
                         """
                         INSERT INTO guardian_decisions (decision_type, context, decision, metadata)
