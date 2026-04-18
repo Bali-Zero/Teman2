@@ -49,11 +49,12 @@ backend/jobs/
     ├── consiglio_auto.py
     └── kg_curiosity.py
 
-backend/routers/
+backend/app/routers/
 └── jobs_admin.py          # POST /api/jobs/{name}/run, GET /api/jobs, GET /api/jobs/{name}/runs
 
 backend/migrations/
-└── 109_job_runs.sql       # job_runs table + indexes (number confirmed at PR time, monotonic)
+├── migration_112_job_runs.py   # async def apply(conn) + async def rollback(conn); follows 108 pattern
+└── apply_migration_112.py      # driver (asyncpg.connect DATABASE_URL -> calls apply)
 
 scripts/
 └── gen_jobs_schedule_doc.py   # regenerates docs/jobs-schedule.md from registry; CI --check mode
@@ -225,7 +226,7 @@ On startup, runner scans `status='running'` rows older than `timeout_seconds + 3
 
 While `JOBS_RUNNER_ENABLED` does not include a job, the runner does not schedule it (skipped with `reason="not in allowlist"`). Air crontab continues to curl the HTTP endpoint; the runner's manual-kick path executes the same handler and records a `job_runs` row. When the allowlist is extended, the runner schedules ticks; a second tick from Air crontab on the same day finds a completed idempotency row and skips. Air entries are removed in a separate PR after observing stable operation.
 
-## Migration 109 — `job_runs`
+## Migration 112 — `job_runs`
 
 ```sql
 -- up
@@ -255,7 +256,7 @@ CREATE INDEX idx_job_runs_status_name   ON job_runs (status, job_name)
 DROP TABLE IF EXISTS job_runs;
 ```
 
-Migration number is **109** (last known is 108 `kg_proposals` per KG Curiosity memory). Confirmed monotonic at PR-open time. Down migration drops the table cleanly — no FK dependencies from other tables.
+Migration number is **112**. Current head on `main` is 111 (`migration_111_notification_log.py`); 109 is `funnel_sessions`, 110 is `notification_prefs`. Follows existing Python migration pattern — `async def apply(conn)` and **mandatory** `async def rollback(conn)` (per `migration_base.py`: "New migrations (number > 111) MUST supply rollback_sql", introduced 2026-04-18). Rollback drops indexes then the table — no FK dependencies.
 
 ## Error handling
 
@@ -315,7 +316,7 @@ Meta-job `jobs-health-monitor` cron `0 9 * * *` WITA. Additive to Air `job_healt
 1. Registry tests → `registry.py`
 2. Retry-policy tests → `retry.py`
 3. Advisory-lock integration tests (real PG) → `locks.py`
-4. Repository integration tests → `models.py` + migration 109
+4. Repository integration tests → `models.py` + migration 112
 5. Dispatch happy-path test → minimal `runner.py`
 6. Retry + timeout tests → expand runner
 7. Middleware tests → `middleware.py`
@@ -324,7 +325,7 @@ Meta-job `jobs-health-monitor` cron `0 9 * * *` WITA. Additive to Air `job_healt
 
 ### Fixtures
 
-Pro local PostgreSQL 17 at `localhost:5432/nuzantara_test`. `pg_pool` fixture applies migrations up to 109, truncates `job_runs` at teardown. `runner` fixture uses `tick_seconds=0.1` for fast integration tests; cron expressions use `* * * * * *` (croniter second-support). No time mocking.
+Pro local PostgreSQL 17 at `localhost:5432/nuzantara_test`. `pg_pool` fixture applies migrations up to 112, truncates `job_runs` at teardown. `runner` fixture uses `tick_seconds=0.1` for fast integration tests; cron expressions use `* * * * * *` (croniter second-support). No time mocking.
 
 ### Coverage target
 
@@ -349,7 +350,7 @@ Pro local PostgreSQL 17 at `localhost:5432/nuzantara_test`. `pg_pool` fixture ap
 - **OAuth-only absolute** — `oauth_guard` middleware enforces at every dispatch; opt-out requires written `reason=`.
 - **Claude CLI Linux hang** — `claude_cli_fallback` middleware sets `ctx.claude_cli_available`; `KG_REASONING_PROVIDER=openai` on Fly is NOT touched.
 - **Scope boundaries** — no changes to Air B1/B2/B3 or PB1/PB2 paths (listed in "Architecture → Scope exclusions").
-- **Migration monotonic** — 109 confirmed at PR-open.
+- **Migration monotonic** — 112 confirmed at PR-open. New migrations must supply `rollback(conn)` per `migration_base.py` contract.
 - **Fly topology** — no new process, no new app. Runner lives in `nuzantara-rag` (always-on).
 - **No auto-assignment** policy (CRM Automation memory) — not affected; auto_practice_creator handler preserves existing behavior.
 
