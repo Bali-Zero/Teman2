@@ -14,7 +14,7 @@ Unify compliance alert generation, add predictive feedback loop, harden Intel in
 - `apps/backend-rag/backend/services/compliance/`
 - `apps/backend-rag/backend/services/intel/`
 - `apps/backend-rag/backend/app/routers/compliance_alerts.py` (new), `lkpm.py` (mod), `intel.py` (mod)
-- `apps/backend-rag/backend/db/migrations/` — migrations 112, 113, 114
+- `apps/backend-rag/backend/db/migrations_v2/` — migrations 114, 115, 116 (SQL, active loader target)
 
 ### Out-of-scope (reserved for Air / PB1 / future)
 
@@ -32,14 +32,14 @@ Unify compliance alert generation, add predictive feedback loop, harden Intel in
 - Intel pipeline lacks regex/citation/KG cross-ref validators; no source whitelist.
 - LKPM ready-pack requires human step for PDF/Excel; no automated Drive upload + email.
 - Revenue estimator not correlated to compliance status.
-- Latest migration: `111_notification_log.py`. Next available: **112+**.
+- Legacy migrations last number: `113_intel_dossiers.py` (`backend/migrations/`, frozen/manual). `migrations_v2/` last: `110_lkpm_allowlist_krisna.sql`. Next global-monotonic available: **114+**.
 - Infrastructure already present: `notification_alerts` (m071), `notification_prefs` (m110), `notification_log` (m111), `kg_proposals` (m108), `guardian_decisions` (m098b).
 
 ## 11 design decisions (from brainstorming)
 
 | #   | Decision                                                                                                                                     |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Hybrid persistence: new `compliance_alerts` (m112) + FK to existing `notification_log` (m111)                                                |
+| 1   | Hybrid persistence: new `compliance_alerts` (m114) + link via `ref` convention on existing `notification_log` (m111)                         |
 | 2   | Per-category deterministic threshold autotune, kill-switch gated, weekly cron                                                                |
 | 3   | Intel validators: regex hard-gate + citation retry+soft-fail + kg cross-ref soft-signal                                                      |
 | 4   | reportlab Platypus in dedicated `lkpm_pdf_builder.py` (no new deps)                                                                          |
@@ -49,7 +49,7 @@ Unify compliance alert generation, add predictive feedback loop, harden Intel in
 | 8   | Integration tests: shared test DB + transaction rollback per test                                                                            |
 | 9   | NB-2 validation spec-time + `nb2_ref` audit field on dataclasses (visa/BKPM categories)                                                      |
 | 10  | Deprecation shim on `proactive_compliance_monitor.py` (5-line exception to scope)                                                            |
-| 11  | Dispatch: severity-gated defaults + client override via `notification_prefs` (m110)                                                          |
+| 11  | Dispatch: team channels severity-gated (code-side, unconditional) + client email/wa gated by `notification_prefs` (m110) toggles             |
 
 ## Architecture — module map
 
@@ -88,15 +88,23 @@ apps/backend-rag/backend/app/routers/
 apps/backend-rag/backend/services/misc/
 └── proactive_compliance_monitor.py [MOD-5 lines] DeprecationWarning + redirect
 
-apps/backend-rag/backend/db/migrations/
-├── migration_112_compliance_alerts.py     [NEW]
-├── migration_113_alert_outcomes.py        [NEW]
-└── migration_114_intel_validator_log.py   [NEW]
+apps/backend-rag/backend/db/migrations_v2/        [active loader target]
+├── 114_compliance_alerts.sql         [NEW]
+├── 115_alert_outcomes.sql            [NEW]
+└── 116_intel_validator_log.sql       [NEW]
 ```
+
+> **Migration path note.** The active migration system is `backend/db/migrations_v2/*.sql`
+> (loaded automatically by `MigrationManager.discover_migrations`). The legacy
+> `backend/migrations/migration_*.py` directory is frozen and manual-apply only. Numbers
+> `112` and `113` are already taken in legacy (`migration_112_war_room_tables.py`,
+> `migration_113_intel_dossiers.py`), so this plan uses **114/115/116** for a
+> monotonic global number. Rollback SQL is **mandatory** for any number > 111
+> (enforced by `migration_base.py:LEGACY_NO_ROLLBACK_WHITELIST`).
 
 ## Data schema
 
-### Migration 112 — `compliance_alerts`
+### Migration 114 — `compliance_alerts` (`114_compliance_alerts.sql`)
 
 ```sql
 CREATE TABLE compliance_alerts (
@@ -141,7 +149,7 @@ UPSERT settings keys seeded in upgrade():
 - `compliance_alert_autotune_window_days` (default `"90"`)
 - `compliance_alert_threshold_urgent_{visa_expiry,tax_filing,lkpm,license_renewal,permit_renewal,regulatory_change}` (initialized to current `severity_calculator.py` values: 7)
 
-### Migration 113 — `alert_outcomes` + FK on `notification_log`
+### Migration 115 — `alert_outcomes` (`115_alert_outcomes.sql`)
 
 ```sql
 CREATE TABLE alert_outcomes (
@@ -158,15 +166,15 @@ CREATE TABLE alert_outcomes (
 
 CREATE INDEX ix_alert_outcomes_alert ON alert_outcomes (alert_id);
 CREATE INDEX ix_alert_outcomes_time  ON alert_outcomes (actioned_at DESC);
-
-ALTER TABLE notification_log
-    ADD COLUMN compliance_alert_id TEXT REFERENCES compliance_alerts(alert_id);
-CREATE INDEX ix_notification_log_compliance_alert
-    ON notification_log (compliance_alert_id)
-    WHERE compliance_alert_id IS NOT NULL;
 ```
 
-### Migration 114 — `intel_validator_log`
+> **`notification_log` NOT altered.** Existing `notification_log` (m111 legacy, schema
+> `user_id UUID, channel VARCHAR(20), ref VARCHAR(128), sent_at`) already has `ref` as
+> a natural dedup/link column. The dispatcher writes the compliance linkage via the
+> convention `ref = f"compliance_alert:{alert_id}"`. No ALTER TABLE needed, no FK.
+> Metrics/delivery joins use this string-matched `ref` pattern.
+
+### Migration 116 — `intel_validator_log` (`116_intel_validator_log.sql`)
 
 ```sql
 CREATE TABLE intel_validator_log (
@@ -185,7 +193,9 @@ CREATE TABLE intel_validator_log (
 CREATE INDEX ix_intel_validator_log_staging ON intel_validator_log (staging_id, checked_at DESC);
 ```
 
-All three migrations must include complete `downgrade()` (PR #99 rollback enforcement).
+All three migrations are `.sql` files in `backend/db/migrations_v2/` and MUST include a
+rollback section (`-- === ROLLBACK ===`) with complete `DROP` statements. Enforced by
+`migration_base.py:LEGACY_NO_ROLLBACK_WHITELIST` for any migration number > 111.
 
 ### Dedup keys per category
 
@@ -223,25 +233,54 @@ Cron WITA or API call
 
 ### Flow B — Dispatch
 
+Two logical audiences: **team channels** (Telegram + in-app for staff) and **client channels**
+(email + wa direct to the customer). `notification_prefs` (m110) controls only client-side
+opt-in; team channels are severity-gated unconditionally in code.
+
 ```
 AlertDispatcher.dispatch(alert):
   lang = client.preferred_language or 'it'
-  prefs = notification_prefs[client_id]  # m110
-  channels = prefs.channels_by_severity[alert.severity] if prefs else severity_default(alert.severity)
-    # severity_default:
-    #   critical → [telegram_owner, email_client, inapp_team]
-    #   urgent   → [telegram_team, email_client, inapp_team]
-    #   warning  → [email_client, inapp_team]
-    #   info     → [inapp_team]
-  for ch in channels:
-      insert notification_log(compliance_alert_id, channel, status='queued')
+
+  # 1. TEAM channels (severity-gated, always sent, not user-configurable)
+  team_channels = severity_default_team(alert.severity)
+    # critical → [telegram_owner, inapp_team]
+    # urgent   → [telegram_team, inapp_team]
+    # warning  → [inapp_team]
+    # info     → [inapp_team]
+
+  # 2. CLIENT channels (gated by notification_prefs m110 + severity)
+  portal_user_id = resolve_portal_user(client_id)  # clients.portal_user_id
+  client_channels = []
+  if portal_user_id:
+      prefs = SELECT * FROM notification_prefs WHERE user_id = portal_user_id
+      severity_allows = alert.severity IN ('critical','urgent','warning')
+      if severity_allows:
+          if prefs and prefs.email_enabled (default True):
+              client_channels.append('email_client')
+          if prefs and prefs.wa_enabled:
+              client_channels.append('wa_client')
+  # if no portal_user_id: skip client channels, log info (cannot notify client)
+
+  # 3. DISPATCH
+  for ch in team_channels + client_channels:
+      ref = f"compliance_alert:{alert.alert_id}:{ch}"
+      # m111 notification_log dedup check
+      if NotificationLog.already_sent(portal_user_id, ch, ref, within_hours=24):
+          continue   # skip (already notified)
       try:
-          send via (brevo_email_service | telegram_service | inapp_service)
-          notification_log.status = 'sent'
+          send via (brevo_email_service | telegram_service | inapp_service | wa_service)
+          insert notification_log(user_id=portal_user_id or SYSTEM_UUID, channel=ch, ref=ref)
       except narrow_exception as e:
-          notification_log.status = 'failed'; continue
+          log warning, continue
+
   alert.status = 'sent' if any_channel_succeeded else unchanged
 ```
+
+**Notes on existing infrastructure**:
+
+- `notification_log` schema (m111): `user_id UUID, channel VARCHAR(20), ref VARCHAR(128), sent_at`. No FK to `compliance_alerts` — linkage is via string pattern on `ref`.
+- `notification_prefs` schema (m110): only `email_enabled, wa_enabled, wa_phone`. No severity-level overrides — severity gating lives in the dispatcher code.
+- For team-only channels (`telegram_owner`, `telegram_team`, `inapp_team`), use a constant `SYSTEM_TEAM_UUID` as `user_id` so the ledger stays uniform.
 
 ### Flow C — Outcome + retraining
 
@@ -393,8 +432,8 @@ Enforced via `@cache_invalidating` decorator (PR #103 cache invalidation discipl
 - `brevo_email_service` — sender forced to `zantara@balizero.com / Zantara`.
 - `telegram_service` — owner `1125336968` for CRITICAL, team channel for URGENT.
 - `kg_auto_expansion` — Intel Tier 3 cross-ref. Output → `kg_proposals` (m108), not auto-promoted.
-- `notification_prefs` (m110) — dispatcher channel routing.
-- `notification_log` (m111) — delivery trace via new FK column.
+- `notification_prefs` (m110) — client-side email/wa opt-in (no severity overrides; severity gating lives in dispatcher code).
+- `notification_log` (m111) — delivery trace via `ref = f"compliance_alert:{alert_id}:{channel}"` convention; no schema change.
 - `guardian_decisions` (m098b) — retrain audit log.
 
 ### RBAC matrix
@@ -477,8 +516,10 @@ Integration test tagged `@pytest.mark.integration`; required services: PostgreSQ
 
 ## Build sequence — 8 commits
 
-1. **`migrations: 112+113+114 compliance alerts, outcomes, intel validator`**
-   - Upgrade + downgrade roundtrip tests.
+1. **`migrations(v2): 114+115+116 compliance_alerts, alert_outcomes, intel_validator_log`**
+   - 3 `.sql` files in `backend/db/migrations_v2/` with complete `-- === ROLLBACK ===` sections.
+   - `114_compliance_alerts.sql`, `115_alert_outcomes.sql`, `116_intel_validator_log.sql`.
+   - Upgrade + rollback verified via `MigrationManager` test harness.
    - Blocker for everything else.
 
 2. **`feat(compliance): alerts_engine core + repository + templates i18n + dedup`**
@@ -487,7 +528,10 @@ Integration test tagged `@pytest.mark.integration`; required services: PostgreSQ
    - NB-2 validation for any visa/BKPM rule touched; `nb2_ref` populated on RenewalRule.
 
 3. **`feat(compliance): dispatcher + notification_prefs integration`**
-   - `alert_dispatcher.py` with `notification_log` + `notification_prefs` integration.
+   - `alert_dispatcher.py` with:
+     - team-channel severity gating (code-side, not `notification_prefs`-driven)
+     - client-channel filtering via `notification_prefs` (m110) `email_enabled` / `wa_enabled`
+     - `notification_log` dedup convention `ref = f"compliance_alert:{alert_id}:{channel}"`
 
 4. **`feat(compliance): predictive feedback loop — outcomes + autotune`**
    - `alert_feedback.py`, `alert_metrics.py`.
@@ -553,5 +597,6 @@ Base: `main`. Strategy: squash OR 8-commit preserved (reviewer's choice).
 - **Risk**: `proactive_compliance_monitor.py` scope exception — 5-line shim touch documented and accepted during brainstorming (decision #10). If reviewer objects, fall back to option C (no touch + follow-up task for PB3).
 - **Risk**: Autotune thresholds could regress during first 90d of data collection. Mitigation: `compliance_alert_autotune_enabled` defaults to `"false"`; must be explicitly enabled by admin.
 - **Risk**: Intel citation_check retries could saturate outbound HTTP on slow gov.id responses. Mitigation: backoff bounded to 3 retries, 24h schedule for transient failures.
-- **Assumption**: `clients.preferred_language` column exists and is populated. If missing: fallback chain is `None → 'en' → 'it'` (handled in `templates_i18n.py`).
+- **Assumption**: `clients.preferred_language` column exists and is populated. If missing: fallback chain is `None → 'en' → 'it'` (handled in `templates_i18n.py`). Task 2 verifies the column in the first migration preamble; absent → spawn `114b_clients_preferred_language.sql`.
 - **Assumption**: `clients.drive_folder_id` populated for LKPM ready-pack target clients. If missing: LKPM ready-pack returns 409 with actionable error.
+- **Assumption**: `clients.portal_user_id UUID` exists and maps clients to portal users for `notification_prefs` / `notification_log` lookups. If absent: dispatcher skips client channels with a logged warning, team channels still fire.
