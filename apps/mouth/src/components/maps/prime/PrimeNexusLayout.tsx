@@ -9,6 +9,7 @@ import {
 import { PrimeMapSkeleton } from "./PrimeMapSkeleton";
 import { PrimeUrlStateBridge } from "./PrimeUrlStateBridge";
 import { PrimeLayerLegend } from "./PrimeLayerLegend";
+import { PrimeCompareDrawer } from "./PrimeCompareDrawer";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { ClientMarkerLayer } from "./ClientMarkerLayer";
 
@@ -78,6 +79,9 @@ function PrimeNexusInner() {
 
       {/* PF3a — interactive layer legend (top-left) */}
       <PrimeLayerLegend />
+
+      {/* PF3a — compare drawer (top-right, hidden when empty) */}
+      <PrimeCompareDrawer />
 
       {/* Mode Switcher — floating top-right */}
       <div className="absolute top-4 right-4 z-30">

@@ -173,6 +173,20 @@ export default function PrimeMap3D() {
         setZoningResult(zoningRes as ZoningInfo);
         // Bridge to PrimeNexusContext (INVEST mode analysis) — no-op when no provider
         primeNexus?.analyzePoint(pos.lat, pos.lng);
+        // PF3a — auto-add clicked zone to compare drawer (fills A then B then rotates)
+        const zr = zoningRes as ZoningInfo;
+        if (primeNexus && zr?.zone_code) {
+          primeNexus.addToCompare({
+            id: zr.zone_code,
+            name: zr.zone_name ?? zr.zone_code,
+            zoneCode: zr.zone_code,
+            info: {
+              restricted: zr.is_restricted ?? false,
+              risk: zr.risk_score ?? null,
+              district: zr.district ?? null,
+            },
+          });
+        }
       } catch (e) {
         logger.error(
           "Zoning fetch failed",
