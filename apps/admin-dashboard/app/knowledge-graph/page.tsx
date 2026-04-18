@@ -15,13 +15,19 @@ interface KGNode {
   entity_id: string;
   name: string;
   entity_type: string;
+  description?: string;
+  created_at?: string;
+  source_collection?: string;
   properties?: Record<string, string | number | boolean>;
 }
 
 interface KGEdge {
-  source_id: string;
-  target_id: string;
-  relation_type: string;
+  relationship_id: string;
+  relationship_type: string;
+  source_entity_id: string;
+  target_entity_id: string;
+  source_name?: string;
+  target_name?: string;
   weight?: number;
 }
 
@@ -149,7 +155,9 @@ export default function KnowledgeGraphPage() {
               <div className="mt-4 flex gap-4 text-xs text-muted-foreground">
                 <div>
                   Created:{" "}
-                  {new Date(selectedNode.created_at).toLocaleDateString()}
+                  {selectedNode.created_at
+                    ? new Date(selectedNode.created_at).toLocaleDateString()
+                    : "—"}
                 </div>
                 <div>Source: {selectedNode.source_collection || "System"}</div>
               </div>
