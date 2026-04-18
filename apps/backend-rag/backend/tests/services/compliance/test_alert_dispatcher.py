@@ -92,8 +92,9 @@ async def test_critical_alert_hits_telegram_owner(
     )
     alert = _alert(client_id=sample_client["id"], severity="critical")
     await dispatcher.dispatch(alert)
-    # Telegram called for both owner (critical) and team
-    assert mock_telegram.send_message.await_count >= 1
+    # critical → exactly 1 telegram_owner call; verify the chat kwarg
+    assert mock_telegram.send_message.await_count == 1
+    assert mock_telegram.send_message.call_args.kwargs.get("chat") == "owner"
 
 
 @pytest.mark.asyncio
@@ -261,3 +262,40 @@ async def test_channel_failure_does_not_abort_other_channels(
     await dispatcher.dispatch(alert)
     # inapp should still have fired even though telegram blew up
     mock_inapp.emit.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dedup_expired_25h_ago_does_not_block_resend(
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_email,
+    mock_telegram,
+    mock_inapp,
+    mock_wa,
+) -> None:
+    # Pre-insert a notification_log row with sent_at 25h ago (outside window)
+    portal_user_id = "00000000-0000-0000-0000-000000000099"
+    alert = _alert(client_id=sample_client["id"], severity="urgent")
+    await db_tx.execute(
+        "INSERT INTO notification_log (user_id, channel, ref, sent_at) "
+        "VALUES ($1::uuid, $2, $3, NOW() - INTERVAL '25 hours')",
+        portal_user_id, "email_client",
+        f"compliance_alert:{alert.alert_id}:email_client",
+    )
+    await db_tx.execute(
+        "INSERT INTO notification_prefs (user_id, email_enabled, wa_enabled) "
+        "VALUES ($1::uuid, TRUE, FALSE) ON CONFLICT (user_id) DO UPDATE "
+        "SET email_enabled=TRUE",
+        portal_user_id,
+    )
+    dispatcher = AlertDispatcher.with_connection(
+        db_tx,
+        email_service=mock_email,
+        telegram_service=mock_telegram,
+        inapp_service=mock_inapp,
+        wa_service=mock_wa,
+        _resolve_portal_user_id=lambda client_id: portal_user_id,
+    )
+    await dispatcher.dispatch(alert)
+    # Entry is OUTSIDE the 24h window → email should fire
+    mock_email.send.assert_awaited()
