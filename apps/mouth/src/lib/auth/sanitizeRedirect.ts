@@ -4,6 +4,7 @@ export function sanitizeRedirect(
   raw: string | undefined | null,
 ): string | null {
   if (!raw) return null;
+  if (/[\x00-\x1f\x7f]/.test(raw)) return null;
   if (raw.includes("\\")) return null;
   if (raw.startsWith("//")) return null;
   if (/^[a-z][a-z0-9+.\-]*:/i.test(raw)) return null;
