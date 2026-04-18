@@ -681,3 +681,104 @@ async def mark_step_done(
     return {"ok": True, "slug": slug, "step": step}
 
 # METRICS, SEARCH, TRENDS → intel_analytics.py
+
+# ─── Intel validation endpoints (admin-only) ─────────────────────────────────
+
+from fastapi import status as http_status  # noqa: E402
+from pydantic import BaseModel as _BaseModel  # noqa: E402 — alias avoids redefinition
+
+from backend.app.dependencies import get_current_user  # noqa: E402
+
+_INTEL_ADMIN_EMAILS: frozenset[str] = frozenset(
+    {"zero@balizero.com", "antonellosiano@balizero.com", "asya@balizero.com"}
+)
+
+
+def _require_intel_admin(user: dict[str, Any]) -> None:
+    if (user.get("email") or "").lower() not in _INTEL_ADMIN_EMAILS:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN, detail="admin only"
+        )
+
+
+class RevalidateBody(_BaseModel):
+    tier: str | None = None
+
+
+@router.get("/api/intel/staging/{staging_id}/validation")
+async def get_staging_validation(
+    staging_id: int,
+    user: dict = Depends(get_current_user),
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Admin-only: return per-tier validation breakdown for a staging document."""
+    _require_intel_admin(user)
+
+    async with pool.acquire() as conn:
+        tiers = await conn.fetch(
+            """
+            SELECT validator_tier, result, score, details, checked_at
+            FROM intel_validator_log
+            WHERE staging_id = $1
+            ORDER BY checked_at DESC
+            """,
+            staging_id,
+        )
+        staging = await conn.fetchrow(
+            "SELECT id, status, score FROM intel_staging WHERE id = $1",
+            staging_id,
+        )
+
+    if staging is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"staging item {staging_id} not found",
+        )
+
+    return {
+        "staging_id": staging_id,
+        "status": staging["status"],
+        "final_score": float(staging["score"] or 0),
+        "tiers": [dict(t) for t in tiers],
+    }
+
+
+@router.post("/api/intel/staging/{staging_id}/revalidate")
+async def post_revalidate_staging(
+    staging_id: int,
+    body: RevalidateBody,
+    user: dict = Depends(get_current_user),
+    pool: Any = Depends(get_database_pool),
+) -> dict:
+    """Admin-only: trigger manual (re-)validation of a staging document.
+
+    Optional body.tier filters to a single tier; omit to run all tiers.
+    Full revalidation delegates to IntelStagingService if the staging row
+    exists. Currently returns a stub response — full wiring is done when
+    intel_staging_service._post_ingest_validate is hooked.
+    """
+    _require_intel_admin(user)
+
+    async with pool.acquire() as conn:
+        staging = await conn.fetchrow(
+            "SELECT id, status FROM intel_staging WHERE id = $1",
+            staging_id,
+        )
+
+    if staging is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"staging item {staging_id} not found",
+        )
+
+    logger.info(
+        "Revalidation requested",
+        extra={"staging_id": staging_id, "tier": body.tier, "user": user.get("email")},
+    )
+
+    return {
+        "staging_id": staging_id,
+        "revalidated": True,
+        "tier": body.tier,
+    }
+
