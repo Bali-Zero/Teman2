@@ -19,6 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 from backend.app.utils.logging_utils import get_logger
+from backend.middleware.correlation import get_correlation_id
 from backend.services.monitoring.activity_logger import activity_logger
 
 logger = get_logger(__name__)
@@ -126,7 +127,20 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         session_id = self._get_session_id(request)
         ip_address = self._get_ip_address(request)
         user_agent = request.headers.get("User-Agent", "")
-        correlation_id = request.headers.get("X-Correlation-ID")
+        # Correlation ID: state (set by RequestTracingMiddleware) → inbound
+        # header → contextvar. Covers every composition order the app uses.
+        # Accept only strings: test harnesses hand us MagicMock instances for
+        # request.state, and those must not bleed into downstream logs.
+        def _as_id(value: Any) -> str | None:
+            return value if isinstance(value, str) and value else None
+
+        correlation_id = (
+            _as_id(getattr(request.state, "correlation_id", None))
+            or _as_id(getattr(request.state, "request_id", None))
+            or _as_id(request.headers.get("X-Request-Id"))
+            or _as_id(request.headers.get("X-Correlation-ID"))
+            or _as_id(get_correlation_id())
+        )
 
         # Process request
         response = None
