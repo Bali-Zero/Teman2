@@ -365,13 +365,15 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if self_healing_enabled:
         try:
-            from self_healing.backend_agent import BackendSelfHealingAgent
+            from backend.self_healing import set_active_agent
+            from backend.self_healing.backend_agent import BackendSelfHealingAgent
 
             healing_agent = BackendSelfHealingAgent(
                 service_name="nuzantara-backend",
                 check_interval=300,  # 5 minutes
                 auto_fix_enabled=True,
             )
+            set_active_agent(healing_agent)  # expose to /api/admin/self-healing/stats
 
             async def run_self_healing() -> None:
                 # Run a single health check cycle (not the infinite loop)
