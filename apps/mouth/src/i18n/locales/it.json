@@ -254,5 +254,24 @@
       "living": "Vivere a Bali, cultura, comunità, patente, sanità e vita quotidiana.",
       "trends": "Economia digitale, settore tech, nuove normative e analisi di mercato."
     }
+  },
+  "portal": {
+    "login": {
+      "forgot_password": "PIN dimenticato?",
+      "errors": {
+        "invalid_credentials": "Email o PIN non corretti. Riprova.",
+        "account_locked": "Account bloccato per sicurezza. Contatta team@balizero.com.",
+        "rate_limited": "Troppi tentativi. Riprova tra {{seconds}} secondi.",
+        "invalid_2fa": "Codice 2FA non valido.",
+        "network_error": "Connessione persa. Verifica la rete e riprova.",
+        "email_not_found": "Email non trovata.",
+        "server_error": "Errore del server. Riprova tra qualche minuto.",
+        "maintenance": "Manutenzione in corso. Torna più tardi."
+      }
+    },
+    "forgot_password": {
+      "title": "Recupera accesso",
+      "sent": "Abbiamo ricevuto la tua richiesta. Il team ti contatterà."
+    }
   }
 }
