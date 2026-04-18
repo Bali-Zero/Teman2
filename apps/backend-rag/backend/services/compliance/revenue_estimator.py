@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import logging
 import re
+from enum import Enum
 from typing import TYPE_CHECKING
+
+import asyncpg
 
 if TYPE_CHECKING:
     from backend.services.compliance.renewal_rules import RenewalRule
@@ -113,3 +116,140 @@ def estimate_urgent_surcharge(processing_days: int, all_prices: dict) -> int | N
 
     entry = urgent_services.get(key, {})
     return _parse_idr(entry.get("price", ""))
+
+
+# ---------------------------------------------------------------------------
+# Revenue ↔ Compliance correlation — risk bands (decision #5)
+# ---------------------------------------------------------------------------
+
+
+class RiskBand(str, Enum):
+    GREEN = "green"
+    YELLOW = "yellow"
+    ORANGE = "orange"
+    RED = "red"
+
+
+_BAND_WEIGHT: dict[RiskBand, float] = {
+    RiskBand.GREEN: 1.0,
+    RiskBand.YELLOW: 0.8,
+    RiskBand.ORANGE: 0.5,
+    RiskBand.RED: 0.2,
+}
+
+_SEVERITY_TO_BAND: dict[str, RiskBand] = {
+    "warning": RiskBand.YELLOW,
+    "urgent": RiskBand.ORANGE,
+    "critical": RiskBand.RED,
+}
+
+
+def _band_rank(b: RiskBand) -> int:
+    return {RiskBand.GREEN: 0, RiskBand.YELLOW: 1, RiskBand.ORANGE: 2, RiskBand.RED: 3}[b]
+
+
+async def classify_client_risk(
+    conn: asyncpg.Connection,
+    client_id: int,
+) -> RiskBand:
+    """
+    Return the worst risk band across a client's active alerts + overdue practices.
+
+    Active = status in (pending, sent, acknowledged). 'info' alerts do not shift band.
+    Worst-band-wins: having both warning and critical → RED.
+    """
+    highest: RiskBand = RiskBand.GREEN
+
+    # Derive worst band from compliance_alerts
+    rows = await conn.fetch(
+        "SELECT severity FROM compliance_alerts "
+        "WHERE client_id = $1 AND status IN ('pending','sent','acknowledged')",
+        client_id,
+    )
+    for r in rows:
+        band = _SEVERITY_TO_BAND.get(r["severity"])
+        if band is None:
+            continue
+        if _band_rank(band) > _band_rank(highest):
+            highest = band
+
+    # Derive worst band from overdue practices (table may be absent locally)
+    try:
+        overdue_days: int = await conn.fetchval(
+            """
+            SELECT COALESCE(MAX(EXTRACT(DAY FROM (NOW() - due_at))), 0)::int
+            FROM practices
+            WHERE client_id = $1 AND status != 'completed' AND due_at < NOW()
+            """,
+            client_id,
+        ) or 0
+    except asyncpg.PostgresError:
+        overdue_days = 0
+
+    if overdue_days >= 30:
+        if _band_rank(RiskBand.RED) > _band_rank(highest):
+            highest = RiskBand.RED
+    elif overdue_days > 0:
+        if _band_rank(RiskBand.ORANGE) > _band_rank(highest):
+            highest = RiskBand.ORANGE
+
+    return highest
+
+
+async def get_weighted_revenue(
+    conn: asyncpg.Connection,
+    client_id: int,
+    *,
+    expected_idr: int,
+) -> int:
+    """
+    Return expected_idr multiplied by the risk-band weight for client_id.
+
+    Example: urgent alert → ORANGE → 0.5 × expected_idr.
+    """
+    band = await classify_client_risk(conn, client_id)
+    return int(expected_idr * _BAND_WEIGHT[band])
+
+
+async def clients_at_revenue_risk(
+    conn: asyncpg.Connection,
+    *,
+    min_band: RiskBand = RiskBand.ORANGE,
+    limit: int = 20,
+) -> list[dict]:
+    """
+    Return top-N clients at or above `min_band` ordered by alert count descending.
+
+    Designed for the admin dashboard top-N at-risk query.
+    """
+    min_rank = _band_rank(min_band)
+    severities = [
+        s for s, b in _SEVERITY_TO_BAND.items() if _band_rank(b) >= min_rank
+    ]
+    if not severities:
+        return []
+    rows = await conn.fetch(
+        """
+        SELECT c.id, c.full_name, MAX(a.severity) AS worst_severity, COUNT(*) AS alerts
+        FROM compliance_alerts a
+        JOIN clients c ON c.id = a.client_id
+        WHERE a.status IN ('pending','sent','acknowledged')
+          AND a.severity = ANY($1::text[])
+        GROUP BY c.id, c.full_name
+        ORDER BY alerts DESC
+        LIMIT $2
+        """,
+        severities,
+        limit,
+    )
+    return [dict(r) for r in rows]
+
+
+__all__ = [
+    "estimate_renewal_revenue",
+    "estimate_urgent_surcharge",
+    "RiskBand",
+    "classify_client_risk",
+    "get_weighted_revenue",
+    "clients_at_revenue_risk",
+]
