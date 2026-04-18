@@ -48,6 +48,10 @@ class JobsRunner:
         self._oauth = OAuthGuard()
         self._cost_cap = CostCap(limit_cents=cost_cap_cents)
         self._claude_cli = detect_claude_cli_available()
+        self._task: asyncio.Task | None = None
+        self._stop_event = asyncio.Event()
+        self._last_fired: dict[str, datetime] = {}
+        self._in_flight: set[asyncio.Task] = set()
 
     async def dispatch_once(
         self,
@@ -339,3 +343,58 @@ class JobsRunner:
         """Mark 'running' rows older than grace as failed/orphaned."""
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=grace_seconds)
         return await self._repo.mark_orphans(older_than=cutoff)
+
+    async def start(self) -> None:
+        if self._task is not None:
+            raise RuntimeError("runner already started")
+        await self.recover_orphans(grace_seconds=60)
+        self._task = asyncio.create_task(self._tick_loop(), name="jobs-runner-tick-loop")
+
+    async def stop(self, grace_seconds: int = 30) -> None:
+        # Idempotent: calling stop() twice is safe (Task 14 lifespan relies on this).
+        if self._task is None and not self._in_flight:
+            return
+        self._stop_event.set()
+        if self._task is not None:
+            try:
+                await asyncio.wait_for(self._task, timeout=grace_seconds)
+            except asyncio.TimeoutError:
+                self._task.cancel()
+            self._task = None
+        # Wait for in-flight handlers.
+        if self._in_flight:
+            _done, pending = await asyncio.wait(
+                self._in_flight, timeout=grace_seconds, return_when=asyncio.ALL_COMPLETED,
+            )
+            for t in pending:
+                t.cancel()
+
+    async def _tick_loop(self) -> None:
+        from croniter import croniter
+
+        while not self._stop_event.is_set():
+            now = datetime.now(timezone.utc)
+            for decl in self._registry.all():
+                last = self._last_fired.get(decl.name, now - timedelta(seconds=1))
+                try:
+                    next_due = croniter(decl.cron, last).get_next(datetime)
+                except Exception as exc:
+                    logger.error("job.cron_error job=%s err=%s", decl.name, exc)
+                    continue
+                if next_due.tzinfo is None:
+                    next_due = next_due.replace(tzinfo=timezone.utc)
+                if now < next_due:
+                    continue
+
+                self._last_fired[decl.name] = now
+                task = asyncio.create_task(
+                    self.dispatch_with_retry(decl=decl, scheduled_tick=next_due, source="scheduled"),
+                    name=f"dispatch:{decl.name}:{next_due.isoformat()}",
+                )
+                self._in_flight.add(task)
+                task.add_done_callback(self._in_flight.discard)
+
+            try:
+                await asyncio.wait_for(self._stop_event.wait(), timeout=self._tick_seconds)
+            except asyncio.TimeoutError:
+                pass
