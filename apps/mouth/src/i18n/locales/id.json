@@ -254,5 +254,24 @@
       "living": "Tinggal di Bali, budaya, komunitas, SIM, kesehatan, dan kehidupan sehari-hari.",
       "trends": "Ekonomi digital, industri teknologi, regulasi baru, dan wawasan pasar."
     }
+  },
+  "portal": {
+    "login": {
+      "forgot_password": "Lupa PIN?",
+      "errors": {
+        "invalid_credentials": "Email atau PIN salah. Silakan coba lagi.",
+        "account_locked": "Akun dikunci untuk keamanan. Hubungi team@balizero.com.",
+        "rate_limited": "Terlalu banyak percobaan. Coba lagi dalam {{seconds}} detik.",
+        "invalid_2fa": "Kode 2FA tidak valid.",
+        "network_error": "Koneksi terputus. Periksa jaringan dan coba lagi.",
+        "email_not_found": "Email tidak ditemukan.",
+        "server_error": "Kesalahan server. Coba lagi dalam beberapa menit.",
+        "maintenance": "Sedang dalam pemeliharaan. Silakan kembali nanti."
+      }
+    },
+    "forgot_password": {
+      "title": "Pemulihan akses",
+      "sent": "Kami telah menerima permintaan Anda. Tim akan menghubungi Anda."
+    }
   }
 }
