@@ -91,7 +91,13 @@ class AlertDispatcher:
     async def dispatch(self, alert: AlertRow) -> None:
         """Fan-out to team + client channels, respecting notification_prefs
         and deduping via notification_log."""
-        team_channels: list[str] = _TEAM_CHANNELS_BY_SEVERITY.get(alert.severity, [])
+        team_channels = _TEAM_CHANNELS_BY_SEVERITY.get(alert.severity)
+        if team_channels is None:
+            logger.warning(
+                "unrecognized severity %r for alert %s; no team channels will fire",
+                alert.severity, alert.alert_id,
+            )
+            team_channels = []
         client_channels: list[str] = []
 
         portal_user_id = await self._lookup_portal_user_id(alert.client_id)
@@ -113,14 +119,23 @@ class AlertDispatcher:
 
             try:
                 await self._send_one(channel, alert, portal_user_id)
-                await self._log_sent(user_id, channel, ref)
-                any_success = True
-            except (RuntimeError, asyncpg.PostgresError, Exception) as exc:  # noqa: BLE001
-                # Per-channel failure isolation: one channel down must NOT abort others.
+            except Exception as exc:  # noqa: BLE001  -- per-channel isolation (decision #11)
                 logger.warning(
                     "channel %s failed for alert %s: %s",
                     channel, alert.alert_id, exc,
                 )
+                continue
+
+            # Send succeeded — record delivery. Log failure is LOUD but does not
+            # retract the send.
+            try:
+                await self._log_sent(user_id, channel, ref)
+            except Exception as exc:  # noqa: BLE001
+                logger.error(
+                    "notification_log insert failed for %s (send already completed): %s",
+                    ref, exc,
+                )
+            any_success = True
 
         if not any_success:
             logger.warning("no channel succeeded for alert %s", alert.alert_id)
@@ -167,7 +182,7 @@ class AlertDispatcher:
                 body=alert.message_en or alert.message_it or "",
             )
         else:
-            logger.warning("unknown channel: %s", channel)
+            raise ValueError(f"unknown channel: {channel}")
 
     def _telegram_text(self, alert: AlertRow) -> str:
         return (
@@ -198,7 +213,7 @@ class AlertDispatcher:
         # abort it.
         if self._conn is not None:
             try:
-                async with self._conn.transaction(isolation="read_committed", readonly=True):
+                async with self._conn.transaction():  # savepoint — isolation inherited from outer TX
                     return await self._conn.fetchval(
                         "SELECT portal_user_id::text FROM clients WHERE id = $1",
                         client_id,
