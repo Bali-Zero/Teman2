@@ -57,6 +57,13 @@ class TestBuildDedupKey:
                 compliance_item_ref=None, reporting_period=None,
             )
 
+    def test_tax_filing_without_compliance_item_ref_raises(self) -> None:
+        with pytest.raises(ValueError):
+            build_dedup_key(
+                category="tax_filing", client_id=5,
+                compliance_item_ref=None, reporting_period=None,
+            )
+
 
 class TestShouldPromote:
     def test_upgrade_warning_to_urgent_returns_true(self) -> None:
