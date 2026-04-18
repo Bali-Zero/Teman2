@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Banknote,
   ChevronRight,
@@ -9,18 +10,35 @@ import {
   TrendingUp,
   Users as UsersIcon,
 } from "lucide-react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+
+const MarginTrendChart = dynamic(
+  () =>
+    import("@/components/hr/OwnerCashoutCharts").then(
+      (m) => m.MarginTrendChart,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="h-full w-full animate-pulse rounded bg-zinc-800/50"
+        aria-hidden="true"
+      />
+    ),
+  },
+);
+const TopVisaChart = dynamic(
+  () =>
+    import("@/components/hr/OwnerCashoutCharts").then((m) => m.TopVisaChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="h-full w-full animate-pulse rounded bg-zinc-800/50"
+        aria-hidden="true"
+      />
+    ),
+  },
+);
 
 import * as api from "@/lib/api/hr/owner-cashout";
 import type {
@@ -87,7 +105,7 @@ export default function OwnerCashoutPage() {
       setLastSync(
         st.last_sync
           ? `${st.last_sync.status} · ${new Date(st.last_sync.started_at).toLocaleString("en-GB")}`
-          : "never"
+          : "never",
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -171,39 +189,7 @@ export default function OwnerCashoutPage() {
           </h2>
         </div>
         <div style={{ width: "100%", height: 260 }}>
-          <ResponsiveContainer>
-            <LineChart data={overview.trend}>
-              <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-              <XAxis dataKey="week_start" stroke="#71717a" fontSize={11} />
-              <YAxis
-                stroke="#71717a"
-                fontSize={11}
-                tickFormatter={formatShort}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#18181b",
-                  border: "1px solid #27272a",
-                }}
-                formatter={(v: number) => formatIDR(v)}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="margin_bz"
-                stroke="#34d399"
-                name="Margin BZ"
-                strokeWidth={2}
-              />
-              <Line
-                type="monotone"
-                dataKey="margin_bs"
-                stroke="#fbbf24"
-                name="Margin BS"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <MarginTrendChart data={overview.trend} />
         </div>
       </div>
 
@@ -215,32 +201,7 @@ export default function OwnerCashoutPage() {
           </h2>
         </div>
         <div style={{ width: "100%", height: 260 }}>
-          <ResponsiveContainer>
-            <BarChart data={visa} layout="vertical">
-              <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
-              <XAxis
-                type="number"
-                stroke="#71717a"
-                fontSize={11}
-                tickFormatter={formatShort}
-              />
-              <YAxis
-                type="category"
-                dataKey="process"
-                stroke="#71717a"
-                fontSize={11}
-                width={130}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#18181b",
-                  border: "1px solid #27272a",
-                }}
-                formatter={(v: number) => formatIDR(v)}
-              />
-              <Bar dataKey="margin_bz_total_idr" fill="#34d399" name="MBZ" />
-            </BarChart>
-          </ResponsiveContainer>
+          <TopVisaChart data={visa} />
         </div>
       </div>
 

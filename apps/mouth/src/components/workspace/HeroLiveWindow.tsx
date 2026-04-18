@@ -69,7 +69,9 @@ export function HeroLiveWindow() {
     (article
       ? `https://balizero.com/articles/${article.category}/${article.slug}`
       : "#");
-  const href = rawHref.startsWith("/") ? `https://balizero.com${rawHref}` : rawHref;
+  const href = rawHref.startsWith("/")
+    ? `https://balizero.com${rawHref}`
+    : rawHref;
 
   return (
     <div className="group relative mb-2" style={{ height: 420 }}>
@@ -104,7 +106,8 @@ export function HeroLiveWindow() {
                 : isActive
                   ? "scale(1)"
                   : "scale(0.985)",
-              transition: "opacity 850ms cubic-bezier(0.4,0,0.2,1), transform 850ms cubic-bezier(0.4,0,0.2,1)",
+              transition:
+                "opacity 850ms cubic-bezier(0.4,0,0.2,1), transform 850ms cubic-bezier(0.4,0,0.2,1)",
               zIndex: isActive ? 1 : 0,
               pointerEvents: isLeaving ? "none" : "auto",
             }}
@@ -123,7 +126,8 @@ export function HeroLiveWindow() {
               className="absolute inset-x-0 top-0 pointer-events-none"
               style={{
                 height: "40%",
-                background: "linear-gradient(to bottom, rgba(255,255,255,0.06) 0%, transparent 100%)",
+                background:
+                  "linear-gradient(to bottom, rgba(255,255,255,0.06) 0%, transparent 100%)",
                 borderRadius: "inherit",
               }}
             />
@@ -150,7 +154,10 @@ export function HeroLiveWindow() {
             />
 
             {/* Content */}
-            <div className="absolute bottom-0 left-0 right-0" style={{ padding: "20px 24px" }}>
+            <div
+              className="absolute bottom-0 left-0 right-0"
+              style={{ padding: "20px 24px" }}
+            >
               {a?.category && (
                 <span
                   className="block font-bold uppercase tracking-[1.5px] mb-1.5"
@@ -173,8 +180,20 @@ export function HeroLiveWindow() {
                 </div>
               ) : (
                 <>
-                  <div className="h-4 rounded animate-pulse mb-2" style={{ background: "rgba(255,255,255,0.06)", width: "55%" }} />
-                  <div className="h-4 rounded animate-pulse" style={{ background: "rgba(255,255,255,0.04)", width: "38%" }} />
+                  <div
+                    className="h-4 rounded animate-pulse mb-2"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      width: "55%",
+                    }}
+                  />
+                  <div
+                    className="h-4 rounded animate-pulse"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      width: "38%",
+                    }}
+                  />
                 </>
               )}
             </div>
@@ -215,12 +234,17 @@ export function HeroLiveWindow() {
 
       {/* Dots navigation */}
       <div
+        role="tablist"
+        aria-label="Live homepage articles"
         className="absolute bottom-5 right-6 z-20 flex items-center gap-2"
         onClick={(e) => e.preventDefault()}
       >
         {articles.map((_, i) => (
           <button
             key={i}
+            role="tab"
+            aria-selected={i === current}
+            aria-label={`Go to article ${i + 1} of ${articles.length}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

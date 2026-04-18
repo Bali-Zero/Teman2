@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
 import { Header } from "@/components/workspace/Header";
@@ -12,15 +12,28 @@ import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
 import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
+import { routeTitles } from "@/types/navigation";
 
 interface WorkspaceLayoutProps {
   children: React.ReactNode;
+}
+
+function getRouteTitle(pathname: string | null): string {
+  if (!pathname) return "Workspace";
+  if (routeTitles[pathname]) return routeTitles[pathname];
+  for (const [route, title] of Object.entries(routeTitles)) {
+    if (pathname.startsWith(route) && route !== "/") return title;
+  }
+  return "Workspace";
 }
 
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const isTerminalPage = pathname === "/terminal";
+  const pageTitle = getRouteTitle(pathname);
+  const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
@@ -174,48 +187,103 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setIsMobileMenuOpen(false);
   }, []);
 
-  // Close mobile menu on Escape
+  // Mobile sidebar dialog: Esc to close + focus trap + return focus to toggle
   useEffect(() => {
     if (!isMobileMenuOpen) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMobileMenuOpen(false);
+
+    const root = mobileSidebarRef.current;
+    const focusables = root
+      ? Array.from(
+          root.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled])',
+          ),
+        )
+      : [];
+    focusables[0]?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      // Return focus to the toggle that opened the dialog (a11y best practice)
+      mobileMenuToggleRef.current?.focus();
+    };
   }, [isMobileMenuOpen]);
 
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent">
+      <main
+        id="main-content"
+        aria-busy="true"
+        aria-live="polite"
+        className="min-h-screen flex items-center justify-center bg-transparent"
+      >
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[var(--bz-accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--bz-text-2)]">Loading...</p>
+          <div
+            className="w-10 h-10 border-2 border-[var(--bz-accent)] border-t-transparent rounded-full animate-spin"
+            role="status"
+            aria-label="Loading workspace"
+          />
+          {/* Use --bz-text-1 (#edeae4) — passes WCAG AA on workspace surfaces. */}
+          <p className="text-sm text-[var(--bz-text-1)]">Loading…</p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
     <ToastProvider>
+      <a href="#main-content" className="bz-skip-link">
+        Skip to main content
+      </a>
       <div className="min-h-screen bg-transparent">
-        {/* Desktop Sidebar */}
+        {/* Desktop Sidebar — labelled landmark so AT can list it */}
         <div className="hidden md:block">
-          <AppSidebar user={user} unreadWhatsApp={0} onLogout={handleLogout} />
+          <AppSidebar
+            user={user}
+            unreadWhatsApp={0}
+            onLogout={handleLogout}
+            ariaLabel="Primary"
+          />
         </div>
 
-        {/* Mobile Sidebar Overlay */}
+        {/* Mobile Sidebar Overlay (dialog) */}
         {isMobileMenuOpen && (
           <>
             <div
               className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-all duration-300"
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-hidden="true"
             />
-            <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+            <div
+              ref={mobileSidebarRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Workspace navigation"
+              className="fixed inset-y-0 left-0 z-50 md:hidden"
+            >
               <AppSidebar
                 user={user}
                 unreadWhatsApp={0}
                 onLogout={handleLogout}
+                ariaLabel="Primary (mobile)"
               />
             </div>
           </>
@@ -229,10 +297,22 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             onMobileMenuToggle={handleMobileMenuToggle}
             isMobileMenuOpen={isMobileMenuOpen}
             whatsappUnread={0}
+            mobileMenuToggleRef={mobileMenuToggleRef}
           />
 
-          {/* Page Content */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
+          {/* Page Content — single labelled <main> landmark */}
+          <main
+            id="main-content"
+            aria-labelledby="bz-page-title"
+            tabIndex={-1}
+            className="flex-1 p-4 md:p-6 lg:p-8"
+          >
+            {/* Visually-hidden h1 ensures every workspace route satisfies
+                page-has-heading-one, even when the in-page header uses a
+                small visual title or the page itself has no h1. */}
+            <h1 id="bz-page-title" className="sr-only">
+              {pageTitle}
+            </h1>
             <ErrorBoundary
               fallback={
                 <div className="p-8 text-center text-white">

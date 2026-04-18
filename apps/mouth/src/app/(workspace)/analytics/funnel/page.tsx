@@ -1,20 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import dynamic from "next/dynamic";
 import {
   analyticsApi,
   type FunnelViewResponse,
 } from "@/lib/api/workspace/analytics.api";
+
+const FunnelChart = dynamic(
+  () => import("@/components/analytics/FunnelChart"),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{ height: 300 }}
+        className="animate-pulse rounded bg-white/5"
+        aria-hidden="true"
+      />
+    ),
+  },
+);
 
 export default function FunnelAnalyticsPage() {
   const [data, setData] = useState<FunnelViewResponse | null>(null);
@@ -42,8 +47,13 @@ export default function FunnelAnalyticsPage() {
   const merged = useMemo(() => {
     if (!data) return [];
     const sessionMap = new Map(data.sessions.map((s) => [s.funnel, s.count]));
-    const conversionMap = new Map(data.conversions.map((c) => [c.funnel, c.count]));
-    const funnels = new Set<string>([...sessionMap.keys(), ...conversionMap.keys()]);
+    const conversionMap = new Map(
+      data.conversions.map((c) => [c.funnel, c.count]),
+    );
+    const funnels = new Set<string>([
+      ...sessionMap.keys(),
+      ...conversionMap.keys(),
+    ]);
     return Array.from(funnels).map((funnel) => ({
       funnel,
       sessions: sessionMap.get(funnel) ?? 0,
@@ -63,7 +73,12 @@ export default function FunnelAnalyticsPage() {
     <section style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <header>
         <h1 style={{ margin: 0, fontSize: 24 }}>Funnel Analytics</h1>
-        <p style={{ margin: "4px 0 0", color: "var(--color-text-secondary, #9ca3af)" }}>
+        <p
+          style={{
+            margin: "4px 0 0",
+            color: "var(--color-text-secondary, #9ca3af)",
+          }}
+        >
           Sessions and first-touch conversion attribution across funnels.
         </p>
       </header>
@@ -83,9 +98,18 @@ export default function FunnelAnalyticsPage() {
               gap: 16,
             }}
           >
-            <Kpi label="Sessioni totali" value={totals.sessions.toLocaleString()} />
-            <Kpi label="Conversioni" value={totals.conversions.toLocaleString()} />
-            <Kpi label="Tasso conversione" value={`${totals.rate.toFixed(2)}%`} />
+            <Kpi
+              label="Sessioni totali"
+              value={totals.sessions.toLocaleString()}
+            />
+            <Kpi
+              label="Conversioni"
+              value={totals.conversions.toLocaleString()}
+            />
+            <Kpi
+              label="Tasso conversione"
+              value={`${totals.rate.toFixed(2)}%`}
+            />
           </div>
 
           <div
@@ -97,29 +121,15 @@ export default function FunnelAnalyticsPage() {
               minHeight: 360,
             }}
           >
-            <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>Sessioni vs conversioni per funnel</h2>
+            <h2 style={{ margin: "0 0 12px", fontSize: 16 }}>
+              Sessioni vs conversioni per funnel
+            </h2>
             {merged.length === 0 ? (
               <p style={{ color: "var(--color-text-secondary, #9ca3af)" }}>
                 Nessun dato disponibile.
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={merged}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                  <XAxis dataKey="funnel" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "rgba(0,0,0,0.85)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="sessions" fill="#3b82f6" name="Sessioni" />
-                  <Bar dataKey="conversions" fill="#22c55e" name="Conversioni" />
-                </BarChart>
-              </ResponsiveContainer>
+              <FunnelChart data={merged} />
             )}
           </div>
         </>
@@ -138,7 +148,11 @@ function Kpi({ label, value }: { label: string; value: string }) {
         padding: 16,
       }}
     >
-      <div style={{ fontSize: 12, color: "var(--color-text-secondary, #9ca3af)" }}>{label}</div>
+      <div
+        style={{ fontSize: 12, color: "var(--color-text-secondary, #9ca3af)" }}
+      >
+        {label}
+      </div>
       <div style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{value}</div>
     </div>
   );
