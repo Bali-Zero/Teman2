@@ -1,0 +1,56 @@
+name: Lighthouse CI (mouth)
+
+on:
+  pull_request:
+    paths:
+      - "apps/mouth/src/app/(marketing)/**"
+      - "apps/mouth/src/app/(blog)/**"
+      - "apps/mouth/src/app/(book)/**"
+      - "apps/mouth/src/app/(visa-oracle)/**"
+      - "apps/mouth/src/components/funnel/**"
+      - "apps/mouth/src/components/seo/**"
+      - "apps/mouth/.lighthouserc.json"
+      - "apps/mouth/scripts/lighthouse-ci.mjs"
+  workflow_dispatch:
+
+concurrency:
+  group: lighthouse-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/mouth
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install root deps
+        run: npm ci
+        working-directory: .
+
+      - name: Build mouth
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_PUBLIC_URL: http://localhost:3000
+
+      - name: Start server
+        run: |
+          npm start &
+          npx --yes wait-on http://localhost:3000 --timeout 120000
+        env:
+          PORT: "3000"
+
+      - name: Run Lighthouse CI
+        run: npm run lighthouse
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
