@@ -7,6 +7,7 @@ import {
   usePrimeNexus,
 } from "@/contexts/PrimeNexusContext";
 import { PrimeMapSkeleton } from "./PrimeMapSkeleton";
+import { PrimeUrlStateBridge } from "./PrimeUrlStateBridge";
 import { ModeSwitcher } from "./ModeSwitcher";
 import { ClientMarkerLayer } from "./ClientMarkerLayer";
 
@@ -65,6 +66,9 @@ function PrimeNexusInner() {
 
   return (
     <div className="h-screen bg-black overflow-hidden relative">
+      {/* PF3a — headless URL ↔ context sync */}
+      <PrimeUrlStateBridge />
+
       {/* Original PrimeMap3D — unchanged, handles all map + sidebar logic */}
       <PrimeMap3D />
 
