@@ -144,7 +144,7 @@ class TestListClients:
 
         with (
             patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
-            patch("backend.app.routers.crm_clients.can_view_all_clients", return_value=True),
+            patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
         ):
             response = client.get("/api/crm/clients/?search=alice")
 

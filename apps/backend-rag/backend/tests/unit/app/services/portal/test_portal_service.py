@@ -48,6 +48,18 @@ def mock_conn(mock_db_pool):
     return mock_db_pool._mock_conn
 
 
+@pytest.fixture
+def ctx_client_1():
+    """ClientContext for client_id=1 — covers the majority of legacy assertions."""
+    return {"client_id": 1, "email": "client-1@example.com"}
+
+
+@pytest.fixture
+def ctx_client_999():
+    """ClientContext for the 'not found' dashboard test."""
+    return {"client_id": 999, "email": "client-999@example.com"}
+
+
 # ============================================================================
 # VIRUS SCANNER TESTS
 # ============================================================================
@@ -290,14 +302,18 @@ class TestPortalServiceDashboard:
     """Tests for PortalService.get_dashboard."""
 
     @pytest.mark.asyncio
-    async def test_get_dashboard_client_not_found(self, portal_service, mock_conn):
+    async def test_get_dashboard_client_not_found(
+        self, portal_service, mock_conn, ctx_client_999,
+    ):
         """Dashboard raises ValueError for missing client."""
         mock_conn.fetchrow.return_value = None
         with pytest.raises(ValueError, match="Client 999 not found"):
-            await portal_service.get_dashboard(999)
+            await portal_service.get_dashboard(999, current_user=ctx_client_999)
 
     @pytest.mark.asyncio
-    async def test_get_dashboard_success(self, portal_service, mock_conn):
+    async def test_get_dashboard_success(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Dashboard returns expected structure for valid client."""
         mock_conn.fetchrow.side_effect = [
             {"id": 1, "full_name": "John", "email": "john@test.com"},
@@ -310,7 +326,7 @@ class TestPortalServiceDashboard:
         ]
         mock_conn.fetchval.return_value = 0
 
-        result = await portal_service.get_dashboard(1)
+        result = await portal_service.get_dashboard(1, current_user=ctx_client_1)
 
         assert "visa" in result
         assert "company" in result
@@ -385,7 +401,9 @@ class TestPortalServiceUpload:
     """Tests for document upload flow."""
 
     @pytest.mark.asyncio
-    async def test_upload_document_virus_detected(self, portal_service, mock_conn):
+    async def test_upload_document_virus_detected(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Upload blocked when virus detected."""
         malicious_content = b"<?php evil_code();"
         with pytest.raises(ValueError, match="Security threat detected"):
@@ -394,10 +412,13 @@ class TestPortalServiceUpload:
                 file_content=malicious_content,
                 file_name="payload.php",
                 document_type="passport",
+                current_user=ctx_client_1,
             )
 
     @pytest.mark.asyncio
-    async def test_upload_document_rate_limit(self, portal_service, mock_conn):
+    async def test_upload_document_rate_limit(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Upload blocked when rate limit exceeded."""
         portal_service._upload_rate_limits[1] = [
             datetime.now(timezone.utc).timestamp() for _ in range(10)
@@ -409,11 +430,14 @@ class TestPortalServiceUpload:
                 file_name="document.pdf",
                 document_type="passport",
                 mime_type="application/pdf",
+                current_user=ctx_client_1,
             )
         portal_service._upload_rate_limits.pop(1, None)
 
     @pytest.mark.asyncio
-    async def test_upload_document_invalid_mime(self, portal_service, mock_conn):
+    async def test_upload_document_invalid_mime(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Upload blocked for disallowed MIME type."""
         portal_service._upload_rate_limits.pop(1, None)
         with pytest.raises(ValueError, match="File type not allowed"):
@@ -423,6 +447,7 @@ class TestPortalServiceUpload:
                 file_name="archive.tar.gz",
                 document_type="passport",
                 mime_type="application/gzip",
+                current_user=ctx_client_1,
             )
 
 
@@ -435,7 +460,7 @@ class TestPortalServiceMessaging:
     """Tests for messaging operations."""
 
     @pytest.mark.asyncio
-    async def test_get_messages(self, portal_service, mock_conn):
+    async def test_get_messages(self, portal_service, mock_conn, ctx_client_1):
         """get_messages returns structured response."""
         now = datetime.now(timezone.utc)
         mock_conn.fetch.return_value = [
@@ -453,7 +478,9 @@ class TestPortalServiceMessaging:
         ]
         mock_conn.fetchval.side_effect = [1, 1]
 
-        result = await portal_service.get_messages(client_id=1)
+        result = await portal_service.get_messages(
+            client_id=1, current_user=ctx_client_1,
+        )
         assert result["total"] == 1
         assert result["unread_count"] == 1
         assert len(result["messages"]) == 1
@@ -461,7 +488,7 @@ class TestPortalServiceMessaging:
         assert result["messages"][0]["is_read"] is False
 
     @pytest.mark.asyncio
-    async def test_send_message(self, portal_service, mock_conn):
+    async def test_send_message(self, portal_service, mock_conn, ctx_client_1):
         """send_message inserts and returns result."""
         now = datetime.now(timezone.utc)
         mock_conn.fetchrow.side_effect = [
@@ -470,22 +497,33 @@ class TestPortalServiceMessaging:
         ]
 
         result = await portal_service.send_message(
-            client_id=1, content="Need help with visa", subject="Visa question",
+            client_id=1,
+            content="Need help with visa",
+            subject="Visa question",
+            current_user=ctx_client_1,
         )
         assert result["id"] == 42
 
     @pytest.mark.asyncio
-    async def test_mark_message_read_success(self, portal_service, mock_conn):
+    async def test_mark_message_read_success(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """mark_message_read returns success when row updated."""
         mock_conn.execute.return_value = "UPDATE 1"
-        result = await portal_service.mark_message_read(client_id=1, message_id=42)
+        result = await portal_service.mark_message_read(
+            client_id=1, message_id=42, current_user=ctx_client_1,
+        )
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_mark_message_read_not_found(self, portal_service, mock_conn):
+    async def test_mark_message_read_not_found(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """mark_message_read returns failure when no row updated."""
         mock_conn.execute.return_value = "UPDATE 0"
-        result = await portal_service.mark_message_read(client_id=1, message_id=999)
+        result = await portal_service.mark_message_read(
+            client_id=1, message_id=999, current_user=ctx_client_1,
+        )
         assert result["success"] is False
 
 
@@ -498,16 +536,22 @@ class TestPortalServicePreferences:
     """Tests for preferences operations."""
 
     @pytest.mark.asyncio
-    async def test_get_preferences_defaults(self, portal_service, mock_conn):
+    async def test_get_preferences_defaults(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Returns defaults when no preferences stored."""
         mock_conn.fetchrow.return_value = None
-        result = await portal_service.get_preferences(client_id=1)
+        result = await portal_service.get_preferences(
+            client_id=1, current_user=ctx_client_1,
+        )
         assert result["email_notifications"] is True
         assert result["language"] == "en"
         assert result["timezone"] == "Asia/Jakarta"
 
     @pytest.mark.asyncio
-    async def test_get_preferences_stored(self, portal_service, mock_conn):
+    async def test_get_preferences_stored(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """Returns stored preferences."""
         mock_conn.fetchrow.return_value = {
             "email_notifications": False,
@@ -515,7 +559,9 @@ class TestPortalServicePreferences:
             "language": "it",
             "timezone": "Europe/Rome",
         }
-        result = await portal_service.get_preferences(client_id=1)
+        result = await portal_service.get_preferences(
+            client_id=1, current_user=ctx_client_1,
+        )
         assert result["language"] == "it"
         assert result["email_notifications"] is False
 
@@ -529,12 +575,16 @@ class TestPortalServiceTimeline:
     """Tests for timeline operations."""
 
     @pytest.mark.asyncio
-    async def test_get_timeline_returns_structure(self, portal_service, mock_conn):
+    async def test_get_timeline_returns_structure(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
         """get_timeline returns expected top-level keys."""
         mock_conn.fetch.return_value = []
         mock_conn.fetchrow.return_value = None
 
-        result = await portal_service.get_timeline(client_id=1)
+        result = await portal_service.get_timeline(
+            client_id=1, current_user=ctx_client_1,
+        )
         assert result["scope"] == "portal"
         assert "entries" in result
         assert "lastUpdated" in result

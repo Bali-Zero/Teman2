@@ -33,7 +33,9 @@ async def test_get_billing_returns_invoices():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_billing(client_id=1)
+    result = await service.get_billing(
+        client_id=1, current_user={"client_id": 1, "email": "c1@example.com"},
+    )
 
     assert len(result["invoices"]) == 2
     assert result["summary"]["total_invoiced"] == 55000000.0
@@ -53,7 +55,9 @@ async def test_get_billing_empty():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_billing(client_id=999)
+    result = await service.get_billing(
+        client_id=999, current_user={"client_id": 999, "email": "c999@example.com"},
+    )
 
     assert len(result["invoices"]) == 0
     assert result["summary"]["total_invoiced"] == 0
@@ -71,7 +75,9 @@ async def test_get_billing_fallback_on_missing_table():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_billing(client_id=1)
+    result = await service.get_billing(
+        client_id=1, current_user={"client_id": 1, "email": "c1@example.com"},
+    )
 
     assert len(result["invoices"]) == 0
     assert result["summary"]["count"] == 0
@@ -88,7 +94,11 @@ async def test_get_invoice_pdf_url():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_invoice_pdf_url(client_id=1, invoice_id=1)
+    result = await service.get_invoice_pdf_url(
+        client_id=1,
+        invoice_id=1,
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
 
     assert result is not None
     assert result["download_url"] == "https://drive.google.com/abc"
@@ -105,6 +115,10 @@ async def test_get_invoice_pdf_url_not_found():
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     service = PortalService(mock_pool)
-    result = await service.get_invoice_pdf_url(client_id=1, invoice_id=999)
+    result = await service.get_invoice_pdf_url(
+        client_id=1,
+        invoice_id=999,
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
 
     assert result is None

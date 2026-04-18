@@ -188,9 +188,14 @@ def require_team_member(user: dict[str, Any] = Depends(get_current_user)) -> dic
 
 
 # Superusers allowed to impersonate any client via ?as_client=<id>.
-# Source-of-truth duplicated in backend/app/routers/portal.py:SUPERUSER_EMAILS
-# (kept small + explicit; a follow-up can centralise into core/config).
-_SUPERUSER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
+# HIGH-7 (audit 2026-04-18): centralised into settings.admin_emails_set.
+# Use the getter below to pick up ADMIN_EMAILS env-var changes without
+# module reload. The portal router uses the same source (see
+# backend/app/routers/portal.py:_superuser_emails).
+def _superuser_emails() -> frozenset[str]:
+    from backend.app.core.config import settings
+
+    return settings.admin_emails_set
 
 
 async def get_current_portal_client(
@@ -223,7 +228,7 @@ async def get_current_portal_client(
 
     user = request.state.user
     user_email = (user.get("email") or "").lower()
-    is_superuser = user_email in _SUPERUSER_EMAILS
+    is_superuser = user_email in _superuser_emails()
 
     # ---- Superuser impersonation path ----
     if is_superuser:

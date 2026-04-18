@@ -24,6 +24,27 @@ from backend.app.deps.crm_access import get_crm_user_filter
 from backend.app.utils.crm_utils import verify_client_access
 from backend.app.utils.logging_utils import get_logger
 from backend.services.portal import InviteService, PortalService
+from backend.services.portal._rbac import ClientContext
+
+
+def _team_impersonation_ctx(client_id: int, current_user: dict) -> ClientContext:
+    """
+    Build a ClientContext for a team member viewing a client's portal data.
+
+    Callers MUST have already invoked `verify_client_access(client_id, ...)`
+    before using this helper. The service-layer RBAC decorator treats the
+    returned context as an authorised impersonation (impersonating=True)
+    because the RBAC gate already fired at the router layer.
+
+    Audit 2026-04-18 HIGH-6.
+    """
+    return ClientContext(
+        client_id=client_id,
+        email=str(current_user.get("email") or ""),
+        impersonating=True,
+        user_id=str(current_user.get("user_id") or current_user.get("id") or ""),
+        name=str(current_user.get("name") or ""),
+    )
 
 logger = get_logger(__name__)
 
@@ -264,11 +285,12 @@ async def get_portal_preview(
     async with db_pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
+    ctx = _team_impersonation_ctx(client_id, current_user)
     try:
-        dashboard = await portal_service.get_dashboard(client_id)
-        visa = await portal_service.get_visa_status(client_id)
-        companies = await portal_service.get_companies(client_id)
-        taxes = await portal_service.get_tax_overview(client_id)
+        dashboard = await portal_service.get_dashboard(client_id, current_user=ctx)
+        visa = await portal_service.get_visa_status(client_id, current_user=ctx)
+        companies = await portal_service.get_companies(client_id, current_user=ctx)
+        taxes = await portal_service.get_tax_overview(client_id, current_user=ctx)
 
         return {
             "success": True,
@@ -363,8 +385,14 @@ async def get_client_messages(
     async with db_pool.acquire() as conn:
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
+    ctx = _team_impersonation_ctx(client_id, current_user)
     try:
-        data = await portal_service.get_messages(client_id, limit=limit, offset=offset)
+        data = await portal_service.get_messages(
+            client_id,
+            limit=limit,
+            offset=offset,
+            current_user=ctx,
+        )
         return {
             "success": True,
             "data": data,

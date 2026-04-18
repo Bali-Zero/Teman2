@@ -11,6 +11,7 @@ from typing import Any
 import asyncpg
 
 from backend.services.common.cache import cache_invalidating
+from backend.services.portal._rbac import ClientContext, require_client_access
 
 
 class PortalMessagingMixin:
@@ -22,11 +23,14 @@ class PortalMessagingMixin:
     # MESSAGES
     # ================================================
 
+    @require_client_access
     async def get_messages(
         self,
         client_id: int,
         limit: int = 50,
         offset: int = 0,
+        *,
+        current_user: ClientContext,
     ) -> dict[str, Any]:
         """Get message threads for client."""
         async with self.pool.acquire() as conn:
@@ -85,12 +89,15 @@ class PortalMessagingMixin:
         lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
         "zantara:portal_messages:*",
     ])
+    @require_client_access
     async def send_message(
         self,
         client_id: int,
         content: str,
         subject: str | None = None,
         practice_id: int | None = None,
+        *,
+        current_user: ClientContext,
     ) -> dict[str, Any]:
         """Send a message from client to team."""
         async with self.pool.acquire() as conn:
@@ -123,7 +130,14 @@ class PortalMessagingMixin:
     @cache_invalidating([
         lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
     ])
-    async def mark_message_read(self, client_id: int, message_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def mark_message_read(
+        self,
+        client_id: int,
+        message_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """Mark a message as read."""
         async with self.pool.acquire() as conn:
             result = await conn.execute(
@@ -142,7 +156,13 @@ class PortalMessagingMixin:
     # PREFERENCES
     # ================================================
 
-    async def get_preferences(self, client_id: int) -> dict[str, Any]:
+    @require_client_access
+    async def get_preferences(
+        self,
+        client_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any]:
         """Get client preferences."""
         async with self.pool.acquire() as conn:
             prefs = await conn.fetchrow(
@@ -174,10 +194,13 @@ class PortalMessagingMixin:
     @cache_invalidating([
         lambda self, client_id, *a, **k: f"zantara:portal_preferences:{client_id}:*",
     ])
+    @require_client_access
     async def update_preferences(
         self,
         client_id: int,
         preferences: dict[str, Any],
+        *,
+        current_user: ClientContext,
     ) -> dict[str, Any]:
         """Update client preferences."""
         async with self.pool.acquire() as conn:
@@ -200,7 +223,10 @@ class PortalMessagingMixin:
                     param_idx += 1
 
             if not updates:
-                return await self.get_preferences(client_id)
+                return await self.get_preferences(
+                    client_id,
+                    current_user=current_user,
+                )
 
             # Upsert preferences
             await conn.execute(
@@ -213,7 +239,10 @@ class PortalMessagingMixin:
                 *params,
             )
 
-            return await self.get_preferences(client_id)
+            return await self.get_preferences(
+                client_id,
+                current_user=current_user,
+            )
 
 
 __all__ = ["PortalMessagingMixin"]

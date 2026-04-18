@@ -28,13 +28,12 @@ Plus helper functions:
 """
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -887,8 +886,20 @@ class TestNotifyHRBonus:
     async def test_notify_sends_email(self) -> None:
         from backend.app.routers.crm_practices import _notify_hr_bonus_pending
 
-        with patch("backend.app.routers.crm_practices.send_internal_email", new=AsyncMock()) as mock_send:
-            await _notify_hr_bonus_pending("team@balizero.com", "kitas_sponsor", 500000, 42)
+        # After HIGH-7 the recipient comes from settings.hr_notification_email
+        # (default: asya@balizero.com). We patch both the send helper and the
+        # settings attribute so this test pins the "asya@" contract without
+        # depending on the env var's real value.
+        with patch(
+            "backend.app.routers.crm_practices.send_internal_email",
+            new=AsyncMock(),
+        ) as mock_send, patch(
+            "backend.app.routers.crm_practices.settings.hr_notification_email",
+            "asya@balizero.com",
+        ):
+            await _notify_hr_bonus_pending(
+                "team@balizero.com", "kitas_sponsor", 500000, 42,
+            )
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args
         assert call_kwargs.kwargs["to"] == "asya@balizero.com"

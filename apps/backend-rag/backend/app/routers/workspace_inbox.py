@@ -6,22 +6,20 @@ clients they are assigned to.
 """
 from __future__ import annotations
 
+import asyncpg
 from fastapi import APIRouter, Depends, Query
 
-import asyncpg
-
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 
 router = APIRouter(prefix="/api/workspace/inbox", tags=["workspace"])
-
-ADMIN_EMAILS = {"zero@balizero.com", "antonellosiano@balizero.com", "asya@balizero.com"}
 
 
 def _is_admin(user: dict) -> bool:
     if user.get("role") == "admin":
         return True
     email = (user.get("email") or "").lower()
-    return email in ADMIN_EMAILS
+    return email in settings.admin_emails_set
 
 
 @router.get("")
