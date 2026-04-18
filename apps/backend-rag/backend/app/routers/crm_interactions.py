@@ -253,9 +253,11 @@ async def list_interactions(
     # If called directly, we might not have current_user, but we have user_id
     if user_id and not current_user:
         user_email = user_id.lower()
-        user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+        # Rebuild a minimal user dict so we reuse is_crm_admin (which honours
+        # settings.admin_emails_set + CRM extras) rather than a hardcoded list.
+        user_is_admin = is_crm_admin({"email": user_email})
     else:
-        user_email = current_user.get("email", "").lower()
+        user_email = (current_user.get("email") or "").lower()
         user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:

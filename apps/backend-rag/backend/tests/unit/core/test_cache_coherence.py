@@ -50,8 +50,9 @@ class TestSemanticCacheL2:
         from backend.services.caching.semantic_cache import (
             _L1_CACHE,
             _query_hash,
-            _redis_key,
+            _redis_key_for_domain,
             cache_response_async,
+            classify_query_domain,
         )
 
         mock_redis = AsyncMock()
@@ -69,8 +70,10 @@ class TestSemanticCacheL2:
         # L2 stored via setex
         mock_redis.setex.assert_called_once()
         call_args = mock_redis.setex.call_args
-        assert call_args[0][0] == _redis_key(key)
-        assert call_args[0][1] == 3600  # L2 TTL
+        domain = classify_query_domain("visa query")
+        assert call_args[0][0] == _redis_key_for_domain(domain, key)
+        from backend.services.caching.semantic_cache import ttl_for_domain
+        assert call_args[0][1] == ttl_for_domain(domain)  # per-domain TTL
 
     @pytest.mark.asyncio
     async def test_async_get_l2_hit_promotes_to_l1(self) -> None:
@@ -180,8 +183,9 @@ class TestSemanticCacheL2:
 
         stats = get_cache_stats()
         assert "l2_backend" in stats
-        assert "l2_ttl" in stats
-        assert stats["l2_ttl"] == 3600
+        assert "l2_default_ttl" in stats
+        assert stats["l2_default_ttl"] == 3600
+        assert "domain_ttls" in stats
         assert "l2_prefix" in stats
 
     def test_backward_compat_alias(self) -> None:

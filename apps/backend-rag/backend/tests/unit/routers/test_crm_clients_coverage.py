@@ -356,7 +356,7 @@ async def test_list_clients_success(mock_db_pool, mock_current_user, sample_clie
 
     with (
         patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
-        patch("backend.app.routers.crm_clients.can_view_all_clients", return_value=True),
+        patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
     ):
         result = await list_clients(
             db_pool=mock_db_pool,
@@ -386,7 +386,7 @@ async def test_list_clients_with_filters(mock_db_pool, mock_current_user, sample
 
     with (
         patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
-        patch("backend.app.routers.crm_clients.can_view_all_clients", return_value=True),
+        patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
     ):
         result = await list_clients(
             status="active",
@@ -410,7 +410,7 @@ async def test_list_clients_expired_passport_filter(mock_db_pool, mock_current_u
 
     with (
         patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value=None),
-        patch("backend.app.routers.crm_clients.can_view_all_clients", return_value=True),
+        patch("backend.app.routers.crm_clients.is_crm_admin", return_value=True),
     ):
         result = await list_clients(
             passport_expiring_days=0,
@@ -428,7 +428,7 @@ async def test_list_clients_rbac_team_user(mock_db_pool, mock_team_user, sample_
 
     with (
         patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value="team@balizero.com"),
-        patch("backend.app.routers.crm_clients.can_view_all_clients", return_value=False),
+        patch("backend.app.routers.crm_clients.is_crm_admin", return_value=False),
     ):
         result = await list_clients(
             db_pool=mock_db_pool,

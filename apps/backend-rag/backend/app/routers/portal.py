@@ -21,6 +21,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.core.cache import invalidate_cache
@@ -67,9 +68,11 @@ class PortalResponse(BaseModel):
 
 
 # Superusers that can impersonate any client via ?as_client=<id>.
-# Kept explicit (email-based) rather than "role=Founder" to avoid privilege
-# creep — adding/removing a name here is an auditable code change.
-SUPERUSER_EMAILS: frozenset[str] = frozenset({"zero@balizero.com"})
+# Sourced from settings.admin_emails_set (HIGH-7, audit 2026-04-18) — was
+# previously hardcoded to {"zero@balizero.com"}. Using a getter so ADMIN_EMAILS
+# env var changes propagate without a module reload.
+def _superuser_emails() -> frozenset[str]:
+    return settings.admin_emails_set
 
 
 async def _log_impersonation(
@@ -129,7 +132,7 @@ async def get_current_client(
     user = request.state.user
     user_email = (user.get("email") or "").lower()
     user_id = user.get("id") or user.get("user_id")
-    is_superuser = user_email in SUPERUSER_EMAILS
+    is_superuser = user_email in _superuser_emails()
 
     # ---- Superuser impersonation path ----
     if is_superuser:
@@ -269,7 +272,10 @@ async def get_dashboard(
     - Required actions
     """
     try:
-        data = await portal_service.get_dashboard(client["client_id"])
+        data = await portal_service.get_dashboard(
+            client["client_id"],
+            current_user=client,
+        )
         return {
             "success": True,
             "data": data,
@@ -302,7 +308,10 @@ async def get_visa_status(
     - Renewal warnings
     """
     try:
-        data = await portal_service.get_visa_status(client["client_id"])
+        data = await portal_service.get_visa_status(
+            client["client_id"],
+            current_user=client,
+        )
         return {
             "success": True,
             "data": data,
@@ -331,7 +340,10 @@ async def get_companies(
     For multi-company support - returns all linked companies.
     """
     try:
-        companies = await portal_service.get_companies(client["client_id"])
+        companies = await portal_service.get_companies(
+            client["client_id"],
+            current_user=client,
+        )
         return {
             "success": True,
             "data": companies,
@@ -360,7 +372,11 @@ async def get_company_detail(
     - Related documents
     """
     try:
-        data = await portal_service.get_company_detail(client["client_id"], company_id)
+        data = await portal_service.get_company_detail(
+            client["client_id"],
+            company_id,
+            current_user=client,
+        )
         if data is None:
             raise HTTPException(
                 status_code=404,
@@ -403,7 +419,11 @@ async def set_primary_company(
     Set primary company for dashboard context.
     """
     try:
-        result = await portal_service.set_primary_company(client["client_id"], company_id)
+        result = await portal_service.set_primary_company(
+            client["client_id"],
+            company_id,
+            current_user=client,
+        )
         return {
             "success": True,
             "message": "Primary company updated",
@@ -438,7 +458,10 @@ async def get_tax_overview(
     - Tax history
     """
     try:
-        data = await portal_service.get_tax_overview(client["client_id"])
+        data = await portal_service.get_tax_overview(
+            client["client_id"],
+            current_user=client,
+        )
         return {
             "success": True,
             "data": data,
@@ -472,6 +495,7 @@ async def get_documents(
         documents = await portal_service.get_documents(
             client["client_id"],
             document_type=document_type,
+            current_user=client,
         )
         return {
             "success": True,
@@ -528,6 +552,7 @@ async def upload_document(
             document_type=document_type,
             mime_type=file.content_type,
             practice_id=practice_id,
+            current_user=client,
         )
         return {
             "success": True,
@@ -565,6 +590,7 @@ async def get_messages(
             client["client_id"],
             limit=limit,
             offset=offset,
+            current_user=client,
         )
         return {
             "success": True,
@@ -593,6 +619,7 @@ async def send_message(
             content=request.content,
             subject=request.subject,
             practice_id=request.practice_id,
+            current_user=client,
         )
         return {
             "success": True,
@@ -617,7 +644,11 @@ async def mark_message_read(
     Mark a message as read.
     """
     try:
-        await portal_service.mark_message_read(client["client_id"], message_id)
+        await portal_service.mark_message_read(
+            client["client_id"],
+            message_id,
+            current_user=client,
+        )
         return {
             "success": True,
             "message": "Message marked as read",
@@ -644,7 +675,10 @@ async def get_preferences(
     Get client preferences/settings.
     """
     try:
-        preferences = await portal_service.get_preferences(client["client_id"])
+        preferences = await portal_service.get_preferences(
+            client["client_id"],
+            current_user=client,
+        )
         return {
             "success": True,
             "data": preferences,
@@ -678,6 +712,7 @@ async def update_preferences(
         preferences = await portal_service.update_preferences(
             client["client_id"],
             updates,
+            current_user=client,
         )
         return {
             "success": True,
@@ -713,7 +748,11 @@ async def get_timeline(
     - Upcoming deadlines
     """
     try:
-        data = await portal_service.get_timeline(client["client_id"], limit=limit)
+        data = await portal_service.get_timeline(
+            client["client_id"],
+            limit=limit,
+            current_user=client,
+        )
         return {
             "success": True,
             "data": data,
@@ -899,7 +938,11 @@ async def update_profile(
     """Update client profile. Only phone, whatsapp, address, and language can be changed."""
     try:
         fields = {k: v for k, v in request.model_dump().items() if v is not None}
-        result = await portal_service.update_profile(client["client_id"], fields)
+        result = await portal_service.update_profile(
+            client["client_id"],
+            fields,
+            current_user=client,
+        )
         if fields:
             await invalidate_cache("zantara:crm_clients_stats:*")
         return {"success": True, "data": result}
