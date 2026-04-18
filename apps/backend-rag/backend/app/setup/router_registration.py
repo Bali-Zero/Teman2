@@ -74,6 +74,7 @@ def include_routers(api: FastAPI) -> None:
         hr_owner_cashout,  # [NEW] Owner-only weekly cashout
         ingest,
         instagram_chat,
+        jobs_admin,  # [PB3] Unified Jobs Runner admin endpoints
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -341,6 +342,9 @@ def include_routers(api: FastAPI) -> None:
     # Admin Auto Practice Creator (visa renewal at T-60)
     api.include_router(admin_practice_auto_create.router)
 
+    # Jobs Runner admin endpoints (PB3)
+    api.include_router(jobs_admin.router)
+
     # Admin Logs router (Admin-only activity logs and audit trail)
     api.include_router(admin_logs.router)
 
@@ -419,6 +423,7 @@ def include_light_routers(api: FastAPI) -> None:
         hr_owner_cashout,
         image_generation,
         instagram_chat,
+        jobs_admin,  # [PB3] Unified Jobs Runner admin endpoints
         knowledge_activity,
         lkpm,
         media,
@@ -597,6 +602,9 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Admin Auto Practice Creator (visa renewal at T-60)
     api.include_router(admin_practice_auto_create.router)
+
+    # Jobs Runner admin endpoints (PB3)
+    api.include_router(jobs_admin.router)
 
     # Admin Logs router
     api.include_router(admin_logs.router)

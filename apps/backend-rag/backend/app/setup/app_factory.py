@@ -106,6 +106,37 @@ async def lifespan(app: FastAPI):
 
         await initialize_plugins(app)
 
+        # Initialize Jobs Runner (PB3)
+        try:
+            import os as _os_jobs
+            from backend.jobs import handlers as _jobs_handlers  # noqa: F401 (register_job side-effects)
+            from backend.jobs.registry import get_registry as _get_jobs_registry
+            from backend.jobs.runner import JobsRunner
+            from backend.app.routers import jobs_admin as _jobs_admin_router
+
+            _jobs_registry = _get_jobs_registry()
+            _jobs_registry.freeze()
+            _jobs_enabled = {
+                n.strip()
+                for n in _os_jobs.environ.get("JOBS_RUNNER_ENABLED", "").split(",")
+                if n.strip()
+            }
+            app.state.jobs_runner = JobsRunner(
+                pool=app.state.db_pool,
+                registry=_jobs_registry,
+                enabled_names=_jobs_enabled,
+                tick_seconds=10.0,
+            )
+            _jobs_admin_router.init(app.state.jobs_runner)
+            await app.state.jobs_runner.start()
+            logger.info(
+                "✅ JobsRunner started (enabled=%s, registry_size=%d)",
+                sorted(_jobs_enabled), len(_jobs_registry.all()),
+            )
+        except Exception as e:
+            logger.error(f"⚠️ Failed to initialize JobsRunner: {e}", exc_info=True)
+            app.state.jobs_runner = None
+
         # Initialize Notification Scheduler (automated email alerts)
         try:
             from backend.app.modules.notifications.scheduler import init_scheduler
@@ -310,6 +341,11 @@ async def lifespan(app: FastAPI):
     event_bus = getattr(app.state, "event_bus", None)
     if event_bus:
         await _safe_stop("EventBus", event_bus.stop())
+
+    # Shutdown Jobs Runner (PB3)
+    jobs_runner = getattr(app.state, "jobs_runner", None)
+    if jobs_runner is not None:
+        await _safe_stop("JobsRunner", jobs_runner.stop(grace_seconds=30))
 
     # Shutdown Database Health Check Loop
     db_health_check_task = getattr(app.state, "db_health_check_task", None)
