@@ -715,6 +715,88 @@ class Settings(BaseSettings):
         description="Admin API key for plugin reload and admin endpoints (set via ADMIN_API_KEY env var)",
     )
 
+    admin_emails: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated allowlist of email addresses that act as admins across "
+            "workspace/CRM/HR/portal RBAC checks. Set via ADMIN_EMAILS env var "
+            "(e.g. 'zero@balizero.com,asya@balizero.com,antonellosiano@balizero.com'). "
+            "HIGH-7 (audit 2026-04-18): replaces 8+ hardcoded sets scattered across routers "
+            "that had drifted out of sync. When unset, falls back to the historical set "
+            "{zero@, asya@, antonellosiano@balizero.com} — see admin_emails_set property."
+        ),
+    )
+
+    notification_cc_emails: str | None = Field(
+        default=None,
+        description=(
+            "Comma-separated list of email addresses CC'd on automatic notifications "
+            "(visa expiry, practice state changes, etc.). Distinct from admin_emails — "
+            "these are recipients, not RBAC principals. Set via NOTIFICATION_CC_EMAILS env var."
+        ),
+    )
+
+    hr_notification_email: str = Field(
+        default="asya@balizero.com",
+        description=(
+            "Primary recipient for HR notifications (bonus approvals, PPh21 reviews). "
+            "Set via HR_NOTIFICATION_EMAIL env var. HIGH-7 (audit 2026-04-18): "
+            "replaces hardcoded to='asya@balizero.com' in crm_practices.py."
+        ),
+    )
+
+    admin_notification_email: str = Field(
+        default="zero@balizero.com",
+        description=(
+            "Primary recipient for admin-level ops notifications (stale-practice "
+            "digests, compliance alerts, welcome email BCC). Set via "
+            "ADMIN_NOTIFICATION_EMAIL env var. HIGH-7 (audit 2026-04-18): "
+            "replaces hardcoded 'zero@balizero.com' in CRM notifier services."
+        ),
+    )
+
+    # Historical default preserved when ADMIN_EMAILS is unset. The intent is that
+    # ADMIN_EMAILS should always be set explicitly in production; this fallback
+    # only matters for local dev where the routers still need to start.
+    _ADMIN_EMAILS_FALLBACK: frozenset[str] = frozenset(
+        {
+            "zero@balizero.com",
+            "asya@balizero.com",
+            "antonellosiano@balizero.com",
+        },
+    )
+
+    @property
+    def admin_emails_set(self) -> frozenset[str]:
+        """
+        Canonical admin allowlist (lower-case, frozen). Consumers MUST use this
+        property (not the raw `admin_emails` string) so that the comma-parsing,
+        whitespace-trimming, and case-folding is centralised.
+        """
+        raw = self.admin_emails
+        if not raw:
+            return self._ADMIN_EMAILS_FALLBACK
+        emails = {
+            e.strip().lower()
+            for e in raw.split(",")
+            if e.strip()
+        }
+        if not emails:
+            return self._ADMIN_EMAILS_FALLBACK
+        return frozenset(emails)
+
+    @property
+    def notification_cc_emails_list(self) -> tuple[str, ...]:
+        """Parsed NOTIFICATION_CC_EMAILS as a tuple of lower-case addresses."""
+        raw = self.notification_cc_emails
+        if not raw:
+            return ()
+        return tuple(
+            e.strip().lower()
+            for e in raw.split(",")
+            if e.strip()
+        )
+
     # ========================================
     # GOOGLE SERVICES CONFIGURATION
     # ========================================

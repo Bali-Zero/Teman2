@@ -8,18 +8,17 @@ from __future__ import annotations
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 
 router = APIRouter(prefix="/api/workspace/analytics", tags=["workspace"])
-
-ADMIN_EMAILS = {"zero@balizero.com", "antonellosiano@balizero.com", "asya@balizero.com"}
 
 
 def _require_admin(user: dict) -> None:
     if user.get("role") == "admin":
         return
     email = (user.get("email") or "").lower()
-    if email in ADMIN_EMAILS:
+    if email in settings.admin_emails_set:
         return
     raise HTTPException(status_code=403, detail="admin only")
 

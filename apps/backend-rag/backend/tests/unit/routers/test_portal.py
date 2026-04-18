@@ -261,9 +261,11 @@ class TestDocuments:
         )
 
         assert response.status_code == 200
-        mock_portal_service.get_documents.assert_called_once_with(
-            42, document_type="passport",
-        )
+        mock_portal_service.get_documents.assert_called_once()
+        call = mock_portal_service.get_documents.call_args
+        assert call.args == (42,)
+        assert call.kwargs["document_type"] == "passport"
+        assert call.kwargs["current_user"]["client_id"] == 42
 
     def test_upload_document_no_filename(self, client):
         """Upload without filename returns 400 or 422 depending on validation layer."""

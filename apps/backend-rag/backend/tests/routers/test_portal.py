@@ -96,7 +96,11 @@ class TestPortalEndpoints:
 
         assert response.status_code == 200
         assert response.json()["data"][0]["name"] == "passport.pdf"
-        portal_service.get_documents.assert_awaited_once_with(1, document_type="passport")
+        portal_service.get_documents.assert_awaited_once()
+        call = portal_service.get_documents.await_args
+        assert call.args == (1,)
+        assert call.kwargs["document_type"] == "passport"
+        assert call.kwargs["current_user"]["client_id"] == 1
 
     @pytest.mark.integration
     def test_profile_returns_db_backed_data(

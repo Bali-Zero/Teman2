@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from backend.app.core.config import settings
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import WELCOME_EMAIL_SUBJECT
 
@@ -195,12 +196,12 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     subject = "[CLIENT] " + WELCOME_EMAIL_SUBJECT[lang]
     html_body = _build_html(lang, first_name, advisor_first, assigned_to, advisor_wa)
 
-    # Build payload with CC (team leader) and BCC (zero@)
+    # Build payload with CC (team leader) and BCC (admin)
     payload: dict = {
         "to": email,
         "subject": subject,
         "body": html_body,
-        "bcc": "zero@balizero.com",
+        "bcc": settings.admin_notification_email,
     }
     # CC the assigned team leader if present and different from recipient
     if assigned_to and assigned_to != email:
