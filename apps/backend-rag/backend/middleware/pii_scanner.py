@@ -15,6 +15,14 @@ from typing import Any
 from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_anonymizer import AnonymizerEngine
 
+from backend.middleware.correlation import get_correlation_id
+from backend.services.pii.violation_store import (
+    aggregate,
+    hash_subject,
+    record_violations,
+    set_app,
+)
+
 logger = logging.getLogger(__name__)
 
 # ============================================================================
@@ -135,7 +143,21 @@ def redact_text(text: str, language: str = "en") -> tuple[str, int]:
     """
     Scan and redact PII from text.
 
-    Returns (redacted_text, count_of_entities_redacted).
+    Returns (redacted_text, count_of_entities_redacted). Backward-compatible
+    2-tuple — callers that also need the per-pattern breakdown should use
+    `redact_text_detailed()`.
+    """
+    redacted, count, _ = redact_text_detailed(text, language)
+    return redacted, count
+
+
+def redact_text_detailed(
+    text: str, language: str = "en",
+) -> tuple[str, int, list[str]]:
+    """
+    Scan and redact PII from text, also returning the flat list of detected
+    entity types (one per match, duplicates preserved) — for the violation
+    store's per-pattern aggregation.
     """
     analyzer = _get_analyzer()
     anonymizer = _get_anonymizer()
@@ -150,17 +172,18 @@ def redact_text(text: str, language: str = "en") -> tuple[str, int]:
     )
 
     if not results:
-        return text, 0
+        return text, 0, []
 
     anonymized = anonymizer.anonymize(text=text, analyzer_results=results)
+    patterns = [r.entity_type for r in results]
 
-    if len(results) > 0:
+    if patterns:
         logger.warning(
-            f"PII redacted: {len(results)} entities found "
-            f"({', '.join({r.entity_type for r in results})})"
+            f"PII redacted: {len(patterns)} entities found "
+            f"({', '.join(set(patterns))})"
         )
 
-    return anonymized.text, len(results)
+    return anonymized.text, len(patterns), patterns
 
 
 # ============================================================================
@@ -184,6 +207,12 @@ class PIIScannerMiddleware:
 
     def __init__(self, app: Any) -> None:
         self.app = app
+        # Register the app so the violation store can reach app.state.db_pool
+        # from an ASGI-level middleware that does not own a Request.
+        try:
+            set_app(app)
+        except Exception:  # noqa: BLE001 — never fail construction
+            logger.debug("pii_scanner.set_app_failed", exc_info=True)
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
         if scope["type"] != "http":
@@ -226,14 +255,36 @@ class PIIScannerMiddleware:
             try:
                 payload = json.loads(raw_body)
                 total_redacted = 0
+                all_patterns: list[str] = []
                 for field in self._REDACT_FIELDS:
                     if field in payload and isinstance(payload[field], str):
-                        cleaned, count = redact_text(payload[field])
+                        cleaned, count, patterns = redact_text_detailed(payload[field])
                         payload[field] = cleaned
                         total_redacted += count
+                        all_patterns.extend(patterns)
                 if total_redacted > 0:
                     logger.info(
                         f"[PIIScanner] Redacted {total_redacted} PII entities from agentic response on {path}"
+                    )
+                    # Persist a durable audit row per distinct pattern.
+                    subject = None
+                    for name, value in response_headers:
+                        if name.lower() == b"x-user-email":
+                            subject = value.decode("utf-8", errors="ignore")
+                            break
+                    if subject is None:
+                        # Fall back to client IP from scope (no hashing yet)
+                        client = scope.get("client")
+                        if isinstance(client, (list, tuple)) and client:
+                            subject = str(client[0])
+                    cid = get_correlation_id()
+                    record_violations(
+                        aggregate(
+                            all_patterns,
+                            request_id=None if cid in (None, "-", "") else cid,
+                            route=path,
+                            user_hash=hash_subject(subject),
+                        ),
                     )
                 redacted_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
