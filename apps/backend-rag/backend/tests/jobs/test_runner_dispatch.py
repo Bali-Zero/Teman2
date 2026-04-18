@@ -1,4 +1,12 @@
 """Dispatch happy-path test for JobsRunner."""
+#
+# NOTE: The "advisory lock not acquired" skip path is NOT tested here.
+# That scenario requires two concurrent runners contending on the same
+# tick, which is a concurrent-execution test better landed alongside
+# Task 10/11 (retry + tick loop). When that arrives, verify:
+#   - Dispatch B (lock contention) returns early with status='skipped',
+#     meta.reason='advisory lock not acquired'.
+#   - Dispatch A (lock holder) runs to completion unaffected.
 from __future__ import annotations
 
 import asyncio

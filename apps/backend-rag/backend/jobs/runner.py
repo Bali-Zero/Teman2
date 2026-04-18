@@ -6,10 +6,7 @@ logic deterministically.
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-import os
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -24,7 +21,7 @@ from backend.jobs.middleware import (
 )
 from backend.jobs.models import JobRunRepository
 from backend.jobs.registry import JobDeclaration, Registry
-from backend.jobs.retry import CostExceeded, JobError, OAuthViolation
+from backend.jobs.retry import CostExceeded, OAuthViolation
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +69,8 @@ class JobsRunner:
 
         # idempotency check (tick-based default, handler override)
         meter = CostMeter()
+        # probe_ctx is intentional: run_id=0 because no DB row exists yet.
+        # Handlers must not reference ctx.run_id inside idempotency_key overrides.
         probe_ctx = JobContext(
             job_name=decl.name, scheduled_tick=scheduled_tick,
             attempt=1, run_id=0,
@@ -123,17 +122,17 @@ class JobsRunner:
 
                 try:
                     # middleware pre-checks
-                    if "oauth_guard" not in decl.skip_middleware:
+                    if OAuthGuard.NAME not in decl.skip_middleware:
                         await self._oauth.check(ctx)
 
                     result = await decl.handler(ctx)
 
                     # post-handler cost check
-                    if "cost_cap" not in decl.skip_middleware:
+                    if CostCap.NAME not in decl.skip_middleware:
                         self._cost_cap.check(ctx)
 
-                    meta = result.meta if isinstance(result, JobResult) else {}
-                    meta = {**meta, "source": source}
+                    base_meta = result.meta if isinstance(result, JobResult) else {}
+                    meta = {**base_meta, "source": source}
                     await self._repo.finish(
                         run.id, status="completed", error=None,
                         cost_cents=ctx.meter.total_cents, meta=meta,
