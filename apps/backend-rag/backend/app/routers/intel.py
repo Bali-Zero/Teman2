@@ -689,13 +689,8 @@ from pydantic import BaseModel as _BaseModel  # noqa: E402 — alias avoids rede
 
 from backend.app.dependencies import get_current_user  # noqa: E402
 
-_INTEL_ADMIN_EMAILS: frozenset[str] = frozenset(
-    {"zero@balizero.com", "antonellosiano@balizero.com", "asya@balizero.com"}
-)
-
-
 def _require_intel_admin(user: dict[str, Any]) -> None:
-    if (user.get("email") or "").lower() not in _INTEL_ADMIN_EMAILS:
+    if (user.get("email") or "").lower() not in settings.admin_emails_set:
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN, detail="admin only"
         )
@@ -776,9 +771,12 @@ async def post_revalidate_staging(
         extra={"staging_id": staging_id, "tier": body.tier, "user": user.get("email")},
     )
 
-    return {
-        "staging_id": staging_id,
-        "revalidated": True,
-        "tier": body.tier,
-    }
+    raise HTTPException(
+        http_status.HTTP_501_NOT_IMPLEMENTED,
+        detail={
+            "staging_id": staging_id,
+            "message": "full revalidation not yet wired (hook into intel_staging_service pending)",
+            "tier": body.tier,
+        },
+    )
 

@@ -49,7 +49,7 @@ def is_whitelisted(url: str) -> bool:
     if not url:
         return False
     try:
-        host = urlparse(url).netloc.lower()
+        host = (urlparse(url).hostname or "").lower()
     except Exception:  # noqa: BLE001
         return False
     if not host:
