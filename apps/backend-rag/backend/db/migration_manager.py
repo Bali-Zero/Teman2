@@ -246,7 +246,7 @@ class MigrationManager:
 
             try:
                 sql_text = sql_file.read_text(encoding="utf-8")
-            except OSError as exc:
+            except (OSError, UnicodeDecodeError) as exc:
                 logger.error(f"Cannot read migration {sql_file.name}: {exc}")
                 continue
 
