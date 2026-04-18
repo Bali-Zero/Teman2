@@ -4,12 +4,14 @@
 import React, { useState, useRef, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cormorant_Garamond } from "next/font/google";
 import { useSystemSound } from "@/hooks/useSystemSound";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
+import { I18nProvider, useTranslation } from "@/i18n";
 
 // Configuration
 const REDIRECT_DELAY_MS = 1500;
@@ -21,14 +23,50 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
+// Map HTTP status code → i18n error key. Unknown → server_error (5xx) or
+// network_error (anything else, including status=0 from opaque fetch failures).
+function errorKeyFor(status: number): string {
+  switch (status) {
+    case 401:
+      return "portal.login.errors.invalid_credentials";
+    case 403:
+      return "portal.login.errors.account_locked";
+    case 404:
+      return "portal.login.errors.email_not_found";
+    case 422:
+      return "portal.login.errors.invalid_2fa";
+    case 429:
+      return "portal.login.errors.rate_limited";
+    case 503:
+      return "portal.login.errors.maintenance";
+    default:
+      return status >= 500
+        ? "portal.login.errors.server_error"
+        : "portal.login.errors.network_error";
+  }
+}
+
 export default function UpgradedLoginPage() {
+  // `useTranslation` requires an I18nProvider ancestor; the root layout does
+  // not wrap one (only (blog) does). Wrap locally so /portal/login-upgraded
+  // can consume the shared locale JSON without touching global providers.
+  return (
+    <I18nProvider>
+      <UpgradedLoginPageInner />
+    </I18nProvider>
+  );
+}
+
+function UpgradedLoginPageInner() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [pin, setPin] = useState("");
   const [step, setStep] = useState<"email" | "pin">("email");
   const [loginStage, setLoginStage] = useState<
     "idle" | "authenticating" | "success" | "denied"
   >("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const { play } = useSystemSound();
 
   // Spotlight mouse tracking state
@@ -94,6 +132,27 @@ export default function UpgradedLoginPage() {
         },
         error as Error,
       );
+
+      // Extract HTTP status from error shape (best-effort — covers both
+      // fetch Response-shaped errors and axios-style { response: { status } }).
+      const status =
+        (error as { response?: { status?: number } })?.response?.status ??
+        (error as { status?: number })?.status ??
+        0;
+
+      let msg = t(errorKeyFor(status));
+      if (status === 429) {
+        const retryAfter = (
+          error as {
+            response?: { headers?: { get?: (k: string) => string | null } };
+          }
+        )?.response?.headers?.get?.("retry-after");
+        const seconds = retryAfter ? parseInt(retryAfter, 10) : 60;
+        msg = t("portal.login.errors.rate_limited", {
+          seconds: String(Number.isFinite(seconds) ? seconds : 60),
+        });
+      }
+      setErrorMessage(msg);
       setLoginStage("denied");
       play("access_denied");
 
@@ -130,13 +189,18 @@ export default function UpgradedLoginPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.1 }}
-          className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-md"
+          className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center backdrop-blur-md"
         >
           <h1
             className={`${cormorant.className} text-4xl md:text-6xl text-red-500/90 tracking-[0.2em] font-light uppercase`}
           >
             Access Denied
           </h1>
+          {errorMessage && (
+            <p className="mt-4 text-sm text-red-200/80 tracking-wide max-w-md text-center px-4">
+              {errorMessage}
+            </p>
+          )}
         </motion.div>
       )}
 
@@ -1318,6 +1382,14 @@ export default function UpgradedLoginPage() {
                           maxLength={6}
                           className="w-full rounded-xl px-4 py-4 text-[22px] text-center tracking-[14px] outline-none transition-all bg-white/5 border border-accent-gold-muted/20 text-[#f0ece4] focus:border-accent-gold-muted/60 focus:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
+                        <div className="flex justify-end pt-1">
+                          <Link
+                            href="/portal/forgot-password"
+                            className="text-[11px] text-accent-gold-muted/50 hover:text-accent-gold-muted transition-colors"
+                          >
+                            {t("portal.login.forgot_password")}
+                          </Link>
+                        </div>
                       </div>
 
                       <motion.button
