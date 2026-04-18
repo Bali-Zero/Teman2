@@ -188,3 +188,24 @@ async def test_generate_renders_all_three_languages(
     assert out[0].message_it and len(out[0].message_it) > 0
     assert out[0].message_en and len(out[0].message_en) > 0
     assert out[0].message_id and len(out[0].message_id) > 0
+
+
+@pytest.mark.asyncio
+async def test_engine_with_real_dispatcher_end_to_end(
+    db_tx: asyncpg.Connection, sample_client, mock_pricing,
+) -> None:
+    from backend.services.compliance.alert_dispatcher import AlertDispatcher
+
+    dispatcher = AlertDispatcher.with_connection(
+        db_tx,
+        email_service=AsyncMock(),
+        telegram_service=AsyncMock(),
+        inapp_service=AsyncMock(),
+        wa_service=AsyncMock(),
+    )
+    engine = AlertsEngine.with_connection(
+        db_tx, pricing=mock_pricing, dispatcher=dispatcher,
+    )
+    forecast = _make_forecast(client_id=sample_client["id"])
+    out = await engine.generate_alerts([forecast])
+    assert len(out) == 1
