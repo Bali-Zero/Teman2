@@ -2315,14 +2315,14 @@ git commit -m "feat(backend/jobs): tick loop + start/stop + orphan recovery on s
 
 ---
 
-## Task 12: Handlers — migrate the four legacy jobs
+## Task 12: Handlers — migrate the two legacy jobs with backend-side entry points
+
+**Scope note (2026-04-18):** the original plan expected four handlers. A pre-flight search found that Consiglio v1 and KG Curiosity Loop v1 have no backend-side Python entry points in `apps/backend-rag/` (no `services/autonomous_agents/consiglio_auto.py`, no `kg_curiosity` module anywhere under `backend/`). Memory index claims both are "IMPLEMENTED" but the code lives elsewhere — likely Air-side scripts or `apps/evaluator/`. Rather than build stub handlers that would be load-bearing lies, we ship the two handlers whose backend logic actually exists, and defer Consiglio + KG Curiosity to a follow-up PR (they currently run via Air crontab and stay that way).
 
 **Files:**
 - Create: `apps/backend-rag/backend/jobs/handlers/__init__.py`
 - Create: `apps/backend-rag/backend/jobs/handlers/auto_practice_creator.py`
 - Create: `apps/backend-rag/backend/jobs/handlers/conversation_cleanup.py`
-- Create: `apps/backend-rag/backend/jobs/handlers/consiglio_auto.py`
-- Create: `apps/backend-rag/backend/jobs/handlers/kg_curiosity.py`
 - Test: `apps/backend-rag/backend/tests/jobs/test_handlers_registration.py`
 
 - [ ] **Step 1: Write the failing test**
