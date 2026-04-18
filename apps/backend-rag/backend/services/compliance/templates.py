@@ -28,13 +28,14 @@ class ComplianceTemplatesService:
     """
 
     # Predefined compliance schedules
+    # NOTE: No hardcoded prices — Golden Rule #12. Use pricing_key for PricingTool lookup.
     ANNUAL_DEADLINES = {
         "spt_tahunan_individual": {
             "title": "SPT Tahunan (Individual Tax Return)",
             "deadline_month": 3,
             "deadline_day": 31,
             "description": "Annual tax return filing for individuals",
-            "estimated_cost": 2000000,  # IDR for service
+            "pricing_key": "tax.spt_tahunan_individual",
             "compliance_type": ComplianceType.TAX_FILING,
         },
         "spt_tahunan_corporate": {
@@ -42,14 +43,14 @@ class ComplianceTemplatesService:
             "deadline_month": 4,
             "deadline_day": 30,
             "description": "Annual tax return filing for corporations",
-            "estimated_cost": 5000000,
+            "pricing_key": "tax.spt_tahunan_corporate",
             "compliance_type": ComplianceType.TAX_FILING,
         },
         "ppn_monthly": {
             "title": "Monthly VAT (PPn) Filing",
             "deadline_day": 15,  # Every month
             "description": "Monthly VAT reporting and payment",
-            "estimated_cost": 500000,
+            "pricing_key": "tax.ppn_monthly",
             "compliance_type": ComplianceType.TAX_FILING,
         },
     }
