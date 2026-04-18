@@ -44,4 +44,18 @@ describe("sanitizeRedirect", () => {
   it("blocks path traversal ../", () => {
     expect(sanitizeRedirect("/portal/../admin")).toBeNull();
   });
+  it("allows bare /portal (no trailing slash)", () => {
+    expect(sanitizeRedirect("/portal")).toBe("/portal");
+  });
+  it("allows bare /workspace (no trailing slash)", () => {
+    expect(sanitizeRedirect("/workspace")).toBe("/workspace");
+  });
+  it("blocks prefix smuggling /portalsomething", () => {
+    expect(sanitizeRedirect("/portalsomething")).toBeNull();
+  });
+  it("blocks CR/LF injection", () => {
+    expect(
+      sanitizeRedirect("/portal/foo\r\nLocation: https://evil.com"),
+    ).toBeNull();
+  });
 });
