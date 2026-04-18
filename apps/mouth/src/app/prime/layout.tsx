@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+// PF3a: scoped preconnect to Google Maps origins (prime route only)
 export default function PrimeLayout({ children }: { children: ReactNode }) {
   return (
     <>
