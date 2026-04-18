@@ -25,6 +25,7 @@ from backend.core.cache import cached
 from backend.core.exceptions import QdrantError
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.observability.rag_trace import rag_span
 
 logger = logging.getLogger(__name__)
 
@@ -425,6 +426,25 @@ class HybridSearchService:
             ... )
             >>> print(results["results"][0]["text"])
         """
+        async with rag_span(
+            "retrieval",
+            tokens_in=len(query.split()),
+            metadata={"collection": collection, "limit": limit, "alpha": alpha},
+        ) as _span:
+            return await self._search_hybrid_impl(
+                _span, query, collection, limit, alpha, prefetch_limit, filters,
+            )
+
+    async def _search_hybrid_impl(
+        self,
+        _span: Any,
+        query: str,
+        collection: str,
+        limit: int,
+        alpha: float,
+        prefetch_limit: int | None,
+        filters: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         start_time = time.time()
         prefetch_limit = prefetch_limit or limit * 3
 
@@ -507,6 +527,14 @@ class HybridSearchService:
                 f"{len(formatted_results)} results from {collection}",
             )
 
+            _span.set(
+                cache_hit=False,
+                metadata={
+                    "search_type": search_type,
+                    "bm25_enabled": bm25_used and self.bm25_enabled,
+                    "total_results": len(formatted_results),
+                },
+            )
             return {
                 "results": formatted_results,
                 "query": query,

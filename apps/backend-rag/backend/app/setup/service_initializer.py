@@ -386,6 +386,17 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             app.state.ts_service = ts_service
             app.state.db_pool = db_pool  # Store pool for other services
 
+            # Wire the RAG trace ledger to the shared pool so fire-and-forget
+            # span flushes can land without holding a Request reference.
+            try:
+                from backend.services.observability.rag_trace import (
+                    configure_pool as _configure_rag_trace_pool,
+                )
+
+                _configure_rag_trace_pool(db_pool)
+            except Exception as exc:
+                logger.warning(f"rag_trace pool wiring skipped: {exc}")
+
             # Initialize daily check-in notifier (emails at 10:00 Bali time)
             daily_notifier = init_daily_notifier(db_pool)
             app.state.daily_notifier = daily_notifier

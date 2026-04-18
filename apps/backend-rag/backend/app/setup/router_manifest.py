@@ -239,6 +239,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Nusantara Health ──
     RouterEntry(name="nusantara_health", process_groups=_API, tags=("core",)),
 
+    # ── Observability ──
+    RouterEntry(name="observability", process_groups=_BOTH, tags=("observability", "admin")),
+
     # ── Olympus (full-only: internal admin) ──
     RouterEntry(name="olympus", attr="internal_router", process_groups=_API, tags=("admin",)),
 

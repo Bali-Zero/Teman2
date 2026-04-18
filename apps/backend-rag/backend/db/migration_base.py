@@ -38,6 +38,27 @@ class MigrationIrreversibleError(MigrationError):
 # they were written before the rollback requirement was introduced and are
 # applied manually (the automated loader only reads db/migrations_v2/*.sql).
 # New migrations (migration_number > 111) MUST supply rollback_sql.
+# Marker used in .sql files to separate forward DDL from its rollback SQL.
+# Everything before the marker is executed by ``apply()``; everything after
+# is stored in ``_schema_versions.rollback_sql`` for ``rollback_migration()``.
+ROLLBACK_MARKER: str = "-- === ROLLBACK ==="
+
+
+def _split_rollback_marker(sql: str) -> tuple[str, str | None]:
+    """Split a migration .sql file on :data:`ROLLBACK_MARKER`.
+
+    Returns ``(forward_sql, rollback_sql)``. If the marker is absent the
+    whole file is the forward block and ``rollback_sql`` is ``None``.
+    The rollback block is stripped of its leading marker line so it can
+    be executed directly.
+    """
+    if ROLLBACK_MARKER not in sql:
+        return sql, None
+    head, _, tail = sql.partition(ROLLBACK_MARKER)
+    rollback = tail.strip()
+    return head, rollback or None
+
+
 LEGACY_NO_ROLLBACK_WHITELIST: frozenset[str] = frozenset({
     "migration_001",
     "migration_007",
@@ -393,9 +414,17 @@ class BaseMigration:
 
         # Read SQL file
         try:
-            sql = self.sql_file.read_text(encoding="utf-8")
+            raw_sql = self.sql_file.read_text(encoding="utf-8")
         except Exception as e:
             raise MigrationError(f"Failed to read SQL file {self.sql_file}: {e}") from e
+
+        # Strip the optional rollback block — stored in self.rollback_sql by
+        # the manager (or passed via constructor); executing both halves
+        # would revert the migration in the same transaction.
+        forward_sql, inline_rollback = _split_rollback_marker(raw_sql)
+        if self.rollback_sql is None and inline_rollback is not None:
+            self.rollback_sql = inline_rollback
+        sql = forward_sql
 
         # Validate SQL
         try:

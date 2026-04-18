@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 import asyncpg
 
 from backend.app.core.config import settings
-from backend.db.migration_base import BaseMigration, MigrationError
+from backend.db.migration_base import BaseMigration, MigrationError, _split_rollback_marker
 
 logger = logging.getLogger(__name__)
 
@@ -349,13 +349,19 @@ class MigrationManager:
         for migration_info in sorted(pending, key=lambda x: x["number"]):
             migration_number = migration_info["number"]
             sql_file = migration_info["file"]
+            sql_path = migration_info["path"]
 
-            # Create migration instance (will be subclassed in actual migrations)
-            # For now, we'll use BaseMigration directly
+            # Extract the rollback block so BaseMigration can store it in
+            # _schema_versions for later `rollback_migration()` calls.
+            # Post-2026-04-18 migrations (number > 111) REQUIRE an explicit
+            # ``-- === ROLLBACK ===`` marker in the .sql file.
+            _, rollback_sql = _split_rollback_marker(sql_path.read_text(encoding="utf-8"))
+
             migration = BaseMigration(
                 migration_number=migration_number,
                 sql_file=sql_file,
                 description=f"Migration {migration_number}",
+                rollback_sql=rollback_sql,
             )
 
             try:

@@ -450,6 +450,112 @@
             }
           }
         ]
+      },
+      {
+        "title": "RAG Stage Timing",
+        "type": "row",
+        "gridPos": { "x": 0, "y": 20, "w": 24, "h": 1 },
+        "collapsed": false,
+        "panels": []
+      },
+      {
+        "title": "RAG Stage Latency (P50/P95/P99, ms)",
+        "type": "timeseries",
+        "datasource": { "type": "postgres", "uid": "nuzantara-postgres" },
+        "gridPos": { "x": 0, "y": 21, "w": 24, "h": 9 },
+        "targets": [
+          {
+            "refId": "A",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "WITH span AS (SELECT date_trunc('minute', t.created_at) AS ts, (s->>'stage') AS stage, (s->>'duration_ms')::numeric AS duration_ms FROM rag_traces t, jsonb_array_elements(t.root_span->'spans') s WHERE $__timeFilter(t.created_at)) SELECT ts AS time, stage || ' p50' AS metric, percentile_cont(0.50) WITHIN GROUP (ORDER BY duration_ms) AS value FROM span GROUP BY ts, stage UNION ALL SELECT ts AS time, stage || ' p95' AS metric, percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS value FROM span GROUP BY ts, stage UNION ALL SELECT ts AS time, stage || ' p99' AS metric, percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) AS value FROM span GROUP BY ts, stage ORDER BY 1"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "ms" },
+          "overrides": []
+        }
+      },
+      {
+        "title": "RAG Cost",
+        "type": "row",
+        "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 },
+        "collapsed": false,
+        "panels": []
+      },
+      {
+        "title": "Cost per Query (USD, by domain — last 24h)",
+        "type": "barchart",
+        "datasource": { "type": "postgres", "uid": "nuzantara-postgres" },
+        "gridPos": { "x": 0, "y": 31, "w": 12, "h": 9 },
+        "targets": [
+          {
+            "refId": "A",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT COALESCE(domain, 'unknown') AS domain, AVG(total_cost_usd)::numeric(12,6) AS avg_cost_usd FROM rag_traces WHERE created_at > NOW() - INTERVAL '24 hours' GROUP BY domain ORDER BY avg_cost_usd DESC LIMIT 10"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "currencyUSD" },
+          "overrides": []
+        }
+      },
+      {
+        "title": "Cache Hit Rate by Stage (last 24h)",
+        "type": "gauge",
+        "datasource": { "type": "postgres", "uid": "nuzantara-postgres" },
+        "gridPos": { "x": 12, "y": 31, "w": 12, "h": 9 },
+        "targets": [
+          {
+            "refId": "A",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT (s->>'stage') AS stage, AVG(CASE WHEN (s->>'cache_hit')::boolean THEN 1.0 ELSE 0.0 END)::numeric(5,4) AS hit_rate FROM rag_traces t, jsonb_array_elements(t.root_span->'spans') s WHERE t.created_at > NOW() - INTERVAL '24 hours' AND (s->>'cache_hit') IS NOT NULL GROUP BY stage ORDER BY stage"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": { "unit": "percentunit", "min": 0, "max": 1 },
+          "overrides": []
+        }
+      },
+      {
+        "title": "RAG Spend Leaderboard",
+        "type": "row",
+        "gridPos": { "x": 0, "y": 40, "w": 24, "h": 1 },
+        "collapsed": false,
+        "panels": []
+      },
+      {
+        "title": "Top Domains by Cost (last 7 days)",
+        "type": "table",
+        "datasource": { "type": "postgres", "uid": "nuzantara-postgres" },
+        "gridPos": { "x": 0, "y": 41, "w": 24, "h": 9 },
+        "targets": [
+          {
+            "refId": "A",
+            "format": "table",
+            "rawQuery": true,
+            "rawSql": "SELECT COALESCE(domain, 'unknown') AS domain, COUNT(*) AS queries, SUM(total_cost_usd)::numeric(12,6) AS total_cost_usd, AVG(total_cost_usd)::numeric(12,6) AS avg_cost_usd, AVG(total_duration_ms)::int AS avg_duration_ms FROM rag_traces WHERE created_at > NOW() - INTERVAL '7 days' GROUP BY domain ORDER BY total_cost_usd DESC"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": [
+            {
+              "matcher": { "id": "byName", "options": "total_cost_usd" },
+              "properties": [{ "id": "unit", "value": "currencyUSD" }]
+            },
+            {
+              "matcher": { "id": "byName", "options": "avg_cost_usd" },
+              "properties": [{ "id": "unit", "value": "currencyUSD" }]
+            },
+            {
+              "matcher": { "id": "byName", "options": "avg_duration_ms" },
+              "properties": [{ "id": "unit", "value": "ms" }]
+            }
+          ]
+        }
       }
     ],
     "time": {

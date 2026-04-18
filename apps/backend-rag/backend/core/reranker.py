@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 
 from backend.app.core.config import settings
+from backend.services.observability.rag_trace import rag_span
 
 # Tracing utilities (with fallback for standalone usage)
 try:
@@ -81,6 +82,18 @@ class ReRanker:
         Returns:
             List of re-ranked document dictionaries with updated 'score' and 'rerank_score'.
         """
+        _rerank_span_meta = {
+            "documents_count": len(documents),
+            "top_k": top_k,
+            "model": self.model_name,
+            "enabled": self.enabled,
+        }
+        async with rag_span("rerank", metadata=_rerank_span_meta):
+            return await self._rerank_impl(query, documents, top_k)
+
+    async def _rerank_impl(
+        self, query: str, documents: list[dict[str, Any]], top_k: int,
+    ) -> list[dict[str, Any]]:
         with trace_span(
             "rerank.zeroentropy",
             {

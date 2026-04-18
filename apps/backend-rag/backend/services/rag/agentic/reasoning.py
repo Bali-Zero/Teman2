@@ -32,6 +32,7 @@ from backend.app.metrics import (  # noqa: F401  re-exported for tests that patc
     tier1_fallback_success_total,
     tier1_response_duration,
 )
+from backend.services.observability.rag_trace import rag_span
 from backend.app.utils.tracing import (
     add_span_event,
     set_span_attribute,
@@ -229,6 +230,37 @@ class ReasoningEngine:
         Returns:
             Tuple of (updated_state, model_name_used, conversation_messages, token_usage)
         """
+        # Observability wrapper — attaches a "reasoning" span to the current
+        # RAG trace so the reasoning stage timing + token totals correlate
+        # with the upstream retrieval/rerank rows.
+        async with rag_span(
+            "reasoning",
+            metadata={"user_id": user_id, "model_tier": model_tier},
+        ) as _reasoning_span:
+            state, model_used_name, conversation_messages, accumulated_usage = (
+                await self._execute_react_loop_impl(
+                    state, llm_gateway, chat, initial_prompt, system_prompt,
+                    query, user_id, model_tier, tool_execution_counter,
+                )
+            )
+            _reasoning_span.set(
+                tokens_in=getattr(accumulated_usage, "prompt_tokens", 0) or 0,
+                tokens_out=getattr(accumulated_usage, "completion_tokens", 0) or 0,
+            )
+            return state, model_used_name, conversation_messages, accumulated_usage
+
+    async def _execute_react_loop_impl(
+        self,
+        state: AgentState,
+        llm_gateway: Any,
+        chat: Any,
+        initial_prompt: str,
+        system_prompt: str,
+        query: str,
+        user_id: str,
+        model_tier: int,
+        tool_execution_counter: dict,
+    ) -> tuple[AgentState, str, list[dict], TokenUsage]:
         language = detect_query_language(query)
         conversation_messages = []
         model_used_name = "unknown"
