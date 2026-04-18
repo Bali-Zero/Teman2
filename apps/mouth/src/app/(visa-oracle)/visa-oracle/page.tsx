@@ -2,22 +2,45 @@
 
 import Link from "next/link";
 import { FunnelFrame, getOrCreateSessionId } from "@balizero/core";
+import {
+  TrustBadges,
+  TestimonialCarousel,
+  ExitIntent,
+  StickyCta,
+  type Testimonial,
+} from "@/components/funnel";
 
-const TRUST_SIGNALS = [
+const TRUST_STATS = [
+  { value: "5,000+", label: "Clients served", hint: "since 2020" },
+  { value: "68,000+", label: "Legal documents", hint: "indexed by AI" },
+  { value: "3 free", label: "Questions", hint: "no account required" },
+  { value: "4.9/5", label: "Average rating", hint: "Google Reviews" },
+];
+
+const TESTIMONIALS: Testimonial[] = [
   {
-    value: "5,000+",
-    label: "Clients served",
-    description: "Indonesians and expats who trusted Bali Zero",
+    quote:
+      "Visa Oracle matched me with the right KITAS in two minutes. I booked a WhatsApp call and we filed the same week.",
+    author: "Sofia M.",
+    role: "Digital nomad",
+    location: "Canggu",
+    rating: 5,
   },
   {
-    value: "68,000+",
-    label: "Legal documents",
-    description: "Indonesian immigration laws, regulations, and circulars",
+    quote:
+      "I was stuck between three visa types. The follow-up chat referenced the exact regulations I needed to convince my employer.",
+    author: "Daniel K.",
+    role: "Engineering Manager",
+    location: "Ubud",
+    rating: 5,
   },
   {
-    value: "3 free",
-    label: "Questions included",
-    description: "No account required to get started",
+    quote:
+      "Clear answers, no upsell. When I was ready, the Bali Zero team picked it up straight from the quiz.",
+    author: "Priya R.",
+    role: "Founder",
+    location: "Seminyak",
+    rating: 5,
   },
 ];
 
@@ -96,29 +119,11 @@ export default function VisaOracleLandingPage() {
         </section>
 
         {/* Trust signals */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {TRUST_SIGNALS.map((signal) => (
-            <div
-              key={signal.label}
-              className="flex flex-col items-center text-center gap-2 p-6 rounded-xl"
-              style={{ backgroundColor: "var(--bz-elevated)" }}
-            >
-              <span
-                className="text-3xl font-bold"
-                style={{ color: "var(--bz-accent)" }}
-              >
-                {signal.value}
-              </span>
-              <span className="font-semibold text-sm">{signal.label}</span>
-              <span
-                className="text-xs leading-relaxed"
-                style={{ color: "var(--tx-secondary)" }}
-              >
-                {signal.description}
-              </span>
-            </div>
-          ))}
-        </section>
+        <TrustBadges stats={TRUST_STATS} />
+
+        {/* Social proof */}
+        <TestimonialCarousel testimonials={TESTIMONIALS} />
+
 
         {/* How it works */}
         <section className="flex flex-col gap-8">
@@ -170,6 +175,15 @@ export default function VisaOracleLandingPage() {
           </Link>
         </section>
       </div>
+
+      <StickyCta label="Start the visa quiz" href="/visa-oracle/quiz" />
+      <ExitIntent
+        storageKey="bz:exit-intent:visa-oracle"
+        title="Before you go — 60 seconds to your visa."
+        description="Take the free quiz and get a personalized recommendation. No account, no spam."
+        ctaLabel="Start the quiz"
+        ctaHref="/visa-oracle/quiz"
+      />
     </FunnelFrame>
   );
 }
