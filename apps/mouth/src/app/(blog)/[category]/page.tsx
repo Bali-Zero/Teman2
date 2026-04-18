@@ -1,220 +1,119 @@
-'use client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { BreadcrumbJsonLd } from '@/components/seo';
+import type { ArticleCategory } from '@/lib/blog/types';
+import CategoryClient from './CategoryClient';
 
-import * as React from 'react';
-import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Plane, Building2, Scale, Home, Sun, Cpu, Newspaper } from 'lucide-react';
-import {
-  ArticleGrid,
-  ArticleGridSkeleton,
-  CategoryNav,
-  NewsletterSidebar,
-} from '@/components/blog';
-import type { ArticleCategory, ArticleListItem } from '@/lib/blog/types';
-import { logger } from '@/lib/logger';
-import { useTranslation } from '@/i18n';
+const baseUrl = process.env.NEXT_PUBLIC_PUBLIC_URL || 'https://balizero.com';
 
-// Category visual metadata (non-translated)
-const CATEGORY_VISUAL: Record<
+const CATEGORY_META: Record<
   ArticleCategory,
-  {
-    icon: React.ElementType;
-    gradient: string;
-    titleKey: string;
-    descKey: string;
-  }
+  { title: string; description: string; label: string }
 > = {
   visas: {
-    icon: Plane,
-    gradient: 'from-blue-500/20 via-cyan-500/10 to-transparent',
-    titleKey: 'news.categories.visas',
-    descKey: 'news.categoryDescriptions.visas',
+    label: 'Visas & Immigration',
+    title: 'Indonesia Visas & Immigration — News & Guides',
+    description:
+      'Visas, permits, KITAS, KITAP, Golden Visa, and everything you need to know about relocating to Indonesia. Expert guides from Bali Zero.',
   },
   business: {
-    icon: Building2,
-    gradient: 'from-emerald-500/20 via-teal-500/10 to-transparent',
-    titleKey: 'news.categories.business',
-    descKey: 'news.categoryDescriptions.business',
+    label: 'Business',
+    title: 'Doing Business in Indonesia — Company Setup & KBLI',
+    description:
+      'Company setup, PT PMA, licensing, KBLI codes, and practical guides to doing business in Indonesia.',
   },
   taxes: {
-    icon: Scale,
-    gradient: 'from-amber-500/20 via-orange-500/10 to-transparent',
-    titleKey: 'news.categories.taxes',
-    descKey: 'news.categoryDescriptions.taxes',
+    label: 'Taxes & Compliance',
+    title: 'Taxes & Compliance in Indonesia — Expert Guides',
+    description:
+      'Tax obligations, legal compliance, PPh, PPN, NPWP, and regulatory updates for individuals and companies in Indonesia.',
   },
   property: {
-    icon: Home,
-    gradient: 'from-rose-500/20 via-pink-500/10 to-transparent',
-    titleKey: 'news.categories.property',
-    descKey: 'news.categoryDescriptions.property',
+    label: 'Property',
+    title: 'Bali & Indonesia Property — Leasehold, Freehold, Investment',
+    description:
+      'Real estate, property ownership, leasehold and freehold structures, and investment opportunities across Bali and Indonesia.',
   },
   living: {
-    icon: Sun,
-    gradient: 'from-violet-500/20 via-purple-500/10 to-transparent',
-    titleKey: 'news.categories.living',
-    descKey: 'news.categoryDescriptions.living',
+    label: 'Living in Indonesia',
+    title: 'Living in Bali — Culture, Community & Daily Life',
+    description:
+      'Living in Bali, culture, community, driving, healthcare, and practical advice for expats and digital nomads.',
   },
   trends: {
-    icon: Cpu,
-    gradient: 'from-fuchsia-500/20 via-pink-500/10 to-transparent',
-    titleKey: 'news.categories.trends',
-    descKey: 'news.categoryDescriptions.trends',
+    label: 'Trends & Insights',
+    title: 'Indonesia Market Trends & Insights',
+    description:
+      'Digital economy, tech industry, emerging regulations, and market insights for Indonesia and Southeast Asia.',
   },
 };
 
-export default function CategoryPage() {
-  const params = useParams();
-  const category = (params?.category ?? '') as ArticleCategory;
-  const [articles, setArticles] = React.useState<ArticleListItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const { t } = useTranslation();
+export async function generateStaticParams() {
+  return (Object.keys(CATEGORY_META) as ArticleCategory[]).map((category) => ({
+    category,
+  }));
+}
 
-  // Reserved workspace paths - redirect to workspace if accessed
-  const RESERVED_PATHS = [
-    'cases',
-    'clients',
-    'dashboard',
-    'documents',
-    'knowledge',
-    'team',
-    'analytics',
-    'intelligence',
-    'whatsapp',
-    'email',
-    'chat',
-  ];
-
-  React.useEffect(() => {
-    if (RESERVED_PATHS.includes(category)) {
-      window.location.href = `/${category}`;
-    }
-  }, [category]);
-
-  const visual = CATEGORY_VISUAL[category];
-  const Icon = visual?.icon || Plane;
-
-  // Fetch articles for category
-  React.useEffect(() => {
-    async function fetchArticles() {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `/api/blog/articles?category=${category}&status=published&limit=20`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setArticles(data.articles || []);
-        }
-      } catch (error) {
-        logger.error(
-          'Failed to fetch articles',
-          {},
-          error instanceof Error ? error : new Error(String(error))
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (category && visual) {
-      fetchArticles();
-    }
-  }, [category, visual]);
-
-  // Handle invalid category
-  if (!visual) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Category not found</h1>
-          <a href="/insights" className="text-violet-400 hover:text-violet-300">
-            Back to Insights
-          </a>
-        </div>
-      </div>
-    );
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}): Promise<Metadata> {
+  const { category } = await params;
+  const meta = CATEGORY_META[category as ArticleCategory];
+  if (!meta) {
+    return { title: 'Category not found', robots: { index: false, follow: false } };
   }
+  const url = `${baseUrl}/${category}`;
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website',
+      locale: 'en_US',
+      url,
+      title: meta.title,
+      description: meta.description,
+      siteName: 'Bali Zero',
+      images: [
+        {
+          url: `${baseUrl}/static/og-image.jpg`,
+          width: 1200,
+          height: 630,
+          alt: meta.label,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: meta.title,
+      description: meta.description,
+      creator: '@balizero',
+    },
+  };
+}
 
+export default async function CategoryPage({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}) {
+  const { category } = await params;
+  const meta = CATEGORY_META[category as ArticleCategory];
+  if (!meta) {
+    notFound();
+  }
   return (
-    <div className="min-h-screen">
-      {/* Hero section */}
-      <section className={`relative py-16 md:py-20 bg-gradient-to-b ${visual.gradient}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            {/* Icon */}
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/5 border border-white/10 mb-6">
-              <Icon className="w-8 h-8 text-white" />
-            </div>
-
-            {/* Title */}
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-4">
-              {t(visual.titleKey)}
-            </h1>
-
-            {/* Description */}
-            <p className="text-lg text-white/60 max-w-2xl mb-8">{t(visual.descKey)}</p>
-
-            {/* Category nav */}
-            <CategoryNav
-              activeCategory={category}
-              onCategoryChange={(cat) => {
-                if (cat) {
-                  window.location.href = `/insights/${cat}`;
-                } else {
-                  window.location.href = '/insights';
-                }
-              }}
-            />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Content section */}
-      <section className="py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-12">
-            {/* Main content */}
-            <div className="lg:col-span-3">
-              {loading ? (
-                <ArticleGridSkeleton count={6} />
-              ) : articles.length > 0 ? (
-                <ArticleGrid articles={articles} variant="grid" columns={2} showFeatured={true} />
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-white/50">No articles in this category yet.</p>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="lg:col-span-1 space-y-8">
-              {/* Newsletter */}
-              <NewsletterSidebar defaultCategories={[category]} />
-
-              {/* Popular in category */}
-              <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
-                <h3 className="font-medium text-white mb-4">Popular in {t(visual.titleKey)}</h3>
-                <div className="space-y-4">
-                  {articles.slice(0, 3).map((article) => (
-                    <a
-                      key={article.id}
-                      href={`/insights/${article.category}/${article.slug}`}
-                      className="block group"
-                    >
-                      <h4 className="text-sm text-white/80 group-hover:text-violet-400 transition-colors line-clamp-2">
-                        {article.title}
-                      </h4>
-                      <p className="text-xs text-white/40 mt-1">
-                        {article.viewCount.toLocaleString('en-US')} views
-                      </p>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+    <>
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: '/' },
+          { name: 'News', url: '/news' },
+          { name: meta.label, url: `/${category}` },
+        ]}
+      />
+      <CategoryClient category={category as ArticleCategory} />
+    </>
   );
 }

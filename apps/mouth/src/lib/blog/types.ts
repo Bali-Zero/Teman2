@@ -100,6 +100,7 @@ export interface ArticleListItem {
   category: ArticleCategory;
   author: Author;
   publishedAt: Date;
+  updatedAt?: Date;
   readingTime: number;
   viewCount: number;
   featured: boolean;

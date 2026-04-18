@@ -151,9 +151,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const locales = getAvailableLocales(article.category, article.slug);
         // Priority: featured editorial (0.9) > ai-enriched (0.8) > basic (0.6)
         const priority = article.featured ? 0.9 : article.aiGenerated ? 0.8 : 0.6;
+        // Prefer updatedAt (most recent edit) over publishedAt; fall back to now.
+        const lastModified = article.updatedAt
+          ? new Date(article.updatedAt)
+          : article.publishedAt
+            ? new Date(article.publishedAt)
+            : new Date();
         const entry: MetadataRoute.Sitemap[number] = {
           url: `${baseUrl}/${article.category}/${article.slug}`,
-          lastModified: article.publishedAt ? new Date(article.publishedAt) : new Date(),
+          lastModified,
           changeFrequency: 'weekly' as const,
           priority,
         };

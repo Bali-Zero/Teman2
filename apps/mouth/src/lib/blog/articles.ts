@@ -123,6 +123,7 @@ function backendToArticleListItem(item: BackendNewsItem): ArticleListItem {
     publishedAt: item.published_at
       ? new Date(item.published_at)
       : new Date(item.created_at),
+    updatedAt: new Date(item.created_at),
     readingTime: item.content
       ? Math.ceil(item.content.split(/\s+/).length / 200)
       : 5,
@@ -604,6 +605,7 @@ export const getAllArticles = unstable_cache(
         category: article.category,
         author: article.author,
         publishedAt: article.publishedAt || article.createdAt,
+        updatedAt: article.updatedAt,
         readingTime: article.readingTime,
         viewCount: article.viewCount,
         featured: article.featured,
