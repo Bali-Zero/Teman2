@@ -16,22 +16,25 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from backend.app.core.config import settings
+
 # ─── RBAC ────────────────────────────────────────────────────────────────
 
-HR_ADMIN_EMAILS: set[str] = {
-    "zero@balizero.com",
-    "antonellosiano@gmail.com",
-    "asya@balizero.com",
-    "ruslana@balizero.com",
-}
+# HR-specific additions on top of the global admin allowlist
+# (`settings.admin_emails_set`). Admins carry over automatically — Ruslana is
+# the HR-specialist case who is admin for HR only. HIGH-7 (audit 2026-04-18).
+HR_EXTRA_ADMIN_EMAILS: frozenset[str] = frozenset({"ruslana@balizero.com"})
+
+
+def _hr_admin_emails() -> frozenset[str]:
+    """Effective HR admin allowlist — union of global admins and HR extras."""
+    return settings.admin_emails_set | HR_EXTRA_ADMIN_EMAILS
 
 
 def is_hr_admin(user: dict[str, Any]) -> bool:
     """Check if user has HR admin privileges."""
-    return (
-        user.get("email", "").lower() in HR_ADMIN_EMAILS
-        or user.get("role") == "admin"
-    )
+    email = (user.get("email") or "").lower()
+    return email in _hr_admin_emails() or user.get("role") == "admin"
 
 
 # ─── PTKP (Non-Taxable Income) — Annual ─────────────────────────────────

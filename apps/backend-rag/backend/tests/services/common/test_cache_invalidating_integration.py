@@ -170,7 +170,10 @@ async def test_mark_message_read_invalidates_portal_messages(
         "backend.services.common.cache._invalidate_cache",
         side_effect=in_memory_cache.clear_pattern,
     ):
-        result = await svc.mark_message_read(client_id=42, message_id=777)
+        result = await svc.mark_message_read(
+            client_id=42, message_id=777,
+            current_user={"client_id": 42, "email": "test@example.com"},
+        )
 
     assert result == {"success": True}
     await _assert_cleared(

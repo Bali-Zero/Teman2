@@ -435,16 +435,15 @@ class TestSearchService:
         original_enable = search_service._bm25_enabled
 
         try:
-            # Temporarily disable BM25 in settings
-            import backend.app.core.config as config_module
+            # CI test-ordering guard: patch the search_service module's own
+            # `settings` reference, not config_module.settings. When other
+            # tests reload config earlier in the suite the two can diverge.
+            import backend.services.search.search_service as search_module
 
-            # Patch settings.enable_bm25
-            with patch.object(config_module.settings, "enable_bm25", False):
-                # The method checks settings.enable_bm25 first
+            with patch.object(search_module.settings, "enable_bm25", False):
                 result = await search_service._init_bm25_with_retry()
                 assert result is False
         finally:
-            # Restore original state
             search_service._bm25_enabled = original_enable
 
     def test_cultural_insights_property(self, search_service):
