@@ -34,3 +34,9 @@ def test_subdomain_of_whitelisted_root_allowed() -> None:
 def test_known_aggregators_whitelisted() -> None:
     # At least Hukumonline and similar should be in the list (decision #3).
     assert any("hukumonline" in d for d in INTEL_SOURCE_WHITELIST)
+
+
+def test_whitelisted_domain_with_explicit_port_matches() -> None:
+    assert is_whitelisted("https://bkpm.go.id:443/path")
+    assert is_whitelisted("https://imigrasi.go.id:80/article")
+    assert is_whitelisted("https://www.bkpm.go.id:8080/x")
