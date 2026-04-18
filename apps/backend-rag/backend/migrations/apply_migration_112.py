@@ -43,7 +43,9 @@ async def main() -> None:
             "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='job_runs')",
         )
         if exists:
-            logger.info("Table job_runs already exists — migration is idempotent (CREATE IF NOT EXISTS)")
+            logger.info(
+                "Table job_runs already exists; IF NOT EXISTS guards will no-op the CREATE statements"
+            )
 
         logger.info("Applying migration 112: job_runs")
         await apply(conn)

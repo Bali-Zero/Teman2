@@ -8,10 +8,16 @@ import pytest
 
 from backend.migrations.migration_112_job_runs import apply, rollback
 
-TEST_DB_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_test",
+TEST_DB_URL = (
+    os.environ.get("TEST_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
 )
+
+if not TEST_DB_URL:
+    pytest.skip(
+        "TEST_DATABASE_URL or DATABASE_URL must be set for migration tests",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture
