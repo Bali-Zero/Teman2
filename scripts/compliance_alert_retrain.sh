@@ -18,7 +18,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="${SCRIPT_DIR}/../apps/backend-rag"
 
 cd "${BACKEND_DIR}"
-source .venv/bin/activate
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+elif [ -d "venv" ]; then
+    source venv/bin/activate
+else
+    echo "ERROR: no venv found (tried .venv and venv)" >&2
+    exit 1
+fi
 
 PYTHONPATH=. python -c "
 import asyncio
