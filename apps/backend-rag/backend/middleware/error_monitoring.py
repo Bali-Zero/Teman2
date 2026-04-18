@@ -43,10 +43,20 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process request and monitor for errors
+        Process request and monitor for errors.
+
+        Request ID is owned by RequestTracingMiddleware (runs earlier in the
+        stack). We only generate a new UUID when this middleware is used in
+        isolation (e.g., a minimal test harness without the tracing layer).
         """
-        # Generate request ID for tracking
-        request_id = str(uuid.uuid4())
+        def _as_id(value: Any) -> str | None:
+            return value if isinstance(value, str) and value else None
+
+        request_id = (
+            _as_id(getattr(request.state, "request_id", None))
+            or _as_id(getattr(request.state, "correlation_id", None))
+            or str(uuid.uuid4())
+        )
         request.state.request_id = request_id
 
         # Record start time
