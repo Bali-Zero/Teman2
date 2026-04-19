@@ -507,7 +507,68 @@ LaunchAgent **rimandati** finché token non disponibile:
 Instagram publisher: **abilitabile** con alias env var in plist (raccomandato
 refactor leggero in Fase 2.5).
 
-### B.5 Decisioni richieste pre-Fase 2
+### B.5 Anomaly L2 in-process subscriber — wiring plan (NOT executed in this PR)
+
+Zero ha scelto "daemon persistente". La scelta più pulita è "in-process
+subscriber dentro `nuzantara-rag` main_api", non un daemon separato, perché
+riusa l'EventBus già operativo (`backend.services.events.event_bus`) e il
+canale PG `intel_event` già acceso.
+
+**Wire-up da aggiungere in una PR separata (non in questo attivamento):**
+
+1. Edit `backend/services/events/handlers.py::register_handlers(bus, db_pool)`:
+
+   ```python
+   # ── intel.event → AnomalyEventSubscriber ───────────────────────────
+   from backend.services.cognitive.anomaly_detector import AnomalyDetector
+   from backend.services.cognitive.anomaly_subscriber import (
+       AnomalyEventSubscriber,
+   )
+   from backend.services.cognitive.repository import CognitiveRepository
+   from backend.services.intel.dossier_repository import IntelRepository
+
+   _intel_repo = IntelRepository(db_pool=db_pool)
+   _cognitive_repo = CognitiveRepository(db_pool=db_pool)
+   _detector = AnomalyDetector(
+       intel_repo=_intel_repo,
+       cognitive_repo=_cognitive_repo,
+       # runner left to default or injected Claude CLI runner
+   )
+   _anomaly_subscriber = AnomalyEventSubscriber(
+       intel_repo=_intel_repo, detector=_detector,
+   )
+   bus.subscribe("intel.event", _anomaly_subscriber.handle)
+   ```
+
+2. **Idempotency guard**: `CognitiveRepository.alert_exists_for_pair()` already
+   prevents duplicate alerts within a 14-day window for the same ordered
+   dossier pair. No additional work needed.
+
+3. **Testing**: `backend/tests/services/cognitive/test_anomaly_subscriber.py`
+   already covers handler dispatch (uses `AsyncMock` for detector + intel
+   repo). Integration test hitting real PG NOTIFY can be added later.
+
+4. **Observability**: `EventBus.get_stats()` (existing endpoint) already
+   surfaces per-event latency and handler success rate. Once wired,
+   `/api/events/stats` will show `intel.event` with the new handler.
+
+**Why NOT a separate launchd daemon**:
+- Would duplicate PG LISTEN infrastructure.
+- Would require separate venv + log rotation + process supervision.
+- Cognitive reasoning (Claude CLI) can be invoked cleanly from main_api
+  process — it's already the pattern for `cognitive/connector_cli.py`
+  except that's cron, not event-driven.
+
+**Why not wire it in THIS PR**:
+- Requires actual backend deploy (Dockerfile context, image rebuild, Fly
+  release). Current PR scope is "infrastructure activation + CLI wrappers
+  + LaunchAgent configs" — all changes side-of-app.
+- Deploying the cognitive path means turning on `cross_dossier_theses`
+  generation → potential early thesis notifications before content is
+  validated. Better to deploy Anomaly L2 as a dedicated small PR with
+  feature flag.
+
+### B.6 Decisioni richieste pre-Fase 2
 
 1. Refactor `ig_publisher.py` per accettare `INSTAGRAM_ACCOUNT_ID`/
    `INSTAGRAM_ACCESS_TOKEN` come fallback di `IG_USER_ID`/`IG_LONG_LIVED_TOKEN`?
