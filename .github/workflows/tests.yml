@@ -95,6 +95,9 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=. python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
 
+      - name: Check LLM cost tracking coverage
+        run: python scripts/check_llm_cost_tracking.py
+
       - name: Run core tests (fast gate — always run)
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test

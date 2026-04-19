@@ -7,11 +7,9 @@ Cost-effective alternative to Claude (~50x cheaper with Flash)
 
 import json
 import logging
-import os
 import re
 
-from google import genai
-
+from backend.llm.genai_client import get_genai_client
 from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,
     ExtractedRelation,
@@ -31,7 +29,8 @@ class GeminiKGExtractor:
     """
     Gemini-based Knowledge Graph Extractor
 
-    Uses Google's Gemini models via Google AI Studio for fast, cost-effective extraction.
+    Uses Google's Gemini models via the shared genai_client facade, which
+    provides cost tracking (triple-write: Prometheus + Postgres + JSONL).
     Gemini Flash is recommended for structured extraction tasks.
     """
 
@@ -43,11 +42,12 @@ class GeminiKGExtractor:
         temperature: float = 0.1,
     ) -> None:
         """
-        Initialize Gemini KG Extractor with Google AI Studio
+        Initialize Gemini KG Extractor.
 
         Args:
-            model: Gemini model to use (gemini-flash-3.0-preview, gemini-2.0-flash-lite, etc.)
-            api_key: Google AI Studio API key (or GOOGLE_API_KEY / GOOGLE_IMAGEN_API_KEY env var)
+            model: Gemini model to use (gemini-2.0-flash, gemini-2.0-flash-lite, etc.)
+            api_key: Deprecated — authentication is now handled by the genai_client
+                     facade (GOOGLE_API_KEY env var). This parameter is ignored.
             max_tokens: Max tokens for response
             temperature: Temperature for generation
         """
@@ -55,21 +55,19 @@ class GeminiKGExtractor:
         self.max_tokens = max_tokens
         self.temperature = temperature
 
-        # Get API key from env or parameter
-        api_key = (
-            api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_IMAGEN_API_KEY")
-        )
+        if api_key is not None:
+            logger.warning(
+                "GeminiKGExtractor: api_key parameter is deprecated and ignored. "
+                "Authentication is now handled by the shared genai_client facade."
+            )
 
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY or GOOGLE_IMAGEN_API_KEY not set")
-
-        # Initialize client
-        self.client = genai.Client(api_key=api_key)
+        # Delegate to the shared, cost-tracked facade (PR #107)
+        self._client = get_genai_client()
 
         # Build schema prompt
         self.schema_prompt = self._build_schema_prompt()
 
-        logger.info(f"GeminiKGExtractor initialized with Google AI Studio: model={model}")
+        logger.info(f"GeminiKGExtractor initialised via genai_client facade: model={model}")
 
     def _build_schema_prompt(self) -> str:
         """Build the schema description for prompts"""
@@ -185,20 +183,15 @@ Extract entities and relations now (ensure every entity has at least one relatio
         prompt = self._build_extraction_prompt(text)
 
         try:
-            # Generate content with JSON mode
-            import asyncio
-
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.model_name,
+            # Delegate to the shared cost-tracked facade (no raw SDK access)
+            response = await self._client.generate_content(
                 contents=prompt,
-                config={
-                    "temperature": self.temperature,
-                    "max_output_tokens": self.max_tokens,
-                    "response_mime_type": "application/json",
-                },
+                model=self.model_name,
+                temperature=self.temperature,
+                max_output_tokens=self.max_tokens,
+                endpoint="kg_extractor",
             )
-            content = response.text
+            content = response["text"]
 
             # Parse JSON from response
             try:

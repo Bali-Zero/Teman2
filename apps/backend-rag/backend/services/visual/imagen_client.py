@@ -22,6 +22,8 @@ from typing import Any
 
 import httpx
 
+from backend.services.observability import llm_cost_tracked, set_usage
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +120,9 @@ class ImagenClient:
         self._client = http_client
         self.base_url = base_url or self.DEFAULT_BASE_URL
         self.timeout = timeout or self.DEFAULT_TIMEOUT
+        self._last_model: str = "imagen-4.0-fast-generate-001"
 
+    @llm_cost_tracked(provider="imagen", model_attr="_last_model")
     async def generate(
         self,
         prompt: str,
@@ -127,6 +131,8 @@ class ImagenClient:
         negative_prompt: str | None = None,
         aspect_ratio: str | None = None,
     ) -> ImagenResult:
+        self._last_model = quality.model_id
+        set_usage(input_tokens=1, output_tokens=0)
         start = time.perf_counter()
         model_id = quality.model_id
         url = f"{self.base_url}/{model_id}:predict?key={self.api_key}"
