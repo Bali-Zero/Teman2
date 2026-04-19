@@ -16,29 +16,29 @@
  */
 
 [data-theme="aubergine"] {
-  --surface-base:    #1A1520;
-  --surface-raised:  rgba(255, 255, 255, 0.035);
-  --surface-sunken:  rgba(0, 0, 0, 0.45);
+  --surface-base: #1a1520;
+  --surface-raised: rgba(255, 255, 255, 0.035);
+  --surface-sunken: rgba(0, 0, 0, 0.45);
   --surface-overlay: rgba(26, 21, 32, 0.72);
-  --surface-scrim:   rgba(26, 21, 32, 0.92);
+  --surface-scrim: rgba(26, 21, 32, 0.92);
 
-  --text-primary:   rgba(255, 255, 255, 0.94);
+  --text-primary: rgba(255, 255, 255, 0.94);
   --text-secondary: rgba(255, 255, 255, 0.55);
-  --text-tertiary:  rgba(255, 255, 255, 0.28);
+  --text-tertiary: rgba(255, 255, 255, 0.28);
   --text-on-accent: #ffffff;
 
-  --border-subtle:  rgba(255, 255, 255, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.04);
   --border-default: rgba(255, 255, 255, 0.08);
-  --border-strong:  rgba(255, 255, 255, 0.16);
+  --border-strong: rgba(255, 255, 255, 0.16);
 
-  --nav-bg:      rgba(26, 21, 32, 0.6);
-  --footer-bg:   #150f1a;
+  --nav-bg: rgba(26, 21, 32, 0.6);
+  --footer-bg: #150f1a;
   --footer-text: var(--text-tertiary);
 }
 
 /* Cyan re-tuned to teal-ward so it doesn't clash with aubergine warmth.
    Only applies when the Tax funnel is active under the aubergine theme. */
 [data-theme="aubergine"] [data-funnel="tax"] {
-  --accent-funnel:      #0891B2;
-  --accent-funnel-text: #22D3EE;
+  --accent-funnel: #0891b2;
+  --accent-funnel-text: #22d3ee;
 }
