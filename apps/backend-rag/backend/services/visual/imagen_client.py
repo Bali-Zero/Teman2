@@ -87,7 +87,13 @@ class ImagenClient:
     api_key : str
         Google API key with Gemini access.
     aspect_ratio : str
-        "4:5" for IG carousel (default), "16:9" for X hero, "1:1" for avatars.
+        Default "3:4" (portrait — IG carousel renders it fine with optional
+        centre crop to 4:5 if pixel-perfect parity is required). "16:9" for
+        X hero, "1:1" for avatars, "9:16" for IG stories / reels.
+
+        NOTE: Imagen 4.0 API rejects "4:5" with HTTP 400. Supported set:
+        1:1, 9:16, 16:9, 4:3, 3:4. Do not default to 4:5 even if the IG
+        spec wants it — crop client-side in VisualGenerator if needed.
     http_client : httpx.AsyncClient, optional
         Injected client for tests; created per-call otherwise.
     base_url : str
@@ -96,12 +102,13 @@ class ImagenClient:
 
     DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
     DEFAULT_TIMEOUT = 60.0
+    SUPPORTED_ASPECT_RATIOS = frozenset({"1:1", "9:16", "16:9", "4:3", "3:4"})
 
     def __init__(
         self,
         api_key: str | None = None,
         *,
-        aspect_ratio: str = "4:5",
+        aspect_ratio: str = "3:4",
         http_client: httpx.AsyncClient | None = None,
         base_url: str | None = None,
         timeout: float | None = None,
@@ -116,6 +123,11 @@ class ImagenClient:
                 "ImagenClient requires GOOGLE_API_KEY or GEMINI_API_KEY",
             )
         self.api_key = resolved_key
+        if aspect_ratio not in self.SUPPORTED_ASPECT_RATIOS:
+            raise ImagenError(
+                f"aspect_ratio {aspect_ratio!r} is not supported by Imagen 4.0. "
+                f"Supported: {sorted(self.SUPPORTED_ASPECT_RATIOS)}",
+            )
         self.aspect_ratio = aspect_ratio
         self._client = http_client
         self.base_url = base_url or self.DEFAULT_BASE_URL
@@ -137,13 +149,27 @@ class ImagenClient:
         model_id = quality.model_id
         url = f"{self.base_url}/{model_id}:predict?key={self.api_key}"
 
+        effective_aspect = aspect_ratio or self.aspect_ratio
+        if effective_aspect not in self.SUPPORTED_ASPECT_RATIOS:
+            return ImagenResult(
+                ok=False,
+                quality=quality,
+                model_id=model_id,
+                error=(
+                    f"aspect_ratio {effective_aspect!r} not supported by "
+                    f"Imagen 4.0 (supported: "
+                    f"{sorted(self.SUPPORTED_ASPECT_RATIOS)})"
+                ),
+                duration_ms=0.0,
+            )
+
         instance: dict[str, Any] = {"prompt": prompt}
         if negative_prompt:
             instance["negativePrompt"] = negative_prompt
 
         params: dict[str, Any] = {
             "sampleCount": 1,
-            "aspectRatio": aspect_ratio or self.aspect_ratio,
+            "aspectRatio": effective_aspect,
         }
         payload = {"instances": [instance], "parameters": params}
 
