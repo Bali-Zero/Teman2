@@ -83,10 +83,13 @@ def main() -> int:
     # Other legacy tables (team_access, messaging_users, etc.) are created
     # by migration files that ALTER/add-column them, so the migrate step
     # handles them downstream.
-    from sqlalchemy import Column, DateTime, String, Table, text
+    from sqlalchemy import Column, DateTime, Integer, String, Table, Text, text
     from sqlalchemy.dialects.postgresql import UUID
     from sqlalchemy.sql import func
 
+    # Run DDL first so the tables physically exist, then register stub Table
+    # objects so SQLAlchemy's FK resolver (which reads from
+    # SQLModel.metadata, not the live DB) can find them during create_all().
     with engine.begin() as conn:
         conn.execute(text(
             """
@@ -104,9 +107,23 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles table ensured in DB")
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS conversations (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                messages TEXT NOT NULL DEFAULT '[]',
+                session_id VARCHAR(255),
+                rating INTEGER,
+                feedback TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations tables ensured in DB")
 
-    # Register a stub Table so SQLAlchemy's FK resolver finds the target.
+    # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
     # create_all() still raises NoReferencedTableError.
     if "user_profiles" not in SQLModel.metadata.tables:
@@ -124,7 +141,20 @@ def main() -> int:
             Column("created_at", DateTime(timezone=True), server_default=func.now()),
             Column("updated_at", DateTime(timezone=True), server_default=func.now()),
         )
-        print("[bootstrap] user_profiles stub registered in SQLModel.metadata")
+    if "conversations" not in SQLModel.metadata.tables:
+        Table(
+            "conversations",
+            SQLModel.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", String(255), nullable=False),
+            Column("messages", Text, nullable=False),
+            Column("session_id", String(255)),
+            Column("rating", Integer),
+            Column("feedback", Text),
+            Column("created_at", DateTime(timezone=True), server_default=func.now()),
+            Column("updated_at", DateTime(timezone=True), server_default=func.now()),
+        )
+    print("[bootstrap] user_profiles + conversations stubs registered in SQLModel.metadata")
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
