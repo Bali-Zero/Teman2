@@ -50,6 +50,64 @@ INDONESIAN_LEGAL_DOMAINS = [
     "imigrasi.go.id", "bkpm.go.id", "pajak.go.id", "oss.go.id",
 ]
 
+# SEO Cell pre-natal Sprint 0 — commercial-intent query briefs from Antonello.
+# When present, these briefs are weighted in the synthesis prompt so the
+# newsroom chooses angles that align with our Phase 2 revenue-attribution
+# targets. Graceful degradation: if the file is missing/malformed, the
+# newsroom falls back to pure multi-source signal synthesis as before.
+SEO_CELL_PRENATAL_BRIEF_PATH = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "data" / "seo_kw_targets" / "2026-04-21-prenatal.json"
+)
+
+
+def _load_seo_cell_prenatal_briefs() -> list[dict]:
+    """Load commercial-intent query briefs for newsroom weighting.
+
+    Returns only briefs whose `deadline` is still in the future. Empty
+    list if file absent, unreadable, or all briefs expired.
+    """
+    if not SEO_CELL_PRENATAL_BRIEF_PATH.exists():
+        return []
+    try:
+        data = json.loads(SEO_CELL_PRENATAL_BRIEF_PATH.read_text())
+        today = datetime.now().strftime("%Y-%m-%d")
+        return [
+            q for q in data.get("queries", [])
+            if q.get("deadline", "") > today
+        ]
+    except Exception as e:
+        print(
+            f"[topic_selector] SEO Cell brief load failed: {e}",
+            file=sys.stderr,
+        )
+        return []
+
+
+def _format_seo_cell_section(briefs: list[dict]) -> str:
+    """Render briefs as an appendix to the synthesis prompt.
+
+    Empty string if no briefs — caller can unconditionally concatenate.
+    """
+    if not briefs:
+        return ""
+    lines = [
+        "",
+        "--- SEO CELL PRIORITY (pre-natal sprint 0) ---",
+        "These commercial-intent queries are Phase-2 revenue targets. If any",
+        "current trending topic semantically overlaps, PREFER the SEO angle",
+        "(weight 1.5x the other sources until each brief's deadline):",
+    ]
+    for q in briefs:
+        brief = (q.get("brief_redazionale") or "")[:200]
+        lines.append(
+            f"- '{q.get('query','')}' "
+            f"(domain: {q.get('domain','?')}, deadline: {q.get('deadline','?')})"
+        )
+        if brief:
+            lines.append(f"  brief: {brief}")
+    return "\n".join(lines) + "\n"
+
 SYNTHESIS_PROMPT = """You are the editorial director of Bali Zero, an Indonesian business services firm targeting foreign investors and expats in Bali.
 
 You have received intelligence from multiple sources this morning. Your job: pick ONE topic for a carousel post.
@@ -234,6 +292,7 @@ def synthesize_with_deepseek(all_signals: list, api_key: str) -> dict | None:
             signals_text += "\n"
 
     prompt = SYNTHESIS_PROMPT.replace("{signals}", signals_text.strip())
+    prompt += _format_seo_cell_section(_load_seo_cell_prenatal_briefs())
 
     try:
         payload = json.dumps({
@@ -419,6 +478,7 @@ def main():
             for s in all_signals[:20]:
                 signals_text += f"• {s.get('title', '')}: {s.get('brief', '')[:100]}\n"
             gemini_prompt = SYNTHESIS_PROMPT.replace("{signals}", signals_text.strip())
+            gemini_prompt += _format_seo_cell_section(_load_seo_cell_prenatal_briefs())
             import subprocess as _sp
             gemini_proc = _sp.run(
                 ["gemini", "--prompt", gemini_prompt, "--model", "gemini-2.5-flash"],
