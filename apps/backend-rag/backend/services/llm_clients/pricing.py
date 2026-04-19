@@ -227,6 +227,35 @@ _PRICING_TABLE: dict[tuple[str, str], dict[str, float]] = {
         "input_per_token": 0.006 / 60,
         "output_per_token": 0.0,
     },
+    # ── OpenRouter free-tier models (volume-only tracking, cost=0) ──
+    ("openrouter", "google/gemini-2.0-flash-exp:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "qwen/qwen3.5-27b"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "mistralai/mistral-small-3.1-24b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "qwen/qwen3.5-35b-a3b"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "meta-llama/llama-3.2-3b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "openrouter-unknown"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
 }
 
 
