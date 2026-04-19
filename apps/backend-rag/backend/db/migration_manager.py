@@ -10,9 +10,30 @@ from urllib.parse import urlparse
 import asyncpg
 
 from backend.app.core.config import settings
-from backend.db.migration_base import BaseMigration, MigrationError
+from backend.db.migration_base import (
+    ROLLBACK_MARKER_RE,
+    BaseMigration,
+    MigrationError,
+    split_migration_sql,
+)
 
 logger = logging.getLogger(__name__)
+
+# Re-export for backwards compatibility with existing tests/callers.
+# `__all__` advertises the re-export so static analyzers don't flag it
+# as dead code (CodeQL: py/unused-global-variable).
+_ROLLBACK_MARKER_RE = ROLLBACK_MARKER_RE
+__all__ = ["MigrationManager", "_ROLLBACK_MARKER_RE", "_extract_rollback_sql"]
+
+
+def _extract_rollback_sql(sql_text: str) -> str | None:
+    """Extract the rollback SQL block from a migration file.
+
+    Thin wrapper over `migration_base.split_migration_sql` that returns only
+    the rollback portion (None if the marker is absent).
+    """
+    _, rollback = split_migration_sql(sql_text)
+    return rollback
 
 
 class MigrationManager:
@@ -220,12 +241,22 @@ class MigrationManager:
             # Extract migration number from filename (e.g., "001_baseline_v2.sql" -> 1)
             try:
                 migration_number = int(sql_file.stem.split("_")[0])
-                migrations.append(
-                    {"number": migration_number, "file": sql_file.name, "path": sql_file},
-                )
             except (ValueError, IndexError):
                 logger.warning(f"Could not parse migration number from {sql_file.name}, skipping")
                 continue
+
+            try:
+                sql_text = sql_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                logger.error(f"Cannot read migration {sql_file.name}: {exc}")
+                continue
+
+            migrations.append({
+                "number": migration_number,
+                "file": sql_file.name,
+                "path": sql_file,
+                "rollback_sql": _extract_rollback_sql(sql_text),
+            })
 
         return migrations
 
@@ -356,6 +387,7 @@ class MigrationManager:
                 migration_number=migration_number,
                 sql_file=sql_file,
                 description=f"Migration {migration_number}",
+                rollback_sql=migration_info.get("rollback_sql"),
             )
 
             try:
