@@ -18,16 +18,17 @@
  * Last updated: 2026-04-11
  */
 
-import React from 'react';
+import React from "react";
 
 export type BZLogoVariant =
-  | 'clean'     // balizero-logo-clean.png — default, transparent bg
-  | 'red'       // balizero-3-red.png — red accent version
-  | 'full'      // balizero-logo.png — full logo with wordmark
-  | 'highres'   // balizero-logo-512.png — 512px high-resolution
-  | 'map'       // balizeromap.svg — map icon (for Prime)
-  | 'lotus'     // zantara-lotus.png — Zantara AI lotus avatar
-  | 'zantara';  // logo_zan.png — Zantara workspace logo
+  | "clean" // balizero-logo-clean.png — default, transparent bg
+  | "red" // balizero-3-red.png — red accent version
+  | "full" // balizero-logo.png — full logo with wordmark
+  | "highres" // balizero-logo-512.png — 512px high-resolution
+  | "map" // balizeromap.svg — map icon (for Prime)
+  | "lotus" // zantara-lotus.png — Zantara AI lotus avatar
+  | "zantara" // logo_zan.png — Zantara workspace logo
+  | "round"; // balizero-logo-circle.png — circular crop for avatars/FABs
 
 export interface BZLogoProps {
   /**
@@ -70,7 +71,7 @@ export interface BZLogoProps {
    * Lazy loading strategy.
    * Default: 'lazy' (unless priority=true)
    */
-  loading?: 'lazy' | 'eager';
+  loading?: "lazy" | "eager";
 
   /**
    * Inline style override (use sparingly — prefer className).
@@ -84,23 +85,25 @@ export interface BZLogoProps {
 }
 
 const VARIANT_TO_FILENAME: Record<BZLogoVariant, string> = {
-  clean: 'balizero-logo-clean.png',
-  red: 'balizero-3-red.png',
-  full: 'balizero-logo.png',
-  highres: 'balizero-logo-512.png',
-  map: 'balizeromap.svg',
-  lotus: 'zantara-lotus.png',
-  zantara: 'logo_zan.png',
+  clean: "balizero-logo-clean.png",
+  red: "balizero-3-red.png",
+  full: "balizero-logo.png",
+  highres: "balizero-logo-512.png",
+  map: "balizeromap.svg",
+  lotus: "zantara-lotus.png",
+  zantara: "logo_zan.png",
+  round: "balizero-logo-circle.png",
 };
 
 const VARIANT_TO_DEFAULT_ALT: Record<BZLogoVariant, string> = {
-  clean: 'Bali Zero',
-  red: 'Bali Zero',
-  full: 'Bali Zero',
-  highres: 'Bali Zero',
-  map: 'Bali Zero Map',
-  lotus: 'Zantara',
-  zantara: 'Zantara',
+  clean: "Bali Zero",
+  red: "Bali Zero",
+  full: "Bali Zero",
+  highres: "Bali Zero",
+  map: "Bali Zero Map",
+  lotus: "Zantara",
+  zantara: "Zantara",
+  round: "Bali Zero",
 };
 
 /**
@@ -111,11 +114,11 @@ const VARIANT_TO_DEFAULT_ALT: Record<BZLogoVariant, string> = {
  * or create a thin adapter — the contract stays the same.
  */
 export function BZLogo({
-  variant = 'clean',
+  variant = "clean",
   size = 48,
   alt,
   className,
-  basePath = '/assets/logo',
+  basePath = "/assets/logo",
   priority = false,
   loading,
   style,
@@ -124,7 +127,7 @@ export function BZLogo({
   const filename = VARIANT_TO_FILENAME[variant];
   const src = `${basePath}/${filename}`;
   const resolvedAlt = alt ?? VARIANT_TO_DEFAULT_ALT[variant];
-  const resolvedLoading = loading ?? (priority ? 'eager' : 'lazy');
+  const resolvedLoading = loading ?? (priority ? "eager" : "lazy");
 
   return (
     <img
@@ -133,12 +136,12 @@ export function BZLogo({
       width={size}
       height={size}
       loading={resolvedLoading}
-      decoding={priority ? 'sync' : 'async'}
-      fetchPriority={priority ? 'high' : 'auto'}
+      decoding={priority ? "sync" : "async"}
+      fetchPriority={priority ? "high" : "auto"}
       className={className}
       style={{
-        display: 'inline-block',
-        objectFit: 'contain',
+        display: "inline-block",
+        objectFit: "contain",
         ...style,
       }}
       onClick={onClick}
