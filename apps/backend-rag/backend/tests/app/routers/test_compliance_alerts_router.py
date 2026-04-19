@@ -61,9 +61,33 @@ def make_app(user: dict, pool: asyncpg.Pool) -> FastAPI:
 
 @pytest_asyncio.fixture(scope="function")
 async def db_pool() -> AsyncGenerator[asyncpg.Pool, None]:
-    pool = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
-    yield pool
-    await pool.close()
+    # Skip cleanly when the test DB is unreachable or lacks the schema this
+    # suite needs (e.g. CI's empty postgres:15 service has no `clients` or
+    # `compliance_alerts` table — these tests assume a migrated DB).
+    try:
+        pool = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
+    except (OSError, asyncpg.PostgresError) as exc:
+        pytest.skip(f"DB unreachable: {exc}")
+        return  # help static analyzers see pool is unbound on this path
+
+    skip_reason: str | None = None
+    try:
+        async with pool.acquire() as conn:
+            for table in ("clients", "compliance_alerts"):
+                exists = await conn.fetchval(
+                    "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+                    "WHERE table_schema='public' AND table_name=$1)",
+                    table,
+                )
+                if not exists:
+                    skip_reason = f"required table '{table}' missing in test DB"
+                    break
+        if skip_reason is None:
+            yield pool
+    finally:
+        await pool.close()
+    if skip_reason:
+        pytest.skip(skip_reason)
 
 
 @pytest_asyncio.fixture

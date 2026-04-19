@@ -61,9 +61,14 @@ def make_app(user: dict, pool: asyncpg.Pool) -> FastAPI:
 
 @pytest_asyncio.fixture()
 async def pool() -> AsyncGenerator[asyncpg.Pool, None]:
-    p = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
-    yield p
-    await p.close()
+    try:
+        p = await asyncpg.create_pool(_DEFAULT_DB_URL, min_size=1, max_size=5)
+    except (OSError, asyncpg.PostgresError) as exc:
+        pytest.skip(f"DB unreachable: {exc}")
+    try:
+        yield p
+    finally:
+        await p.close()
 
 
 async def _ensure_tables(pool: asyncpg.Pool) -> None:
