@@ -1,5 +1,5 @@
 """
-Migration 112: llm_cost_events — indestructible cost ledger for every LLM call.
+Migration 117: llm_cost_events — indestructible cost ledger for every LLM call.
 
 Every LLM call in the system (backend + Pro/Air cron agents) appends one
 row here. Used for:
@@ -82,9 +82,9 @@ async def apply(conn: Any) -> None:
         CREATE INDEX IF NOT EXISTS idx_llm_cost_provider_ts
         ON llm_cost_events (provider, ts_utc DESC);
     """)
-    logger.info("✅ Migration 112: llm_cost_events table + 4 indexes created")
+    logger.info("✅ Migration 117: llm_cost_events table + 4 indexes created")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS llm_cost_events CASCADE;")
-    logger.info("Migration 112 rollback: llm_cost_events dropped")
+    logger.info("Migration 117 rollback: llm_cost_events dropped")
