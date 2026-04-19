@@ -22,6 +22,33 @@ class MigrationError(Exception):
     pass
 
 
+# Marker convention for SQL migrations: everything after this marker line
+# is the rollback SQL. The marker itself is a `--` comment, so PostgreSQL
+# would happily execute the rollback DDL together with the forward DDL
+# (and undo the migration in the same transaction) unless we strip it.
+ROLLBACK_MARKER_RE = re.compile(
+    r"^\s*--\s*===\s*ROLLBACK\s*===\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def split_migration_sql(sql_text: str) -> tuple[str, str | None]:
+    """Split a SQL migration body at the `-- === ROLLBACK ===` marker.
+
+    Returns:
+        (forward_sql, rollback_sql) where rollback_sql is None if the marker
+        is absent. forward_sql is right-stripped (no trailing whitespace).
+        rollback_sql is left/right-stripped; it may be the empty string when
+        the marker is present but no rollback DDL follows it.
+    """
+    match = ROLLBACK_MARKER_RE.search(sql_text)
+    if not match:
+        return sql_text, None
+    forward = sql_text[: match.start()].rstrip()
+    rollback = sql_text[match.end() :].strip()
+    return forward, rollback
+
+
 class MigrationIrreversibleError(MigrationError):
     """Raised when a migration explicitly has no safe rollback path.
 
@@ -397,9 +424,16 @@ class BaseMigration:
         except Exception as e:
             raise MigrationError(f"Failed to read SQL file {self.sql_file}: {e}") from e
 
+        # The file may contain a `-- === ROLLBACK ===` marker followed by
+        # rollback DDL. PostgreSQL treats the marker as a comment, so executing
+        # the full file would CREATE then DROP the same objects in one
+        # transaction. Apply the forward portion only; the rollback string is
+        # stored separately on `self.rollback_sql` for `rollback_migration()`.
+        sql_forward, _embedded_rollback = split_migration_sql(sql)
+
         # Validate SQL
         try:
-            self._validate_sql(sql)
+            self._validate_sql(sql_forward)
         except MigrationError as e:
             logger.error(f"SQL validation failed for {self.migration_name}: {e}")
             raise
@@ -429,9 +463,11 @@ class BaseMigration:
                     logger.info(f"Migration {self.migration_name} already applied, skipping")
                     return True
 
-                # Execute SQL
+                # Execute SQL (forward portion only; rollback portion is
+                # stored on `self.rollback_sql` and will be re-run via
+                # MigrationManager.rollback_migration if ever invoked).
                 try:
-                    await conn.execute(sql)
+                    await conn.execute(sql_forward)
                 except asyncpg.PostgresError as e:
                     raise MigrationError(f"SQL execution failed: {e}") from e
 
