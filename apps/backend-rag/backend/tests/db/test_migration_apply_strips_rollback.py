@@ -45,10 +45,13 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
     leave the created table intact after `BaseMigration.apply()`.
     """
     # Skip cleanly if the test DB is unreachable in this environment.
+    # Connect outside the try/finally so `probe` is unambiguously bound
+    # before the cleanup block runs (CodeQL: py/uninitialized-local-variable).
     try:
         probe = await asyncpg.connect(_TEST_DB_URL, timeout=2)
-    except Exception as exc:
+    except (OSError, asyncpg.PostgresError) as exc:
         pytest.skip(f"test DB unreachable: {exc}")
+        return  # pytest.skip raises, but help static analyzers see it
 
     table = "mig_strip_rollback_probe"
     sql_file = tmp_path / "200_strip_rollback_probe.sql"
