@@ -168,9 +168,13 @@ TEMPLATE_REGISTRY: dict[TemplateCategory, dict[TemplateField, dict[LangCode, str
 }
 
 
-# Shared Jinja env (autoescape off — plaintext messages, no XSS surface)
+# Shared Jinja env. autoescape=False is intentional and safe here:
+# templates render plaintext messages for SMS, Telegram, in-app notifications
+# and email subject lines — never HTML — so there is no XSS surface to
+# escape against. Adding HTML escaping would mangle apostrophes, ampersands
+# and quotes inside legitimate Italian/Indonesian copy. # nosec B701
 _jinja_env = jinja2.Environment(
-    autoescape=False,
+    autoescape=False,  # nosec B701 — plaintext-only output, see comment above
     undefined=jinja2.StrictUndefined,
     trim_blocks=True,
     lstrip_blocks=True,
