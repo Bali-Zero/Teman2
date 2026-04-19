@@ -215,6 +215,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── LAM Memory ──
     RouterEntry(name="lam_memory", process_groups=_RAG, tags=("memory",)),
 
+    # ── Lead Capture (4-app homepage → WhatsApp handoff, shared infra) ──
+    RouterEntry(name="lead_capture", process_groups=_API, tags=("funnel", "lead")),
+
+    # ── Funnel Email (drip scheduler + unsubscribe for 4-app homepage) ──
+    RouterEntry(name="funnel_email", process_groups=_API, tags=("funnel", "email")),
+
     # ── Compliance Alerts (outcome recording + autotune metrics) ──
     RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
 
@@ -297,6 +303,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Telegram ──
     RouterEntry(name="telegram",         process_groups=_API, tags=("channels",)),
     RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
+
+    # ── Visa Check (homepage 4-app — Clock + Match branches) ──
+    RouterEntry(name="visa_check", process_groups=_API, tags=("visa", "funnel")),
 
     # ── Visa Oracle (public — prefix override) ──
     RouterEntry(name="visa_oracle", process_groups=_API, prefix="__API_V1__", tags=("visa",)),
