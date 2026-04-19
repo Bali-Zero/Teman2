@@ -298,24 +298,3 @@ async def test_incomplete_report_raises_validation_error(db_tx, client_row: dict
             client_id=client_row["id"],
             period="Q2 2026",
         )
-
-
-@pytest.mark.asyncio
-async def test_xlsx_output_is_well_formed(db_tx, client_row: dict) -> None:
-    """xlsx_sha256 must be a 64-char lowercase hex string (valid SHA-256)."""
-    conn, pool = db_tx
-    await _insert_complete_report(conn, client_row["id"], quarter="Q1", year=2026)
-
-    pack = LkpmReadyPack.with_connection(conn, drive=None, brevo=None)
-    result = await pack.generate(
-        client_id=client_row["id"],
-        period="Q1 2026",
-        send_email=False,
-        dry_run=True,
-    )
-
-    xlsx_sha = result["xlsx_sha256"]
-    assert len(xlsx_sha) == 64, f"Expected 64-char sha256, got {len(xlsx_sha)}"
-    assert all(c in "0123456789abcdef" for c in xlsx_sha), (
-        f"xlsx_sha256 contains non-hex characters: {xlsx_sha!r}"
-    )

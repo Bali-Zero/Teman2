@@ -12,34 +12,12 @@ from datetime import datetime, timezone
 from html import escape as html_escape
 from typing import TYPE_CHECKING, Any
 
-import httpx
-
 if TYPE_CHECKING:
     import asyncpg
 
 from backend.app.models.lkpm import LKPMReadyPack, ValidationSeverity
 
 logger = logging.getLogger(__name__)
-
-# ── Module-level persistent httpx client (Golden Rule #10) ────────────────
-_brevo_client: httpx.AsyncClient | None = None
-
-
-def _get_brevo_client() -> httpx.AsyncClient:
-    """Lazy-init persistent httpx client for Brevo (Golden Rule #10)."""
-    global _brevo_client
-    if _brevo_client is None:
-        _brevo_client = httpx.AsyncClient(timeout=15.0)
-    return _brevo_client
-
-
-async def close_brevo_client() -> None:
-    """Call from FastAPI lifespan shutdown."""
-    global _brevo_client
-    if _brevo_client is not None:
-        await _brevo_client.aclose()
-        _brevo_client = None
-
 
 # Pre-written obstacle templates in Bahasa Indonesia (NO AI generation)
 OBSTACLE_TEMPLATES = {
@@ -303,6 +281,8 @@ class LkpmReadyPack:
         brevo: "Any | None" = None,
         connection: "asyncpg.Connection | None" = None,
     ) -> None:
+        import asyncpg as _asyncpg  # local import to avoid circular at module level
+
         self._pool = db_pool
         self._conn = connection
         self._drive = drive
@@ -363,91 +343,90 @@ class LkpmReadyPack:
         from backend.services.compliance.exceptions import LkpmValidationError
         from backend.services.compliance.lkpm_validator import LKPMValidator
 
-        # ── Step 1: Completeness check + Step 2: Fetch data ──────────
-        # Wrap in try/finally so pool-acquired connections are always released,
-        # even when LkpmValidationError is raised mid-flight (Critical fix: pool leak).
+        # ── Step 1: Completeness check ─────────────────────────────────
         conn = await self._acquire()
-        try:
-            validator = LKPMValidator(self._pool)  # type: ignore[arg-type]
-            completeness = await validator.check_completeness_async(
-                conn,
-                client_id,
-                period,
+        pool_or_conn: "asyncpg.Pool | asyncpg.Connection" = (
+            conn if self._conn is not None else self._pool  # type: ignore[assignment]
+        )
+        validator = LKPMValidator(self._pool)  # type: ignore[arg-type]
+        completeness = await validator.check_completeness_async(
+            conn if self._conn is not None else self._pool,  # type: ignore[arg-type]
+            client_id,
+            period,
+        )
+        if not completeness["is_complete"]:
+            raise LkpmValidationError(
+                f"LKPM report for client_id={client_id}, period={period!r} "
+                f"is incomplete. Missing: {completeness['missing_fields']}"
             )
-            if not completeness["is_complete"]:
-                raise LkpmValidationError(
-                    f"LKPM report for client_id={client_id}, period={period!r} "
-                    f"is incomplete. Missing: {completeness['missing_fields']}"
-                )
-            validation_warnings: list[str] = completeness.get("warnings", [])
+        validation_warnings: list[str] = completeness.get("warnings", [])
 
-            # ── Step 2: Fetch data ─────────────────────────────────────────
-            parts = period.strip().split()
-            quarter, year = parts[0], int(parts[1])
+        # ── Step 2: Fetch data ─────────────────────────────────────────
+        parts = period.strip().split()
+        quarter, year = parts[0], int(parts[1])
 
-            # Fetch client row
-            client_row = await conn.fetchrow(
-                """
-                SELECT id, full_name, email, google_drive_folder_id
-                FROM clients
-                WHERE id = $1
-                """,
-                client_id,
+        # Fetch client row
+        client_row = await conn.fetchrow(
+            """
+            SELECT id, full_name, email, google_drive_folder_id
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id,
+        )
+        if client_row is None:
+            raise LkpmValidationError(f"Client {client_id} not found")
+
+        client_name: str = client_row["full_name"] or f"client_{client_id}"
+        client_email: str | None = client_row.get("email") or None
+        client_drive_folder: str | None = client_row.get("google_drive_folder_id") or None
+
+        # Fetch lkpm_reports row + NIB via lkpm_client_config
+        report_row = await conn.fetchrow(
+            """
+            SELECT r.id AS report_id, r.status, r.lkpm_assigned_to,
+                   r.realized_equipment_domestic + r.realized_equipment_import +
+                   r.realized_building_domestic + r.realized_building_import +
+                   r.realized_vehicle_domestic + r.realized_vehicle_import +
+                   r.realized_land + r.realized_working_capital + r.realized_other
+                   AS realization_total,
+                   COALESCE(cfg.nib, '') AS nib
+            FROM lkpm_reports r
+            LEFT JOIN lkpm_client_config cfg
+                ON cfg.client_id = r.client_id
+               AND COALESCE(r.company_id, 0) = COALESCE(cfg.company_id, 0)
+            WHERE r.client_id = $1 AND r.quarter = $2 AND r.year = $3
+            LIMIT 1
+            """,
+            client_id,
+            quarter,
+            year,
+        )
+        if report_row is None:
+            raise LkpmValidationError(
+                f"No lkpm_reports row for client_id={client_id}, quarter={quarter}, year={year}"
             )
-            if client_row is None:
-                raise LkpmValidationError(f"Client {client_id} not found")
 
-            client_name: str = client_row["full_name"] or f"client_{client_id}"
-            client_email: str | None = client_row.get("email") or None
-            client_drive_folder: str | None = client_row.get("google_drive_folder_id") or None
+        report_id: int = report_row["report_id"]
+        assignee: str = report_row.get("lkpm_assigned_to") or "—"
+        nib: str = report_row.get("nib") or "—"
+        realization_idr: int = int(report_row.get("realization_total") or 0)
 
-            # Fetch lkpm_reports row + NIB via lkpm_client_config
-            report_row = await conn.fetchrow(
-                """
-                SELECT r.id AS report_id, r.status, r.lkpm_assigned_to,
-                       r.realized_equipment_domestic + r.realized_equipment_import +
-                       r.realized_building_domestic + r.realized_building_import +
-                       r.realized_vehicle_domestic + r.realized_vehicle_import +
-                       r.realized_land + r.realized_working_capital + r.realized_other
-                       AS realization_total,
-                       COALESCE(cfg.nib, '') AS nib
-                FROM lkpm_reports r
-                LEFT JOIN lkpm_client_config cfg
-                    ON cfg.client_id = r.client_id
-                   AND COALESCE(r.company_id, 0) = COALESCE(cfg.company_id, 0)
-                WHERE r.client_id = $1 AND r.quarter = $2 AND r.year = $3
-                LIMIT 1
-                """,
-                client_id,
-                quarter,
-                year,
-            )
-            if report_row is None:
-                raise LkpmValidationError(
-                    f"No lkpm_reports row for client_id={client_id}, quarter={quarter}, year={year}"
-                )
+        # Fetch lkpm_receipts
+        receipt_rows = await conn.fetch(
+            """
+            SELECT kbli_code, kegiatan_usaha_desc, oss_status, stage
+            FROM lkpm_receipts
+            WHERE lkpm_report_id = $1
+            ORDER BY id
+            """,
+            report_id,
+        )
+        kbli_rows: list[dict] = [dict(r) for r in receipt_rows]
 
-            report_id: int = report_row["report_id"]
-            assignee: str = report_row.get("lkpm_assigned_to") or "—"
-            nib: str = report_row.get("nib") or "—"
-            realization_idr: int = int(report_row.get("realization_total") or 0)
-
-            # Fetch lkpm_receipts
-            receipt_rows = await conn.fetch(
-                """
-                SELECT kbli_code, kegiatan_usaha_desc, oss_status, stage
-                FROM lkpm_receipts
-                WHERE lkpm_report_id = $1
-                ORDER BY id
-                """,
-                report_id,
-            )
-            kbli_rows: list[dict] = [dict(r) for r in receipt_rows]
-
-        finally:
-            # Release only when we acquired from the pool (not a pre-existing connection)
-            if self._conn is None and self._pool is not None:
-                await self._pool.release(conn)
+        # Release connection if it came from the pool
+        if self._conn is None and self._pool is not None:
+            await self._pool.release(conn)
 
         # ── Step 3: Build PDF + XLSX ───────────────────────────────────
         from backend.services.compliance.lkpm_pdf_builder import (
@@ -610,6 +589,8 @@ class LkpmReadyPack:
         """Send a transactional email via Brevo HTTP API."""
         import os
 
+        import httpx
+
         api_key = os.getenv("SENDGRID_API_KEY", "")
         if not api_key:
             logger.warning("LkpmReadyPack: SENDGRID_API_KEY not set — skip email")
@@ -634,8 +615,8 @@ class LkpmReadyPack:
         }
 
         try:
-            client = _get_brevo_client()
-            resp = await client.post(url, json=payload, headers=headers)
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(url, json=payload, headers=headers)
             if resp.status_code in (200, 201, 202):
                 return True
             logger.error(
@@ -656,5 +637,4 @@ __all__ = [
     "generate_ready_pack_html",
     # new exports
     "LkpmReadyPack",
-    "close_brevo_client",
 ]
