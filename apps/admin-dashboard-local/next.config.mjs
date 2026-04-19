@@ -11,7 +11,11 @@ if (process.env.LOCAL_ONLY !== "1") {
 
 const nextConfig = {
   reactStrictMode: true,
-  output: "standalone",
+  // `output: "standalone"` was removed: this app only runs locally via
+  // `next start -p 3100` (see scripts/start-cost-dashboard.sh). Standalone
+  // is for minimal Docker images, which we explicitly don't need — and it
+  // triggers a runtime warning ("next start does not work with output:
+  // standalone configuration").
 };
 
 export default nextConfig;
