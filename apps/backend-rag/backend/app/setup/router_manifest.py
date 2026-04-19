@@ -215,9 +215,6 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── LAM Memory ──
     RouterEntry(name="lam_memory", process_groups=_RAG, tags=("memory",)),
 
-    # ── Compliance Alerts (outcome recording + autotune metrics) ──
-    RouterEntry(name="compliance_alerts", process_groups=_API, tags=("compliance",)),
-
     # ── LKPM Compliance ──
     RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
 
