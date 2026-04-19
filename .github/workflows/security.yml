@@ -278,6 +278,16 @@ jobs:
             --exclude-files 'venv/.*' \
             --exclude-files '\.git/.*'
 
+      - name: Auto-triage new findings
+        # The scan step above updates .secrets.baseline in place with any new
+        # findings, which arrive as unaudited. Re-run the path-pattern
+        # auto-triage so that findings inside known-safe paths (test fixtures,
+        # i18n locales, superpowers planning docs, etc.) get marked
+        # `is_secret: false` before the gate below checks them. Without this
+        # step, any commit that adds a false-positive in a greenlisted path
+        # breaks CI until a developer manually runs the script.
+        run: python3 scripts/detect_secrets_auto_triage.py --apply
+
       - name: Audit baseline (emit report)
         # --fail-on-unaudited is not a valid detect-secrets 1.5.0 flag — the
         # previous invocation was crashing on unknown argument (exit 2), which
