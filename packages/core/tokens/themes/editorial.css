@@ -5,27 +5,42 @@
  * Cap: ≤40 declarations.
  */
 
-[data-theme="editorial"] {
-  --surface-base:    #0c1f3a;
-  --surface-raised:  rgba(255, 255, 255, 0.04);
-  --surface-sunken:  rgba(0, 0, 0, 0.3);
-  --surface-overlay: rgba(12, 31, 58, 0.8);
-  --surface-scrim:   rgba(12, 31, 58, 0.9);
+/* Editorial — premium navy. Lightened 2 shades from the McKinsey baseline
+   (#0c1f3a → #1e3863) and softened with a subtle gradient top-highlight so the
+   surface reads like brushed material rather than flat ink. Same components,
+   same type scale, only neutrals and primary accent differ from dark.
+   Cap: ≤40 declarations. */
 
-  --text-primary:   rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.65);
-  --text-tertiary:  rgba(255, 255, 255, 0.35);
+[data-theme="editorial"] {
+  /* Base surface uses a subtle top-highlight gradient (premium feel).
+     Fallback solid for contexts that can't resolve gradients. */
+  --surface-base: linear-gradient(
+    180deg,
+    #24406e 0%,
+    #1e3863 35%,
+    #1a3258 100%
+  );
+  --surface-base-solid: #1e3863;
+  --surface-raised: rgba(255, 255, 255, 0.055);
+  --surface-sunken: rgba(0, 0, 0, 0.25);
+  --surface-overlay: rgba(30, 56, 99, 0.82);
+  --surface-scrim: rgba(26, 50, 88, 0.92);
+
+  --text-primary: rgba(255, 255, 255, 0.96);
+  --text-secondary: rgba(255, 255, 255, 0.68);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
   --text-on-accent: #ffffff;
 
-  --border-subtle:  rgba(255, 255, 255, 0.05);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-strong:  rgba(255, 255, 255, 0.2);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
 
-  --nav-bg:      rgba(12, 31, 58, 0.8);
-  --footer-bg:   #0a1830;
+  --nav-bg: rgba(14, 26, 48, 0.94);
+  --footer-bg: #162d50;
   --footer-text: var(--text-tertiary);
 
-  /* Editorial accent — McKinsey blue, not funnel-mapped. */
-  --accent-funnel:      #2251ff;
-  --accent-funnel-text: #4d74ff;
+  /* Editorial accent — brighter McKinsey-adjacent blue, lifted for AA contrast
+     on the new lighter base (#1e3863 gives 4.8:1 for #5c8aff text). */
+  --accent-funnel: #3a6dff;
+  --accent-funnel-text: #5c8aff;
 }
