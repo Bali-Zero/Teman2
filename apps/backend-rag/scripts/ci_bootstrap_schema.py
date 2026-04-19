@@ -121,7 +121,28 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations tables ensured in DB")
+        # lkpm_reports: created by old-style migration_063 (backend/migrations/
+        # *.py), which the modern runner (db/migrations_v2/*.sql) does not
+        # discover. migrations_v2 108_lkpm_receipts.sql FK-references it and
+        # 110_lkpm_allowlist_krisna.sql ALTERs it, so without this stub those
+        # two migrations fail on a fresh CI DB. Minimal columns only — enough
+        # for 108's FK target (id) and 110's ALTER (lkpm_assigned_to). No
+        # SQLModel class references it, so no stub Table registration needed.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS lkpm_reports (
+                id SERIAL PRIMARY KEY,
+                client_id INTEGER,
+                quarter TEXT,
+                year INTEGER,
+                status TEXT DEFAULT 'draft',
+                lkpm_assigned_to TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
