@@ -104,25 +104,6 @@ jobs:
           PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
             --junit-xml=test-results-core.xml
 
-      - name: Apply database migrations
-        # Router tests under backend/tests/app/routers/ assume the full schema
-        # (e.g. test_compliance_lkpm_readypack.py inserts into `clients`).
-        # Without this step pytest fails with
-        # `asyncpg.exceptions.UndefinedTableError: relation "clients" does not exist`.
-        #
-        # JWT_SECRET_KEY + API_KEYS must be set because backend.db.migrate imports
-        # backend.app.core.config.settings at module load, and Settings validates
-        # both on init. In pytest runs these come from conftest.py's
-        # os.environ.setdefault; in this standalone step we pass them explicitly
-        # using the same stub values.
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
-          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
-          API_KEYS: test_api_key_1,test_api_key_2
-        run: |
-          cd apps/backend-rag
-          PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
-
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
