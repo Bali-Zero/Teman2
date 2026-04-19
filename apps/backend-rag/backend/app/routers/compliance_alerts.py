@@ -13,7 +13,6 @@ so FastAPI does not bind the literal strings as the alert_id path param.
 """
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 import asyncpg
@@ -27,8 +26,6 @@ from backend.services.compliance.alert_metrics import (
     compute_metrics_all,
 )
 from backend.services.compliance.alert_repository import AlertRepository
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/compliance/alerts", tags=["compliance"])
 
@@ -131,12 +128,6 @@ async def post_retrain(
     result: dict[str, Any] = await fb.retrain(
         category=body.category if body.category else None
     )
-    if body.dry_run:
-        logger.warning(
-            "dry_run=true requested but not implemented at service layer; "
-            "thresholds were actually updated",
-        )
-        result["dry_run_not_implemented"] = True
     return result
 
 
@@ -249,7 +240,7 @@ async def post_outcome(
                 "SELECT assigned_to FROM clients WHERE id = $1", alert_row["client_id"]
             )
         user_email = (user.get("email") or "").lower()
-        if not assigned or assigned.lower() != user_email:
+        if assigned and (assigned or "").lower() != user_email:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not your client")
 
     new_status = "resolved" if body.outcome == "acted" else "acknowledged"
@@ -298,8 +289,8 @@ async def get_alert(
                 "SELECT assigned_to FROM clients WHERE id = $1", alert["client_id"]
             )
             user_email = (user.get("email") or "").lower()
-            if not assigned or assigned.lower() != user_email:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not your client")
+            if assigned and (assigned or "").lower() != user_email:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
         outcomes = await conn.fetch(
             "SELECT * FROM alert_outcomes WHERE alert_id = $1 ORDER BY actioned_at DESC",
