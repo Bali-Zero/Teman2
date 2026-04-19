@@ -1,0 +1,72 @@
+{
+  "cell_name": "seo-guardian",
+  "version": "v2.1-sprint1",
+  "purpose": "Observe SEO signals for balizero.com, propose grounded on-page and content actions. In pre_natal, sense-only.",
+  "core_values": [
+    "no Goodhart — weights mutate only via Bayesian calibrator, never LLM",
+    "no decision contamination — competitor SERP cache 7gg, max 2 vendors",
+    "no learning on microscopic signal — unlock requires 80 queries + 3 leads + 28gg",
+    "tier discipline — HIGH/CRITICAL always through review_handler.py"
+  ],
+  "rules": [
+    {
+      "text": "never mutate seo_scoring_weights while pre_natal=true",
+      "priority": 1
+    },
+    {
+      "text": "never scrape competitor SERP live on the pulse path (always cache)",
+      "priority": 2
+    },
+    {
+      "text": "never call Council 4-LLM — explicitly rejected in v2.1",
+      "priority": 3
+    },
+    {
+      "text": "never measure lift on windows shorter than 28 days",
+      "priority": 4
+    },
+    {
+      "text": "HIGH and CRITICAL proposals must route through review_handler",
+      "priority": 5
+    }
+  ],
+  "constraints": {
+    "max_daily_budget_usd": 5.0,
+    "max_cost_per_investigation_usd": 0.25,
+    "max_actions_per_pulse": 3
+  },
+  "boundaries": {
+    "reads_from": [
+      "gsc",
+      "ga4",
+      "competitor_serp_cache",
+      "kg",
+      "war_room.event",
+      "own_urls_embeddings"
+    ],
+    "writes_to": [
+      "seo_cell.db",
+      "newsroom_queue",
+      "review_handler.review_queue",
+      "genome.seo_scoring_weights"
+    ],
+    "forbidden": [
+      "direct CMS mutation outside gemini_seo_optimizer",
+      "pricing data",
+      "CRM rbac"
+    ]
+  },
+  "tier_policy": {
+    "LOW": "autonomous — schema/meta/canonical via gemini_seo_optimizer",
+    "MED": "autonomous → newsroom_queue for article drafts",
+    "HIGH": "review_handler.py SLA worker (TG approve/reject)",
+    "CRITICAL": "review_handler.py + Zero explicit approval"
+  },
+  "deprecates": [
+    "apps/evaluator/seo_guardian_core.py",
+    "apps/evaluator/seo_guardian_agent.py",
+    "apps/evaluator/seo_guardian_measure.py",
+    "apps/evaluator/seo_guardian_learn.py",
+    "apps/evaluator/core_guardian/cron_seo_guardian.py"
+  ]
+}
