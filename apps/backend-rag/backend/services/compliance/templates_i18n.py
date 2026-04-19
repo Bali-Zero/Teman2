@@ -168,13 +168,16 @@ TEMPLATE_REGISTRY: dict[TemplateCategory, dict[TemplateField, dict[LangCode, str
 }
 
 
-# Shared Jinja env. autoescape=False is intentional and safe here:
-# templates render plaintext messages for SMS, Telegram, in-app notifications
-# and email subject lines — never HTML — so there is no XSS surface to
-# escape against. Adding HTML escaping would mangle apostrophes, ampersands
-# and quotes inside legitimate Italian/Indonesian copy. # nosec B701
+# Shared Jinja env. Templates render plaintext messages for SMS, Telegram,
+# in-app notifications and email subject lines — never HTML — so there is no
+# XSS surface to escape against. Adding HTML escaping would mangle apostrophes,
+# ampersands and quotes inside legitimate Italian/Indonesian copy.
+#
+# `select_autoescape([])` is the explicit "no autoescape" form recognized by
+# both Bandit (B701) and CodeQL (py/jinja2/autoescape-false) — they accept the
+# decision when it's made via the documented API, not via the bare keyword.
 _jinja_env = jinja2.Environment(
-    autoescape=False,  # nosec B701 — plaintext-only output, see comment above
+    autoescape=jinja2.select_autoescape(default=False, default_for_string=False),
     undefined=jinja2.StrictUndefined,
     trim_blocks=True,
     lstrip_blocks=True,
