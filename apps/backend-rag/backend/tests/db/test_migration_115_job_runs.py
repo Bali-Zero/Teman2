@@ -1,4 +1,4 @@
-"""Tests for migration 112: job_runs table."""
+"""Tests for migration 115: job_runs table."""
 from __future__ import annotations
 
 import os
@@ -6,7 +6,7 @@ import os
 import asyncpg
 import pytest
 
-from backend.migrations.migration_112_job_runs import apply, rollback
+from backend.migrations.migration_115_job_runs import apply, rollback
 
 TEST_DB_URL = (
     os.environ.get("TEST_DATABASE_URL")

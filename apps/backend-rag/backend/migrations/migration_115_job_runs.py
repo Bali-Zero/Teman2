@@ -1,5 +1,5 @@
 """
-Migration 112: job_runs table for the unified jobs runner.
+Migration 115: job_runs table for the unified jobs runner.
 
 Purpose:
 - Persist every job dispatch, retry, and completion for the in-process
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 async def apply(conn: Any) -> None:
-    """Apply migration 112 — create job_runs table and indexes."""
-    logger.info("Applying migration 112: job_runs table")
+    """Apply migration 115 — create job_runs table and indexes."""
+    logger.info("Applying migration 115: job_runs table")
 
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS job_runs (
@@ -60,16 +60,16 @@ async def apply(conn: Any) -> None:
     """)
     logger.info("Created indexes on job_runs")
 
-    logger.info("Applied migration 112: job_runs table")
+    logger.info("Applied migration 115: job_runs table")
 
 
 async def rollback(conn: Any) -> None:
-    """Rollback migration 112 — drop job_runs table."""
-    logger.info("Rolling back migration 112: job_runs table")
+    """Rollback migration 115 — drop job_runs table."""
+    logger.info("Rolling back migration 115: job_runs table")
 
     await conn.execute("DROP INDEX IF EXISTS idx_job_runs_status_name;")
     await conn.execute("DROP INDEX IF EXISTS idx_job_runs_idempotency;")
     await conn.execute("DROP INDEX IF EXISTS idx_job_runs_name_tick;")
     await conn.execute("DROP TABLE IF EXISTS job_runs;")
 
-    logger.info("Rolled back migration 112: job_runs table")
+    logger.info("Rolled back migration 115: job_runs table")

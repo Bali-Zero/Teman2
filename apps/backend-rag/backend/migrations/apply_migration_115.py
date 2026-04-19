@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Apply migration 112: job_runs table.
+Apply migration 115: job_runs table.
 
 Usage:
-    python -m backend.migrations.apply_migration_112
+    python -m backend.migrations.apply_migration_115
 
 Or on Fly.io:
-    fly ssh console -a nuzantara-rag -C "cd /app && python -m backend.migrations.apply_migration_112"
+    fly ssh console -a nuzantara-rag -C "cd /app && python -m backend.migrations.apply_migration_115"
 
 Reference: docs/superpowers/specs/2026-04-18-backend-jobs-agents-orchestration-design.md
 """
@@ -20,7 +20,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from migrations.migration_112_job_runs import apply  # noqa: E402
+from migrations.migration_115_job_runs import apply  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -47,11 +47,11 @@ async def main() -> None:
                 "Table job_runs already exists; IF NOT EXISTS guards will no-op the CREATE statements"
             )
 
-        logger.info("Applying migration 112: job_runs")
+        logger.info("Applying migration 115: job_runs")
         await apply(conn)
 
         row_count = await conn.fetchval("SELECT COUNT(*) FROM job_runs")
-        logger.info("✅ Migration 112 applied. job_runs rows=%d", row_count)
+        logger.info("✅ Migration 115 applied. job_runs rows=%d", row_count)
     finally:
         await conn.close()
 
