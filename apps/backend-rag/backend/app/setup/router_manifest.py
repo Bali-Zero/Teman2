@@ -298,6 +298,13 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Voice ──
     RouterEntry(name="voice", process_groups=_RAG, tags=("media",)),
 
+    # ── War Room Dashboard (Sprint 11 — metrics aggregate queries) ──
+    RouterEntry(
+        name="war_room_dashboard",
+        process_groups=_API,
+        tags=("war-room", "admin"),
+    ),
+
     # ── Webhooks ──
     RouterEntry(name="webhooks", process_groups=_API, tags=("channels",)),
 
