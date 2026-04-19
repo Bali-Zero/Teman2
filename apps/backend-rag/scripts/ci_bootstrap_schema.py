@@ -68,16 +68,25 @@ def main() -> int:
     engine = create_engine(db_url, echo=False, future=True)
 
     # Legacy non-SQLModel tables that SQLModel tables hold FKs into.
-    # `conversation_ratings.user_id` points at `user_profiles(id)`; the table
-    # comes from migration 023 (long gone from the numbered migration files —
-    # predates `migration_N.py` naming). Without this pre-step, create_all()
-    # fails with NoReferencedTableError on that FK. Definition mirrors
+    # `conversation_ratings.user_id` points at `user_profiles(id)` — the table
+    # predates the numbered migration files (old migration 023). Two things
+    # are needed:
+    #   1. The table has to exist in the DB so downstream inserts work.
+    #   2. The table has to be in SQLModel.metadata so create_all() can
+    #      resolve the FK target. SQLAlchemy validates FKs against its own
+    #      metadata registry, not the live database.
+    # We do both by CREATE-ing it via raw DDL *and* registering a stub
+    # `Table` object in SQLModel.metadata. Definition mirrors
     # tests/integration/conftest.py so the CI schema stays consistent with
     # the existing integration fixtures.
     # Kept minimal — only tables that are FK targets for SQLModel tables.
     # Other legacy tables (team_access, messaging_users, etc.) are created
-    # by migrations that ALTER/add-column, so the migrate step handles them.
-    from sqlalchemy import text
+    # by migration files that ALTER/add-column them, so the migrate step
+    # handles them downstream.
+    from sqlalchemy import Column, DateTime, String, Table, text
+    from sqlalchemy.dialects.postgresql import UUID
+    from sqlalchemy.sql import func
+
     with engine.begin() as conn:
         conn.execute(text(
             """
@@ -95,7 +104,27 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles table ensured")
+    print("[bootstrap] legacy user_profiles table ensured in DB")
+
+    # Register a stub Table so SQLAlchemy's FK resolver finds the target.
+    # Must live in the SAME MetaData the SQLModel classes use, otherwise
+    # create_all() still raises NoReferencedTableError.
+    if "user_profiles" not in SQLModel.metadata.tables:
+        Table(
+            "user_profiles",
+            SQLModel.metadata,
+            Column("id", UUID(as_uuid=True), primary_key=True),
+            Column("email", String(255), unique=True, nullable=False),
+            Column("full_name", String(255)),
+            Column("phone", String(50)),
+            Column("user_type", String(20), nullable=False),
+            Column("status", String(20)),
+            Column("synthesis", String),
+            Column("language_pref", String(10)),
+            Column("created_at", DateTime(timezone=True), server_default=func.now()),
+            Column("updated_at", DateTime(timezone=True), server_default=func.now()),
+        )
+        print("[bootstrap] user_profiles stub registered in SQLModel.metadata")
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
