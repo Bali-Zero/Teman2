@@ -221,6 +221,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── LKPM Compliance ──
     RouterEntry(name="lkpm", process_groups=_API, tags=("compliance",)),
 
+    # ── LLM Cost Tracking (remote ingestion for Pro/Air cron agents) ──
+    RouterEntry(name="llm_costs", process_groups=_API, tags=("observability", "admin")),
+
     # ── Media ──
     RouterEntry(name="media", process_groups=_API, tags=("media",)),
 
