@@ -15,6 +15,8 @@ Usage:
     python -m mata_garuda.cli council reject <id> --reason "..."
     python -m mata_garuda.cli council stats
     python -m mata_garuda.cli council auto
+    python -m mata_garuda.cli health
+    python -m mata_garuda.cli health --json
     python -m mata_garuda.cli version
 """
 from __future__ import annotations
@@ -200,6 +202,19 @@ def cmd_version(args: argparse.Namespace) -> int:
     """Print Mata Garuda version."""
     print(f"mata-garuda {__version__}")
     return 0
+
+
+def cmd_health(args: argparse.Namespace) -> int:
+    """Print Mata Garuda health dashboard (streams, agents, KB, bridge)."""
+    from mata_garuda.tools.health_tools import build_health_report, format_report
+
+    report = build_health_report()
+    if getattr(args, "json", False):
+        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+    else:
+        print(format_report(report))
+
+    return 0 if report["status"] != "RED" else 2
 
 
 # ── Council subcommands ─────────────────────────────────────────────────
@@ -406,6 +421,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_version = sub.add_parser("version", help="Print version")
     p_version.set_defaults(func=cmd_version)
+
+    p_health = sub.add_parser("health", help="System health dashboard")
+    p_health.add_argument(
+        "--json", action="store_true",
+        help="Emit machine-readable JSON instead of the human report"
+    )
+    p_health.set_defaults(func=cmd_health)
 
     # ── Council subcommands ──────────────────────────────────────────
     p_council = sub.add_parser("council", help="Multi-LLM deliberation (Consiglio)")
