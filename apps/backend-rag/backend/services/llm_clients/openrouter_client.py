@@ -25,6 +25,7 @@ from enum import Enum
 import httpx
 
 from backend.app.core.config import settings
+from backend.services.observability import llm_cost_tracked, set_usage
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ class OpenRouterClient:
         self.site_url = site_url
         self.site_name = site_name
         self._client: httpx.AsyncClient | None = None
+        self._last_selected_model: str = "openrouter-unknown"
 
     def _get_client(self) -> httpx.AsyncClient:
         """Get or create the shared async client."""
@@ -151,6 +153,7 @@ class OpenRouterClient:
             "X-Title": self.site_name,  # For OpenRouter rankings
         }
 
+    @llm_cost_tracked(provider="openrouter", model_attr="_last_selected_model")
     async def complete(
         self,
         messages: list[dict],
@@ -217,8 +220,17 @@ class OpenRouterClient:
         model_used = data.get("model", model_id or "unknown")
         model_info = MODEL_INFO.get(model_used, {"name": model_used, "context": 0})
 
+        # Capture the dynamically-selected model for cost tracking
+        self._last_selected_model = model_used
+
         # Extract usage
         usage = data.get("usage", {})
+
+        # Report token usage to the cost tracking decorator
+        set_usage(
+            input_tokens=int(usage.get("prompt_tokens", 0)),
+            output_tokens=int(usage.get("completion_tokens", 0)),
+        )
 
         logger.info(f"OpenRouter used model: {model_info['name']}")
 
@@ -232,6 +244,7 @@ class OpenRouterClient:
             cost=0.0,  # Free models
         )
 
+    # NOTE: streaming path is not yet cost-tracked — follow-up task.
     async def complete_stream(
         self,
         messages: list[dict],

@@ -16,6 +16,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from backend.app.core.config import settings
+from backend.services.observability import llm_cost_tracked, set_usage
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,14 @@ class AudioService:
             raise ValueError("STT requires OpenAI API key")
 
         try:
-            # Read audio data
+            # Route file-path case through the cost-tracked private method.
+            # Buffer case calls OpenAI directly (duration unavailable from stream).
             if isinstance(file_path_or_buffer, str):
-                with open(file_path_or_buffer, "rb") as file_obj:
-                    transcript = await self.openai_client.audio.transcriptions.create(
-                        model=model, file=file_obj, language=language,
-                    )
-                    return transcript.text
+                return await self._openai_stt(
+                    file_path=file_path_or_buffer,
+                    duration_seconds=0,
+                    language=language,
+                )
             else:
                 transcript = await self.openai_client.audio.transcriptions.create(
                     model=model, file=file_path_or_buffer, language=language,
@@ -110,7 +112,7 @@ class AudioService:
         # Fallback to OpenAI
         if self.openai_client:
             try:
-                audio_content = await self._openai_tts(text, voice, model)
+                audio_content = await self._openai_tts(text=text, voice=voice, model=model)
                 logger.info(f"TTS via OpenAI (fallback): {len(text)} chars, voice={voice}")
                 if output_path:
                     with open(output_path, "wb") as f:
@@ -166,14 +168,43 @@ class AudioService:
             logger.warning(f"Pollinations TTS error: {e}")
             return None
 
-    async def _openai_tts(self, text: str, voice: str, model: str = "tts-1") -> bytes:
+    @llm_cost_tracked(provider="openai_audio", static_model="tts-1")
+    async def _openai_tts(self, *, text: str, voice: str, model: str = "tts-1") -> bytes:
         """
-        Generate speech using OpenAI TTS.
+        Generate speech using OpenAI TTS (cost-tracked).
+
+        Pricing unit: $15 / 1M characters (input_tokens = len(text)).
         """
+        set_usage(input_tokens=len(text), output_tokens=0)
         response = await self.openai_client.audio.speech.create(
             model=model, voice=voice, input=text,
         )
         return response.content
+
+    @llm_cost_tracked(provider="openai_audio", static_model="whisper-1")
+    async def _openai_stt(
+        self,
+        *,
+        file_path: str,
+        duration_seconds: float = 0,
+        language: str | None = None,
+    ) -> str:
+        """
+        Transcribe audio using OpenAI Whisper from a file path (cost-tracked).
+
+        Pricing unit: $0.006 / 60 s (input_tokens = int(duration_seconds)).
+        When duration_seconds is unknown, pass 0 — cost is recorded as $0
+        rather than blocking the call.
+        """
+        set_usage(input_tokens=int(duration_seconds), output_tokens=0)
+        with open(file_path, "rb") as f:
+            resp = await self.openai_client.audio.transcriptions.create(
+                model="whisper-1", file=f, language=language,
+            )
+        text = resp.text
+        # Update output_tokens now that we know the transcription length.
+        set_usage(input_tokens=int(duration_seconds), output_tokens=len(text) // 4)
+        return text
 
     async def close(self):
         """Close the HTTP client."""
