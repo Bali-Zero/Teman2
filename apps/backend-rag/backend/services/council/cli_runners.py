@@ -25,6 +25,8 @@ from typing import Any
 
 import httpx
 
+from backend.services.observability import llm_cost_tracked, set_usage
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,6 +91,7 @@ class ClaudeCLIRunner(CLIRunner):
         )
         self.extra_args = extra_args or []
 
+    # NOTE: Claude CLI uses Max OAuth flat rate — no per-call tracking needed.
     async def run(
         self, prompt: str, timeout: int | None = None,
     ) -> RunnerResult:
@@ -115,6 +118,9 @@ class GeminiCLIRunner(CLIRunner):
     def __init__(self, binary_path: str | None = None) -> None:
         self.binary_path = binary_path or shutil.which("gemini") or "gemini"
 
+    # TODO: tracking for paid Gemini API path requires subprocess stdout token
+    # parsing — deferred to follow-up. The CLI subprocess does not return
+    # structured usage data, so token counts cannot be reliably extracted here.
     async def run(
         self, prompt: str, timeout: int | None = None,
     ) -> RunnerResult:
@@ -154,6 +160,7 @@ class DeepSeekHTTPRunner(CLIRunner):
         self.model = model or self.DEFAULT_MODEL
         self._client = http_client
 
+    @llm_cost_tracked(provider="deepseek", model_attr="model")
     async def run(
         self, prompt: str, timeout: int | None = None,
     ) -> RunnerResult:
@@ -192,6 +199,11 @@ class DeepSeekHTTPRunner(CLIRunner):
                     duration_ms=duration_ms,
                 )
             body = resp.json()
+            usage = body.get("usage", {})
+            set_usage(
+                input_tokens=int(usage.get("prompt_tokens", 0)),
+                output_tokens=int(usage.get("completion_tokens", 0)),
+            )
             content = body["choices"][0]["message"]["content"]
             return RunnerResult(
                 runner_name=self.name,

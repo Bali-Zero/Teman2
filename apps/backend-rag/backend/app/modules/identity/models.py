@@ -5,7 +5,7 @@ SQLModel models mapping to existing Node.js backend tables
 
 from datetime import datetime
 
-from sqlalchemy import Column
+from sqlalchemy import Boolean, Column, String
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -29,9 +29,17 @@ class User(SQLModel, table=True):
     )
 
     # User identification
-    # Map Python 'name' to database 'full_name' column
+    # Map Python 'name' to database 'full_name' column.
+    # An explicit `String(255)` is required on `sa_column`: without it,
+    # SQLAlchemy can't infer a column type (sa_column overrides the
+    # Python annotation `str`), and `metadata.create_all()` raises
+    # `CompileError: Can't generate DDL for NullType()`. Prod/dev kept
+    # working because the table existed before the model was first
+    # materialised — CI, which starts from an empty DB, hit the crash.
     name: str = Field(
-        sa_column=Column("full_name", nullable=False), max_length=255, description="Full name",
+        sa_column=Column("full_name", String(255), nullable=False),
+        max_length=255,
+        description="Full name",
     )
     email: str = Field(
         unique=True, index=True, max_length=255, description="Email address (unique)",
@@ -51,9 +59,14 @@ class User(SQLModel, table=True):
     personalized_response: bool = Field(
         default=False, description="Enable personalized AI responses",
     )
-    # Map Python 'is_active' to database 'active' column
+    # Map Python 'is_active' to database 'active' column.
+    # Explicit `Boolean` type is required on sa_column — same reason as
+    # `name` above (sa_column overrides the annotation, without a type
+    # SQLAlchemy produces NullType which create_all can't compile).
     is_active: bool = Field(
-        sa_column=Column("active", default=True), default=True, description="Account active status",
+        sa_column=Column("active", Boolean, default=True),
+        default=True,
+        description="Account active status",
     )
 
     # Notes/Metadata for AI understanding
