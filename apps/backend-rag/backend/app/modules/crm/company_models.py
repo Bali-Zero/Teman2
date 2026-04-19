@@ -26,7 +26,11 @@ class Company(SQLModel, table=True):
 
     # Basic Info
     company_name: str = Field(max_length=255, nullable=False)
-    company_type: str = Field(default="PT PMA", max_length=50)  # PT PMA, PT Perorangan, CV
+    company_type: str = Field(
+        default="PT PMA",
+        max_length=50,
+        sa_column_kwargs={"server_default": "PT PMA"},
+    )  # PT PMA, PT Perorangan, CV
     brand_name: str | None = Field(default=None, max_length=255)
 
     # Business Identification
@@ -54,7 +58,10 @@ class Company(SQLModel, table=True):
 
     # Status & Metadata
     status: str = Field(
-        default="active", max_length=50, index=True,
+        default="active",
+        max_length=50,
+        index=True,
+        sa_column_kwargs={"server_default": "active"},
     )  # active, dormant, dissolved, in_setup
     setup_progress: int = Field(default=0)  # 0-100
 
@@ -90,7 +97,9 @@ class ClientCompanyLink(SQLModel, table=True):
 
     # Role & Association
     role: str = Field(
-        default="shareholder", max_length=50,
+        default="shareholder",
+        max_length=50,
+        sa_column_kwargs={"server_default": "shareholder"},
     )  # Director, Commissioner, Shareholder, etc.
     is_primary: bool = Field(default=False)
 
@@ -104,7 +113,11 @@ class ClientCompanyLink(SQLModel, table=True):
     end_date: date | None = None
 
     # Status
-    status: str = Field(default="active", max_length=50)  # active, resigned, terminated, pending
+    status: str = Field(
+        default="active",
+        max_length=50,
+        sa_column_kwargs={"server_default": "active"},
+    )  # active, resigned, terminated, pending
 
     # Notes
     notes: str | None = Field(default=None, sa_column=Column(Text))
@@ -146,7 +159,7 @@ class CompanyDocument(SQLModel, table=True):
     reminder_date: date | None = None
 
     # File Storage
-    storage_type: str = Field(default="google_drive", max_length=50)
+    storage_type: str = Field(default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"})
     google_drive_file_id: str | None = Field(default=None, max_length=255)
     google_drive_file_url: str | None = Field(default=None, sa_column=Column(Text))
     file_name: str | None = Field(default=None, max_length=500)
@@ -160,7 +173,10 @@ class CompanyDocument(SQLModel, table=True):
 
     # Status
     status: str = Field(
-        default="active", max_length=50, index=True,
+        default="active",
+        max_length=50,
+        index=True,
+        sa_column_kwargs={"server_default": "active"},
     )  # active, expired, archived, pending
 
     # Notes
@@ -212,8 +228,7 @@ class TaxRecord(SQLModel, table=True):
     next_payment_date: date | None = None
 
     # Status
-    compliance_status: str = Field(default="compliant", max_length=50, index=True)
-
+    compliance_status: str = Field(default="compliant", max_length=50, index=True, sa_column_kwargs={"server_default": "compliant"})
     # Custom Fields
     custom_fields: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
@@ -249,16 +264,19 @@ class TaxDocument(SQLModel, table=True):
     # Amounts
     reported_amount: Decimal | None = Field(default=None, sa_column=Column(Numeric(15, 2)))
     paid_amount: Decimal | None = Field(default=None, sa_column=Column(Numeric(15, 2)))
-    currency: str = Field(default="IDR", max_length=10)
-
+    currency: str = Field(default="IDR", max_length=10, sa_column_kwargs={"server_default": "IDR"})
     # File Storage
-    storage_type: str = Field(default="google_drive", max_length=50)
+    storage_type: str = Field(default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"})
     google_drive_file_id: str | None = Field(default=None, max_length=255)
     google_drive_file_url: str | None = Field(default=None, sa_column=Column(Text))
     file_name: str | None = Field(default=None, max_length=500)
 
     # Status
-    status: str = Field(default="filed", max_length=50)  # filed, paid, corrected, amended
+    status: str = Field(
+        default="filed",
+        max_length=50,
+        sa_column_kwargs={"server_default": "filed"},
+    )  # filed, paid, corrected, amended
 
     # Notes
     notes: str | None = Field(default=None, sa_column=Column(Text))
