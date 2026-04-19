@@ -20,7 +20,10 @@ from backend.db.migration_base import (
 logger = logging.getLogger(__name__)
 
 # Re-export for backwards compatibility with existing tests/callers.
+# `__all__` advertises the re-export so static analyzers don't flag it
+# as dead code (CodeQL: py/unused-global-variable).
 _ROLLBACK_MARKER_RE = ROLLBACK_MARKER_RE
+__all__ = ["MigrationManager", "_ROLLBACK_MARKER_RE", "_extract_rollback_sql"]
 
 
 def _extract_rollback_sql(sql_text: str) -> str | None:
