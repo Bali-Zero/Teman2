@@ -54,18 +54,50 @@ def _err_resp(status: int = 400, text: str = "error") -> MagicMock:
 
 
 def test_requires_ig_user_id_and_token(monkeypatch):
-    monkeypatch.delenv("IG_USER_ID", raising=False)
-    monkeypatch.delenv("IG_LONG_LIVED_TOKEN", raising=False)
+    for k in (
+        "IG_USER_ID",
+        "IG_LONG_LIVED_TOKEN",
+        "INSTAGRAM_ACCOUNT_ID",
+        "INSTAGRAM_ACCESS_TOKEN",
+    ):
+        monkeypatch.delenv(k, raising=False)
     with pytest.raises(PublisherError):
         IGPublisher()
 
 
 def test_pulls_env(monkeypatch):
+    for k in ("INSTAGRAM_ACCOUNT_ID", "INSTAGRAM_ACCESS_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("IG_USER_ID", "99999")
     monkeypatch.setenv("IG_LONG_LIVED_TOKEN", "EAABsomething")
     ig = IGPublisher()
     assert ig.ig_user_id == "99999"
     assert ig.access_token == "EAABsomething"
+
+
+def test_instagram_env_fallback(monkeypatch):
+    """IG_* vars take precedence but INSTAGRAM_* vars are accepted as fallback.
+
+    Platform secrets on Fly use the INSTAGRAM_* naming (shared with the
+    existing channels/instagram flow). War Room publisher reads both.
+    """
+    monkeypatch.delenv("IG_USER_ID", raising=False)
+    monkeypatch.delenv("IG_LONG_LIVED_TOKEN", raising=False)
+    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "77777")
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "EAABfallback")
+    ig = IGPublisher()
+    assert ig.ig_user_id == "77777"
+    assert ig.access_token == "EAABfallback"
+
+
+def test_ig_vars_win_over_instagram_fallback(monkeypatch):
+    monkeypatch.setenv("IG_USER_ID", "primary")
+    monkeypatch.setenv("IG_LONG_LIVED_TOKEN", "primary_tok")
+    monkeypatch.setenv("INSTAGRAM_ACCOUNT_ID", "fallback")
+    monkeypatch.setenv("INSTAGRAM_ACCESS_TOKEN", "fallback_tok")
+    ig = IGPublisher()
+    assert ig.ig_user_id == "primary"
+    assert ig.access_token == "primary_tok"
 
 
 # ── Validation ─────────────────────────────────────────────────
