@@ -47,7 +47,7 @@ export function TokenExplorer() {
     >
       {/* Header + controls */}
       <header className="flex items-center gap-6 mb-12 pb-6" style={{ borderBottom: "1px solid var(--border-default)" }}>
-        <BZLogo variant="mark" size={56} />
+        <BZLogo variant="mark" size={28} />
         <h1 className="text-2xl font-bold tracking-tight">Token Explorer</h1>
         <span style={{ color: "var(--text-tertiary)" }} className="text-xs uppercase tracking-widest">
           @balizero/core · v0.1.0
@@ -142,13 +142,12 @@ export function TokenExplorer() {
       {/* Per-funnel accent — leaf-scoped (the §10.4 demo) */}
       <Section
         title="Per-Funnel Accent — Leaf Scoping"
-        hint="Each card on the left carries its own data-funnel attribute → fixed accent. The card on the right has none → reads the global funnel set by the dropdown above. Validates design §10.4."
+        hint="Each card carries its own data-funnel. All four accent colors render simultaneously without conflict. This validates design §10.4."
       >
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {FUNNELS.map((f) => (
-            <FunnelDemoCard key={f} funnel={f} fixed />
+            <FunnelDemoCard key={f} funnel={f} />
           ))}
-          <FunnelDemoCard funnel={funnel ?? "visa"} fixed={false} />
         </div>
       </Section>
 
@@ -229,22 +228,14 @@ function Section({ title, hint, children }: { title: string; hint: string; child
   );
 }
 
-function FunnelDemoCard({
-  funnel,
-  fixed,
-}: {
-  funnel: Exclude<Funnel, null>;
-  fixed: boolean;
-}) {
+function FunnelDemoCard({ funnel }: { funnel: Exclude<Funnel, null> }) {
   return (
     <article
-      data-funnel={fixed ? funnel : undefined}
+      data-funnel={funnel}
       className="rounded-xl p-6 transition-transform hover:-translate-y-1"
       style={{
         background: "var(--surface-raised)",
-        border: fixed
-          ? "1px solid var(--border-default)"
-          : "2px dashed var(--accent-funnel)",
+        border: "1px solid var(--border-default)",
         boxShadow: "0 8px 32px color-mix(in srgb, var(--accent-funnel) 12%, transparent)",
       }}
     >
@@ -257,7 +248,7 @@ function FunnelDemoCard({
           className="text-[10px] uppercase tracking-widest font-semibold"
           style={{ color: "var(--accent-funnel-text)" }}
         >
-          {fixed ? funnel : "global"}
+          {funnel}
         </span>
       </div>
       <h3
@@ -267,7 +258,7 @@ function FunnelDemoCard({
         {funnel.toUpperCase()}
       </h3>
       <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
-        {fixed ? `data-funnel="${funnel}" · leaf` : "no data-funnel · inherits global"}
+        data-funnel="{funnel}" · scoped accent
       </p>
       <button
         className="px-4 py-2 rounded-md text-xs font-bold"
