@@ -104,6 +104,17 @@ jobs:
           PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
             --junit-xml=test-results-core.xml
 
+      - name: Apply database migrations
+        # Router tests under backend/tests/app/routers/ assume the full schema
+        # (e.g. test_compliance_lkpm_readypack.py inserts into `clients`).
+        # Without this step pytest fails with
+        # `asyncpg.exceptions.UndefinedTableError: relation "clients" does not exist`.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
+
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
