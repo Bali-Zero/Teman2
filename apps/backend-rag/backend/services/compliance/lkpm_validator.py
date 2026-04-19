@@ -100,7 +100,7 @@ class LKPMValidator:
                 )
                 found_set = {row["entity_id"].replace("kbli:", "") for row in found_codes}
         except Exception as e:
-            logger.warning("KBLI validation query failed: %s", e)
+            logger.warning(f"KBLI validation query failed: {e}")
             found_set = set()
 
         for code in registered_kbli:
@@ -147,7 +147,7 @@ class LKPMValidator:
                 )
                 crm_kitas_count = row["kitas_count"] if row else 0
         except Exception as e:
-            logger.warning("WNA count query failed: %s", e)
+            logger.warning(f"WNA count query failed: {e}")
             crm_kitas_count = -1  # Unknown
 
         if crm_kitas_count < 0:
@@ -200,7 +200,7 @@ class LKPMValidator:
                     client_id,
                 )
         except Exception as e:
-            logger.warning("Zero realization query failed: %s", e)
+            logger.warning(f"Zero realization query failed: {e}")
             return alerts
 
         consecutive_zero = 0
