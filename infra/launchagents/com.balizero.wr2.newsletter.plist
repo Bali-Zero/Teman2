@@ -32,6 +32,12 @@
         <string>/Users/nuzantara</string>
         <key>PATH</key>
         <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!-- Canary Strada B (2026-04-20 → 2026-04-27): block Brevo send. -->
+        <!-- Remove this pair after day-7 review if canary gate passes.  -->
+        <key>NEWSLETTER_SKIP_SEND</key>
+        <string>1</string>
+        <key>WR2_CANARY</key>
+        <string>1</string>
     </dict>
 </dict>
 </plist>
