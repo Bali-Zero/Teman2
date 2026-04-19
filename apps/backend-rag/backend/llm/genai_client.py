@@ -33,9 +33,8 @@ import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
-from backend.llm.metrics_emitter import emit_llm_metric
-
 from backend.app.core.config import settings
+from backend.llm.metrics_emitter import emit_llm_metric
 
 logger = logging.getLogger(__name__)
 
@@ -309,9 +308,16 @@ class GenAIClient:
         temperature: float = 0.4,
         safety_settings: list | None = None,
         timeout_ms: int | None = None,
+        endpoint: str | None = None,
+        request_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Generate content asynchronously.
+
+        Every call is recorded through
+        :func:`backend.services.observability.record_llm_call` (triple-write
+        Prometheus + Postgres + JSONL) in addition to the existing Redis
+        metric stream.
 
         Args:
             contents: User message or list of messages
@@ -320,6 +326,9 @@ class GenAIClient:
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
             safety_settings: Optional safety settings
+            endpoint: Caller identifier for cost attribution
+                (e.g. ``"visa_oracle"``). Strongly recommended.
+            request_id: HTTP correlation id if available.
 
         Returns:
             Dictionary with 'text', 'model', 'usage' keys
@@ -337,6 +346,10 @@ class GenAIClient:
         )
 
         t0 = time.perf_counter()
+        prompt_tokens = 0
+        completion_tokens = 0
+        success = False
+        error_class: str | None = None
         try:
             response = await self._client.aio.models.generate_content(
                 model=model,
@@ -347,6 +360,7 @@ class GenAIClient:
             latency_ms = round((time.perf_counter() - t0) * 1000)
             prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0)
             completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0)
+            success = True
             logger.info(
                 "LLM call",
                 extra={
@@ -371,6 +385,7 @@ class GenAIClient:
             }
         except Exception as e:
             latency_ms = round((time.perf_counter() - t0) * 1000)
+            error_class = type(e).__name__
             logger.error(
                 "LLM call failed",
                 extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
@@ -379,6 +394,28 @@ class GenAIClient:
                 provider="gemini", model=model, latency_ms=latency_ms, status="error",
             )
             raise
+        finally:
+            # Indestructible cost ledger (see
+            # backend/services/observability/llm_cost_recorder.py).
+            try:
+                from backend.services.llm_clients.pricing import calculate_cost
+                from backend.services.observability import record_llm_call
+
+                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                await record_llm_call(
+                    provider="gemini",
+                    model=model,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    cost_usd=cost_usd,
+                    success=success,
+                    latency_ms=round((time.perf_counter() - t0) * 1000),
+                    endpoint=endpoint,
+                    request_id=request_id,
+                    error_class=error_class,
+                )
+            except Exception as rec_exc:  # noqa: BLE001 — never break the caller
+                logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
 
     async def generate_content_stream(
         self,
