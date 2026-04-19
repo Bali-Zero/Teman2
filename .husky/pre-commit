@@ -7,7 +7,9 @@ if [ -n "$PY_FILES" ]; then
     # Exclude scripts/ and tests/ from this check (they can use print)
     BACKEND_PY_FILES=$(echo "$PY_FILES" | grep -E '^apps/backend-rag/backend/(app|services|core|middleware)/' || true)
     if [ -n "$BACKEND_PY_FILES" ]; then
-        if echo "$BACKEND_PY_FILES" | xargs grep -l 'print(' 2>/dev/null; then
+        # Use word-boundary check so identifiers ending in "print(" don't false-match
+        # (es. _signal_fingerprint(, import_blueprint(). See lessons.md 2026-04-19.
+        if echo "$BACKEND_PY_FILES" | xargs grep -lE '(^|[^a-zA-Z_])print\(' 2>/dev/null; then
             echo "❌ ERROR: Found print() statements in backend code."
             echo "   Golden Rule #8: Use logger.info/debug/error() instead"
             echo "   Add: logger = logging.getLogger(__name__)"
