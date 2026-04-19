@@ -1,5 +1,5 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "indonesias-golden-visa-now-covers-spouses-what-e31b-means-for-expat-families",
   "hero_2": "indonesia-to-overhaul-oss-business-registration-with-ai-upgrade",
   "hero_3": "seoul-walks-back-bali-warning-after-indonesia-pushes-back",
@@ -14,5 +14,5 @@
   "latest_5": "retiring-in-bali-2026-what-foreign-buyers-must-know-before-they-sign",
   "insight_1": "bkpm-regulation-5-2025-fdi",
   "insight_2": "ifc-calls-on-indonesia-to-cultivate-a-stronger-base-of-productive-firms",
-  "insight_3": "indonesias-new-anti-treaty-shopping-rules-tighten-the-grip-on-tax-benefits"
+  "insight_3": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded"
 }
