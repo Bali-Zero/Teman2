@@ -1,7 +1,7 @@
-"""Sprint 1 contract tests for all 6 sensors.
+"""Contract tests for the 5 sensors still stubbed in Sprint 2.
 
-Each sensor must return a SensorReading with a recognizable
-`metadata.stub == True` marker and status in {"green","yellow","red"}.
+GSCSensor graduated out of stub-land in Sprint 2 — see
+test_gsc_sensor.py for its dedicated tests with mocked credentials.
 """
 import pytest
 
@@ -15,9 +15,8 @@ from apps.evaluator.seo_cell.sensors import (
     WarRoomEventSensor,
 )
 
-
-SENSORS = [
-    GSCSensor(),
+# GSC omitted — it's real now and would hit the live API.
+STUB_SENSORS = [
     GA4Sensor(),
     CompetitorSERPSensor(),
     KGSensor(),
@@ -26,27 +25,19 @@ SENSORS = [
 ]
 
 
-@pytest.mark.parametrize("sensor", SENSORS, ids=lambda s: s.name)
+@pytest.mark.parametrize("sensor", STUB_SENSORS, ids=lambda s: s.name)
 @pytest.mark.asyncio
-async def test_sensor_returns_reading(sensor):
+async def test_stub_sensor_returns_reading(sensor):
     reading = await sensor.read()
     assert isinstance(reading, SensorReading)
     assert reading.sensor_name == sensor.name
     assert reading.status in ("green", "yellow", "red")
-    # Sprint 1: all sensors are stubs
     assert reading.metadata.get("stub") is True
 
 
-@pytest.mark.asyncio
-async def test_gsc_sensor_exposes_query_count():
-    """Thinker relies on value.query_count to evaluate pre_natal gate."""
-    reading = await GSCSensor().read()
-    assert "query_count" in reading.value
-    assert isinstance(reading.value["query_count"], int)
-
-
 def test_six_distinct_sensor_names():
-    names = {s.name for s in SENSORS}
+    all_six = [*STUB_SENSORS, GSCSensor()]
+    names = {s.name for s in all_six}
     assert len(names) == 6
     assert names == {
         "gsc",
