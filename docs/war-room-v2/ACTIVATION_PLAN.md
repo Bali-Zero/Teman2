@@ -1,6 +1,6 @@
 # War Room 2.0 — Activation Plan
 
-> **Stato**: Fase 0 completata 2026-04-20 00:15 WITA · **BLOCKER CRITICO identificato prima di Fase 1**
+> **Stato**: Fase 0 + blocker fix + Fase 1 applicata 2026-04-20 00:25 WITA · Stop concordato prima di Fase 2
 > **Autore**: Claude Opus 4.7 (sessione worktree `feat/war-room-2-activation`)
 > **Riferimenti**: `docs/war-room-2.0-design.md` · `docs/war-room-v2/README.md` · `SYMBIOSIS.md`
 
@@ -416,3 +416,112 @@ strutturato, Telegram a Zero.
 ---
 
 **Prossimo step**: attesa decisione Zero su §7.1 (blocker compliance_alerts).
+
+---
+
+## Appendice B — Status aggiornato 2026-04-20 00:25 WITA
+
+### B.1 Blocker risolto
+
+Opzione A applicata. Commit `283263c6e`:
+
+- Tabella WR2 rinominata da `compliance_alerts` a `wr_anomaly_alerts`.
+- File modificati: `migration_114_cognitive_layer.py`, `cognitive/repository.py`,
+  `cognitive/anomaly_alerter.py`, `cognitive/strategos.py`, `events/event_bus.py`.
+- Test: 49/49 cognitive + 158/176 war_room/intel passano (18 skipped richiedono
+  `TEST_DATABASE_URL`, come previsto).
+- Zero modifiche al pacchetto `services/compliance/*` o `db/migrations_v2/*`.
+
+### B.2 Migrations applicate a nuzantara-postgres (verified)
+
+Backup PG pre-migration: `~/backups/fly-postgres/nuzantara-fly-20260420-0017.sql.gz`
+(288MB, integrity OK).
+
+Proxy usato: `fly proxy 15432:5432 -a nuzantara-postgres` → localhost, poi
+`PYTHONPATH=/Users/nuzantara/Desktop/wr2-activation/apps/backend-rag` con venv
+della repo principale (asyncpg installato).
+
+**15 nuove tabelle create**:
+
+```
+cross_dossier_theses        ultra_moves               war_room_metrics
+dossier_refresh_log         war_room_costs            war_room_missed_runs
+dossier_reuses              war_room_drafts           war_room_posts
+research_dossiers           war_room_leads            war_room_rejections
+trend_signals               weekly_strategic_briefs   wr_anomaly_alerts
+```
+
+Schema `wr_anomaly_alerts` verificato contenere `dossier_a_id`, `dossier_b_id`,
+`contradiction_type` (come da design WR2).
+
+Schema `compliance_alerts` **non toccato** — verificato mantiene `alert_id`,
+`client_id` (come da migrazione SQL 114 prod live).
+
+### B.3 Env var inventory Fly secrets nuzantara-rag
+
+**Presenti (7/15 come nome esatto brief):**
+
+- ✅ TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID
+- ✅ GROK_API_KEY, DEEPSEEK_API_KEY
+- ✅ GOOGLE_API_KEY, FIREWORKS_API_KEY
+- ✅ X_BEARER_TOKEN
+
+**Presenti con nome diverso (Instagram):**
+
+- ⚠️ `INSTAGRAM_ACCOUNT_ID` ≈ `IG_USER_ID` (da verificare equivalenza valore)
+- ⚠️ `INSTAGRAM_ACCESS_TOKEN` ≈ `IG_LONG_LIVED_TOKEN`
+
+Il codice `ig_publisher.py:57-59` legge `IG_USER_ID` / `IG_LONG_LIVED_TOKEN`
+via `os.environ.get()`. Due opzioni:
+1. **Alias in LaunchAgent plist**: settare `IG_USER_ID = $INSTAGRAM_ACCOUNT_ID`
+   nella sezione EnvironmentVariables del plist (rapido, no code change).
+2. **Refactor ig_publisher.py**: supportare entrambi i nomi
+   (`os.environ.get("IG_USER_ID") or os.environ.get("INSTAGRAM_ACCOUNT_ID")`).
+
+Raccomandazione: opzione 2, scritto nel commit che crea CLI wrappers
+(Fase 2), perché coerente con canali esistenti e riduce drift nomi.
+
+**Mancanti:**
+
+- ❌ `LINKEDIN_ACCESS_TOKEN` — **nessun secret LinkedIn in Fly**. Richiede:
+  a) app OAuth LinkedIn Developer, b) token exchange, c) `fly secrets set` su
+  nuzantara-rag (e copia in plist EnvironmentVariables). Stima effort: 1h.
+- ❌ `LINKEDIN_AUTHOR_URN` — viene generato dopo l'OAuth sopra.
+- ❌ `BLOG_*` vars — tutte hanno default in publisher code (verified
+  `blog_publisher.py`), basta settarle in plist se default sbagliato. Zero
+  blocker.
+
+### B.4 Implicazioni per Fase 3
+
+LaunchAgent **abilitabili subito** (secret presenti o default ok):
+
+- trend-hunter, connector, strategos, oracle, newsletter, measurer, sla-worker,
+  learner-nightly, hardening, dossier-compiler
+- blog_batch_publisher (usa default path se BLOG_* non settato)
+
+LaunchAgent **rimandati** finché token non disponibile:
+
+- LinkedIn publisher (se la pipeline prova a fare LI, fallisce —
+  `PublisherOrchestrator` gestisce con graceful degradation per canale)
+
+Instagram publisher: **abilitabile** con alias env var in plist (raccomandato
+refactor leggero in Fase 2.5).
+
+### B.5 Decisioni richieste pre-Fase 2
+
+1. Refactor `ig_publisher.py` per accettare `INSTAGRAM_ACCOUNT_ID`/
+   `INSTAGRAM_ACCESS_TOKEN` come fallback di `IG_USER_ID`/`IG_LONG_LIVED_TOKEN`?
+   (Raccomandazione: sì, ~15 min)
+2. LinkedIn publisher: rimandare a sprint separato o generare token ora?
+   (Raccomandazione: rimandare — LI non è mission-critical per activation
+   smoke test)
+3. Anomaly L2 daemon persistente (come da decisione Zero): scelta tra
+   - (a) daemon Python con `asyncpg.LISTEN` su `cognitive_event` →
+     KeepAlive=true in plist
+   - (b) subscriber che vive dentro backend-rag main_api process (no
+     LaunchAgent separato)
+   Raccomandazione: (b) perché sfrutta event_bus esistente, zero
+   infrastruttura nuova. Ma richiede registrazione handler in `app_factory`
+   — piccolo code change.
+
+
