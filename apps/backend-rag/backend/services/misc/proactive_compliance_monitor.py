@@ -26,14 +26,6 @@ Example Monitored Items:
 - Regulation changes: Immediate alert if affects client
 """
 
-import warnings
-
-warnings.warn(
-    "services.misc.proactive_compliance_monitor is deprecated; use "
-    "services.compliance.alerts_engine.AlertsEngine.",
-    DeprecationWarning, stacklevel=2,
-)
-
 import asyncio
 import logging
 from datetime import datetime, timezone
