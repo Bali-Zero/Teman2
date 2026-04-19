@@ -18,11 +18,29 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  filter: drop-shadow(0 0 32px color-mix(in srgb, var(--accent-funnel) 40%, transparent));
-  animation: bz-shimmer-slide var(--motion-duration-shimmer) ease-in-out infinite;
+  filter: drop-shadow(
+    0 0 32px color-mix(in srgb, var(--accent-funnel) 40%, transparent)
+  );
+  animation: bz-shimmer-slide var(--motion-duration-shimmer) ease-in-out
+    infinite;
 }
 
 @keyframes bz-shimmer-slide {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* General pulse — reusable for state indicators, motion demos.
+   Respects prefers-reduced-motion via the duration variables. */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
 }

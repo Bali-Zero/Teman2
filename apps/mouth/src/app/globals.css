@@ -1,86 +1,29 @@
 @import 'tailwindcss';
-@import '../../../../packages/core/tokens/index.css';
-@import '../../../../packages/core/tailwind/theme.css';
+/*
+ * Design system (Palette D - Monochrome Modern).
+ * Single source of truth — all tokens come from this file.
+ * Must be imported BEFORE kbli-theme.css so KBLI aliases resolve correctly.
+ */
+@import '../../../../packages/core/styles/bz-tokens.css';
 @import '../styles/kbli-theme.css';
 
-/* Redefine dark variant to target data-theme instead of .dark class
-   (design doc §5 "Toggle mechanism", step 2 of three coupled changes). */
-@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
-
+/*
+ * Legacy compatibility layer.
+ * Tokens below are NOT re-defined here — they are provided by bz-tokens.css.
+ * Only keep framework-specific bindings and app-level overrides that the
+ * core token file does not know about (app shell, batik texture, etc.).
+ */
 :root {
-  /* Map design system vars to kbli theme */
-  --background: var(--kbli-bg-base);
-  --background-secondary: var(--kbli-bg-elevated);
-  --background-elevated: var(--kbli-bg-surface);
-  --background-hover: var(--kbli-bg-surface-hover);
+  --tx-pure: var(--bz-text-pure);
+  --tx-primary: var(--bz-text-primary);
+  --tx-secondary: var(--bz-text-secondary);
+  --tx-tertiary: var(--bz-text-muted);
 
-  --foreground: var(--kbli-text-primary);
-  --foreground-secondary: var(--kbli-text-secondary);
-  --foreground-muted: var(--kbli-text-muted);
+  --success: var(--bz-success);
+  --warning: var(--bz-warning);
+  --error: var(--bz-error);
 
-  --border: var(--kbli-border);
-  --border-hover: var(--kbli-border-hover);
-
-  --accent: var(--kbli-accent);
-  --accent-hover: var(--kbli-accent-hover);
-
-  /* Warm Depth tokens (Legacy) */
-  --bz-base: #1d273b;
-  --bz-elevated: #243047;
-  --bz-surface: #2a3655;
-  --bz-card: #2a3655;
-  --bz-card-hover: #2f3d5e;
-  --bz-accent: #d4845a;
-  --bz-accent-hover: #bf7350;
-  --bz-accent-warm: #c9a96e;
-  --bz-accent-cool: #5e7fb5;
-
-  /* God Tier Anthracite Tokens */
-  --anthracite-base: #1d273b;
-  --anthracite-elevated: #243047;
-
-  /* Cinematic Border Tokens */
-  --glass-highlight: rgba(255, 255, 255, 0.12);
-  --glass-rim: rgba(255, 255, 255, 0.03);
-
-  /* Typography */
-  --tx-pure: #ffffff;
-  --tx-primary: #f8fafc;
-  --tx-secondary: #94a3b8;
-  --tx-tertiary: #475569;
-
-  /* Neon Accents */
-  --neon-blue: #3b82f6;
-  --neon-purple: #8b5cf6;
-  --neon-emerald: #10b981;
-  --neon-amber: #f59e0b;
-  --neon-rose: #f43f5e;
-  --neon-cyan: #06b6d4;
-  --bz-copper: #d4845a;
-
-  /* Sidebar */
-  --sidebar-active-bg: rgba(212, 132, 90, 0.08);
-  --sidebar-active-border: rgba(212, 132, 90, 0.3);
-
-  --bz-text-1: #edeae4;
-  --bz-text-2: #8c8884;
-  --bz-text-3: #575350;
-  --bz-border: rgba(255, 255, 255, 0.055);
-  --bz-border-hover: rgba(255, 255, 255, 0.1);
-  --bz-border-accent: rgba(201, 169, 110, 0.18);
-  --bz-green: #4db87a;
-  --bz-red: #d95f5a;
-  --bz-amber: #d4923a;
-  --success: #4db87a;
-  --warning: #d4923a;
-  --error: #d95f5a;
-  --bz-sidebar-width: 216px;
-  --bz-header-height: 48px;
-  --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
-}
-
-html {
-  color-scheme: dark;
+  --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23ff2d4c' stroke-width='0.5'/%3E%3C/svg%3E");
 }
 
 body {
@@ -111,23 +54,23 @@ body {
 
 /* ZantaraPortalCard animations */
 @keyframes lotusPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 132, 90, 0.35); }
-  50% { box-shadow: 0 0 0 5px rgba(212, 132, 90, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 45, 76, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 45, 76, 0); }
 }
 @keyframes liquidShift {
   0% { transform: scale(1) translate(0, 0); }
   100% { transform: scale(1.06) translate(2%, 1%); }
 }
 
-/* Subtle ambient gradients — God Tier Anthracite */
+/* Subtle ambient gradients — Monochrome with signal red top accent */
 body::before {
   content: '';
   position: fixed;
   inset: -25vh -25vw;
   background:
-    radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
-    /* Blue */ radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.03) 0%, transparent 50%),
-    /* Purple */ radial-gradient(circle at 50% 10%, rgba(212, 132, 90, 0.02) 0%, transparent 40%); /* Copper top */
+    radial-gradient(circle at 15% 30%, rgba(59, 130, 246, 0.03) 0%, transparent 40%),
+    /* Blue */ radial-gradient(circle at 85% 70%, rgba(139, 92, 246, 0.02) 0%, transparent 50%),
+    /* Purple */ radial-gradient(circle at 50% 10%, rgba(255, 45, 76, 0.03) 0%, transparent 40%); /* Signal red top */
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: color-dodge;
@@ -172,13 +115,13 @@ main,
 
 @keyframes pulse-glow {
   0% {
-    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+    box-shadow: 0 0 10px rgba(255, 45, 76, 0.15);
   }
   50% {
-    box-shadow: 0 0 35px rgba(212, 132, 90, 0.5);
+    box-shadow: 0 0 35px rgba(255, 45, 76, 0.5);
   }
   100% {
-    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+    box-shadow: 0 0 10px rgba(255, 45, 76, 0.15);
   }
 }
 
@@ -230,7 +173,7 @@ main,
   background: conic-gradient(
     from var(--border-angle),
     transparent 20%,
-    #d4845a,
+    #ff2d4c,
     #a855f7,
     #3b82f6,
     transparent 80%
