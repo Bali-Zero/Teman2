@@ -66,6 +66,37 @@ def main() -> int:
     print(f"[bootstrap] {len(table_names)} tables registered: {', '.join(table_names)}")
 
     engine = create_engine(db_url, echo=False, future=True)
+
+    # Legacy non-SQLModel tables that SQLModel tables hold FKs into.
+    # `conversation_ratings.user_id` points at `user_profiles(id)`; the table
+    # comes from migration 023 (long gone from the numbered migration files —
+    # predates `migration_N.py` naming). Without this pre-step, create_all()
+    # fails with NoReferencedTableError on that FK. Definition mirrors
+    # tests/integration/conftest.py so the CI schema stays consistent with
+    # the existing integration fixtures.
+    # Kept minimal — only tables that are FK targets for SQLModel tables.
+    # Other legacy tables (team_access, messaging_users, etc.) are created
+    # by migrations that ALTER/add-column, so the migrate step handles them.
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS user_profiles (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                email VARCHAR(255) UNIQUE NOT NULL,
+                full_name VARCHAR(255),
+                phone VARCHAR(50),
+                user_type VARCHAR(20) NOT NULL DEFAULT 'client',
+                status VARCHAR(20) DEFAULT 'active',
+                synthesis TEXT,
+                language_pref VARCHAR(10) DEFAULT 'id',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles table ensured")
+
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
     return 0
