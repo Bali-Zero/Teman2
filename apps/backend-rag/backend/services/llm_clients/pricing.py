@@ -256,6 +256,16 @@ _PRICING_TABLE: dict[tuple[str, str], dict[str, float]] = {
         "input_per_token": 0.0,
         "output_per_token": 0.0,
     },
+    # ── DeepSeek (Council DeepSeekHTTPRunner + article_composer) ──
+    # Source: https://api-docs.deepseek.com/quick_start/pricing (2026-04, cache-miss rates)
+    ("deepseek", "deepseek-reasoner"): {
+        "input_per_token": 0.55 / 1_000_000,
+        "output_per_token": 2.19 / 1_000_000,
+    },
+    ("deepseek", "deepseek-chat"): {
+        "input_per_token": 0.27 / 1_000_000,
+        "output_per_token": 1.10 / 1_000_000,
+    },
 }
 
 
