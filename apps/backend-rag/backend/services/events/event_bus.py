@@ -52,6 +52,24 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #           "report_ids": [...], "source": "tax_drive_manual"}
     # Consumers: KG Tax subgraph sync, portal notifications, audit log.
     "lkpm_ingest_completed": "lkpm.ingest_completed",
+    # Emitted by war_room_drafts status change + war_room_posts INSERT triggers
+    # (migration 112). Payload: {draft_id|post_id, status|platform, event_type,
+    # occurred_at}. Consumers: review_handler (Telegram review gate),
+    # publisher_worker, measurer_worker, dashboard_sse.
+    "war_room_event": "war_room.event",
+    # Emitted by trend_signals INSERT + research_dossiers INSERT/UPDATE triggers
+    # (migration 113). Payload: {signal_id|dossier_id, topic|slug, event_type,
+    # occurred_at}. Consumers: dossier_compiler (batch pre-compute on new trends),
+    # curiosity_gap_closer, war_room_intake, zantara_rag_indexer (upsert Qdrant),
+    # crm_alert_router, connector/anomaly cognitive layers.
+    "intel_event": "intel.event",
+    # Emitted by 4 cognitive-layer tables (migration 114): cross_dossier_theses,
+    # compliance_alerts, weekly_strategic_briefs, ultra_moves. Payload:
+    # {id, table, event_type, occurred_at, + table-specific fields}.
+    # Consumers: dashboard SSE, Oracle (reads upstream briefs + theses),
+    # Learner (skills/scars from high-perf theses), Telegram notifier for
+    # critical compliance_alerts + Oracle ultra_moves.
+    "cognitive_event": "cognitive.event",
 }
 
 _RECONNECT_DELAY_S = 5
