@@ -1,5 +1,7 @@
 """The Pulse — CELL's heartbeat.
 Every 60 seconds: verify DNA → check safety → sense → evaluate → THINK → act → remember."""
+from __future__ import annotations
+
 import logging
 import time
 from dataclasses import dataclass

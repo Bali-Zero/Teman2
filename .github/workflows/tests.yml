@@ -104,6 +104,36 @@ jobs:
           PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
             --junit-xml=test-results-core.xml
 
+      - name: Bootstrap SQLModel tables
+        # Router-level integration tests assume the full schema (e.g.
+        # test_compliance_lkpm_readypack.py inserts into `clients`), but the
+        # `clients` table has no migration file — it comes from SQLModel
+        # classes in backend/app/modules/crm/models.py that are only ever
+        # materialised via `SQLModel.metadata.create_all()`. Prod was
+        # bootstrapped by hand long ago; CI needs this explicit step.
+        # scripts/ci_bootstrap_schema.py imports the 6 table modules and
+        # runs create_all against the service-container Postgres.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python scripts/ci_bootstrap_schema.py
+
+      - name: Apply database migrations
+        # After SQLModel tables exist, apply the Alembic-style migration files
+        # that alter or augment them (indexes, triggers, new columns on the
+        # tables we just created). Migration 114 (cognitive_layer) references
+        # `clients`, which is why bootstrap must run first.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
+
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
