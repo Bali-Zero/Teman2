@@ -14,7 +14,7 @@ describe("NavShell", () => {
         logo={<span data-testid="logo">L</span>}
         items={ITEMS}
         actions={<button data-testid="cta">Go</button>}
-      />
+      />,
     );
     expect(container.querySelector("[data-testid='logo']")).toBeTruthy();
     expect(getByText("Services")).toBeTruthy();
@@ -30,7 +30,7 @@ describe("NavShell", () => {
         actions={<span />}
         slotBefore={<input data-testid="search" />}
         slotAfter={<select data-testid="lang" />}
-      />
+      />,
     );
     expect(getByTestId("search")).toBeTruthy();
     expect(getByTestId("lang")).toBeTruthy();
@@ -40,7 +40,7 @@ describe("NavShell", () => {
     const { container, queryByText } = render(
       <NavShell logo={<span />} items={ITEMS} actions={<span />}>
         <div data-testid="custom">custom center</div>
-      </NavShell>
+      </NavShell>,
     );
     expect(container.querySelector("[data-testid='custom']")).toBeTruthy();
     // items should not render when children is provided
@@ -48,7 +48,9 @@ describe("NavShell", () => {
   });
 
   it("reads only semantic tokens (no inline hex)", () => {
-    const { container } = render(<NavShell logo={<span />} items={ITEMS} actions={<span />} />);
+    const { container } = render(
+      <NavShell logo={<span />} items={ITEMS} actions={<span />} />,
+    );
     const html = container.innerHTML;
     // Forbid inline hex in the component's rendered output
     expect(html.match(/#[0-9a-fA-F]{6}/)).toBeNull();

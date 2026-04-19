@@ -8,8 +8,13 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     // Reuse apps/mouth's setup (localStorage mock, next/image mock, etc.)
-    setupFiles: [path.resolve(__dirname, "../../apps/mouth/src/test/setup.tsx")],
+    setupFiles: [
+      path.resolve(__dirname, "../../apps/mouth/src/test/setup.tsx"),
+    ],
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules/**"],
+    deps: {
+      inline: ["@testing-library/react"],
+    },
   },
 });
