@@ -19,7 +19,8 @@ const SLIDES: NewsSlide[] = [
   {
     idxTitle: "Immigration Queue",
     heroTitle: "5 AM at the Immigration Office",
-    heroSub: "Why the 2026 KITAS reform isn't solving what everyone thinks it's solving.",
+    heroSub:
+      "Why the 2026 KITAS reform isn't solving what everyone thinks it's solving.",
     tag: "Immigration",
     image: "/assets/art/news/immigration-queue.jpg",
     accent: "#ff2d4c", // red
@@ -27,7 +28,8 @@ const SLIDES: NewsSlide[] = [
   {
     idxTitle: "The Expat Tax Trap",
     heroTitle: "Kitchen Table, Three Residencies, One Tax Bill",
-    heroSub: "The 183-day rule nobody explains until the first assessment arrives.",
+    heroSub:
+      "The 183-day rule nobody explains until the first assessment arrives.",
     tag: "Tax",
     image: "/assets/art/news/expat-tax.jpg",
     accent: "#3b82f6", // blue
@@ -35,7 +37,8 @@ const SLIDES: NewsSlide[] = [
   {
     idxTitle: "Stamping 2026",
     heroTitle: "Weathered Hands, New System",
-    heroSub: "CoreTax and digital stamps: what the officer at the counter actually sees.",
+    heroSub:
+      "CoreTax and digital stamps: what the officer at the counter actually sees.",
     tag: "System",
     image: "/assets/art/news/officer-hands.jpg",
     accent: "#fb923c", // orange
@@ -43,7 +46,8 @@ const SLIDES: NewsSlide[] = [
   {
     idxTitle: "The 2 AM Founder",
     heroTitle: "Why Setting Up a PT PMA Alone Fails",
-    heroSub: "The five hidden compliance tracks running in parallel from day one.",
+    heroSub:
+      "The five hidden compliance tracks running in parallel from day one.",
     tag: "Business",
     image: "/assets/art/news/entrepreneur-night.jpg",
     accent: "#f59e0b", // gold
@@ -51,20 +55,25 @@ const SLIDES: NewsSlide[] = [
   {
     idxTitle: "Coastal Zoning",
     heroTitle: "The Fisherman and the Villa",
-    heroSub: "How Bali's new spatial planning is redrawing the lines between tradition and rent.",
+    heroSub:
+      "How Bali's new spatial planning is redrawing the lines between tradition and rent.",
     tag: "Property",
     image: "/assets/art/news/fisherman-beach.jpg",
     accent: "#22c55e", // green
   },
 ];
 
-export function NewsHero() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function NewsHero(_props?: { articles?: any[] }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
     if (paused) return;
-    const id = setInterval(() => setActive((i) => (i + 1) % SLIDES.length), 3000);
+    const id = setInterval(
+      () => setActive((i) => (i + 1) % SLIDES.length),
+      3000,
+    );
     return () => clearInterval(id);
   }, [paused]);
 
@@ -128,9 +137,7 @@ export function NewsHero() {
                       <span
                         className="text-[10px] font-bold uppercase tracking-[0.18em] block mt-1.5"
                         style={{
-                          color: isActive
-                            ? s.accent
-                            : "var(--text-tertiary)",
+                          color: isActive ? s.accent : "var(--text-tertiary)",
                         }}
                       >
                         {s.tag}
@@ -232,7 +239,11 @@ export function NewsHero() {
           color: "#ffffff",
         }}
       >
-        {paused ? <Play size={13} strokeWidth={2.2} /> : <Pause size={13} strokeWidth={2.2} />}
+        {paused ? (
+          <Play size={13} strokeWidth={2.2} />
+        ) : (
+          <Pause size={13} strokeWidth={2.2} />
+        )}
       </button>
     </section>
   );
