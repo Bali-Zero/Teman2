@@ -18,7 +18,7 @@ from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from typing import Any
 
-from backend.services.observability.llm_cost_recorder import record_llm_call  # noqa: F401
+from backend.services.observability.llm_cost_recorder import record_llm_call
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ def llm_cost_tracked(
                 result = await fn(*args, **kwargs)
                 success = True
                 return result
-            except BaseException as exc:  # noqa: BLE001 — record, then re-raise
+            except BaseException as exc:
                 err = type(exc).__name__
                 raise
             finally:
@@ -88,7 +88,7 @@ def llm_cost_tracked(
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "llm_cost_tracked: unknown pricing for %s/%s (%s) "
                         "— recording cost_usd=0.0", provider, model, exc,
@@ -107,7 +107,7 @@ def llm_cost_tracked(
                         endpoint=ep,
                         error_class=err,
                     )
-                except Exception as rec_exc:  # noqa: BLE001
+                except Exception as rec_exc:
                     logger.warning(
                         "llm_cost_tracked: recorder failed for %s/%s: %s",
                         provider, model, rec_exc,
