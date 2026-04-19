@@ -1,7 +1,9 @@
-"""Contract tests for the 4 sensors still stubbed.
+"""Contract tests for the 3 sensors still stubbed.
 
-GSCSensor (Sprint 2) and GA4Sensor (Sprint 2b) graduated out of stub-
-land; see their dedicated test_*_sensor.py files with mocked API paths.
+Sensors graduated out of stub-land (have their own test_*_sensor.py):
+  - GSCSensor    (Sprint 2)
+  - GA4Sensor    (Sprint 2b)
+  - WarRoomEventSensor (Sprint 2c)
 """
 import pytest
 
@@ -15,11 +17,9 @@ from apps.evaluator.seo_cell.sensors import (
     WarRoomEventSensor,
 )
 
-# GSC + GA4 omitted — they're real now and would hit live APIs.
 STUB_SENSORS = [
     CompetitorSERPSensor(),
     KGSensor(),
-    WarRoomEventSensor(),
     CannibalizationSensor(),
 ]
 
@@ -35,7 +35,7 @@ async def test_stub_sensor_returns_reading(sensor):
 
 
 def test_six_distinct_sensor_names():
-    all_six = [*STUB_SENSORS, GSCSensor(), GA4Sensor()]
+    all_six = [*STUB_SENSORS, GSCSensor(), GA4Sensor(), WarRoomEventSensor()]
     names = {s.name for s in all_six}
     assert len(names) == 6
     assert names == {
