@@ -107,32 +107,19 @@ async def run() -> int:
         repo = WarRoomRepository(db_pool=pool)
 
         # ── 1. Create draft ──────────────────────────────────────────
-        # Intentionally omit brief_json here to sidestep a pre-existing
-        # double-encoding bug in WarRoomRepository.create_draft (stores
-        # json.dumps(dict) under the jsonb codec → JSON-encoded string).
-        # We UPDATE the row with a proper dict below instead.
         topic = "WR2 activation smoke test 2026-04-20"
         draft = await repo.create_draft(
             WarRoomDraftCreate(
                 topic=topic,
                 tone_register=RegisterTone.ANALITICO,
                 status=DraftStatus.BRIEFED,
-            ),
-        )
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE war_room_drafts
-                   SET brief_json = $1
-                 WHERE id = $2;
-                """,
-                {
+                brief_json={
                     "origin": "wr2_smoke_test",
                     "dry_run": True,
                     "council_skipped": True,
                 },
-                draft.id,
-            )
+            ),
+        )
         logger.info("draft created id=%s", draft.id)
 
         # ── 2. Imagen cover (real call) ──────────────────────────────
@@ -141,11 +128,8 @@ async def run() -> int:
             "balanced composition, muted palette, Italian editorial tone. "
             "Subject: Bali business ecosystem, abstract."
         )
-        # NOTE: 4:5 is the IG carousel spec but Imagen 4.0 rejects it with
-        # "supported: 1:1, 9:16, 16:9, 4:3, 3:4". Using 3:4 (closest) for
-        # the smoke test; ImagenClient.DEFAULT aspect_ratio needs a bug-fix
-        # PR separately — see ACTIVATION_PLAN §B.7.
-        imagen = ImagenClient(aspect_ratio="3:4")
+        # ImagenClient default aspect_ratio is now "3:4" (4:5 was invalid).
+        imagen = ImagenClient()
         logger.info("calling Imagen ULTRA for cover...")
         imagen_result = await imagen.generate(
             cover_prompt, quality=ImagenQuality.ULTRA,
@@ -183,25 +167,12 @@ async def run() -> int:
             }
             for i in range(2, 5)
         ]
-        # Attach placeholders to draft via update of slides_json. Pass the
-        # list directly — asyncpg jsonb codec handles serialization. (The
-        # repository's own methods wrap with json.dumps which double-encodes
-        # under the codec, see WR2 repository bug note in ACTIVATION_PLAN
-        # §B.7.)
-        # Also: slides_json column is jsonb with no object/array enforcement,
-        # but WarRoomDraft pydantic model expects a dict. We store as a
-        # dict keyed by slide_number to match model expectations.
+        # Attach placeholders via the repo patch_json method (now that the
+        # JSONB double-encoding bug is fixed). slides_json column is jsonb
+        # but WarRoomDraft pydantic model expects a dict, so we store as a
+        # dict keyed by slide_number.
         slides_dict = {str(p["slide_number"]): p for p in placeholders}
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE war_room_drafts
-                   SET slides_json = $1
-                 WHERE id = $2;
-                """,
-                slides_dict,
-                draft.id,
-            )
+        await repo.patch_json(draft.id, slides_json=slides_dict)
         logger.info(
             "stored %d placeholder slides (no Imagen call, no cost row)",
             len(placeholders),
