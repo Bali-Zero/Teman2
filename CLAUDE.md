@@ -35,22 +35,18 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 24 · **Packages:** 5
+**Apps:** 20 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
 | `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
-| `calendar` | Vercel subdomain satellite app. Part of the Bali Zero workspace ecosystem. |
 | `cell` |  |
-| `drive` | Vercel subdomain satellite app. File management for Bali Zero workspace. |
 | `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
 | `graph-engine` | Graph processing engine for Knowledge Graph operations. |
 | `kb` |  |
 | `kbli-navigator` |  |
-| `knowledge` | Vercel subdomain satellite app. Knowledge base interface for Bali Zero. |
-| `mail` | Vercel subdomain satellite app. Email interface for Bali Zero workspace. |
 | `mata-garuda` | > Intelligence Super Hub — OSINT blindato, CLI-only, Lamarckian meta-agent |
 | `mouth` | > **The face of Nuzantara** - A Next.js 16 + React 19 frontend for the Nuzantara AI ecosystem |
 | `nlm-bridge` |  |
@@ -70,7 +66,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 246 routers, 443 services, 754 test files
+- **Backend:** Python 3.11+, FastAPI, 246 routers, 456 services, 774 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)

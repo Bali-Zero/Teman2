@@ -100,7 +100,7 @@ class LKPMValidator:
                 )
                 found_set = {row["entity_id"].replace("kbli:", "") for row in found_codes}
         except Exception as e:
-            logger.warning(f"KBLI validation query failed: {e}")
+            logger.warning("KBLI validation query failed: %s", e)
             found_set = set()
 
         for code in registered_kbli:
@@ -147,7 +147,7 @@ class LKPMValidator:
                 )
                 crm_kitas_count = row["kitas_count"] if row else 0
         except Exception as e:
-            logger.warning(f"WNA count query failed: {e}")
+            logger.warning("WNA count query failed: %s", e)
             crm_kitas_count = -1  # Unknown
 
         if crm_kitas_count < 0:
@@ -200,7 +200,7 @@ class LKPMValidator:
                     client_id,
                 )
         except Exception as e:
-            logger.warning(f"Zero realization query failed: {e}")
+            logger.warning("Zero realization query failed: %s", e)
             return alerts
 
         consecutive_zero = 0
@@ -297,6 +297,97 @@ class LKPMValidator:
                 )
 
         return alerts
+
+    async def check_completeness_async(
+        self,
+        conn_or_pool: asyncpg.Pool | asyncpg.Connection,
+        client_id: int,
+        period: str,
+    ) -> dict:
+        """
+        Async completeness check for a (client_id, period) pair.
+
+        ``period`` must be in "Q1 2026" format (quarter + space + year).
+
+        Returns a dict with:
+          ``is_complete``: bool — True if no blocking issues.
+          ``missing_fields``: list[str] — human-readable list of what is missing.
+          ``warnings``: list[str] — non-blocking issues.
+
+        Raises:
+            LkpmValidationError: if the period string is malformed or the
+                lkpm_reports row does not exist for (client_id, quarter, year).
+        """
+        from backend.services.compliance.exceptions import LkpmValidationError
+
+        # Parse period
+        parts = period.strip().split()
+        if len(parts) != 2 or parts[0] not in {"Q1", "Q2", "Q3", "Q4"}:
+            raise LkpmValidationError(
+                f"Period must be 'Q1|Q2|Q3|Q4 YYYY', got {period!r}"
+            )
+        quarter, year_str = parts[0], parts[1]
+        try:
+            year = int(year_str)
+        except ValueError as exc:
+            raise LkpmValidationError(
+                f"Year part of period is not an integer: {year_str!r}"
+            ) from exc
+
+        # Fetch the report row
+        query = """
+            SELECT id, status, client_id,
+                   realized_equipment_domestic, realized_equipment_import,
+                   realized_building_domestic, realized_building_import,
+                   realized_vehicle_domestic, realized_vehicle_import,
+                   realized_land, realized_working_capital, realized_other
+            FROM lkpm_reports
+            WHERE client_id = $1 AND quarter = $2 AND year = $3
+            LIMIT 1
+        """
+        if isinstance(conn_or_pool, asyncpg.Pool):
+            async with conn_or_pool.acquire() as conn:
+                row = await conn.fetchrow(query, client_id, quarter, year)
+        else:
+            row = await conn_or_pool.fetchrow(query, client_id, quarter, year)
+
+        if row is None:
+            raise LkpmValidationError(
+                f"No lkpm_reports row found for client_id={client_id}, "
+                f"quarter={quarter}, year={year}"
+            )
+
+        missing: list[str] = []
+        warnings: list[str] = []
+
+        # Check all realization fields are present (not NULL — treat None as missing)
+        realization_fields = [
+            "realized_equipment_domestic",
+            "realized_equipment_import",
+            "realized_building_domestic",
+            "realized_building_import",
+            "realized_vehicle_domestic",
+            "realized_vehicle_import",
+            "realized_land",
+            "realized_working_capital",
+            "realized_other",
+        ]
+        for f in realization_fields:
+            if row[f] is None:
+                missing.append(f)
+
+        # Status-based warning
+        status = row.get("status", "")
+        if status == "submitted":
+            warnings.append("Report already submitted to OSS")
+        elif status == "archived":
+            warnings.append("Report is archived")
+
+        return {
+            "is_complete": len(missing) == 0,
+            "missing_fields": missing,
+            "warnings": warnings,
+        }
 
     def check_completeness(self, draft: LKPMDraft) -> list[ValidationAlert]:
         """Check that required fields are filled."""
