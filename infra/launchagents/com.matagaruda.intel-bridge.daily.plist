@@ -8,7 +8,7 @@
     <array>
         <string>/bin/zsh</string>
         <string>-lc</string>
-        <string>cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; .venv/bin/python -m mata_garuda.cli run intel_scraper_bridge &gt;&gt; /Users/nuzantara/logs/matagaruda-intel-bridge.log 2&gt;&amp;1</string>
+        <string>cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; .venv/bin/python scripts/run_intel_bridge.py &gt;&gt; /Users/nuzantara/logs/matagaruda-intel-bridge.log 2&gt;&amp;1</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
