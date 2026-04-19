@@ -49,7 +49,6 @@ class RenewalRule:
     required_docs: tuple[str, ...]
     complexity: float = 1.0
     notes: str = ""
-    nb2_ref: str | None = None  # NB-2 citation for audit (decision #9)
 
 
 # ── Rule Registry ──────────────────────────────────────────────────────────────

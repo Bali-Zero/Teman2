@@ -437,20 +437,3 @@ async def is_engine_enabled(db_pool: asyncpg.Pool) -> bool:
             value,
         )
     return enabled
-
-
-async def _load_urgent_threshold(conn: asyncpg.Connection, category: str) -> int:
-    """Read URGENT threshold (days) for a category from system_settings.
-
-    Falls back to 7 (severity_calculator default) when the row is absent.
-    """
-    key = f"compliance_alert_threshold_urgent_{category}"
-    value = await conn.fetchval(
-        "SELECT value FROM system_settings WHERE key = $1", key,
-    )
-    if value is None:
-        return 7
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return 7
