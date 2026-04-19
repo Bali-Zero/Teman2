@@ -1,4 +1,4 @@
-"""Tests for Migration 118: llm_cost_recommendations table.
+"""Tests for Migration 119: llm_cost_recommendations table.
 
 Verifies SQL structure without a live PG connection (AsyncMock pattern,
 matches test_migration_107_bridge_outbox.py convention).
@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.migrations.migration_118_cost_recommendations import apply, rollback
+from backend.migrations.migration_119_cost_recommendations import apply, rollback
 
 
 def _collect_sql(calls) -> str:

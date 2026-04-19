@@ -1,5 +1,5 @@
 """
-Migration 118: llm_cost_recommendations — CostAdvisor output table.
+Migration 119: llm_cost_recommendations — CostAdvisor output table.
 
 One row per (endpoint, current_model, proposed_model) triple produced by
 the weekly CostAdvisor agent. Status flow: pending → reviewed →
@@ -46,9 +46,9 @@ async def apply(conn: Any) -> None:
         CREATE INDEX IF NOT EXISTS idx_llm_cost_reco_endpoint
         ON llm_cost_recommendations (endpoint, ts_utc DESC);
     """)
-    logger.info("✅ Migration 118: llm_cost_recommendations + 2 indexes created")
+    logger.info("✅ Migration 119: llm_cost_recommendations + 2 indexes created")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS llm_cost_recommendations CASCADE;")
-    logger.info("Migration 118 rollback: llm_cost_recommendations dropped")
+    logger.info("Migration 119 rollback: llm_cost_recommendations dropped")
