@@ -41,22 +41,25 @@ if [[ -f "$SECRETS_FILE" ]]; then
     set +a
 fi
 
-# 2. DATABASE_URL from Fly if not already in env
+# 2. DATABASE_URL resolution
+# Preferred: DATABASE_URL_LOCAL from secrets file, pointing at localhost
+# (the com.balizero.wr2.pg-proxy LaunchAgent keeps `fly proxy 15432:5432
+# -a nuzantara-postgres` alive). This avoids spinning a Fly SSH VM on
+# every cron tick.
 if [[ -z "${DATABASE_URL:-}" ]]; then
-    # fly ssh returns \r-terminated strings — strip
-    DATABASE_URL="$(fly ssh console -a nuzantara-rag -C "printenv DATABASE_URL" 2>/dev/null | tr -d '\r' | tail -n1)"
-    # nuzantara-postgres.flycast hostname is Fly-only. For Pro cron we need
-    # the public/tunnel form. If the value contains flycast, fall back to
-    # whatever DATABASE_URL_LOCAL provides (set in .nuzantara-secrets.env).
-    if [[ "$DATABASE_URL" == *flycast* ]]; then
-        if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
-            DATABASE_URL="$DATABASE_URL_LOCAL"
-        else
-            echo "[wr2-wrapper] ERROR: fly DATABASE_URL uses flycast (Fly-internal). Set DATABASE_URL_LOCAL (e.g. via fly proxy) in $SECRETS_FILE before enabling launchd agents." >&2
-            exit 74
-        fi
+    if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
+        DATABASE_URL="$DATABASE_URL_LOCAL"
+    else
+        echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:PW@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
+        exit 74
     fi
     export DATABASE_URL
+fi
+
+# Sanity: fail fast if localhost:15432 is unreachable (pg-proxy down)
+if ! nc -z 127.0.0.1 15432 2>/dev/null; then
+    echo "[wr2-wrapper] ERROR: cannot reach 127.0.0.1:15432 — is com.balizero.wr2.pg-proxy loaded? (launchctl list | grep pg-proxy)" >&2
+    exit 74
 fi
 
 # 3. Repo + venv + exec
