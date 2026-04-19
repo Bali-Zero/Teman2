@@ -66,6 +66,7 @@ def include_routers(api: FastAPI) -> None:
         federation,
         feedback,
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
+        funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
         handlers,
         health,
@@ -80,6 +81,7 @@ def include_routers(api: FastAPI) -> None:
         knowledge_activity,
         knowledge_visa,
         lam_memory,  # [LAM] Episodic memory for agent layer
+        lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         legal_ingest,
         lkpm,
         media,
@@ -118,6 +120,7 @@ def include_routers(api: FastAPI) -> None:
         telegram,
         telegram_webhook,
         # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
+        visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         voice,
         webhooks,
@@ -165,6 +168,11 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(federation.router)
     api.include_router(feedback.router)
     api.include_router(funnel.router)  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
+
+    # [4APPS] Homepage apps (Visa Check first; kbli/tax/zoning to follow)
+    api.include_router(lead_capture.router)  # POST /api/lead/capture
+    api.include_router(visa_check.router)  # /api/visa/check|clock|match (Clock + Match branches)
+    api.include_router(funnel_email.router)  # /api/funnel_email (drip + unsubscribe)
 
     # CRM routers
     api.include_router(crm_clients.router)
@@ -411,6 +419,7 @@ def include_light_routers(api: FastAPI) -> None:
         federation,
         feedback,
         funnel,  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
+        funnel_email,  # [4APPS] Drip email scheduler + unsubscribe (homepage apps)
         google_drive,
         handlers,
         health,
@@ -420,6 +429,7 @@ def include_light_routers(api: FastAPI) -> None:
         image_generation,
         instagram_chat,
         knowledge_activity,
+        lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
         media,
         messaging_identity,
@@ -451,6 +461,7 @@ def include_light_routers(api: FastAPI) -> None:
         telegram,
         telegram_webhook,
         # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
+        visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         webhooks,
         websocket,
@@ -478,6 +489,11 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(federation.router)
     api.include_router(feedback.router)
     api.include_router(funnel.router)  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
+
+    # [4APPS] Homepage apps (Visa Check first; kbli/tax/zoning to follow) — PROD
+    api.include_router(lead_capture.router)  # POST /api/lead/capture
+    api.include_router(visa_check.router)  # /api/visa/check|clock|match (Clock + Match branches)
+    api.include_router(funnel_email.router)  # /api/funnel_email (drip + unsubscribe)
 
     # Genome-backed registries (light: SQLite via cell-core, no ML deps)
     api.include_router(experience.router)  # [EXP] Experience Library (PR #54)
