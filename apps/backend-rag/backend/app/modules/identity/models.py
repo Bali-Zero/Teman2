@@ -50,11 +50,13 @@ class User(SQLModel, table=True):
 
     # User attributes
     role: str = Field(
-        default="member", max_length=100, description="User role (e.g., 'admin', 'member', 'CEO')",
+        default="member",
+        max_length=100,
+        description="User role (e.g., 'admin', 'member', 'CEO')",
+        sa_column_kwargs={"server_default": "member"},
     )
     department: str | None = Field(default=None, max_length=100, description="Department name")
-    language: str = Field(default="en", max_length=10, description="Preferred language code")
-
+    language: str = Field(default="en", max_length=10, description="Preferred language code", sa_column_kwargs={"server_default": "en"})
     # Status flags
     personalized_response: bool = Field(
         default=False, description="Enable personalized AI responses",
