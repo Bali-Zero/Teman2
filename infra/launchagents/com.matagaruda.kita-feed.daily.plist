@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.kita-feed</string>
+
+    <!-- Mata Garuda Layer 5 — Kita Newsroom Feed Generator.
+         Writes data/kita_feed.json with top 20 enriched items for future
+         consumption by kita.balizero.com/newsroom. Daily at 05:00 WITA
+         (after the KB ingest at 05:00 of the parent stack). -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>source ~/.nuzantara-secrets.env 2>/dev/null; cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; source .venv/bin/activate &amp;&amp; python scripts/run_kita_feed.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/matagaruda-kita-feed.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/matagaruda-kita-feed.stderr.log</string>
+</dict>
+</plist>
