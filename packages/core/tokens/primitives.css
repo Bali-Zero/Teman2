@@ -59,6 +59,7 @@
 
   /* ─── Typography ──────────────────────────────────────────── */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, Cambria, "Times New Roman", serif;
   --font-display: var(--font-sans);
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 
