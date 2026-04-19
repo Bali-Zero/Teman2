@@ -67,10 +67,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "output": 0.30,
     },
     # ── Legacy Gemini (kept for cost tracking of old logs) ──
-    "gemini-3-flash-preview": {
-        "input": 0.10,
-        "output": 0.40,
-    },
     "gemini-2.0-flash": {
         "input": 0.075,
         "output": 0.30,
@@ -200,3 +196,101 @@ def list_available_models() -> list[str]:
         List of model names
     """
     return [m for m in LLM_PRICING if m != "unknown"]
+
+
+# ── Per-provider/model pricing table (used by @llm_cost_tracked decorator) ──
+# Keys: (provider, model)
+# Values: {"input_per_token": float, "output_per_token": float}
+# Prices are in USD per single token.
+_PRICING_TABLE: dict[tuple[str, str], dict[str, float]] = {
+    ("openai_embeddings", "text-embedding-3-small"): {
+        "input_per_token": 0.02 / 1_000_000,
+        "output_per_token": 0.0,
+    },
+    ("imagen", "imagen-4.0-ultra-generate-001"): {
+        "input_per_token": 0.06,
+        "output_per_token": 0.0,
+    },
+    ("imagen", "imagen-4.0-generate-001"): {
+        "input_per_token": 0.04,
+        "output_per_token": 0.0,
+    },
+    ("imagen", "imagen-4.0-fast-generate-001"): {
+        "input_per_token": 0.02,
+        "output_per_token": 0.0,
+    },
+    ("openai_audio", "tts-1"): {
+        "input_per_token": 15.0 / 1_000_000,
+        "output_per_token": 0.0,
+    },
+    ("openai_audio", "whisper-1"): {
+        "input_per_token": 0.006 / 60,
+        "output_per_token": 0.0,
+    },
+    # ── OpenRouter free-tier models (volume-only tracking, cost=0) ──
+    ("openrouter", "google/gemini-2.0-flash-exp:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "meta-llama/llama-3.3-70b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "qwen/qwen3.5-27b"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "mistralai/mistral-small-3.1-24b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "qwen/qwen3.5-35b-a3b"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "meta-llama/llama-3.2-3b-instruct:free"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    ("openrouter", "openrouter-unknown"): {
+        "input_per_token": 0.0,
+        "output_per_token": 0.0,
+    },
+    # ── DeepSeek (Council DeepSeekHTTPRunner + article_composer) ──
+    # Source: https://api-docs.deepseek.com/quick_start/pricing (2026-04, cache-miss rates)
+    ("deepseek", "deepseek-reasoner"): {
+        "input_per_token": 0.55 / 1_000_000,
+        "output_per_token": 2.19 / 1_000_000,
+    },
+    ("deepseek", "deepseek-chat"): {
+        "input_per_token": 0.27 / 1_000_000,
+        "output_per_token": 1.10 / 1_000_000,
+    },
+}
+
+
+def compute_cost(
+    provider: str,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> float:
+    """Compute the cost in USD for a given provider/model and token usage.
+
+    Args:
+        provider: Provider tag (e.g. 'openai_embeddings', 'imagen').
+        model: Model slug (e.g. 'text-embedding-3-small').
+        input_tokens: Number of input tokens (or equivalent units).
+        output_tokens: Number of output tokens (or equivalent units).
+
+    Returns:
+        Cost in USD as a float.
+
+    Raises:
+        KeyError: If the (provider, model) pair is not registered.
+    """
+    entry = _PRICING_TABLE[(provider, model)]
+    return (
+        input_tokens * entry["input_per_token"]
+        + output_tokens * entry["output_per_token"]
+    )
