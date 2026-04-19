@@ -44,6 +44,7 @@ pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 Pillow>=11.0.0  # Updated 2026-03-24: CVE fixes for image parsers (was 10.0.0)
 EbookLib>=0.18
 beautifulsoup4>=4.14.3  # Security and stability updates
+reportlab>=4.2.0  # PDF generation (LKPM ready-pack, invoices); also in -prod.txt
 
 # OCR and Advanced Document Processing (Gemini Vision based)
 # Uses PDFVisionService with Gemini-2.0-flash for OCR (same as passport box)
