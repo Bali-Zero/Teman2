@@ -63,26 +63,20 @@
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works
-   (design doc §3 Level 1 rule). Do NOT add combinators.
-   --text-on-accent is overridden per-funnel to keep CTA contrast >= 4.5:1 (AA).
-   Red allows white; gold/cyan/green require dark-text against bg. */
+   (design doc §3 Level 1 rule). Do NOT add combinators. */
 [data-funnel="visa"] {
   --accent-funnel:      var(--color-red-500);
   --accent-funnel-text: var(--color-red-500);
-  --text-on-accent:     #1a0508;
 }
 [data-funnel="kbli"] {
   --accent-funnel:      var(--color-gold-500);
   --accent-funnel-text: var(--color-gold-500);
-  --text-on-accent:     #1a1208;
 }
 [data-funnel="tax"] {
   --accent-funnel:      var(--color-cyan-500);
   --accent-funnel-text: var(--color-cyan-500);
-  --text-on-accent:     #052028;
 }
 [data-funnel="property"] {
   --accent-funnel:      var(--color-green-500);
   --accent-funnel-text: var(--color-green-500);
-  --text-on-accent:     #052712;
 }

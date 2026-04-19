@@ -52,7 +52,10 @@ export function TopicPills() {
             >
               <span
                 className="w-1 h-1 rounded-full"
-                style={{ background: t.accent, boxShadow: `0 0 6px ${t.accent}` }}
+                style={{
+                  background: t.accent,
+                  boxShadow: `0 0 6px ${t.accent}`,
+                }}
               />
               {t.label}
             </a>
