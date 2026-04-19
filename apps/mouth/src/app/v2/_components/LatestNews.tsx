@@ -24,7 +24,8 @@ const ARTICLES: Article[] = [
     date: "Apr 12, 2026",
     readTime: "4 min",
     title: "Digital Nomad Visa: Six Months Living and Working in Bali",
-    excerpt: "The new category lets founders stay and bill clients abroad — what it actually covers.",
+    excerpt:
+      "The new category lets founders stay and bill clients abroad — what it actually covers.",
     image: "/assets/art/news/immigration-queue.jpg",
   },
   {
@@ -34,7 +35,8 @@ const ARTICLES: Article[] = [
     date: "Apr 10, 2026",
     readTime: "8 min",
     title: "PPh 21 Reform 2026: New Rates and Calculation Methods",
-    excerpt: "The 2026 personal income tax structure is live. Bracket changes, deduction updates.",
+    excerpt:
+      "The 2026 personal income tax structure is live. Bracket changes, deduction updates.",
     image: "/assets/art/news/expat-tax.jpg",
   },
   {
@@ -44,7 +46,8 @@ const ARTICLES: Article[] = [
     date: "Apr 7, 2026",
     readTime: "6 min",
     title: "Hak Pakai vs Leasehold: A Foreigner's Decision Matrix",
-    excerpt: "Which property right makes sense for which strategy — six real Bali cases.",
+    excerpt:
+      "Which property right makes sense for which strategy — six real Bali cases.",
     image: "/assets/art/news/fisherman-beach.jpg",
   },
   {
@@ -54,7 +57,8 @@ const ARTICLES: Article[] = [
     date: "Apr 4, 2026",
     readTime: "5 min",
     title: "PT PMA Minimum Capital: What 10B IDR Actually Buys",
-    excerpt: "The official threshold masks a different operational reality — sector by sector.",
+    excerpt:
+      "The official threshold masks a different operational reality — sector by sector.",
     image: "/assets/art/news/entrepreneur-night.jpg",
   },
   {
@@ -64,14 +68,19 @@ const ARTICLES: Article[] = [
     date: "Apr 1, 2026",
     readTime: "7 min",
     title: "KITAS Renewal in 2026: The Paperwork That Actually Matters",
-    excerpt: "Seven documents, three newly required this year. Sequence, timing, common rejections.",
+    excerpt:
+      "Seven documents, three newly required this year. Sequence, timing, common rejections.",
     image: "/assets/art/news/officer-hands.jpg",
   },
 ];
 
-export function LatestNews() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function LatestNews(_props?: { articles?: any[]; limit?: number }) {
   return (
-    <section className="py-20 px-10" style={{ background: "var(--surface-base)" }}>
+    <section
+      className="py-20 px-10"
+      style={{ background: "var(--surface-base)" }}
+    >
       <div className="flex items-end justify-between mb-10">
         <div>
           <div
@@ -141,7 +150,10 @@ export function LatestNews() {
               >
                 <span
                   className="w-1 h-1 rounded-full"
-                  style={{ background: a.accent, boxShadow: `0 0 6px ${a.accent}` }}
+                  style={{
+                    background: a.accent,
+                    boxShadow: `0 0 6px ${a.accent}`,
+                  }}
                 />
                 {a.tag}
               </div>
