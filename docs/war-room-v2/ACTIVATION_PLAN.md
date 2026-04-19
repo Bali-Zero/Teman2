@@ -702,6 +702,52 @@ che tende all'entropia. Al giorno 7 decisione binaria:
   review-loop medio ≤4h → Strada A (shutoff)
 - se no → estendi canary altri 7gg + fix
 
+**Decisione Zero 2026-04-20**: ✅ **Strada B approvata.**
+
+Protocollo canary attivo dal 2026-04-20 → revisione 2026-04-27:
+
+1. **Pipeline vecchia** (`com.balizero.intel.nightly`,
+   `com.balizero.post-publish-poller`, `com.balizero.post-publish-webhook`)
+   **resta attiva** invariata. Non toccare i plist.
+2. **Pipeline WR2** attiva ma marcata canary:
+   - Tutti i post generati da WR2 hanno prefisso `[CANARY]` nel titolo
+     IG/X/LI (da implementare in un piccolo patch separato se/quando
+     si abilita effettivamente il Publisher — per ora Fase 4 è
+     dry-run, nessun post reale)
+   - Newsletter settimanale Brevo disabilitata fino al gg 7
+     (LaunchAgent `com.balizero.wr2.newsletter` caricato ma con
+     env var `NEWSLETTER_SKIP_SEND=1` — da aggiungere al plist prima
+     di `launchctl load`)
+3. **Monitoraggio gg 1-7**:
+   - `war_room_drafts` count/day target: ≥1
+   - Review-loop medio target: ≤4h
+   - Critical errors: 0 (da `war_room_missed_runs` + Telegram alerts)
+   - Metriche cross-dossier (Connector L1, Strategos L3): almeno 1 tesi
+     prodotta entro gg 4
+4. **2026-04-27 review**: se gate passa → merge Strada A con
+   shutoff vecchia + removal `[CANARY]` prefix + abilitazione newsletter.
+   Se gate fallisce → estendi 7gg o rollback WR2.
+
+### B.8 Decisioni implementative Strada B — NON in questo PR
+
+Da fare in PR/commit successivi (non ora, per mantenere questo PR atomico
+sulla sola attivazione infrastrutturale):
+
+1. Flag `WR2_CANARY=1` in ogni plist che invoca Publisher
+   (sla_worker non pubblica, misuratore non pubblica — solo
+   trend-hunter/connector/strategos/oracle/newsletter/measurer sono
+   "produttori") — aggiungere al `<EnvironmentVariables>` dict.
+2. Patch in `newsletter_cli.py` / `builder.py`: se
+   `os.environ.get("WR2_CANARY")` o `os.environ.get("NEWSLETTER_SKIP_SEND")`
+   → skip Brevo send, log only.
+3. Patch in orchestrator di `blog_batch_publisher` etc.: prefissa
+   `[CANARY] ` a title/caption quando flag attivo.
+
+Stima effort: 1h per tutti e 3. Da fare DOPO merge di questo PR,
+come canary-activation PR.
+
+### B.9 Decisioni implementative pre-Fase 2
+
 ### B.8 Decisioni richieste pre-Fase 2
 
 1. Refactor `ig_publisher.py` per accettare `INSTAGRAM_ACCOUNT_ID`/
