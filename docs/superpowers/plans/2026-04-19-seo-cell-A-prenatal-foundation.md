@@ -299,7 +299,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** CRM oggi ha `lead_source` (`whatsapp`, `website`, etc.) ma non sa **da quale pagina** è entrato il visitor. Senza `referrer_url + landing_page + first_touch_at`, la metrica `revenue_attributed_keyword` Phase 2 è impossibile.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/backend-rag/backend/tests/migrations/test_migration_118.py`:
 
@@ -361,7 +361,7 @@ async def test_migration_118_lead_source_enum_extended(test_db_pool):
         await conn.execute("DELETE FROM clients WHERE email IN ('organic@test.com', 'inbound@test.com')")
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -372,7 +372,7 @@ PYTHONPATH=. pytest backend/tests/migrations/test_migration_118.py -v
 
 Expected: FAIL with `column "referrer_url" does not exist` or similar.
 
-- [ ] **Step 3: Write the migration**
+- [x] **Step 3: Write the migration**
 
 Create `apps/backend-rag/backend/migrations/migration_118_clients_referrer_url.py`:
 
@@ -452,7 +452,7 @@ async def downgrade(conn) -> None:
     await conn.execute(DOWN_SQL)
 ```
 
-- [ ] **Step 4: Apply migration locally**
+- [x] **Step 4: Apply migration locally**
 
 Run:
 
@@ -463,7 +463,7 @@ PYTHONPATH=. python -m backend.migrations.migration_manager upgrade --target 118
 
 Expected output: `[migration_118] Applied successfully`.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run:
 
@@ -473,7 +473,7 @@ PYTHONPATH=. pytest backend/tests/migrations/test_migration_118.py -v
 
 Expected: 3 PASS.
 
-- [ ] **Step 6: Verify on production DB (Fly.io) — DRY RUN ONLY**
+- [x] **Step 6: Verify on production DB (Fly.io) — DRY RUN ONLY**
 
 Run:
 
@@ -483,7 +483,7 @@ fly ssh console -a nuzantara-rag -C "/bin/sh -c 'cd /app && PYTHONPATH=. python 
 
 Expected: dry-run shows the SQL that would execute. **Do NOT apply on prod yet** — production migration will be applied by fly-deploy.yml on next deploy via standard migration_manager flow.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -512,7 +512,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** La migration 118 ha aggiunto le colonne, ora serve che siano popolate quando arriva un lead da web (form contact, WhatsApp UTM landing).
 
-- [ ] **Step 1: Trova il file esistente del lead intake**
+- [x] **Step 1: Trova il file esistente del lead intake**
 
 Run:
 
@@ -528,7 +528,7 @@ grep -rn "INSERT INTO clients" /Users/nuzantara/Desktop/nuzantara/apps/backend-r
 
 Adatta il path target a quello effettivo trovato.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `apps/backend-rag/backend/tests/services/crm/test_lead_intake_referrer.py`:
 
@@ -609,7 +609,7 @@ async def test_lead_intake_defaults_lead_source_when_no_utm():
     assert "website_organic" in args
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run:
 
@@ -620,7 +620,7 @@ PYTHONPATH=. pytest backend/tests/services/crm/test_lead_intake_referrer.py -v
 
 Expected: FAIL (import error or function signature mismatch).
 
-- [ ] **Step 4: Implement / patch the lead intake function**
+- [x] **Step 4: Implement / patch the lead intake function**
 
 Edit the file found in Step 1 (`backend/services/crm/lead_intake.py` or equivalent). Add or modify `create_lead`:
 
@@ -676,7 +676,7 @@ async def create_lead(payload: dict, db: Any) -> dict:
     return {"id": row["id"], "uuid": str(row["uuid"])}
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run:
 
@@ -686,7 +686,7 @@ PYTHONPATH=. pytest backend/tests/services/crm/test_lead_intake_referrer.py -v
 
 Expected: 3 PASS.
 
-- [ ] **Step 6: Verify import chain not broken**
+- [x] **Step 6: Verify import chain not broken**
 
 Run:
 
@@ -696,7 +696,7 @@ PYTHONPATH=. python -c "from backend.app.dependencies import get_current_user; p
 
 Expected: `OK`. If fails, the lead_intake change broke imports — debug before commit.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -727,7 +727,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** Oggi i link WhatsApp sono hardcoded `https://wa.me/628213107363?text=Hi%20Bali%20Zero...` ovunque. Senza UTM, ogni lead WhatsApp arriva senza context "da quale pagina veniva". Helper centralizza + aggiunge UTM.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/mouth/src/lib/whatsapp-utm.test.ts`:
 
@@ -768,7 +768,7 @@ describe("buildWhatsAppLink", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -779,7 +779,7 @@ pnpm test src/lib/whatsapp-utm.test.ts --run
 
 Expected: FAIL `Cannot find module './whatsapp-utm'`.
 
-- [ ] **Step 3: Implement the helper**
+- [x] **Step 3: Implement the helper**
 
 Create `apps/mouth/src/lib/whatsapp-utm.ts`:
 
@@ -824,7 +824,7 @@ export function buildWhatsAppLink(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run:
 
@@ -834,7 +834,7 @@ pnpm test src/lib/whatsapp-utm.test.ts --run
 
 Expected: 4 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -865,7 +865,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** Senza questa modifica, l'helper esiste ma non è chiamato — UTM non vengono mai sparate.
 
-- [ ] **Step 1: Find all hardcoded WA links**
+- [x] **Step 1: Find all hardcoded WA links**
 
 Run:
 
@@ -876,7 +876,7 @@ grep -rn "wa.me/628213107363" src/ 2>/dev/null
 
 Expected: 5-10 occurrences across components. Note them down.
 
-- [ ] **Step 2: Replace each occurrence with helper call**
+- [x] **Step 2: Replace each occurrence with helper call**
 
 For each file found, replace pattern:
 
@@ -910,7 +910,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 <a href={buildWhatsAppLink("home")}>Get Started</a>;
 ```
 
-- [ ] **Step 3: Verify no hardcoded WA links remain**
+- [x] **Step 3: Verify no hardcoded WA links remain**
 
 Run:
 
@@ -920,7 +920,7 @@ grep -rn "wa.me/628213107363" src/ 2>/dev/null
 
 Expected: empty output (all replaced) OR only test files / docs.
 
-- [ ] **Step 4: Run TypeScript build to verify imports correct**
+- [x] **Step 4: Run TypeScript build to verify imports correct**
 
 Run:
 
@@ -945,7 +945,7 @@ Click hero CTA → same check.
 
 Scroll to visa funnel section → check (if any WA link there) `utm_campaign=visa`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -977,7 +977,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** Le 4 funnel page (`/visa`, `/kbli`, `/tax`, `/property`) non hanno Schema.org markup → invisibili a Google AI Overviews + Perplexity citations. `gemini_seo_optimizer.py` esistente fa schema per articoli, ma non per service pages. Questo file estende il pattern.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/mouth/src/app/(marketing)/_seo/funnel-schema.test.ts`:
 
@@ -1019,7 +1019,7 @@ describe("buildFunnelSchema", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -1030,7 +1030,7 @@ pnpm test src/app/\(marketing\)/_seo/funnel-schema.test.ts --run
 
 Expected: FAIL `Cannot find module './funnel-schema'`.
 
-- [ ] **Step 3: Implement schema generator**
+- [x] **Step 3: Implement schema generator**
 
 Create `apps/mouth/src/app/(marketing)/_seo/funnel-schema.ts`:
 
@@ -1206,7 +1206,7 @@ export function buildFunnelSchema(funnel: Funnel): Record<string, unknown> {
 export type { Funnel };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run:
 
@@ -1216,7 +1216,7 @@ pnpm test src/app/\(marketing\)/_seo/funnel-schema.test.ts --run
 
 Expected: 4 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -1251,7 +1251,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 NOTA: la home page `(marketing)/page.tsx` mostra tutti e 4 i funnel come sezioni. Il giusto pattern è 1 schema unico (organizzazione + 4 servizi annidati), non 4 schema separati su una sola pagina (eviterebbe duplicate JSON-LD warning in GSC).
 
-- [ ] **Step 1: Modify `(marketing)/page.tsx` to inject combined schema**
+- [x] **Step 1: Modify `(marketing)/page.tsx` to inject combined schema**
 
 Edit `apps/mouth/src/app/(marketing)/page.tsx`. Add at top:
 
@@ -1296,7 +1296,7 @@ And in the return statement, after `<NavShell>` and before `<main>`:
 />
 ```
 
-- [ ] **Step 2: Build and verify schema appears in HTML**
+- [x] **Step 2: Build and verify schema appears in HTML**
 
 Run:
 
@@ -1318,7 +1318,7 @@ https://search.google.com/test/rich-results
 
 Expected: Test detects "Service" + "FAQPage" markup, no errors. Screenshots saved to `docs/cro/screenshots/2026-04-XX-rich-results-validation.png`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -1346,7 +1346,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** Il sitemap dinamico include già homepage + service pages, ma queste sono dentro `(marketing)/` route group. Ci assicuriamo che `/visa`, `/kbli`, `/tax`, `/property` siano esplicitamente listati con priority 0.9 + frequency weekly. Poi script Python pinga GSC per re-submit.
 
-- [ ] **Step 1: Verify current sitemap includes the 4 funnel routes**
+- [x] **Step 1: Verify current sitemap includes the 4 funnel routes**
 
 Run:
 
@@ -1360,7 +1360,7 @@ kill %1
 
 Expected: vedi 4 URL nei risultati. Se mancano, aggiungili nello Step 2.
 
-- [ ] **Step 2: Edit sitemap.ts to ensure 4 funnel pages explicit**
+- [x] **Step 2: Edit sitemap.ts to ensure 4 funnel pages explicit**
 
 Edit `apps/mouth/src/app/sitemap.ts`. Find `staticPages` array, add (or verify):
 
@@ -1388,7 +1388,7 @@ Then in the route assembly section (where routes get pushed), add:
 routes.push(...funnelEntries);
 ```
 
-- [ ] **Step 3: Test sitemap output**
+- [x] **Step 3: Test sitemap output**
 
 Run:
 
@@ -1402,7 +1402,7 @@ kill %1
 
 Expected: 4 entries with `<priority>0.9</priority>` and `<changefreq>weekly</changefreq>`.
 
-- [ ] **Step 4: Create GSC re-submit script**
+- [x] **Step 4: Create GSC re-submit script**
 
 Create `scripts/gsc_resubmit_sitemap.py`:
 
@@ -1484,7 +1484,7 @@ Expected output:
 
 Verify in GSC console (https://search.google.com/search-console) → Sitemaps section → status "Success".
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara

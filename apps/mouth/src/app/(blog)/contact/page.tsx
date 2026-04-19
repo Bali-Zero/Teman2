@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, MessageCircle, MapPin, Clock, ArrowRight } from "lucide-react";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 
 export const metadata: Metadata = {
   title: "Contact · Bali Zero",
@@ -13,7 +14,7 @@ const CHANNELS = [
     icon: MessageCircle,
     title: "WhatsApp",
     value: "+62 821 3107 363",
-    href: "https://wa.me/628213107363",
+    href: buildWhatsAppLink("home"),
     note: "Fastest response — usually under 15 minutes.",
     accent: "#22c55e",
     fill: "solid" as const,

@@ -14,6 +14,7 @@ import {
 import { SERVICES_DATA, type ServiceData } from "@/data/services_data";
 import ServicePricing from "@/components/services/ServicePricing";
 import { logger } from "@/lib/logger";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { BreadcrumbJsonLd, FAQJsonLd } from "@/components/seo";
 
 export async function generateMetadata({
@@ -282,7 +283,7 @@ export default async function ServiceDetailPage({
                     Get expert advice on your specific situation
                   </p>
                   <Link
-                    href="https://wa.me/628213107363"
+                    href={buildWhatsAppLink("home")}
                     target="_blank"
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-white text-[#e85c41] font-medium hover:bg-white/90 transition-colors mb-3"
                   >
