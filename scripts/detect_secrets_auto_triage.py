@@ -167,6 +167,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)apps/mouth/src/components/book/.*\.ts$"),
         "mouth book catalog: service key literals, not credentials",
     ),
+    # i18n translation files: detect-secrets's SecretKeyword plugin fires on
+    # words like "PIN", "password", "token" even when they're UI copy
+    # ("Forgot PIN?", "Wrong email or PIN"). These files are frontend
+    # translations committed under source control, never credential stores.
+    (
+        re.compile(r"(^|/)apps/mouth/src/i18n/locales/[^/]+\.json$"),
+        "mouth i18n locales: UI translation strings, never credentials",
+    ),
     # Base64 SVG icons inlined in welcome emails (welcome_email_service.py)
     # — verified these 4 findings are base64-encoded SVG markup, not tokens.
     (
