@@ -196,7 +196,7 @@ async def test_generate_passes_negative_prompt_when_provided():
 async def test_generate_aspect_ratio_override():
     mock_client = AsyncMock(spec=httpx.AsyncClient)
     mock_client.post = AsyncMock(return_value=_ok_response())
-    client = ImagenClient(api_key="k", aspect_ratio="4:5", http_client=mock_client)
+    client = ImagenClient(api_key="k", aspect_ratio="3:4", http_client=mock_client)
 
     await client.generate("p", aspect_ratio="16:9")
     payload = mock_client.post.call_args.kwargs["json"]
@@ -204,4 +204,25 @@ async def test_generate_aspect_ratio_override():
 
     await client.generate("p")
     payload = mock_client.post.call_args.kwargs["json"]
-    assert payload["parameters"]["aspectRatio"] == "4:5"
+    assert payload["parameters"]["aspectRatio"] == "3:4"
+
+
+def test_constructor_rejects_unsupported_aspect_ratio():
+    """Imagen 4.0 rejects 4:5 with HTTP 400. Fail fast client-side."""
+    from backend.services.visual.imagen_client import ImagenError
+
+    with pytest.raises(ImagenError, match="not supported by Imagen"):
+        ImagenClient(api_key="k", aspect_ratio="4:5")
+
+
+@pytest.mark.asyncio
+async def test_generate_rejects_override_to_unsupported_aspect():
+    mock_client = AsyncMock(spec=httpx.AsyncClient)
+    mock_client.post = AsyncMock(return_value=_ok_response())
+    client = ImagenClient(api_key="k", aspect_ratio="3:4", http_client=mock_client)
+
+    result = await client.generate("p", aspect_ratio="4:5")
+    assert result.ok is False
+    assert "4:5" in (result.error or "")
+    # Should NOT have made any HTTP call
+    mock_client.post.assert_not_called()
