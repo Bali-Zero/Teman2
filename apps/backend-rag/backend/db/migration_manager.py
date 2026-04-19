@@ -4,34 +4,32 @@ Centralized migration management system
 """
 
 import logging
-import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 import asyncpg
 
 from backend.app.core.config import settings
-from backend.db.migration_base import BaseMigration, MigrationError
+from backend.db.migration_base import (
+    ROLLBACK_MARKER_RE,
+    BaseMigration,
+    MigrationError,
+    split_migration_sql,
+)
 
 logger = logging.getLogger(__name__)
 
-_ROLLBACK_MARKER_RE = re.compile(r"^\s*--\s*===\s*ROLLBACK\s*===\s*$", re.IGNORECASE | re.MULTILINE)
+# Re-export for backwards compatibility with existing tests/callers.
+_ROLLBACK_MARKER_RE = ROLLBACK_MARKER_RE
 
 
 def _extract_rollback_sql(sql_text: str) -> str | None:
-    """
-    Extract rollback SQL block from a migration file.
+    """Extract the rollback SQL block from a migration file.
 
-    A SQL migration may end with a `-- === ROLLBACK ===` marker line;
-    everything after it is the rollback SQL (trimmed).
-
-    Returns:
-        The rollback SQL (possibly empty string) if marker present, else None.
+    Thin wrapper over `migration_base.split_migration_sql` that returns only
+    the rollback portion (None if the marker is absent).
     """
-    match = _ROLLBACK_MARKER_RE.search(sql_text)
-    if not match:
-        return None
-    rollback = sql_text[match.end():].strip()
+    _, rollback = split_migration_sql(sql_text)
     return rollback
 
 
