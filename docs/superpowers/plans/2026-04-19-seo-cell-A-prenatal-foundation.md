@@ -195,7 +195,7 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md §3.2"
 
 **Why:** Il newsroom war-room (DeepSeek synthesis su 4 sorgenti) deve essere influenzato a scegliere queste 4 query nei prossimi 4 cicli. Aggiungiamo `preferred_topics` dal file Sprint 0.
 
-- [ ] **Step 1: Identifica il config block in `00_topic_selector.py`**
+- [x] **Step 1: Identifica il config block in `00_topic_selector.py`**
 
 Run:
 
@@ -205,7 +205,7 @@ grep -nE "INDONESIAN_LEGAL_DOMAINS|SOURCES|NLM_NB7_ID" /Users/nuzantara/Desktop/
 
 Expected output: trova le righe dei config nelle prime ~60 righe.
 
-- [ ] **Step 2: Aggiungi caricamento brief Sprint 0**
+- [x] **Step 2: Aggiungi caricamento brief Sprint 0**
 
 Edit `apps/war-room/agents/00_topic_selector.py` (subito dopo gli altri config in cima):
 
@@ -227,7 +227,7 @@ def _load_seo_cell_prenatal_briefs() -> list[dict]:
         return []
 ```
 
-- [ ] **Step 3: Inietta nel DeepSeek synthesis prompt**
+- [x] **Step 3: Inietta nel DeepSeek synthesis prompt**
 
 Trova la sezione del prompt che invia a DeepSeek (cerca `def synthesize_with_deepseek` o simile). Aggiungi questa sezione al prompt:
 
@@ -242,7 +242,7 @@ if seo_cell_briefs:
     prompt += seo_section
 ```
 
-- [ ] **Step 4: Test che il file viene caricato senza errori**
+- [x] **Step 4: Test che il file viene caricato senza errori**
 
 Run:
 
@@ -270,7 +270,7 @@ Loaded 4 briefs
   - q4_property: hak pakai vs HGB foreign buyer Bali 2026 (deadline: 2026-05-26)
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/nuzantara/Desktop/nuzantara
@@ -1467,7 +1467,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 5: Run script to re-submit**
+- [x] **Step 5: Run script to re-submit**
 
 After mouth is deployed (sitemap.xml live with new entries), run:
 
