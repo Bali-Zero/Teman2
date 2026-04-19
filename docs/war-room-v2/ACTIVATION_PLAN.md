@@ -568,7 +568,141 @@ canale PG `intel_event` già acceso.
   validated. Better to deploy Anomaly L2 as a dedicated small PR with
   feature flag.
 
-### B.6 Decisioni richieste pre-Fase 2
+### B.6 Fase 4 smoke test — risultato
+
+Eseguito 2026-04-20 00:40 WITA. **PASS.**
+
+```
+draft_id: 23ea7d3d-8c94-41cd-aed2-9c6af0fd417a
+final_status: pending_review → (post-run marked 'rejected' for cleanup)
+imagen: model=imagen-4.0-ultra-generate-001, bytes=1,446,761, duration=11.6s
+total_cost_usd: 0.06
+placeholder_slides: 3 (stored in slides_json as dict, no Imagen call)
+telegram: delivered (chat_id 1125336968, plain message, [DRY-RUN] prefix)
+```
+
+Verifica SQL post-run:
+
+```
+brief_json  jsonb_typeof = 'object' ✓
+slides_json jsonb_typeof = 'object' (3 entries) ✓
+war_room_costs: 1 riga imagen_ultra $0.060000 ✓
+```
+
+**Bug preesistenti scoperti durante lo smoke test** (non bloccanti per
+l'activation, ma da fixare in PR separata):
+
+1. **Double-encoding JSONB**: `WarRoomRepository.create_draft` chiama
+   `json.dumps(dict)` sul parametro JSONB. asyncpg in questo progetto ha
+   codec JSONB custom (`backend/app/core/database.py::init_db_connection`)
+   che ri-serializza → output: `'"{"origin":..."'` (JSON-encoded JSON
+   string). Stesso pattern in `update_content_jsonb`, `record_cost`
+   (meta_json), e possibilmente altri metodi del repo. Rilevante anche
+   altri repository (grep: `json.dumps.*repo\.|json.dumps.*conn\.execute`).
+   Smoke workaround: passare il dict direttamente via UPDATE raw.
+
+2. **Imagen aspectRatio default errato**: `ImagenClient.__init__` default
+   `aspect_ratio="4:5"` → Imagen 4.0 API rifiuta con 400
+   "supported: 1:1, 9:16, 16:9, 4:3, 3:4". Il War Room design usa 4:5 per
+   il formato IG carousel, quindi serve:
+   - upstream fix in Imagen (non controllabile), oppure
+   - client-side crop/resize da 3:4 a 4:5 in `VisualGenerator`, oppure
+   - documentare che VisualGenerator deve sempre override aspect_ratio
+     dalla shape del template.
+
+   Smoke workaround: passare `aspect_ratio="3:4"` esplicito.
+
+3. **Nota osservabilità (non bug)**: il container di produzione monta
+   `/data` read-only per questo processo (JSONL cost recorder fallisce).
+   Non blocca nulla, ma il cost recorder dovrebbe degradare più silente
+   (WARNING invece di ERROR), o scrivere in `$WR2_COST_LOG_DIR` se
+   configurato.
+
+Nessuno dei 3 è regressione introdotta da questa PR; tutti preesistono
+nel codice WR2 ereditato. Da tracciare in issue separate.
+
+### B.7 Fase 5 — Pipeline doppia: tre strade (per Zero)
+
+War Room 2.0 e la "pipeline vecchia" (`apps/bali-intel-scraper/` +
+LaunchAgent `com.balizero.intel.nightly` + `com.balizero.post-publish-poller`
++ `com.balizero.post-publish-webhook`) producono entrambi contenuto
+editoriale per `kita.balizero.com` e `balizero.com`. Accendere WR2 senza
+disciplinare la coesistenza = 2 sistemi che scrivono MDX su `apps/mouth/`,
+commit duplicati, confusione team.
+
+Tre strade. **Proposta, Zero decide.**
+
+---
+
+#### Strada A — Shutoff netto della vecchia
+
+**Sequenza**: installare 10 plist WR2 → caricare WR2 → `launchctl unload -w`
+di `com.balizero.intel.nightly`, `post-publish-poller`, `post-publish-webhook`
+→ archiviare `apps/bali-intel-scraper/` in `apps/_archived/bali-intel-scraper/`
+(commit + push) → update CLAUDE.md §12 per rimuovere riferimenti.
+
+- **Pro**: caos zero, 1 solo sistema a regime, mental model pulito.
+- **Contro**: se WR2 ha bug non scoperti al smoke test (Council timeout,
+  Playwright flake, IG auth flow), non c'è fallback — la news pipeline si
+  interrompe. Zero osserva 1-3 giorni di output zero prima di reagire.
+- **Effort**: 30 min operativi + rollback in 10 min (re-load vecchi
+  LaunchAgent + git revert archivio).
+- **Rischi**: scoperta di edge case (es. Council che fa `claude --print`
+  con prompt 12K token → hit rate-limit) quando tutto il carico editoriale
+  dipende da WR2.
+
+#### Strada B — Canary 7-14 giorni parallelo
+
+**Sequenza**: installare 10 plist WR2 CON una variabile ambientale
+`WR2_CANARY=1` → in VisualGenerator/Publisher, quando `WR2_CANARY=1`,
+stampare `[CANARY]` nei titoli IG/X/LI e NON pubblicare su Brevo
+newsletter → vecchia pipeline resta attiva parallela → dashboard observa
+`war_room_drafts` vs. kita MDX commits per 7gg → se metriche WR2 verdi
+(0 critical errors, >5 post approvati, review loop funziona), rimuovere
+`WR2_CANARY` flag e applicare Strada A.
+
+- **Pro**: safety net, dual verifica in produzione reale, dashboard
+  comparativa utile per apprendimento.
+- **Contro**: 7-14gg di complessità mentale (2 pipeline, 2 set di log,
+  rischio "doppio post" se per sbaglio team gira manualmente entrambi),
+  costi ~$30 extra in LLM/Imagen.
+- **Effort**: 2h per aggiungere `WR2_CANARY` env var + titolo prefix +
+  Brevo skip + 30 min decisione finale al giorno 7.
+- **Rischi**: canary diventa "permanente" per inerzia. Serve milestone
+  fisso: "Lunedì 2026-04-27 decisione shutoff vecchia".
+
+#### Strada C — Coesistenza permanente segmentata
+
+**Sequenza**: installare 10 plist WR2 → vecchia pipeline resta attiva
+ma **solo per intel-staging UI** (manual human approval su
+`kita.balizero.com/newsroom`) → WR2 gestisce esclusivamente cognitive
+layer (L1-L4) + newsletter settimanale + pubblicazione automatica post
+approvazione Telegram. I due sistemi non si sovrappongono per design:
+vecchia = discovery + curation manuale; WR2 = produzione multi-canale
+cognitivamente consapevole.
+
+- **Pro**: sfrutta il valore già creato dalla vecchia (UI newsroom,
+  staging area, quality_scorer validato), zero migrazione dati, team
+  continua con workflow noto mentre WR2 matura.
+- **Contro**: complessità permanente. 2 LaunchAgent set. 2 prompt
+  systems (intel-scraper `classifier` vs. WR2 Council). Confusion su
+  "dove va un nuovo topic?".
+- **Effort**: 1h per scrivere la documentazione "cosa va dove" +
+  aggiornamento CLAUDE.md. Zero code change.
+- **Rischi**: diventa "tutto resta com'è" + WR2 = dead code in 3 mesi.
+  O viceversa: WR2 divora funzionalità vecchia gradualmente →
+  intel-staging UI resta ma senza traffico di input.
+
+---
+
+**Raccomandazione**: **Strada B (canary 7 giorni)**. Mitiga il rischio
+scoperta bug in produzione senza committare a una coesistenza permanente
+che tende all'entropia. Al giorno 7 decisione binaria:
+- se WR2 ha prodotto ≥5 draft approvati da Zero, 0 critical errors,
+  review-loop medio ≤4h → Strada A (shutoff)
+- se no → estendi canary altri 7gg + fix
+
+### B.8 Decisioni richieste pre-Fase 2
 
 1. Refactor `ig_publisher.py` per accettare `INSTAGRAM_ACCOUNT_ID`/
    `INSTAGRAM_ACCESS_TOKEN` come fallback di `IG_USER_ID`/`IG_LONG_LIVED_TOKEN`?
