@@ -61,6 +61,7 @@ class ReviewQueue(SQLModel, table=True):
         nullable=False,
         max_length=20,
         description="Status: 'pending', 'resolved', or 'ignored'",
+        sa_column_kwargs={"server_default": "pending"},
     )
 
     # Priority (optional, for manual prioritization)

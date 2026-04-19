@@ -34,9 +34,17 @@ class Client(SQLModel, table=True):
     passport_number: str | None = Field(default=None, max_length=100)
     tax_id: str | None = Field(default=None, max_length=50, index=True)
 
-    # Status
-    status: str = Field(default="active", max_length=50)  # 'active', 'inactive', 'prospect'
-    client_type: str = Field(default="individual", max_length=50)  # 'individual', 'company'
+    # Status. server_default mirrors Python default for CI-from-empty-DB.
+    status: str = Field(
+        default="active",
+        max_length=50,
+        sa_column_kwargs={"server_default": "active"},
+    )
+    client_type: str = Field(
+        default="individual",
+        max_length=50,
+        sa_column_kwargs={"server_default": "individual"},
+    )
 
     # Assignment
     assigned_to: str | None = Field(default=None, max_length=255, index=True)
@@ -79,7 +87,7 @@ class PracticeType(SQLModel, table=True):
     base_price: float | None = Field(
         default=None, sa_column=Column("base_price", type_=DECIMAL(12, 2)),
     )
-    currency: str = Field(default="IDR", max_length=10)
+    currency: str = Field(default="IDR", max_length=10, sa_column_kwargs={"server_default": "IDR"})
     duration_days: int | None = Field(default=None)
     required_documents: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     active: bool = Field(default=True)
@@ -110,8 +118,13 @@ class Practice(SQLModel, table=True):
         default="inquiry",
         max_length=50,
         index=True,
+        sa_column_kwargs={"server_default": "inquiry"},
     )  # 'inquiry', 'waiting_documents', 'sending_invoice', 'on_process', 'completed'
-    priority: str = Field(default="normal", max_length=20)  # 'low', 'normal', 'high', 'urgent'
+    priority: str = Field(
+        default="normal",
+        max_length=20,
+        sa_column_kwargs={"server_default": "normal"},
+    )  # 'low', 'normal', 'high', 'urgent'
 
     # Dates
     inquiry_date: datetime = Field(default_factory=datetime.utcnow)
@@ -127,8 +140,8 @@ class Practice(SQLModel, table=True):
     actual_price: float | None = Field(
         default=None, sa_column=Column("actual_price", type_=DECIMAL(12, 2)),
     )
-    currency: str = Field(default="IDR", max_length=10)
-    payment_status: str = Field(default="unpaid", max_length=50)
+    currency: str = Field(default="IDR", max_length=10, sa_column_kwargs={"server_default": "IDR"})
+    payment_status: str = Field(default="unpaid", max_length=50, sa_column_kwargs={"server_default": "unpaid"})
     paid_amount: float = Field(default=0.0, sa_column=Column("paid_amount", type_=DECIMAL(12, 2)))
 
     # Assignment
@@ -186,7 +199,11 @@ class Interaction(SQLModel, table=True):
 
     # Participants
     team_member: str | None = Field(default=None, max_length=255, index=True)
-    direction: str = Field(default="inbound", max_length=20)  # 'inbound', 'outbound'
+    direction: str = Field(
+        default="inbound",
+        max_length=20,
+        sa_column_kwargs={"server_default": "inbound"},
+    )  # 'inbound', 'outbound'
 
     # AI Extraction
     extracted_entities: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
