@@ -22,9 +22,7 @@ export function HeroBlueprint() {
       style={{ background: "var(--surface-base)" }}
     >
       {/* Full-bleed hero image — 4:5 on mobile, 21:9 on desktop */}
-      <div
-        className="relative w-full hero-aspect"
-      >
+      <div className="relative w-full hero-aspect">
         <Image
           src="/assets/art/hero-team.jpeg"
           alt="The Bali Zero team mid-conversation in a Balinese bale pavilion — seven members on white Carrara marble benches, stone guardian statue and canang offerings beside them"
@@ -37,9 +35,7 @@ export function HeroBlueprint() {
           style={{ objectPosition: "center center" }}
         />
         {/* Darken gradient — stronger on mobile (vertical), side-to-side on desktop */}
-        <div
-          className="absolute inset-0 hero-gradient"
-        />
+        <div className="absolute inset-0 hero-gradient" />
         {/* Bottom fade into page */}
         <div
           className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
@@ -65,10 +61,22 @@ export function HeroBlueprint() {
             <div className="max-w-[560px]">
               {/* Dateline */}
               <div
-                className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-4 md:mb-8"
+                className="text-[10px] font-semibold uppercase tracking-[0.28em] mb-2"
                 style={{ color: "rgba(255,255,255,0.5)" }}
               >
                 Bali Zero · Dispatch · April 2026 · Kerobokan
+              </div>
+              {/* Tagline */}
+              <div
+                className="font-semibold italic mb-4 md:mb-8"
+                style={{
+                  color: "rgba(255,255,255,0.82)",
+                  fontSize: "clamp(13px, 1.1vw, 15px)",
+                  letterSpacing: "0.02em",
+                  textShadow: "0 1px 10px rgba(0,0,0,0.4)",
+                }}
+              >
+                Your Bali, from Zero.
               </div>
 
               {/* Lede — brand-voice essay opener */}
@@ -82,12 +90,12 @@ export function HeroBlueprint() {
                   fontFamily: "var(--font-sans)",
                 }}
               >
-                Most people moving to Bali pick the wrong visa in the
-                first month.
+                Most people moving to Bali pick the wrong visa in the first
+                month.
                 <br />
                 <span style={{ color: "rgba(255,255,255,0.72)" }}>
-                  Sign a lease that does not hold up under PP 18/2021.
-                  Find out only at tax time.
+                  Sign a lease that does not hold up under PP 18/2021. Find out
+                  only at tax time.
                 </span>
               </h1>
 
@@ -133,8 +141,7 @@ export function HeroBlueprint() {
                 className="text-[11px] md:text-[12px] leading-[1.6] hidden sm:block"
                 style={{ color: "rgba(255,255,255,0.55)" }}
               >
-                Filed this month: 47 KITAS, 9 PT PMAs · Office in
-                Kerobokan
+                Filed this month: 47 KITAS, 9 PT PMAs · Office in Kerobokan
                 <br />
                 Licensed konsultan pajak · Registered PPJK · Since 2019
               </div>

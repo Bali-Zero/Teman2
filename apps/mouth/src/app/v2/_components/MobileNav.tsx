@@ -63,8 +63,10 @@ export function MobileNav({ items }: MobileNavProps) {
                   className="block px-4 py-3 rounded-xl text-[18px] font-semibold"
                   style={{
                     color: "var(--text-primary)",
-                    background: "color-mix(in srgb, var(--accent-funnel) 6%, transparent)",
-                    border: "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
+                    background:
+                      "color-mix(in srgb, var(--accent-funnel) 6%, transparent)",
+                    border:
+                      "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
                   }}
                 >
                   {item.label}
