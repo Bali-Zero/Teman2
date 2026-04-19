@@ -73,13 +73,17 @@ export function FunnelBoxes() {
       >
         Our Platforms
       </div>
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-4 gap-4">
         {BOXES.map((b) => (
           <article
             key={b.funnel}
             data-funnel={b.funnel}
             id={b.funnel}
-            className="bz-glass bz-glass--strong p-7 transition-transform hover:-translate-y-1"
+            className="rounded-2xl p-7 transition-transform hover:-translate-y-1"
+            style={{
+              background: "color-mix(in srgb, var(--surface-raised) 60%, transparent)",
+              border: "1px solid var(--border-default)",
+            }}
           >
             <div
               className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest mb-4"

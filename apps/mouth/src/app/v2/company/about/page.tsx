@@ -18,11 +18,36 @@ const STATS = [
 ];
 
 const TEAM_MEMBERS = [
-  { name: "Zainal Abidin", role: "CEO · Founder", photo: "/static/team/zainal-ceo.jpg", accent: "#ff2d4c" },
-  { name: "Pak Heru", role: "Komisaris · Founder", photo: "/static/team/heru-komisaris.jpg", accent: "#a78bfa" },
-  { name: "Ruslana", role: "Board Member", photo: "/static/team/ruslana.jpg", accent: "#f59e0b" },
-  { name: "Krisna", role: "Setup Lead", photo: "/static/team/krisna.png", accent: "#22c55e" },
-  { name: "Asya Nadia", role: "Accountant", photo: "/static/team/asya.jpg", accent: "#06b6d4" },
+  {
+    name: "Zainal Abidin",
+    role: "CEO · Founder",
+    photo: "/static/team/zainal-ceo.jpg",
+    accent: "#ff2d4c",
+  },
+  {
+    name: "Pak Heru",
+    role: "Komisaris · Founder",
+    photo: "/static/team/heru-komisaris.jpg",
+    accent: "#a78bfa",
+  },
+  {
+    name: "Ruslana",
+    role: "Board Member",
+    photo: "/static/team/ruslana.jpg",
+    accent: "#f59e0b",
+  },
+  {
+    name: "Krisna",
+    role: "Setup Lead",
+    photo: "/static/team/krisna.png",
+    accent: "#22c55e",
+  },
+  {
+    name: "Asya Nadia",
+    role: "Accountant",
+    photo: "/static/team/asya.jpg",
+    accent: "#06b6d4",
+  },
 ];
 
 export default function AboutPage() {
@@ -45,7 +70,10 @@ export default function AboutPage() {
 
       <main className="pt-20">
         {/* Hero band — team photo wide */}
-        <section className="relative overflow-hidden" style={{ aspectRatio: "21/7" }}>
+        <section
+          className="relative overflow-hidden"
+          style={{ aspectRatio: "21/7" }}
+        >
           <Image
             src="/assets/art/hero-team.jpeg"
             alt="The Bali Zero team at a working session in a Balinese bale pavilion"
@@ -83,22 +111,30 @@ export default function AboutPage() {
             </span>
           </h1>
 
-          <div className="text-[15px] leading-relaxed space-y-5" style={{ color: "var(--text-secondary)" }}>
+          <div
+            className="text-[15px] leading-relaxed space-y-5"
+            style={{ color: "var(--text-secondary)" }}
+          >
             <p>
-              Bali Zero started in 2019 when Zainal Abidin and Pak Heru — friends for 30 years,
-              partners in business — decided that expats and founders in Bali deserved better than
-              the opaque, overpriced agency model. One staffed with licensed professionals.
-              One that tells you the truth about Indonesian regulation, even when it's inconvenient.
+              Bali Zero started in 2019 when Zainal Abidin and Pak Heru —
+              friends for 30 years, partners in business — decided that expats
+              and founders in Bali deserved better than the opaque, overpriced
+              agency model. One staffed with licensed professionals. One that
+              tells you the truth about Indonesian regulation, even when it's
+              inconvenient.
             </p>
             <p>
-              Today we are a team of 18+ across visa processing, company setup, tax compliance,
-              and property due diligence. We file about 50 KITAS and 8-10 PT PMAs per month.
-              We also built Zantara, an AI assistant trained on every regulation we've read,
-              every edge case we've solved, every filing we've made. It drafts. Our licensed team signs.
+              Today we are a team of 18+ across visa processing, company setup,
+              tax compliance, and property due diligence. We file about 50 KITAS
+              and 8-10 PT PMAs per month. We also built Zantara, an AI assistant
+              trained on every regulation we've read, every edge case we've
+              solved, every filing we've made. It drafts. Our licensed team
+              signs.
             </p>
             <p>
-              We write about what we see — regulatory changes, tax traps, property pitfalls —
-              because transparency is how trust is built. Not with slogans.
+              We write about what we see — regulatory changes, tax traps,
+              property pitfalls — because transparency is how trust is built.
+              Not with slogans.
             </p>
           </div>
         </section>
@@ -173,10 +209,16 @@ export default function AboutPage() {
                       "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.75) 100%)",
                   }}
                 >
-                  <div className="text-[13px] font-bold" style={{ color: "#fff" }}>
+                  <div
+                    className="text-[13px] font-bold"
+                    style={{ color: "#fff" }}
+                  >
                     {m.name}
                   </div>
-                  <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.7)" }}>
+                  <div
+                    className="text-[10px] mt-0.5"
+                    style={{ color: "rgba(255,255,255,0.7)" }}
+                  >
                     {m.role}
                   </div>
                 </div>

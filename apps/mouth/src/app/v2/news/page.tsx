@@ -23,7 +23,11 @@ const TOPIC_COLORS: Record<ArticleCategory, string> = {
   trends: "#e879f9",
 };
 
-const TOPICS: { label: string; slug: ArticleCategory | "all"; accent: string }[] = [
+const TOPICS: {
+  label: string;
+  slug: ArticleCategory | "all";
+  accent: string;
+}[] = [
   { label: "All", slug: "all", accent: "#ffffff" },
   { label: "Visas", slug: "visas", accent: TOPIC_COLORS.visas },
   { label: "Business", slug: "business", accent: TOPIC_COLORS.business },
@@ -68,7 +72,9 @@ export default async function NewsPage() {
             style={{ fontSize: "clamp(32px, 4vw, 52px)", lineHeight: 1.05 }}
           >
             Intelligence for expats{" "}
-            <span style={{ color: "var(--text-secondary)" }}>and founders.</span>
+            <span style={{ color: "var(--text-secondary)" }}>
+              and founders.
+            </span>
           </h1>
           <p
             className="text-[15px] max-w-xl mx-auto"
@@ -122,7 +128,10 @@ export default async function NewsPage() {
 
         {total > 18 && (
           <div className="text-center mt-12">
-            <span className="text-[13px]" style={{ color: "var(--text-tertiary)" }}>
+            <span
+              className="text-[13px]"
+              style={{ color: "var(--text-tertiary)" }}
+            >
               Showing 18 of {total} articles
             </span>
           </div>
@@ -168,13 +177,16 @@ function ArticleCard({ article: a }: { article: ArticleListItem }) {
         ) : (
           <div
             className="w-full h-full"
-            style={{ background: `linear-gradient(135deg, ${accent}, color-mix(in srgb, ${accent} 40%, #000))` }}
+            style={{
+              background: `linear-gradient(135deg, ${accent}, color-mix(in srgb, ${accent} 40%, #000))`,
+            }}
           />
         )}
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 50%)",
+            background:
+              "linear-gradient(0deg, rgba(0,0,0,0.6) 0%, transparent 50%)",
           }}
         />
         <span
