@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 from hashlib import md5
 from typing import Any
 
+from backend.services.observability import llm_cost_tracked, set_usage
+
 logger = logging.getLogger(__name__)
 
 # Tracing utilities (with fallback for standalone usage)
@@ -290,6 +292,19 @@ class EmbeddingsGenerator:
         """Clear the embedding cache."""
         await _global_embedding_cache.clear()
 
+    @llm_cost_tracked(provider="openai_embeddings", model_attr="model")
+    async def _embed_batch(self, batch: list[str]) -> list[list[float]]:
+        """
+        Call the OpenAI Embeddings API for a single batch (ASYNC).
+        Tracks cost via @llm_cost_tracked; token counts come from response.usage.
+        """
+        response = await self.client.embeddings.create(model=self.model, input=batch)
+        set_usage(
+            input_tokens=getattr(response.usage, "prompt_tokens", 0),
+            output_tokens=0,
+        )
+        return [item.embedding for item in response.data]
+
     async def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings using OpenAI API (ASYNC).
@@ -305,10 +320,7 @@ class EmbeddingsGenerator:
             batch = texts[i : i + MAX_BATCH_SIZE]
             logger.debug(f"Processing batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts")
 
-            # Call OpenAI API Async
-            response = await self.client.embeddings.create(model=self.model, input=batch)
-
-            batch_embeddings = [item.embedding for item in response.data]
+            batch_embeddings = await self._embed_batch(batch)
             all_embeddings.extend(batch_embeddings)
 
         logger.info(
