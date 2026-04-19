@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.wr2-bridge</string>
+
+    <!-- Mata Garuda Layer 5 — WR2 Bridge Publisher.
+         Converts enriched items (immigration/tax/investment domains) into
+         WR2 research_dossiers-compatible envelopes on bridge:outbound.
+         WR2 code is NOT touched — it consumes the stream natively.
+         Hourly cadence. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>source ~/.nuzantara-secrets.env 2>/dev/null; cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; source .venv/bin/activate &amp;&amp; python scripts/run_wr2_bridge.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/matagaruda-wr2-bridge.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/matagaruda-wr2-bridge.stderr.log</string>
+</dict>
+</plist>
