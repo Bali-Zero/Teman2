@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.public-channel</string>
+
+    <!-- Mata Garuda Layer 5 Distribuzione — Public TG channel publisher.
+         Curates enriched stream items flagged public_safe=true + score>=3 for
+         3 client-educational domains, posts to Bali Zero public TG channel.
+         Rate-limited 3 posts/day. Runs every 4 hours.
+
+         DRY-RUN by default: requires TELEGRAM_PUBLIC_CHANNEL_ID set to
+         enable real publishing. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>source ~/.nuzantara-secrets.env 2>/dev/null; cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; source .venv/bin/activate &amp;&amp; python scripts/run_public_channel.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+    </dict>
+
+    <!-- Every 4 hours at :15 past the hour (offset from other MG agents). -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>2</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>6</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>10</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>14</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>18</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>22</integer>
+            <key>Minute</key>
+            <integer>15</integer>
+        </dict>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/matagaruda-public-channel.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/matagaruda-public-channel.stderr.log</string>
+</dict>
+</plist>
