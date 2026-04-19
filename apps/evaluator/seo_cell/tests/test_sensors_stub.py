@@ -1,9 +1,10 @@
-"""Contract tests for the 3 sensors still stubbed.
+"""Contract tests for the 2 sensors still stubbed.
 
 Sensors graduated out of stub-land (have their own test_*_sensor.py):
-  - GSCSensor    (Sprint 2)
-  - GA4Sensor    (Sprint 2b)
+  - GSCSensor          (Sprint 2)
+  - GA4Sensor          (Sprint 2b)
   - WarRoomEventSensor (Sprint 2c)
+  - KGSensor           (Sprint 2d)
 """
 import pytest
 
@@ -19,7 +20,6 @@ from apps.evaluator.seo_cell.sensors import (
 
 STUB_SENSORS = [
     CompetitorSERPSensor(),
-    KGSensor(),
     CannibalizationSensor(),
 ]
 
@@ -35,7 +35,13 @@ async def test_stub_sensor_returns_reading(sensor):
 
 
 def test_six_distinct_sensor_names():
-    all_six = [*STUB_SENSORS, GSCSensor(), GA4Sensor(), WarRoomEventSensor()]
+    all_six = [
+        *STUB_SENSORS,
+        GSCSensor(),
+        GA4Sensor(),
+        WarRoomEventSensor(),
+        KGSensor(),
+    ]
     names = {s.name for s in all_six}
     assert len(names) == 6
     assert names == {

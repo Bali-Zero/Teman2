@@ -32,6 +32,7 @@ async def test_single_pulse_completes_in_pre_natal(monkeypatch):
     gsc = next(s for s in cell.sensors if s.name == "gsc")
     ga4 = next(s for s in cell.sensors if s.name == "ga4")
     war = next(s for s in cell.sensors if s.name == "war_room_event")
+    kg = next(s for s in cell.sensors if s.name == "kg")
 
     tmp_creds = Path("/tmp/seo_cell_test_fake_creds.json")
     tmp_creds.write_text("{}")
@@ -46,9 +47,17 @@ async def test_single_pulse_completes_in_pre_natal(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgres://fake")
 
     try:
+        empty_kg = {
+            "node_count": 0,
+            "edge_count": 0,
+            "nodes_by_type": {},
+            "edges_by_type": {},
+            "last_updated_at": None,
+        }
         with patch.object(gsc, "_fetch_rows_blocking", return_value=[]), \
              patch.object(ga4, "_fetch_report_blocking", return_value={"rows": []}), \
-             patch.object(war, "_fetch_posts", return_value=[]):
+             patch.object(war, "_fetch_posts", return_value=[]), \
+             patch.object(kg, "_fetch_snapshot", return_value=empty_kg):
             result = await cell.single_pulse()
     finally:
         gsc_mod.GOOGLE_CREDENTIALS_PATH = orig_gsc
