@@ -1,0 +1,8 @@
+{
+  "title": "Malformed URL article about visa regulations",
+  "url": "not-a-valid-url-at-all",
+  "published_at": "2026-04-10",
+  "body_text": "This article has a non-empty title and body but the URL is completely malformed, missing the http/https scheme, which should cause Tier 1 regex validation to reject it.",
+  "source_domain": "unknown",
+  "expected_status": "rejected"
+}

@@ -320,6 +320,14 @@ def register_handlers(
     bus.subscribe("practice.status_changed", on_practice_status_changed)
     bus.subscribe("compliance.alert", on_compliance_alert)
 
+    # ── Compliance + intel handlers (2026-04-18 PR) ────────────────────
+    try:
+        from backend.services.events.handlers.compliance_handlers import HANDLERS as _compliance_handlers
+        for event_type, handler in _compliance_handlers.items():
+            bus.subscribe(event_type, handler)
+    except ImportError as exc:
+        logger.warning("compliance_handlers not loaded: %s", exc)
+
     logger.info(
         f"✅ EventBus handlers registered: "
         f"{len(bus._subscribers)} event types"
