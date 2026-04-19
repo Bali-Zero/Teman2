@@ -1,12 +1,5 @@
 import { BZLogo } from "@balizero/core/components/BZLogo";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  MessageCircle,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
+import { Mail, Phone, MapPin, MessageCircle, Send, type LucideIcon } from "lucide-react";
 
 const SERVICES = [
   { label: "Visa & Immigration", href: "/services/visa" },
@@ -42,7 +35,9 @@ export function Footer() {
     >
       <div className="max-w-[1400px] mx-auto">
         {/* Top row — 5 columns on desktop, 2-col tablet, stacks on mobile */}
-        <div className="footer-grid grid mb-14">
+        <div
+          className="footer-grid grid mb-14"
+        >
           {/* Brand */}
           <div>
             <BZLogo variant="round" size={68} />
@@ -64,8 +59,7 @@ export function Footer() {
               className="text-[13px] leading-relaxed max-w-xs"
               style={{ color: "var(--text-tertiary)" }}
             >
-              Your trusted partner for business, immigration, and investment in
-              Indonesia since 2020. Trusted by 5,000+ clients.
+              Your trusted partner for business, immigration, and investment in Indonesia since 2020. Trusted by 5,000+ clients.
             </p>
           </div>
 
