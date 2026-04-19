@@ -10,7 +10,6 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any
 
 import asyncpg
 
@@ -89,7 +88,7 @@ class AlertRepository(BaseRepository):
         inst._conn = conn
         return inst
 
-    async def _exec(self, fn_name: str, query: str, *args: Any) -> Any:
+    async def _exec(self, fn_name: str, query: str, *args):
         if self._conn is not None:
             return await getattr(self._conn, fn_name)(query, *args)
         async with self.db_pool.acquire() as conn:
