@@ -22,11 +22,28 @@ TG_ZERO_CHAT_ID = "1125336968"
 NLM_NOTEBOOKS = {
     "ai_research": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",  # NB-INTEL-AIResearch
     "self_evolving": "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",  # Mata Garuda Self-Evolving Research
-    "regulation": "",       # NB-INTEL-Regulation (TBD)
-    "tax": "",              # NB-INTEL-Tax (TBD)
-    "immigration": "",      # NB-INTEL-Immigration (TBD)
-    "press": "",            # NB-INTEL-Press (TBD)
+    "regulation": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",  # NB-INTEL-Regulation
+    "tax": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",         # NB-INTEL-Tax
+    "immigration": "1ed02e54-542f-426a-94f8-53c5ffde4b7d", # NB-INTEL-Immigration
+    "press": "9d262101-abeb-4e15-af9c-c38e028c62fe",       # NB-INTEL-Press
 }
+
+# Domain → NLM Notebook routing (for nlm_feeder)
+# Enriched items with one of these topic/domain values flow to the mapped NB.
+NLM_DOMAIN_ROUTING = {
+    "immigration_visa": "immigration",
+    "tax_fiscal": "tax",
+    "investment_licensing": "regulation",
+    "labor_manpower": "regulation",
+    "political_risk": "press",
+    "provincial_bali": "press",
+    "ai_research": "ai_research",
+    # Other domains skip — keep NBs focused.
+}
+
+# NLM rate limits
+NLM_FEEDER_BATCH_SIZE = 10       # max items per run
+NLM_FEEDER_SLEEP_BETWEEN_S = 5   # seconds between MCP/CLI calls
 
 # Relevance scoring weights for business context
 RELEVANCE_WEIGHTS = {
