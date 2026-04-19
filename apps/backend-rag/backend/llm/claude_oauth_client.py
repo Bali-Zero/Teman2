@@ -19,6 +19,7 @@ point is to not need the SDK.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import re
@@ -101,8 +102,15 @@ async def complete_async(
     *,
     model: str | None = None,
     timeout_s: int = DEFAULT_TIMEOUT_S,
+    endpoint: str | None = None,
+    request_id: str | None = None,
 ) -> ClaudeOAuthResponse:
     """Run ``claude -p`` with 3-token fallback and return the text completion.
+
+    Every call — successful or not — is recorded through
+    :func:`backend.services.observability.record_llm_call` with provider
+    ``claude_oauth``. Since the CLI does not report usage metadata we
+    estimate tokens as ``len(text) // 4`` (industry rule-of-thumb).
 
     Args:
         prompt: The user prompt (system-prompt handling is deferred to the
@@ -112,6 +120,9 @@ async def complete_async(
             ``claude-sonnet-4-6``, ``claude-haiku-4-5``, …).
         timeout_s: Per-attempt wall-clock timeout. The total cap is roughly
             ``timeout_s × len(tokens)``.
+        endpoint: Caller identifier for cost attribution. Strongly
+            recommended.
+        request_id: HTTP correlation id if available.
 
     Returns:
         :class:`ClaudeOAuthResponse` with the completion text and the label
@@ -128,6 +139,12 @@ async def complete_async(
     tokens = _collect_tokens()
     start = time.monotonic()
     last_error = ""
+    # Reported only at the end (success OR failure)
+    _recorder_model = model or "claude-unknown"
+    _recorder_input_tokens = max(1, len(prompt) // 4)
+    _recorder_output_tokens = 0
+    _recorder_success = False
+    _recorder_error_class: str | None = None
 
     for attempt, (token, label) in enumerate(tokens, start=1):
         cmd: list[str] = [
@@ -158,10 +175,8 @@ async def complete_async(
             stdout_b, stderr_b = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
         except asyncio.TimeoutError:
             proc.kill()
-            try:
+            with contextlib.suppress(Exception):
                 await proc.wait()
-            except Exception:
-                pass
             last_error = f"{label}: timeout after {timeout_s}s"
             logger.warning(last_error)
             continue
@@ -189,16 +204,75 @@ async def complete_async(
 
         elapsed = time.monotonic() - start
         logger.info("claude -p success via %s (%.2fs, attempt %d)", label, elapsed, attempt)
-        return ClaudeOAuthResponse(
-            text=output,
-            token_label=label,
-            elapsed_s=elapsed,
-            attempts=attempt,
-        )
+        _recorder_output_tokens = max(1, len(output) // 4)
+        _recorder_success = True
+        try:
+            return ClaudeOAuthResponse(
+                text=output,
+                token_label=label,
+                elapsed_s=elapsed,
+                attempts=attempt,
+            )
+        finally:
+            await _record_claude_oauth_call(
+                model=_recorder_model,
+                input_tokens=_recorder_input_tokens,
+                output_tokens=_recorder_output_tokens,
+                success=_recorder_success,
+                latency_ms=int((time.monotonic() - start) * 1000),
+                endpoint=endpoint,
+                request_id=request_id,
+                error_class=_recorder_error_class,
+            )
 
-    raise ClaudeOAuthError(
+    err = ClaudeOAuthError(
         f"All {len(tokens)} OAuth attempts failed. Last error: {last_error}",
     )
+    _recorder_error_class = type(err).__name__
+    await _record_claude_oauth_call(
+        model=_recorder_model,
+        input_tokens=_recorder_input_tokens,
+        output_tokens=_recorder_output_tokens,
+        success=False,
+        latency_ms=int((time.monotonic() - start) * 1000),
+        endpoint=endpoint,
+        request_id=request_id,
+        error_class=_recorder_error_class,
+    )
+    raise err
+
+
+async def _record_claude_oauth_call(
+    *,
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    success: bool,
+    latency_ms: int,
+    endpoint: str | None,
+    request_id: str | None,
+    error_class: str | None,
+) -> None:
+    """Record a Claude OAuth call to the cost ledger. Never raises."""
+    try:
+        from backend.services.llm_clients.pricing import calculate_cost
+        from backend.services.observability import record_llm_call
+
+        cost_usd = calculate_cost(input_tokens, output_tokens, model)
+        await record_llm_call(
+            provider="claude_oauth",
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
+            success=success,
+            latency_ms=latency_ms,
+            endpoint=endpoint,
+            request_id=request_id,
+            error_class=error_class,
+        )
+    except Exception as exc:  # noqa: BLE001 — never break the caller
+        logger.warning("llm_cost recorder failed for claude_oauth: %s", exc)
 
 
 def complete(
