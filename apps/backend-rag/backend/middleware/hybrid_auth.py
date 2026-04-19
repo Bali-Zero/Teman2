@@ -187,6 +187,18 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/funnel/session/touch",  # BUSINESS: Pre-auth lead cookie bz_session touch — anonymous UUID, no PII. Required for cross-funnel session attribution (visa/kbli/tax/property/home).
             "/api/funnel/session/convert",  # BUSINESS: Lead→client conversion bridge (called by portal login flow). Takes session_id + client_id.
             "/api/analytics/funnel-event",  # BUSINESS: 11 whitelisted funnel events (see packages/core/analytics/funnel-view.ts FUNNEL_EVENTS). No PII — session_id only.
+            # ========================================================================
+            # HOMEPAGE 4-APP (Visa Check + KBLI + Tax + Zoning) — public, no-PII
+            # ========================================================================
+            # Each app persists context in visa_checks/kbli_checks/etc. with a random
+            # hash as the public id. Lead capture stores the intent + wa.me URL with
+            # a 7-day TTL (see migration 119). No account, no PII stored beyond what
+            # the user types into the handoff form.
+            "/api/lead/capture",  # BUSINESS: 4-app homepage → WhatsApp handoff. POST only; returns wa.me URL.
+            "/api/visa/check/start",  # BUSINESS: Branch selector (Clock vs Match) for Visa Check app.
+            "/api/visa/clock",  # BUSINESS: Visa Clock submission + shareable /visa/clock/{hash} lookup.
+            "/api/visa/match",  # BUSINESS: Visa Match submission + shareable /visa/match/{hash} lookup.
+            "/api/funnel_email/unsubscribe/",  # BUSINESS: One-click email unsubscribe (token-based, CAN-SPAM compliant).
             "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
             "/api/prime/zones-geojson",  # BUSINESS: Zone polygon GeoJSON for 3D map rendering (public)
             "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)
