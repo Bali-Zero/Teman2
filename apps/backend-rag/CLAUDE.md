@@ -7,6 +7,49 @@
 
 ## Critical Gotchas
 
+### Migration Runner Was Executing ROLLBACK Section In-Transaction (SCAR 2026-04-19, FIXED)
+
+`backend/db/migration_base.py` `BaseMigration.apply()` previously read the
+**full** content of every `.sql` file in `db/migrations_v2/`, including the
+section after the `-- === ROLLBACK ===` marker, and passed it all to
+`conn.execute(sql)`. PostgreSQL treats `-- === ROLLBACK ===` as a normal
+comment, so CREATE TABLE followed by DROP TABLE ran in the same transaction:
+the migration logged "applied successfully" and then the table vanished. The
+next migration found "relation does not exist" and failed.
+
+Concrete symptom from PB2 deploy 2026-04-19:
+
+```
+Migration 114_compliance_alerts applied successfully in 67ms   ← log says OK
+Applying migration 115_alert_outcomes
+ERROR: SQL execution failed: relation "compliance_alerts" does not exist
+```
+
+**Fix (branch `fix/migration-runner-rollback-strip`):**
+- Added `ROLLBACK_MARKER_RE` regex to `migration_base.py`.
+- New `split_migration_sql(sql) -> (forward, rollback)` helper.
+- `BaseMigration.apply()` now uses only the forward portion.
+- Checksum still computed on the full file content for audit stability.
+- 2 integration tests added that drive real `apply()` and
+  `apply_all_pending()` against PG (the previous tests validated only the
+  extraction helper, not the apply path).
+
+**Cost of incident:** 19-commit revert of `pro/backend-compliance-intel-e2e`
+from main + ~2-3 hours debug. PB2 branch preserved on origin, ready to be
+rebased on the fix branch and redeployed.
+
+**Diagnostic note for future Claude:** an earlier draft of this SCAR (now
+overwritten) attributed the failure to "cross-connection visibility on Fly
+ephemeral machine". That hypothesis was wrong. The bug was reproducible
+locally as soon as you exercised the real `BaseMigration.apply()` path
+(not the extraction helper test). Lesson: **reproduce the bug on the
+real call path locally before theorizing**, especially for failures observed
+only in deploy logs.
+
+**Convention going forward:** any new SQL migration in `db/migrations_v2/`
+SHOULD include a `-- === ROLLBACK ===` section. The runner now correctly
+extracts the forward DDL only.
+
 ### Docker Build Context — Monorepo Root (PR #62)
 
 The Dockerfile expects build context at **monorepo root**, not `apps/backend-rag/`.
