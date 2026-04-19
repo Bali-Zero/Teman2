@@ -5,7 +5,9 @@
  */
 
 [data-theme="dark"] {
-  --surface-base:    var(--color-black);
+  /* Warm Graphite — 3% red-violet undertone. Boutique legal + AI seam.
+     Pairs equally well with all four funnel accents (red/gold/cyan/green). */
+  --surface-base:    #121016;
   --surface-raised:  rgba(255, 255, 255, 0.025);
   --surface-sunken:  rgba(0, 0, 0, 0.4);
   --surface-overlay: rgba(4, 4, 6, 0.55);
@@ -13,7 +15,7 @@
 
   --text-primary:   rgba(255, 255, 255, 0.92);
   --text-secondary: rgba(255, 255, 255, 0.5);
-  --text-tertiary:  rgba(255, 255, 255, 0.25);
+  --text-tertiary:  rgba(255, 255, 255, 0.5);
   --text-on-accent: #ffffff;
 
   --border-subtle:  rgba(255, 255, 255, 0.03);

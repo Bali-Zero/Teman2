@@ -39,87 +39,29 @@ export default function CookiePage() {
         </h1>
 
         <div style={{ color: "var(--text-secondary)" }}>
-          <p
-            className="text-[15px] leading-relaxed mb-8 font-medium"
-            style={{ color: "var(--text-primary)" }}
-          >
-            We use cookies to keep the site working and to understand how people
-            use it. Here is what we set and why.
+          <p className="text-[15px] leading-relaxed mb-8 font-medium" style={{ color: "var(--text-primary)" }}>
+            We use cookies to keep the site working and to understand how people use it. Here is what we set and why.
           </p>
 
           <div className="overflow-x-auto mb-8">
-            <table
-              className="w-full text-[13px]"
-              style={{ borderCollapse: "collapse" }}
-            >
+            <table className="w-full text-[13px]" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
-                  <th
-                    className="text-left py-3 pr-4 font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Cookie
-                  </th>
-                  <th
-                    className="text-left py-3 pr-4 font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Type
-                  </th>
-                  <th
-                    className="text-left py-3 pr-4 font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Duration
-                  </th>
-                  <th
-                    className="text-left py-3 font-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Purpose
-                  </th>
+                  <th className="text-left py-3 pr-4 font-bold" style={{ color: "var(--text-primary)" }}>Cookie</th>
+                  <th className="text-left py-3 pr-4 font-bold" style={{ color: "var(--text-primary)" }}>Type</th>
+                  <th className="text-left py-3 pr-4 font-bold" style={{ color: "var(--text-primary)" }}>Duration</th>
+                  <th className="text-left py-3 font-bold" style={{ color: "var(--text-primary)" }}>Purpose</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  [
-                    "nz_access_token",
-                    "Essential",
-                    "Session",
-                    "SSO authentication across balizero.com subdomains",
-                  ],
-                  [
-                    "theme",
-                    "Essential",
-                    "1 year",
-                    "Stores light/dark mode preference",
-                  ],
-                  [
-                    "_ga / _ga_*",
-                    "Analytics",
-                    "2 years",
-                    "Google Analytics — page views, traffic sources (anonymized IP)",
-                  ],
-                  [
-                    "_gid",
-                    "Analytics",
-                    "24 hours",
-                    "Google Analytics — session identification",
-                  ],
+                  ["nz_access_token", "Essential", "Session", "SSO authentication across balizero.com subdomains"],
+                  ["theme", "Essential", "1 year", "Stores light/dark mode preference"],
+                  ["_ga / _ga_*", "Analytics", "2 years", "Google Analytics — page views, traffic sources (anonymized IP)"],
+                  ["_gid", "Analytics", "24 hours", "Google Analytics — session identification"],
                 ].map(([name, type, dur, purpose]) => (
-                  <tr
-                    key={name}
-                    style={{
-                      borderBottom:
-                        "1px solid color-mix(in srgb, var(--border-default) 50%, transparent)",
-                    }}
-                  >
-                    <td
-                      className="py-2.5 pr-4 font-mono text-[12px]"
-                      style={{ color: "var(--accent-funnel-text)" }}
-                    >
-                      {name}
-                    </td>
+                  <tr key={name} style={{ borderBottom: "1px solid color-mix(in srgb, var(--border-default) 50%, transparent)" }}>
+                    <td className="py-2.5 pr-4 font-mono text-[12px]" style={{ color: "var(--accent-funnel-text)" }}>{name}</td>
                     <td className="py-2.5 pr-4">{type}</td>
                     <td className="py-2.5 pr-4">{dur}</td>
                     <td className="py-2.5">{purpose}</td>
@@ -130,44 +72,26 @@ export default function CookiePage() {
           </div>
 
           <section className="mb-8">
-            <h2
-              className="text-[18px] font-bold tracking-tight mb-3"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <h2 className="text-[18px] font-bold tracking-tight mb-3" style={{ color: "var(--text-primary)" }}>
               Managing cookies
             </h2>
             <p className="text-[14px] leading-relaxed">
-              Essential cookies cannot be disabled without breaking login and
-              preferences. Analytics cookies are loaded only after consent. You
-              can revoke consent at any time by clearing cookies in your browser
-              settings or contacting us.
+              Essential cookies cannot be disabled without breaking login and preferences.
+              Analytics cookies are loaded only after consent. You can revoke consent at any time
+              by clearing cookies in your browser settings or contacting us.
             </p>
           </section>
 
           <div
             className="mt-12 p-5 rounded-xl text-[13px]"
             style={{
-              background:
-                "color-mix(in srgb, var(--text-tertiary) 8%, transparent)",
+              background: "color-mix(in srgb, var(--text-tertiary) 8%, transparent)",
               border: "1px solid var(--border-default)",
               color: "var(--text-tertiary)",
             }}
           >
-            For questions, contact{" "}
-            <a
-              href="mailto:privacy@balizero.com"
-              style={{ color: "var(--accent-funnel-text)" }}
-            >
-              privacy@balizero.com
-            </a>
-            . See also our{" "}
-            <a
-              href="/v2/privacy"
-              style={{ color: "var(--accent-funnel-text)" }}
-            >
-              Privacy Policy
-            </a>
-            .
+            For questions, contact <a href="mailto:privacy@balizero.com" style={{ color: "var(--accent-funnel-text)" }}>privacy@balizero.com</a>.
+            See also our <a href="/v2/privacy" style={{ color: "var(--accent-funnel-text)" }}>Privacy Policy</a>.
           </div>
         </div>
       </main>

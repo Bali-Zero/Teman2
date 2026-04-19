@@ -37,13 +37,7 @@ export function WhatsAppFAB({
           background: "rgba(255,255,255,0.22)",
         }}
       >
-        <MessageCircle
-          size={22}
-          strokeWidth={2.2}
-          color="#ffffff"
-          fill="#ffffff"
-          fillOpacity={0.15}
-        />
+        <MessageCircle size={22} strokeWidth={2.2} color="#ffffff" fill="#ffffff" fillOpacity={0.15} />
         {/* Online pulse */}
         <span
           className="absolute rounded-full"
