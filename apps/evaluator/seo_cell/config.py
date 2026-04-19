@@ -53,6 +53,7 @@ def cell_birth_date() -> datetime:
 # ── Competitor SERP (decision memo: max 2 vendors, 7gg cache) ──────────────
 COMPETITOR_DOMAINS = ("cekindo.com", "emerhub.com")
 COMPETITOR_CACHE_TTL_SECONDS = 7 * 86400
+COMPETITOR_CACHE_DB = DATA_DIR / "competitor_serp_cache.db"
 
 # ── EventBus channel consumed by war_room_event_sensor ─────────────────────
 WAR_ROOM_EVENT_CHANNEL = "war_room.event"  # already active (migration 112)
