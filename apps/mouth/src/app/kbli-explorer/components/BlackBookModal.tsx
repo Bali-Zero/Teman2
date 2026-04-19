@@ -11,6 +11,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 
 interface BlackBookModalProps {
   isOpen: boolean;
@@ -184,8 +185,8 @@ export default function BlackBookModal({
                   </h2>
                   <p className="text-[#888] text-sm leading-relaxed mb-8">
                     The KBLI 2025 Black Book has been dispatched to{" "}
-                    <span className="text-accent-sand">{email}</span>. Our team is
-                    also reviewing the status of your company codes.
+                    <span className="text-accent-sand">{email}</span>. Our team
+                    is also reviewing the status of your company codes.
                   </p>
                   <div className="space-y-3">
                     <button
@@ -195,7 +196,7 @@ export default function BlackBookModal({
                       Back to Explorer
                     </button>
                     <a
-                      href="https://wa.me/628213107363?text=Hi%2C%20I%20found%20a%20KBLI%20code%20I%20need%20help%20with."
+                      href={buildWhatsAppLink("kbli")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center gap-2 w-full py-3 text-accent-sand text-sm font-bold border border-accent-sand/20 rounded-lg hover:bg-accent-sand/5 transition-all"

@@ -40,3 +40,7 @@ export {
   type MatterType,
 } from "./components/MatterCard";
 export { ContextPanel, type ContextTab } from "./components/ContextPanel";
+
+// Funnel apps (visa/kbli/tax/zoning interactive apps)
+export * from "./components/apps";
+export { useFunnelApp } from "./analytics/useFunnelApp";
