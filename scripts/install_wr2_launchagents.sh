@@ -26,7 +26,7 @@ MODE="${WR2_MODE:-load}"
 FORCE="${WR2_FORCE:-0}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC_DIR="$REPO_ROOT/.openclaw/launchagents"
+SRC_DIR="$REPO_ROOT/infra/launchagents"
 DST_DIR="$HOME/Library/LaunchAgents"
 
 if [[ ! -d "$SRC_DIR" ]]; then
