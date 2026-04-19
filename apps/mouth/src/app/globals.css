@@ -329,6 +329,17 @@ body {
   position: relative;
 }
 
+/* Editorial persona (balizero.com, visa/tax/kbli): headings use Cormorant
+   Garamond serif. Operative personas (kita., prime., my.) keep their own
+   heading treatments — sans for operative-dark, page-local Cormorant
+   imports for operative-light portal screens. See layout.tsx themeInitScript
+   for persona assignment. */
+[data-theme="editorial"] :is(h1, h2, h3) {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
 /* Zantara widget fade-in animation */
 @keyframes fadeInUp {
   from {
