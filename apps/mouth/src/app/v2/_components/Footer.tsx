@@ -7,6 +7,7 @@ import {
   Send,
   type LucideIcon,
 } from "lucide-react";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 
 const SERVICES = [
   { label: "Visa & Immigration", href: "/services/visa" },
@@ -88,7 +89,7 @@ export function Footer() {
             </h4>
             <div className="flex flex-col gap-3">
               <ContactLink
-                href="https://wa.me/628213107363"
+                href={buildWhatsAppLink("home")}
                 Icon={MessageCircle}
                 label="WhatsApp"
                 value="+62 821 3107 363"
