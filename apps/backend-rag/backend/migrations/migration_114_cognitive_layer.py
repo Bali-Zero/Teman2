@@ -2,7 +2,13 @@
 Migration 114: Cognitive layer tables (Sprint 15+).
 
 Sprint 15 adds cross_dossier_theses (Connector L1 output).
-Sprint 16 adds compliance_alerts (Anomaly L2 output).
+Sprint 16 adds wr_anomaly_alerts (Anomaly L2 output).
+
+Note (2026-04-20): originally named ``compliance_alerts``, renamed to
+``wr_anomaly_alerts`` to avoid collision with the existing client-centric
+``compliance_alerts`` table from db/migrations_v2/114_compliance_alerts.sql
+(KITAS/LKPM deadline alerts — different domain, different schema). See
+docs/war-room-v2/ACTIVATION_PLAN.md §3 for the full incident.
 Sprint 17 adds weekly_strategic_briefs (Strategos L3 output).
 Sprint 18 adds ultra_moves (Oracle L4 output).
 
@@ -58,9 +64,12 @@ async def apply(conn: Any) -> None:
         ON cross_dossier_theses USING GIN (source_dossier_ids);
     """)
 
-    # ── 2. compliance_alerts (Anomaly L2, design §17.2) ─────────────
+    # ── 2. wr_anomaly_alerts (Anomaly L2, design §17.2) ─────────────
+    # NOTE: was "compliance_alerts" in early draft; renamed to avoid
+    # collision with db/migrations_v2/114_compliance_alerts.sql (different
+    # domain: KITAS/LKPM client alerts).
     await conn.execute("""
-        CREATE TABLE IF NOT EXISTS compliance_alerts (
+        CREATE TABLE IF NOT EXISTS wr_anomaly_alerts (
             id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             detected_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             dossier_a_id           UUID NOT NULL,
@@ -72,20 +81,20 @@ async def apply(conn: Any) -> None:
             notified_zero          BOOLEAN NOT NULL DEFAULT FALSE,
             resolved               BOOLEAN NOT NULL DEFAULT FALSE,
             resolved_at            TIMESTAMP WITH TIME ZONE,
-            CONSTRAINT compliance_alerts_severity_check
+            CONSTRAINT wr_anomaly_alerts_severity_check
                 CHECK (severity IN ('low', 'medium', 'high', 'critical')),
-            CONSTRAINT compliance_alerts_distinct_sources
+            CONSTRAINT wr_anomaly_alerts_distinct_sources
                 CHECK (dossier_a_id <> dossier_b_id)
         );
     """)
     await conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_compliance_alerts_unresolved
-        ON compliance_alerts (detected_at DESC)
+        CREATE INDEX IF NOT EXISTS idx_wr_anomaly_alerts_unresolved
+        ON wr_anomaly_alerts (detected_at DESC)
         WHERE resolved = FALSE;
     """)
     await conn.execute("""
-        CREATE INDEX IF NOT EXISTS idx_compliance_alerts_severity
-        ON compliance_alerts (severity, detected_at DESC)
+        CREATE INDEX IF NOT EXISTS idx_wr_anomaly_alerts_severity
+        ON wr_anomaly_alerts (severity, detected_at DESC)
         WHERE resolved = FALSE;
     """)
 
@@ -155,12 +164,12 @@ async def apply(conn: Any) -> None:
                     'event_type', event_type,
                     'occurred_at', NOW()
                 );
-            ELSIF TG_TABLE_NAME = 'compliance_alerts' THEN
+            ELSIF TG_TABLE_NAME = 'wr_anomaly_alerts' THEN
                 event_type := 'alert_' || TG_OP;
                 payload := jsonb_build_object(
                     'alert_id', NEW.id,
                     'severity', NEW.severity,
-                    'table', 'compliance_alerts',
+                    'table', 'wr_anomaly_alerts',
                     'event_type', event_type,
                     'occurred_at', NOW()
                 );
@@ -194,7 +203,7 @@ async def apply(conn: Any) -> None:
 
     for table in (
         "cross_dossier_theses",
-        "compliance_alerts",
+        "wr_anomaly_alerts",
         "weekly_strategic_briefs",
         "ultra_moves",
     ):
@@ -217,7 +226,7 @@ async def rollback(conn: Any) -> None:
     for table in (
         "ultra_moves",
         "weekly_strategic_briefs",
-        "compliance_alerts",
+        "wr_anomaly_alerts",
         "cross_dossier_theses",
     ):
         await conn.execute(
@@ -226,6 +235,6 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP FUNCTION IF EXISTS notify_cognitive_event();")
     await conn.execute("DROP TABLE IF EXISTS ultra_moves;")
     await conn.execute("DROP TABLE IF EXISTS weekly_strategic_briefs;")
-    await conn.execute("DROP TABLE IF EXISTS compliance_alerts;")
+    await conn.execute("DROP TABLE IF EXISTS wr_anomaly_alerts;")
     await conn.execute("DROP TABLE IF EXISTS cross_dossier_theses;")
     logger.info("migration 114: rolled back")

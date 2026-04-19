@@ -64,11 +64,11 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # crm_alert_router, connector/anomaly cognitive layers.
     "intel_event": "intel.event",
     # Emitted by 4 cognitive-layer tables (migration 114): cross_dossier_theses,
-    # compliance_alerts, weekly_strategic_briefs, ultra_moves. Payload:
+    # wr_anomaly_alerts, weekly_strategic_briefs, ultra_moves. Payload:
     # {id, table, event_type, occurred_at, + table-specific fields}.
     # Consumers: dashboard SSE, Oracle (reads upstream briefs + theses),
     # Learner (skills/scars from high-perf theses), Telegram notifier for
-    # critical compliance_alerts + Oracle ultra_moves.
+    # critical wr_anomaly_alerts + Oracle ultra_moves.
     "cognitive_event": "cognitive.event",
 }
 

@@ -110,7 +110,7 @@ class AnomalyAlerter:
     ) -> ComplianceAlert | None:
         rows = await self.repo.fetch_safe(
             """
-            SELECT * FROM compliance_alerts WHERE id = $1 LIMIT 1;
+            SELECT * FROM wr_anomaly_alerts WHERE id = $1 LIMIT 1;
             """,
             alert_id,
         )
