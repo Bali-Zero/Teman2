@@ -1,10 +1,15 @@
-"""Contract tests for the 2 sensors still stubbed.
+"""Contract tests for the 1 sensor still stubbed.
 
-Sensors graduated out of stub-land (have their own test_*_sensor.py):
-  - GSCSensor          (Sprint 2)
-  - GA4Sensor          (Sprint 2b)
-  - WarRoomEventSensor (Sprint 2c)
-  - KGSensor           (Sprint 2d)
+Sensors graduated out of stub-land (own test_*_sensor.py):
+  - GSCSensor              (Sprint 2)
+  - GA4Sensor              (Sprint 2b)
+  - WarRoomEventSensor     (Sprint 2c)
+  - KGSensor               (Sprint 2d)
+  - CompetitorSERPSensor   (Sprint 2e)
+
+Only CannibalizationSensor remains a stub — per Sprint 2d commit, it
+belongs in the thinker layer, not the sensor layer, and will be
+relocated or redesigned in Sprint 3.
 """
 import pytest
 
@@ -19,7 +24,6 @@ from apps.evaluator.seo_cell.sensors import (
 )
 
 STUB_SENSORS = [
-    CompetitorSERPSensor(),
     CannibalizationSensor(),
 ]
 
@@ -41,6 +45,7 @@ def test_six_distinct_sensor_names():
         GA4Sensor(),
         WarRoomEventSensor(),
         KGSensor(),
+        CompetitorSERPSensor(),
     ]
     names = {s.name for s in all_six}
     assert len(names) == 6
