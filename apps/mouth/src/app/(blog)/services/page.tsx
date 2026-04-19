@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import {
   ArrowRight,
   IdCard,
@@ -417,7 +418,7 @@ export default function ServicesPage() {
 
           <div className="mt-12 flex flex-wrap items-center gap-3">
             <Link
-              href="https://wa.me/628213107363"
+              href={buildWhatsAppLink("home")}
               target="_blank"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-[14px] font-semibold"
               style={{
