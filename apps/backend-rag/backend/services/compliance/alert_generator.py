@@ -30,59 +30,32 @@ class AlertStatus:
 
 
 class AlertGeneratorService:  # pragma: no cover — shim
-    """Deprecated. Methods are no-ops returning safe defaults.
-
-    New code: use backend.services.compliance.alerts_engine.AlertsEngine.
-    """
+    """Deprecated. Every call emits a DeprecationWarning and raises NotImplementedError."""
 
     def __init__(self, *args, **kwargs) -> None:
         warnings.warn(
-            "AlertGeneratorService is deprecated; use AlertsEngine. "
-            "Calls are now no-ops returning safe defaults.",
+            "AlertGeneratorService is deprecated; use AlertsEngine.",
             DeprecationWarning, stacklevel=2,
         )
-        # Backward-compat attribute accessed by ProactiveComplianceMonitor
-        self.alerts: dict = {}
 
     def generate_alert(self, *args, **kwargs):
-        warnings.warn(
-            "AlertGeneratorService.generate_alert is a deprecated no-op; "
-            "use AlertsEngine.generate_alerts(forecasts).",
-            DeprecationWarning, stacklevel=2,
-        )
-        return None
+        raise NotImplementedError("Use AlertsEngine.generate_alerts instead")
 
     def find_existing_alert(self, *args, **kwargs):
-        warnings.warn(
-            "AlertGeneratorService.find_existing_alert is a deprecated no-op; "
-            "use AlertRepository.find_active_by_dedup_key.",
-            DeprecationWarning, stacklevel=2,
-        )
-        return None
+        raise NotImplementedError("Use AlertRepository.find_active_by_dedup_key instead")
 
     def get_alerts_for_client(self, *args, **kwargs):
-        warnings.warn(
-            "AlertGeneratorService.get_alerts_for_client is a deprecated no-op; "
-            "use AlertRepository.list_by_client.",
-            DeprecationWarning, stacklevel=2,
-        )
-        return []
+        raise NotImplementedError("Use AlertRepository.list_by_client instead")
 
-    def acknowledge_alert(self, *args, **kwargs) -> bool:
-        warnings.warn(
-            "AlertGeneratorService.acknowledge_alert is a deprecated no-op; "
-            "use AlertRepository.update_status(alert_id, new_status='acknowledged').",
-            DeprecationWarning, stacklevel=2,
+    def acknowledge_alert(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Use AlertRepository.update_status(alert_id, new_status='acknowledged')",
         )
-        return False
 
-    def mark_alert_sent(self, *args, **kwargs) -> bool:
-        warnings.warn(
-            "AlertGeneratorService.mark_alert_sent is a deprecated no-op; "
-            "use AlertRepository.update_status(alert_id, new_status='sent').",
-            DeprecationWarning, stacklevel=2,
+    def mark_alert_sent(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Use AlertRepository.update_status(alert_id, new_status='sent')",
         )
-        return False
 
     def get_stats(self) -> dict:
         return {}
