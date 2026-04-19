@@ -317,12 +317,20 @@ export default function PrimeMap3D() {
 
     const initMap = async () => {
       try {
-        const { Map3DElement, Marker3DInteractiveElement, PinElement } = await
-          window.google!.maps.importLibrary('maps3d') as {
-            Map3DElement: GoogleMapsConstructor;
-            Marker3DInteractiveElement: GoogleMapsConstructor;
-            PinElement: GoogleMapsConstructor;
-          };
+        // PinElement lives in the 'marker' library, not 'maps3d' — destructuring
+        // it from 'maps3d' leaves it undefined, and `new undefined(...)` throws
+        // "r is not a constructor" inside Google's internal click dispatcher.
+        const [{ Map3DElement, Marker3DInteractiveElement }, { PinElement }] =
+          (await Promise.all([
+            window.google!.maps.importLibrary('maps3d'),
+            window.google!.maps.importLibrary('marker'),
+          ])) as [
+            {
+              Map3DElement: GoogleMapsConstructor;
+              Marker3DInteractiveElement: GoogleMapsConstructor;
+            },
+            { PinElement: GoogleMapsConstructor },
+          ];
 
         const map = new Map3DElement({
           center: { lat: -8.648, lng: 115.132, altitude: 200 },
@@ -337,15 +345,16 @@ export default function PrimeMap3D() {
         setMap3DElement(map);
 
         map.addEventListener('gmp-click', async (event: Map3DClickEvent) => {
-          if (event.position) {
-            const newPos = {
-              lat: event.position.lat,
-              lng: event.position.lng,
-              altitude: 0,
-            };
-            setSelectedPoint(newPos);
-            analyzeLocation(newPos);
+          if (!event.position) return;
+          const newPos = {
+            lat: event.position.lat,
+            lng: event.position.lng,
+            altitude: 0,
+          };
+          setSelectedPoint(newPos);
+          analyzeLocation(newPos);
 
+          try {
             const pin = new PinElement({
               background: '#d4845a',
               glyphColor: 'white',
@@ -356,8 +365,17 @@ export default function PrimeMap3D() {
               altitudeMode: 'RELATIVE_TO_GROUND',
               extruded: true,
             });
-            marker.appendChild(pin.element);
+            marker.appendChild(pin);
             map.append(marker);
+          } catch (err) {
+            // Never let marker creation throw into Google's event dispatcher —
+            // a throw here becomes an unhandled rejection in the gmp-click
+            // pipeline and spams the console + Sentry.
+            logger.error(
+              'Failed to draw 3D marker',
+              { component: 'PrimeMap3D' },
+              err instanceof Error ? err : new Error(String(err))
+            );
           }
         });
       } catch (e) {
@@ -513,7 +531,7 @@ export default function PrimeMap3D() {
   return (
     <div className="flex w-full h-screen bg-black overflow-hidden">
       <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&v=beta&libraries=maps3d,marker,places`}
         strategy="afterInteractive"
         onLoad={() => setIsLoaded(true)}
       />
