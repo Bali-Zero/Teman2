@@ -1,8 +1,8 @@
 """Factory wires a PulseLoop; single pulse runs without exception in pre_natal.
 
-GSCSensor (Sprint 2) and GA4Sensor (Sprint 2b) make real network calls,
-so we mock both blocking fetches to keep the factory test fully offline.
-Live smoke tests are run manually from a shell, not in pytest.
+GSCSensor (Sprint 2), GA4Sensor (Sprint 2b), and WarRoomEventSensor
+(Sprint 2c) all make real I/O calls (Google APIs + Postgres). We mock
+their fetch paths to keep the factory test fully offline.
 """
 from pathlib import Path
 from unittest.mock import patch
@@ -21,8 +21,8 @@ def test_factory_returns_pulse_loop():
 
 
 @pytest.mark.asyncio
-async def test_single_pulse_completes_in_pre_natal():
-    """One full pulse end-to-end with GSC + GA4 mocked to empty rows.
+async def test_single_pulse_completes_in_pre_natal(monkeypatch):
+    """One full pulse end-to-end with all real sensors mocked.
 
     Expected: thinker sees query_count=0, returns action='none',
     actor never fires, pulse completes with action_taken=None.
@@ -31,8 +31,8 @@ async def test_single_pulse_completes_in_pre_natal():
 
     gsc = next(s for s in cell.sensors if s.name == "gsc")
     ga4 = next(s for s in cell.sensors if s.name == "ga4")
+    war = next(s for s in cell.sensors if s.name == "war_room_event")
 
-    # Make credentials-path checks pass
     tmp_creds = Path("/tmp/seo_cell_test_fake_creds.json")
     tmp_creds.write_text("{}")
 
@@ -43,10 +43,12 @@ async def test_single_pulse_completes_in_pre_natal():
     orig_ga4 = ga4_mod.GOOGLE_CREDENTIALS_PATH
     gsc_mod.GOOGLE_CREDENTIALS_PATH = tmp_creds
     ga4_mod.GOOGLE_CREDENTIALS_PATH = tmp_creds
+    monkeypatch.setenv("DATABASE_URL", "postgres://fake")
 
     try:
         with patch.object(gsc, "_fetch_rows_blocking", return_value=[]), \
-             patch.object(ga4, "_fetch_report_blocking", return_value={"rows": []}):
+             patch.object(ga4, "_fetch_report_blocking", return_value={"rows": []}), \
+             patch.object(war, "_fetch_posts", return_value=[]):
             result = await cell.single_pulse()
     finally:
         gsc_mod.GOOGLE_CREDENTIALS_PATH = orig_gsc
