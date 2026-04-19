@@ -14,6 +14,7 @@ import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
 import { ThemeProvider } from "@balizero/core/components/ThemeProvider";
 import { WhatsAppFAB } from "@balizero/core/components/WhatsAppFAB";
 import { inter } from "@balizero/core/fonts/inter";
+import { cormorant } from "@balizero/core/fonts/cormorant";
 import { LazyToaster } from "@/components/providers/LazyToaster";
 import "./globals.css";
 
@@ -165,7 +166,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${cormorant.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         {/* Pre-paint theme init — prevents FOUC before React hydrates (design §5). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
