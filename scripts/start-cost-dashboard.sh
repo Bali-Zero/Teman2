@@ -23,12 +23,22 @@ fi
 
 export LOCAL_ONLY=1
 
-# Launch Next dev server in background, open browser, wait for server.
-npm run dev -- --port 3100 &
+# Use `next build` + `next start` instead of `next dev` (Turbopack).
+# Turbopack's on-demand route compilation was observed to freeze after
+# 2-3 route hits in smoke tests (Next.js 16.2 + multiple lockfiles in
+# monorepo root). Production build is cached in .next/ so subsequent
+# runs are fast; the one-time build cost is ~15s.
+if [ ! -d .next ] || [ "$(find . -name '*.ts' -o -name '*.tsx' -newer .next 2>/dev/null | head -1)" ]; then
+  echo "Building (one-time or after source changes)…"
+  npx next build
+fi
+
+# Launch production server in background, open browser, wait for server.
+npx next start -p 3100 &
 PID=$!
 
-# Wait briefly for the server to bind; 2s is usually enough, 5s for cold starts.
-sleep 3
+# Wait for the server to bind. `next start` is ready in <1s after build.
+sleep 2
 
 URL="http://localhost:3100/cost-dashboard"
 if command -v open >/dev/null 2>&1; then
