@@ -10,6 +10,7 @@ GENOME: intel_scraper_bridge_GENOME.md
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -23,48 +24,93 @@ from mata_garuda.tools.intel_scraper_tools import (
     read_published_articles,
 )
 from mata_garuda.types import Agent
-from mata_garuda.workers.base_worker import stream_publish as stream_publish_redis
+from mata_garuda.workers.base_worker import (
+    redis_cmd,
+    stream_publish as stream_publish_redis,
+)
 
 logger = logging.getLogger("mata_garuda.agents.intel_scraper_bridge")
 
 GENOME_FILE = str(Path(__file__).parent / "intel_scraper_bridge_GENOME.md")
 AGENT_NAME = "intel_scraper_bridge"
-DEFAULT_WINDOW_HOURS = 24
 DEFAULT_MAX_ITEMS = 50
+SEEN_SET_KEY = "garuda:intel_bridge:seen_urls"
+SEEN_TTL_DAYS = 90  # URL history window; older URLs re-publish
+
+
+def _url_hash(url: str) -> str:
+    """Stable short hash for URL dedup in Redis SET."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+
+
+def _already_seen(url_hash: str) -> bool:
+    """True if url_hash is in the dedup SET."""
+    raw = redis_cmd("SISMEMBER", SEEN_SET_KEY, url_hash, timeout=5)
+    return raw.strip() == "1"
+
+
+def _mark_seen(url_hash: str) -> None:
+    """Add url_hash to dedup SET and refresh TTL."""
+    redis_cmd("SADD", SEEN_SET_KEY, url_hash, timeout=5)
+    # Refresh TTL only when the SET exists; EXPIRE on empty is a noop.
+    redis_cmd("EXPIRE", SEEN_SET_KEY, str(SEEN_TTL_DAYS * 86400), timeout=5)
 
 
 def bridge_intel_scraper(
-    window_hours: int = DEFAULT_WINDOW_HOURS,
     max_items: int = DEFAULT_MAX_ITEMS,
+    window_hours: int | None = None,
 ) -> dict[str, Any]:
-    """Publish recent bali-intel-scraper articles to garuda:raw.
+    """Publish unseen bali-intel-scraper articles to garuda:raw.
 
-    Returns {"case_resolved": bool, "published": int, "reason": str}.
+    Strategy: dedup by SHA256(url) in a Redis SET (TTL 90d). This matches
+    the upstream scraper's own persistence model — `published_articles.json`
+    carries the historical `published_at` of the article, not the ingest
+    time, so a time-window filter produces zero items whenever the scraper
+    is not actively discovering fresh sources.
+
+    Args:
+        max_items: cap per run to avoid flooding the enriched pipeline.
+        window_hours: optional legacy filter on `published_at` ISO (set
+            only for backfill / manual runs; default None = no time filter).
+
+    Returns:
+        {"case_resolved": bool, "published": int, "skipped": int, "reason": str}
     """
     articles = read_published_articles()
     if not articles:
         return {
             "case_resolved": False,
             "published": 0,
+            "skipped": 0,
             "reason": "published_articles.json missing or empty",
         }
 
-    since = (datetime.now() - timedelta(hours=window_hours)).isoformat(
-        timespec="seconds"
-    )
-    recent = filter_recent(articles, since)
-    if not recent:
-        return {
-            "case_resolved": False,
-            "published": 0,
-            "reason": f"no items newer than {since}",
-        }
+    candidates: list[dict[str, Any]] = articles
+    if window_hours is not None:
+        since = (
+            datetime.now() - timedelta(hours=window_hours)
+        ).isoformat(timespec="seconds")
+        candidates = filter_recent(articles, since)
+        if not candidates:
+            return {
+                "case_resolved": False,
+                "published": 0,
+                "skipped": 0,
+                "reason": f"no items newer than {since}",
+            }
 
-    recent = recent[:max_items]
     published = 0
+    skipped_seen = 0
     failures = 0
-    for art in recent:
+    for art in candidates:
         url = art.get("url", "")
+        if not url:
+            continue
+        h = _url_hash(url)
+        if _already_seen(h):
+            skipped_seen += 1
+            continue
+
         title = art.get("title", "") or url
         src = art.get("source") or _infer_source(url)
         fields = {
@@ -81,20 +127,36 @@ def bridge_intel_scraper(
         msg_id = stream_publish_redis(STREAM_RAW, fields)
         if isinstance(msg_id, str) and not msg_id.startswith("[ERROR]"):
             published += 1
+            _mark_seen(h)
+            if published >= max_items:
+                break
         else:
             failures += 1
             logger.warning("publish failed for %s: %s", url, msg_id)
+
+    if published == 0 and failures == 0:
+        return {
+            "case_resolved": False,
+            "published": 0,
+            "skipped": skipped_seen,
+            "reason": (
+                f"all {skipped_seen} candidates already seen in "
+                f"{SEEN_SET_KEY}"
+            ),
+        }
 
     if published == 0:
         return {
             "case_resolved": False,
             "published": 0,
+            "skipped": skipped_seen,
             "reason": f"all {failures} publish attempts failed",
         }
 
     return {
         "case_resolved": True,
         "published": published,
+        "skipped": skipped_seen,
         "failures": failures,
         "reason": "",
     }
