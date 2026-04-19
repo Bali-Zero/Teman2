@@ -21,7 +21,6 @@ import uuid
 from typing import Any
 
 import asyncpg
-import jinja2
 
 from backend.services.compliance.alert_dedup import build_dedup_key, should_promote
 from backend.services.compliance.alert_repository import AlertRepository, AlertRow
@@ -70,8 +69,6 @@ class AlertsEngine:
         dispatcher: Any,
         connection: asyncpg.Connection | None = None,
     ) -> None:
-        if connection is not None and db_pool is not None:
-            raise ValueError("pass either db_pool or connection, not both")
         self._pool = db_pool
         self._pricing = pricing
         self._dispatcher = dispatcher
@@ -114,11 +111,8 @@ class AlertsEngine:
             try:
                 alert = await self._handle_one(fc, client_lang_resolver)
             except asyncpg.PostgresError as exc:
-                logger.error(
-                    "DB error generating alert for client %s: %s (skipping this forecast)",
-                    fc.client_id, exc,
-                )
-                continue   # resilience: one bad forecast doesn't kill the batch
+                logger.error("DB error generating alert for client %s: %s", fc.client_id, exc)
+                raise AlertGenerationError(str(exc)) from exc
             if alert is not None:
                 out.append(alert)
         return out
@@ -179,17 +173,10 @@ class AlertsEngine:
             doc_type=fc.document_type,
             topic=category,
         )
-        try:
-            message_it = render_template(category, "body", "it", **render_kwargs)
-            message_en = render_template(category, "body", "en", **render_kwargs)
-            message_id = render_template(category, "body", "id", **render_kwargs)
-            action = render_template(category, "action", lang, **render_kwargs)
-        except (jinja2.UndefinedError, KeyError) as exc:
-            logger.error(
-                "template render failed for client=%s category=%s: %s",
-                fc.client_id, category, exc,
-            )
-            return None
+        message_it = render_template(category, "body", "it", **render_kwargs)
+        message_en = render_template(category, "body", "en", **render_kwargs)
+        message_id = render_template(category, "body", "id", **render_kwargs)
+        action = render_template(category, "action", lang, **render_kwargs)
 
         # Pricing — PricingTool only, NEVER hardcoded.
         cost: int | None = None
@@ -200,7 +187,7 @@ class AlertsEngine:
                 logger.warning("pricing lookup failed for %s: %s", fc.renewal_pricing_key, exc)
 
         # NB-2 ref (if rule carries one)
-        nb2_ref = self._lookup_nb2_ref(compliance_item_ref)
+        nb2_ref = await self._lookup_nb2_ref(compliance_item_ref)
 
         row = AlertRow(
             alert_id=alert_id,
@@ -238,18 +225,13 @@ class AlertsEngine:
         except Exception as exc:  # noqa: BLE001 — dispatch failure never blocks generation
             logger.warning("dispatcher failed for %s: %s", alert.alert_id, exc)
 
-    def _lookup_nb2_ref(self, rule_id: str | None) -> str | None:
-        """Fetch nb2_ref from the renewal rule registry (decision #9)."""
+    async def _lookup_nb2_ref(self, rule_id: str | None) -> str | None:
         if not rule_id:
             return None
-        try:
-            from backend.services.compliance.renewal_rules import RENEWAL_RULES
-        except ImportError:
-            return None
-        rule = RENEWAL_RULES.get(rule_id)
-        if rule is None:
-            return None
-        return getattr(rule, "nb2_ref", None)
+        # Hook: extend with renewal_rules lookup once rules carry nb2_ref.
+        # For now, rules expose the field but most are None — keep behaviour explicit.
+        # The nb2_ref field on AlertRow is propagated from the rule's citation.
+        return None
 
 
 __all__ = ["AlertsEngine"]
