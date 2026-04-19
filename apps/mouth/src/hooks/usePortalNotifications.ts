@@ -30,5 +30,6 @@ export function usePortalNotifications() {
     isLoading: query.isLoading,
     markRead: markRead.mutate,
     markAllRead: markAllRead.mutate,
+    isMarkingAllRead: markAllRead.isPending,
   };
 }

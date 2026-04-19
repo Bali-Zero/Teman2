@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, CheckCheck, FileText, RefreshCw, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Bell, Check, CheckCheck, FileText, RefreshCw, AlertTriangle, MessageCircle, Loader2 } from 'lucide-react';
 import { usePortalNotifications } from '@/hooks/usePortalNotifications';
 import type { PortalNotification } from '@/lib/api/portal/portal.types';
 
@@ -50,10 +50,12 @@ export function PortalNotificationsList({
   notifications,
   onMarkRead,
   onMarkAllRead,
+  isMarkingAllRead,
 }: {
   notifications: PortalNotification[];
   onMarkRead: (id: number) => void;
   onMarkAllRead: () => void;
+  isMarkingAllRead?: boolean;
 }) {
   const unread = notifications.filter((n) => !n.read);
 
@@ -65,10 +67,15 @@ export function PortalNotificationsList({
         {unread.length > 0 && (
           <button
             onClick={onMarkAllRead}
-            className="text-xs flex items-center gap-1 transition-opacity hover:opacity-80"
+            disabled={isMarkingAllRead}
+            className="text-xs flex items-center gap-1 transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: 'var(--bz-accent-warm)' }}
           >
-            <CheckCheck className="w-3 h-3" />
+            {isMarkingAllRead ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <CheckCheck className="w-3 h-3" />
+            )}
             Mark all read
           </button>
         )}
@@ -126,7 +133,7 @@ export function PortalNotificationsList({
 }
 
 export function PortalNotificationsPopover() {
-  const { notifications, unreadCount, markRead, markAllRead } = usePortalNotifications();
+  const { notifications, unreadCount, markRead, markAllRead, isMarkingAllRead } = usePortalNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -176,6 +183,7 @@ export function PortalNotificationsPopover() {
             notifications={notifications}
             onMarkRead={(id) => markRead(id)}
             onMarkAllRead={() => markAllRead()}
+            isMarkingAllRead={isMarkingAllRead}
           />
         </div>
       )}

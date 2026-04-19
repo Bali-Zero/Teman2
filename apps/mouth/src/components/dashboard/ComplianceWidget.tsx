@@ -48,6 +48,7 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
+        aria-label="View compliance alerts"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
