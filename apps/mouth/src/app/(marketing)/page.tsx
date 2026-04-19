@@ -12,6 +12,8 @@ import { LatestNews } from "../v2/_components/LatestNews";
 import { Footer } from "../v2/_components/Footer";
 import { ZantaraFAB } from "../v2/_components/ZantaraFAB";
 import { getAllArticles } from "@/lib/blog/articles";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
+import { buildCombinedHomepageSchema } from "./_seo/funnel-schema";
 import homepageLayout from "@/content/homepage-layout.json";
 
 // Force dynamic rendering so / always reflects the freshest MDX covers.
@@ -66,6 +68,8 @@ export default async function HomePage() {
     preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback
   ).slice(0, LATEST_NEWS_COUNT);
 
+  const homepageSchema = buildCombinedHomepageSchema();
+
   return (
     <div
       id="top"
@@ -75,6 +79,10 @@ export default async function HomePage() {
         minHeight: "100vh",
       }}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageSchema) }}
+      />
       <NavShell
         logo={<BZLogo variant="full" size={36} priority />}
         items={NAV_ITEMS}
@@ -94,7 +102,7 @@ export default async function HomePage() {
               Login
             </a>
             <a
-              href="https://wa.me/628213107363?text=Hi%20Bali%20Zero%2C%20I%20would%20like%20to%20get%20started."
+              href={buildWhatsAppLink("home")}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
