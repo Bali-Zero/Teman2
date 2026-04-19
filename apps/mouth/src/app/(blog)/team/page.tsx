@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, ArrowRight } from "lucide-react";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { GoogleReviewsBlock } from "../_components/GoogleReviewsBlock";
 
 export const metadata: Metadata = {
@@ -342,7 +343,7 @@ export default function TeamPage() {
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <Link
-                  href="https://wa.me/628213107363"
+                  href={buildWhatsAppLink("home")}
                   target="_blank"
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[13px] font-semibold"
                   style={{

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { NavShell } from "@balizero/core/components/NavShell";
 import { BZLogo } from "@balizero/core/components/BZLogo";
 import { SessionInit } from "@/components/funnel/SessionInit";
+import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
 import { MobileNav } from "./_components/MobileNav";
 import { HeroBlueprint } from "./_components/HeroBlueprint";
 import { SocialProof } from "./_components/SocialProof";
@@ -81,7 +82,7 @@ export default async function HomeV2() {
               Login
             </a>
             <a
-              href="https://wa.me/628213107363?text=Hi%20Bali%20Zero%2C%20I%20would%20like%20to%20get%20started."
+              href={buildWhatsAppLink("home")}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
