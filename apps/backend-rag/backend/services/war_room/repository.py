@@ -6,7 +6,6 @@ pool injection, transactions, and structured error logging.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -79,7 +78,7 @@ class WarRoomRepository(BaseRepository):
             draft.topic,
             draft.tone_register.value if draft.tone_register else None,
             draft.status.value,
-            json.dumps(draft.brief_json) if draft.brief_json else None,
+            draft.brief_json,
         )
         assert row is not None
         return _row_to_draft(row)
@@ -136,10 +135,10 @@ class WarRoomRepository(BaseRepository):
             RETURNING *;
             """,
             draft_id,
-            json.dumps(research_json) if research_json else None,
-            json.dumps(council_debate_json) if council_debate_json else None,
-            json.dumps(slides_json) if slides_json else None,
-            json.dumps(drafts_json) if drafts_json else None,
+            research_json,
+            council_debate_json,
+            slides_json,
+            drafts_json,
         )
         return _row_to_draft(row) if row else None
 
@@ -333,7 +332,7 @@ class WarRoomRepository(BaseRepository):
             """,
             scheduled_at,
             reason.value,
-            json.dumps(details) if details else None,
+            details,
         )
 
     async def pending_missed_runs(
@@ -394,7 +393,7 @@ class WarRoomRepository(BaseRepository):
             draft_id,
             cost_type.value,
             cost_usd,
-            json.dumps(meta) if meta else None,
+            meta,
         )
 
     async def total_cost_for_draft(self, draft_id: UUID) -> Decimal:

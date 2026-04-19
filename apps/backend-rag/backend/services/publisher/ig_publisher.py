@@ -54,13 +54,22 @@ class IGPublisher(Publisher):
         http_client: httpx.AsyncClient | None = None,
         timeout: float | None = None,
     ) -> None:
-        self.ig_user_id = ig_user_id or os.environ.get("IG_USER_ID", "")
+        self.ig_user_id = (
+            ig_user_id
+            or os.environ.get("IG_USER_ID")
+            or os.environ.get("INSTAGRAM_ACCOUNT_ID")
+            or ""
+        )
         self.access_token = (
-            access_token or os.environ.get("IG_LONG_LIVED_TOKEN", "")
+            access_token
+            or os.environ.get("IG_LONG_LIVED_TOKEN")
+            or os.environ.get("INSTAGRAM_ACCESS_TOKEN")
+            or ""
         )
         if not self.ig_user_id or not self.access_token:
             raise PublisherError(
-                "IGPublisher requires IG_USER_ID and IG_LONG_LIVED_TOKEN",
+                "IGPublisher requires IG_USER_ID (or INSTAGRAM_ACCOUNT_ID) "
+                "and IG_LONG_LIVED_TOKEN (or INSTAGRAM_ACCESS_TOKEN)",
             )
         self.graph_base = (graph_base or DEFAULT_GRAPH_BASE).rstrip("/")
         self._client = http_client
