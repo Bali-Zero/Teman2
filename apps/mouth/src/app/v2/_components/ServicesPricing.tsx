@@ -1,5 +1,9 @@
+import { IdCard, Building2, TrendingUp, MapPinned, MapPin, type LucideIcon } from "lucide-react";
+import type { Funnel } from "@balizero/core/components/ThemeProvider";
+
 interface Service {
-  icon: string;
+  Icon: LucideIcon;
+  funnel: Exclude<Funnel, null>;
   name: string;
   desc: string;
   price: string;
@@ -9,7 +13,8 @@ interface Service {
 
 const SERVICES: Service[] = [
   {
-    icon: "🛂",
+    Icon: IdCard,
+    funnel: "visa",
     name: "Visa Processing",
     desc: "End-to-end visa application management. Tourist, business, KITAS, and retirement visas.",
     price: "$350",
@@ -17,7 +22,8 @@ const SERVICES: Service[] = [
     loc: "Seminyak, Bali",
   },
   {
-    icon: "🏢",
+    Icon: Building2,
+    funnel: "kbli",
     name: "Company Setup",
     desc: "PT PMA, PT Lokal, CV establishment. Full legal setup from registration to NIB.",
     price: "$1,850",
@@ -25,7 +31,8 @@ const SERVICES: Service[] = [
     loc: "Kuta, Bali",
   },
   {
-    icon: "📊",
+    Icon: TrendingUp,
+    funnel: "tax",
     name: "Tax & Accounting",
     desc: "Monthly reporting, annual SPT, VAT compliance. CoreTax integrated workflow.",
     price: "$220",
@@ -33,7 +40,8 @@ const SERVICES: Service[] = [
     loc: "Denpasar, Bali",
   },
   {
-    icon: "🏡",
+    Icon: MapPinned,
+    funnel: "property",
     name: "Property Due Diligence",
     desc: "Legal verification, zoning checks, land certificate review. Full property intelligence.",
     price: "$850",
@@ -44,49 +52,60 @@ const SERVICES: Service[] = [
 
 export function ServicesPricing() {
   return (
-    <section className="py-20 px-10" style={{ background: "var(--surface-base)" }}>
+    <section className="py-10 px-10" style={{ background: "var(--surface-base)" }}>
       <div
-        className="text-[11px] font-semibold uppercase tracking-widest mb-10"
+        className="text-[11px] font-semibold uppercase tracking-widest mb-5"
         style={{ color: "var(--text-tertiary)" }}
       >
-        Services & Pricing
+        Services &amp; Pricing
       </div>
       <div className="grid grid-cols-4 gap-4">
         {SERVICES.map((s) => (
           <div
             key={s.name}
-            className="rounded-2xl p-7 transition-all hover:-translate-y-0.5"
-            style={{
-              background: "var(--surface-raised)",
-              border: "1px solid var(--border-default)",
-            }}
+            data-funnel={s.funnel}
+            className="bz-glass bz-glass--strong p-4 flex items-center gap-4"
           >
             <div
-              className="w-11 h-11 rounded-xl mb-4 flex items-center justify-center text-[22px]"
-              style={{ background: "color-mix(in srgb, var(--accent-zantara) 10%, transparent)" }}
+              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "color-mix(in srgb, var(--accent-funnel) 22%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--accent-funnel) 45%, transparent)",
+                color: "var(--accent-funnel-text)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
             >
-              {s.icon}
+              <s.Icon size={18} strokeWidth={1.5} />
             </div>
-            <h4
-              className="text-[16px] font-bold tracking-tight mb-1.5"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {s.name}
-            </h4>
-            <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-tertiary)" }}>
-              {s.desc}
-            </p>
-            <div
-              className="text-[22px] font-extrabold tracking-tight"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {s.price}{" "}
-              <span className="text-xs font-normal" style={{ color: "var(--text-tertiary)" }}>
-                {s.per}
-              </span>
-            </div>
-            <div className="text-[11px] mt-1" style={{ color: "var(--text-tertiary)" }}>
-              📍 {s.loc}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                <h4
+                  className="text-[13px] font-bold tracking-tight truncate"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {s.name}
+                </h4>
+                <div
+                  className="text-[16px] font-extrabold tracking-tight shrink-0"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {s.price}
+                  <span
+                    className="text-[10px] font-normal ml-0.5"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {s.per}
+                  </span>
+                </div>
+              </div>
+              <div
+                className="text-[10px] flex items-center gap-1"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                <MapPin size={10} strokeWidth={1.8} />
+                {s.loc}
+              </div>
             </div>
           </div>
         ))}

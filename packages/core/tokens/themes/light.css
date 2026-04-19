@@ -6,7 +6,10 @@
  */
 
 [data-theme="light"] {
-  --surface-base:    #fafafa;
+  /* Aman/Alila/Kinfolk paper-stone — warm off-white with limestone undertone.
+     Reads as archival document + tropical light on plaster, avoiding the
+     Vercel/Tailwind #fafafa "developer default" cast. */
+  --surface-base:    #F4F1EA;
   --surface-raised:  rgba(0, 0, 0, 0.02);
   --surface-sunken:  rgba(0, 0, 0, 0.04);
   --surface-overlay: rgba(255, 255, 255, 0.72);

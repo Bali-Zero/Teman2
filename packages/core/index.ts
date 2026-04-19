@@ -1,6 +1,7 @@
 // Component exports
 export { BZLogo, type BZLogoVariant } from "./components/BZLogo";
 export { NavShell, type NavItem } from "./components/NavShell";
+export { WhatsAppFAB } from "./components/WhatsAppFAB";
 export {
   ThemeProvider,
   ThemeScope,

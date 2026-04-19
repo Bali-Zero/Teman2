@@ -36,7 +36,7 @@ export function NavShell({
 }: NavShellProps) {
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-[300] flex items-center px-10 h-14 backdrop-blur-xl"
+      className="fixed top-0 left-0 right-0 z-[300] flex items-center px-5 md:px-10 h-14 backdrop-blur-xl"
       style={{
         background: "var(--nav-bg)",
         borderBottom: "1px solid var(--nav-border)",
@@ -44,12 +44,12 @@ export function NavShell({
     >
       <div className="mr-auto opacity-75 transition-opacity hover:opacity-100">{logo}</div>
 
-      {slotBefore ? <div className="mr-4">{slotBefore}</div> : null}
+      {slotBefore ? <div className="mr-4 hidden md:flex">{slotBefore}</div> : null}
 
       {children ? (
-        <div className="flex-1 flex items-center justify-center">{children}</div>
+        <div className="hidden md:flex flex-1 items-center justify-center">{children}</div>
       ) : (
-        <ul className="flex gap-0.5 list-none">
+        <ul className="hidden md:flex gap-0.5 list-none">
           {items.map((item) => (
             <li key={item.href}>
               <a
@@ -64,9 +64,9 @@ export function NavShell({
         </ul>
       )}
 
-      {slotAfter ? <div className="ml-4">{slotAfter}</div> : null}
+      {slotAfter ? <div className="ml-auto md:ml-4">{slotAfter}</div> : null}
 
-      <div className="ml-4 flex gap-2">{actions}</div>
+      <div className="ml-4 hidden md:flex gap-2">{actions}</div>
     </nav>
   );
 }
