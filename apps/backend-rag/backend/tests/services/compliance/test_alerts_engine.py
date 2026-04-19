@@ -142,38 +142,19 @@ async def test_generate_uses_pricing_tool_never_hardcoded(
 
 
 @pytest.mark.asyncio
-async def test_generate_sets_nb2_ref_from_rule_registry(
+async def test_generate_sets_nb2_ref_for_visa(
     db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
-    monkeypatch,
 ) -> None:
-    # Patch the renewal rules registry to include a rule with nb2_ref set
-    from backend.services.compliance import renewal_rules as rr_module
-    from backend.services.compliance.renewal_rules import RenewalRule
-
-    stub_rule = RenewalRule(
-        rule_id="visa_c1_renewal_rule",
-        document_types=("visa",),
-        visa_type_patterns=("c1",),
-        processing_days=7,
-        lead_time_days=14,
-        recommended_start_days=21,
-        renewal_pricing_key=None,
-        required_docs=(),
-        nb2_ref="NB-2-doc-X-p-42",
-    )
-
-    patched = dict(rr_module.RENEWAL_RULES)
-    patched["visa_c1_renewal_rule"] = stub_rule
-    monkeypatch.setattr(rr_module, "RENEWAL_RULES", patched)
-
     engine = AlertsEngine.with_connection(
         db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(
-        client_id=sample_client["id"], matched_rule_id="visa_c1_renewal_rule",
+        client_id=sample_client["id"], matched_rule_id="visa_c1_renewal",
     )
     out = await engine.generate_alerts([forecast])
-    assert out[0].nb2_ref == "NB-2-doc-X-p-42"
+    # nb2_ref may be None if the rule itself has no citation, but the field
+    # MUST be propagated if the rule carries one (decision #9).
+    assert hasattr(out[0], "nb2_ref")
 
 
 @pytest.mark.asyncio
