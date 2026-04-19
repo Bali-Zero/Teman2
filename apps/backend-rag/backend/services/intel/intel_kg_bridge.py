@@ -86,9 +86,9 @@ async def propose_kg_entities(
             if result and result.endswith(" 1"):
                 inserted += 1
 
-        except (asyncpg.UndefinedObjectError, asyncpg.PostgresSyntaxError) as exc:
+        except asyncpg.PostgresError as exc:
             # Constraint may be missing — fall back to existence check + insert
-            logger.debug("ON CONFLICT path failed, falling back: %s", exc)
+            logger.debug("ON CONFLICT path failed for %s, falling back: %s", proposal_id, exc)
             exists = await conn.fetchval(
                 "SELECT 1 FROM kg_proposals WHERE proposal_id = $1 LIMIT 1",
                 proposal_id,
