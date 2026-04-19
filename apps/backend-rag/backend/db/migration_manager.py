@@ -4,7 +4,6 @@ Centralized migration management system
 """
 
 import logging
-import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,25 +13,6 @@ from backend.app.core.config import settings
 from backend.db.migration_base import BaseMigration, MigrationError
 
 logger = logging.getLogger(__name__)
-
-_ROLLBACK_MARKER_RE = re.compile(r"^\s*--\s*===\s*ROLLBACK\s*===\s*$", re.IGNORECASE | re.MULTILINE)
-
-
-def _extract_rollback_sql(sql_text: str) -> str | None:
-    """
-    Extract rollback SQL block from a migration file.
-
-    A SQL migration may end with a `-- === ROLLBACK ===` marker line;
-    everything after it is the rollback SQL (trimmed).
-
-    Returns:
-        The rollback SQL (possibly empty string) if marker present, else None.
-    """
-    match = _ROLLBACK_MARKER_RE.search(sql_text)
-    if not match:
-        return None
-    rollback = sql_text[match.end():].strip()
-    return rollback
 
 
 class MigrationManager:
@@ -240,22 +220,12 @@ class MigrationManager:
             # Extract migration number from filename (e.g., "001_baseline_v2.sql" -> 1)
             try:
                 migration_number = int(sql_file.stem.split("_")[0])
+                migrations.append(
+                    {"number": migration_number, "file": sql_file.name, "path": sql_file},
+                )
             except (ValueError, IndexError):
                 logger.warning(f"Could not parse migration number from {sql_file.name}, skipping")
                 continue
-
-            try:
-                sql_text = sql_file.read_text(encoding="utf-8")
-            except OSError as exc:
-                logger.error(f"Cannot read migration {sql_file.name}: {exc}")
-                continue
-
-            migrations.append({
-                "number": migration_number,
-                "file": sql_file.name,
-                "path": sql_file,
-                "rollback_sql": _extract_rollback_sql(sql_text),
-            })
 
         return migrations
 
@@ -386,7 +356,6 @@ class MigrationManager:
                 migration_number=migration_number,
                 sql_file=sql_file,
                 description=f"Migration {migration_number}",
-                rollback_sql=migration_info.get("rollback_sql"),
             )
 
             try:
