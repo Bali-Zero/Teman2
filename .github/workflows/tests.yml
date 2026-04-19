@@ -107,20 +107,32 @@ jobs:
           PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
             --junit-xml=test-results-core.xml
 
-      - name: Apply database migrations
-        # Router tests under backend/tests/app/routers/ assume the full schema
-        # (e.g. test_compliance_lkpm_readypack.py inserts into `clients`).
-        # Without this step pytest fails with
-        # `asyncpg.exceptions.UndefinedTableError: relation "clients" does not exist`.
-        #
-        # JWT_SECRET_KEY/API_KEYS required because `backend.db.migrate` imports
-        # `backend.app.core.config` which pydantic-validates them at module load.
-        # Tests normally rely on conftest.py to set these, but the migrate module
-        # isn't invoked via pytest — so we export them at the CI step level.
+      - name: Bootstrap SQLModel tables
+        # Router-level integration tests assume the full schema (e.g.
+        # test_compliance_lkpm_readypack.py inserts into `clients`), but the
+        # `clients` table has no migration file — it comes from SQLModel
+        # classes in backend/app/modules/crm/models.py that are only ever
+        # materialised via `SQLModel.metadata.create_all()`. Prod was
+        # bootstrapped by hand long ago; CI needs this explicit step.
+        # scripts/ci_bootstrap_schema.py imports the 6 table modules and
+        # runs create_all against the service-container Postgres.
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
-          JWT_SECRET_KEY: ci-test-jwt-secret-key-must-be-at-least-32-chars-long
-          API_KEYS: ci-test-api-key-1,ci-test-api-key-2
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python scripts/ci_bootstrap_schema.py
+
+      - name: Apply database migrations
+        # After SQLModel tables exist, apply the Alembic-style migration files
+        # that alter or augment them (indexes, triggers, new columns on the
+        # tables we just created). Migration 114 (cognitive_layer) references
+        # `clients`, which is why bootstrap must run first.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
           PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
