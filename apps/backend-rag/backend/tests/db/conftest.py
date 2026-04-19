@@ -11,15 +11,6 @@ DB URL resolution order:
    - Port 15432 is the Fly.io tunnel; not always running
    - nuzantara_rag DB doesn't exist locally (it's on Fly.io)
    - nuzantara_dev is the local development database
-
-CI note: the default URL targets the LOCAL dev DB (nuzantara_dev), which is
-the right default for developer machines.  CI pipelines that need to exercise
-the Fly-production schema must set TEST_DATABASE_URL to the tunnel address,
-e.g.:
-    postgresql://backend_rag_v2:<password>@localhost:15432/nuzantara_rag
-or to an equivalent staging DB.  All migrations being tested carry
-IF NOT EXISTS guards, so running them against either the dev DB or the
-production-schema DB is safe and idempotent.
 """
 from __future__ import annotations
 

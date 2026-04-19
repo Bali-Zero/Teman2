@@ -11,7 +11,6 @@
 
 CREATE TABLE IF NOT EXISTS intel_validator_log (
     log_id          BIGSERIAL PRIMARY KEY,
-    -- No FK: staging records may be quarantined or purged; log must outlive them.
     staging_id      BIGINT NOT NULL,
     validator_tier  TEXT NOT NULL,
     result          TEXT NOT NULL,
