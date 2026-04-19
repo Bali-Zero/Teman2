@@ -61,6 +61,25 @@ def test_filter_recent_lexicographic():
     assert [a["url"] for a in out] == ["u2"]
 
 
+def _stub_redis_cmd_factory(seen: set[str]):
+    """Build a redis_cmd stub that answers SISMEMBER / SADD / EXPIRE."""
+    def stub(*args: str, timeout: int = 10) -> str:
+        if not args:
+            return ""
+        op = args[0].upper()
+        if op == "SISMEMBER":
+            _, _, member = args
+            return "1" if member in seen else "0"
+        if op == "SADD":
+            _, _, member = args
+            seen.add(member)
+            return "1"
+        if op == "EXPIRE":
+            return "1"
+        return ""
+    return stub
+
+
 def test_bridge_publishes_to_garuda_raw(tmp_path, monkeypatch):
     _write_articles(
         tmp_path,
@@ -68,7 +87,7 @@ def test_bridge_publishes_to_garuda_raw(tmp_path, monkeypatch):
             {
                 "url": "https://example.com/new",
                 "title": "Fresh piece",
-                "published_at": "2999-01-01T00:00:00",  # always in window
+                "published_at": "2999-01-01T00:00:00",
             }
         ],
     )
@@ -77,11 +96,15 @@ def test_bridge_publishes_to_garuda_raw(tmp_path, monkeypatch):
     with patch(
         "mata_garuda.agents.intel_scraper_bridge.stream_publish_redis",
         return_value="1-0",
-    ) as fake_publish:
+    ) as fake_publish, patch(
+        "mata_garuda.agents.intel_scraper_bridge.redis_cmd",
+        side_effect=_stub_redis_cmd_factory(set()),
+    ):
         result = bridge_intel_scraper()
 
     assert result["case_resolved"] is True
     assert result["published"] == 1
+    assert result["skipped"] == 0
     fake_publish.assert_called_once()
     stream, fields = fake_publish.call_args.args
     assert stream == "garuda:raw"
@@ -92,7 +115,41 @@ def test_bridge_publishes_to_garuda_raw(tmp_path, monkeypatch):
     assert fields["source"] == "example.com"
 
 
-def test_bridge_no_recent_items(tmp_path, monkeypatch):
+def test_bridge_dedup_via_redis_set(tmp_path, monkeypatch):
+    """Second run with same URL must skip — Redis SET dedup."""
+    _write_articles(
+        tmp_path,
+        [
+            {
+                "url": "https://example.com/same",
+                "title": "Same article",
+                "published_at": "2999-01-01T00:00:00",
+            }
+        ],
+    )
+    monkeypatch.setenv("BALI_INTEL_SCRAPER_DATA_DIR", str(tmp_path))
+
+    seen: set[str] = set()
+    with patch(
+        "mata_garuda.agents.intel_scraper_bridge.stream_publish_redis",
+        return_value="1-0",
+    ) as fake_publish, patch(
+        "mata_garuda.agents.intel_scraper_bridge.redis_cmd",
+        side_effect=_stub_redis_cmd_factory(seen),
+    ):
+        first = bridge_intel_scraper()
+        second = bridge_intel_scraper()
+
+    assert first["published"] == 1 and first["skipped"] == 0
+    assert second["published"] == 0 and second["skipped"] == 1
+    assert second["case_resolved"] is False
+    assert "already seen" in second["reason"]
+    # Only one real publish across both runs.
+    assert fake_publish.call_count == 1
+
+
+def test_bridge_window_hours_legacy_filter(tmp_path, monkeypatch):
+    """Optional legacy window_hours filter still works when set."""
     _write_articles(
         tmp_path,
         [
@@ -107,7 +164,10 @@ def test_bridge_no_recent_items(tmp_path, monkeypatch):
 
     with patch(
         "mata_garuda.agents.intel_scraper_bridge.stream_publish_redis"
-    ) as fake_publish:
+    ) as fake_publish, patch(
+        "mata_garuda.agents.intel_scraper_bridge.redis_cmd",
+        side_effect=_stub_redis_cmd_factory(set()),
+    ):
         result = bridge_intel_scraper(window_hours=1)
 
     assert result["case_resolved"] is False
@@ -121,7 +181,10 @@ def test_bridge_file_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("BALI_INTEL_SCRAPER_DATA_DIR", str(tmp_path))
     with patch(
         "mata_garuda.agents.intel_scraper_bridge.stream_publish_redis"
-    ) as fake_publish:
+    ) as fake_publish, patch(
+        "mata_garuda.agents.intel_scraper_bridge.redis_cmd",
+        side_effect=_stub_redis_cmd_factory(set()),
+    ):
         result = bridge_intel_scraper()
     assert result["case_resolved"] is False
     assert "missing" in result["reason"].lower() or "empty" in result["reason"].lower()
