@@ -77,11 +77,15 @@ class MetaGraphSampler(MetricSampler):
         timeout: float | None = None,
     ) -> None:
         self.access_token = (
-            access_token or os.environ.get("IG_LONG_LIVED_TOKEN", "")
+            access_token
+            or os.environ.get("IG_LONG_LIVED_TOKEN")
+            or os.environ.get("INSTAGRAM_ACCESS_TOKEN")
+            or ""
         )
         if not self.access_token:
             raise SamplerError(
-                "MetaGraphSampler requires IG_LONG_LIVED_TOKEN",
+                "MetaGraphSampler requires IG_LONG_LIVED_TOKEN "
+                "(or INSTAGRAM_ACCESS_TOKEN)",
             )
         self.metrics = metrics or _DEFAULT_CAROUSEL_METRICS
         self.graph_base = (graph_base or DEFAULT_GRAPH_BASE).rstrip("/")
