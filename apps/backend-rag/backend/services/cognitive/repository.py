@@ -103,8 +103,15 @@ def _row_to_move(row: Any) -> UltraMove:
 
 
 class CognitiveRepository(BaseRepository):
-    """CRUD for cross_dossier_theses, compliance_alerts,
-    weekly_strategic_briefs, ultra_moves (migration 114)."""
+    """CRUD for cross_dossier_theses, wr_anomaly_alerts,
+    weekly_strategic_briefs, ultra_moves (migration 114).
+
+    Note: ``wr_anomaly_alerts`` was originally named ``compliance_alerts``
+    but was renamed 2026-04-20 to avoid collision with the client-centric
+    ``compliance_alerts`` table (db/migrations_v2/114) used by the KITAS
+    deadline alert engine. Keep these distinct: WR2 tracks contradictions
+    *between dossiers*; the other tracks *per-client* compliance deadlines.
+    """
 
     # ── CrossDossierThesis (Sprint 15) ───────────────────────────
 
@@ -191,7 +198,7 @@ class CognitiveRepository(BaseRepository):
     ) -> ComplianceAlert:
         row = await self.fetchrow_safe(
             """
-            INSERT INTO compliance_alerts
+            INSERT INTO wr_anomaly_alerts
                 (dossier_a_id, dossier_b_id, contradiction_type,
                  severity, suggested_action, affected_client_query)
             VALUES ($1, $2, $3, $4, $5, $6)
@@ -210,7 +217,7 @@ class CognitiveRepository(BaseRepository):
     async def mark_alert_notified(self, alert_id: UUID) -> None:
         await self.execute_safe(
             """
-            UPDATE compliance_alerts
+            UPDATE wr_anomaly_alerts
                SET notified_zero = TRUE
              WHERE id = $1;
             """,
@@ -229,7 +236,7 @@ class CognitiveRepository(BaseRepository):
         row = await self.fetchrow_safe(
             """
             SELECT 1
-              FROM compliance_alerts
+              FROM wr_anomaly_alerts
              WHERE detected_at > NOW() - make_interval(days => $1)
                AND (
                     (dossier_a_id::text = $2 AND dossier_b_id::text = $3)
@@ -249,7 +256,7 @@ class CognitiveRepository(BaseRepository):
         if severity is None:
             rows = await self.fetch_safe(
                 """
-                SELECT * FROM compliance_alerts
+                SELECT * FROM wr_anomaly_alerts
                  WHERE resolved = FALSE
                  ORDER BY detected_at DESC;
                 """,
@@ -257,7 +264,7 @@ class CognitiveRepository(BaseRepository):
         else:
             rows = await self.fetch_safe(
                 """
-                SELECT * FROM compliance_alerts
+                SELECT * FROM wr_anomaly_alerts
                  WHERE resolved = FALSE
                    AND severity = $1
                  ORDER BY detected_at DESC;

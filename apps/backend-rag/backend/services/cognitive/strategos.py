@@ -3,7 +3,7 @@
 Aggregates 30-day context across:
     - recent dossiers (top by confidence)
     - active cross-dossier theses (Connector L1 output)
-    - unresolved compliance_alerts (Anomaly L2 output)
+    - unresolved wr_anomaly_alerts (Anomaly L2 output)
     - war_room_posts + metrics (avg composite / reach / engagement per register)
     - recent rejections (top reasons)
     - genome skills/scars (Learner output, optional)
@@ -266,7 +266,7 @@ Rispondi SOLO JSON strict:
 Regole:
 - Azioni concrete, non generiche.
 - Se il contesto mostra una deriva tonale (registro > 40%), includi un'azione di ribilanciamento.
-- Se ci sono compliance_alerts aperti severi, prioritizza azioni CRM.
+- Se ci sono anomaly_alerts aperti severi, prioritizza azioni CRM.
 - Max 5 top_themes, max 6 proposed_actions."""
 
 
