@@ -87,7 +87,6 @@ export function HeroBlueprint() {
                   fontSize: "clamp(22px, 3.2vw, 48px)",
                   lineHeight: 1.15,
                   textShadow: "0 2px 24px rgba(0,0,0,0.5)",
-                  fontFamily: "var(--font-sans)",
                 }}
               >
                 Most people moving to Bali pick the wrong visa in the first
