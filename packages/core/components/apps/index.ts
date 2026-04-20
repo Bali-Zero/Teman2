@@ -19,3 +19,9 @@ export {
   type TrustNumber,
 } from "./AppTrustStrip";
 export { AppEmailOptIn, type AppEmailOptInProps } from "./AppEmailOptIn";
+export { AppStampReveal, type AppStampRevealProps } from "./AppStampReveal";
+export {
+  AppSentenceBuilder,
+  type AppSentenceBuilderProps,
+} from "./AppSentenceBuilder";
+export { useHaptic } from "../../hooks/useHaptic";
