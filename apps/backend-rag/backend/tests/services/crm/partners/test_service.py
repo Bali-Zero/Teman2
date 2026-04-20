@@ -3,6 +3,7 @@ import pytest
 from decimal import Decimal
 from fastapi import HTTPException
 
+from uuid import uuid4
 from backend.services.crm.partners.service import (
     PartnersService,
     ConflictError,
@@ -200,3 +201,39 @@ async def test_create_rejects_partner_with_internal_email(svc, user_factory):
             created_by=admin,
         )
     assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_reassign_nonexistent_partner_raises_404(db_conn, user_factory):
+    """reassign_partner raises HTTPException(404) when partner_id is unknown."""
+    admin = await user_factory(role="admin")
+    svc = PartnersService(db_conn)
+    with pytest.raises(HTTPException) as exc:
+        await svc.reassign_partner(
+            uuid4(), new_user_id=None,
+            actor_user=admin, reason="cleanup",
+        )
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_partner_rejects_partner_role_self_update(
+    db_conn, user_factory, partner_factory,
+):
+    """update_partner rejects partner-role actor at service layer (spec §7.2)."""
+    partner_id = await partner_factory()
+    # Link a partner-role user to this partner
+    partner_user = await user_factory(role="partner")
+    await db_conn.execute(
+        "UPDATE users SET partner_id = $2 WHERE id = $1",
+        partner_user, partner_id,
+    )
+    svc = PartnersService(db_conn)
+    with pytest.raises(HTTPException) as exc:
+        await svc.update_partner(
+            partner_id,
+            actor_user=partner_user, actor_role="partner",
+            full_name="New Name",
+        )
+    assert exc.value.status_code == 403
+    assert "may not update" in exc.value.detail.lower()

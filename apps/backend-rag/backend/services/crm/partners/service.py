@@ -90,6 +90,8 @@ class PartnersService:
         actor_role: str,
         **fields: Any,
     ) -> None:
+        if actor_role == "partner":
+            raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
         current = await verify_partner_access_with_role(
             self, actor_user, actor_role, partner_id
         )
@@ -139,6 +141,8 @@ class PartnersService:
         if not reason:
             raise ValueError("reason is required for reassignment")
         current = await self.repo.get_partner(partner_id)
+        if current is None:
+            raise HTTPException(status_code=404, detail="partner not found")
         before = {"assigned_to": str(current.assigned_to) if current.assigned_to else None}
         after = {"assigned_to": str(new_user_id) if new_user_id else None}
         await self.repo.reassign_partner(partner_id, new_user_id)
