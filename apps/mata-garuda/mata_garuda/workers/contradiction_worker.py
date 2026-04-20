@@ -40,7 +40,7 @@ logger = logging.getLogger("mata_garuda.workers.contradiction")
 CONSUMER_GROUP = "contradiction"
 CONSUMER_NAME = "contradiction-1"
 
-CONTRADICTION_MODEL = "gemma4:26b"
+CONTRADICTION_MODEL = "qwen3:8b"
 
 WATCHED_DOMAINS = frozenset(
     {"immigration_visa", "tax_fiscal", "investment_licensing"}
