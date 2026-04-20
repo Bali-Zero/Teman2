@@ -19,7 +19,7 @@ export interface AppWhatsAppCTAProps {
    * Ref of the element which, once out of view (scrolled past), switches
    * the CTA to sticky-bottom + postScrollLabel.
    */
-  stampRef?: React.RefObject<Element>;
+  stampRef?: React.RefObject<Element | null>;
   onCaptured?: (payload: { leadIntentId: string; whatsappUrl: string }) => void;
   apiBase?: string;
 }
