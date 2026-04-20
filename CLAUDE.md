@@ -35,11 +35,12 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 20 · **Packages:** 5
+**Apps:** 21 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
 | `admin-dashboard` | A standalone Next.js application to inspect and control Nuzantara data. |
+| `admin-dashboard-local` | Pro-only LLM cost dashboard. **Not deployed anywhere.** |
 | `backend-rag` | **Production-Ready AI-Powered RAG System for Business Intelligence** |
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
 | `cell` |  |
@@ -66,7 +67,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 246 routers, 458 services, 786 test files
+- **Backend:** Python 3.11+, FastAPI, 252 routers, 475 services, 793 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)

@@ -29,8 +29,11 @@ import { z } from "zod";
  * Canonical (current state machine, 6 states):
  *   - inquiry, waiting_documents, sending_invoice, on_process, completed, cancelled
  *
- * Legacy (may appear in historical practice_status_log rows, mapped by
- * LEGACY_STATE_MAP in practice_state_machine.py):
+ * Legacy (kept for backward-compat: `portal_process_timeline.py` still maps
+ * these from historical activity_log rows; see STATUS_LABELS there. As of
+ * 2026-04-20, practices.status in prod contains ONLY canonical values —
+ * these legacy names can only appear in timeline steps reconstructed from
+ * activity_log history):
  *   - quotation_sent, payment_pending, waiting_payment, in_progress,
  *     submitted_to_gov, approved
  */
