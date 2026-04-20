@@ -6,7 +6,7 @@ SQLModel models for CRM system (clients, practices, interactions)
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DECIMAL, JSON, Column, Text
+from sqlalchemy import DECIMAL, JSON, Column, Text, func
 from sqlmodel import Field, Relationship, SQLModel
 
 # ClientCompanyLink in company_models; import here for Relationship resolution (no circular: company_models doesn't import models at runtime)
@@ -58,7 +58,7 @@ class Client(SQLModel, table=True):
     custom_fields: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(sa_column_kwargs={"server_default": func.now()})
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     created_by: str | None = Field(default=None, max_length=255)
 
