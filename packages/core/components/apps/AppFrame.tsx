@@ -5,18 +5,20 @@ import type { FC, ReactNode } from "react";
 export interface AppFrameProps {
   title: string;
   subtitle?: string;
-  /** Mobile-first single column; 2-col desktop when sidebar provided. */
+  /** Optional right-sidebar (desktop ≥900px). */
   sidebar?: ReactNode;
-  /** Trust strip (3 numbers) shown above the main content. */
+  /** 3-number trust strip (AppTrustStrip) rendered above the main content. */
   trustStrip?: ReactNode;
   children: ReactNode;
-  /** Optional coverage / result disclaimer under the content. */
+  /** Footer content (disclaimers, last-updated, etc.). */
   footer?: ReactNode;
+  /**
+   * When set, applies the data-funnel attribute on the root so
+   * tokens like --accent-funnel resolve to the funnel hue (red/gold/cyan/green).
+   */
+  funnel?: "visa" | "kbli" | "tax" | "property";
 }
 
-/** Shared shell for all 4 homepage apps. Desktop ≥ 900px switches to
- * 2 columns (content | sidebar). Respects the Warm Depth tokens from
- * packages/core/styles/bz-tokens.css. */
 export const AppFrame: FC<AppFrameProps> = ({
   title,
   subtitle,
@@ -24,20 +26,35 @@ export const AppFrame: FC<AppFrameProps> = ({
   trustStrip,
   children,
   footer,
+  funnel,
 }) => {
   return (
     <section
+      role="region"
       aria-label={title}
+      {...(funnel ? { "data-funnel": funnel } : {})}
       style={{
         maxWidth: "1120px",
         margin: "0 auto",
-        padding: "var(--space-5) var(--space-4)",
+        padding: "var(--space-5, 2rem) var(--space-4, 1.5rem)",
         display: "grid",
-        gap: "var(--space-5)",
+        gap: "var(--space-5, 2rem)",
+        minHeight: "100vh",
+        background: "var(--surface-base)",
+        color: "var(--text-primary, rgba(255, 255, 255, 0.96))",
       }}
     >
-      <header style={{ display: "grid", gap: "var(--space-2)" }}>
-        <h1 style={{ margin: 0, fontSize: "var(--text-2xl)", lineHeight: 1.2 }}>
+      <header style={{ display: "grid", gap: "var(--space-2, 0.5rem)" }}>
+        <h1
+          style={{
+            margin: 0,
+            fontFamily: "var(--font-serif, Georgia, 'Times New Roman', serif)",
+            fontSize: "clamp(1.8rem, 5vw, 2.6rem)",
+            lineHeight: 1.05,
+            fontWeight: 400,
+            letterSpacing: "-0.03em",
+          }}
+        >
           {title}
         </h1>
         {subtitle ? (
@@ -45,7 +62,8 @@ export const AppFrame: FC<AppFrameProps> = ({
             style={{
               margin: 0,
               color: "var(--color-text-muted)",
-              fontSize: "var(--text-md)",
+              fontSize: "var(--text-md, 1rem)",
+              lineHeight: 1.5,
             }}
           >
             {subtitle}
@@ -56,11 +74,11 @@ export const AppFrame: FC<AppFrameProps> = ({
       <div
         style={{
           display: "grid",
-          gap: "var(--space-5)",
+          gap: "var(--space-5, 2rem)",
           gridTemplateColumns: sidebar ? "minmax(0, 1fr) 320px" : "1fr",
         }}
       >
-        <main style={{ display: "grid", gap: "var(--space-4)" }}>
+        <main style={{ display: "grid", gap: "var(--space-4, 1.5rem)" }}>
           {children}
         </main>
         {sidebar ? <aside>{sidebar}</aside> : null}
@@ -68,10 +86,10 @@ export const AppFrame: FC<AppFrameProps> = ({
       {footer ? (
         <footer
           style={{
-            fontSize: "var(--text-sm)",
+            fontSize: "var(--text-sm, 0.88rem)",
             color: "var(--color-text-muted)",
             borderTop: "1px solid var(--color-border-subtle)",
-            paddingTop: "var(--space-4)",
+            paddingTop: "var(--space-4, 1.5rem)",
           }}
         >
           {footer}
