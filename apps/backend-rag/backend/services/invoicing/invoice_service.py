@@ -133,7 +133,7 @@ class InvoiceAutomationService:
                     )
                 except httpx.HTTPError as email_error:
                     logger.warning(f"Failed to send invoice email to client: {email_error}")
-                except Exception as email_error:
+                except Exception:
                     logger.exception(f"Unexpected error sending invoice email to {client_data['email']}")
             else:
                 logger.warning(f"Client {client_data['id']} has no email, skipping email")
@@ -157,7 +157,7 @@ class InvoiceAutomationService:
                 )
             except httpx.HTTPError as notify_error:
                 logger.warning(f"Failed to notify accounting: {notify_error}")
-            except Exception as notify_error:
+            except Exception:
                 logger.exception("Unexpected error sending accounting notification")
 
             # Step 5: Upload backup PDF to Google Drive
@@ -181,7 +181,7 @@ class InvoiceAutomationService:
                 )
             except OSError as drive_error:
                 logger.warning(f"Network error uploading invoice backup to Drive: {drive_error}")
-            except Exception as drive_error:
+            except Exception:
                 logger.exception("Unexpected error uploading invoice backup to Drive")
                 # Continue even if Drive upload fails
 
@@ -387,10 +387,12 @@ class InvoiceAutomationService:
 
             documents["invoice"] = invoice_info
 
+            # payment_status is NOT reset here: FE ciclo is unpaid→partial→paid
+            # (no 'pending' state). Keep whatever value was set before.
             await conn.execute(
                 """
                 UPDATE practices
-                SET documents = $1::jsonb, payment_status = 'pending', updated_at = NOW()
+                SET documents = $1::jsonb, updated_at = NOW()
                 WHERE id = $2
                 """,
                 json.dumps(documents),
@@ -414,11 +416,15 @@ class InvoiceAutomationService:
                         amount_idr, drive_file_id, drive_web_link,
                         email_sent_to_client, accounting_notified, generated_at
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                    ON CONFLICT (invoice_number) DO UPDATE SET
+                    ON CONFLICT (practice_id) DO UPDATE SET
+                        invoice_number       = EXCLUDED.invoice_number,
+                        invoice_source       = EXCLUDED.invoice_source,
+                        amount_idr           = EXCLUDED.amount_idr,
                         drive_file_id        = EXCLUDED.drive_file_id,
                         drive_web_link       = EXCLUDED.drive_web_link,
                         email_sent_to_client = EXCLUDED.email_sent_to_client,
                         accounting_notified  = EXCLUDED.accounting_notified,
+                        generated_at         = EXCLUDED.generated_at,
                         updated_at           = NOW()
                     """,
                     practice_id,

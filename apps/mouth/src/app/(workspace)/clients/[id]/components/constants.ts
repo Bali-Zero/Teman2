@@ -13,18 +13,13 @@ export const STANDARD_FOLDERS: Record<string, { label: string; icon: string }> =
     "99_Misc": { label: "Misc", icon: "\u{1F4C1}" },
   };
 
-// Status badge colors
+// Status badge colors — canonical 6-state vocabulary
+// (mirrors backend practice_state_machine.VALID_TRANSITIONS keys).
 export const STATUS_COLORS: Record<string, string> = {
   inquiry: "bg-blue-500/20 text-blue-400",
-  quotation_sent: "bg-yellow-500/20 text-yellow-400",
-  sending_invoice: "bg-yellow-500/20 text-yellow-400",
-  payment_pending: "bg-orange-500/20 text-orange-400",
-  waiting_payment: "bg-orange-500/20 text-orange-400",
-  in_progress: "bg-purple-500/20 text-purple-400",
-  on_process: "bg-purple-500/20 text-purple-400",
   waiting_documents: "bg-pink-500/20 text-pink-400",
-  submitted_to_gov: "bg-indigo-500/20 text-indigo-400",
-  approved: "bg-emerald-500/20 text-emerald-400",
+  sending_invoice: "bg-yellow-500/20 text-yellow-400",
+  on_process: "bg-purple-500/20 text-purple-400",
   completed: "bg-green-500/20 text-green-400",
   cancelled: "bg-red-500/20 text-red-400",
 };

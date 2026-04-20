@@ -749,15 +749,21 @@ export default function PratichePage() {
           const completed = filteredPractices.filter(
             (p) => getStatusColumn(p.status) === "completed",
           ).length;
+          // Revenue — mirror backend aggregation in dashboard_summary.py.
+          // 'paid': sum paid_amount (reliable post-backfill), fallback to
+          // actual_price||quoted_price for legacy rows still missing it.
+          // 'unpaid'/'partial': use actual_price||quoted_price as invoiced.
+          const amountOf = (p: Practice) =>
+            p.actual_price || p.quoted_price || 0;
           const unpaidRevenue = filteredPractices
             .filter(
               (p) =>
                 p.payment_status === "unpaid" || p.payment_status === "partial",
             )
-            .reduce((s, p) => s + (p.actual_price || p.quoted_price || 0), 0);
+            .reduce((s, p) => s + amountOf(p), 0);
           const totalRevenue = filteredPractices
             .filter((p) => p.payment_status === "paid")
-            .reduce((s, p) => s + (p.actual_price || p.quoted_price || 0), 0);
+            .reduce((s, p) => s + (p.paid_amount || amountOf(p)), 0);
           const expiringCount = practices.filter((p) => {
             if (!p.expiry_date) return false;
             const d = Math.ceil(
