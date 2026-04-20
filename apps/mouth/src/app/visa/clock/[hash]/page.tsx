@@ -130,7 +130,7 @@ export default function VisaClockResultPage({ params }: { params: { hash: string
         ]}
         defaultLabel="Start on WhatsApp →"
         postScrollLabel={`Start the ${data.visa_type} renewal →`}
-        stampRef={stampRef as React.RefObject<Element>}
+        stampRef={stampRef}
         onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
       />
 
