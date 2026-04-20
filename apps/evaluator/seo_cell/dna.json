@@ -62,11 +62,8 @@
     "HIGH": "review_handler.py SLA worker (TG approve/reject)",
     "CRITICAL": "review_handler.py + Zero explicit approval"
   },
-  "deprecates": [
-    "apps/evaluator/seo_guardian_core.py",
-    "apps/evaluator/seo_guardian_agent.py",
-    "apps/evaluator/seo_guardian_measure.py",
-    "apps/evaluator/seo_guardian_learn.py",
-    "apps/evaluator/core_guardian/cron_seo_guardian.py"
-  ]
+  "deprecated": {
+    "legacy_scripts_removed_at": "2026-04-20",
+    "note": "apps/evaluator/seo_guardian_{core,agent,measure,learn}.py and apps/evaluator/core_guardian/cron_seo_guardian.py were removed — their responsibilities live in this cell now."
+  }
 }

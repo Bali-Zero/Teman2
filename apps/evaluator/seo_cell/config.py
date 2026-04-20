@@ -12,7 +12,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DNA_PATH = Path(__file__).resolve().parent / "dna.json"
 DB_PATH = DATA_DIR / "seo_cell.db"
 
-# Reused from existing seo_guardian_core.py — same SA has GSC owner role
+# Same SA has GSC owner role for balizero.com
 GOOGLE_CREDENTIALS_PATH = PROJECT_ROOT / ".secrets" / "google-credentials.json"
 
 # Brief path — Task 1 output (owner Antonello), consumed here as lightweight
