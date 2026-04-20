@@ -18,8 +18,19 @@ import os
 import sys
 import types as _types
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Callable, Coroutine
+
+
+class _UUIDWithId(uuid.UUID):
+    """UUID subclass that adds an `.id` property for backward-compat with
+    both `await factory()` (used as UUID directly) and `(await factory()).id`
+    (used in commission_engine tests that expect an object with .id)."""
+
+    @property
+    def id(self) -> "_UUIDWithId":
+        return self
 
 import asyncpg
 import pytest_asyncio
@@ -101,9 +112,27 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS processes (
-    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status             TEXT NOT NULL DEFAULT 'pending',
+    payment_status     TEXT NOT NULL DEFAULT 'pending',
+    total_invoiced_idr NUMERIC(16,2) NOT NULL DEFAULT 0,
+    completed_at       TIMESTAMPTZ
 );
+
+-- PRE-FLIGHT NOTE (2026-04-20): processes table does not exist in the live DB
+-- (used only in test stubs). The 4 columns required by CommissionEngine are:
+--   status TEXT, payment_status TEXT, total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
+-- Added here to support test_commission_engine.py. See outcome (c) in Task 5 pre-flight check.
+
+CREATE TABLE IF NOT EXISTS system_settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT '0'
+);
+INSERT INTO system_settings (key, value) VALUES
+    ('partner_clawback_auto_writeoff_idr', '0'),
+    ('partner_accrual_cooling_off_days',   '30')
+ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS partners (
     id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -223,6 +252,7 @@ DROP TABLE IF EXISTS partner_commissions;
 DROP TABLE IF EXISTS partner_referrals;
 DROP TABLE IF EXISTS partners;
 DROP TABLE IF EXISTS processes;
+DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS users;
 """
 
@@ -257,12 +287,12 @@ def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, An
         *,
         email: str | None = None,
         role: str = "team",
-    ) -> uuid.UUID:
-        uid = uuid.uuid4()
+    ) -> _UUIDWithId:
+        uid = _UUIDWithId(int=uuid.uuid4().int)
         _email = email or f"user-{uid}@test.invalid"
         await db_conn.execute(
             "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
-            uid, _email, role,
+            uuid.UUID(int=uid.int), _email, role,
         )
         return uid
 
@@ -270,13 +300,34 @@ def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, An
 
 
 @pytest_asyncio.fixture(scope="function")
-def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
-    """Returns an async callable that inserts a process row and returns its UUID."""
-    async def _create() -> uuid.UUID:
-        pid = uuid.uuid4()
+def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
+    """Returns an async callable that inserts a process row and returns its UUID.
+
+    Accepts optional kwargs for columns added in Task 5 pre-flight fix (outcome c):
+    - total_invoiced_idr: NUMERIC(16,2), default 0
+    - status: TEXT, default 'pending'
+    - payment_status: TEXT, default 'pending'
+    - completed_at: TIMESTAMPTZ, default None (NULL → engine falls back to now())
+    """
+    async def _create(
+        *,
+        total_invoiced_idr: Decimal = Decimal("0"),
+        status: str = "pending",
+        payment_status: str = "pending",
+        completed_at: datetime | None = None,
+    ) -> _UUIDWithId:
+        pid = _UUIDWithId(int=uuid.uuid4().int)
+        _completed_at = completed_at or (
+            datetime.now(timezone.utc) if status == "completed" else None
+        )
         await db_conn.execute(
-            "INSERT INTO processes (id) VALUES ($1)",
-            pid,
+            """
+            INSERT INTO processes
+                (id, total_invoiced_idr, status, payment_status, completed_at)
+            VALUES ($1, $2, $3, $4, $5)
+            """,
+            uuid.UUID(int=pid.int),
+            total_invoiced_idr, status, payment_status, _completed_at,
         )
         return pid
 
@@ -284,8 +335,14 @@ def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
 
 
 @pytest_asyncio.fixture(scope="function")
-def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
-    """Returns an async callable that inserts a partner and returns its UUID."""
+def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
+    """Returns an async callable that inserts a partner and returns its UUID.
+
+    Extended in Task 5 to accept commission/withholding kwargs:
+    - default_commission_type: 'percentage'|'flat', default 'percentage'
+    - default_commission_value: NUMERIC, default 10.0
+    - tax_withholding_category: 'pph21'|'pph23'|'exempt'|'tbd', default 'tbd'
+    """
     _counter = [0]
 
     async def _create(
@@ -294,19 +351,27 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
         email: str | None = None,
         entity_type: str = "individual",
         assigned_to: uuid.UUID | None = None,
-    ) -> uuid.UUID:
+        default_commission_type: str = "percentage",
+        default_commission_value: Decimal = Decimal("10.0"),
+        tax_withholding_category: str = "tbd",
+    ) -> _UUIDWithId:
         _counter[0] += 1
         _full_name = full_name or f"Test Partner {_counter[0]}"
         _email = email or f"partner-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
         row = await db_conn.fetchrow(
             """
-            INSERT INTO partners (full_name, email, entity_type, assigned_to)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO partners
+                (full_name, email, entity_type, assigned_to,
+                 default_commission_type, default_commission_value,
+                 tax_withholding_category)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id
             """,
             _full_name, _email, entity_type, assigned_to,
+            default_commission_type, default_commission_value,
+            tax_withholding_category,
         )
-        return row["id"]
+        return _UUIDWithId(bytes=row["id"].bytes)
 
     return _create
 
@@ -314,15 +379,15 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
 @pytest_asyncio.fixture(scope="function")
 def referral_factory(
     db_conn: asyncpg.Connection,
-    process_factory: Callable[..., Coroutine[Any, Any, uuid.UUID]],
-) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
+    process_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
+) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
     """Returns an async callable that inserts a partner_referral and returns its UUID."""
     async def _create(
         *,
         partner_id: uuid.UUID,
         process_id: uuid.UUID | None = None,
         share_percent: Decimal = Decimal("100.00"),
-    ) -> uuid.UUID:
+    ) -> _UUIDWithId:
         _process_id = process_id or await process_factory()
         row = await db_conn.fetchrow(
             """
@@ -332,6 +397,12 @@ def referral_factory(
             """,
             partner_id, _process_id, share_percent,
         )
-        return row["id"]
+        return _UUIDWithId(bytes=row["id"].bytes)
 
     return _create
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin(user_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]]) -> _UUIDWithId:
+    """Inserts an admin user and returns its UUID (with .id attribute)."""
+    return await user_factory(role="admin")
