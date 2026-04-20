@@ -368,7 +368,7 @@ async def run_renewal_alerts(pool: asyncpg.Pool, *, dry_run: bool = False) -> di
                 WHERE p.expiry_date IS NOT NULL
                 AND p.expiry_date <= $1
                 AND p.expiry_date >= CURRENT_DATE
-                AND p.status NOT IN ('cancelled', 'expired', 'renewed')
+                AND p.status NOT IN ('cancelled', 'completed')
                 AND NOT EXISTS (
                     SELECT 1 FROM renewal_alerts ra
                     WHERE ra.practice_id = p.id

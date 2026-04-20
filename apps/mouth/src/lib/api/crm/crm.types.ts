@@ -18,6 +18,7 @@ export interface Practice {
   priority: string;
   quoted_price?: number;
   actual_price?: number;
+  paid_amount?: number;
   payment_status: string;
   assigned_to?: string;
   start_date?: string;
@@ -270,6 +271,7 @@ export interface ClientProfile {
     alert_color?: string;
     quoted_price?: number;
     actual_price?: number;
+    paid_amount?: number;
     payment_status?: string;
     assigned_to?: string;
     updated_at?: string;

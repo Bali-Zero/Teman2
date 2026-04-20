@@ -18,6 +18,7 @@ import {
   MoreVertical,
   Edit,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
@@ -59,6 +60,11 @@ const STATUS_INFO: Record<
     label: "Completed",
     badgeClass: "bg-green-500/10 text-green-500",
     icon: <CheckCircle2 className="w-4 h-4" />,
+  },
+  cancelled: {
+    label: "Cancelled",
+    badgeClass: "bg-red-500/10 text-red-500",
+    icon: <XCircle className="w-4 h-4" />,
   },
 };
 
