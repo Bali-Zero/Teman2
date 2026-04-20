@@ -15,7 +15,6 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -55,18 +54,17 @@ logger.addHandler(_sh)
 # Standard practice statuses
 # ---------------------------------------------------------------------------
 STANDARD_STATUSES = {
-    "active", "completed", "pending", "cancelled", "inquiry",
-    "in_progress", "on_hold", "expired", "pending_renewal",
-    "expiring_soon", "renewed",
+    "inquiry", "waiting_documents", "sending_invoice",
+    "on_process", "completed", "cancelled",
 }
 
 STATUS_MAP: dict[str, str] = {
-    "on_process": "in_progress",
-    "sending_invoice": "pending",
-    "quotation_sent": "pending",
-    "approved": "active",
-    "submitted_to_gov": "in_progress",
-    "waiting_documents": "pending",
+    "quotation_sent": "sending_invoice",
+    "payment_pending": "sending_invoice",
+    "waiting_payment": "sending_invoice",
+    "in_progress": "on_process",
+    "submitted_to_gov": "on_process",
+    "approved": "on_process",
 }
 
 
@@ -103,7 +101,7 @@ async def run_audit(pool: asyncpg.Pool) -> dict[str, Any]:
             SELECT COUNT(DISTINCT c.id)
             FROM clients c JOIN practices p ON p.client_id = c.id
             WHERE c.deleted_at IS NULL AND (c.npwp IS NULL OR TRIM(c.npwp) = '')
-            AND p.status IN ('active', 'completed', 'pending')
+            AND p.status IN ('waiting_documents', 'sending_invoice', 'on_process', 'completed')
         """)
         checks["orphan_practices"] = await conn.fetchval(
             "SELECT COUNT(*) FROM practices WHERE client_id IS NULL OR client_id NOT IN (SELECT id FROM clients)"
