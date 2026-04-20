@@ -369,6 +369,69 @@ def collect_core_guardian() -> list[SystemCheck]:
         )]
 
 
+def collect_launchd_bad_exits() -> list[SystemCheck]:
+    """Read zombie-hunter's launchd_bad_exits.json and surface agents stuck
+    at non-zero exit.
+
+    Wiring added 2026-04-20: zombie-hunter.sh writes this file every 60s
+    (section 7, added post-audit 2026-04-19), but system_doctor wasn't
+    reading it — so bad plists stayed silent despite the sensor working.
+    """
+    state_file = Path.home() / ".agent" / "decisions" / "state" / "launchd_bad_exits.json"
+    if not state_file.exists():
+        return [SystemCheck(
+            id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
+            status="warning", message="launchd_bad_exits.json not found (is zombie-hunter running?)",
+        )]
+
+    try:
+        data = json.loads(state_file.read_text())
+    except (json.JSONDecodeError, OSError) as e:
+        return [SystemCheck(
+            id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
+            status="warning", message=f"Cannot parse state: {type(e).__name__}",
+        )]
+
+    # Stale-guard: zombie-hunter runs every 60s, so >5min old = sensor broken
+    ts_str = data.get("ts", "")
+    stale = False
+    try:
+        ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+        age_s = (datetime.now() - ts).total_seconds()
+        stale = age_s > 300
+    except ValueError:
+        stale = True
+
+    bad = data.get("bad", [])
+
+    if stale:
+        return [SystemCheck(
+            id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
+            status="warning", stale=True,
+            message=f"State file not refreshed (ts={ts_str or 'missing'}) — sensor may be down",
+        )]
+
+    if not bad:
+        return [SystemCheck(
+            id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
+            status="ok", last_run=ts_str, message="No launchd agents in bad-exit state",
+        )]
+
+    checks = []
+    for entry in bad:
+        label = entry.get("label", "?")
+        last_exit = entry.get("last_exit", "?")
+        checks.append(SystemCheck(
+            id=f"launchd-{label}", name=label, group="self-repair",
+            status="error", last_run=ts_str,
+            message=f"last_exit={last_exit} (flagged by zombie-hunter)",
+            needs_ai=True,
+            ai_context=f"LaunchAgent {label} exited with code {last_exit}. "
+                       f"Check `launchctl print gui/$(id -u)/{label}` and log under ~/logs/",
+        ))
+    return checks
+
+
 def collect_frontend_health() -> list[SystemCheck]:
     """Check all 8 frontend subdomains return HTTP 200 or 307."""
     checks = []
@@ -1120,6 +1183,7 @@ def main() -> None:
         ("OpenClaw jobs", collect_openclaw_jobs),
         ("Backend health", collect_backend_health),
         ("Core Guardian", collect_core_guardian),
+        ("Launchd bad exits", collect_launchd_bad_exits),
         ("Frontend health", collect_frontend_health),
         ("SSL certs", collect_ssl_certs),
         ("Fly resources", collect_fly_resources),
