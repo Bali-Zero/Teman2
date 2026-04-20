@@ -214,7 +214,7 @@ class CommissionEngine:
             raise ValueError(f"Commission not found: {commission_id}")
         if c.status != "accrued":
             raise ValueError(
-                f"Cannot approve commission with status {c.status!r} "
+                f"cannot approve commission with status {c.status!r} "
                 f"(must be 'accrued')"
             )
         now = datetime.now(timezone.utc)
