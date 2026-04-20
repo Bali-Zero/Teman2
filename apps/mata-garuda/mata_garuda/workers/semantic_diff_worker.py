@@ -43,7 +43,7 @@ logger = logging.getLogger("mata_garuda.workers.semantic_diff")
 CONSUMER_GROUP = "semantic-diff"
 CONSUMER_NAME = "semantic-diff-1"
 
-SEMANTIC_DIFF_MODEL = "gemma4:26b"
+SEMANTIC_DIFF_MODEL = "qwen3:8b"
 
 REGULATION_SOURCE_TYPES = frozenset({"regulation", "gov_regulation", "go_id"})
 
