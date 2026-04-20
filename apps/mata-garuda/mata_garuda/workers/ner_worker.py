@@ -7,9 +7,9 @@ Output schema mirrors what Layer 3 analysts + future KG ingestion
 expect: persons, organizations, locations, laws, monetary_values,
 dates — always present, empty list if none.
 
-qwen3.5:9b chosen over gemma4:26b here because NER is a
+qwen3.5:9b chosen over qwen3:8b here because NER is a
 short-context / structured-extraction task where the smaller model
-is fast enough and leaves headroom for gemma4:26b to keep serving
+is fast enough and leaves headroom for qwen3:8b to keep serving
 the classifier.
 
 Layer 2 Kognitif — enrichment stage.
