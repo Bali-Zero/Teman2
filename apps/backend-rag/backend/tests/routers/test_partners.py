@@ -305,14 +305,9 @@ class TestUpdatePartner:
 class TestActivateDeactivate:
     @pytest.mark.integration
     def test_activate_requires_admin_team_gets_403(self, team_app) -> None:
-        from fastapi import HTTPException
+        # Router-level _require_admin fires before any service call
         _, client, _, _ = team_app
-        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-            svc_instance = MockSvc.return_value
-            svc_instance.activate_partner = AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="admin only")
-            )
-            resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
+        resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
         assert resp.status_code == 403
 
     @pytest.mark.integration
@@ -335,14 +330,9 @@ class TestActivateDeactivate:
 
     @pytest.mark.integration
     def test_deactivate_requires_admin_team_gets_403(self, team_app) -> None:
-        from fastapi import HTTPException
+        # Router-level _require_admin fires before any service call
         _, client, _, _ = team_app
-        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-            svc_instance = MockSvc.return_value
-            svc_instance.deactivate_partner = AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="admin only")
-            )
-            resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
+        resp = client.post(f"/api/partners/{_PARTNER_ID}/deactivate")
         assert resp.status_code == 403
 
 
@@ -377,17 +367,12 @@ class TestReassign:
 
     @pytest.mark.integration
     def test_reassign_requires_admin_team_forbidden(self, team_app) -> None:
-        from fastapi import HTTPException
+        # Router-level _require_admin fires before any service call
         _, client, _, _ = team_app
-        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-            svc_instance = MockSvc.return_value
-            svc_instance.reassign_partner = AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="admin only")
-            )
-            resp = client.post(
-                f"/api/partners/{_PARTNER_ID}/reassign",
-                json={"new_user_id": str(_TEAM_ID), "reason": "test"},
-            )
+        resp = client.post(
+            f"/api/partners/{_PARTNER_ID}/reassign",
+            json={"new_user_id": str(_TEAM_ID), "reason": "test"},
+        )
         assert resp.status_code == 403
 
     @pytest.mark.integration
@@ -408,21 +393,16 @@ class TestReassign:
 
     @pytest.mark.integration
     def test_bulk_reassign_team_forbidden(self, team_app) -> None:
-        from fastapi import HTTPException
+        # Router-level _require_admin fires before any service call
         _, client, _, _ = team_app
-        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
-            svc_instance = MockSvc.return_value
-            svc_instance.reassign_partner = AsyncMock(
-                side_effect=HTTPException(status_code=403, detail="admin only")
-            )
-            resp = client.post(
-                "/api/partners/bulk-reassign",
-                json={
-                    "partner_ids": [str(_PARTNER_ID)],
-                    "new_user_id": str(_TEAM_ID),
-                    "reason": "test",
-                },
-            )
+        resp = client.post(
+            "/api/partners/bulk-reassign",
+            json={
+                "partner_ids": [str(_PARTNER_ID)],
+                "new_user_id": str(_TEAM_ID),
+                "reason": "test",
+            },
+        )
         assert resp.status_code == 403
 
 
@@ -694,6 +674,33 @@ class TestMeEndpoints:
         assert resp.status_code == 403
 
     @pytest.mark.integration
+    def test_me_referrals_sterilizes_client_name(self, partner_app) -> None:
+        """Happy-path: single JOIN returns rows, client_display is sterilized."""
+        _, client, pool, conn = partner_app
+        # First fetchrow: partner_id lookup
+        conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
+        # fetch: single-JOIN referrals result
+        mock_row = MagicMock()
+        mock_row.__getitem__ = MagicMock(side_effect=lambda k: {
+            "id": _REFERRAL_ID,
+            "process_id": _PROCESS_ID,
+            "referred_at": _NOW,
+            "process_status": "in_progress",
+            "service_type": "pt_pma",
+            "client_name": "Mario Rossi",
+        }[k])
+        conn.fetch = AsyncMock(return_value=[mock_row])
+        resp = client.get("/api/partners/me/referrals")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["client_display"] == "Mario R."
+        # Verify no sensitive fields leaked
+        row = data[0]
+        for sensitive in ("passport", "phone", "email", "npwp", "nik"):
+            assert sensitive not in row
+
+    @pytest.mark.integration
     def test_me_commissions_team_forbidden(self, team_app) -> None:
         _, client, _, _ = team_app
         resp = client.get("/api/partners/me/commissions")
@@ -759,6 +766,13 @@ class TestFinanceExport:
         assert resp.status_code == 200
         assert "attachment" in resp.headers["content-disposition"]
         assert "partners-2026-01-01-to-2026-04-30.csv" in resp.headers["content-disposition"]
+
+    @pytest.mark.integration
+    def test_finance_export_bad_date_400(self, admin_app) -> None:
+        _, client, pool, conn = admin_app
+        resp = client.get("/api/partners/finance/export?from=yesterday&to=tomorrow")
+        assert resp.status_code == 400
+        assert "invalid date format" in resp.json()["detail"]
 
 
 # ── 11. sterilize helper ──────────────────────────────────────────────────────

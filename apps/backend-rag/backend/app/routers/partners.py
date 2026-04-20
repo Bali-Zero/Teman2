@@ -1,7 +1,7 @@
 """
 FastAPI router — CRM Partners module (v1).
 
-20 endpoints covering partner lifecycle, referrals, commissions, self-serve
+21 endpoints covering partner lifecycle, referrals, commissions, self-serve
 /me routes for partner-role users, and a finance CSV export.
 
 SCAR 2026-03-26: every mutation handler does `except HTTPException: raise`
@@ -19,8 +19,10 @@ Pre-flight findings (2026-04-20):
 from __future__ import annotations
 
 import csv
+import dataclasses
 import io
 import logging
+from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
@@ -171,7 +173,6 @@ def _sterilize_client_for_partner(full_name: str) -> str:
 
 def _partner_to_dict(p: Any) -> dict[str, Any]:
     """Convert Partner dataclass or asyncpg Record to JSON-serialisable dict."""
-    import dataclasses
     if dataclasses.is_dataclass(p) and not isinstance(p, type):
         return dataclasses.asdict(p)
     return dict(p)
@@ -204,8 +205,6 @@ async def create_partner(
             partner = await svc.repo.get_partner(pid)
             return _partner_to_dict(partner)
     except HTTPException:
-        raise
-    except ConflictError:
         raise
     except Exception:
         logger.exception("create_partner failed")
@@ -273,29 +272,30 @@ async def me_referrals(
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
         partner_id = row["partner_id"]
-        svc = PartnersService(conn)
-        refs = await svc.repo.list_referrals_for_partner(partner_id)
-        out = []
-        for r in refs:
-            proc = await conn.fetchrow(
-                "SELECT p.id, p.status, p.service_type, c.full_name "
-                "FROM processes p LEFT JOIN clients c ON c.id = p.client_id "
-                "WHERE p.id = $1",
-                r.process_id,
-            )
-            if proc is None:
-                continue
-            out.append({
-                "id": str(r.id),
-                "process_id": str(r.process_id),
-                "service_type": proc["service_type"] if proc else None,
-                "process_status": proc["status"] if proc else None,
-                "client_display": _sterilize_client_for_partner(
-                    proc["full_name"] or "" if proc else ""
-                ),
-                "referred_at": r.referred_at.isoformat() if r.referred_at else None,
-            })
-        return out
+        rows = await conn.fetch(
+            """
+            SELECT pr.id, pr.process_id, pr.referred_at,
+                   p.status AS process_status, p.service_type,
+                   c.full_name AS client_name
+            FROM partner_referrals pr
+            LEFT JOIN processes p ON p.id = pr.process_id
+            LEFT JOIN clients c ON c.id = p.client_id
+            WHERE pr.partner_id = $1
+            ORDER BY pr.referred_at DESC
+            """,
+            partner_id,
+        )
+    return [
+        {
+            "id": str(r["id"]),
+            "process_id": str(r["process_id"]),
+            "service_type": r["service_type"],
+            "process_status": r["process_status"],
+            "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
+            "referred_at": r["referred_at"].isoformat() if r["referred_at"] else None,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/me/commissions")
@@ -314,7 +314,6 @@ async def me_commissions(
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
         svc = PartnersService(conn)
-        import dataclasses
         commissions = await svc.repo.list_commissions_for_partner(row["partner_id"])
         return [
             dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c)
@@ -332,37 +331,49 @@ async def finance_export(
     """Finance CSV export. Admin + finance permission required."""
     _require_admin(user)
     _require_finance(user)
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT pc.id, p.full_name, p.npwp, p.entity_type,
-                   pc.entry_type, pc.gross_amount_idr, pc.withholding_category,
-                   pc.withholding_amount_idr, pc.net_amount_idr, pc.status,
-                   pc.paid_at, pc.paid_via, pc.payment_reference
-            FROM partner_commissions pc
-            JOIN partners p ON p.id = pc.partner_id
-            WHERE pc.created_at >= $1::timestamptz
-              AND pc.created_at <  $2::timestamptz
-            ORDER BY pc.created_at ASC
-            """,
-            from_, to,
+    # Validate ISO format before hitting SQL — bad input → 400 not 500
+    try:
+        datetime.fromisoformat(from_)
+        datetime.fromisoformat(to)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"invalid date format (expected ISO): {e}")
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT pc.id, p.full_name, p.npwp, p.entity_type,
+                       pc.entry_type, pc.gross_amount_idr, pc.withholding_category,
+                       pc.withholding_amount_idr, pc.net_amount_idr, pc.status,
+                       pc.paid_at, pc.paid_via, pc.payment_reference
+                FROM partner_commissions pc
+                JOIN partners p ON p.id = pc.partner_id
+                WHERE pc.created_at >= $1::timestamptz
+                  AND pc.created_at <  $2::timestamptz
+                ORDER BY pc.created_at ASC
+                """,
+                from_, to,
+            )
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([
+            "commission_id", "partner", "npwp", "entity_type", "entry_type",
+            "gross_idr", "withholding_category", "withholding_idr", "net_idr",
+            "status", "paid_at", "paid_via", "payment_reference",
+        ])
+        for r in rows:
+            writer.writerow([r[k] for k in r.keys()])
+        return Response(
+            content=buf.getvalue(),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
+            },
         )
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow([
-        "commission_id", "partner", "npwp", "entity_type", "entry_type",
-        "gross_idr", "withholding_category", "withholding_idr", "net_idr",
-        "status", "paid_at", "paid_via", "payment_reference",
-    ])
-    for r in rows:
-        writer.writerow([r[k] for k in r.keys()])
-    return Response(
-        content=buf.getvalue(),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
-        },
-    )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("finance_export failed")
+        raise HTTPException(status_code=500, detail="internal error")
 
 
 @router.get("/{partner_id}")
@@ -405,8 +416,6 @@ async def update_partner(
             return _partner_to_dict(partner)
     except HTTPException:
         raise
-    except ConflictError:
-        raise
     except Exception:
         logger.exception("update_partner failed")
         raise HTTPException(status_code=500, detail="internal error")
@@ -419,6 +428,7 @@ async def activate_partner(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
     """Activate a partner. Admin only."""
+    _require_admin(user)
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
@@ -444,6 +454,7 @@ async def deactivate_partner(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
     """Deactivate a partner. Admin only."""
+    _require_admin(user)
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
@@ -464,6 +475,7 @@ async def reassign_partner(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
     """Reassign a partner to a different team member. Admin only."""
+    _require_admin(user)
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
@@ -490,6 +502,7 @@ async def bulk_reassign(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
     """Bulk-reassign multiple partners to a single user. Admin only."""
+    _require_admin(user)
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
@@ -519,7 +532,6 @@ async def list_referrals(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
     """List referrals for a partner. Scoped by role."""
-    import dataclasses
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
         await verify_partner_access_with_role(
@@ -616,7 +628,6 @@ async def list_commissions(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
     """List commissions for a partner. Scoped by role."""
-    import dataclasses
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
         await verify_partner_access_with_role(
