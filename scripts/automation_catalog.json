@@ -35,15 +35,14 @@
       ]
     },
     "seo-guardian-weekly": {
-      "description": "SEO weekly LEARN+REPORT: run seo_guardian_learn.py, seo_guardian_measure.py, generate weekly report with patterns and recommendations.",
+      "description": "SEO weekly LEARN+REPORT via cron-agent LLM prompt (~/scripts/cron-agent-prompts/seo-guardian-weekly.txt). Legacy .py scripts removed 2026-04-20; responsibilities migrated to apps/evaluator/seo_cell/ (cell-core PulseLoop).",
       "produces": "Weekly SEO report, patterns.json",
-      "consumes": "coverage_state.json, GSC metrics",
+      "consumes": "GSC metrics, apps/evaluator/seo_cell/ state",
       "monitored_by": "Sentinel",
       "uses_llm": "claude-sonnet-4-5 (override)",
       "llm_interface": "OpenClaw (main)",
       "tools_called": [
-        "seo_guardian_learn.py",
-        "seo_guardian_measure.py",
+        "cron-agent.sh (LLM prompt runner)",
         "filesystem (state.json, patterns.json)"
       ]
     },

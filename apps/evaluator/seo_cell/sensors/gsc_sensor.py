@@ -1,9 +1,8 @@
 """GSC Sensor — Google Search Console query performance (real fetch).
 
 Uses the Search Console service-account credentials at
-`.secrets/google-credentials.json` (already siteOwner of balizero.com,
-verified by existing seo_guardian_core.py). Read-only scope only:
-the cell never mutates GSC.
+`.secrets/google-credentials.json` (already siteOwner of balizero.com).
+Read-only scope only: the cell never mutates GSC.
 
 Returns a SensorReading carrying:
   value.query_count          — distinct query strings in the window
@@ -22,7 +21,7 @@ Failure policy:
   Sensor never raises; the pulse loop must never crash on I/O.
 
 Dependencies: google-auth, google-api-python-client. These are already
-installed (used by seo_guardian_core.py and gsc_resubmit_sitemap.py).
+installed (used by scripts/gsc_resubmit_sitemap.py).
 """
 from __future__ import annotations
 
