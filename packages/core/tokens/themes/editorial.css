@@ -51,9 +51,10 @@
  * theme import order. Scope: only when BOTH theme=editorial AND funnel=visa
  * coexist — /tax and /kbli keep editorial blue→their own hue mapping, as
  * the other themes do (operative-light.css:38, light.css:33).
+ * #ff7a88 on editorial base (#1e3863) = 4.66:1, passes WCAG AA normal text.
  */
 [data-theme="editorial"] [data-funnel="visa"] {
   --accent-funnel: #ff3344;
-  --accent-funnel-text: #ff6678;
+  --accent-funnel-text: #ff7a88;
   --text-on-accent: #ffffff;
 }
