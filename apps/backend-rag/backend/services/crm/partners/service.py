@@ -1,0 +1,214 @@
+# backend/services/crm/partners/service.py
+from __future__ import annotations
+
+import logging
+from typing import Any
+from uuid import UUID
+
+import asyncpg
+from fastapi import HTTPException
+
+from backend.services.crm.partners.models import Partner, PartnerAuditLogEntry
+from backend.services.crm.partners.repository import PartnersRepository
+
+logger = logging.getLogger(__name__)
+
+
+class ConflictError(HTTPException):
+    def __init__(self, detail: str):
+        super().__init__(status_code=409, detail=detail)
+
+
+class PartnersService:
+    def __init__(self, conn: asyncpg.Connection):
+        self.conn = conn
+        self.repo = PartnersRepository(conn)
+
+    async def create_partner(
+        self,
+        *,
+        full_name: str,
+        email: str,
+        entity_type: str,
+        assigned_to: UUID | None = None,
+        created_by: UUID | None = None,
+        **optional: Any,
+    ) -> UUID:
+        try:
+            pid = await self.repo.insert_partner(
+                full_name=full_name,
+                email=email,
+                entity_type=entity_type,
+                assigned_to=assigned_to,
+                created_by=created_by,
+                **optional,
+            )
+        except ValueError as e:
+            raise ConflictError(str(e))
+        except asyncpg.UniqueViolationError:
+            raise ConflictError(f"email already in use: {email!r}")
+        after = {
+            "full_name": full_name,
+            "email": email,
+            "assigned_to": str(assigned_to) if assigned_to else None,
+        }
+        await self.repo.insert_audit(
+            partner_id=pid,
+            action="created",
+            actor_user_id=created_by,
+            after=after,
+        )
+        return pid
+
+    async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
+        return await verify_partner_access(self, actor_user, partner_id)
+
+    async def list_partners(
+        self,
+        *,
+        actor_user: UUID,
+        actor_role: str,
+        assigned_to: UUID | None = None,
+        onboarding_status: str | None = None,
+        orphaned: bool = False,
+        search: str | None = None,
+    ) -> list[Partner]:
+        if actor_role == "team":
+            assigned_to = actor_user  # force scope to own
+        return await self.repo.list_partners(
+            assigned_to=assigned_to,
+            onboarding_status=onboarding_status,
+            orphaned=orphaned,
+            search=search,
+        )
+
+    async def update_partner(
+        self,
+        partner_id: UUID,
+        *,
+        actor_user: UUID,
+        actor_role: str,
+        **fields: Any,
+    ) -> None:
+        current = await verify_partner_access_with_role(
+            self, actor_user, actor_role, partner_id
+        )
+        before = {k: getattr(current, k) for k in fields if hasattr(current, k)}
+        try:
+            await self.repo.update_partner(partner_id, **fields)
+        except ValueError as e:
+            raise ConflictError(str(e))
+        await self.repo.insert_audit(
+            partner_id=partner_id,
+            action="updated",
+            actor_user_id=actor_user,
+            before=before,
+            after=fields,
+        )
+
+    async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+        if not await _is_admin(self.conn, actor_user):
+            raise HTTPException(status_code=403, detail="admin only")
+        await self.repo.activate_partner(partner_id)
+        await self.repo.insert_audit(
+            partner_id=partner_id,
+            action="activated",
+            actor_user_id=actor_user,
+        )
+
+    async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+        if not await _is_admin(self.conn, actor_user):
+            raise HTTPException(status_code=403, detail="admin only")
+        await self.repo.deactivate_partner(partner_id)
+        await self.repo.insert_audit(
+            partner_id=partner_id,
+            action="deactivated",
+            actor_user_id=actor_user,
+        )
+
+    async def reassign_partner(
+        self,
+        partner_id: UUID,
+        *,
+        new_user_id: UUID | None,
+        actor_user: UUID,
+        reason: str | None,
+    ) -> None:
+        if not await _is_admin(self.conn, actor_user):
+            raise HTTPException(status_code=403, detail="admin only")
+        if not reason:
+            raise ValueError("reason is required for reassignment")
+        current = await self.repo.get_partner(partner_id)
+        before = {"assigned_to": str(current.assigned_to) if current.assigned_to else None}
+        after = {"assigned_to": str(new_user_id) if new_user_id else None}
+        await self.repo.reassign_partner(partner_id, new_user_id)
+        await self.repo.insert_audit(
+            partner_id=partner_id,
+            action="reassigned",
+            actor_user_id=actor_user,
+            before=before,
+            after=after,
+            reason=reason,
+        )
+
+    async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
+        if not await _is_admin(self.conn, actor_user):
+            raise HTTPException(status_code=403, detail="admin only")
+        affected = await self.repo.list_partners(assigned_to=user_id)
+        n = await self.repo.orphan_partners_of_user(user_id)
+        for p in affected:
+            await self.repo.insert_audit(
+                partner_id=p.id,
+                action="orphaned",
+                actor_user_id=actor_user,
+                before={"assigned_to": str(user_id)},
+                after={"assigned_to": None},
+                reason=f"auto-orphan on deactivation of user {user_id}",
+            )
+        return n
+
+    async def list_audit(self, partner_id: UUID) -> list[PartnerAuditLogEntry]:
+        return await self.repo.list_audit_for_partner(partner_id)
+
+    async def mark_welcome_sent(self, partner_id: UUID) -> None:
+        await self.repo.mark_welcome_sent(partner_id)
+
+
+async def _is_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
+    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+    return bool(row) and row["role"] == "admin"
+
+
+async def _get_role(conn: asyncpg.Connection, user_id: UUID) -> str | None:
+    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+    return row["role"] if row else None
+
+
+async def verify_partner_access(
+    svc: PartnersService, actor_user: UUID, partner_id: UUID
+) -> Partner:
+    role = await _get_role(svc.conn, actor_user)
+    return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
+
+
+async def verify_partner_access_with_role(
+    svc: PartnersService,
+    actor_user: UUID,
+    actor_role: str | None,
+    partner_id: UUID,
+) -> Partner:
+    partner = await svc.repo.get_partner(partner_id)
+    if partner is None:
+        raise HTTPException(status_code=404, detail="partner not found")
+    if actor_role == "admin":
+        return partner
+    if actor_role == "team" and partner.assigned_to == actor_user:
+        return partner
+    if actor_role == "partner":
+        # Check via users table: user.partner_id matches partner.id
+        row = await svc.conn.fetchrow(
+            "SELECT partner_id FROM users WHERE id = $1", actor_user
+        )
+        if row and row["partner_id"] == partner_id:
+            return partner
+    raise HTTPException(status_code=403, detail="forbidden")
