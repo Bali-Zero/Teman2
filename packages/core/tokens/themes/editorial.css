@@ -44,3 +44,16 @@
   --accent-funnel: #3a6dff;
   --accent-funnel-text: #5c8aff;
 }
+
+/* ── Visa funnel override on editorial theme ──
+ * Editorial base uses McKinsey blue for --accent-funnel. Visa has its own
+ * red identity (semantic.css:94) that would otherwise be hidden by the
+ * theme import order. Scope: only when BOTH theme=editorial AND funnel=visa
+ * coexist — /tax and /kbli keep editorial blue→their own hue mapping, as
+ * the other themes do (operative-light.css:38, light.css:33).
+ */
+[data-theme="editorial"] [data-funnel="visa"] {
+  --accent-funnel: #ff3344;
+  --accent-funnel-text: #ff6678;
+  --text-on-accent: #ffffff;
+}
