@@ -1,22 +1,26 @@
 "use client";
 
 import type { FC, FormEventHandler, ReactNode } from "react";
+import { AppSentenceBuilder } from "./AppSentenceBuilder";
 
 export interface AppHeroFormProps {
-  /** Short headline rendered above the inputs. */
   headline: string;
-  /** 1-3 field slots. Use native <input>/<select> for snappy mobile. */
-  children: ReactNode;
+  /** Form body — ignored when sentenceTemplate is set. */
+  children?: ReactNode;
   submitLabel: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
-  /** Error shown above the submit button. */
+  /** Shown above the submit button as role=alert. */
   error?: string | null;
-  /** Disables submit while a request is in-flight. */
+  /** Disables submit + shows "Working…" while a request is in-flight. */
   pending?: boolean;
+  /**
+   * When present, renders AppSentenceBuilder with the supplied fields
+   * instead of children. Used by /visa/clock.
+   */
+  sentenceTemplate?: string;
+  sentenceFields?: Record<string, ReactNode>;
 }
 
-/** Minimal above-the-fold form used by Visa Clock ("which visa + entry
- * date?"), KBLI Decoder ("paste your KBLI code"), etc. */
 export const AppHeroForm: FC<AppHeroFormProps> = ({
   headline,
   children,
@@ -24,29 +28,48 @@ export const AppHeroForm: FC<AppHeroFormProps> = ({
   onSubmit,
   error,
   pending = false,
+  sentenceTemplate,
+  sentenceFields,
 }) => {
+  const body = sentenceTemplate ? (
+    <AppSentenceBuilder
+      template={sentenceTemplate}
+      fields={sentenceFields ?? {}}
+    />
+  ) : (
+    children
+  );
+
   return (
     <form
       onSubmit={onSubmit}
       style={{
         display: "grid",
-        gap: "var(--space-3)",
-        padding: "var(--space-4)",
+        gap: "var(--space-3, 1rem)",
+        padding: "var(--space-4, 1.5rem)",
         background: "var(--surface-raised)",
-        borderRadius: 12,
+        borderRadius: "12px",
+        border: "1px solid var(--color-border-subtle)",
       }}
     >
-      <p style={{ margin: 0, fontWeight: 600, fontSize: "var(--text-lg)" }}>
+      <p style={{
+        margin: 0,
+        fontFamily: "var(--font-serif, Georgia, 'Times New Roman', serif)",
+        fontWeight: 400,
+        fontSize: "clamp(1.4rem, 3vw, 1.8rem)",
+        lineHeight: 1.15,
+        color: "var(--text-primary)",
+      }}>
         {headline}
       </p>
-      {children}
+      {body}
       {error ? (
         <p
           role="alert"
           style={{
             margin: 0,
             color: "var(--color-error)",
-            fontSize: "var(--text-sm)",
+            fontSize: "var(--text-sm, 0.88rem)",
           }}
         >
           {error}
@@ -55,17 +78,18 @@ export const AppHeroForm: FC<AppHeroFormProps> = ({
       <button
         type="submit"
         disabled={pending}
-        className="btn btn-primary"
         style={{
           justifySelf: "start",
-          padding: "var(--space-3) var(--space-5)",
-          borderRadius: 8,
+          padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
+          borderRadius: "4px",
           border: "none",
-          background: "var(--bz-accent, #d4845a)",
-          color: "#fff",
+          background: "var(--accent-funnel)",
+          color: "var(--text-on-accent, #fff)",
           fontWeight: 600,
           cursor: pending ? "wait" : "pointer",
           opacity: pending ? 0.6 : 1,
+          transition: "opacity var(--motion-duration-accent, 200ms) var(--motion-curve-editorial)",
+          minHeight: "44px",
         }}
       >
         {pending ? "Working…" : submitLabel}
