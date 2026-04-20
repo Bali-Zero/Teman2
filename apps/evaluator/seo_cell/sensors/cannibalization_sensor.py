@@ -1,17 +1,16 @@
-"""Cannibalization Sensor — own URLs competing for the same query.
+"""Cannibalization — stub; relocation to thinker layer planned for Sprint 3.
 
-NEW sensor in v2.1. Flags cases where multiple balizero.com pages rank
-in the top 10 for the same query — Google splits click-through across
-them and none dominates. The thinker can then propose a consolidate-
-and-redirect action (MED-tier, newsroom queue).
+Per Sprint 2d decision (commit 082b2f56e + test_sensors_stub.py header):
+cannibalization is a DERIVED signal, not an independent sensor. It needs
+the GSC rows (query × landing_page pairs) plus semantic clustering — both
+thinker-layer work. Sensors are stateless and parallel; they cannot join
+across each other's output.
 
-Detection: semantic clustering of (query, landing_page) pairs from the
-GSC sensor output — if 2+ pages appear for queries that cluster to the
-same intent, that's cannibalization.
-
-Sprint 1: stub. Returns yellow with empty clusters.
-Sprint 2: consumes GSC sensor value, embeddings via the same model we
-use for RAG (text-embedding-3-small, 1536d — per CLAUDE.md §6, FROZEN).
+Scheduled move: in Sprint 3 (thinker build-out) cannibalization detection
+becomes a post-processing step over the GSCSensor reading, reusing the
+RAG embedding model (text-embedding-3-small, 1536d; CLAUDE.md §6 FROZEN).
+This stub stays so the 6-sensor contract in test_sensors_stub.py keeps
+passing until Sprint 3 formally relocates it.
 """
 from __future__ import annotations
 

@@ -194,15 +194,16 @@ Non rimuovere import "inutilizzati", non rinominare funzioni senza verificare OG
 
 ## 11. Agenti Autonomi (attivo dal 2026-03-14)
 
-Il sistema ha un agent framework autonomo in `apps/evaluator/`:
+Il sistema ha un agent framework autonomo in `apps/evaluator/`.
 
-- `seo_guardian_core.py` — OBSERVE (GSC + GA4 + indexing data)
-- `seo_guardian_agent.py` — DECIDE + ACT (risk-based, kill switch)
-- `seo_guardian_measure.py` — MEASURE (impact dopo 48h)
-- `seo_guardian_learn.py` — LEARN (pattern extraction)
+Il SEO layer OBSERVE/DECIDE/ACT/MEASURE/LEARN è stato rifondato come
+cellula viva in `apps/evaluator/seo_cell/` (SYMBIOSIS lifecycle,
+cell-core PulseLoop). La struttura legacy a 4 file
+(`seo_guardian_{core,agent,measure,learn}.py`) è stata rimossa il
+2026-04-20. Spec: `docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md`.
 
-Workspace: `~/.openclaw/workspace/autonomous/seo-guardian/`
-**NON modificare** questi file senza capire il ciclo completo.
+Workspace (storico): `~/.openclaw/workspace/autonomous/seo-guardian/`
+**NON modificare** la cellula senza leggere `apps/evaluator/seo_cell/__init__.py`.
 
 ---
 
