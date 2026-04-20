@@ -1068,9 +1068,12 @@ class CRMTool(BaseTool):
                     """)
                     practice_row = await conn.fetchrow("""
                         SELECT
-                            COUNT(*) FILTER (WHERE status = 'in_progress') AS in_progress,
+                            COUNT(*) FILTER (WHERE status = 'on_process') AS on_process,
                             COUNT(*) FILTER (WHERE status = 'completed') AS completed,
-                            COUNT(*) FILTER (WHERE status = 'pending') AS pending,
+                            COUNT(*) FILTER (WHERE status = 'sending_invoice') AS sending_invoice,
+                            COUNT(*) FILTER (WHERE status = 'waiting_documents') AS waiting_documents,
+                            COUNT(*) FILTER (WHERE status = 'inquiry') AS inquiry,
+                            COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
                             COUNT(*) AS total
                         FROM practices
                     """)
@@ -1098,7 +1101,7 @@ class CRMTool(BaseTool):
                                p.updated_at
                         FROM practices p
                         JOIN clients c ON c.id = p.client_id
-                        WHERE p.status IN ('in_progress', 'active', 'pending')
+                        WHERE p.status IN ('on_process', 'waiting_documents', 'sending_invoice')
                           AND p.practice_type_id IN (
                               SELECT id FROM practice_types
                               WHERE name ILIKE '%kitas%' OR name ILIKE '%visa%' OR name ILIKE '%kitap%'
@@ -1113,7 +1116,7 @@ class CRMTool(BaseTool):
                         SELECT
                             COALESCE(pt.name, 'Unknown') AS service_type,
                             COUNT(*) AS count,
-                            COUNT(*) FILTER (WHERE p.status = 'in_progress') AS in_progress,
+                            COUNT(*) FILTER (WHERE p.status = 'on_process') AS on_process,
                             COUNT(*) FILTER (WHERE p.status = 'completed') AS completed
                         FROM practices p
                         LEFT JOIN practice_types pt ON pt.id = p.practice_type_id
