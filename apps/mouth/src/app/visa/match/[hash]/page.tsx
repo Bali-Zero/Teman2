@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AppFrame,
   AppShareBar,
+  AppStampReveal,
   AppWhatsAppCTA,
   useFunnelApp,
+  useHaptic,
 } from "@balizero/core";
 
 interface MatchResult {
@@ -21,12 +23,10 @@ interface MatchResult {
   result_url: string;
 }
 
-export default function VisaMatchResultPage({
-  params,
-}: {
-  params: { hash: string };
-}) {
+export default function VisaMatchResultPage({ params }: { params: { hash: string } }) {
   const tracker = useFunnelApp("visa_match", { trackView: false });
+  const haptic = useHaptic();
+  const stampRef = useRef<HTMLDivElement | null>(null);
   const [data, setData] = useState<MatchResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -34,47 +34,27 @@ export default function VisaMatchResultPage({
     void (async () => {
       try {
         const res = await fetch(`/api/visa/match/${params.hash}`);
-        if (!res.ok) {
-          setErr("We could not find this recommendation. It may have expired.");
-          return;
-        }
+        if (!res.ok) { setErr("We could not find this recommendation. It may have expired."); return; }
         const json = (await res.json()) as MatchResult;
         setData(json);
         tracker.resultViewed(json.hash);
-      } catch {
-        setErr("Network error. Try again.");
-      }
+        haptic(12); // stamp reveal haptic
+      } catch { setErr("Network error. Try again."); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.hash]);
 
-  if (err)
-    return (
-      <AppFrame title="Visa Match" subtitle={err}>
-        <p>
-          <a href="/visa/match">Start again →</a>
-        </p>
-      </AppFrame>
-    );
-  if (!data)
-    return (
-      <AppFrame title="Visa Match" subtitle="Computing your match…">
-        <p style={{ color: "var(--color-text-muted)" }}>Just a moment.</p>
-      </AppFrame>
-    );
+  if (err) return (<AppFrame funnel="visa" title="Visa Match" subtitle={err}><p><a href="/visa/match">Start again →</a></p></AppFrame>);
+  if (!data) return (<AppFrame funnel="visa" title="Visa Match" subtitle="Computing your match…"><p style={{ color: "var(--color-text-muted)" }}>One moment.</p></AppFrame>);
 
-  const publicUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/visa/match/${data.hash}`
-      : `/visa/match/${data.hash}`;
+  const publicUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/visa/match/${data.hash}`
+    : `/visa/match/${data.hash}`;
 
-  // ── Referral mode: no recommendation, send to WA directly. ──
+  // Referral mode: no stamp, hand off directly
   if (data.referral_mode || !data.recommended_visa) {
     return (
-      <AppFrame
-        title="Your case needs a conversation"
-        subtitle="The form can't capture everything. A 15-minute WhatsApp review with our visa team is faster than any guess."
-      >
+      <AppFrame funnel="visa" title="Your case needs a conversation" subtitle="The form can't capture everything. A 15-minute WhatsApp review with our visa team is faster than any guess.">
         <p style={{ lineHeight: 1.6 }}>{data.reason}</p>
         <AppWhatsAppCTA
           source="visa_match"
@@ -85,149 +65,105 @@ export default function VisaMatchResultPage({
             { label: "Case", value: "Non-standard / borderline" },
             { label: "Route", value: "Free 15-min review requested" },
           ]}
-          onCaptured={({ leadIntentId }) =>
-            tracker.whatsappHandoff(leadIntentId)
-          }
+          defaultLabel="Start on WhatsApp →"
+          onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
         />
-        <AppShareBar
-          url={publicUrl}
-          title="Bali Zero — Visa review"
-          onShare={(c) => tracker.shareClicked(c)}
-        />
+        <AppShareBar url={publicUrl} title="Bali Zero — Visa review" onShare={(c) => tracker.shareClicked(c)} />
       </AppFrame>
     );
   }
 
-  // ── Normal result mode. ──
   return (
     <AppFrame
-      title={`For you: ${data.recommended_visa}`}
-      subtitle={
-        data.processing_days
-          ? `Processing ~${data.processing_days} business days once we file.`
-          : undefined
-      }
-      footer={
-        <>
-          Recommendation based on the rules in{" "}
-          <a href="https://balizero.com/docs/visa-types">
-            visa-types reference
-          </a>
-          . Cost from our PricingTool (source:{" "}
-          {data.cost_source ?? "PricingTool"}). Gov fees may vary — we confirm
-          before filing.
-        </>
-      }
+      funnel="visa"
+      title={`Your visa: ${data.recommended_visa}`}
+      subtitle={data.processing_days ? `Processing ~${data.processing_days} business days once we file.` : undefined}
+      footer={<>Recommendation based on your answers. Cost from PricingTool (source: {data.cost_source ?? "PricingTool"}). Gov fees may vary — we confirm before filing.</>}
     >
-      <div
-        style={{
-          padding: "var(--space-4)",
-          background: "var(--surface-raised)",
-          borderRadius: 12,
-          display: "grid",
-          gap: "var(--space-3)",
-        }}
-      >
-        <p style={{ margin: 0, lineHeight: 1.6 }}>{data.reason}</p>
-        {data.estimated_cost_idr ? (
-          <div>
-            <strong style={{ fontSize: "var(--text-2xl)" }}>
-              IDR {formatIdr(data.estimated_cost_idr)}
-            </strong>
-            <div
-              style={{
-                fontSize: "var(--text-sm)",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              Bali Zero fee. Government fees billed at cost.
-            </div>
-          </div>
-        ) : (
-          <p
-            style={{
-              margin: 0,
-              fontStyle: "italic",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            Let's confirm the exact fee on WhatsApp — your case has specifics.
-          </p>
-        )}
+      {/* Stamp reveal */}
+      <div ref={stampRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-2, 0.5rem)", paddingTop: "var(--space-4, 1.5rem)" }}>
+        <div style={{ fontSize: "0.58rem", letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.5, color: "var(--color-text-muted)" }}>
+          Your visa
+        </div>
+        <AppStampReveal code={data.recommended_visa} />
       </div>
 
+      {/* Why it fits */}
       <section>
-        <h2
-          style={{ fontSize: "var(--text-lg)", marginBottom: "var(--space-2)" }}
-        >
+        <div style={{ fontSize: "0.62rem", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.5, color: "var(--color-text-muted)", marginBottom: "var(--space-1, 0.3rem)" }}>
+          Why it fits
+        </div>
+        <p style={{ margin: 0, fontSize: "clamp(1rem, 2.4vw, 1.1rem)", lineHeight: 1.6 }}>
+          {data.reason}
+        </p>
+      </section>
+
+      {/* Estimated cost */}
+      <section>
+        <div style={{ fontSize: "0.62rem", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.5, color: "var(--color-text-muted)", marginBottom: "var(--space-1, 0.3rem)" }}>
+          Estimated cost
+        </div>
+        {data.estimated_cost_idr ? (
+          <>
+            <div style={{ fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.5rem, 4vw, 2rem)", color: "var(--accent-funnel-text, var(--accent-funnel))" }}>
+              IDR {formatIdr(data.estimated_cost_idr)}
+            </div>
+            <div style={{ fontSize: "var(--text-sm, 0.85rem)", color: "var(--color-text-muted)" }}>
+              Bali Zero fee. Government fees billed at cost.
+            </div>
+          </>
+        ) : (
+          <p style={{ margin: 0, fontStyle: "italic", color: "var(--color-text-muted)" }}>
+            Let&apos;s confirm the exact fee on WhatsApp — your case has specifics.
+          </p>
+        )}
+      </section>
+
+      {/* Pre-arrival checklist */}
+      <section>
+        <div style={{ fontSize: "0.62rem", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.5, color: "var(--color-text-muted)", marginBottom: "var(--space-1, 0.3rem)" }}>
           Pre-arrival checklist
-        </h2>
-        <ol
-          style={{
-            paddingLeft: 18,
-            margin: 0,
-            display: "grid",
-            gap: "var(--space-2)",
-            lineHeight: 1.5,
-          }}
-        >
-          {data.pre_arrival_steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
+        </div>
+        <ol style={{ paddingLeft: 18, margin: 0, display: "grid", gap: "var(--space-2, 0.5rem)", lineHeight: 1.5 }}>
+          {data.pre_arrival_steps.map((step) => (<li key={step}>{step}</li>))}
         </ol>
       </section>
 
+      {/* Alternatives */}
       {data.alternatives.length > 0 ? (
         <section>
-          <h2
-            style={{
-              fontSize: "var(--text-md)",
-              marginBottom: "var(--space-2)",
-            }}
-          >
+          <div style={{ fontSize: "0.62rem", letterSpacing: "0.15em", textTransform: "uppercase", opacity: 0.5, color: "var(--color-text-muted)", marginBottom: "var(--space-1, 0.3rem)" }}>
             Alternatives
-          </h2>
-          <p
-            style={{
-              margin: 0,
-              color: "var(--color-text-muted)",
-              fontSize: "var(--text-sm)",
-              lineHeight: 1.5,
-            }}
-          >
-            If your case changes: {data.alternatives.join(" · ")}. Ask us on
-            WhatsApp and we'll explain the trade-off.
+          </div>
+          <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "var(--text-sm, 0.9rem)" }}>
+            If your case changes: {data.alternatives.join(" · ")}. Ask us on WhatsApp for the trade-off.
           </p>
         </section>
       ) : null}
 
+      {/* WhatsApp CTA — sticky after scroll past stamp */}
       <AppWhatsAppCTA
         source="visa_match"
         headline={`Start the ${data.recommended_visa} application`}
         description="We file the paperwork and handle imigrasi. Typical first reply on WhatsApp in under 5 hours."
         resultHash={data.hash}
-        context={{
-          recommended_visa: data.recommended_visa,
-          estimated_cost_idr: data.estimated_cost_idr,
-        }}
+        context={{ recommended_visa: data.recommended_visa, estimated_cost_idr: data.estimated_cost_idr }}
         whatsappContext={[
           { label: "Visa", value: data.recommended_visa },
           data.estimated_cost_idr
-            ? {
-                label: "Est. cost",
-                value: `IDR ${formatIdr(data.estimated_cost_idr)}`,
-              }
+            ? { label: "Est. cost", value: `IDR ${formatIdr(data.estimated_cost_idr)}` }
             : { label: "Cost", value: "To confirm" },
           data.processing_days
-            ? {
-                label: "Processing",
-                value: `~${data.processing_days} business days`,
-              }
+            ? { label: "Processing", value: `~${data.processing_days} business days` }
             : { label: "Processing", value: "To confirm" },
         ]}
+        defaultLabel="Start on WhatsApp →"
+        postScrollLabel={`Start the ${data.recommended_visa} application →`}
+        stampRef={stampRef}
         onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
       />
 
+      {/* Share */}
       <AppShareBar
         url={publicUrl}
         title={`Bali Zero — Visa recommendation: ${data.recommended_visa}`}
