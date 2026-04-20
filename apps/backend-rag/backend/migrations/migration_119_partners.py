@@ -133,10 +133,13 @@ async def apply(conn: Any) -> None:
                 WHERE table_name = 'users' AND column_name = 'partner_id'
             ) THEN
                 ALTER TABLE users ADD COLUMN partner_id UUID REFERENCES partners(id) ON DELETE SET NULL;
-                CREATE INDEX IF NOT EXISTS idx_users_partner_id ON users (partner_id) WHERE partner_id IS NOT NULL;
             END IF;
         END $$;
     """)
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_users_partner_id"
+        " ON users (partner_id) WHERE partner_id IS NOT NULL;"
+    )
 
     # -------------------------------------------------------------------------
     # 3. partner_referrals

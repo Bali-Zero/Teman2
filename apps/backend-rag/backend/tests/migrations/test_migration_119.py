@@ -109,13 +109,13 @@ async def test_migration_119_idempotent():
     # All CREATE TABLE must be inside DO $$ IF NOT EXISTS blocks
     assert "IF NOT EXISTS" in norm
 
-    # All CREATE INDEX must use IF NOT EXISTS
-    create_idx_count = sql.count("CREATE INDEX")
-    if_not_exists_idx = sql.count("CREATE INDEX IF NOT EXISTS")
-    assert create_idx_count > 0
-    assert create_idx_count == if_not_exists_idx, (
-        f"Not all CREATE INDEX use IF NOT EXISTS "
-        f"({create_idx_count} vs {if_not_exists_idx})"
+    # All CREATE INDEX (including UNIQUE) must use IF NOT EXISTS
+    all_create_idx = re.findall(r"CREATE (?:UNIQUE )?INDEX", sql)
+    all_if_not_exists = re.findall(r"CREATE (?:UNIQUE )?INDEX IF NOT EXISTS", sql)
+    assert len(all_create_idx) > 0
+    assert len(all_create_idx) == len(all_if_not_exists), (
+        f"Every CREATE INDEX (including UNIQUE) must use IF NOT EXISTS "
+        f"({len(all_create_idx)} total vs {len(all_if_not_exists)} with IF NOT EXISTS)"
     )
 
 
@@ -138,6 +138,8 @@ async def test_migration_119_rollback():
     assert "DROP TABLE IF EXISTS partners" in sql
     assert "partner_clawback_auto_writeoff_idr" in sql
     assert "partner_accrual_cooling_off_days" in sql
+    assert "DROP INDEX IF EXISTS idx_users_partner_id" in sql
+    assert "DROP COLUMN IF EXISTS partner_id" in sql
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +158,11 @@ async def test_migration_119_rollback_fk_order():
     pos_commissions = sql.find("partner_commissions")
     pos_referrals = sql.find("partner_referrals")
     pos_partners = sql.find("DROP TABLE IF EXISTS partners")
+
+    pos_users_partner_id = sql.find("DROP COLUMN IF EXISTS partner_id")
+    assert pos_users_partner_id != -1, "rollback must drop users.partner_id column"
+    assert pos_users_partner_id < pos_partners, \
+        "users.partner_id must be dropped before DROP TABLE partners"
 
     # Children must be dropped before parent
     assert pos_audit < pos_partners, "partner_audit_log must be dropped before partners"
