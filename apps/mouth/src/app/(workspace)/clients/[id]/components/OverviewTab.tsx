@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   User,
   Edit2,
@@ -20,12 +20,16 @@ import {
   Copy,
   Check,
   Plus,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { ClientProfile, ClientDocument, Interaction } from '@/lib/api/crm/crm.types';
-import { formatPhoneNumber, isBirthdayToday } from './utils';
-import { PassportCard } from './PassportCard';
-import { VisaCard } from './VisaCard';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type {
+  ClientProfile,
+  ClientDocument,
+  Interaction,
+} from "@/lib/api/crm/crm.types";
+import { formatPhoneNumber, isBirthdayToday } from "./utils";
+import { PassportCard } from "./PassportCard";
+import { VisaCard } from "./VisaCard";
 
 const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
   chat: MessageCircle,
@@ -38,9 +42,9 @@ const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
 };
 
 const SENTIMENT_COLORS: Record<string, string> = {
-  positive: 'text-green-400',
-  neutral: 'text-gray-400',
-  negative: 'text-red-400',
+  positive: "text-green-400",
+  neutral: "text-gray-400",
+  negative: "text-red-400",
 };
 
 export function OverviewTab({
@@ -57,11 +61,11 @@ export function OverviewTab({
   onRefresh,
   clientId,
 }: {
-  client: ClientProfile['client'];
-  stats: ClientProfile['stats'];
+  client: ClientProfile["client"];
+  stats: ClientProfile["stats"];
   documents: ClientDocument[];
-  activePractices: ClientProfile['practices'];
-  completedPractices: ClientProfile['practices'];
+  activePractices: ClientProfile["practices"];
+  completedPractices: ClientProfile["practices"];
   interactions: Interaction[];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
@@ -96,22 +100,28 @@ export function OverviewTab({
             className="rounded-xl border shadow-xl backdrop-blur-xl transition-all duration-300 overflow-hidden flex-1 flex flex-col h-full hover:shadow-2xl hover:-translate-y-1"
             style={{
               border: isClientBirthday
-                ? '1px solid rgba(251,191,36,0.4)'
-                : '1px solid rgba(255, 255, 255, 0.05)',
-              background: isClientBirthday ? 'rgba(45,38,20,0.8)' : 'rgba(32, 32, 36, 0.65)',
+                ? "1px solid rgba(251,191,36,0.4)"
+                : "1px solid rgba(255, 255, 255, 0.05)",
+              background: isClientBirthday
+                ? "rgba(45,38,20,0.8)"
+                : "rgba(32, 32, 36, 0.65)",
               boxShadow: isClientBirthday
-                ? '0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)'
+                ? "0 0 24px rgba(251,191,36,0.15), 0 10px 20px -10px rgba(0,0,0,0.5)"
                 : undefined,
             }}
           >
             <div
               className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
             >
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 Client Info
                 {isClientBirthday && (
-                  <span className="text-base" title="Birthday today!" aria-label="Birthday today!">
+                  <span
+                    className="text-base"
+                    title="Birthday today!"
+                    aria-label="Birthday today!"
+                  >
                     🎂
                   </span>
                 )}
@@ -151,17 +161,19 @@ export function OverviewTab({
                   <div className="flex items-center gap-1.5 group/copy">
                     <p className="text-sm font-medium truncate">
                       {client.email || (
-                        <span className="text-[var(--bz-text-2)] italic text-xs">Not provided</span>
+                        <span className="text-[var(--bz-text-2)] italic text-xs">
+                          Not provided
+                        </span>
                       )}
                     </p>
                     {client.email && (
                       <button
-                        onClick={() => copyToClipboard(client.email!, 'email')}
+                        onClick={() => copyToClipboard(client.email!, "email")}
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy email"
                         aria-label="Copy email"
                       >
-                        {copiedField === 'email' ? (
+                        {copiedField === "email" ? (
                           <Check className="w-3 h-3 text-green-400" />
                         ) : (
                           <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
@@ -179,17 +191,19 @@ export function OverviewTab({
                       {client.phone ? (
                         formatPhoneNumber(client.phone)
                       ) : (
-                        <span className="text-[var(--bz-text-2)] italic text-xs">Not provided</span>
+                        <span className="text-[var(--bz-text-2)] italic text-xs">
+                          Not provided
+                        </span>
                       )}
                     </p>
                     {client.phone && (
                       <button
-                        onClick={() => copyToClipboard(client.phone!, 'phone')}
+                        onClick={() => copyToClipboard(client.phone!, "phone")}
                         className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                         title="Copy phone"
                         aria-label="Copy phone"
                       >
-                        {copiedField === 'phone' ? (
+                        {copiedField === "phone" ? (
                           <Check className="w-3 h-3 text-green-400" />
                         ) : (
                           <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
@@ -204,7 +218,9 @@ export function OverviewTab({
                   </p>
                   <p className="text-sm font-medium">
                     {client.nationality || (
-                      <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
+                        —
+                      </span>
                     )}
                   </p>
                 </div>
@@ -213,12 +229,14 @@ export function OverviewTab({
                     Gender
                   </p>
                   <p className="text-sm font-medium">
-                    {client.gender === 'M' ? (
-                      'Male'
-                    ) : client.gender === 'F' ? (
-                      'Female'
+                    {client.gender === "M" ? (
+                      "Male"
+                    ) : client.gender === "F" ? (
+                      "Female"
                     ) : (
-                      <span className="text-[var(--bz-text-2)] italic text-xs">—</span>
+                      <span className="text-[var(--bz-text-2)] italic text-xs">
+                        —
+                      </span>
                     )}
                   </p>
                 </div>
@@ -239,12 +257,17 @@ export function OverviewTab({
                             {client.passport_number}
                           </p>
                           <button
-                            onClick={() => copyToClipboard(client.passport_number!, 'passport')}
+                            onClick={() =>
+                              copyToClipboard(
+                                client.passport_number!,
+                                "passport",
+                              )
+                            }
                             className="opacity-0 group-hover/copy:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--bz-card)]"
                             title="Copy passport number"
                             aria-label="Copy passport number"
                           >
-                            {copiedField === 'passport' ? (
+                            {copiedField === "passport" ? (
                               <Check className="w-3 h-3 text-green-400" />
                             ) : (
                               <Copy className="w-3 h-3 text-[var(--bz-text-2)]" />
@@ -260,19 +283,21 @@ export function OverviewTab({
                         </p>
                         {(() => {
                           const daysLeft = Math.ceil(
-                            (new Date(client.passport_expiry).getTime() - Date.now()) / 86400000
+                            (new Date(client.passport_expiry).getTime() -
+                              Date.now()) /
+                              86400000,
                           );
                           const color =
                             daysLeft < 0
-                              ? 'text-red-500'
+                              ? "text-red-500"
                               : daysLeft <= 180
-                                ? 'text-yellow-500'
-                                : 'text-green-500';
+                                ? "text-yellow-500"
+                                : "text-green-500";
                           const label =
                             daysLeft < 0
                               ? `Expired ${Math.abs(daysLeft)}d ago`
                               : daysLeft === 0
-                                ? 'Expires today'
+                                ? "Expires today"
                                 : daysLeft <= 365
                                   ? `⏰ ${daysLeft}d left`
                                   : `${Math.floor(daysLeft / 30)}mo left`;
@@ -296,8 +321,9 @@ export function OverviewTab({
                           {formatDate(client.date_of_birth)}
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
                             {Math.floor(
-                              (Date.now() - new Date(client.date_of_birth).getTime()) /
-                                (365.25 * 86400000)
+                              (Date.now() -
+                                new Date(client.date_of_birth).getTime()) /
+                                (365.25 * 86400000),
                             )}
                             y
                           </span>
@@ -309,7 +335,9 @@ export function OverviewTab({
                         <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                           Birthplace
                         </p>
-                        <p className="text-sm font-medium">{client.birthplace}</p>
+                        <p className="text-sm font-medium">
+                          {client.birthplace}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -351,7 +379,9 @@ export function OverviewTab({
                   <div className="flex items-center gap-2">
                     {client.phone &&
                       (() => {
-                        const wa = client.phone.replace(/[^0-9]/g, '').replace(/^0/, '62');
+                        const wa = client.phone
+                          .replace(/[^0-9]/g, "")
+                          .replace(/^0/, "62");
                         return (
                           <a
                             href={`https://wa.me/${wa}`}
@@ -359,9 +389,9 @@ export function OverviewTab({
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                             style={{
-                              background: 'rgba(37,211,102,0.12)',
-                              color: '#25d366',
-                              border: '1px solid rgba(37,211,102,0.25)',
+                              background: "rgba(37,211,102,0.12)",
+                              color: "#25d366",
+                              border: "1px solid rgba(37,211,102,0.25)",
                             }}
                             title={`WhatsApp ${client.phone}`}
                           >
@@ -375,9 +405,9 @@ export function OverviewTab({
                         href={`mailto:${client.email}`}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                         style={{
-                          background: 'rgba(99,102,241,0.12)',
-                          color: '#818cf8',
-                          border: '1px solid rgba(99,102,241,0.25)',
+                          background: "rgba(99,102,241,0.12)",
+                          color: "#818cf8",
+                          border: "1px solid rgba(99,102,241,0.25)",
                         }}
                         title={`Email ${client.email}`}
                       >
@@ -390,9 +420,9 @@ export function OverviewTab({
                         href={`tel:${client.phone}`}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                         style={{
-                          background: 'rgba(59,130,246,0.12)',
-                          color: '#60a5fa',
-                          border: '1px solid rgba(59,130,246,0.25)',
+                          background: "rgba(59,130,246,0.12)",
+                          color: "#60a5fa",
+                          border: "1px solid rgba(59,130,246,0.25)",
                         }}
                         title={`Call ${client.phone}`}
                       >
@@ -408,38 +438,49 @@ export function OverviewTab({
 
           {/* Stats Row */}
           {(() => {
+            // Coerce with Number(): BE serializes numeric(15,2) as string.
+            const amountOf = (p: (typeof activePractices)[number]) =>
+              Number(p.actual_price ?? p.quoted_price ?? 0);
             const pipelineValue = activePractices.reduce(
-              (sum, p) => sum + (p.actual_price || p.quoted_price || 0),
-              0
+              (sum, p) => sum + amountOf(p),
+              0,
             );
             const unpaidValue = [...activePractices, ...completedPractices]
-              .filter((p) => p.payment_status === 'unpaid' || p.payment_status === 'partial')
-              .reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+              .filter(
+                (p) =>
+                  p.payment_status === "unpaid" ||
+                  p.payment_status === "partial",
+              )
+              .reduce((sum, p) => sum + amountOf(p), 0);
             return (
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div
                   className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                   style={{
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    background: 'rgba(35, 35, 40, 0.45)',
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    background: "rgba(35, 35, 40, 0.45)",
                   }}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <Users className="w-3.5 h-3.5 text-blue-500" />
-                    <span className="text-[10px] text-[var(--bz-text-2)]">Family</span>
+                    <span className="text-[10px] text-[var(--bz-text-2)]">
+                      Family
+                    </span>
                   </div>
                   <p className="text-lg font-bold">{stats.family_count}</p>
                 </div>
                 <div
                   className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                   style={{
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    background: 'rgba(35, 35, 40, 0.45)',
+                    border: "1px solid rgba(255, 255, 255, 0.05)",
+                    background: "rgba(35, 35, 40, 0.45)",
                   }}
                 >
                   <div className="flex items-center gap-1.5 mb-1">
                     <FileText className="w-3.5 h-3.5 text-purple-500" />
-                    <span className="text-[10px] text-[var(--bz-text-2)]">Docs</span>
+                    <span className="text-[10px] text-[var(--bz-text-2)]">
+                      Docs
+                    </span>
                   </div>
                   <p className="text-lg font-bold">{stats.documents_count}</p>
                 </div>
@@ -447,13 +488,15 @@ export function OverviewTab({
                   <div
                     className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                     style={{
-                      border: '1px solid rgba(255, 255, 255, 0.05)',
-                      background: 'rgba(35, 35, 40, 0.45)',
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                      background: "rgba(35, 35, 40, 0.45)",
                     }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Activity className="w-3.5 h-3.5 text-yellow-500" />
-                      <span className="text-[10px] text-[var(--bz-text-2)]">Pipeline</span>
+                      <span className="text-[10px] text-[var(--bz-text-2)]">
+                        Pipeline
+                      </span>
                     </div>
                     <p className="text-sm font-bold text-yellow-400 truncate">
                       {formatCurrency(pipelineValue)}
@@ -464,13 +507,15 @@ export function OverviewTab({
                   <div
                     className="rounded-lg border shadow-lg backdrop-blur-md p-3 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                     style={{
-                      border: '1px solid rgba(255, 100, 80, 0.12)',
-                      background: 'rgba(35, 35, 40, 0.45)',
+                      border: "1px solid rgba(255, 100, 80, 0.12)",
+                      background: "rgba(35, 35, 40, 0.45)",
                     }}
                   >
                     <div className="flex items-center gap-1.5 mb-1">
                       <Clock className="w-3.5 h-3.5 text-red-500" />
-                      <span className="text-[10px] text-[var(--bz-text-2)]">Unpaid</span>
+                      <span className="text-[10px] text-[var(--bz-text-2)]">
+                        Unpaid
+                      </span>
                     </div>
                     <p className="text-sm font-bold text-red-400 truncate">
                       {formatCurrency(unpaidValue)}
@@ -513,13 +558,13 @@ export function OverviewTab({
         <div
           className="lg:col-span-2 rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
           style={{
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            background: 'rgba(32, 32, 36, 0.65)',
+            border: "1px solid rgba(255, 255, 255, 0.05)",
+            background: "rgba(32, 32, 36, 0.65)",
           }}
         >
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+            style={{ borderColor: "rgba(255,255,255,0.05)" }}
           >
             <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
               <Activity className="w-4 h-4 text-[var(--bz-accent)]" />
@@ -528,7 +573,7 @@ export function OverviewTab({
             <span className="text-xs text-[var(--bz-text-2)]">
               {interactions.length > 0
                 ? `${interactions.length} interactions`
-                : 'No interactions yet'}
+                : "No interactions yet"}
             </span>
           </div>
 
@@ -536,10 +581,12 @@ export function OverviewTab({
             {interactions.length > 0 ? (
               <div className="space-y-1">
                 {visibleInteractions.map((interaction, idx) => {
-                  const Icon = INTERACTION_ICONS[interaction.interaction_type] || MessageCircle;
+                  const Icon =
+                    INTERACTION_ICONS[interaction.interaction_type] ||
+                    MessageCircle;
                   const sentimentClass = interaction.sentiment
-                    ? SENTIMENT_COLORS[interaction.sentiment] || 'text-gray-400'
-                    : '';
+                    ? SENTIMENT_COLORS[interaction.sentiment] || "text-gray-400"
+                    : "";
 
                   return (
                     <div
@@ -550,9 +597,9 @@ export function OverviewTab({
                       <div className="flex flex-col items-center">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                            interaction.direction === 'inbound'
-                              ? 'bg-blue-500/15 text-blue-400'
-                              : 'bg-green-500/15 text-green-400'
+                            interaction.direction === "inbound"
+                              ? "bg-blue-500/15 text-blue-400"
+                              : "bg-green-500/15 text-green-400"
                           }`}
                         >
                           <Icon className="w-3.5 h-3.5" />
@@ -569,10 +616,13 @@ export function OverviewTab({
                             {interaction.interaction_type}
                           </span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.05] text-[var(--bz-text-2)]">
-                            {interaction.direction === 'inbound' ? '← In' : '→ Out'}
+                            {interaction.direction === "inbound"
+                              ? "← In"
+                              : "→ Out"}
                           </span>
                           {interaction.channel &&
-                            interaction.channel !== interaction.interaction_type && (
+                            interaction.channel !==
+                              interaction.interaction_type && (
                               <span className="text-[10px] text-[var(--bz-text-2)]">
                                 via {interaction.channel}
                               </span>
@@ -597,14 +647,17 @@ export function OverviewTab({
                           <Clock className="w-3 h-3 text-[var(--bz-text-2)]" />
                           {(() => {
                             const ageDays = Math.floor(
-                              (Date.now() - new Date(interaction.interaction_date).getTime()) /
-                                86400000
+                              (Date.now() -
+                                new Date(
+                                  interaction.interaction_date,
+                                ).getTime()) /
+                                86400000,
                             );
                             const label =
                               ageDays === 0
-                                ? 'today'
+                                ? "today"
                                 : ageDays === 1
-                                  ? '1d ago'
+                                  ? "1d ago"
                                   : ageDays >= 30
                                     ? `${Math.floor(ageDays / 30)}mo ago`
                                     : ageDays >= 7
@@ -616,9 +669,12 @@ export function OverviewTab({
                                 style={{
                                   background:
                                     ageDays === 0
-                                      ? 'rgba(34,197,94,0.12)'
-                                      : 'rgba(255,255,255,0.04)',
-                                  color: ageDays === 0 ? '#4ade80' : 'var(--bz-text-2)',
+                                      ? "rgba(34,197,94,0.12)"
+                                      : "rgba(255,255,255,0.04)",
+                                  color:
+                                    ageDays === 0
+                                      ? "#4ade80"
+                                      : "var(--bz-text-2)",
                                 }}
                               >
                                 {label}
@@ -630,7 +686,7 @@ export function OverviewTab({
                           </span>
                           {interaction.team_member && (
                             <span className="text-[10px] text-[var(--bz-text-2)]">
-                              • {interaction.team_member.split('@')[0]}
+                              • {interaction.team_member.split("@")[0]}
                             </span>
                           )}
                         </div>
@@ -644,7 +700,7 @@ export function OverviewTab({
                     className="w-full mt-2 py-2 text-xs text-[var(--bz-accent)] hover:text-[var(--bz-accent)]/80 border border-[var(--bz-border)] hover:border-[var(--bz-accent)]/40 rounded-lg transition-colors"
                   >
                     {showAllInteractions
-                      ? 'Show less'
+                      ? "Show less"
                       : `Show ${interactions.length - TIMELINE_PREVIEW} more interactions`}
                   </button>
                 )}
@@ -652,13 +708,17 @@ export function OverviewTab({
             ) : (
               <div className="py-8 text-center">
                 <MessageCircle className="w-10 h-10 mx-auto mb-3 text-[var(--bz-text-2)] opacity-30" />
-                <p className="text-sm text-[var(--bz-text-2)]">No interactions recorded yet</p>
+                <p className="text-sm text-[var(--bz-text-2)]">
+                  No interactions recorded yet
+                </p>
                 <p className="text-xs text-[var(--bz-text-2)] mt-1 opacity-60">
-                  Interactions from WhatsApp, Email, Telegram and other channels will appear here
+                  Interactions from WhatsApp, Email, Telegram and other channels
+                  will appear here
                 </p>
                 {client.last_interaction_date && (
                   <p className="text-xs text-[var(--bz-text-2)] mt-2 opacity-50">
-                    Last known contact: {formatDate(client.last_interaction_date)}
+                    Last known contact:{" "}
+                    {formatDate(client.last_interaction_date)}
                   </p>
                 )}
               </div>
@@ -672,13 +732,13 @@ export function OverviewTab({
           <div
             className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
             style={{
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              background: 'rgba(32, 32, 36, 0.65)',
+              border: "1px solid rgba(255, 255, 255, 0.05)",
+              background: "rgba(32, 32, 36, 0.65)",
             }}
           >
             <div
               className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
             >
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-yellow-500" />
@@ -689,7 +749,9 @@ export function OverviewTab({
                   {activePractices.length}
                 </span>
                 <button
-                  onClick={() => router.push(`/process/new?client_id=${clientId}`)}
+                  onClick={() =>
+                    router.push(`/process/new?client_id=${clientId}`)
+                  }
                   className="p-1 rounded hover:bg-[var(--bz-card)] text-[var(--bz-text-2)] hover:text-[var(--bz-accent)] transition-colors"
                   title="New process"
                   aria-label="New process"
@@ -711,28 +773,28 @@ export function OverviewTab({
                         <p className="text-sm text-[var(--bz-text-1)] truncate group-hover/p:text-[var(--bz-accent)] transition-colors">
                           {p.practice_type_name || `Practice #${p.id}`}
                         </p>
-                        {p.priority && p.priority !== 'normal' && (
+                        {p.priority && p.priority !== "normal" && (
                           <span
                             className={`shrink-0 text-[9px] px-1 py-0.5 rounded font-semibold ${
-                              p.priority === 'urgent'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-orange-500/20 text-orange-400'
+                              p.priority === "urgent"
+                                ? "bg-red-500/20 text-red-400"
+                                : "bg-orange-500/20 text-orange-400"
                             }`}
                           >
-                            {p.priority === 'urgent' ? '🔥' : '↑'}
+                            {p.priority === "urgent" ? "🔥" : "↑"}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                         <span className="text-[10px] text-[var(--bz-text-2)]">
-                          {p.status.replace(/_/g, ' ')}
+                          {p.status.replace(/_/g, " ")}
                         </span>
-                        {p.payment_status && p.payment_status !== 'paid' && (
+                        {p.payment_status && p.payment_status !== "paid" && (
                           <span
                             className={`text-[9px] px-1 py-0.5 rounded ${
-                              p.payment_status === 'unpaid'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-yellow-500/20 text-yellow-400'
+                              p.payment_status === "unpaid"
+                                ? "bg-red-500/20 text-red-400"
+                                : "bg-yellow-500/20 text-yellow-400"
                             }`}
                           >
                             {p.payment_status}
@@ -760,19 +822,21 @@ export function OverviewTab({
           <div
             className="rounded-xl border shadow-xl backdrop-blur-xl overflow-hidden"
             style={{
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              background: 'rgba(32, 32, 36, 0.65)',
+              border: "1px solid rgba(255, 255, 255, 0.05)",
+              background: "rgba(32, 32, 36, 0.65)",
             }}
           >
             <div
               className="flex items-center justify-between px-4 py-3 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+              style={{ borderColor: "rgba(255,255,255,0.05)" }}
             >
               <h3 className="font-semibold text-[var(--bz-text-1)] flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 Completed
               </h3>
-              <span className="text-xs font-bold text-green-400">{completedPractices.length}</span>
+              <span className="text-xs font-bold text-green-400">
+                {completedPractices.length}
+              </span>
             </div>
             <div className="p-3 space-y-2 max-h-[180px] overflow-y-auto">
               {completedPractices.length > 0 ? (
@@ -793,7 +857,9 @@ export function OverviewTab({
                           </p>
                           {(() => {
                             const ageDays = Math.floor(
-                              (Date.now() - new Date(p.completion_date).getTime()) / 86400000
+                              (Date.now() -
+                                new Date(p.completion_date).getTime()) /
+                                86400000,
                             );
                             if (ageDays < 7) return null;
                             const label =
@@ -806,8 +872,8 @@ export function OverviewTab({
                               <span
                                 className="text-[9px] px-1 py-0.5 rounded tabular-nums"
                                 style={{
-                                  background: 'rgba(255,255,255,0.04)',
-                                  color: 'var(--bz-text-3)',
+                                  background: "rgba(255,255,255,0.04)",
+                                  color: "var(--bz-text-3)",
                                 }}
                               >
                                 {label}
@@ -821,11 +887,11 @@ export function OverviewTab({
                       {p.payment_status && (
                         <span
                           className={`text-[9px] px-1 py-0.5 rounded ${
-                            p.payment_status === 'paid'
-                              ? 'bg-green-500/20 text-green-400'
-                              : p.payment_status === 'partial'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : 'bg-red-500/20 text-red-400'
+                            p.payment_status === "paid"
+                              ? "bg-green-500/20 text-green-400"
+                              : p.payment_status === "partial"
+                                ? "bg-yellow-500/20 text-yellow-400"
+                                : "bg-red-500/20 text-red-400"
                           }`}
                         >
                           {p.payment_status}
@@ -855,16 +921,16 @@ export function OverviewTab({
             {(() => {
               const totalRevenue = completedPractices.reduce(
                 (sum, p) => sum + (p.actual_price || 0),
-                0
+                0,
               );
               const paidRevenue = completedPractices
-                .filter((p) => p.payment_status === 'paid')
+                .filter((p) => p.payment_status === "paid")
                 .reduce((sum, p) => sum + (p.actual_price || 0), 0);
               if (totalRevenue === 0) return null;
               return (
                 <div
                   className="px-3 py-2 border-t flex items-center justify-between"
-                  style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                  style={{ borderColor: "rgba(255,255,255,0.05)" }}
                 >
                   <span className="text-[10px] text-[var(--bz-text-2)] uppercase tracking-wider">
                     Revenue
