@@ -20,7 +20,6 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from datetime import date, datetime, timedelta, timezone
 from itertools import cycle
 from pathlib import Path
@@ -69,18 +68,17 @@ SETUP_TEAM = [
 ]
 
 STANDARD_STATUSES = {
-    "active", "completed", "pending", "cancelled", "inquiry",
-    "in_progress", "on_hold", "expired", "pending_renewal",
-    "expiring_soon", "renewed",
+    "inquiry", "waiting_documents", "sending_invoice",
+    "on_process", "completed", "cancelled",
 }
 
 STATUS_MAP: dict[str, str] = {
-    "on_process": "in_progress",
-    "sending_invoice": "pending",
-    "quotation_sent": "pending",
-    "approved": "active",
-    "submitted_to_gov": "in_progress",
-    "waiting_documents": "pending",
+    "quotation_sent": "sending_invoice",
+    "payment_pending": "sending_invoice",
+    "waiting_payment": "sending_invoice",
+    "in_progress": "on_process",
+    "submitted_to_gov": "on_process",
+    "approved": "on_process",
 }
 
 # Required documents per practice type
@@ -286,7 +284,7 @@ async def run_lead_assignment(pool: asyncpg.Pool, *, dry_run: bool = False) -> d
         sorted_team = sorted(SETUP_TEAM, key=lambda e: workloads.get(e, 0))
         team_cycle = cycle(sorted_team)
 
-        assignments: dict[str, int] = {e: 0 for e in SETUP_TEAM}
+        assignments: dict[str, int] = dict.fromkeys(SETUP_TEAM, 0)
 
         for row in unassigned:
             assignee = next(team_cycle)
