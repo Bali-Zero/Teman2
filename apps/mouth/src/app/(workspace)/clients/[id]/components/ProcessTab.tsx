@@ -58,12 +58,14 @@ export function ProcessTab({
     // Fallback to quoted_price only when actual_price is missing, to avoid
     // hiding legitimate inflight revenue (same convention the BE uses
     // implicitly through NULL → 0).
+    // Coerce with Number(): BE serializes numeric(15,2) as string, so a raw
+    // `+` would string-concat and corrupt the running sum to NaN.
     const amountOf = (p: (typeof practices)[number]) =>
-      p.actual_price || p.quoted_price || 0;
+      Number(p.actual_price ?? p.quoted_price ?? 0);
     const total = practices.reduce((sum, p) => sum + amountOf(p), 0);
     const paid = practices
       .filter((p) => p.payment_status === "paid")
-      .reduce((sum, p) => sum + (p.paid_amount || amountOf(p)), 0);
+      .reduce((sum, p) => sum + Number(p.paid_amount ?? amountOf(p)), 0);
     const outstanding = total - paid;
     return { total, paid, outstanding };
   }, [practices]);
@@ -95,8 +97,8 @@ export function ProcessTab({
       });
     } else if (sortBy === "amount") {
       list.sort((a, b) => {
-        const aAmt = a.actual_price || a.quoted_price || 0;
-        const bAmt = b.actual_price || b.quoted_price || 0;
+        const aAmt = Number(a.actual_price ?? a.quoted_price ?? 0);
+        const bAmt = Number(b.actual_price ?? b.quoted_price ?? 0);
         return bAmt - aAmt;
       });
     }
