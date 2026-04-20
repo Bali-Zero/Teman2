@@ -13,14 +13,8 @@ Placement rationale: lives in apps/evaluator/ (not apps/mata-garuda/)
 because mata-garuda is Zero's private OSINT blindato and forbids HTTP
 APIs to Google (GSC, GA4) + cross-app imports from backend-rag
 (event_bus) and bali-intel-scraper (gemini_seo_optimizer). The SEO Cell
-is Bali Zero commercial tooling, not OSINT.
-
-Predecessors to deprecate after Sprint 1:
-  - apps/evaluator/seo_guardian_core.py
-  - apps/evaluator/seo_guardian_agent.py
-  - apps/evaluator/seo_guardian_measure.py
-  - apps/evaluator/seo_guardian_learn.py
-  - apps/evaluator/core_guardian/cron_seo_guardian.py
+is Bali Zero commercial tooling, not OSINT. This overrides the original
+v2.1 memo point 1 ("sister of sentinel_cell in mata-garuda").
 
 Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md
 Decision memo: ~/.claude/projects/-Users-nuzantara/memory/
