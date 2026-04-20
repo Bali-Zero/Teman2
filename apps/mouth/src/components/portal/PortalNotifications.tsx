@@ -156,8 +156,10 @@ export function PortalNotificationsPopover() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg transition-colors hover:bg-white/[0.05]"
+        className="relative p-2 rounded-lg transition-colors hover:bg-white/[0.05] focus-visible:ring-1 focus-visible:ring-[var(--bz-accent-warm)]"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
       >
         <Bell className="w-5 h-5" style={{ color: 'var(--bz-text-2)' }} />
         <PortalNotificationBadge count={unreadCount} />

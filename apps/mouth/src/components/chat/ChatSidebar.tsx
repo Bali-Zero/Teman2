@@ -117,7 +117,13 @@ export function ChatSidebar({
                   <div
                     key={conv.id}
                     onClick={() => onConversationClick(conv.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onConversationClick(conv.id);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus:bg-white/10 outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)] rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
                       currentConversationId === conv.id
                         ? 'sidebar-item-active text-white'
                         : 'text-gray-400'
@@ -131,7 +137,9 @@ export function ChatSidebar({
                     </span>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
-                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
+                      title={`Delete conversation: ${conv.title || 'Untitled'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
