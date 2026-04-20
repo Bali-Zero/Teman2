@@ -87,13 +87,16 @@
   --text-muted-cool: #9aa0ae;
 
   /* ── Shipped-component aliases (2026-04-20) ──
-   * These three names appear in packages/core/components/apps/*.tsx as
-   * direct var() references, assumed to exist. Map them to the canonical
-   * semantic tokens so components stop carrying inline copper fallbacks.
+   * 9 components under packages/core/components/apps/ reference these
+   * three names as bare var(...) calls without fallbacks — before these
+   * aliases existed, they silently inherited parent values (muted text
+   * collapsed, borders invisible). Map them to canonical semantic
+   * tokens so intent is explicit and themes propagate correctly.
+   * TODO(task-12): remove aliases if components migrate to canonical names.
    */
   --color-text-muted: var(--text-secondary);
   --color-border-subtle: var(--border-subtle);
-  --color-error: #ff5a5a;
+  --color-error: var(--state-danger, #ff5a5a);
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works
