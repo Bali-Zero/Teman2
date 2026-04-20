@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   FolderOpen,
@@ -10,24 +10,24 @@ import {
   Trash2,
   DollarSign,
   SlidersHorizontal,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { ClientProfile } from '@/lib/api/crm/crm.types';
-import { STATUS_COLORS, ALERT_COLORS } from './constants';
-import { formatCurrency } from './utils';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import type { ClientProfile } from "@/lib/api/crm/crm.types";
+import { STATUS_COLORS, ALERT_COLORS } from "./constants";
+import { formatCurrency } from "./utils";
 
 const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
-  urgent: { label: '🔥 urgent', className: 'bg-red-500/15 text-red-400' },
-  high: { label: '↑ high', className: 'bg-orange-500/12 text-orange-400' },
+  urgent: { label: "🔥 urgent", className: "bg-red-500/15 text-red-400" },
+  high: { label: "↑ high", className: "bg-orange-500/12 text-orange-400" },
 };
 
 const PAYMENT_STYLES: Record<string, string> = {
-  paid: 'bg-green-500/20 text-green-400',
-  partial: 'bg-yellow-500/20 text-yellow-400',
-  unpaid: 'bg-red-500/20 text-red-400',
-  pending: 'bg-orange-500/20 text-orange-400',
+  paid: "bg-green-500/20 text-green-400",
+  partial: "bg-yellow-500/20 text-yellow-400",
+  unpaid: "bg-red-500/20 text-red-400",
+  pending: "bg-orange-500/20 text-orange-400",
 };
 
 export function ProcessTab({
@@ -37,41 +37,63 @@ export function ProcessTab({
   onRefresh,
 }: {
   clientId: number;
-  practices: ClientProfile['practices'];
+  practices: ClientProfile["practices"];
   formatDate: (d: string) => string;
   onRefresh: () => void;
 }) {
   const router = useRouter();
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
-  const [sortBy, setSortBy] = useState<'default' | 'priority' | 'expiry' | 'amount'>('default');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<
+    "default" | "priority" | "expiry" | "amount"
+  >("default");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   const activeStatuses = Array.from(new Set(practices.map((p) => p.status)));
 
   const revenueSummary = useMemo(() => {
-    const total = practices.reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+    // Mirrors backend dashboard_summary.py / crm_practices.py revenue aggregation:
+    //   total   = SUM(actual_price) where actual_price IS NOT NULL
+    //   paid    = SUM(actual_price) where payment_status='paid'
+    //   outstanding = total - paid
+    // Fallback to quoted_price only when actual_price is missing, to avoid
+    // hiding legitimate inflight revenue (same convention the BE uses
+    // implicitly through NULL → 0).
+    const amountOf = (p: (typeof practices)[number]) =>
+      p.actual_price || p.quoted_price || 0;
+    const total = practices.reduce((sum, p) => sum + amountOf(p), 0);
     const paid = practices
-      .filter((p) => p.payment_status === 'paid')
-      .reduce((sum, p) => sum + (p.actual_price || p.quoted_price || 0), 0);
+      .filter((p) => p.payment_status === "paid")
+      .reduce((sum, p) => sum + (p.paid_amount || amountOf(p)), 0);
     const outstanding = total - paid;
     return { total, paid, outstanding };
   }, [practices]);
 
   const sortedPractices = useMemo(() => {
     let list = [...practices];
-    if (filterStatus !== 'all') list = list.filter((p) => p.status === filterStatus);
-    if (sortBy === 'priority') {
-      const order: Record<string, number> = { urgent: 0, high: 1, medium: 2, normal: 3, low: 4 };
+    if (filterStatus !== "all")
+      list = list.filter((p) => p.status === filterStatus);
+    if (sortBy === "priority") {
+      const order: Record<string, number> = {
+        urgent: 0,
+        high: 1,
+        medium: 2,
+        normal: 3,
+        low: 4,
+      };
       list.sort(
-        (a, b) => (order[a.priority || 'normal'] ?? 3) - (order[b.priority || 'normal'] ?? 3)
+        (a, b) =>
+          (order[a.priority || "normal"] ?? 3) -
+          (order[b.priority || "normal"] ?? 3),
       );
-    } else if (sortBy === 'expiry') {
+    } else if (sortBy === "expiry") {
       list.sort((a, b) => {
         if (!a.expiry_date) return 1;
         if (!b.expiry_date) return -1;
-        return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+        return (
+          new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime()
+        );
       });
-    } else if (sortBy === 'amount') {
+    } else if (sortBy === "amount") {
       list.sort((a, b) => {
         const aAmt = a.actual_price || a.quoted_price || 0;
         const bAmt = b.actual_price || b.quoted_price || 0;
@@ -86,7 +108,7 @@ export function ProcessTab({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           All Process
-          {filterStatus !== 'all' && (
+          {filterStatus !== "all" && (
             <span className="ml-2 text-xs text-[var(--bz-text-2)] font-normal">
               ({sortedPractices.length} of {practices.length})
             </span>
@@ -114,21 +136,23 @@ export function ProcessTab({
             </p>
           </div>
           <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-green-400 mb-0.5">Paid</p>
+            <p className="text-[10px] uppercase tracking-wider text-green-400 mb-0.5">
+              Paid
+            </p>
             <p className="text-sm font-bold text-green-400">
               {formatCurrency(revenueSummary.paid)}
             </p>
           </div>
           <div
-            className={`rounded-lg p-3 border ${revenueSummary.outstanding > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-[var(--bz-surface)] border-[var(--bz-border)]'}`}
+            className={`rounded-lg p-3 border ${revenueSummary.outstanding > 0 ? "bg-orange-500/10 border-orange-500/20" : "bg-[var(--bz-surface)] border-[var(--bz-border)]"}`}
           >
             <p
-              className={`text-[10px] uppercase tracking-wider mb-0.5 ${revenueSummary.outstanding > 0 ? 'text-orange-400' : 'text-[var(--bz-text-2)]'}`}
+              className={`text-[10px] uppercase tracking-wider mb-0.5 ${revenueSummary.outstanding > 0 ? "text-orange-400" : "text-[var(--bz-text-2)]"}`}
             >
               Outstanding
             </p>
             <p
-              className={`text-sm font-bold ${revenueSummary.outstanding > 0 ? 'text-orange-400' : 'text-[var(--bz-text-1)]'}`}
+              className={`text-sm font-bold ${revenueSummary.outstanding > 0 ? "text-orange-400" : "text-[var(--bz-text-1)]"}`}
             >
               {formatCurrency(revenueSummary.outstanding)}
             </p>
@@ -140,32 +164,34 @@ export function ProcessTab({
         <div className="flex items-center gap-2 flex-wrap">
           <SlidersHorizontal className="w-3.5 h-3.5 text-[var(--bz-text-2)] shrink-0" />
           <div className="flex items-center gap-1 flex-wrap">
-            {(['all', ...activeStatuses] as string[]).map((s) => (
+            {(["all", ...activeStatuses] as string[]).map((s) => (
               <button
                 key={s}
                 onClick={() => setFilterStatus(s)}
                 className={`text-xs px-2 py-1 rounded-full transition-colors ${
                   filterStatus === s
-                    ? 'bg-[var(--bz-accent)] text-white'
-                    : 'bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]'
+                    ? "bg-[var(--bz-accent)] text-white"
+                    : "bg-[var(--bz-surface)] text-[var(--bz-text-2)] hover:bg-[var(--bz-card)]"
                 }`}
               >
-                {s === 'all' ? 'All' : s.replace(/_/g, ' ')}
+                {s === "all" ? "All" : s.replace(/_/g, " ")}
               </button>
             ))}
           </div>
           <div className="ml-auto flex items-center gap-1">
-            {(['default', 'priority', 'expiry', 'amount'] as const).map((s) => (
+            {(["default", "priority", "expiry", "amount"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSortBy(s)}
                 className={`text-xs px-2 py-1 rounded transition-colors ${
                   sortBy === s
-                    ? 'bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]'
-                    : 'text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]'
+                    ? "bg-[var(--bz-accent)]/20 text-[var(--bz-accent)]"
+                    : "text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]"
                 }`}
               >
-                {s === 'default' ? 'Date' : s.charAt(0).toUpperCase() + s.slice(1)}
+                {s === "default"
+                  ? "Date"
+                  : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
           </div>
@@ -175,12 +201,19 @@ export function ProcessTab({
       {practices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-12 text-center shadow-xl space-y-2">
           <FolderOpen className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
-          <p className="text-sm font-medium text-[var(--bz-text-1)]">No services yet</p>
+          <p className="text-sm font-medium text-[var(--bz-text-1)]">
+            No services yet
+          </p>
           <p className="text-xs text-[var(--bz-text-2)] opacity-70 max-w-xs mx-auto">
-            Add a visa, company setup, tax, or other service to track progress and payments.
+            Add a visa, company setup, tax, or other service to track progress
+            and payments.
           </p>
           <div className="pt-2">
-            <Button size="sm" className="gap-2" onClick={() => router.push(`/process/new?client_id=${clientId}`)}>
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={() => router.push(`/process/new?client_id=${clientId}`)}
+            >
               <Plus className="w-3.5 h-3.5" />
               Add first service
             </Button>
@@ -188,9 +221,11 @@ export function ProcessTab({
         </div>
       ) : sortedPractices.length === 0 ? (
         <div className="rounded-xl border border-dashed border-[rgba(255,255,255,0.1)] bg-[rgba(26,26,30,0.5)] backdrop-blur-sm p-8 text-center">
-          <p className="text-[var(--bz-text-2)] text-sm">No processes match this filter</p>
+          <p className="text-[var(--bz-text-2)] text-sm">
+            No processes match this filter
+          </p>
           <button
-            onClick={() => setFilterStatus('all')}
+            onClick={() => setFilterStatus("all")}
             className="text-xs text-[var(--bz-accent)] mt-2 hover:underline"
           >
             Clear filter
@@ -212,23 +247,27 @@ export function ProcessTab({
                     <span className="text-sm font-medium text-[var(--bz-text-1)] truncate">
                       {practice.practice_type_name}
                     </span>
-                    {practice.priority && PRIORITY_BADGES[practice.priority] && (
-                      <span
-                        className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${PRIORITY_BADGES[practice.priority].className}`}
-                      >
-                        {PRIORITY_BADGES[practice.priority].label}
-                      </span>
-                    )}
-                    <span className="text-xs text-[var(--bz-text-2)] shrink-0">#{practice.id}</span>
+                    {practice.priority &&
+                      PRIORITY_BADGES[practice.priority] && (
+                        <span
+                          className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${PRIORITY_BADGES[practice.priority].className}`}
+                        >
+                          {PRIORITY_BADGES[practice.priority].label}
+                        </span>
+                      )}
+                    <span className="text-xs text-[var(--bz-text-2)] shrink-0">
+                      #{practice.id}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
-                      STATUS_COLORS[practice.status] || 'bg-gray-500/20 text-gray-400'
+                      STATUS_COLORS[practice.status] ||
+                      "bg-gray-500/20 text-gray-400"
                     }`}
                   >
-                    {practice.status.replace(/_/g, ' ')}
+                    {practice.status.replace(/_/g, " ")}
                   </span>
                   {/* View/Delete buttons - show on hover */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -251,16 +290,21 @@ export function ProcessTab({
                           `Delete process "${practice.practice_type_name}"? This will mark it as cancelled.`,
                           {
                             action: {
-                              label: 'Delete',
+                              label: "Delete",
                               onClick: async () => {
-                                setDeletingIds((prev) => new Set(prev).add(practice.id));
+                                setDeletingIds((prev) =>
+                                  new Set(prev).add(practice.id),
+                                );
                                 try {
                                   const user = await api.getProfile();
-                                  await api.crm.deletePractice(practice.id, user.email);
-                                  toast.success('Process deleted');
+                                  await api.crm.deletePractice(
+                                    practice.id,
+                                    user.email,
+                                  );
+                                  toast.success("Process deleted");
                                   onRefresh();
                                 } catch (err) {
-                                  toast.error('Error', {
+                                  toast.error("Error", {
                                     description: (err as Error).message,
                                   });
                                   setDeletingIds((prev) => {
@@ -271,8 +315,11 @@ export function ProcessTab({
                                 }
                               },
                             },
-                            cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
-                          }
+                            cancel: {
+                              label: "Cancel",
+                              onClick: () => toast.dismiss(),
+                            },
+                          },
                         );
                       }}
                       disabled={deletingIds.has(practice.id)}
@@ -289,22 +336,23 @@ export function ProcessTab({
                 {practice.expiry_date &&
                   (() => {
                     const daysLeft = Math.ceil(
-                      (new Date(practice.expiry_date).getTime() - Date.now()) / 86400000
+                      (new Date(practice.expiry_date).getTime() - Date.now()) /
+                        86400000,
                     );
                     const isExpired = daysLeft < 0;
                     const isCritical = daysLeft >= 0 && daysLeft <= 14;
                     const isWarning = daysLeft > 14 && daysLeft <= 30;
                     const chipClass = isExpired
-                      ? 'bg-red-500/20 text-red-400'
+                      ? "bg-red-500/20 text-red-400"
                       : isCritical
-                        ? 'bg-red-500/15 text-red-400'
+                        ? "bg-red-500/15 text-red-400"
                         : isWarning
-                          ? 'bg-yellow-500/15 text-yellow-400'
-                          : ALERT_COLORS[practice.alert_color || 'green'];
+                          ? "bg-yellow-500/15 text-yellow-400"
+                          : ALERT_COLORS[practice.alert_color || "green"];
                     const label = isExpired
                       ? `exp ${Math.abs(daysLeft)}d ago`
                       : daysLeft === 0
-                        ? 'expires today'
+                        ? "expires today"
                         : `⏰ ${daysLeft}d left`;
                     return (
                       <div
@@ -327,7 +375,8 @@ export function ProcessTab({
                 {practice.payment_status && (
                   <span
                     className={`text-xs px-2 py-0.5 rounded ${
-                      PAYMENT_STYLES[practice.payment_status] || 'bg-gray-500/20 text-gray-400'
+                      PAYMENT_STYLES[practice.payment_status] ||
+                      "bg-gray-500/20 text-gray-400"
                     }`}
                   >
                     {practice.payment_status}
@@ -336,7 +385,8 @@ export function ProcessTab({
                 {practice.updated_at &&
                   (() => {
                     const ageDays = Math.floor(
-                      (Date.now() - new Date(practice.updated_at!).getTime()) / 86400000
+                      (Date.now() - new Date(practice.updated_at!).getTime()) /
+                        86400000,
                     );
                     if (ageDays < 2) return null;
                     const label =
@@ -350,8 +400,10 @@ export function ProcessTab({
                         className="text-[10px] px-1.5 py-0.5 rounded tabular-nums"
                         style={{
                           background:
-                            ageDays > 14 ? 'rgba(239,68,68,0.10)' : 'rgba(255,255,255,0.04)',
-                          color: ageDays > 14 ? '#f87171' : 'var(--bz-text-2)',
+                            ageDays > 14
+                              ? "rgba(239,68,68,0.10)"
+                              : "rgba(255,255,255,0.04)",
+                          color: ageDays > 14 ? "#f87171" : "var(--bz-text-2)",
                         }}
                         title={`Last updated ${ageDays} days ago`}
                       >

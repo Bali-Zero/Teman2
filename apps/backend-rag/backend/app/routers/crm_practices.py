@@ -211,6 +211,8 @@ STATUS_VALUES = {
     "cancelled",
 }
 
+PAYMENT_STATUS_VALUES = {"unpaid", "partial", "paid"}
+
 # ================================================
 # PYDANTIC MODELS
 # ================================================
@@ -292,6 +294,16 @@ class PracticeUpdate(BaseModel):
         """Validate priority is one of allowed values"""
         if v is not None and v not in PRIORITY_VALUES:
             raise ValueError(f"priority must be one of {PRIORITY_VALUES}, got '{v}'")
+        return v
+
+    @field_validator("payment_status")
+    @classmethod
+    def validate_payment_status(cls, v: str | None) -> str | None:
+        """Validate payment_status is one of allowed values (unpaid|partial|paid)."""
+        if v is not None and v not in PAYMENT_STATUS_VALUES:
+            raise ValueError(
+                f"payment_status must be one of {PAYMENT_STATUS_VALUES}, got '{v}'",
+            )
         return v
 
     @field_validator("quoted_price", "actual_price", "paid_amount")
@@ -925,10 +937,13 @@ async def update_practice(
             practice_client_visible: bool = True
             practice_created_by: str | None = None
             practice_assigned_to: str | None = None
+            old_start_date: Any = None
+            old_completion_date: Any = None
             try:
                 old_row = await conn.fetchrow(
                     """
-                    SELECT status, client_id, client_visible, created_by, assigned_to
+                    SELECT status, client_id, client_visible, created_by, assigned_to,
+                           start_date, completion_date
                     FROM practices
                     WHERE id = $1
                     """,
@@ -944,12 +959,15 @@ async def update_practice(
                     )
                     practice_created_by = old_row.get("created_by", "")
                     practice_assigned_to = old_row.get("assigned_to", "")
+                    old_start_date = old_row.get("start_date")
+                    old_completion_date = old_row.get("completion_date")
             except Exception as e:
                 # Backward compatibility: client_visible column may not exist yet.
                 if getattr(e, "sqlstate", None) == "42703":
                     old_row = await conn.fetchrow(
                         """
-                        SELECT status, client_id, created_by, assigned_to
+                        SELECT status, client_id, created_by, assigned_to,
+                               start_date, completion_date
                         FROM practices
                         WHERE id = $1
                         """,
@@ -961,6 +979,8 @@ async def update_practice(
                         practice_client_visible = True
                         practice_created_by = old_row.get("created_by", "")
                         practice_assigned_to = old_row.get("assigned_to", "")
+                        old_start_date = old_row.get("start_date")
+                        old_completion_date = old_row.get("completion_date")
                 else:
                     raise
 
@@ -1017,7 +1037,8 @@ async def update_practice(
                 "missing_documents": "missing_documents",
             }
 
-            for field, value in updates.dict(exclude_unset=True).items():
+            update_set = updates.dict(exclude_unset=True)
+            for field, value in update_set.items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
@@ -1026,6 +1047,22 @@ async def update_practice(
                     update_fields.append(f"{column_name} = ${param_index}")
                     params.append(value)
                     param_index += 1
+
+            # Autoset date fields on status transitions (only if not already in DB
+            # and caller did not pass an explicit value). Uses NOW() server-side,
+            # no parameter binding required.
+            if (
+                updates.status == "completed"
+                and "completion_date" not in update_set
+                and old_completion_date is None
+            ):
+                update_fields.append("completion_date = NOW()")
+            if (
+                updates.status == "on_process"
+                and "start_date" not in update_set
+                and old_start_date is None
+            ):
+                update_fields.append("start_date = NOW()")
 
             if not update_fields:
                 raise HTTPException(status_code=400, detail="No fields to update")
