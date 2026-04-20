@@ -143,8 +143,12 @@ export class CrmApi {
     if (params.limit) queryParams.append("limit", params.limit.toString());
     if (params.offset) queryParams.append("offset", params.offset.toString());
 
+    // Trailing slash required: backend router is APIRouter(prefix=".../interactions")
+    // with @router.get("/"), which matches only the slash variant. Without it
+    // FastAPI issues a 307 that the browser client does not re-auth on,
+    // surfacing as a 404 in the UI.
     const queryString = queryParams.toString();
-    const url = `/api/crm/interactions${queryString ? `?${queryString}` : ""}`;
+    const url = `/api/crm/interactions/${queryString ? `?${queryString}` : ""}`;
 
     return this.client.request<Interaction[]>(url);
   }
