@@ -753,8 +753,10 @@ export default function PratichePage() {
           // 'paid': sum paid_amount (reliable post-backfill), fallback to
           // actual_price||quoted_price for legacy rows still missing it.
           // 'unpaid'/'partial': use actual_price||quoted_price as invoiced.
+          // Coerce with Number(): BE serializes numeric(15,2) as string, so a
+          // raw `+` would string-concat and corrupt the running sum to NaN.
           const amountOf = (p: Practice) =>
-            p.actual_price || p.quoted_price || 0;
+            Number(p.actual_price ?? p.quoted_price ?? 0);
           const unpaidRevenue = filteredPractices
             .filter(
               (p) =>
@@ -763,7 +765,7 @@ export default function PratichePage() {
             .reduce((s, p) => s + amountOf(p), 0);
           const totalRevenue = filteredPractices
             .filter((p) => p.payment_status === "paid")
-            .reduce((s, p) => s + (p.paid_amount || amountOf(p)), 0);
+            .reduce((s, p) => s + Number(p.paid_amount ?? amountOf(p)), 0);
           const expiringCount = practices.filter((p) => {
             if (!p.expiry_date) return false;
             const d = Math.ceil(
@@ -1192,12 +1194,16 @@ export default function PratichePage() {
                   </div>
                   {columnPractices.length > 0 &&
                     (() => {
+                      // NOTE: BE serializes numeric(15,2) as string via asyncpg+Decimal,
+                      // so `sum + p.actual_price` was string-concatenating and the next
+                      // numeric add produced NaN → rendered "RpNaN". Coerce with Number().
                       const colRevenue = columnPractices.reduce(
                         (sum, p) =>
-                          sum + (p.actual_price || p.quoted_price || 0),
+                          sum + Number(p.actual_price ?? p.quoted_price ?? 0),
                         0,
                       );
-                      if (colRevenue === 0) return null;
+                      if (!Number.isFinite(colRevenue) || colRevenue === 0)
+                        return null;
                       return (
                         <div
                           className="mb-3 text-[10px] font-medium tabular-nums opacity-70"
