@@ -155,6 +155,74 @@ def fallback_digest(rows: list[dict[str, str]], now: datetime | None = None) -> 
     return "\n".join(lines)
 
 
+def _markdown_to_html(md: str) -> str:
+    """Minimal MD → HTML for Brevo. Handles headings + bullets + line breaks."""
+    lines = md.split("\n")
+    html_parts: list[str] = []
+    in_list = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if in_list:
+                html_parts.append("</ul>")
+                in_list = False
+            html_parts.append("<br>")
+            continue
+        if stripped.startswith("# "):
+            if in_list:
+                html_parts.append("</ul>"); in_list = False
+            html_parts.append(f"<h1>{stripped[2:]}</h1>")
+        elif stripped.startswith("## "):
+            if in_list:
+                html_parts.append("</ul>"); in_list = False
+            html_parts.append(f"<h2>{stripped[3:]}</h2>")
+        elif stripped.startswith("- "):
+            if not in_list:
+                html_parts.append("<ul>"); in_list = True
+            html_parts.append(f"<li>{stripped[2:]}</li>")
+        else:
+            if in_list:
+                html_parts.append("</ul>"); in_list = False
+            html_parts.append(f"<p>{stripped}</p>")
+    if in_list:
+        html_parts.append("</ul>")
+    return "\n".join(html_parts)
+
+
+def _send_email_digest(body_md: str, now: datetime, dry_run: bool = False) -> bool:
+    """Send weekly digest as HTML email to Zero via Brevo. Non-fatal on failure."""
+    if dry_run:
+        return True
+    try:
+        from mata_garuda.tools.brevo_tools import send_html
+    except ImportError:
+        logger.info("[weekly_digest] brevo_tools not available, skipping email")
+        return False
+
+    html = (
+        "<html><body style='font-family: system-ui, sans-serif; "
+        "max-width: 680px; margin: 0 auto; padding: 16px;'>"
+        + _markdown_to_html(body_md)
+        + "</body></html>"
+    )
+    subject = f"🦅 Mata Garuda Weekly — {now.strftime('%Y-W%V')}"
+
+    result = send_html(
+        to_email="sianoantonello@gmail.com",
+        subject=subject,
+        html_content=html,
+        to_name="Zero",
+    )
+    if result.get("ok"):
+        logger.info("[weekly_digest] email delivered via Brevo")
+        return True
+    logger.warning(
+        f"[weekly_digest] email failed: status={result.get('status')} "
+        f"reason={result.get('reason', result.get('body', ''))[:200]}"
+    )
+    return False
+
+
 def run_weekly_digest(
     kb: KnowledgeBase | None = None,
     *,
@@ -187,6 +255,7 @@ def run_weekly_digest(
         body = header + digest
 
         tg_ok = _send_telegram(body, dry_run=dry_run)
+        email_ok = _send_email_digest(body, now=now, dry_run=dry_run)
 
         if not dry_run:
             try:
@@ -211,6 +280,7 @@ def run_weekly_digest(
             "items": len(rows),
             "chars": len(body),
             "tg_ok": tg_ok,
+            "email_ok": email_ok,
             "dry_run": dry_run,
             "used_claude": bool(digest and not digest.startswith("# Weekly Digest")),
         }
