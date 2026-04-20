@@ -11,8 +11,10 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Import the script file directly (it lives in /scripts/, not in a package).
-_SCRIPT_PATH = Path(__file__).resolve().parents[4] / "scripts" / "lead_intent_matcher.py"
+# Import the script file directly (it lives in /scripts/ at the root, not in a package).
+# File is at: apps/backend-rag/backend/tests/services/lead_capture/test_matcher.py
+# parents[0..5]: lead_capture, services, tests, backend, backend-rag, apps, [root]
+_SCRIPT_PATH = Path(__file__).resolve().parents[6] / "scripts" / "lead_intent_matcher.py"
 sys.path.insert(0, str(_SCRIPT_PATH.parent))
 import lead_intent_matcher as m  # noqa: E402
 

@@ -41,7 +41,10 @@ import sys
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import asyncpg
+try:
+    import asyncpg
+except ImportError:
+    asyncpg = None
 
 logger = logging.getLogger("lead_intent_matcher")
 logging.basicConfig(
