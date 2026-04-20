@@ -39,7 +39,7 @@ export const AppResultTimeline: FC<AppResultTimelineProps> = ({
             gridTemplateColumns: "64px minmax(0, 1fr)",
             gap: "var(--space-3)",
             padding: "var(--space-3)",
-            borderLeft: `4px solid ${c.past ? "var(--color-border-subtle)" : "var(--bz-accent, #d4845a)"}`,
+            borderLeft: `4px solid ${c.past ? "var(--color-border-subtle)" : "var(--accent-funnel)"}`,
             background: c.past ? "transparent" : "var(--surface-raised)",
             opacity: c.past ? 0.55 : 1,
             borderRadius: 6,

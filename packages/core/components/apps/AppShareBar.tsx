@@ -16,6 +16,12 @@ export const AppShareBar: FC<AppShareBarProps> = ({ url, title, onShare }) => {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       onShare?.("copy");
+      if (
+        typeof navigator !== "undefined" &&
+        typeof navigator.vibrate === "function"
+      ) {
+        navigator.vibrate(4);
+      }
       setTimeout(() => setCopied(false), 1500);
     } catch {
       /* user denied clipboard */
