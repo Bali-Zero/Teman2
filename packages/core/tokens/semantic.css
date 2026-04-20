@@ -97,6 +97,17 @@
   --color-text-muted: var(--text-secondary);
   --color-border-subtle: var(--border-subtle);
   --color-error: var(--state-danger, #ff5a5a);
+
+  /* ── Motion tokens (2026-04-20, visa-check redesign) ──
+   * Durations and curves used across apps/ components. Values match the
+   * 5 motion invariants from
+   * docs/superpowers/specs/2026-04-20-visa-check-ui-design.md.
+   */
+  --motion-duration-fast: 200ms; /* red-accent, urgency */
+  --motion-duration-base: 250ms; /* default transitions */
+  --motion-duration-slow: 400ms; /* one-shot reveals (stamp) */
+  --motion-curve-editorial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-curve-reveal: cubic-bezier(0.5, 0, 0.3, 1.2); /* slight overshoot */
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works
