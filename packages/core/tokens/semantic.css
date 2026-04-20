@@ -85,6 +85,15 @@
   --surface-deep: #0f1115;
   --text-silver: #e1e1e3;
   --text-muted-cool: #9aa0ae;
+
+  /* ── Shipped-component aliases (2026-04-20) ──
+   * These three names appear in packages/core/components/apps/*.tsx as
+   * direct var() references, assumed to exist. Map them to the canonical
+   * semantic tokens so components stop carrying inline copper fallbacks.
+   */
+  --color-text-muted: var(--text-secondary);
+  --color-border-subtle: var(--border-subtle);
+  --color-error: #ff5a5a;
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works
