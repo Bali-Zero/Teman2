@@ -10,19 +10,29 @@ import {
 } from "@balizero/core";
 
 const VISA_OPTIONS = [
-  { code: "B211A", label: "B211A Tourism (60–180 days)" },
-  { code: "C1", label: "C1 Tourism (60 days, extendable)" },
-  { code: "C2", label: "C2 Business visit" },
+  { code: "B211A", label: "B211A Tourism" },
+  { code: "C1", label: "C1 Tourism" },
+  { code: "C2", label: "C2 Business" },
   { code: "C7", label: "C7 Job training" },
-  { code: "C7A", label: "C7A Music / art" },
+  { code: "C7A", label: "C7A Music/Art" },
   { code: "C7B", label: "C7B Sport" },
-  { code: "E33G", label: "E33G Digital Nomad / Remote Worker KITAS" },
-  { code: "E28A", label: "E28A Investor KITAS (2 years)" },
-  { code: "E23", label: "E23 Work KITAS (employer-sponsored)" },
-  { code: "E33F", label: "E33F Retirement KITAS (55+)" },
-  { code: "E31", label: "E31 Family / Dependent KITAS" },
+  { code: "E33G", label: "E33G Digital Nomad KITAS" },
+  { code: "E28A", label: "E28A Investor KITAS" },
+  { code: "E23", label: "E23 Work KITAS" },
+  { code: "E33F", label: "E33F Retirement KITAS" },
+  { code: "E31", label: "E31 Family KITAS" },
   { code: "E30A", label: "E30A Student KITAS" },
 ];
+
+const fieldStyle: React.CSSProperties = {
+  padding: "0.45rem 0.7rem",
+  borderRadius: 4,
+  border: "1px solid var(--color-border-subtle)",
+  background: "var(--surface-raised)",
+  color: "var(--text-primary)",
+  fontSize: "inherit",
+  fontFamily: "inherit",
+};
 
 export default function VisaClockPage() {
   const router = useRouter();
@@ -62,80 +72,59 @@ export default function VisaClockPage() {
 
   return (
     <AppFrame
-      title="Visa Clock"
-      subtitle="Two fields. Your expiry timeline with 5 checkpoints."
+      funnel="visa"
+      title="Your timeline in five checkpoints."
+      subtitle="Fill in the two blanks."
       trustStrip={
         <AppTrustStrip
           items={[
             { value: "5,021", label: "visas filed since 2019" },
-            { value: "5", label: "timeline checkpoints (D-60 → D-1)" },
-            { value: "4.8h", label: "average first-reply on WhatsApp" },
+            { value: "5", label: "checkpoints (D-60 → D-1)" },
+            { value: "4.8h", label: "avg first-reply on WhatsApp" },
           ]}
         />
       }
     >
       <AppHeroForm
-        headline="Which visa + when did you enter Indonesia?"
+        headline="Two fields. Your expiry timeline."
         submitLabel="Show my timeline"
         onSubmit={submit}
         pending={pending}
         error={error}
-      >
-        <label
-          style={{
-            display: "grid",
-            gap: "var(--space-1)",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          Visa type
-          <select
-            required
-            value={visaType}
-            onChange={(e) => {
-              setVisaType(e.target.value);
-              tracker.formStarted("visa_type");
-            }}
-            style={{
-              padding: "var(--space-2) var(--space-3)",
-              borderRadius: 6,
-              border: "1px solid var(--color-border-subtle)",
-              fontSize: "var(--text-md)",
-            }}
-          >
-            <option value="">Select one…</option>
-            {VISA_OPTIONS.map((v) => (
-              <option key={v.code} value={v.code}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label
-          style={{
-            display: "grid",
-            gap: "var(--space-1)",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          Entry date
-          <input
-            type="date"
-            required
-            value={entryDate}
-            onChange={(e) => {
-              setEntryDate(e.target.value);
-              tracker.formStarted("entry_date");
-            }}
-            style={{
-              padding: "var(--space-2) var(--space-3)",
-              borderRadius: 6,
-              border: "1px solid var(--color-border-subtle)",
-              fontSize: "var(--text-md)",
-            }}
-          />
-        </label>
-      </AppHeroForm>
+        sentenceTemplate="I entered on {entry} with a {visa} visa."
+        sentenceFields={{
+          entry: (
+            <input
+              type="date"
+              required
+              value={entryDate}
+              onChange={(e) => {
+                setEntryDate(e.target.value);
+                tracker.formStarted("entry_date");
+              }}
+              style={fieldStyle}
+              aria-label="Entry date"
+            />
+          ),
+          visa: (
+            <select
+              required
+              value={visaType}
+              onChange={(e) => {
+                setVisaType(e.target.value);
+                tracker.formStarted("visa_type");
+              }}
+              style={fieldStyle}
+              aria-label="Visa type"
+            >
+              <option value="">pick one…</option>
+              {VISA_OPTIONS.map((v) => (
+                <option key={v.code} value={v.code}>{v.label}</option>
+              ))}
+            </select>
+          ),
+        }}
+      />
     </AppFrame>
   );
 }

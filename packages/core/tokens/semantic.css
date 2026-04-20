@@ -85,6 +85,39 @@
   --surface-deep: #0f1115;
   --text-silver: #e1e1e3;
   --text-muted-cool: #9aa0ae;
+
+  /* ── Shipped-component aliases (2026-04-20) ──
+   * 9 components under packages/core/components/apps/ reference these
+   * three names as bare var(...) calls without fallbacks — before these
+   * aliases existed, they silently inherited parent values (muted text
+   * collapsed, borders invisible). Map them to canonical semantic
+   * tokens so intent is explicit and themes propagate correctly.
+   * TODO(task-12): remove aliases if components migrate to canonical names.
+   */
+  --color-text-muted: var(--text-secondary);
+  --color-border-subtle: var(--border-subtle);
+  --color-error: var(--state-danger, #ff5a5a);
+
+  /* ── Motion tokens (2026-04-20, visa-check redesign) ──
+   * Primitives ship --motion-duration-{fast,standard,slow} +
+   * --motion-ease-{standard,emphasized,decelerate}. We do NOT redeclare
+   * them — this layer only adds what the spec (docs/superpowers/specs/
+   * 2026-04-20-visa-check-ui-design.md §Motion invariants) needs on top:
+   *   --motion-duration-accent  new 200ms tier for red urgency cues
+   *                             (primitives fast=150ms is too brisk for
+   *                              the spec's "red elements feel faster";
+   *                              accent bridges 150↔250ms clearly)
+   *   --motion-duration-base    alias of primitive's standard (250ms)
+   *                             so the redesign vocabulary reads as
+   *                             "base/accent" without splitting values.
+   *   --motion-curve-editorial  cubic-bezier for editorial weight
+   *   --motion-curve-reveal     overshoot curve for one-shot reveals
+   * For fast (150ms) and slow (400ms) read the primitives directly.
+   */
+  --motion-duration-accent: 200ms;
+  --motion-duration-base: var(--motion-duration-standard);
+  --motion-curve-editorial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-curve-reveal: cubic-bezier(0.5, 0, 0.3, 1.2);
 }
 
 /* Per-funnel accent mapping — attribute-only selector so leaf scoping works

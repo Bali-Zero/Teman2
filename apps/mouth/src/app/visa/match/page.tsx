@@ -20,7 +20,7 @@ const NATIONALITIES = [
   { iso: "CAN", label: "Canada" },
   { iso: "NLD", label: "Netherlands" },
   { iso: "SGP", label: "Singapore" },
-  { iso: "OTHER", label: "Other — I'll tell you" },
+  { iso: "OTHER", label: "Other" },
 ];
 
 const PURPOSES = [
@@ -40,6 +40,34 @@ const BUDGETS = [
   { id: "over_500m", label: "Over IDR 500M" },
 ];
 
+const labelOf = (list: { iso?: string; id?: string; label: string }[], v: unknown) =>
+  list.find((x) => (x.iso ?? x.id) === v)?.label ?? String(v);
+
+const fieldStyle: React.CSSProperties = {
+  padding: "0.45rem 0.7rem",
+  borderRadius: 4,
+  border: "1px solid var(--color-border-subtle)",
+  background: "var(--surface-raised)",
+  color: "var(--text-primary)",
+  fontSize: "inherit",
+  fontFamily: "inherit",
+};
+
+const cardButtonStyle = (selected: boolean): React.CSSProperties => ({
+  padding: "var(--space-3, 0.85rem)",
+  borderRadius: 4,
+  border: selected
+    ? "2px solid var(--accent-funnel)"
+    : "1px solid var(--color-border-subtle)",
+  background: selected ? "var(--surface-raised)" : "transparent",
+  textAlign: "left",
+  cursor: "pointer",
+  color: "var(--text-primary)",
+  minHeight: "44px",
+  fontSize: "inherit",
+  fontFamily: "inherit",
+});
+
 export default function VisaMatchPage() {
   const router = useRouter();
   const tracker = useFunnelApp("visa_match");
@@ -49,31 +77,20 @@ export default function VisaMatchPage() {
     {
       id: "nationality",
       title: "Nationality",
+      summary: (v) => labelOf(NATIONALITIES, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0 }}>What's your nationality?</p>
+          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+            What&apos;s your nationality?
+          </p>
           <select
             value={(value as string) ?? ""}
-            onChange={(e) => {
-              setValue(e.target.value);
-              tracker.formStarted("nationality");
-            }}
-            style={{
-              marginTop: "var(--space-2)",
-              padding: "var(--space-2) var(--space-3)",
-              borderRadius: 6,
-              border: "1px solid var(--color-border-subtle)",
-              fontSize: "var(--text-md)",
-              width: "100%",
-              maxWidth: 320,
-            }}
+            onChange={(e) => { setValue(e.target.value); tracker.formStarted("nationality"); }}
+            style={{ marginTop: "var(--space-2, 0.5rem)", ...fieldStyle, width: "100%", maxWidth: 320 }}
+            aria-label="Nationality"
           >
             <option value="">Select one…</option>
-            {NATIONALITIES.map((n) => (
-              <option key={n.iso} value={n.iso}>
-                {n.label}
-              </option>
-            ))}
+            {NATIONALITIES.map((n) => (<option key={n.iso} value={n.iso}>{n.label}</option>))}
           </select>
         </div>
       ),
@@ -82,38 +99,19 @@ export default function VisaMatchPage() {
     {
       id: "purpose",
       title: "Purpose",
+      summary: (v) => labelOf(PURPOSES, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0 }}>Why are you coming to Indonesia?</p>
-          <div
-            style={{
-              display: "grid",
-              gap: "var(--space-2)",
-              marginTop: "var(--space-3)",
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            }}
-          >
+          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+            Why are you coming?
+          </p>
+          <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)", marginTop: "var(--space-3, 1rem)" }}>
             {PURPOSES.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => {
-                  setValue(p.id);
-                  tracker.formStarted("purpose");
-                }}
-                style={{
-                  padding: "var(--space-3)",
-                  borderRadius: 8,
-                  border:
-                    value === p.id
-                      ? "2px solid var(--bz-accent, #d4845a)"
-                      : "1px solid var(--color-border-subtle)",
-                  background:
-                    value === p.id ? "var(--surface-raised)" : "transparent",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  color: "var(--color-text-primary)",
-                }}
+                onClick={() => { setValue(p.id); tracker.formStarted("purpose"); }}
+                style={cardButtonStyle(value === p.id)}
               >
                 {p.label}
               </button>
@@ -126,11 +124,12 @@ export default function VisaMatchPage() {
     {
       id: "duration",
       title: "Duration",
+      summary: (v) => (typeof v === "number" ? `${v} month${v === 1 ? "" : "s"}` : "?"),
       render: ({ value, setValue }) => {
         const num = typeof value === "number" ? value : 6;
         return (
           <div>
-            <p style={{ margin: 0 }}>
+            <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
               Roughly how many months? ({num} {num === 1 ? "month" : "months"})
             </p>
             <input
@@ -138,22 +137,12 @@ export default function VisaMatchPage() {
               min={1}
               max={60}
               value={num}
-              onChange={(e) => {
-                setValue(Number(e.target.value));
-                tracker.formStarted("duration");
-              }}
-              style={{ width: "100%", marginTop: "var(--space-3)" }}
+              onChange={(e) => { setValue(Number(e.target.value)); tracker.formStarted("duration"); }}
+              style={{ width: "100%", marginTop: "var(--space-3, 1rem)", accentColor: "var(--accent-funnel)" }}
+              aria-label="Duration in months"
             />
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "var(--text-sm)",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              <span>1 mo</span>
-              <span>60 mo</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm, 0.85rem)", color: "var(--color-text-muted)" }}>
+              <span>1 mo</span><span>60 mo</span>
             </div>
           </div>
         );
@@ -162,37 +151,19 @@ export default function VisaMatchPage() {
     {
       id: "budget",
       title: "Budget",
+      summary: (v) => labelOf(BUDGETS, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0 }}>Budget band for Indonesia setup?</p>
-          <div
-            style={{
-              display: "grid",
-              gap: "var(--space-2)",
-              marginTop: "var(--space-3)",
-            }}
-          >
+          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+            Budget band for Indonesia setup?
+          </p>
+          <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)", marginTop: "var(--space-3, 1rem)" }}>
             {BUDGETS.map((b) => (
               <button
                 key={b.id}
                 type="button"
-                onClick={() => {
-                  setValue(b.id);
-                  tracker.formStarted("budget");
-                }}
-                style={{
-                  padding: "var(--space-3)",
-                  borderRadius: 8,
-                  border:
-                    value === b.id
-                      ? "2px solid var(--bz-accent, #d4845a)"
-                      : "1px solid var(--color-border-subtle)",
-                  background:
-                    value === b.id ? "var(--surface-raised)" : "transparent",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  color: "var(--color-text-primary)",
-                }}
+                onClick={() => { setValue(b.id); tracker.formStarted("budget"); }}
+                style={cardButtonStyle(value === b.id)}
               >
                 {b.label}
               </button>
@@ -222,21 +193,20 @@ export default function VisaMatchPage() {
       const { hash } = (await res.json()) as { hash: string };
       router.push(`/visa/match/${hash}`);
     } catch {
-      setSubmitError(
-        "We could not compute a recommendation. Please try again or message us on WhatsApp.",
-      );
+      setSubmitError("We could not compute a recommendation. Please try again or message us on WhatsApp.");
     }
   };
 
   return (
     <AppFrame
+      funnel="visa"
       title="Visa Match"
-      subtitle="4 short questions. A visa recommendation with the cost and the pre-arrival checklist."
+      subtitle="4 short questions. A visa recommendation with the cost."
       trustStrip={
         <AppTrustStrip
           items={[
             { value: "24+", label: "visa categories supported" },
-            { value: "4", label: "questions — takes under a minute" },
+            { value: "4", label: "questions — under a minute" },
             { value: "0", label: "prices invented (all from PricingTool)" },
           ]}
         />
@@ -250,9 +220,7 @@ export default function VisaMatchPage() {
         onComplete={onComplete}
       />
       {submitError ? (
-        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>
-          {submitError}
-        </p>
+        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>{submitError}</p>
       ) : null}
     </AppFrame>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import type { FC, ReactNode } from "react";
+import { useHaptic } from "../../hooks/useHaptic";
 
 export interface BranchOption {
   id: string;
@@ -16,57 +17,75 @@ export interface AppBranchSelectorProps {
   onSelect?: (option: BranchOption) => void;
 }
 
-/** 2-card branch picker used by the visa entry page ("Are you in Indonesia?")
- * and by kbli entry ("Do you already have a PT PMA?"). Click emits onSelect
- * and navigates via the `href` (Next.js <a> — progressive enhancement). */
+/**
+ * 2-card branch picker used by /visa (Clock vs Match) and /kbli
+ * (Decoder vs Builder). Click fires onSelect, navigates via href,
+ * and emits a small haptic (iOS16.4+). See spec §1 Hero entry page.
+ */
 export const AppBranchSelector: FC<AppBranchSelectorProps> = ({
   question,
   options,
   onSelect,
 }) => {
+  const haptic = useHaptic();
+  const handleClick = (opt: BranchOption) => {
+    haptic(8);
+    onSelect?.(opt);
+  };
   return (
     <div
       role="group"
       aria-label={question}
-      style={{ display: "grid", gap: "var(--space-4)" }}
+      style={{ display: "grid", gap: "var(--space-3, 1rem)" }}
     >
-      <p style={{ fontSize: "var(--text-xl)", margin: 0, fontWeight: 600 }}>
+      <p style={{
+        fontSize: "clamp(1.1rem, 2.4vw, 1.25rem)",
+        margin: 0,
+        fontWeight: 600,
+        color: "var(--text-primary)",
+      }}>
         {question}
       </p>
-      <div
-        style={{
-          display: "grid",
-          gap: "var(--space-3)",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        }}
-      >
+      <div style={{
+        display: "grid",
+        gap: "var(--space-2, 0.5rem)",
+      }}>
         {options.map((opt) => (
           <a
             key={opt.id}
             href={opt.href}
-            onClick={() => onSelect?.(opt)}
+            onClick={() => handleClick(opt)}
             style={{
-              display: "grid",
-              gap: "var(--space-2)",
-              padding: "var(--space-4)",
-              borderRadius: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              minHeight: "56px",
+              padding: "var(--space-3, 0.9rem) var(--space-4, 1.2rem)",
+              borderRadius: "4px",
               border: "1px solid var(--color-border-subtle)",
               background: "var(--surface-raised)",
               textDecoration: "none",
-              color: "var(--color-text-primary)",
-              minHeight: 120,
+              color: "var(--text-primary)",
+              transition: "border-color var(--motion-duration-base, 250ms) var(--motion-curve-editorial), background-color var(--motion-duration-base, 250ms) var(--motion-curve-editorial)",
             }}
           >
-            {opt.icon ? <div aria-hidden>{opt.icon}</div> : null}
-            <strong style={{ fontSize: "var(--text-lg)" }}>{opt.title}</strong>
-            <span
-              style={{
+            <span style={{ display: "grid", gap: "var(--space-1, 0.25rem)" }}>
+              <strong style={{ fontWeight: 600, fontSize: "var(--text-md, 1rem)" }}>
+                {opt.title}
+              </strong>
+              <span style={{
                 color: "var(--color-text-muted)",
-                fontSize: "var(--text-sm)",
+                fontSize: "var(--text-sm, 0.88rem)",
                 lineHeight: 1.4,
-              }}
-            >
-              {opt.description}
+              }}>
+                {opt.description}
+              </span>
+            </span>
+            <span aria-hidden style={{
+              color: "var(--color-text-muted)",
+              fontSize: "1.25rem",
+            }}>
+              →
             </span>
           </a>
         ))}

@@ -1,33 +1,29 @@
 "use client";
 
-import { useState, type FC } from "react";
+import { useEffect, useRef, useState, type FC } from "react";
+import { useHaptic } from "../../hooks/useHaptic";
 
 export interface AppWhatsAppCTAProps {
-  /** Public app identifier: "visa_clock", "visa_match", etc. */
   source: string;
-  /** Short headline above the button. */
   headline: string;
-  /** 1-3 sentence explanation. Use X_BRAND_VOICE — no "we hope". */
   description: string;
-  /** Context lines to prefill in the WA message body. */
   whatsappContext: { label: string; value: string }[];
-  /** Optional shareable result hash (e.g. visa_checks.hash). */
   resultHash?: string;
-  /** Free-form payload to persist in lead_intents.context. */
   context?: Record<string, unknown>;
-  /** UTM overrides; the app usually fills these from the URL. */
   utm?: Record<string, unknown>;
-  /** Override button label. */
-  label?: string;
-  /** Called after a successful lead capture with the intent id. */
+  /** Label shown above the stamp (before user scrolls past the key reveal). */
+  defaultLabel?: string;
+  /** Label shown after the user scrolls past the stampRef element. */
+  postScrollLabel?: string;
+  /**
+   * Ref of the element which, once out of view (scrolled past), switches
+   * the CTA to sticky-bottom + postScrollLabel.
+   */
+  stampRef?: React.RefObject<Element | null>;
   onCaptured?: (payload: { leadIntentId: string; whatsappUrl: string }) => void;
-  /** API base; default empty string uses same-origin. */
   apiBase?: string;
 }
 
-/** Primary WhatsApp CTA. Calls POST /api/lead/capture, gets the wa.me
- * URL, and navigates the user to it. If the call fails, falls back to
- * a generic wa.me link so the user is never stuck. */
 export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
   source,
   headline,
@@ -36,14 +32,32 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
   resultHash,
   context,
   utm,
-  label = "Continue on WhatsApp",
+  defaultLabel = "Continue on WhatsApp →",
+  postScrollLabel,
+  stampRef,
   onCaptured,
   apiBase = "",
 }) => {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sticky, setSticky] = useState(false);
+  const haptic = useHaptic();
+  const selfRef = useRef<HTMLDivElement | null>(null);
+
+  // Observe the stampRef — once it's out of view, pin sticky.
+  useEffect(() => {
+    if (!stampRef?.current) return;
+    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setSticky(!entry.isIntersecting),
+      { rootMargin: "-10% 0px 0px 0px", threshold: 0 },
+    );
+    io.observe(stampRef.current);
+    return () => io.disconnect();
+  }, [stampRef]);
 
   const handoff = async () => {
+    haptic(10);
     setPending(true);
     setError(null);
     try {
@@ -69,36 +83,43 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
       });
       window.location.href = json.whatsapp_url;
     } catch {
-      setError(
-        "We could not open WhatsApp automatically. Opening the basic link.",
-      );
-      // Graceful fallback: a bare wa.me so the user is never stranded.
+      setError("We could not open WhatsApp automatically. Opening the basic link.");
       window.location.href = "https://wa.me/628213107363";
     } finally {
       setPending(false);
     }
   };
 
+  const label = sticky && postScrollLabel ? postScrollLabel : defaultLabel;
+
   return (
     <div
+      ref={selfRef}
       style={{
+        position: sticky ? "sticky" : "static",
+        bottom: sticky ? "env(safe-area-inset-bottom, 0px)" : undefined,
+        zIndex: sticky ? 50 : undefined,
         display: "grid",
-        gap: "var(--space-3)",
-        padding: "var(--space-4)",
-        background: "var(--surface-raised)",
-        borderRadius: 12,
+        gap: "var(--space-3, 1rem)",
+        padding: "var(--space-4, 1.5rem)",
+        background: sticky
+          ? "var(--surface-scrim, rgba(26, 50, 88, 0.92))"
+          : "var(--surface-raised)",
+        borderRadius: "12px",
         border: "1px solid var(--color-border-subtle)",
+        boxShadow: sticky ? "0 -8px 24px rgba(0, 0, 0, 0.18)" : undefined,
+        transition: "background var(--motion-duration-base, 250ms) var(--motion-curve-editorial), box-shadow var(--motion-duration-base, 250ms) var(--motion-curve-editorial)",
       }}
     >
-      <strong style={{ fontSize: "var(--text-lg)" }}>{headline}</strong>
-      <p
-        style={{
-          margin: 0,
-          color: "var(--color-text-muted)",
-          fontSize: "var(--text-md)",
-          lineHeight: 1.5,
-        }}
-      >
+      <strong style={{ fontSize: "var(--text-lg, 1.12rem)", color: "var(--text-primary)" }}>
+        {headline}
+      </strong>
+      <p style={{
+        margin: 0,
+        color: "var(--color-text-muted)",
+        fontSize: "var(--text-md, 1rem)",
+        lineHeight: 1.5,
+      }}>
         {description}
       </p>
       <button
@@ -107,30 +128,21 @@ export const AppWhatsAppCTA: FC<AppWhatsAppCTAProps> = ({
         disabled={pending}
         style={{
           justifySelf: "start",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "var(--space-2)",
-          padding: "var(--space-3) var(--space-5)",
-          borderRadius: 8,
+          padding: "var(--space-3, 0.85rem) var(--space-5, 1.5rem)",
+          borderRadius: "4px",
           border: "none",
           background: "#25D366",
           color: "#fff",
           fontWeight: 600,
           cursor: pending ? "wait" : "pointer",
           opacity: pending ? 0.7 : 1,
+          minHeight: "44px",
         }}
       >
         {pending ? "Opening…" : label}
       </button>
       {error ? (
-        <p
-          role="alert"
-          style={{
-            margin: 0,
-            color: "var(--color-error)",
-            fontSize: "var(--text-sm)",
-          }}
-        >
+        <p role="alert" style={{ margin: 0, color: "var(--color-error)", fontSize: "var(--text-sm, 0.88rem)" }}>
           {error}
         </p>
       ) : null}
