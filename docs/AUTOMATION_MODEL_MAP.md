@@ -164,7 +164,6 @@
 | #   | Job                       | Schedule (WITA) | LLM?  | Modello                     | Note                                                |
 | --- | ------------------------- | --------------- | ----- | --------------------------- | --------------------------------------------------- |
 | 1   | **auto_test.sh**          | 02:15           | LLM   | qwen2.5:latest (via Ollama) | Test con Ollama finestra 01-06                      |
-| 2   | **seo_guardian_agent.py** | 01:00           | LLM   | (backend-rag Ollama)        | SEO via Ollama                                      |
 | 3   | **system_doctor.py**      | 08:00           | —     | No LLM diretto              | Parsa log, non genera                               |
 | 4   | auto_sentinel.sh          | 03:00           | SHELL | —                           | Wrapper sentinel                                    |
 | 5   | auto_kb_ingest.sh         | 05:00           | SHELL | —                           | Spider pipeline                                     |

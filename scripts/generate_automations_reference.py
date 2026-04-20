@@ -302,7 +302,6 @@ AIR_LOG_MAP = {
     "system_doctor": "~/Projects/nuzantara/logs/system_doctor.log",
     "drive_token_watchdog": "~/Projects/nuzantara/logs/drive_watchdog.log",
     "ragas_eval": "~/Projects/nuzantara/logs/ragas_eval.log",
-    "seo_guardian_agent": "~/Projects/nuzantara/logs/seo_guardian.log",
     "t4_monitor": "~/.openclaw/logs/t4_monitor.log",
     "crm_automation_engine": "~/Projects/nuzantara/apps/backend-rag/logs/crm_automation.log",
     "fly_pg_backup": "~/logs/fly-pg-backup.log",
