@@ -125,7 +125,7 @@ export const AppEmailOptIn: FC<AppEmailOptInProps> = ({
             padding: "var(--space-2) var(--space-4)",
             borderRadius: 6,
             border: "none",
-            background: "var(--bz-accent, #d4845a)",
+            background: "var(--accent-funnel)",
             color: "#fff",
             fontWeight: 600,
             cursor: pending ? "wait" : "pointer",
