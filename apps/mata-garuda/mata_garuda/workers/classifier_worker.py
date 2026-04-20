@@ -7,7 +7,7 @@ Reads from garuda:enriched (after dedup/normalizer), assigns:
 - `keywords`      up to 8 lowercase tokens
 - `relevance_score` 1..5 (deterministic from RELEVANCE_WEIGHTS[domain])
 
-Uses `ollama_tools.generate_json` against `gemma4:26b`. When Ollama is
+Uses `ollama_tools.generate_json` against `qwen3:8b`. When Ollama is
 down or returns garbage, falls back to a deterministic keyword-match
 classifier so the pipeline keeps moving. The fallback is intentionally
 simple (substring over a lowercase corpus) — its job is only to stop
@@ -33,7 +33,7 @@ logger = logging.getLogger("mata_garuda.workers.classifier")
 CONSUMER_GROUP = "classifier"
 CONSUMER_NAME = "classifier-1"
 
-CLASSIFIER_MODEL = "gemma4:26b"
+CLASSIFIER_MODEL = "qwen3:8b"
 
 _DOMAINS = tuple(RELEVANCE_WEIGHTS.keys()) + ("other",)
 

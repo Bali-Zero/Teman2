@@ -42,11 +42,15 @@ def generate(
     CLI-only + minimal-deps posture of Mata Garuda. Returns the raw text
     response, or None on any failure (timeout, network, parse).
     """
+    # think:false disables qwen3 thinking mode (otherwise <think>...</think>
+    # preamble bloats num_predict budget and breaks JSON extraction for
+    # workers). Harmless for non-thinking models.
     payload = json.dumps(
         {
             "model": model,
             "prompt": prompt,
             "stream": False,
+            "think": False,
             "options": {"temperature": temperature, "num_predict": num_predict},
         }
     )

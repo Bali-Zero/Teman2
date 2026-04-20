@@ -55,9 +55,9 @@ Output ONLY a JSON object:
 
 
 def score_with_ollama(title: str, content: str, source: str) -> dict:
-    """Score an item using local Ollama (gemma4:26b — MoE, always hot on Pro).
+    """Score an item using local Ollama (qwen3:8b — MoE, always hot on Pro).
 
-    gemma4:26b is preferred over qwen3.5:9b because:
+    qwen3:8b is preferred over qwen3.5:9b because:
     - MoE architecture = fast inference even at 26B params
     - Always loaded in memory on Pro (H24)
     - qwen3.5:9b requires cold start at 02:00 and has think-mode latency
@@ -73,10 +73,12 @@ def score_with_ollama(title: str, content: str, source: str) -> dict:
             [
                 "curl", "-s", "http://localhost:11434/api/generate",
                 "-d", json.dumps({
-                    "model": "gemma4:26b",
+                    "model": "qwen3:8b",
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 100},
+                    "think": False,
+                    "format": "json",
+                    "options": {"temperature": 0.1, "num_predict": 120},
                 }),
             ],
             capture_output=True,
@@ -87,15 +89,20 @@ def score_with_ollama(title: str, content: str, source: str) -> dict:
         if result.returncode == 0:
             response = json.loads(result.stdout)
             text = response.get("response", "")
-            # Extract JSON from response
+            # Qwen with think:false + format:json returns clean JSON.
+            # Strip any residual <think> tags from older responses as guard.
+            import re
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
             try:
-                # Try to find JSON in the response
-                import re
-                json_match = re.search(r'\{[^}]+\}', text)
-                if json_match:
-                    return json.loads(json_match.group())
-            except (json.JSONDecodeError, AttributeError):
-                pass
+                return json.loads(text.strip())
+            except json.JSONDecodeError:
+                # Fallback: grab first {...} block (greedy across newlines)
+                m = re.search(r"\{.*\}", text, flags=re.DOTALL)
+                if m:
+                    try:
+                        return json.loads(m.group())
+                    except json.JSONDecodeError:
+                        pass
 
     except (subprocess.TimeoutExpired, Exception) as e:
         logger.warning(f"[scorer] Ollama failed: {e}")
