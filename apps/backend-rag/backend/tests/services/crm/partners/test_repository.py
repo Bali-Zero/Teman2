@@ -352,3 +352,14 @@ async def test_audit_log_insert_and_list(repo, user_factory):
     # JSON round-trip
     assert entries[0].before_json == {"onboarding_status": "pending_approval"}
     assert entries[1].after_json == {"full_name": "Audit Test"}
+
+
+# --------------------------------------------------------------------------
+# 16. update_partner rejects empty fields dict
+# --------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_update_partner_rejects_empty_fields(repo, partner_factory):
+    p = await partner_factory()
+    with pytest.raises(ValueError, match="at least one field"):
+        await repo.update_partner(p)

@@ -17,6 +17,9 @@ from backend.services.crm.partners.models import (
 
 logger = logging.getLogger(__name__)
 
+# Commission state machine.
+# Source of truth: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3.3 + §4.4.
+# v1 terminal states: paid, offset_applied, waived, repaid.
 _ALLOWED_TRANSITIONS: dict[CommissionStatus, set[CommissionStatus]] = {
     "accrued": {"approved"},
     "approved": {"paid"},
@@ -68,9 +71,19 @@ class PartnersRepository:
         placeholders = ", ".join(f"${i+1}" for i in range(len(vals)))
         sql = f"INSERT INTO partners ({', '.join(cols)}) VALUES ({placeholders}) RETURNING id"
         row = await self.conn.fetchrow(sql, *vals)
+        logger.debug("insert_partner id=%s email=%s", row["id"], email)
         return row["id"]
 
     async def _assert_email_is_not_internal(self, email: str) -> None:
+        """Reject partner emails that match an internal team/admin user.
+
+        KNOWN RACE: This is a SELECT-then-INSERT pattern without a cross-table
+        DB constraint. A concurrent INSERT into users with role in (team,admin)
+        between this check and the partners INSERT would slip through. v2
+        should add a SERIALIZABLE transaction wrapper or a cross-table unique
+        trigger. For v1 the race window is narrow and acceptable (rare admin
+        operation concurrent with partner onboarding).
+        """
         row = await self.conn.fetchrow(
             "SELECT 1 FROM users WHERE email = $1 AND role IN ('team','admin')",
             email,
@@ -107,6 +120,8 @@ class PartnersRepository:
         return [self._row_to_partner(r) for r in rows]
 
     async def update_partner(self, partner_id: UUID, **fields: Any) -> None:
+        if not fields:
+            raise ValueError("update_partner requires at least one field")
         bad = set(fields) - _PARTNER_UPDATABLE_COLS
         if bad:
             raise ValueError(f"Non-updatable fields: {bad}")
@@ -198,7 +213,11 @@ class PartnersRepository:
         )
         if row is not None:
             raise RuntimeError("Cannot delete referral with commissions recorded")
-        await self.conn.execute("DELETE FROM partner_referrals WHERE id = $1", referral_id)
+        try:
+            await self.conn.execute("DELETE FROM partner_referrals WHERE id = $1", referral_id)
+        except asyncpg.ForeignKeyViolationError as e:
+            # Race: commission inserted between our SELECT and DELETE.
+            raise RuntimeError("Cannot delete referral with commissions recorded") from e
 
     # ── Commissions (append-only) ───────────────────────────────────────
 
@@ -249,6 +268,10 @@ class PartnersRepository:
             status, eligible_for_approval_at,
             manual_override_reason, clawback_reason, idempotency_key,
         )
+        logger.debug(
+            "insert_commission id=%s partner=%s type=%s status=%s",
+            row["id"], partner_id, entry_type, status,
+        )
         return row["id"]
 
     async def get_commission(self, commission_id: UUID) -> PartnerCommission | None:
@@ -263,7 +286,7 @@ class PartnersRepository:
         args: list[Any] = [partner_id]
         where = "partner_id = $1"
         if status is not None:
-            args.append(status); where += f" AND status = $2"
+            args.append(status); where += f" AND status = ${len(args)}"
         sql = f"SELECT * FROM partner_commissions WHERE {where} ORDER BY created_at DESC"
         rows = await self.conn.fetch(sql, *args)
         return [self._row_to_commission(r) for r in rows]
@@ -297,6 +320,9 @@ class PartnersRepository:
             raise ValueError(
                 f"Disallowed transition: {current.status!r} -> {new_status!r}"
             )
+        logger.debug(
+            "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
+        )
         fragments, args = ["status = $2"], [commission_id, new_status]
         if new_status == "approved":
             fragments += ["approved_at = now()", f"approved_by = ${len(args)+1}"]; args.append(approved_by)

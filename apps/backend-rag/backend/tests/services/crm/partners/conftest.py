@@ -25,19 +25,27 @@ import asyncpg
 import pytest_asyncio
 
 
+_SHIELDED: list[str] = []  # track what WE injected so we can clean up
+
+
 def _shield(pkg_name: str, path: list[str] | None = None) -> None:
     """Install a namespace in sys.modules if the real package isn't there yet.
 
     We set __path__ to the real filesystem path so submodule discovery still
     works, but we don't execute the heavy __init__.py.
+
+    If the module is already in sys.modules (e.g. another CRM test imported it
+    first), we skip shielding entirely so the real module stays in place.
     """
-    if pkg_name not in sys.modules:
-        mod = _types.ModuleType(pkg_name)
-        if path is not None:
-            mod.__path__ = path  # type: ignore[assignment]
-        else:
-            mod.__path__ = []  # type: ignore[assignment]
-        sys.modules[pkg_name] = mod
+    if pkg_name in sys.modules:
+        return  # real module already loaded — don't touch it
+    mod = _types.ModuleType(pkg_name)
+    if path is not None:
+        mod.__path__ = path  # type: ignore[assignment]
+    else:
+        mod.__path__ = []  # type: ignore[assignment]
+    sys.modules[pkg_name] = mod
+    _SHIELDED.append(pkg_name)
 
 
 # Resolve the apps/backend-rag/ directory so we can build correct __path__s.
@@ -64,6 +72,15 @@ _BACKEND_RAG_DIR = os.path.dirname(
 _shield("backend",              [os.path.join(_BACKEND_RAG_DIR, "backend")])
 _shield("backend.services",     [os.path.join(_BACKEND_RAG_DIR, "backend", "services")])
 _shield("backend.services.crm", [os.path.join(_BACKEND_RAG_DIR, "backend", "services", "crm")])
+
+
+def pytest_unconfigure(config: object) -> None:  # noqa: ARG001
+    """Remove shielded stubs after test session so subsequent test runs
+    (or long-lived pytest sessions) don't leak hollow modules."""
+    for name in _SHIELDED:
+        if name in sys.modules and not hasattr(sys.modules[name], "__file__"):
+            # only remove if still the hollow stub (real modules have __file__)
+            del sys.modules[name]
 
 
 _DEFAULT_DB_URL = os.environ.get(
@@ -210,7 +227,7 @@ DROP TABLE IF EXISTS users;
 """
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 async def db_conn() -> asyncpg.Connection:
     """
     Real asyncpg connection with all partner tables created for the test,
@@ -233,7 +250,7 @@ async def db_conn() -> asyncpg.Connection:
 # Factories
 # --------------------------------------------------------------------------
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
     """Returns an async callable that inserts a user row and returns its UUID."""
     async def _create(
@@ -252,7 +269,7 @@ def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, An
     return _create
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
     """Returns an async callable that inserts a process row and returns its UUID."""
     async def _create() -> uuid.UUID:
@@ -266,7 +283,7 @@ def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
     return _create
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
     """Returns an async callable that inserts a partner and returns its UUID."""
     _counter = [0]
@@ -294,7 +311,7 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
     return _create
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 def referral_factory(
     db_conn: asyncpg.Connection,
     process_factory: Callable[..., Coroutine[Any, Any, uuid.UUID]],
