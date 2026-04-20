@@ -211,6 +211,8 @@ STATUS_VALUES = {
     "cancelled",
 }
 
+PAYMENT_STATUS_VALUES = {"unpaid", "partial", "paid"}
+
 # ================================================
 # PYDANTIC MODELS
 # ================================================
@@ -292,6 +294,16 @@ class PracticeUpdate(BaseModel):
         """Validate priority is one of allowed values"""
         if v is not None and v not in PRIORITY_VALUES:
             raise ValueError(f"priority must be one of {PRIORITY_VALUES}, got '{v}'")
+        return v
+
+    @field_validator("payment_status")
+    @classmethod
+    def validate_payment_status(cls, v: str | None) -> str | None:
+        """Validate payment_status is one of allowed values (unpaid|partial|paid)."""
+        if v is not None and v not in PAYMENT_STATUS_VALUES:
+            raise ValueError(
+                f"payment_status must be one of {PAYMENT_STATUS_VALUES}, got '{v}'",
+            )
         return v
 
     @field_validator("quoted_price", "actual_price", "paid_amount")
