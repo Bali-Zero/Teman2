@@ -171,6 +171,32 @@ def _sterilize_client_for_partner(full_name: str) -> str:
     return f"{parts[0]} {parts[-1][0]}."
 
 
+def _sterilize_service_type_for_partner(raw: str | None) -> str:
+    """Map a raw service_type to a generic category for partner visibility.
+
+    CRIT-6 / UU PDP data minimization: partner should know a referral converted,
+    not which specific visa class / investment threshold / tax service was
+    purchased. Revealing "KITAS E33G" tells a partner the client's residency
+    plan; "PT PMA Rp 10M" reveals investment scale.
+
+    Mapping is additive — add new keywords when new service types land.
+    """
+    if not raw:
+        return "Service"
+    rl = raw.lower()
+    if any(k in rl for k in ("kitas", "visa", "c1", "c2", "c7", "e33", "e23", "e28")):
+        return "Visa / KITAS service"
+    if "kitap" in rl:
+        return "KITAP service"
+    if any(k in rl for k in ("pma", "company", "pt ", "perusahaan")):
+        return "Company setup"
+    if any(k in rl for k in ("tax", "pajak", "pph", "npwp")):
+        return "Tax service"
+    if any(k in rl for k in ("property", "sertifikat")):
+        return "Property service"
+    return "Other service"
+
+
 def _partner_to_dict(p: Any) -> dict[str, Any]:
     """Convert Partner dataclass or asyncpg Record to JSON-serialisable dict."""
     if dataclasses.is_dataclass(p) and not isinstance(p, type):
@@ -289,8 +315,12 @@ async def me_referrals(
         {
             "id": str(r["id"]),
             "practice_id": str(r["practice_id"]),
-            "service_type": r["service_type"],
-            "process_status": r["process_status"],
+            # CRIT-6: UU PDP Art 16 data minimization — raw service_type (e.g.
+            # "KITAS E33G") reveals visa category / residency plan about the
+            # referred client. Partner has legitimate interest in conversion but
+            # not in the specific class. Map to generic category.
+            "service_type": _sterilize_service_type_for_partner(r["service_type"]),
+            "process_status": r["process_status"],  # TODO(CRIT-6 v1.1): consider sterilizing this too
             "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
             "referred_at": r["referred_at"].isoformat() if r["referred_at"] else None,
         }

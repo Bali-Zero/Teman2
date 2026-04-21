@@ -779,7 +779,56 @@ class TestFinanceExport:
         assert "invalid date format" in resp.json()["detail"]
 
 
-# ── 11. sterilize helper ──────────────────────────────────────────────────────
+# ── 11. sterilize helpers ─────────────────────────────────────────────────────
+
+class TestSterilizeServiceTypeForPartner:
+    """Unit tests for _sterilize_service_type_for_partner (CRIT-6)."""
+
+    @pytest.mark.unit
+    def test_kitas_e33g(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("KITAS E33G") == "Visa / KITAS service"
+
+    @pytest.mark.unit
+    def test_visa_keyword(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("B211 Visa Extension") == "Visa / KITAS service"
+
+    @pytest.mark.unit
+    def test_kitap_service(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("KITAP application") == "KITAP service"
+
+    @pytest.mark.unit
+    def test_pt_pma_setup(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("PT PMA setup") == "Company setup"
+
+    @pytest.mark.unit
+    def test_tax_pph21(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("Tax PPh21 filing") == "Tax service"
+
+    @pytest.mark.unit
+    def test_property_sertifikat(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("Property sertifikat") == "Property service"
+
+    @pytest.mark.unit
+    def test_none_returns_generic(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st(None) == "Service"
+
+    @pytest.mark.unit
+    def test_empty_string_returns_generic(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("") == "Service"
+
+    @pytest.mark.unit
+    def test_unknown_type_returns_other(self) -> None:
+        from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+        assert st("something completely new v99") == "Other service"
+
 
 class TestSterilizeClientName:
     @pytest.mark.unit
