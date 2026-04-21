@@ -289,3 +289,17 @@ export const listActivePartnersDropdown = () =>
 /** List audit log entries for a partner */
 export const listAuditLog = (partnerId: number) =>
   api.get<AuditLogEntry[]>(`${BASE}/${partnerId}/audit-log`);
+
+// ─── Partner Self-View (role=partner) ──────────────────────────────────────
+
+/** Get the authenticated partner's own profile */
+export const getMe = () =>
+  api.get<Partner>(`${BASE}/me`);
+
+/** Get the authenticated partner's own referrals (client names already sterilized) */
+export const getMyReferrals = () =>
+  api.get<PartnerReferral[]>(`${BASE}/me/referrals`);
+
+/** Get the authenticated partner's own commissions ledger */
+export const getMyCommissions = () =>
+  api.get<PartnerCommission[]>(`${BASE}/me/commissions`);
