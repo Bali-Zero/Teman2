@@ -16,6 +16,11 @@ from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.crm.welcome.welcome_templates import PRACTICE_DOCUMENT_CHECKLISTS
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.notifications.email_audit import (
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -34,7 +39,7 @@ class WaitingDocumentsService:
         self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
     ])
     async def trigger_on_waiting_documents(
@@ -158,7 +163,14 @@ Cheers,
 Zantara CRM 🤖
 """
 
-        await self._send_with_brevo_fallback(team_leader_email, subject, body)
+        await self._send_with_brevo_fallback(
+            team_leader_email,
+            subject,
+            body,
+            email_type="waiting_docs_team",
+            practice_id=practice_data["id"],
+            client_id=practice_data.get("client_id"),
+        )
 
     async def _send_client_documents_request(
         self,
@@ -212,12 +224,42 @@ The Zantara Indonesia Team
 📧 support@balizero.com | 🌐 www.balizero.com
 """
 
-        await self._send_with_brevo_fallback(client_email, subject, body)
+        await self._send_with_brevo_fallback(
+            client_email,
+            subject,
+            body,
+            email_type="waiting_docs_client",
+            practice_id=practice_data["id"],
+            client_id=practice_data.get("client_id"),
+        )
 
     async def _send_with_brevo_fallback(
-        self, to_email: str, subject: str, body: str,
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        email_type: str,
+        practice_id: int | None = None,
+        client_id: int | None = None,
     ) -> None:
-        """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
+        """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
+
+        Every attempt is recorded in ``email_send_log`` so the retry worker
+        can pick up drops silently. If BOTH providers fail the exception is
+        re-raised after emitting a Telegram page — the caller's outer
+        try/except then flips ``*_notified=False`` in the results dict.
+        """
+        row_id = await log_email_attempt(
+            self.db_pool,
+            email_type=email_type,
+            to_email=to_email,
+            subject=subject,
+            practice_id=practice_id,
+            client_id=client_id,
+        )
+
+        # 1) Brevo
         try:
             html_body = body.replace("\n", "<br>")
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -228,15 +270,44 @@ The Zantara Indonesia Team
                 )
                 response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")
+            await record_email_result(
+                self.db_pool, row_id, status="sent", provider="brevo",
+            )
             return
         except Exception as brevo_error:
             logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+            brevo_err_msg = str(brevo_error)
 
-        await self.zoho_email_service.send_email(
-            to_email=to_email,
-            subject=subject,
-            body=body,
-        )
+        # 2) Zoho fallback — wrapped so that a double-failure is observable.
+        try:
+            await self.zoho_email_service.send_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+            )
+            logger.info(f"Email sent to {to_email} via Zoho fallback")
+            await record_email_result(
+                self.db_pool, row_id, status="sent", provider="zoho",
+                error_message=f"brevo_failed: {brevo_err_msg}",
+            )
+            return
+        except Exception as zoho_error:
+            combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
+            logger.error(
+                f"Both Brevo and Zoho failed for {to_email}: {combined_err}",
+            )
+            await record_email_result(
+                self.db_pool, row_id, status="failed", provider="zoho",
+                error_message=combined_err,
+            )
+            notify_email_failure_critical(
+                email_type=email_type,
+                to_email=to_email,
+                subject=subject,
+                practice_id=practice_id,
+                error=combined_err,
+            )
+            raise
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
         """Fetch practice data from database."""
