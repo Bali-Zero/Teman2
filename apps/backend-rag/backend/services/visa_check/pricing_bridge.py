@@ -20,21 +20,45 @@ from backend.services.visa_check.catalogue import VisaType
 
 logger = logging.getLogger(__name__)
 
+# Known-None set: VisaTypes for which the pricing JSON has no entry.
+# Bridge returns (None, None) for these and the UI shows
+# "confirm on WhatsApp". These are intentional, not bugs.
+KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset({
+    VisaType.C6,       # Social visit — no standalone C6 row in pricing JSON
+    VisaType.E30A,     # Education — JSON lacks a student visa entry
+})
+
+
 # Map our VisaType codes to substrings likely to appear in the
-# price JSON keys (e.g. "C2 Business", "Investor KITAS 2 Years").
+# price JSON keys. Names reflect the JSON shape exactly (see
+# backend/data/bali_zero_official_prices_2025.json). Offshore
+# variants are preferred (standard fresh-applicant path).
 _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
-    VisaType.B211A: ("B211A", "Tourism"),
-    VisaType.C1: ("C1", "Tourism"),
-    VisaType.C2: ("C2 Business",),
-    VisaType.C7: ("C7", "Internship"),
-    VisaType.C7A: ("C7A", "Music"),
-    VisaType.C7B: ("C7B", "Sport"),
-    VisaType.E33G: ("Digital Nomad", "Remote Worker", "E33G"),
-    VisaType.E28A: ("Investor KITAS", "E28A"),
-    VisaType.E23: ("Work KITAS", "E23"),
-    VisaType.E33F: ("Retirement", "E33F"),
-    VisaType.E31: ("Family", "Spouse", "Dependent", "E31"),
-    VisaType.E30A: ("Student", "E30A"),
+    VisaType.C1:             ("C1 Tourism",),
+    VisaType.C2:             ("C2 Business",),
+    VisaType.C6:             ("C6", "Social"),                              # known None
+    VisaType.C7:             ("C7A&B Music/Art", "C7"),                     # best-effort
+    VisaType.C7A:            ("C7A&B Music/Art", "C7A"),
+    VisaType.C7B:            ("C7A&B Music/Art", "C7B"),
+    VisaType.C18:            ("C18 Work Trial",),
+    VisaType.C22A:           ("C22A&B Internship (60 Days)", "C22A&B Internship"),
+    VisaType.D2:             ("D12 Business Investigation (1 Year)", "D2"),  # closest multi-entry row
+    VisaType.D12:            (
+        "D12 Business Investigation (1 Year)",
+        "D12 Business Investigation (2 Years)",
+    ),
+    VisaType.E23:            ("Working KITAS (Offshore)", "Working KITAS"),
+    VisaType.E23_FREELANCE:  ("Freelance E23 (Offshore)", "Freelance E23"),
+    VisaType.E28A:           ("Investor KITAS 2 Years (Offshore)", "Investor KITAS"),
+    VisaType.E30A:           ("Education", "Student"),                       # known None
+    VisaType.E31:            (
+        "Dependent 1 Year (Offshore)",
+        "Spouse 1 Year (Offshore)",
+        "Family",
+    ),
+    VisaType.E33E:           ("Retirement KITAP + MERP", "Retirement"),
+    VisaType.E33F:           ("Retirement (Offshore)", "Retirement"),
+    VisaType.E33G:           ("E33G Remote Worker (Offshore)", "E33G Remote Worker"),
 }
 
 
@@ -67,7 +91,7 @@ def estimate_match_cost(
         results = pricing.search_service(hint)
         if not isinstance(results, dict):
             continue
-        services = results.get("services") or results
+        services = results.get("results") or results.get("services") or results
         # Walk each category, take the first match.
         for category, items in services.items():
             if category == "contact_info":
@@ -104,3 +128,10 @@ def _extract_cost(item: dict[str, Any]) -> int | None:
     if isinstance(raw, str):
         return _idr_string_to_int(raw)
     return None
+
+
+__all__ = [
+    "KNOWN_NONE_VISAS",
+    "_idr_string_to_int",
+    "estimate_match_cost",
+]
