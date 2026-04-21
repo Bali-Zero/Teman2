@@ -196,8 +196,12 @@ jobs:
         run: |
           # Post-deploy rolling restart may take ~20s for the new image to
           # accept ssh. Short polling loop.
+          # NOTE: --command runs its argv directly (not through /bin/sh), so
+          # any shell metacharacter (&&, pipes, globs) MUST be wrapped in
+          # `/bin/sh -c '...'` explicitly. Without wrapping, `test` sees
+          # "&&" as a literal extra arg and fails.
           for i in $(seq 1 6); do
-            if flyctl ssh console --app nuzantara-rag --command "test -f /app/backend/migrations/apply_migration_119.py && echo ready" 2>/dev/null | grep -q ready; then
+            if flyctl ssh console --app nuzantara-rag --command "/bin/sh -c 'test -f /app/backend/migrations/apply_migration_119.py && echo ready'" 2>/dev/null | grep -q ready; then
               echo "✅ New image live (apply_migration_119.py present)"
               exit 0
             fi
