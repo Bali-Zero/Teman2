@@ -563,16 +563,14 @@ class TestReferrals:
 
     @pytest.mark.integration
     def test_create_referral_success_201(self, admin_app) -> None:
+        # CATA-3: create_referral no longer calls verify_partner_access_with_role.
+        # Admin role: _require_team_or_admin passes, then directly checks partner exists.
         _, client, _, _ = admin_app
-        with (
-            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-        ):
-            async def _verify(*a, **kw):
-                return _make_partner()
-            mock_verify.side_effect = _verify
+        partner = _make_partner()
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value
             svc_instance.repo = MagicMock()
+            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
             svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
@@ -584,19 +582,14 @@ class TestReferrals:
 
     @pytest.mark.integration
     def test_create_referral_process_conflict_409(self, admin_app) -> None:
-        import asyncpg
-        _, client, _, _ = admin_app
         # asyncpg.UniqueViolationError has a non-standard constructor — use a
         # plain Exception with "unique" in the message to trigger the fallback.
-        with (
-            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
-            patch("backend.app.routers.partners.PartnersService") as MockSvc,
-        ):
-            async def _verify(*a, **kw):
-                return _make_partner()
-            mock_verify.side_effect = _verify
+        _, client, _, _ = admin_app
+        partner = _make_partner()
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value
             svc_instance.repo = MagicMock()
+            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
             svc_instance.repo.insert_referral = AsyncMock(
                 side_effect=Exception("unique constraint violation on partner_referrals_practice_unique_v1")
             )
@@ -657,6 +650,77 @@ class TestReferrals:
         _, client, _, _ = team_app
         resp = client.delete(f"/api/partners/referrals/{_REFERRAL_ID}")
         assert resp.status_code == 403
+
+
+# ── 7b. CATA-3: Forbid partner self-assignment to referrals ──────────────────
+
+class TestCreateReferralCata3:
+    """CATA-3: partner role cannot self-assign to referrals; team must own partner."""
+
+    @pytest.mark.integration
+    def test_create_referral_forbidden_for_partner_role(self, partner_app) -> None:
+        """Partner-role user cannot POST to /referrals endpoint at all."""
+        _, client, _, _ = partner_app
+        resp = client.post(
+            f"/api/partners/{_PARTNER_ID}/referrals",
+            json={"practice_id": str(_PROCESS_ID), "notes": "fraud attempt"},
+        )
+        assert resp.status_code == 403
+        assert "team or admin" in resp.json()["detail"].lower()
+
+    @pytest.mark.integration
+    def test_create_referral_team_cannot_attach_unowned_partner(self, team_app) -> None:
+        """Team member A cannot create a referral for a partner owned by team member B."""
+        _, client, pool, conn = team_app
+        # Partner is assigned to a DIFFERENT user (_USER_ID), not the team member (_TEAM_ID)
+        partner_owned_by_other = _make_partner(assigned_to=_USER_ID)
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.repo = MagicMock()
+            svc_instance.repo.get_partner = AsyncMock(return_value=partner_owned_by_other)
+            resp = client.post(
+                f"/api/partners/{_PARTNER_ID}/referrals",
+                json={"practice_id": str(_PROCESS_ID)},
+            )
+        assert resp.status_code == 403
+        assert "team members may only create referrals for partners they own" in resp.json()["detail"]
+
+    @pytest.mark.integration
+    def test_create_referral_team_own_partner_no_practice_client_passes(self, team_app, fake_team) -> None:
+        """Team member can create referral when they own the partner and practice has no client."""
+        _, client, pool, conn = team_app
+        # Partner is owned by the team member
+        partner_owned_by_team = _make_partner(assigned_to=uuid.UUID(fake_team["user_id"]))
+        # practice_row has no client_id → skip client ownership check
+        practice_row = {"id": _PROCESS_ID, "client_id": None}
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.repo = MagicMock()
+            svc_instance.repo.get_partner = AsyncMock(return_value=partner_owned_by_team)
+            svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
+            conn.fetchrow = AsyncMock(return_value=practice_row)
+            resp = client.post(
+                f"/api/partners/{_PARTNER_ID}/referrals",
+                json={"practice_id": str(_PROCESS_ID)},
+            )
+        assert resp.status_code == 201
+        assert resp.json()["id"] == str(_REFERRAL_ID)
+
+    @pytest.mark.integration
+    def test_create_referral_admin_bypasses_ownership_check(self, admin_app) -> None:
+        """Admin can create referrals for any partner without ownership check."""
+        _, client, pool, conn = admin_app
+        partner = _make_partner(assigned_to=_TEAM_ID)  # owned by team, not admin
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.repo = MagicMock()
+            svc_instance.repo.get_partner = AsyncMock(return_value=partner)
+            svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
+            resp = client.post(
+                f"/api/partners/{_PARTNER_ID}/referrals",
+                json={"practice_id": str(_PROCESS_ID)},
+            )
+        assert resp.status_code == 201
 
 
 # ── 8. commissions ────────────────────────────────────────────────────────────

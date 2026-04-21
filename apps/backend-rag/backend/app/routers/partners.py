@@ -631,13 +631,58 @@ async def create_referral(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
-    """Record a referral for a partner. Team (owner) or admin."""
+    """Record a referral for a partner. Team (owner) or admin.
+
+    CATA-3: verify_partner_access_with_role allowed actor_role='partner'
+    (if user.partner_id == partner_id). A partner could POST to their own
+    /referrals with any practice_id and trigger commission accrual for
+    practices they never referred. Fraud vector — blocked here.
+
+    Access rules:
+    - partner role: always blocked (403).
+    - team role: must own this partner (assigned_to == user_id) AND must
+      own the referenced practice's client (client.assigned_to == user_id
+      or fallback: practice exists — soft guard, team-or-admin is primary).
+    - admin role: unrestricted.
+    """
+    _require_team_or_admin(user)  # CATA-3: partner role cannot self-assign to referrals
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
-            await verify_partner_access_with_role(
-                svc, UUID(str(user["user_id"])), user.get("role"), partner_id
-            )
+
+            # Access check: team member must own this partner.
+            partner = await svc.repo.get_partner(partner_id)
+            if partner is None:
+                raise HTTPException(status_code=404, detail="partner not found")
+            if user["role"] == "team" and partner.assigned_to != UUID(str(user["user_id"])):
+                raise HTTPException(
+                    status_code=403,
+                    detail="team members may only create referrals for partners they own",
+                )
+
+            # Practice ownership check: team member must own the referenced practice's client.
+            if user["role"] == "team":
+                practice_row = await conn.fetchrow(
+                    "SELECT id, client_id FROM practices WHERE id = $1",
+                    body.practice_id,
+                )
+                if practice_row is None:
+                    raise HTTPException(status_code=404, detail="practice not found")
+                if practice_row["client_id"] is not None:
+                    client_row = await conn.fetchrow(
+                        "SELECT assigned_to FROM clients WHERE id = $1",
+                        practice_row["client_id"],
+                    )
+                    if (
+                        client_row is not None
+                        and client_row["assigned_to"] is not None
+                        and str(client_row["assigned_to"]) != str(user["user_id"])
+                    ):
+                        raise HTTPException(
+                            status_code=403,
+                            detail="team members may only attach referrals to practices they own",
+                        )
+
             rid = await svc.repo.insert_referral(
                 partner_id=partner_id,
                 practice_id=body.practice_id,
