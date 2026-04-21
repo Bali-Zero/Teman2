@@ -11,8 +11,23 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Import the script file directly (it lives in /scripts/, not in a package).
-_SCRIPT_PATH = Path(__file__).resolve().parents[4] / "scripts" / "lead_intent_matcher.py"
+# Import the script file directly (it lives in monorepo-root /scripts/,
+# not in a package). Find the monorepo root by walking up until we see
+# scripts/lead_intent_matcher.py — robust against different absolute path
+# prefixes (local dev, CI /home/runner/work/..., worktrees, symlinks)
+# without hardcoding a parents[N] index that breaks when the repo moves.
+def _find_monorepo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "scripts" / "lead_intent_matcher.py").is_file():
+            return parent
+    raise RuntimeError(
+        f"lead_intent_matcher.py not found walking up from {here}. "
+        "Is the monorepo checked out correctly?"
+    )
+
+
+_SCRIPT_PATH = _find_monorepo_root() / "scripts" / "lead_intent_matcher.py"
 sys.path.insert(0, str(_SCRIPT_PATH.parent))
 import lead_intent_matcher as m  # noqa: E402
 
