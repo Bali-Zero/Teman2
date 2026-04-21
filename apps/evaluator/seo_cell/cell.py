@@ -45,6 +45,11 @@ def create_seo_cell() -> PulseLoop:
     the infinite loop. In Sprint 1 every pulse is sense-only because
     the thinker returns action="none" while pre_natal.
     """
+    # Materialise DATA_DIR before anything touches disk — SqliteMemoryStack
+    # opens `DB_PATH` immediately and cell_birth_date() writes the marker
+    # on first run. Importing config.py is intentionally side-effect-free.
+    config.ensure_data_dir()
+
     cell_config = CellConfig(
         name="seo-guardian",
         dna_path=str(config.DNA_PATH),
