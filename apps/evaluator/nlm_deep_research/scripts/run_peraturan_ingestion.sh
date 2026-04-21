@@ -61,6 +61,8 @@ if [ "$EXIT_CODE" -ne 0 ]; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Peraturan ingestion FAILED (exit $EXIT_CODE)" >> "$LOG_FILE"
 else
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Peraturan ingestion completed OK" >> "$LOG_FILE"
+    PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "peraturan_ingestion" 2>/dev/null || true
 fi
 
 exit "$EXIT_CODE"

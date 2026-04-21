@@ -66,6 +66,8 @@ PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.db_to_nlm_sync \
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] DB→NLM sync completed successfully" >> "$LOG_FILE"
+    PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "db_nlm_sync" 2>/dev/null || true
 else
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] DB→NLM sync exited with code $EXIT_CODE" >> "$LOG_FILE"
     # Telegram alert on failure

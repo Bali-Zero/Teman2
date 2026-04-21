@@ -28,6 +28,12 @@ python -m apps.evaluator.nlm_deep_research.t4_monitor \
 
 EXIT_CODE=${PIPESTATUS[0]}
 
+# Record heartbeat on success (venv activated above, so `python` points to it)
+if [ "$EXIT_CODE" -eq 0 ]; then
+    PYTHONPATH=. python -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "nb5_t4_monitor" 2>/dev/null || true
+fi
+
 # Alert on failure
 if [ "$EXIT_CODE" -ne 0 ]; then
     if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_OWNER_CHAT_ID:-}" ]; then

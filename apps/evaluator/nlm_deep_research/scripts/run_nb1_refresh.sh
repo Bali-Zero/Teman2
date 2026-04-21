@@ -32,7 +32,13 @@ cd "$PROJECT_ROOT"
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
-    # Record heartbeat
+    # Record heartbeat via the shared monitor helper (matches registry key used
+    # by apps/evaluator/nlm_deep_research/pipeline_heartbeat_registry.json).
+    cd "$PROJECT_ROOT"
+    PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "nb1_daily_refresh" 2>/dev/null || true
+    # Keep the legacy breadcrumb so any consumer that still reads the old path
+    # (pre-ARCH-9) does not silently regress. This is a transitional guard.
     HEARTBEAT_DIR="$HOME/.agent/decisions/state"
     mkdir -p "$HEARTBEAT_DIR"
     echo "{\"job\":\"nb1_daily_refresh\",\"ts\":$(date +%s),\"status\":\"ok\",\"host\":\"$(hostname)\"}" \

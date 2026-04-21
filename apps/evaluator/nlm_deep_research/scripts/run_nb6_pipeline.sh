@@ -47,6 +47,8 @@ EXIT_CODE=${PIPESTATUS[0]}
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [DONE] NB-6 pipeline completed successfully" >> "$LOG_FILE"
+    PYTHONPATH=. "$PYTHON" -m apps.evaluator.nlm_deep_research.heartbeat_monitor \
+        --record "nb6_pipeline" 2>/dev/null || true
 else
     echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') [FAIL] NB-6 pipeline failed (exit $EXIT_CODE)" >> "$LOG_FILE"
     # Telegram alert on failure
