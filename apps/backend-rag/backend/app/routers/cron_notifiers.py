@@ -232,6 +232,56 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
     }
 
 
+@router.post("/email-health")
+async def run_email_health(request: Request) -> dict[str, Any]:
+    """Run retry + stale-detection + escalation + daily report for email.
+
+    Designed to be called every 30 min from Air cron. Respects the
+    ``email_health_monitor_enabled`` kill switch in ``system_settings``
+    (seeded to 'true' by migration 126).
+
+    Returns a consolidated stats dict. If any phase raises, the response
+    body carries ``status = "partial_failure"`` (HTTP 200) so monitoring
+    can distinguish a clean run from one with internal failures without
+    a code change to the Air cron wrapper.
+    """
+    _verify_api_key(request)
+    db_pool = _get_db_pool(request)
+
+    async with db_pool.acquire() as conn:
+        enabled = await conn.fetchval(
+            "SELECT value FROM system_settings WHERE key = 'email_health_monitor_enabled'",
+        )
+    if enabled != "true":
+        logger.warning(
+            "Email health monitor BLOCKED — set email_health_monitor_enabled=true to run",
+        )
+        return {"service": "email_health", "status": "blocked"}
+
+    from backend.services.notifications.email_health_monitor import EmailHealthMonitor
+
+    monitor = EmailHealthMonitor(db_pool)
+    stats: dict[str, Any] = {"service": "email_health"}
+    errors: list[dict[str, str]] = []
+
+    for phase_name, phase_coro in (
+        ("unstuck_stale", monitor.check_stale_sendings()),
+        ("retry", monitor.check_and_retry_failed_emails()),
+        ("escalate", monitor.escalate_unrecoverable()),
+        ("daily_report", monitor.generate_daily_report()),
+    ):
+        try:
+            stats[phase_name] = await phase_coro
+        except Exception as e:
+            logger.error(f"email-health phase {phase_name} failed: {e}", exc_info=True)
+            stats[phase_name] = {"error": str(e)}
+            errors.append({"phase": phase_name, "error": str(e)})
+
+    stats["status"] = "partial_failure" if errors else "ok"
+    stats["errors"] = errors
+    return stats
+
+
 @router.post("/all")
 async def run_all_notifiers(request: Request) -> dict[str, Any]:
     """Run all four notifiers in sequence. Single cron endpoint.
