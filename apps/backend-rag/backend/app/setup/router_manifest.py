@@ -89,6 +89,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="admin_drive_health",         process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_refresh",        process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_setup",          process_groups=_API, tags=("admin", "drive")),
+    RouterEntry(name="admin_email_health",         process_groups=_API, tags=("admin", "email")),
     RouterEntry(name="admin_logs",                 process_groups=_API, tags=("admin",)),
     RouterEntry(name="admin_practice_auto_create", process_groups=_API, tags=("admin",)),
     RouterEntry(name="admin_team_activity",        process_groups=_API, tags=("admin",)),
