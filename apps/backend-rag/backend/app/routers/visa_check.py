@@ -300,6 +300,9 @@ async def get_clock(
             for c in timeline.checkpoints
         ],
         result_url=f"/visa/clock/{saved.hash}",
+        # Same rationale as get_match: result page loads via GET, needs
+        # a JWT to authenticate chat.
+        session_jwt=_issue_visa_funnel_jwt(saved.hash),
     )
 
 
@@ -326,6 +329,11 @@ async def get_match(
         alternatives=[VisaType(v) for v in saved.alternatives],
         referral_mode=(saved.recommended_visa is None),
         result_url=f"/visa/match/{saved.hash}",
+        # Re-issue a fresh JWT so the result page (shareable URL, loaded
+        # via GET) can authenticate chat requests. The hash is already
+        # the public token to access this row; JWT confirms the caller
+        # has the hash within 1h. No additional info leak vs the URL.
+        session_jwt=_issue_visa_funnel_jwt(saved.hash),
         nationality=saved.nationality,
         purpose=saved.purpose,
         duration_months=saved.duration_months,
