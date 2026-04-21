@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import {
   AppFrame,
   AppShareBar,
@@ -23,7 +23,12 @@ interface MatchResult {
   result_url: string;
 }
 
-export default function VisaMatchResultPage({ params }: { params: { hash: string } }) {
+export default function VisaMatchResultPage({
+  params,
+}: {
+  params: Promise<{ hash: string }>;
+}) {
+  const { hash } = use(params);
   const tracker = useFunnelApp("visa_match", { trackView: false });
   const haptic = useHaptic();
   const stampRef = useRef<HTMLDivElement | null>(null);
@@ -33,7 +38,7 @@ export default function VisaMatchResultPage({ params }: { params: { hash: string
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch(`/api/visa/match/${params.hash}`);
+        const res = await fetch(`/api/visa/match/${hash}`);
         if (!res.ok) { setErr("We could not find this recommendation. It may have expired."); return; }
         const json = (await res.json()) as MatchResult;
         setData(json);
@@ -42,7 +47,7 @@ export default function VisaMatchResultPage({ params }: { params: { hash: string
       } catch { setErr("Network error. Try again."); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.hash]);
+  }, [hash]);
 
   if (err) return (<AppFrame funnel="visa" title="Visa Match" subtitle={err}><p><a href="/visa/match">Start again →</a></p></AppFrame>);
   if (!data) return (<AppFrame funnel="visa" title="Visa Match" subtitle="Computing your match…"><p style={{ color: "var(--color-text-muted)" }}>One moment.</p></AppFrame>);
