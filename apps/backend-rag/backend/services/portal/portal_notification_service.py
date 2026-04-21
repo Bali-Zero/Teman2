@@ -10,6 +10,7 @@ Used when the team takes actions that the client should see in their portal:
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
+from backend.services.notifications.email_audit import notify_email_failure_critical
 
 logger = get_logger(__name__)
 
@@ -118,5 +119,17 @@ class PortalNotificationService:
         except Exception as e:
             logger.error(
                 f"Failed to insert portal notification for client {client_id}: {e}",
+            )
+            # Audit bug #4: previously returned None silently — client lost
+            # every status-change notification when insert failed. Page the
+            # owner via the email-critical channel so operations can recover
+            # (the in-app notification is functionally equivalent to a
+            # critical email from the client's point of view).
+            notify_email_failure_critical(
+                email_type="portal_notification",
+                to_email=f"client#{client_id}",
+                subject=subject,
+                practice_id=practice_id,
+                error=f"portal_messages insert failed: {e}",
             )
             return None

@@ -11,12 +11,17 @@ import os
 from typing import Any
 
 import asyncpg
-import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.drive_folder_service import DriveFolderService
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.notifications.email_audit import (
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
+from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -36,7 +41,7 @@ class CompletedProcessService:
         self.drive_service = DriveFolderService()
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
         "zantara:crm_documents:*",
     ])
@@ -70,9 +75,10 @@ class CompletedProcessService:
                 return {"success": False, "error": "Client not found"}
 
             # Upload final documents if provided
-            uploaded_docs = []
+            uploaded_docs: list[dict] = []
+            failed_uploads: list[dict] = []
             if final_documents:
-                uploaded_docs = await self._upload_final_documents(
+                uploaded_docs, failed_uploads = await self._upload_final_documents(
                     client_data=client_data,
                     documents=final_documents,
                 )
@@ -86,6 +92,7 @@ class CompletedProcessService:
                         client_name=client_data["full_name"],
                         practice_data=practice_data,
                         documents=uploaded_docs,
+                        failed_uploads=failed_uploads,
                     )
                     client_notified = True
                 except Exception as e:
@@ -100,16 +107,27 @@ class CompletedProcessService:
                         team_leader_email=team_leader_email,
                         client_name=client_data["full_name"],
                         practice_data=practice_data,
+                        uploaded_count=len(uploaded_docs),
+                        failed_count=len(failed_uploads),
                     )
                     team_notified = True
                 except Exception as e:
                     logger.error(f"Failed to notify team leader: {e}")
 
             # Log activity
+            activity_desc = (
+                f"Process completed - {len(uploaded_docs)} documents delivered to client"
+            )
+            if failed_uploads:
+                activity_desc += (
+                    f" ({len(failed_uploads)} upload(s) FAILED: "
+                    + ", ".join(f["filename"] for f in failed_uploads)[:200]
+                    + ")"
+                )
             await self._log_activity(
                 practice_id=practice_id,
                 triggered_by=triggered_by,
-                description=f"Process completed - {len(uploaded_docs)} documents delivered to client",
+                description=activity_desc,
             )
 
             return {
@@ -117,6 +135,8 @@ class CompletedProcessService:
                 "client_notified": client_notified,
                 "team_notified": team_notified,
                 "documents_uploaded": len(uploaded_docs),
+                "documents_failed": len(failed_uploads),
+                "failed_filenames": [f["filename"] for f in failed_uploads],
             }
 
         except Exception as error:
@@ -130,14 +150,22 @@ class CompletedProcessService:
         self,
         client_data: dict,
         documents: list[dict],
-    ) -> list[dict]:
-        """Upload final documents to client's Final Documents folder."""
-        uploaded = []
+    ) -> tuple[list[dict], list[dict]]:
+        """Upload final documents. Returns (uploaded, failed) lists.
+
+        Failures are collected so callers can surface them to the client
+        email and the team notification instead of silently omitting the
+        missing files (scar 2026-04-21 audit bug #6).
+        """
+        uploaded: list[dict] = []
+        failed: list[dict] = []
 
         final_folder_id = client_data.get("drive_final_folder_id")
         if not final_folder_id:
             logger.warning(f"No final folder for client {client_data['id']}")
-            return uploaded
+            # Report all docs as failed so client/team see the problem
+            failed = [{"filename": d["filename"], "reason": "no_final_folder"} for d in documents]
+            return uploaded, failed
 
         for doc in documents:
             try:
@@ -163,11 +191,20 @@ class CompletedProcessService:
                         drive_file_id=result["file_id"],
                         drive_file_url=result["file_url"],
                     )
+                else:
+                    failed.append({
+                        "filename": doc["filename"],
+                        "reason": f"drive_api: {result.get('error', 'unknown')}",
+                    })
+                    logger.error(
+                        f"Drive upload returned success=False for {doc['filename']}: {result}",
+                    )
 
             except Exception as e:
                 logger.error(f"Failed to upload {doc['filename']}: {e}")
+                failed.append({"filename": doc["filename"], "reason": f"exception: {e}"})
 
-        return uploaded
+        return uploaded, failed
 
     async def _send_completion_email(
         self,
@@ -175,8 +212,14 @@ class CompletedProcessService:
         client_name: str,
         practice_data: dict,
         documents: list[dict],
+        failed_uploads: list[dict] | None = None,
     ) -> None:
-        """Send human, congratulatory email to client."""
+        """Send human, congratulatory email to client.
+
+        When some documents failed to upload to Drive, the email no longer
+        claims completeness: a "⚠️ Missing documents" section lists the
+        filenames and tells the client the team will follow up.
+        """
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
         # Build document links section
@@ -186,7 +229,25 @@ class CompletedProcessService:
             for doc in documents:
                 docs_section += f"   • {doc['filename']}: {doc['file_url']}\n"
 
+        # Missing-documents warning (was silently dropped before the fix).
+        missing_section = ""
+        if failed_uploads:
+            missing_section = (
+                "\n⚠️ Note: A few documents could not be uploaded to your Drive folder "
+                "automatically. Our team will send them to you directly within 24 hours:\n"
+            )
+            for item in failed_uploads:
+                missing_section += f"   • {item['filename']}\n"
+
         subject = f"[CLIENT] 🎉 Congratulations {client_name}! Your {practice_type} is Complete"
+
+        storage_note = (
+            "All your important documents are safely stored in your personal Google Drive folder. "
+            "You can access them anytime through the link above."
+            if not failed_uploads
+            else "The documents listed above are in your personal Google Drive folder. "
+                 "The missing items will arrive by direct email shortly."
+        )
 
         body = f"""Dear {client_name},
 
@@ -199,8 +260,8 @@ What This Means for You:
 ✅ All legal requirements have been fulfilled
 ✅ You can now proceed with confidence in your Indonesian journey
 
-{docs_section}
-All your important documents are safely stored in your personal Google Drive folder. You can access them anytime through the link above.
+{docs_section}{missing_section}
+{storage_note}
 
 A Few Things to Remember:
 • Keep your documents secure and make backup copies
@@ -229,7 +290,14 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
 📧 support@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 xxx xxxx xxxx
 """
 
-        await self._send_with_brevo_fallback(client_email, subject, body)
+        await self._send_with_brevo_fallback(
+            client_email,
+            subject,
+            body,
+            email_type="completion_client",
+            practice_id=practice_data["id"],
+            client_id=practice_data.get("client_id"),
+        )
         logger.info(f"Completion email sent to client {client_email}")
 
     async def _send_team_leader_completion_notification(
@@ -237,11 +305,31 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
         team_leader_email: str,
         client_name: str,
         practice_data: dict,
+        uploaded_count: int = 0,
+        failed_count: int = 0,
     ) -> None:
-        """Send notification to team leader about completion."""
-        practice_type = practice_data.get("practice_type_name", "Immigration Service")
+        """Send notification to team leader about completion.
 
-        subject = f"[TEAM] ✅ Process Completed - {client_name} ({practice_type})"
+        If ``failed_count`` > 0 the email flags that the team must deliver
+        the missing documents manually — the client email already tells
+        the client the team will follow up.
+        """
+        practice_type = practice_data.get("practice_type_name", "Immigration Service")
+        practice_id = practice_data["id"]
+
+        if failed_count:
+            subject = (
+                f"[TEAM] ✅⚠️ Process Completed w/ MISSING docs - "
+                f"{client_name} ({practice_type})"
+            )
+            followup_line = (
+                f"ATTENTION: {failed_count} document(s) failed to upload to Drive. "
+                "The client email told them you'll follow up — please send the missing "
+                "files manually within 24h."
+            )
+        else:
+            subject = f"[TEAM] ✅ Process Completed - {client_name} ({practice_type})"
+            followup_line = "No further action required on this case."
 
         body = f"""Hi Team Leader,
 
@@ -250,44 +338,98 @@ Great work! The following practice has been successfully completed:
 📋 Practice Details:
 • Client: {client_name}
 • Service: {practice_type}
-• Practice ID: {practice_data["id"]}
+• Practice ID: {practice_id}
 • Status: ✅ COMPLETED
+• Documents uploaded: {uploaded_count}{f" (⚠️ {failed_count} failed)" if failed_count else ""}
 
-The client has been notified and all final documents have been delivered to their Google Drive folder.
-
-No further action required on this case.
+{followup_line}
 
 Best regards,
 Zantara CRM System
 """
 
-        await self._send_with_brevo_fallback(team_leader_email, subject, body)
+        await self._send_with_brevo_fallback(
+            team_leader_email,
+            subject,
+            body,
+            email_type="completion_team",
+            practice_id=practice_id,
+            client_id=practice_data.get("client_id"),
+        )
 
     async def _send_with_brevo_fallback(
-        self, to_email: str, subject: str, body: str,
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
+        *,
+        email_type: str,
+        practice_id: int | None = None,
+        client_id: int | None = None,
     ) -> None:
-        """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
-        # Primary: Brevo
+        """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
+
+        Every attempt is audited to ``email_send_log``. Double-failure is
+        re-raised so the caller's ``*_notified`` flag reflects reality.
+        """
+        row_id = await log_email_attempt(
+            self.db_pool,
+            email_type=email_type,
+            to_email=to_email,
+            subject=subject,
+            practice_id=practice_id,
+            client_id=client_id,
+        )
+
+        # 1) Brevo
         try:
             html_body = body.replace("\n", "<br>")
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    _EMAIL_API_URL,
-                    headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={"to": to_email, "subject": subject, "body": html_body},
-                )
-                response.raise_for_status()
+            client = await get_email_client()
+            response = await client.post(
+                _EMAIL_API_URL,
+                headers={"X-API-Key": _EMAIL_API_KEY},
+                json={"to": to_email, "subject": subject, "body": html_body},
+            )
+            response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")
+            await record_email_result(
+                self.db_pool, row_id, status="sent", provider="brevo",
+            )
             return
         except Exception as brevo_error:
             logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+            brevo_err_msg = str(brevo_error)
 
-        # Fallback: Zoho
-        await self.zoho_email_service.send_email(
-            to_email=to_email,
-            subject=subject,
-            body=body,
-        )
+        # 2) Zoho fallback
+        try:
+            await self.zoho_email_service.send_email(
+                to_email=to_email,
+                subject=subject,
+                body=body,
+            )
+            logger.info(f"Email sent to {to_email} via Zoho fallback")
+            await record_email_result(
+                self.db_pool, row_id, status="sent", provider="zoho",
+                error_message=f"brevo_failed: {brevo_err_msg}",
+            )
+            return
+        except Exception as zoho_error:
+            combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
+            logger.error(
+                f"Both Brevo and Zoho failed for {to_email}: {combined_err}",
+            )
+            await record_email_result(
+                self.db_pool, row_id, status="failed", provider="zoho",
+                error_message=combined_err,
+            )
+            notify_email_failure_critical(
+                email_type=email_type,
+                to_email=to_email,
+                subject=subject,
+                practice_id=practice_id,
+                error=combined_err,
+            )
+            raise
 
     async def _save_final_document_record(
         self,

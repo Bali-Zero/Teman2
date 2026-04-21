@@ -25,6 +25,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 ## Level 1 — Autonomous from branch to PR, user veto on merge boundary
 
 ### Autonomous — Claude proceeds WITHOUT asking
+
 - `git commit`, `git push`, `git push --set-upstream` (any branch except `main` directly)
 - `gh pr create`, `gh pr comment`, `gh pr review`, `gh pr edit`
 - `gh workflow run`, `gh run rerun`, `gh run watch`
@@ -34,6 +35,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 - Local venv, pytest, npm, docker builds (no push)
 
 ### Requires confirmation
+
 - `git push origin main` direct (bypassing PR) — branch protection blocks it anyway in L2
 - `git push --force`, `git push --force-with-lease` (any branch)
 - `git reset --hard` on a tracked branch that has already been pushed
@@ -46,6 +48,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 - Disabling a guardrail hook or lowering branch protection
 
 ### End-of-action rules (mandatory after every autonomous action)
+
 1. One-line result message to the user (what changed, where, link if applicable).
 2. If the action wrote to prod state (deploy, DB, external API): verify live, report evidence.
 3. If a new pattern/decision emerged: `mem save decision|discovery|fact ...`.
@@ -60,7 +63,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 - `gh pr merge --auto --squash` immediately after opening a PR. GitHub holds
   the merge until required status checks are green (branch protection enforces
   this — Claude cannot merge a red PR even if it tries). If CI stays red for
-  >2h, Telegram alert fires.
+  > 2h, Telegram alert fires.
 - After merge to `main` triggers `fly-deploy.yml`: Claude invokes
   `scripts/post-deploy-verify.sh <PR_NUMBER>` which polls the workflow run,
   waits for `post-deploy-health` to complete, probes `/health` on
@@ -78,7 +81,8 @@ Claude falls back to conservative mode and pings the user to re-certify.
   layer that replaces the confirmation prompt.
 
 **Still requires confirmation at L2:**
-- Same list as L1 (force push, destructive DB ops *without* WHERE clause,
+
+- Same list as L1 (force push, destructive DB ops _without_ WHERE clause,
   new Fly app/cron/external provider, critical config files, guardrail
   changes).
 - Re-running a failed deploy after auto-rollback — Claude must diagnose first.
@@ -107,25 +111,26 @@ or auto-retry. Zero's Telegram is already notified by the failure path.
 
 ## Guardrails that make this safe
 
-| Guardrail | Status | Notes |
-|---|---|---|
-| GitHub branch protection on `main`: require CI green + disable force push | ✅ Active (2026-04-21) | Required checks: "E2E Tests (Playwright)", "MCP Server Tests". Backend/Frontend not yet in required list (pre-existing red on main — separate fix). |
-| `fly-deploy.yml`: pre-deploy-gate → migrations → deploy → health → auto-rollback | ✅ Active (see `.github/workflows/fly-deploy.yml`) | Sibling job catches upstream crash (scar 2026-04-18) |
-| `deploy-failure-alert` sends Telegram on any deploy failure | ✅ Active | Covers crash before health check |
-| Daily `pg_dump` → Tigris | ✅ Active | `~/scripts/fly-pg-backup.sh`, retention 30d |
-| Monthly restore drill | ⚠️ Manual, not yet automated | Ticket to add cron later |
-| `PreToolUse` hook blocks edits to `fly.toml`, `.env.production`, `package.json` | ✅ Active in `~/.claude/settings.json` | |
-| Hotfix audit log `shared/hotfix_audit.jsonl` + Telegram notifier | ✅ Active (2026-04-21) | `~/.claude/scripts/hotfix-notify.sh` wired into `PostToolUse` Bash hook |
-| Post-deploy health + Telegram notifier | ✅ Active (2026-04-21) | `scripts/post-deploy-verify.sh <PR_NUMBER>` |
-| Post-deploy browser QA (kita + 7 subdomains) | ✅ Active (manual invocation by Claude) | Per `CLAUDE.md §10`. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly |
-| MOS auto-save for decisions | ✅ Active | `~/.claude/scripts/mos-auto-save.sh` |
-| Federation orchestrator + Consiglio v1 red-team on architectural changes | ✅ Implemented, triggered case-by-case | Not blocking gate yet |
+| Guardrail                                                                        | Status                                             | Notes                                                                                                                                               |
+| -------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub branch protection on `main`: require CI green + disable force push        | ✅ Active (2026-04-21)                             | Required checks: "E2E Tests (Playwright)", "MCP Server Tests". Backend/Frontend not yet in required list (pre-existing red on main — separate fix). |
+| `fly-deploy.yml`: pre-deploy-gate → migrations → deploy → health → auto-rollback | ✅ Active (see `.github/workflows/fly-deploy.yml`) | Sibling job catches upstream crash (scar 2026-04-18)                                                                                                |
+| `deploy-failure-alert` sends Telegram on any deploy failure                      | ✅ Active                                          | Covers crash before health check                                                                                                                    |
+| Daily `pg_dump` → Tigris                                                         | ✅ Active                                          | `~/scripts/fly-pg-backup.sh`, retention 30d                                                                                                         |
+| Monthly restore drill                                                            | ⚠️ Manual, not yet automated                       | Ticket to add cron later                                                                                                                            |
+| `PreToolUse` hook blocks edits to `fly.toml`, `.env.production`, `package.json`  | ✅ Active in `~/.claude/settings.json`             |                                                                                                                                                     |
+| Hotfix audit log `shared/hotfix_audit.jsonl` + Telegram notifier                 | ✅ Active (2026-04-21)                             | `~/.claude/scripts/hotfix-notify.sh` wired into `PostToolUse` Bash hook                                                                             |
+| Post-deploy health + Telegram notifier                                           | ✅ Active (2026-04-21)                             | `scripts/post-deploy-verify.sh <PR_NUMBER>`                                                                                                         |
+| Post-deploy browser QA (kita + 7 subdomains)                                     | ✅ Active (manual invocation by Claude)            | Per `CLAUDE.md §10`. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly                                                          |
+| MOS auto-save for decisions                                                      | ✅ Active                                          | `~/.claude/scripts/mos-auto-save.sh`                                                                                                                |
+| Federation orchestrator + Consiglio v1 red-team on architectural changes         | ✅ Implemented, triggered case-by-case             | Not blocking gate yet                                                                                                                               |
 
 ---
 
 ## Activation gates
 
 **To promote from L1 to L2, the following must all be true:**
+
 - [x] `AUTONOMOUS_OPS.md` exists and is referenced in `CLAUDE.md §2`
 - [x] `git push`, `gh pr *`, `gh workflow *`, `gh run *` are in `allow` in `~/.claude/settings.json`
 - [x] GitHub branch protection on `main` blocks force push + requires CI green (2 required checks active: "E2E Tests (Playwright)", "MCP Server Tests")
@@ -135,6 +140,7 @@ or auto-retry. Zero's Telegram is already notified by the failure path.
 All gates closed 2026-04-21. L2 active.
 
 ### Next evolution — L2.1 (not yet scheduled)
+
 - [ ] Fix pre-existing main red: Backend Tests (Python) + Frontend Tests (Next.js) (mouth)
 - [ ] Promote both to required status checks on `main`
 - [ ] Automated monthly pg_dump restore drill
