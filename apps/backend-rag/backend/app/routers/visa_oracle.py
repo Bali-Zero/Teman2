@@ -47,6 +47,7 @@ class ChatRequest(BaseModel):
     quiz_answers: dict | None = None
     conversation_history: list | None = None
     language: str | None = None  # ISO 639-1 override from client; if set, wins over auto-detect
+    check_hash: str | None = None  # NEW: wizard completion hash for context augmentation
 
 
 class ChatResponse(BaseModel):
@@ -482,6 +483,49 @@ async def chat(
         # No signal at all — English default (international audience).
         response_lang = "en"
 
+    # --- Wizard-context branch (Task 3, spec 2026-04-21-visa-funnel-fusion) ---
+    # When the caller posts a check_hash (completed wizard), we require an
+    # Authorization: Bearer <jwt> header signed by settings.jwt_secret_key with
+    # sub=check_hash and type="visa_funnel". On success, we load the wizard
+    # context from visa_checks and prepend a ground-truth preamble to the
+    # system prompt so the LLM cannot contradict the wizard or invent prices.
+    # Backwards compatible: when check_hash is absent, validation is skipped.
+    system_prompt_prefix = ""
+    if body.check_hash:
+        from jose import JWTError, jwt as _jose_jwt
+        from backend.app.core.config import settings as _settings
+        from backend.services.visa_unified.bridge import (
+            augment_chat_system_prompt as _augment,
+            get_funnel_context as _get_ctx,
+        )
+
+        auth = request.headers.get("authorization", "")
+        if not auth.lower().startswith("bearer "):
+            raise HTTPException(status_code=401, detail="Missing bearer token")
+        token = auth.split(" ", 1)[1].strip()
+        try:
+            claims = _jose_jwt.decode(
+                token, _settings.jwt_secret_key,
+                algorithms=[_settings.jwt_algorithm],
+                options={"verify_exp": True},
+            )
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        if claims.get("type") != "visa_funnel":
+            raise HTTPException(status_code=401, detail="Wrong token type")
+        if claims.get("sub") != body.check_hash:
+            raise HTTPException(status_code=403, detail="Token does not match check_hash")
+
+        ctx = await _get_ctx(body.check_hash, db_pool)
+        if ctx is None:
+            raise HTTPException(status_code=410, detail="Wizard context expired")
+
+        # Build the prefix. augment_chat_system_prompt prepends its text to a
+        # base prompt; we pass empty "" so we get only the preamble, which we
+        # then stitch to SYSTEM_PROMPT at the usual line.
+        system_prompt_prefix = _augment(ctx, "")
+
     try:
         # Build an enriched query that includes quiz context
         quiz_ctx = ""
@@ -602,7 +646,7 @@ async def chat(
             if r.get("source") or r.get("metadata", {}).get("source")
         ]
 
-        system = SYSTEM_PROMPT
+        system = system_prompt_prefix + SYSTEM_PROMPT
         if confidence == CONFIDENCE_CAUTIOUS:
             system += (
                 "\n\nIMPORTANT: Add a brief disclaimer that the user should verify "
