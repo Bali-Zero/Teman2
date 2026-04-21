@@ -9,9 +9,17 @@ PII policy (UU PDP compliance):
     names and client identifiers. NONE of those may reach Sentry cloud.
     The `_before_send` hook below runs on every event and:
       - redacts known PII keys (case-insensitive) anywhere in the payload,
-      - masks email-shaped strings in free-text,
-      - drops events tagged `source=cron` or `source=deploy` so we don't
-        duplicate the Telegram alerts those pipelines already emit.
+      - masks email-shaped strings and Bali Zero client_id patterns
+        (`CL-\\d{3,}`) in free text,
+      - is wrapped in try/except so a bug in the scrubber can't silently
+        drop events; the fallback preserves `level`/`exception` so the
+        diagnosis signal survives.
+
+    NOT in scope for this file: cron/deploy alert deduplication. Those
+    pipelines already page Telegram, but no code currently tags events
+    with `source=cron|deploy`, so filtering here would be a no-op.
+    Follow-up issue will add the tagging at cron entrypoints before we
+    re-introduce the filter.
 
 Quota policy (Sentry free tier = 5k events/month shared error+transaction):
     `traces_sample_rate` defaults to **0.0** in production — APM is opt-in
@@ -32,6 +40,13 @@ PII_REDACTION_PLACEHOLDER = "[REDACTED]"
 # Keys whose *value* must always be redacted, regardless of nesting depth.
 # Match is case-insensitive and also catches common suffixed variants (e.g.
 # `client_email`, `user_phone`, `primary_surname`).
+#
+# IMPORTANT: bare "name" is NOT in this list. Substring-matching "name" would
+# also redact legitimate debug fields like `filename`, `function_name`,
+# `module_name`, `transaction_name`, `hostname` — making the stacktrace
+# unreadable and Sentry less useful than no Sentry at all. PII name fields
+# are matched via `_PII_EXACT_KEYS` below plus the explicit `*_name` suffixes
+# enumerated here.
 _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
     "npwp",
     "nib",
@@ -41,8 +56,18 @@ _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
     "phone",
     "client_id",
     "surname",
-    "name",
+    "client_name",
+    "first_name",
+    "last_name",
+    "full_name",
+    "contact_name",
 )
+
+# Keys redacted on exact match only (case-insensitive). These are bare
+# identity fields whose literal name is PII but whose substring appears in
+# innocuous debug keys (e.g. "name" in "filename", "username" would match
+# "name" as a substring).
+_PII_EXACT_KEYS: frozenset[str] = frozenset({"name", "username"})
 
 # Keys to treat as "query-string-ish" — the value is a URL-encoded param
 # blob that we redact by key rather than parsing.
@@ -57,15 +82,12 @@ _EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[\w.-]+")
 # upstream is a generic `id`.
 _CLIENT_ID_RE = re.compile(r"\bCL-\d{3,}\b")
 
-# Alert sources that already notify Telegram directly. Dropping them at the
-# Sentry layer prevents double-paging on every cron failure / deploy crash.
-_DROP_SOURCES: frozenset[str] = frozenset({"cron", "deploy"})
-
-
 def _is_pii_key(key: Any) -> bool:
     if not isinstance(key, str):
         return False
     k = key.lower()
+    if k in _PII_EXACT_KEYS:
+        return True
     return any(s in k for s in _PII_KEY_SUBSTRINGS)
 
 
@@ -117,23 +139,44 @@ def _scrub(obj: Any, parent_key: str | None = None) -> Any:
     return obj
 
 
-def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
-    """Sentry `before_send` hook. Drops ignored sources and scrubs PII."""
-    tags = event.get("tags") or {}
-    if isinstance(tags, dict):
-        source = tags.get("source")
-    elif isinstance(tags, list):
-        source = next(
-            (v for pair in tags if isinstance(pair, (list, tuple)) and len(pair) == 2
-             and pair[0] == "source" for v in (pair[1],)),
-            None,
-        )
-    else:
-        source = None
-    if isinstance(source, str) and source in _DROP_SOURCES:
-        return None
+def _before_send_impl(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
+    """Inner implementation. Scrubs PII, returns scrubbed event.
 
+    NOTE: cron/deploy alert deduplication was removed from this PR's scope
+    (review #168/B2). No code in the repo currently tags events with
+    `source=cron|deploy`, so a dedup filter here was a no-op. Tagging needs
+    to be added at cron entrypoints (`cron-wrapper.sh`, `auto_sentinel.sh`,
+    `cron_notifiers.py`) in a follow-up before a dedup filter can land here.
+    """
     return _scrub(event)
+
+
+def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
+    """Sentry `before_send` hook with exception-safe wrapper.
+
+    Sentry drops events silently if `before_send` raises. `_scrub` walks
+    arbitrary event payloads (frame locals, breadcrumb data, contexts),
+    which can contain non-UTF-8 bytes, numpy arrays, or circular refs that
+    break naive recursion. When that happens we return a minimal event so
+    the diagnosis signal survives even if the scrubber failed — but we
+    strip everything else (incl. potentially-unscrubbed data) defensively.
+    """
+    try:
+        return _before_send_impl(event, hint)
+    except Exception as exc:  # noqa: BLE001 — intentional catch-all
+        # Use stderr (→ fly logs) rather than `logger`: if the hook is
+        # being triggered by a logging-related exception, `logger` itself
+        # may be the thing that's broken.
+        import sys
+        print(
+            f"[sentry_config] _before_send raised {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
+        return {
+            "level": event.get("level"),
+            "exception": event.get("exception"),
+            "tags": {"sentry_hook_error": "true"},
+        }
 
 
 def init_sentry() -> None:
