@@ -123,14 +123,33 @@ def init_observability(
 
 
 def _try_instrument_anthropic() -> None:
-    """Install OpenInference Anthropic auto-instrumentation (idempotent)."""
+    """Install OpenInference Anthropic auto-instrumentation (idempotent).
+
+    PII-hardened: by default we hide LLM input/output messages because
+    Bali Zero queries regularly contain NPWP, NIB, passport numbers, and
+    client names (UU PDP scope). Opt back in per-env by setting
+    LANGFUSE_TRACE_LLM_MESSAGES=true; the choice is logged on each init.
+    """
     try:
+        from openinference.instrumentation import TraceConfig
         from openinference.instrumentation.anthropic import AnthropicInstrumentor
 
+        trace_messages = (
+            os.getenv("LANGFUSE_TRACE_LLM_MESSAGES", "false").strip().lower() == "true"
+        )
+        config = TraceConfig(
+            hide_input_messages=not trace_messages,
+            hide_output_messages=not trace_messages,
+            hide_input_text=not trace_messages,
+            hide_output_text=not trace_messages,
+        )
         instr = AnthropicInstrumentor()
         if not instr.is_instrumented_by_opentelemetry:
-            instr.instrument()
-            logger.info("langfuse.anthropic_instrumentation.enabled")
+            instr.instrument(config=config)
+            logger.info(
+                "langfuse.anthropic_instrumentation.enabled hide_messages=%s",
+                not trace_messages,
+            )
     except Exception as exc:
         logger.warning("langfuse.anthropic_instrumentation.failed error=%s", exc)
 

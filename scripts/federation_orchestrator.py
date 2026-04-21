@@ -59,6 +59,19 @@ except Exception:  # noqa: BLE001 — observability must never break the CLI
     _lf_shutdown = lambda: None  # noqa: E731
 
 
+def _langsmith_active() -> bool:
+    """True when LangSmith is the authoritative tracer for this run.
+
+    LangGraph auto-registers LangSmith callbacks when LANGCHAIN_API_KEY
+    is set and LANGCHAIN_TRACING_V2 is not explicitly "false". Running
+    Langfuse on top produces duplicate spans and burns the free tier
+    twice — prefer one or the other, never both.
+    """
+    if not os.environ.get("LANGCHAIN_API_KEY"):
+        return False
+    return os.environ.get("LANGCHAIN_TRACING_V2", "true").lower() != "false"
+
+
 @contextmanager
 def _lf_span(*, name: str, input_data: dict | None = None, metadata: dict | None = None):
     """Yield a Langfuse span when enabled, else None.
@@ -68,6 +81,10 @@ def _lf_span(*, name: str, input_data: dict | None = None, metadata: dict | None
     errors are swallowed.
     """
     sync_cm = None
+    if _langsmith_active():
+        # LangSmith already owns the callback — avoid duplicate traces.
+        yield None
+        return
     if _lf_is_enabled() and _lf_init is not None:
         try:
             _lf_init(service_name="nuzantara-federation")
@@ -132,9 +149,16 @@ class FederationState(TypedDict, total=False):
 async def run_dispatch(cmd: str, prompt: str) -> str:
     """Execute ai-dispatch.sh and return output."""
     # Langfuse POC: one span per dispatched agent (gemini-search, codex, etc).
+    # PII-safe: hash + length only (prompts may embed KB content).
+    import hashlib as _h
+    prompt_hash = _h.sha256(prompt.encode("utf-8")).hexdigest()[:16]
     lf_span_ctx = _lf_span(
         name=f"federation.dispatch.{cmd}",
-        input_data={"cmd": cmd, "prompt": prompt[:500]},
+        input_data={
+            "cmd": cmd,
+            "prompt_hash": prompt_hash,
+            "prompt_length": len(prompt),
+        },
     )
     with lf_span_ctx as span:
         proc = await asyncio.create_subprocess_exec(
@@ -199,9 +223,11 @@ async def classify_node(state: FederationState) -> dict:
     """Classify the task using local Ollama (Qwen 3.5:9b) with capability-aware routing."""
     task = state["task"]
 
+    import hashlib as _h
+    task_hash = _h.sha256(task.encode("utf-8")).hexdigest()[:16]
     lf_span_ctx = _lf_span(
         name="federation.classify",
-        input_data={"task": task[:500]},
+        input_data={"task_hash": task_hash, "task_length": len(task)},
     )
     with lf_span_ctx as span:
         return await _classify_node_inner(state, task, _span=span)
@@ -521,13 +547,21 @@ def main():
     total = ARSENAL_SUMMARY["total_capabilities"]
     print(f"\n  Federation Orchestrator v2 ({total} capabilities)")
     print(f"  Task: {task[:100]}")
+    if _langsmith_active():
+        print("  Tracer: LangSmith (LANGCHAIN_API_KEY set; Langfuse suppressed)")
+    elif _lf_is_enabled():
+        print("  Tracer: Langfuse")
+    else:
+        print("  Tracer: disabled")
     print()
 
     # Langfuse POC: root span for the whole orchestrator run.
+    import hashlib as _h
+    _task_hash = _h.sha256(task.encode("utf-8")).hexdigest()[:16]
     try:
         with _lf_span(
             name="federation.orchestrate",
-            input_data={"task": task[:500]},
+            input_data={"task_hash": _task_hash, "task_length": len(task)},
             metadata={"non_interactive": non_interactive, "telegram": bool(telegram_chat_id)},
         ):
             result = asyncio.run(app.ainvoke(initial_state))

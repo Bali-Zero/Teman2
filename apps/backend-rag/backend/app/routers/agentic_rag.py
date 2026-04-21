@@ -188,12 +188,18 @@ async def _process_query_traced(
     if lf is None:
         return await orchestrator.process_query(**query_kwargs)
 
-    query_preview = str(query_kwargs.get("query", ""))[:500]
+    # PII-safe span input: hash + length only. Raw query / retrieved docs
+    # / answer content never cross the Langfuse boundary. See README.md
+    # "Langfuse POC" for the full UU PDP compliance note.
+    query_str = str(query_kwargs.get("query", ""))
+    query_hash = hashlib.sha256(query_str.encode("utf-8")).hexdigest()[:16]
     with lf.start_as_current_span(
         name="agentic_rag.query",
-        input={"query": query_preview},
+        input={"query_hash": query_hash, "query_length": len(query_str)},
         metadata={
-            "user_id": authenticated_user_id,
+            "user_id_hash": hashlib.sha256(
+                (authenticated_user_id or "").encode("utf-8"),
+            ).hexdigest()[:16],
             "session_id": session_id,
             "query_id": query_id,
             "ab_variants": ab_variants,
@@ -209,6 +215,7 @@ async def _process_query_traced(
                     "model_used": getattr(result, "model_used", None),
                     "abstain": getattr(result, "abstain", False),
                     "evidence_score": getattr(result, "evidence_score", None),
+                    # No answer text — may contain PII from RAG retrieval.
                 },
             )
         except Exception:

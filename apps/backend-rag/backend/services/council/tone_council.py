@@ -283,10 +283,11 @@ class ToneCouncil:
 
         if _lf_span is not None:
             try:
+                # PII-safe output: metadata only. Rationale is LLM-generated
+                # free-form text and may echo retrieved KB fragments — drop it.
                 _lf_span.update(
                     output={
                         "chosen_register": getattr(decision, "chosen_register", None),
-                        "rationale": getattr(decision, "rationale", None),
                         "duration_ms": duration_ms,
                         "degraded": degraded,
                         "scars_used": len(scars),
@@ -609,15 +610,20 @@ def _maybe_council_span(*, topic: str, proponents: list[str]) -> Any:
     if not is_enabled():
         return _NullAsyncCM()
     try:
+        import hashlib
+
         init_observability(service_name="nuzantara-council")
         from langfuse import get_client
 
         lf = get_client()
         if lf is None:
             return _NullAsyncCM()
+        # PII-safe: hash + length only. War-room topics rarely contain
+        # client PII but the pattern is uniform with agentic_rag.
+        topic_hash = hashlib.sha256(topic.encode("utf-8")).hexdigest()[:16]
         sync_cm = lf.start_as_current_span(
             name="tone_council.run",
-            input={"topic": topic[:500]},
+            input={"topic_hash": topic_hash, "topic_length": len(topic)},
             metadata={"proponents": proponents},
         )
         return _SyncSpanAsyncCM(sync_cm)
