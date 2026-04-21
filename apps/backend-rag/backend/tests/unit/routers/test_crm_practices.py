@@ -890,6 +890,10 @@ class TestNotifyHRBonus:
         # (default: asya@balizero.com). We patch both the send helper and the
         # settings attribute so this test pins the "asya@" contract without
         # depending on the env var's real value.
+        # 2026-04-21: db_pool is now a required first arg (for email_send_log
+        # audit); we pass a MagicMock — send_internal_email is patched so the
+        # pool is never actually touched.
+        mock_pool = MagicMock()
         with patch(
             "backend.app.routers.crm_practices.send_internal_email",
             new=AsyncMock(),
@@ -898,11 +902,15 @@ class TestNotifyHRBonus:
             "asya@balizero.com",
         ):
             await _notify_hr_bonus_pending(
-                "team@balizero.com", "kitas_sponsor", 500000, 42,
+                mock_pool, "team@balizero.com", "kitas_sponsor", 500000, 42,
             )
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args
         assert call_kwargs.kwargs["to"] == "asya@balizero.com"
+        # New contract: audit kwargs thread through
+        assert call_kwargs.kwargs["email_type"] == "hr_bonus"
+        assert call_kwargs.kwargs["practice_id"] == 42
+        assert call_kwargs.kwargs["pool"] is mock_pool
 
 
 # ---------------------------------------------------------------------------
