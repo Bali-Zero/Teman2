@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { VisaChat } from '@/components/visa-oracle/VisaChat';
+import { VisaChat } from '@/components/visa/VisaChat';
 import { getVisaResults } from '@/lib/visa-oracle/storage';
 import type { QuizAnswers, VisaRecommendation } from '@/lib/visa-oracle/types';
 

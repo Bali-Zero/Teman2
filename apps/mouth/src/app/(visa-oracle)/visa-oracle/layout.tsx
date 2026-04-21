@@ -3,7 +3,7 @@ import { NavShell, BZLogo } from "@balizero/core";
 import { SessionInit } from "@/components/funnel/SessionInit";
 import { HeaderWhatsAppCTA } from "@/components/funnel/HeaderWhatsAppCTA";
 import { getFunnelNavItems } from "@/components/funnel/funnel-nav";
-import { ConsentBanner } from "@/components/visa-oracle/ConsentBanner";
+import { ConsentBanner } from "@/components/visa/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "Visa Oracle — What visa do you need for Indonesia?",
