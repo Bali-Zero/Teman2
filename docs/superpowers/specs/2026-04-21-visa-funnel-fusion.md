@@ -138,7 +138,7 @@ balizero.com/visa (landing)
 }
 ```
 
-JWT claims: `{ "check_hash": "81kealti43kbi40e", "iat": <unix>, "exp": <unix+3600> }`. Signed with `JWT_SECRET_KEY`. 1h TTL covers the realistic conversation window; expired → chat 401 → frontend re-prompts a fresh quiz.
+JWT claims: `{ "sub": "81kealti43kbi40e", "type": "visa_funnel", "iat": <unix>, "exp": <unix+3600> }`. Signed with `JWT_SECRET_KEY`. 1h TTL covers the realistic conversation window; expired → chat 401 → frontend re-prompts a fresh quiz.
 
 ### Extended `visa-oracle/chat` request
 

@@ -50,6 +50,7 @@ def _issue_visa_funnel_jwt(check_hash: str) -> str:
     }
     return jwt.encode(claims, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
+
 router = APIRouter(prefix="/api/visa", tags=["visa-check"])
 
 

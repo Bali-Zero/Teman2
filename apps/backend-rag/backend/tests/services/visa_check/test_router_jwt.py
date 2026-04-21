@@ -90,7 +90,7 @@ async def test_get_match_does_not_regenerate_jwt(monkeypatch):
     Chat auth must be obtained fresh from submit_match."""
     from backend.app.routers import visa_check as router_mod
 
-    async def _fake_load(self, hash_: str) -> object:
+    async def _fake_load(self, *args, **kwargs) -> object:
         from backend.services.visa_check.repository import VisaMatchResult
         return VisaMatchResult(
             hash="xyz1234567890000", nationality="USA", purpose="work_remote",
