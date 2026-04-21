@@ -23,6 +23,20 @@ from decimal import Decimal
 from typing import Any, Callable, Coroutine
 
 
+class _StrWithId(str):
+    """str subclass that adds an `.id` property for backward-compat with
+    both `await factory()` (used as str directly) and `(await factory()).id`
+    (used in tests that expect an object with .id).
+    CATA-5: team_members.id is VARCHAR (email-like string), not UUID."""
+
+    @property
+    def id(self) -> "_StrWithId":
+        return self
+
+
+# Keep _UUIDWithId as a legacy alias so code that already builds UUID fixtures
+# (partner_factory, referral_factory, commission_factory) can still use the
+# UUID-based constructor pattern.  User identity is now _StrWithId.
 class _UUIDWithId(uuid.UUID):
     """UUID subclass that adds an `.id` property for backward-compat with
     both `await factory()` (used as UUID directly) and `(await factory()).id`
@@ -112,12 +126,23 @@ _DEFAULT_DB_URL = os.environ.get(
 # --------------------------------------------------------------------------
 
 _SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS users (
-    id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email   TEXT NOT NULL UNIQUE,
-    role    TEXT NOT NULL DEFAULT 'team',
-    partner_id UUID
-);
+-- CATA-5: Production has NO `users` table. Team identity lives in
+-- team_members(id VARCHAR) with email-like string IDs (e.g. "zero@balizero.com").
+-- NOTE: team_members is a REAL pre-existing production table in the dev DB.
+-- We do NOT create or drop it — we only INSERT test rows (cleaned up in teardown).
+-- This mirrors how clients is handled (client_factory inserts+deletes only).
+--
+-- Ensure the partner_id column is present (added by migration 119 in production).
+-- IF NOT EXISTS guard makes this idempotent.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'team_members' AND column_name = 'partner_id'
+    ) THEN
+        ALTER TABLE team_members ADD COLUMN partner_id UUID;
+    END IF;
+END $$;
 
 -- NOTE: clients table already exists in the dev DB with many dependents.
 -- We do NOT create/drop it — we use it as-is. The client_factory
@@ -180,13 +205,15 @@ CREATE TABLE IF NOT EXISTS partners (
     default_commission_value  NUMERIC(14,4) NOT NULL DEFAULT 10.0,
     onboarding_status         TEXT NOT NULL DEFAULT 'pending_approval'
         CHECK (onboarding_status IN ('pending_approval','active','inactive')),
-    assigned_to               UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: assigned_to references team_members(id VARCHAR), not users(id UUID)
+    assigned_to               VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     pdp_consent_at            TIMESTAMPTZ,
     pdp_consent_version       TEXT,
     terms_accepted_at         TIMESTAMPTZ,
     terms_version             TEXT,
     created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by                UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: created_by references team_members(id VARCHAR), not users(id UUID)
+    created_by                VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
     deactivated_at            TIMESTAMPTZ,
     welcome_email_sent_at     TIMESTAMPTZ
@@ -202,7 +229,8 @@ CREATE TABLE IF NOT EXISTS partner_referrals (
     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
         CHECK (share_percent > 0 AND share_percent <= 100),
     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    referred_by_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: referred_by_user_id references team_members(id VARCHAR), not users(id UUID)
+    referred_by_user_id  VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     notes                TEXT,
     CONSTRAINT partner_referrals_practice_unique_v1 UNIQUE (practice_id)
 );
@@ -223,7 +251,8 @@ CREATE TABLE IF NOT EXISTS partner_commissions (
     commission_value_snapshot NUMERIC(14,4) NOT NULL,
     rule_source              TEXT NOT NULL DEFAULT 'partner_default'
         CHECK (rule_source IN ('partner_default','manual_override')),
-    assigned_to_snapshot     UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: assigned_to_snapshot references team_members(id VARCHAR), not users(id UUID)
+    assigned_to_snapshot     VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     gross_amount_idr         NUMERIC(16,2) NOT NULL,
     withholding_category     TEXT NOT NULL DEFAULT 'tbd'
         CHECK (withholding_category IN ('pph21','pph23','exempt','tbd')),
@@ -239,9 +268,11 @@ CREATE TABLE IF NOT EXISTS partner_commissions (
     accrued_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
     eligible_for_approval_at TIMESTAMPTZ NOT NULL,
     approved_at              TIMESTAMPTZ,
-    approved_by              UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: approved_by references team_members(id VARCHAR), not users(id UUID)
+    approved_by              VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     paid_at                  TIMESTAMPTZ,
-    paid_by                  UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: paid_by references team_members(id VARCHAR), not users(id UUID)
+    paid_by                  VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     paid_via                 TEXT,
     payment_reference        TEXT,
     payment_proof_url        TEXT,
@@ -259,7 +290,8 @@ CREATE TABLE IF NOT EXISTS partner_commissions (
 CREATE TABLE IF NOT EXISTS partner_audit_log (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partner_id    UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-    actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: actor_user_id references team_members(id VARCHAR), not users(id UUID)
+    actor_user_id VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     action        TEXT NOT NULL,
     before_json   JSONB,
     after_json    JSONB,
@@ -282,7 +314,8 @@ CREATE TABLE IF NOT EXISTS partner_email_outbox (
     next_retry_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     sent_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    -- CATA-5: created_by references team_members(id VARCHAR), not users(id UUID)
+    created_by VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
     idempotency_key TEXT UNIQUE
 );
 """
@@ -294,9 +327,14 @@ DROP TABLE IF EXISTS partner_commissions;
 DROP TABLE IF EXISTS partner_referrals;
 DROP TABLE IF EXISTS partners;
 DROP TABLE IF EXISTS system_settings;
-DROP TABLE IF EXISTS users;
+-- NOTE: team_members is NOT dropped here — it is a real pre-existing production
+-- table in the dev DB. Test rows are cleaned up by the user_factory fixture
+-- by tracking inserted IDs and deleting them in the fixture teardown.
 DROP TABLE IF EXISTS pg_temp.practices;
 """
+
+# SQL used to clean up test-inserted team_members rows (parameterised by ID list).
+_TEAM_MEMBERS_CLEANUP_SQL = "DELETE FROM team_members WHERE id = ANY($1::varchar[])"
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -307,14 +345,21 @@ async def db_conn() -> asyncpg.Connection:
     teardown DROPs ensure the next test sees a fresh schema.
     """
     conn = await asyncpg.connect(_DEFAULT_DB_URL)
-    # Teardown from any previous failed run first
+    # Teardown from any previous failed run first (drops partner tables + clears stray test members)
     await conn.execute(_TEARDOWN_SQL)
+    await conn.execute(
+        "DELETE FROM team_members WHERE email LIKE '%@test.invalid'"
+    )
     # Create fresh schema
     await conn.execute(_SCHEMA_SQL)
     try:
         yield conn
     finally:
         await conn.execute(_TEARDOWN_SQL)
+        # Clean up any team_members rows inserted directly by tests (not via user_factory)
+        await conn.execute(
+            "DELETE FROM team_members WHERE email LIKE '%@test.invalid'"
+        )
         await conn.close()
 
 
@@ -323,22 +368,44 @@ async def db_conn() -> asyncpg.Connection:
 # --------------------------------------------------------------------------
 
 @pytest_asyncio.fixture(scope="function")
-def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, uuid.UUID]]:
-    """Returns an async callable that inserts a user row and returns its UUID."""
+async def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, "_StrWithId"]]:
+    """Returns an async callable that inserts a team_members row and returns its string ID.
+
+    CATA-5: team_members.id is VARCHAR (email-like string), not UUID.
+    IDs are generated as "test-<hex>@test.invalid" to mirror the production
+    pattern of email-like string identifiers.
+
+    NOTE: team_members is a real pre-existing production table. This factory
+    only INSERT-s rows and cleans them up in its own teardown (like client_factory).
+    It does NOT create or drop the table.
+    """
+    _inserted_ids: list[str] = []
+
     async def _create(
         *,
         email: str | None = None,
         role: str = "team",
-    ) -> _UUIDWithId:
-        uid = _UUIDWithId(int=uuid.uuid4().int)
-        _email = email or f"user-{uid}@test.invalid"
+    ) -> _StrWithId:
+        short = uuid.uuid4().hex[:8]
+        _email = email or f"user-{short}@test.invalid"
+        # team_members.id is the email-like string (VARCHAR)
+        sid = _StrWithId(_email)
+        # name and pin_hash columns are NOT NULL in the real production team_members table
+        _name = f"Test User {short}"
+        _pin_hash = f"test-pin-hash-{short}"  # placeholder, not a real bcrypt hash
         await db_conn.execute(
-            "INSERT INTO users (id, email, role) VALUES ($1, $2, $3)",
-            uuid.UUID(int=uid.int), _email, role,
+            "INSERT INTO team_members (id, name, email, pin_hash, role) VALUES ($1, $2, $3, $4, $5)",
+            str(sid), _name, _email, _pin_hash, role,
         )
-        return uid
+        _inserted_ids.append(str(sid))
+        return sid
 
-    return _create
+    yield _create
+
+    # Teardown: delete test rows from the real production team_members table.
+    # partners.assigned_to FK is ON DELETE SET NULL, so this is safe.
+    if _inserted_ids:
+        await db_conn.execute(_TEAM_MEMBERS_CLEANUP_SQL, _inserted_ids)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -387,6 +454,9 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
     - default_commission_type: 'percentage'|'flat', default 'percentage'
     - default_commission_value: NUMERIC, default 10.0
     - tax_withholding_category: 'pph21'|'pph23'|'exempt'|'tbd', default 'tbd'
+
+    CATA-5: assigned_to is now str | None (team_members.id VARCHAR), not UUID.
+    For backward-compat, UUID values are accepted and converted to str.
     """
     _counter = [0]
 
@@ -395,7 +465,7 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
         full_name: str | None = None,
         email: str | None = None,
         entity_type: str = "individual",
-        assigned_to: uuid.UUID | None = None,
+        assigned_to: str | uuid.UUID | None = None,
         default_commission_type: str = "percentage",
         default_commission_value: Decimal = Decimal("10.0"),
         tax_withholding_category: str = "tbd",
@@ -404,6 +474,8 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
         _counter[0] += 1
         _full_name = full_name or f"Test Partner {_counter[0]}"
         _email = email or f"partner-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
+        # CATA-5: assigned_to is VARCHAR in DB — coerce UUID to str if needed
+        _assigned_to = str(assigned_to) if assigned_to is not None else None
         row = await db_conn.fetchrow(
             """
             INSERT INTO partners
@@ -413,7 +485,7 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
             """,
-            _full_name, _email, entity_type, assigned_to,
+            _full_name, _email, entity_type, _assigned_to,
             default_commission_type, default_commission_value,
             tax_withholding_category, preferred_language,
         )
@@ -449,8 +521,9 @@ def referral_factory(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def admin(user_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]]) -> _UUIDWithId:
-    """Inserts an admin user and returns its UUID (with .id attribute)."""
+async def admin(user_factory: Callable[..., Coroutine[Any, Any, "_StrWithId"]]) -> "_StrWithId":
+    """Inserts an admin team_member and returns its string ID (with .id attribute).
+    CATA-5: team_members.id is VARCHAR, not UUID."""
     return await user_factory(role="admin")
 
 

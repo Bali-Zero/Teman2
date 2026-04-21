@@ -11,10 +11,15 @@ Pre-flight findings (2026-04-20):
 - get_current_user returns dict[str, Any] with keys:
     email, user_id, role, permissions (list, not set)
   NOT an object — use user["role"], user["user_id"].
-- No partner_id in user dict; /me endpoints query users.partner_id from DB.
+- No partner_id in user dict; /me endpoints query team_members.partner_id from DB.
 - DB dep is get_database_pool (returns Pool); use `async with pool.acquire() as conn`.
 - Finance permission: check "finance.mark_paid" in permissions list; admin alone
   is sufficient as v1 fallback (permissions not yet wired to JWT for all clients).
+
+CATA-5 (2026-04-21): Production has NO `users` table. JWT user_id is already a
+string (team_members.id VARCHAR, email-like). All actor_user params pass
+user["user_id"] directly — no UUID(str(...)) wrapping needed.
+/me endpoints now query team_members.partner_id (not users.partner_id).
 """
 from __future__ import annotations
 
@@ -69,7 +74,9 @@ class PartnerCreate(BaseModel):
     payment_notes: str | None = None
     default_commission_type: Literal["percentage", "flat"] = "percentage"
     default_commission_value: Decimal = Decimal("10.0")
-    assigned_to: UUID | None = None
+    # CATA-5: team member IDs are strings (email-like identifiers, e.g. "zero@balizero.com")
+    # from team_members.id VARCHAR — not UUIDs.
+    assigned_to: str | None = None
     pdp_consent_version: str | None = None
     terms_version: str | None = None
 
@@ -102,13 +109,17 @@ class PartnerUpdate(BaseModel):
 
 
 class ReassignRequest(BaseModel):
-    new_user_id: UUID | None
+    # CATA-5: team member IDs are strings (email-like identifiers, e.g. "zero@balizero.com")
+    # from team_members.id VARCHAR — not UUIDs.
+    new_user_id: str | None
     reason: str
 
 
 class BulkReassignRequest(BaseModel):
     partner_ids: list[UUID]
-    new_user_id: UUID
+    # CATA-5: team member IDs are strings (email-like identifiers, e.g. "zero@balizero.com")
+    # from team_members.id VARCHAR — not UUIDs.
+    new_user_id: str
     reason: str
 
 
@@ -263,13 +274,17 @@ async def create_partner(
             data = body.model_dump(exclude_none=True)
             assigned_to = data.pop("assigned_to", None)
             # Team role: always scope to self (ignore any supplied assigned_to)
+            # CATA-5: user["user_id"] is already a string (team_members.id VARCHAR) — no UUID wrapping
             if user.get("role") == "team":
-                assigned_to = UUID(str(user["user_id"]))
+                assigned_to = str(user["user_id"])
             elif assigned_to is None and user.get("role") == "admin":
                 assigned_to = None  # explicit None allowed for admin
+            elif assigned_to is not None:
+                # CATA-5: assigned_to is already str (team_members.id VARCHAR); keep as-is
+                assigned_to = str(assigned_to)  # harmless cast for defensive safety
             pid = await svc.create_partner(
                 assigned_to=assigned_to,
-                created_by=UUID(str(user["user_id"])),
+                created_by=str(user["user_id"]),
                 **data,
             )
             partner = await svc.repo.get_partner(pid)
@@ -283,7 +298,8 @@ async def create_partner(
 
 @router.get("")
 async def list_partners(
-    assigned_to: UUID | None = None,
+    # CATA-5: assigned_to filter is a team_members.id string (not UUID)
+    assigned_to: str | None = None,
     onboarding_status: str | None = None,
     orphaned: bool = False,
     search: str | None = None,
@@ -305,8 +321,9 @@ async def list_partners(
     _require_team_or_admin(user)  # CATA-2: partner role cannot list all partners
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
+        # CATA-5: actor_user is team_members.id string — no UUID wrapping
         all_partners = await svc.list_partners(
-            actor_user=UUID(str(user["user_id"])),
+            actor_user=str(user["user_id"]),
             actor_role=user.get("role", "team"),
             assigned_to=assigned_to,
             onboarding_status=onboarding_status,
@@ -333,9 +350,11 @@ async def me(
     if user.get("role") != "partner":
         raise HTTPException(status_code=403, detail="partner role required")
     async with pool.acquire() as conn:
+        # CATA-5: Query team_members.partner_id (not users — production has no users table).
+        # team_members.id is VARCHAR string ID; user["user_id"] is already a string.
         row = await conn.fetchrow(
-            "SELECT partner_id FROM users WHERE id = $1",
-            UUID(str(user["user_id"])),
+            "SELECT partner_id FROM team_members WHERE id = $1",
+            str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
@@ -355,9 +374,10 @@ async def me_referrals(
     if user.get("role") != "partner":
         raise HTTPException(status_code=403, detail="partner role required")
     async with pool.acquire() as conn:
+        # CATA-5: Query team_members.partner_id (not users — production has no users table).
         row = await conn.fetchrow(
-            "SELECT partner_id FROM users WHERE id = $1",
-            UUID(str(user["user_id"])),
+            "SELECT partner_id FROM team_members WHERE id = $1",
+            str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
@@ -401,9 +421,10 @@ async def me_commissions(
     if user.get("role") != "partner":
         raise HTTPException(status_code=403, detail="partner role required")
     async with pool.acquire() as conn:
+        # CATA-5: Query team_members.partner_id (not users — production has no users table).
         row = await conn.fetchrow(
-            "SELECT partner_id FROM users WHERE id = $1",
-            UUID(str(user["user_id"])),
+            "SELECT partner_id FROM team_members WHERE id = $1",
+            str(user["user_id"]),
         )
         if not row or not row["partner_id"]:
             raise HTTPException(status_code=403, detail="no partner profile linked to this user")
@@ -479,9 +500,10 @@ async def get_partner(
     """Get a partner by ID. Scoped by role."""
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
+        # CATA-5: actor_user is team_members.id string — no UUID wrapping
         partner = await verify_partner_access_with_role(
             svc,
-            UUID(str(user["user_id"])),
+            str(user["user_id"]),
             user.get("role"),
             partner_id,
         )
@@ -500,9 +522,10 @@ async def update_partner(
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
             fields = body.model_dump(exclude_none=True, exclude_unset=True)
+            # CATA-5: actor_user is team_members.id string — no UUID wrapping
             await svc.update_partner(
                 partner_id,
-                actor_user=UUID(str(user["user_id"])),
+                actor_user=str(user["user_id"]),
                 actor_role=user.get("role", "team"),
                 **fields,
             )
@@ -531,12 +554,13 @@ async def activate_partner(
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
             async with conn.transaction():
+                # CATA-5: actor_user is team_members.id string — no UUID wrapping
                 await svc.activate_partner(
-                    partner_id, actor_user=UUID(str(user["user_id"]))
+                    partner_id, actor_user=str(user["user_id"])
                 )
                 from backend.services.crm.partners.emails import enqueue_welcome
                 await enqueue_welcome(
-                    conn, partner_id, actor_user=UUID(str(user["user_id"]))
+                    conn, partner_id, actor_user=str(user["user_id"])
                 )
             return Response(status_code=204)
     except HTTPException:
@@ -557,7 +581,8 @@ async def deactivate_partner(
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
-            await svc.deactivate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
+            # CATA-5: actor_user is team_members.id string — no UUID wrapping
+            await svc.deactivate_partner(partner_id, actor_user=str(user["user_id"]))
             return Response(status_code=204)
     except HTTPException:
         raise
@@ -578,10 +603,11 @@ async def reassign_partner(
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
+            # CATA-5: actor_user and new_user_id are team_members.id strings (VARCHAR)
             await svc.reassign_partner(
                 partner_id,
-                new_user_id=body.new_user_id,
-                actor_user=UUID(str(user["user_id"])),
+                new_user_id=body.new_user_id,  # already str | None
+                actor_user=str(user["user_id"]),
                 reason=body.reason,
             )
             return Response(status_code=204)
@@ -606,10 +632,11 @@ async def bulk_reassign(
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
             for pid in body.partner_ids:
+                # CATA-5: actor_user and new_user_id are team_members.id strings (VARCHAR)
                 await svc.reassign_partner(
                     pid,
-                    new_user_id=body.new_user_id,
-                    actor_user=UUID(str(user["user_id"])),
+                    new_user_id=body.new_user_id,  # already str
+                    actor_user=str(user["user_id"]),
                     reason=body.reason,
                 )
             return Response(status_code=204)
@@ -633,8 +660,9 @@ async def list_referrals(
     """List referrals for a partner. Scoped by role."""
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
+        # CATA-5: actor_user is team_members.id string — no UUID wrapping
         await verify_partner_access_with_role(
-            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+            svc, str(user["user_id"]), user.get("role"), partner_id
         )
         refs = await svc.repo.list_referrals_for_partner(partner_id)
         return [
@@ -673,7 +701,8 @@ async def create_referral(
             partner = await svc.repo.get_partner(partner_id)
             if partner is None:
                 raise HTTPException(status_code=404, detail="partner not found")
-            if user["role"] == "team" and partner.assigned_to != UUID(str(user["user_id"])):
+            # CATA-5: partner.assigned_to is a string (team_members.id VARCHAR)
+            if user["role"] == "team" and partner.assigned_to != str(user["user_id"]):
                 raise HTTPException(
                     status_code=403,
                     detail="team members may only create referrals for partners they own",
@@ -702,10 +731,11 @@ async def create_referral(
                             detail="team members may only attach referrals to practices they own",
                         )
 
+            # CATA-5: referred_by_user_id is team_members.id string — no UUID wrapping
             rid = await svc.repo.insert_referral(
                 partner_id=partner_id,
                 practice_id=body.practice_id,
-                referred_by_user_id=UUID(str(user["user_id"])),
+                referred_by_user_id=str(user["user_id"]),
                 notes=body.notes,
             )
             return {"id": str(rid), "partner_id": str(partner_id), "practice_id": str(body.practice_id)}
@@ -774,8 +804,9 @@ async def list_commissions(
     """List commissions for a partner. Scoped by role."""
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
+        # CATA-5: actor_user is team_members.id string — no UUID wrapping
         await verify_partner_access_with_role(
-            svc, UUID(str(user["user_id"])), user.get("role"), partner_id
+            svc, str(user["user_id"]), user.get("role"), partner_id
         )
         commissions = await svc.repo.list_commissions_for_partner(partner_id)
         return [
@@ -794,7 +825,8 @@ async def list_partner_audit_log(
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
-            await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
+            # CATA-5: actor_user is team_members.id string — no UUID wrapping
+            await verify_partner_access_with_role(svc, str(user["user_id"]), user.get("role"), partner_id)
             entries = await svc.list_audit(partner_id)
             return [_partner_to_dict(e) for e in entries]
     except HTTPException:
@@ -816,7 +848,8 @@ async def approve_commission(
     try:
         async with pool.acquire() as conn:
             engine = CommissionEngine(conn)
-            await engine.approve(commission_id, actor=UUID(str(user["user_id"])))
+            # CATA-5: actor is team_members.id string — no UUID wrapping
+            await engine.approve(commission_id, actor=str(user["user_id"]))
             return Response(status_code=204)
     except HTTPException:
         raise
@@ -848,9 +881,10 @@ async def mark_paid_commission(
         async with pool.acquire() as conn:
             engine = CommissionEngine(conn)
             async with conn.transaction():
+                # CATA-5: actor/actor_user is team_members.id string — no UUID wrapping
                 await engine.mark_paid(
                     commission_id,
-                    actor=UUID(str(user["user_id"])),
+                    actor=str(user["user_id"]),
                     paid_via=body.paid_via,
                     payment_reference=body.payment_reference,
                     payment_proof_url=body.payment_proof_url,
@@ -859,7 +893,7 @@ async def mark_paid_commission(
                 )
                 from backend.services.crm.partners.emails import enqueue_commission_earned
                 await enqueue_commission_earned(
-                    conn, commission_id, actor_user=UUID(str(user["user_id"]))
+                    conn, commission_id, actor_user=str(user["user_id"])
                 )
             return Response(status_code=204)
     except HTTPException:
@@ -910,9 +944,10 @@ async def clawback_commission(
     try:
         async with pool.acquire() as conn:
             engine = CommissionEngine(conn)
+            # CATA-5: actor is team_members.id string — no UUID wrapping
             cid = await engine.clawback(
                 commission_id,
-                actor=UUID(str(user["user_id"])),
+                actor=str(user["user_id"]),
                 reason=body.reason,
                 amount_idr=body.amount_idr,
             )
@@ -939,9 +974,10 @@ async def waive_commission(
     try:
         async with pool.acquire() as conn:
             engine = CommissionEngine(conn)
+            # CATA-5: actor is team_members.id string — no UUID wrapping
             await engine.waive_clawback(
                 commission_id,
-                actor=UUID(str(user["user_id"])),
+                actor=str(user["user_id"]),
                 reason=body.reason,
             )
             return Response(status_code=204)

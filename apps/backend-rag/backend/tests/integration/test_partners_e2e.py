@@ -41,12 +41,13 @@ async def test_full_flow_process_to_paid_email(
     monkeypatch,
 ):
     # ── Setup: create users ──────────────────────────────────────────────────
+    # CATA-5: user_factory returns _StrWithId (team_members.id VARCHAR), not UUID.
     admin_id = await user_factory(role="admin")
     team_id = await user_factory(role="team")
     partner_id = await partner_factory(
         tax_withholding_category="pph23",
         default_commission_value=Decimal("10.0"),
-        assigned_to=uuid.UUID(int=admin_id.int),
+        assigned_to=admin_id,  # CATA-5: str, not UUID
     )
 
     # ── Capture email sends ─────────────────────────────────────────────────
@@ -68,7 +69,8 @@ async def test_full_flow_process_to_paid_email(
     # ── Step 1: Admin activates partner → enqueue welcome → flush ───────────
     # CRIT-2: enqueue inside activation, then flush_outbox sends the email.
     svc = PartnersService(db_conn)
-    await svc.activate_partner(uuid.UUID(int=partner_id.int), actor_user=uuid.UUID(int=admin_id.int))
+    # CATA-5: actor_user is str (team_members.id VARCHAR), not UUID.
+    await svc.activate_partner(uuid.UUID(int=partner_id.int), actor_user=str(admin_id))
     with patch(
         "backend.services.crm.partners.emails._build_pricing_services",
         return_value=[{"name": "KITAS E33G", "price_display": "Rp 12.500.000"}],
@@ -150,16 +152,18 @@ async def test_full_flow_process_to_paid_email(
     )
 
     # ── Step 6: Approve ──────────────────────────────────────────────────────
-    await engine.approve(c.id, actor=uuid.UUID(int=admin_id.int))
+    # CATA-5: actor is str (team_members.id VARCHAR), not UUID.
+    await engine.approve(c.id, actor=str(admin_id))
     refreshed = await engine.repo.get_commission(c.id)
     assert refreshed is not None
     assert refreshed.status == "approved", f"Expected approved, got {refreshed.status}"
 
     # ── Step 7: Mark paid + commission email ─────────────────────────────────
     # CRIT-2: enqueue inside mark_paid txn, then flush_outbox sends the email.
+    # CATA-5: actor is str (team_members.id VARCHAR), not UUID.
     await engine.mark_paid(
         c.id,
-        actor=uuid.UUID(int=admin_id.int),
+        actor=str(admin_id),
         paid_via="BCA transfer",
         payment_reference="TX-20260520-001",
     )
