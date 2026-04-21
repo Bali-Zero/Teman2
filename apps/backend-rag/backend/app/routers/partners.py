@@ -147,18 +147,18 @@ def _require_admin(user: dict[str, Any]) -> None:
 
 
 def _require_finance(user: dict[str, Any]) -> None:
-    """Raise 403 if user lacks finance permission.
+    """Raise 403 if user lacks the explicit finance.mark_paid permission.
 
-    v1 fallback: admin role alone is sufficient because permissions list
-    may not be populated in all JWT tokens yet. When finance.mark_paid is
-    wired into the JWT payload, this guard will enforce it for non-admins.
+    CRIT-3: The previous admin-role fallback ('admin always has finance') was
+    removed. finance.mark_paid is a separate, load-bearing permission that must
+    be granted explicitly in the JWT token — even for admins.
+
+    Spec: admin role grants CRM management; it does NOT automatically grant
+    the ability to approve payments. The finance team holds finance.mark_paid.
     """
-    perms = user.get("permissions", [])
-    if user.get("role") == "admin":
-        return  # admin always has finance
-    if "finance.mark_paid" in perms:
-        return
-    raise HTTPException(status_code=403, detail="finance permission required")
+    perms = user.get("permissions") or []
+    if "finance.mark_paid" not in perms:
+        raise HTTPException(status_code=403, detail="finance.mark_paid permission required")
 
 
 def _sterilize_client_for_partner(full_name: str) -> str:

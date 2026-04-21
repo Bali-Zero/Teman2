@@ -87,7 +87,9 @@ def _partner_dict(**overrides: Any) -> dict[str, Any]:
 
 @pytest.fixture
 def fake_admin() -> dict[str, Any]:
-    return {"user_id": str(_USER_ID), "email": "admin@balizero.com", "role": "admin", "permissions": []}
+    # CRIT-3: finance.mark_paid is now load-bearing — admin role alone is
+    # insufficient. Admin users that perform finance actions must hold the perm.
+    return {"user_id": str(_USER_ID), "email": "admin@balizero.com", "role": "admin", "permissions": ["finance.mark_paid"]}
 
 
 @pytest.fixture
@@ -855,13 +857,22 @@ class TestAuditLog:
 
 class TestRequireFinance:
     @pytest.mark.unit
-    def test_admin_passes_without_explicit_finance_perm(self) -> None:
-        user = {"role": "admin", "permissions": []}
+    def test_admin_with_finance_perm_passes(self) -> None:
+        # CRIT-3: admin role alone no longer bypasses — must hold the explicit perm.
+        user = {"role": "admin", "permissions": ["finance.mark_paid"]}
         partners_module._require_finance(user)  # must not raise
 
     @pytest.mark.unit
-    def test_non_admin_with_finance_perm_passes(self) -> None:
+    def test_admin_without_finance_perm_raises_403(self) -> None:
+        # CRIT-3: admin without the perm must be rejected (this was the broken fallback).
         from fastapi import HTTPException
+        user = {"role": "admin", "permissions": []}
+        with pytest.raises(HTTPException) as exc_info:
+            partners_module._require_finance(user)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.unit
+    def test_non_admin_with_finance_perm_passes(self) -> None:
         user = {"role": "team", "permissions": ["finance.mark_paid"]}
         partners_module._require_finance(user)  # must not raise
 
@@ -869,6 +880,31 @@ class TestRequireFinance:
     def test_non_admin_without_finance_perm_raises_403(self) -> None:
         from fastapi import HTTPException
         user = {"role": "team", "permissions": []}
+        with pytest.raises(HTTPException) as exc_info:
+            partners_module._require_finance(user)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.unit
+    def test_finance_perm_passes_regardless_of_role(self) -> None:
+        # Anyone with the perm — regardless of role — should pass.
+        for role in ("admin", "team", "finance", "accountant"):
+            user = {"role": role, "permissions": ["finance.mark_paid"]}
+            partners_module._require_finance(user)  # must not raise
+
+    @pytest.mark.unit
+    def test_perm_check_tolerates_missing_permissions_key(self) -> None:
+        # Defensive: JWT without 'permissions' key at all → reject.
+        from fastapi import HTTPException
+        user = {"role": "admin"}
+        with pytest.raises(HTTPException) as exc_info:
+            partners_module._require_finance(user)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.unit
+    def test_perm_check_tolerates_none_permissions(self) -> None:
+        # Defensive: JWT with permissions=None → reject (not crash).
+        from fastapi import HTTPException
+        user = {"role": "admin", "permissions": None}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_finance(user)
         assert exc_info.value.status_code == 403
