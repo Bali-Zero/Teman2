@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
+import * as partnersApi from "@/lib/api/partners/partners";
 import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
@@ -354,12 +355,22 @@ export default function NewPracticePage() {
           : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
-        ...(formData.referrer_id ? { referrer_id: formData.referrer_id } : {}),
       } as CreatePracticeParams;
 
       const createdPractice = await api.crm.createPractice(
         backendData,
       );
+
+      if (formData.referrer_id != null && createdPractice?.id) {
+        try {
+          await partnersApi.createReferral(formData.referrer_id, {
+            process_id: createdPractice.id,
+          });
+        } catch (referralErr) {
+          // Non-fatal: practice exists. Log but don't block user.
+          console.warn("Referral row creation failed", referralErr);
+        }
+      }
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/create",

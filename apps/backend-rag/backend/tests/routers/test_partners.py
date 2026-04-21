@@ -798,7 +798,60 @@ class TestSterilizeClientName:
         assert partners_module._sterilize_client_for_partner("") == ""
 
 
-# ── 12. require_finance helper ────────────────────────────────────────────────
+# ── 12. audit log endpoint ───────────────────────────────────────────────────
+
+class TestAuditLog:
+    @pytest.mark.integration
+    def test_list_audit_log_admin_sees_entries(self, admin_app) -> None:
+        _, client, _, _ = admin_app
+        entry1 = MagicMock()
+        entry1.id = uuid.uuid4()
+        entry1.partner_id = _PARTNER_ID
+        entry1.action = "activated"
+        entry1.at = _NOW
+        entry1.actor_user_id = _USER_ID
+        entry1.before_json = None
+        entry1.after_json = None
+        entry1.reason = None
+        entry2 = MagicMock()
+        entry2.id = uuid.uuid4()
+        entry2.partner_id = _PARTNER_ID
+        entry2.action = "reassigned"
+        entry2.at = _NOW
+        entry2.actor_user_id = _USER_ID
+        entry2.before_json = None
+        entry2.after_json = None
+        entry2.reason = "reorganisation"
+        with (
+            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+            patch("backend.app.routers.partners.PartnersService") as MockSvc,
+        ):
+            async def _verify(*a, **kw):
+                return _make_partner()
+            mock_verify.side_effect = _verify
+            svc_instance = MockSvc.return_value
+            svc_instance.list_audit = AsyncMock(return_value=[entry1, entry2])
+            resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+
+    @pytest.mark.integration
+    def test_list_audit_log_team_forbidden_for_other_partner(self, team_app) -> None:
+        from fastapi import HTTPException
+        _, client, _, _ = team_app
+        with (
+            patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
+            patch("backend.app.routers.partners.PartnersService"),
+        ):
+            async def _raise(*a, **kw):
+                raise HTTPException(status_code=403, detail="forbidden")
+            mock_verify.side_effect = _raise
+            resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
+        assert resp.status_code == 403
+
+
+# ── 13. require_finance helper ────────────────────────────────────────────────
 
 class TestRequireFinance:
     @pytest.mark.unit

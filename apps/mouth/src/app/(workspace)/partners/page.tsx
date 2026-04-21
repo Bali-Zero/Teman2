@@ -107,7 +107,13 @@ export default function PartnersPage() {
   }, [filters, loadPartners]);
 
   const handleFilterChange = (key: keyof PartnerFilters, value: string | boolean) => {
-    setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    if (key === "assigned_to" && value === "__orphaned__") {
+      setFilters((prev) => ({ ...prev, assigned_to: undefined, orphaned: true, page: 1 }));
+    } else if (key === "assigned_to") {
+      setFilters((prev) => ({ ...prev, assigned_to: (value as string) || undefined, orphaned: false, page: 1 }));
+    } else {
+      setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    }
     setPage(1);
   };
 

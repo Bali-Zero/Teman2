@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 // ─── TypeScript Interfaces ─────────────────────────────────────────────────
 
 export type PartnerStatus = 'pending_review' | 'active' | 'inactive' | 'suspended';
+export type EntityType = "individual" | "corporate_pt" | "corporate_cv" | "foreign";
 export type CommissionTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type TaxWithholdingCategory = 'tbd' | 'withheld_tarif_umum' | 'withheld_tarif_final' | 'exempt';
 export type CommissionStatus =
@@ -24,6 +25,7 @@ export interface Partner {
   id: number;
   full_name: string;
   email: string;
+  entity_type: EntityType;
   phone?: string;
   whatsapp?: string;
   nationality?: string;
@@ -103,6 +105,7 @@ export interface PartnerFilters {
 export interface CreatePartnerBody {
   full_name: string;
   email: string;
+  entity_type: EntityType;
   phone?: string;
   whatsapp?: string;
   nationality?: string;
@@ -140,12 +143,30 @@ export interface UpdatePartnerBody {
 }
 
 export interface ReassignBody {
-  assigned_to: string;
+  new_user_id: string;
+  reason: string;
 }
 
 export interface BulkReassignBody {
   partner_ids: number[];
   assigned_to: string;
+  reason: string;
+}
+
+export interface CreateReferralBody {
+  process_id: number;
+  notes?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  partner_id: string;
+  actor_user_id: string | null;
+  action: string;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  reason: string | null;
+  at: string;
 }
 
 export interface MarkPaidBody {
@@ -217,6 +238,10 @@ export const bulkReassign = (body: BulkReassignBody) =>
 export const resendWelcomeEmail = (id: number) =>
   api.post<{ success: boolean }>(`${BASE}/${id}/resend-welcome`, {});
 
+/** Create a referral for a partner (links a process to a partner) */
+export const createReferral = (partnerId: number, body: CreateReferralBody) =>
+  api.post<PartnerReferral>(`${BASE}/${partnerId}/referrals`, body);
+
 /** List referrals for a specific partner */
 export const listReferrals = (partnerId: number, params?: Record<string, string | number | null | undefined>) =>
   api.get<{ referrals: PartnerReferral[]; total: number }>(`${BASE}/${partnerId}/referrals${qs(params)}`);
@@ -260,3 +285,7 @@ export const exportFinanceCsv = (from?: string, to?: string): string => {
 /** Get active partners list for dropdown (scoped by caller role) */
 export const listActivePartnersDropdown = () =>
   api.get<PartnerListResponse>(`${BASE}?status=active&page_size=200`);
+
+/** List audit log entries for a partner */
+export const listAuditLog = (partnerId: number) =>
+  api.get<AuditLogEntry[]>(`${BASE}/${partnerId}/audit-log`);

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
 import type { Partner } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
@@ -21,7 +22,16 @@ export default function OrphanedPartnersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [targetAssignee, setTargetAssignee] = useState("");
+  const [reasonText, setReasonText] = useState("");
+  const [reasonError, setReasonError] = useState("");
   const [isReassigning, setIsReassigning] = useState(false);
+
+  // Admin gate — redirect non-admin users back to partners list
+  useEffect(() => {
+    if (!api.isAdmin?.()) {
+      router.replace('/partners');
+    }
+  }, [router]);
 
   const loadOrphaned = useCallback(async () => {
     setIsLoading(true);
@@ -66,12 +76,18 @@ export default function OrphanedPartnersPage() {
       toastError("Please select at least one partner");
       return;
     }
+    if (!reasonText.trim()) {
+      setReasonError("Reason is required for reassignment");
+      return;
+    }
+    setReasonError("");
 
     setIsReassigning(true);
     try {
       const result = await partnersApi.bulkReassign({
         partner_ids: Array.from(selectedIds),
         assigned_to: targetAssignee,
+        reason: reasonText.trim(),
       });
       toastSuccess(`${result.updated_count} partner${result.updated_count !== 1 ? "s" : ""} reassigned`);
       await loadOrphaned();
@@ -104,7 +120,7 @@ export default function OrphanedPartnersPage() {
 
       {/* Bulk Reassign Toolbar */}
       {partners.length > 0 && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-zinc-400">
               {selectedIds.size > 0 ? `${selectedIds.size} selected` : "Select partners to reassign"}
@@ -121,7 +137,7 @@ export default function OrphanedPartnersPage() {
             </select>
             <Button
               onClick={handleBulkReassign}
-              disabled={isReassigning || selectedIds.size === 0 || !targetAssignee}
+              disabled={isReassigning || selectedIds.size === 0 || !targetAssignee || !reasonText.trim()}
               className="bg-amber-600 hover:bg-amber-700 text-white"
               size="sm"
             >
@@ -139,6 +155,16 @@ export default function OrphanedPartnersPage() {
             >
               <RefreshCw size={14} />
             </Button>
+          </div>
+          <div>
+            <textarea
+              value={reasonText}
+              onChange={(e) => { setReasonText(e.target.value); if (e.target.value.trim()) setReasonError(""); }}
+              placeholder="Reason for reassignment (required)…"
+              rows={2}
+              className={`w-full px-3 py-2 bg-zinc-800 border rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500 resize-none ${reasonError ? "border-red-500" : "border-zinc-700"}`}
+            />
+            {reasonError && <p className="text-xs text-red-400 mt-1">{reasonError}</p>}
           </div>
         </div>
       )}

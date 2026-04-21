@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { CreatePartnerBody, CommissionTier, TaxWithholdingCategory } from "@/lib/api/partners/partners";
+import type { CreatePartnerBody, CommissionTier, TaxWithholdingCategory, EntityType } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
 // NB-2 guardrail: warn if work_role matches sponsor/guarantor patterns
@@ -26,6 +26,7 @@ const SECTION_LABELS: Record<FormSection, string> = {
 interface FormState {
   full_name: string;
   email: string;
+  entity_type: EntityType;
   phone: string;
   whatsapp: string;
   nationality: string;
@@ -47,6 +48,7 @@ interface FormState {
 const INITIAL_FORM: FormState = {
   full_name: "",
   email: "",
+  entity_type: "individual",
   phone: "",
   whatsapp: "",
   nationality: "",
@@ -171,6 +173,7 @@ export default function NewPartnerPage() {
       const body: CreatePartnerBody = {
         full_name: form.full_name.trim(),
         email: form.email.trim(),
+        entity_type: form.entity_type,
         phone: form.phone.trim() || undefined,
         whatsapp: form.whatsapp.trim() || undefined,
         nationality: form.nationality.trim() || undefined,
@@ -267,6 +270,18 @@ export default function NewPartnerPage() {
                     placeholder="partner@email.com"
                     error={fieldErrors.email}
                   />
+                </FieldGroup>
+                <FieldGroup label="Entity Type *">
+                  <select
+                    value={form.entity_type}
+                    onChange={(e) => setField("entity_type", e.target.value as EntityType)}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="individual">Individual</option>
+                    <option value="corporate_pt">Corporate PT</option>
+                    <option value="corporate_cv">Corporate CV</option>
+                    <option value="foreign">Foreign</option>
+                  </select>
                 </FieldGroup>
                 <FieldGroup label="Phone">
                   <Input

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Loader2,
@@ -16,6 +17,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
 import type { PartnerCommission } from "@/lib/api/partners/partners";
 
@@ -199,11 +201,19 @@ function CommissionSection({
 }
 
 export default function FinanceQueuePage() {
+  const router = useRouter();
   const { success: toastSuccess, error: toastError } = useToast();
   const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<number | null>(null);
+
+  // Admin gate — redirect non-admin users back to partners list
+  useEffect(() => {
+    if (!api.isAdmin?.()) {
+      router.replace('/partners');
+    }
+  }, [router]);
 
   const loadCommissions = useCallback(async () => {
     setIsLoading(true);
@@ -237,8 +247,8 @@ export default function FinanceQueuePage() {
   };
 
   const handleMarkPaid = async (id: number) => {
-    const ref = prompt("Payment reference (optional):");
     setActioningId(id);
+    const ref = prompt("Payment reference (optional):");
     try {
       await partnersApi.markPaid(id, { payment_reference: ref || undefined });
       toastSuccess("Commission marked as paid");
@@ -251,9 +261,9 @@ export default function FinanceQueuePage() {
   };
 
   const handleClawback = async (id: number) => {
-    const reason = prompt("Clawback reason (required):");
-    if (!reason?.trim()) return;
     setActioningId(id);
+    const reason = prompt("Clawback reason (required):");
+    if (!reason?.trim()) { setActioningId(null); return; }
     try {
       await partnersApi.clawback(id, { reason: reason.trim() });
       toastSuccess("Clawback initiated");
@@ -266,9 +276,9 @@ export default function FinanceQueuePage() {
   };
 
   const handleWaive = async (id: number) => {
-    const reason = prompt("Waive reason (required):");
-    if (!reason?.trim()) return;
     setActioningId(id);
+    const reason = prompt("Waive reason (required):");
+    if (!reason?.trim()) { setActioningId(null); return; }
     try {
       await partnersApi.waive(id, { reason: reason.trim() });
       toastSuccess("Commission waived");

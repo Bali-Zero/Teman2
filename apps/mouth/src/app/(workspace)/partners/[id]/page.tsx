@@ -25,8 +25,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
+import { api } from "@/lib/api";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { Partner, PartnerReferral, PartnerCommission } from "@/lib/api/partners/partners";
+import type { Partner, PartnerReferral, PartnerCommission, AuditLogEntry } from "@/lib/api/partners/partners";
 
 type TabId = "profile" | "fiscal" | "payment" | "referrals" | "commissions" | "audit";
 
@@ -246,14 +247,56 @@ function CommissionsTab({ partnerId }: { partnerId: number }) {
   );
 }
 
-function AuditTab({ partner }: { partner: Partner }) {
+function AuditTab({ partnerId }: { partnerId: number }) {
+  const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    partnersApi.listAuditLog(partnerId)
+      .then((entries) => setAuditEntries(entries))
+      .catch(() => setError("Failed to load audit log"))
+      .finally(() => setIsLoading(false));
+  }, [partnerId]);
+
+  if (isLoading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-amber-400" /></div>;
+  if (error) return (
+    <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+      <AlertCircle size={16} />
+      <span className="text-sm">{error}</span>
+    </div>
+  );
+  if (auditEntries.length === 0) return (
+    <div className="flex flex-col items-center py-12 gap-2 text-zinc-600">
+      <FileText size={32} />
+      <p className="text-sm">No audit log entries yet</p>
+    </div>
+  );
+
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
-      <InfoRow label="Partner ID" value={`#${partner.id}`} />
-      <InfoRow label="Created" value={new Date(partner.created_at).toLocaleString()} />
-      <InfoRow label="Last Updated" value={partner.updated_at ? new Date(partner.updated_at).toLocaleString() : "—"} />
-      <InfoRow label="Welcome Sent" value={partner.welcome_email_sent_at ? new Date(partner.welcome_email_sent_at).toLocaleString() : "Not sent"} />
-      <InfoRow label="PDP Consent At" value={partner.pdp_consent_at ? new Date(partner.pdp_consent_at).toLocaleString() : "—"} />
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-zinc-800">
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Action</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase hidden md:table-cell">Actor</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Reason</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500 uppercase">Date</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-zinc-800">
+          {auditEntries.map((entry) => (
+            <tr key={entry.id}>
+              <td className="px-4 py-3 text-sm font-medium text-zinc-200 capitalize">{entry.action.replace(/_/g, " ")}</td>
+              <td className="px-4 py-3 text-xs text-zinc-500 hidden md:table-cell font-mono">
+                {entry.actor_user_id ? entry.actor_user_id.substring(0, 8) + "…" : "—"}
+              </td>
+              <td className="px-4 py-3 text-sm text-zinc-400">{entry.reason || <span className="text-zinc-600 italic">—</span>}</td>
+              <td className="px-4 py-3 text-sm text-zinc-500">{new Date(entry.at).toLocaleString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -309,6 +352,26 @@ export default function PartnerDetailPage() {
       await loadPartner();
     } catch (err) {
       toastError("Failed to deactivate partner");
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleReassign = async () => {
+    const newUserId = window.prompt("Enter team member user ID (UUID) to assign to:");
+    if (!newUserId?.trim()) return;
+    const reason = window.prompt("Reason for reassignment (required):");
+    if (!reason?.trim()) return;
+    setIsActioning(true);
+    try {
+      await partnersApi.reassignPartner(partnerId, {
+        new_user_id: newUserId.trim(),
+        reason: reason.trim(),
+      });
+      toastSuccess("Partner reassigned");
+      await loadPartner();
+    } catch (err) {
+      toastError("Failed to reassign partner");
     } finally {
       setIsActioning(false);
     }
@@ -375,6 +438,18 @@ export default function PartnerDetailPage() {
               Deactivate
             </Button>
           )}
+          {api.isAdmin?.() && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isActioning}
+              onClick={handleReassign}
+              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            >
+              {isActioning ? <Loader2 size={14} className="animate-spin" /> : <Settings size={14} className="mr-1" />}
+              Reassign
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -411,7 +486,7 @@ export default function PartnerDetailPage() {
       {activeTab === "payment" && <PaymentTab partner={partner} />}
       {activeTab === "referrals" && <ReferralsTab partnerId={partnerId} />}
       {activeTab === "commissions" && <CommissionsTab partnerId={partnerId} />}
-      {activeTab === "audit" && <AuditTab partner={partner} />}
+      {activeTab === "audit" && <AuditTab partnerId={partnerId} />}
     </div>
   );
 }

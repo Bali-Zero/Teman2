@@ -640,6 +640,26 @@ async def list_commissions(
         ]
 
 
+@router.get("/{partner_id}/audit-log")
+async def list_partner_audit_log(
+    partner_id: UUID,
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> Any:
+    """List the audit log for a partner. Admin or team-owner only."""
+    try:
+        async with pool.acquire() as conn:
+            svc = PartnersService(conn)
+            await verify_partner_access_with_role(svc, UUID(str(user["user_id"])), user.get("role"), partner_id)
+            entries = await svc.list_audit(partner_id)
+            return [_partner_to_dict(e) for e in entries]
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("list_partner_audit_log failed")
+        raise HTTPException(status_code=500, detail="internal error")
+
+
 @router.post("/commissions/{commission_id}/approve", status_code=status.HTTP_204_NO_CONTENT)
 async def approve_commission(
     commission_id: UUID,
