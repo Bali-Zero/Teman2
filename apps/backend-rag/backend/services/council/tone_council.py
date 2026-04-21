@@ -191,6 +191,33 @@ class ToneCouncil:
         recent_scars: list[str] | None = None,
         self_reflections: dict[str, str] | None = None,
     ) -> ToneCouncilResult:
+        # Langfuse POC: wrap deliberation in a parent span so each LLM call
+        # (Claude / Gemini / DeepSeek / judge) shows up as a child. No-op
+        # when LANGFUSE_ENABLED=false or keys missing.
+        lf_span_cm = _maybe_council_span(
+            topic=topic,
+            proponents=list(self.proponents.keys()),
+        )
+        async with lf_span_cm as _lf_span:
+            return await self._run_impl(
+                topic=topic,
+                research_json=research_json,
+                registers_last_14d=registers_last_14d,
+                recent_scars=recent_scars,
+                self_reflections=self_reflections,
+                _lf_span=_lf_span,
+            )
+
+    async def _run_impl(
+        self,
+        *,
+        topic: str,
+        research_json: str | dict[str, Any] = "{}",
+        registers_last_14d: dict[str, int] | None = None,
+        recent_scars: list[str] | None = None,
+        self_reflections: dict[str, str] | None = None,
+        _lf_span: Any = None,
+    ) -> ToneCouncilResult:
         started = datetime.now(timezone.utc)
         t0 = time.perf_counter()
         history = registers_last_14d or {}
@@ -240,7 +267,7 @@ class ToneCouncil:
         )
 
         duration_ms = (time.perf_counter() - t0) * 1000
-        return ToneCouncilResult(
+        result = ToneCouncilResult(
             topic=topic,
             decision=decision,
             proposals=proposals,
@@ -253,6 +280,23 @@ class ToneCouncil:
             started_at=started,
             finished_at=datetime.now(timezone.utc),
         )
+
+        if _lf_span is not None:
+            try:
+                # PII-safe output: metadata only. Rationale is LLM-generated
+                # free-form text and may echo retrieved KB fragments — drop it.
+                _lf_span.update(
+                    output={
+                        "chosen_register": getattr(decision, "chosen_register", None),
+                        "duration_ms": duration_ms,
+                        "degraded": degraded,
+                        "scars_used": len(scars),
+                    },
+                )
+            except Exception:
+                pass
+
+        return result
 
     # ── Rounds ──────────────────────────────────────────────────────────
 
@@ -526,3 +570,62 @@ class ToneCouncil:
             hard_rules_triggered=["judge_fallback"],
             raw_output="",
         )
+
+
+# ── Langfuse POC helpers (kept at module scope for testability) ─────────
+
+
+class _NullAsyncCM:
+    """Async context manager that yields None — used when Langfuse is off."""
+
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, *exc: Any) -> None:
+        return None
+
+
+class _SyncSpanAsyncCM:
+    """Adapt a sync Langfuse span CM to an `async with` caller."""
+
+    def __init__(self, sync_cm: Any) -> None:
+        self._sync_cm = sync_cm
+        self._span: Any = None
+
+    async def __aenter__(self) -> Any:
+        self._span = self._sync_cm.__enter__()
+        return self._span
+
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        self._sync_cm.__exit__(exc_type, exc, tb)
+
+
+def _maybe_council_span(*, topic: str, proponents: list[str]) -> Any:
+    """Return an async context manager wrapping a Langfuse span (or a no-op)."""
+    try:
+        from backend.core.observability import init_observability, is_enabled
+    except Exception:
+        return _NullAsyncCM()
+
+    if not is_enabled():
+        return _NullAsyncCM()
+    try:
+        import hashlib
+
+        init_observability(service_name="nuzantara-council")
+        from langfuse import get_client
+
+        lf = get_client()
+        if lf is None:
+            return _NullAsyncCM()
+        # PII-safe: hash + length only. War-room topics rarely contain
+        # client PII but the pattern is uniform with agentic_rag.
+        topic_hash = hashlib.sha256(topic.encode("utf-8")).hexdigest()[:16]
+        sync_cm = lf.start_as_current_span(
+            name="tone_council.run",
+            input={"topic_hash": topic_hash, "topic_length": len(topic)},
+            metadata={"proponents": proponents},
+        )
+        return _SyncSpanAsyncCM(sync_cm)
+    except Exception:
+        return _NullAsyncCM()
