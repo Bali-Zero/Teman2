@@ -170,7 +170,8 @@ def _build_pricing_services() -> list[dict[str, str]]:
 async def enqueue_welcome(
     conn: Any,
     partner_id: UUID,
-    actor_user: UUID | None = None,
+    # CATA-5: actor_user is team_members.id (VARCHAR string ID)
+    actor_user: str | None = None,
 ) -> None:
     """Enqueue a welcome email. Idempotent per partner_id.
 
@@ -220,7 +221,8 @@ async def enqueue_welcome(
 async def enqueue_commission_earned(
     conn: Any,
     commission_id: UUID,
-    actor_user: UUID | None = None,
+    # CATA-5: actor_user is team_members.id (VARCHAR string ID)
+    actor_user: str | None = None,
 ) -> None:
     """Enqueue a commission-earned email. Idempotent per commission_id.
 
@@ -269,7 +271,8 @@ async def enqueue_commission_earned(
     cc_list: list[str] = []
     if c.assigned_to_snapshot is not None:
         row = await conn.fetchrow(
-            "SELECT email FROM users WHERE id = $1", c.assigned_to_snapshot
+            # CATA-5: assigned_to_snapshot is team_members.id (VARCHAR string ID)
+            "SELECT email FROM team_members WHERE id = $1", c.assigned_to_snapshot
         )
         if row and row["email"]:
             cc_list.append(row["email"])
@@ -443,7 +446,8 @@ async def send_commission_earned(conn: Any, commission_id: UUID) -> None:
     cc_list: list[str] = []
     if c.assigned_to_snapshot is not None:
         row = await conn.fetchrow(
-            "SELECT email FROM users WHERE id = $1",
+            # CATA-5: assigned_to_snapshot is team_members.id (VARCHAR string ID)
+            "SELECT email FROM team_members WHERE id = $1",
             c.assigned_to_snapshot,
         )
         if row and row["email"]:
