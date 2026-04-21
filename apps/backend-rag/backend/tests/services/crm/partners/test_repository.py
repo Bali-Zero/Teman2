@@ -266,18 +266,18 @@ async def test_orphan_partners_of_user(repo, user_factory):
 
 
 # --------------------------------------------------------------------------
-# 12. referral unique process_id violation
+# 12. referral unique practice_id violation
 # --------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_referral_unique_process_id_violation(repo, process_factory):
+async def test_referral_unique_practice_id_violation(repo, practice_factory):
     pid = await repo.insert_partner(
         full_name="Referral Hotel", email="ref@h.io", entity_type="individual"
     )
-    process_id = await process_factory()
-    await repo.insert_referral(partner_id=pid, process_id=process_id)
+    practice_id = await practice_factory()
+    await repo.insert_referral(partner_id=pid, practice_id=practice_id)
     with pytest.raises(asyncpg.UniqueViolationError):
-        await repo.insert_referral(partner_id=pid, process_id=process_id)
+        await repo.insert_referral(partner_id=pid, practice_id=practice_id)
 
 
 # --------------------------------------------------------------------------

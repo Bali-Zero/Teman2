@@ -85,7 +85,7 @@ async def test_send_commission_earned_sterilizes_client_name(
     p = await partner_factory()
     c = await commission_factory(
         partner_id=p.id,
-        process_client_id=int(client.id),
+        practice_client_id=int(client.id),
         status="paid",
         net_amount_idr=Decimal("500000"),
     )

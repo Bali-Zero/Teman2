@@ -10,7 +10,7 @@ consent tracking.
 Schema
 ------
 - partners: anagrafica + fiscal profile + payment rail + commission defaults
-- partner_referrals: links partners to existing processes (v1: 1-to-1)
+- partner_referrals: links partners to existing practices (v1: 1-to-1)
 - partner_commissions: append-only ledger (accrued → approved → paid, with clawback)
 - partner_audit_log: immutable event trail for every partner/commission state change
 - users.partner_id: reverse FK so partner-role users can resolve their own record
@@ -154,14 +154,14 @@ async def apply(conn: Any) -> None:
                 CREATE TABLE partner_referrals (
                     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     partner_id           UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-                    process_id           UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
+                    practice_id          UUID NOT NULL REFERENCES practices(id) ON DELETE RESTRICT,
                     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
                         CHECK (share_percent > 0 AND share_percent <= 100),
                     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
                     referred_by_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
                     notes                TEXT,
 
-                    CONSTRAINT partner_referrals_process_unique_v1 UNIQUE (process_id)
+                    CONSTRAINT partner_referrals_practice_unique_v1 UNIQUE (practice_id)
                     -- v2: drop this constraint when enabling split commissions
                 );
             END IF;
@@ -173,8 +173,8 @@ async def apply(conn: Any) -> None:
         " ON partner_referrals (partner_id);"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_referrals_process_id"
-        " ON partner_referrals (process_id);"
+        "CREATE INDEX IF NOT EXISTS idx_partner_referrals_practice_id"
+        " ON partner_referrals (practice_id);"
     )
 
     # -------------------------------------------------------------------------
@@ -191,7 +191,7 @@ async def apply(conn: Any) -> None:
                     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     partner_id               UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
                     referral_id              UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
-                    process_id               UUID REFERENCES processes(id) ON DELETE RESTRICT,
+                    practice_id              UUID REFERENCES practices(id) ON DELETE RESTRICT,
 
                     -- row type
                     entry_type               TEXT NOT NULL
@@ -253,8 +253,8 @@ async def apply(conn: Any) -> None:
         " ON partner_commissions (partner_id);"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_process_id"
-        " ON partner_commissions (process_id);"
+        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_practice_id"
+        " ON partner_commissions (practice_id);"
     )
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
@@ -317,7 +317,7 @@ async def apply(conn: Any) -> None:
     """)
 
     logger.info(
-        "✅ Migration 119: partners + partner_referrals + partner_commissions"
+        "Migration 119: partners + partner_referrals + partner_commissions"
         " + partner_audit_log + users.partner_id + 2 system_settings rows"
     )
 

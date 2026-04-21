@@ -414,7 +414,7 @@ class TestReferrals:
         r = MagicMock()
         r.id = _REFERRAL_ID
         r.partner_id = _PARTNER_ID
-        r.process_id = _PROCESS_ID
+        r.practice_id = _PROCESS_ID
         r.share_percent = Decimal("100.00")
         r.referred_at = _NOW
         r.referred_by_user_id = _USER_ID
@@ -454,7 +454,7 @@ class TestReferrals:
             svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"process_id": str(_PROCESS_ID)},
+                json={"practice_id": str(_PROCESS_ID)},
             )
         assert resp.status_code == 201
         data = resp.json()
@@ -476,11 +476,11 @@ class TestReferrals:
             svc_instance = MockSvc.return_value
             svc_instance.repo = MagicMock()
             svc_instance.repo.insert_referral = AsyncMock(
-                side_effect=Exception("unique constraint violation on partner_referrals_process_unique_v1")
+                side_effect=Exception("unique constraint violation on partner_referrals_practice_unique_v1")
             )
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"process_id": str(_PROCESS_ID)},
+                json={"practice_id": str(_PROCESS_ID)},
             )
         assert resp.status_code == 409
 
@@ -685,7 +685,7 @@ class TestMeEndpoints:
         mock_row = MagicMock()
         mock_row.__getitem__ = MagicMock(side_effect=lambda k: {
             "id": _REFERRAL_ID,
-            "process_id": _PROCESS_ID,
+            "practice_id": _PROCESS_ID,
             "referred_at": _NOW,
             "process_status": "in_progress",
             "service_type": "pt_pma",

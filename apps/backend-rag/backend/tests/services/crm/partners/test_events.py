@@ -51,16 +51,16 @@ def _make_fake_get_pool(db_conn):
 async def test_handle_practice_status_changed_noop_if_not_completed(
     db_conn,
     partner_factory,
-    process_factory,
+    practice_factory,
     monkeypatch,
 ):
     """Handler must be silent (no commission) for non-completed statuses."""
     import backend.services.crm.partners.events as _events_mod
 
-    proc_id = await process_factory(status="in_progress", payment_status="pending")
+    proc_id = await practice_factory(status="in_progress", payment_status="pending")
     monkeypatch.setattr(_events_mod, "get_pool", _make_fake_get_pool(db_conn))
 
-    payload = {"process_id": str(proc_id), "new_status": "in_progress"}
+    payload = {"practice_id": str(proc_id), "new_status": "in_progress"}
     await handle_practice_status_changed(payload)
 
     row = await db_conn.fetchrow("SELECT COUNT(*) AS n FROM partner_commissions")
@@ -76,23 +76,23 @@ async def test_handle_practice_status_changed_noop_if_not_completed(
 async def test_handle_practice_status_changed_creates_accrual(
     db_conn,
     partner_factory,
-    process_factory,
+    practice_factory,
     referral_factory,
     monkeypatch,
 ):
-    """Handler must create a commission when a paid process completes."""
+    """Handler must create a commission when a paid practice completes."""
     import backend.services.crm.partners.events as _events_mod
 
     p = await partner_factory(tax_withholding_category="exempt")
-    proc_id = await process_factory(
+    proc_id = await practice_factory(
         total_invoiced_idr=Decimal("5000000"),
         status="completed",
         payment_status="paid",
     )
-    await referral_factory(partner_id=p, process_id=proc_id)
+    await referral_factory(partner_id=p, practice_id=proc_id)
     monkeypatch.setattr(_events_mod, "get_pool", _make_fake_get_pool(db_conn))
 
-    payload = {"process_id": str(proc_id), "new_status": "completed"}
+    payload = {"practice_id": str(proc_id), "new_status": "completed"}
     await handle_practice_status_changed(payload)
 
     row = await db_conn.fetchrow(

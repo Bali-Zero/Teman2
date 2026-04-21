@@ -170,7 +170,7 @@ class PartnersRepository:
     # ── Referrals ───────────────────────────────────────────────────────
 
     async def insert_referral(
-        self, *, partner_id: UUID, process_id: UUID,
+        self, *, partner_id: UUID, practice_id: UUID,
         referred_by_user_id: UUID | None = None,
         share_percent: Decimal = Decimal("100.00"),
         notes: str | None = None,
@@ -178,17 +178,17 @@ class PartnersRepository:
         row = await self.conn.fetchrow(
             """
             INSERT INTO partner_referrals
-                (partner_id, process_id, share_percent, referred_by_user_id, notes)
+                (partner_id, practice_id, share_percent, referred_by_user_id, notes)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING id
             """,
-            partner_id, process_id, share_percent, referred_by_user_id, notes,
+            partner_id, practice_id, share_percent, referred_by_user_id, notes,
         )
         return row["id"]
 
-    async def get_referral_by_process(self, process_id: UUID) -> PartnerReferral | None:
+    async def get_referral_by_practice(self, practice_id: UUID) -> PartnerReferral | None:
         row = await self.conn.fetchrow(
-            "SELECT * FROM partner_referrals WHERE process_id = $1", process_id
+            "SELECT * FROM partner_referrals WHERE practice_id = $1", practice_id
         )
         return self._row_to_referral(row) if row else None
 
@@ -233,7 +233,7 @@ class PartnersRepository:
         net_amount_idr: Decimal,
         idempotency_key: str,
         referral_id: UUID | None = None,
-        process_id: UUID | None = None,
+        practice_id: UUID | None = None,
         related_commission_id: UUID | None = None,
         rule_source: RuleSource = "partner_default",
         assigned_to_snapshot: UUID | None = None,
@@ -248,7 +248,7 @@ class PartnersRepository:
         row = await self.conn.fetchrow(
             """
             INSERT INTO partner_commissions (
-                partner_id, entry_type, referral_id, process_id, related_commission_id,
+                partner_id, entry_type, referral_id, practice_id, related_commission_id,
                 base_amount_idr, commission_type_snapshot, commission_value_snapshot,
                 rule_source, assigned_to_snapshot,
                 gross_amount_idr, withholding_category, withholding_rate,
@@ -260,7 +260,7 @@ class PartnersRepository:
                     COALESCE($17, now()),$18,$19,$20)
             RETURNING id
             """,
-            partner_id, entry_type, referral_id, process_id, related_commission_id,
+            partner_id, entry_type, referral_id, practice_id, related_commission_id,
             base_amount_idr, commission_type_snapshot, commission_value_snapshot,
             rule_source, assigned_to_snapshot,
             gross_amount_idr, withholding_category, withholding_rate,

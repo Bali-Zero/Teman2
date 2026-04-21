@@ -3,11 +3,10 @@
 Commission engine integration tests.
 
 All tests use the db_conn fixture (real asyncpg connection with partner
-tables + system_settings + extended processes stub).
-See conftest.py for fixture definitions — Task 5 pre-flight outcome (c):
-processes table did not exist in the live DB, so the 4 required columns
-(status, payment_status, total_invoiced_idr, completed_at) were added to
-the conftest DDL stub.
+tables + system_settings + practices stub).
+See conftest.py for fixture definitions — CATA-1 fix: practices is the real
+production table. The 4 columns required by CommissionEngine are confirmed
+from migration 075 trigger payload.
 """
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -28,20 +27,20 @@ async def engine(db_conn):
 
 @pytest.mark.asyncio
 async def test_accrue_creates_accrued_row_with_cooling_off(
-    engine, partner_factory, process_factory, referral_factory
+    engine, partner_factory, practice_factory, referral_factory
 ):
     p = await partner_factory(
         default_commission_value=Decimal("10.0"),
         tax_withholding_category="pph23",
     )
-    proc = await process_factory(
+    proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
         status="completed",
         payment_status="paid",
     )
-    await referral_factory(partner_id=p.id, process_id=proc.id)
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
 
-    await engine.accrue_from_process(proc.id, p.id)
+    await engine.accrue_from_practice(proc.id, p.id)
 
     commissions = await engine.repo.list_commissions_for_partner(p.id)
     assert len(commissions) == 1
@@ -62,14 +61,14 @@ async def test_accrue_creates_accrued_row_with_cooling_off(
 
 @pytest.mark.asyncio
 async def test_accrue_is_idempotent_via_key(
-    engine, partner_factory, process_factory, referral_factory
+    engine, partner_factory, practice_factory, referral_factory
 ):
     p = await partner_factory()
-    proc = await process_factory(status="completed", payment_status="paid")
-    await referral_factory(partner_id=p.id, process_id=proc.id)
+    proc = await practice_factory(status="completed", payment_status="paid")
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
 
-    await engine.accrue_from_process(proc.id, p.id)
-    await engine.accrue_from_process(proc.id, p.id)  # second call: no-op
+    await engine.accrue_from_practice(proc.id, p.id)
+    await engine.accrue_from_practice(proc.id, p.id)  # second call: no-op
 
     commissions = await engine.repo.list_commissions_for_partner(p.id)
     assert len(commissions) == 1
@@ -81,13 +80,13 @@ async def test_accrue_is_idempotent_via_key(
 
 @pytest.mark.asyncio
 async def test_approve_blocked_before_cooling_off(
-    engine, partner_factory, process_factory, referral_factory, admin
+    engine, partner_factory, practice_factory, referral_factory, admin
 ):
     p = await partner_factory(tax_withholding_category="exempt")
-    proc = await process_factory(status="completed", payment_status="paid")
-    await referral_factory(partner_id=p.id, process_id=proc.id)
+    proc = await practice_factory(status="completed", payment_status="paid")
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
 
-    await engine.accrue_from_process(proc.id, p.id)
+    await engine.accrue_from_practice(proc.id, p.id)
     c = (await engine.repo.list_commissions_for_partner(p.id))[0]
 
     with pytest.raises(ValueError, match="cooling-off"):
@@ -100,13 +99,13 @@ async def test_approve_blocked_before_cooling_off(
 
 @pytest.mark.asyncio
 async def test_approve_blocked_when_withholding_tbd(
-    engine, partner_factory, process_factory, referral_factory, admin, db_conn
+    engine, partner_factory, practice_factory, referral_factory, admin, db_conn
 ):
     p = await partner_factory(tax_withholding_category="tbd")
-    proc = await process_factory(status="completed", payment_status="paid")
-    await referral_factory(partner_id=p.id, process_id=proc.id)
+    proc = await practice_factory(status="completed", payment_status="paid")
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
 
-    await engine.accrue_from_process(proc.id, p.id)
+    await engine.accrue_from_practice(proc.id, p.id)
     c = (await engine.repo.list_commissions_for_partner(p.id))[0]
 
     # Simulate cooling-off elapsed
@@ -125,21 +124,21 @@ async def test_approve_blocked_when_withholding_tbd(
 
 @pytest.mark.asyncio
 async def test_flat_commission_type(
-    engine, partner_factory, process_factory, referral_factory
+    engine, partner_factory, practice_factory, referral_factory
 ):
     p = await partner_factory(
         default_commission_type="flat",
         default_commission_value=Decimal("500000"),
         tax_withholding_category="exempt",
     )
-    proc = await process_factory(
+    proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
         status="completed",
         payment_status="paid",
     )
-    await referral_factory(partner_id=p.id, process_id=proc.id)
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
 
-    await engine.accrue_from_process(proc.id, p.id)
+    await engine.accrue_from_practice(proc.id, p.id)
     c = (await engine.repo.list_commissions_for_partner(p.id))[0]
 
     assert c.gross_amount_idr == Decimal("500000")

@@ -61,7 +61,7 @@ export interface PartnerReferral {
   referred_client_name?: string;      // kept for backward-compat with team-side endpoints
   client_display?: string;            // from /api/partners/me/referrals (sterilized name)
   referred_practice_id?: number;
-  process_id?: number;
+  practice_id?: number;
   process_status?: string;            // from /me/referrals
   practice_type_name?: string;
   service_type?: string;              // from /me/referrals
@@ -162,7 +162,7 @@ export interface BulkReassignBody {
 }
 
 export interface CreateReferralBody {
-  process_id: number;
+  practice_id: number;
   notes?: string;
 }
 

@@ -160,7 +160,7 @@ async def test_update_partner_does_not_reset_welcome_email_sent(svc, user_factor
 
 @pytest.mark.asyncio
 async def test_deactivate_partner_soft_delete_preserves_history(
-    svc, user_factory, referral_factory, process_factory
+    svc, user_factory, referral_factory, practice_factory
 ):
     """Deactivation keeps all referrals and commissions readable."""
     admin = await user_factory(role="admin")

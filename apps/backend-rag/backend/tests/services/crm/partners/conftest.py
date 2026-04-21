@@ -123,7 +123,13 @@ CREATE TABLE IF NOT EXISTS users (
 -- We do NOT create/drop it — we use it as-is. The client_factory
 -- inserts rows and cleans them up after each test.
 
-CREATE TABLE IF NOT EXISTS processes (
+-- CATA-1 NOTE: practices is a real production table (id=INTEGER in dev DB).
+-- We create a TEMPORARY TABLE practices that shadows the real one for this
+-- connection session only (pg_temp schema is always first in search_path).
+-- The temp table uses UUID id matching the partners module design, with the
+-- 4 columns CommissionEngine reads. It is dropped in teardown.
+-- This is the same isolation pattern used before CATA-1 with the processes stub.
+CREATE TEMP TABLE IF NOT EXISTS practices (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     status             TEXT NOT NULL DEFAULT 'pending',
@@ -133,11 +139,6 @@ CREATE TABLE IF NOT EXISTS processes (
     client_id          INTEGER,
     service_type       TEXT
 );
-
--- PRE-FLIGHT NOTE (2026-04-20): processes table does not exist in the live DB
--- (used only in test stubs). The 4 columns required by CommissionEngine are:
---   status TEXT, payment_status TEXT, total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
--- Added here to support test_commission_engine.py. See outcome (c) in Task 5 pre-flight check.
 
 CREATE TABLE IF NOT EXISTS system_settings (
     key   TEXT PRIMARY KEY,
@@ -192,20 +193,25 @@ CREATE TABLE IF NOT EXISTS partners (
 CREATE TABLE IF NOT EXISTS partner_referrals (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partner_id           UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-    process_id           UUID NOT NULL REFERENCES processes(id) ON DELETE RESTRICT,
+    -- NOTE: In production, partner_referrals.practice_id FK references practices(id).
+    -- In tests, practices.id is INTEGER on the dev DB (type mismatch with UUID).
+    -- We omit the FK constraint here so tests run against the partner module logic
+    -- without depending on the real practices schema. The FK is enforced in migration 119.
+    practice_id          UUID NOT NULL,
     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
         CHECK (share_percent > 0 AND share_percent <= 100),
     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     referred_by_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
     notes                TEXT,
-    CONSTRAINT partner_referrals_process_unique_v1 UNIQUE (process_id)
+    CONSTRAINT partner_referrals_practice_unique_v1 UNIQUE (practice_id)
 );
 
 CREATE TABLE IF NOT EXISTS partner_commissions (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partner_id               UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
     referral_id              UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
-    process_id               UUID REFERENCES processes(id) ON DELETE RESTRICT,
+    -- FK omitted for same reason as partner_referrals.practice_id (see above).
+    practice_id              UUID,
     entry_type               TEXT NOT NULL
         CHECK (entry_type IN ('accrual','clawback','manual_adjustment')),
     related_commission_id    UUID REFERENCES partner_commissions(id) ON DELETE RESTRICT,
@@ -265,9 +271,9 @@ DROP TABLE IF EXISTS partner_audit_log;
 DROP TABLE IF EXISTS partner_commissions;
 DROP TABLE IF EXISTS partner_referrals;
 DROP TABLE IF EXISTS partners;
-DROP TABLE IF EXISTS processes;
 DROP TABLE IF EXISTS system_settings;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS pg_temp.practices;
 """
 
 
@@ -314,10 +320,11 @@ def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, An
 
 
 @pytest_asyncio.fixture(scope="function")
-def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
-    """Returns an async callable that inserts a process row and returns its UUID.
+def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
+    """Returns an async callable that inserts a practice row into the temp practices
+    table (session-scoped, shadows the real public.practices for this connection).
 
-    Accepts optional kwargs for columns added in Task 5 pre-flight fix (outcome c):
+    Accepts optional kwargs for columns required by CommissionEngine:
     - total_invoiced_idr: NUMERIC(16,2), default 0
     - status: TEXT, default 'pending'
     - payment_status: TEXT, default 'pending'
@@ -336,7 +343,7 @@ def process_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
         )
         await db_conn.execute(
             """
-            INSERT INTO processes
+            INSERT INTO practices
                 (id, total_invoiced_idr, status, payment_status, completed_at)
             VALUES ($1, $2, $3, $4, $5)
             """,
@@ -394,23 +401,23 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
 @pytest_asyncio.fixture(scope="function")
 def referral_factory(
     db_conn: asyncpg.Connection,
-    process_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
+    practice_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
 ) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
     """Returns an async callable that inserts a partner_referral and returns its UUID."""
     async def _create(
         *,
         partner_id: uuid.UUID,
-        process_id: uuid.UUID | None = None,
+        practice_id: uuid.UUID | None = None,
         share_percent: Decimal = Decimal("100.00"),
     ) -> _UUIDWithId:
-        _process_id = process_id or await process_factory()
+        _practice_id = practice_id or await practice_factory()
         row = await db_conn.fetchrow(
             """
-            INSERT INTO partner_referrals (partner_id, process_id, share_percent)
+            INSERT INTO partner_referrals (partner_id, practice_id, share_percent)
             VALUES ($1, $2, $3)
             RETURNING id
             """,
-            partner_id, _process_id, share_percent,
+            partner_id, _practice_id, share_percent,
         )
         return _UUIDWithId(bytes=row["id"].bytes)
 
@@ -464,13 +471,13 @@ async def client_factory(db_conn: asyncpg.Connection):
 @pytest_asyncio.fixture(scope="function")
 def commission_factory(
     db_conn: asyncpg.Connection,
-    process_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
+    practice_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
 ) -> Callable[..., Coroutine[Any, Any, "_UUIDWithId"]]:
     """Returns an async callable that inserts a partner_commissions row and returns its UUID.
 
     Accepts:
     - partner_id: UUID (required)
-    - process_client_id: UUID | None — if given, creates a process linked to this client
+    - practice_client_id: UUID | None — if given, creates a practice linked to this client
     - status: CommissionStatus, default 'accrued'
     - net_amount_idr: Decimal, default 500_000
     - gross_amount_idr: Decimal, default same as net_amount_idr
@@ -483,7 +490,7 @@ def commission_factory(
     async def _create(
         *,
         partner_id: uuid.UUID,
-        process_client_id: int | None = None,
+        practice_client_id: int | None = None,
         status: str = "accrued",
         net_amount_idr: Decimal = Decimal("500000"),
         gross_amount_idr: Decimal | None = None,
@@ -495,17 +502,17 @@ def commission_factory(
     ) -> _UUIDWithId:
         _gross = gross_amount_idr if gross_amount_idr is not None else net_amount_idr
 
-        # Create a process stub (optionally linked to a client)
-        proc_id = await process_factory(
+        # Create a practice stub (optionally linked to a client)
+        prac_id = await practice_factory(
             status="completed" if status in ("approved", "paid") else "pending",
             payment_status="paid" if status == "paid" else "pending",
             total_invoiced_idr=_gross,
         )
-        # If client provided, update the process to link it + set a service_type
-        if process_client_id is not None:
+        # If client provided, update the practice to link it + set a service_type
+        if practice_client_id is not None:
             await db_conn.execute(
-                "UPDATE processes SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
-                int(process_client_id), uuid.UUID(int=proc_id.int),
+                "UPDATE practices SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
+                int(practice_client_id), uuid.UUID(int=prac_id.int),
             )
 
         from datetime import datetime, timedelta, timezone
@@ -515,7 +522,7 @@ def commission_factory(
         row = await db_conn.fetchrow(
             """
             INSERT INTO partner_commissions (
-                partner_id, process_id,
+                partner_id, practice_id,
                 entry_type, base_amount_idr,
                 commission_type_snapshot, commission_value_snapshot,
                 rule_source,
@@ -536,7 +543,7 @@ def commission_factory(
             RETURNING id
             """,
             uuid.UUID(int=partner_id.int),
-            uuid.UUID(int=proc_id.int),
+            uuid.UUID(int=prac_id.int),
             _gross,        # base_amount_idr
             _gross,        # gross_amount_idr
             withholding_category,

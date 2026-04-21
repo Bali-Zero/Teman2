@@ -30,7 +30,7 @@ async def test_full_flow_process_to_paid_email(
     db_conn,
     user_factory,
     partner_factory,
-    process_factory,
+    practice_factory,
     client_factory,
     referral_factory,
     monkeypatch,
@@ -72,23 +72,23 @@ async def test_full_flow_process_to_paid_email(
     # ── Step 2: Create client + process + referral ───────────────────────────
     client_id = await client_factory(full_name="Mario Rossi")
 
-    # process_factory doesn't accept client_id/service_type directly — create
-    # process then update it to link the client.
-    process_id = await process_factory(
+    # practice_factory doesn't accept client_id/service_type directly — create
+    # practice then update it to link the client.
+    process_id = await practice_factory(
         total_invoiced_idr=Decimal("15000000"),
         status="completed",
         payment_status="paid",
     )
-    # Link client and service_type to the process
+    # Link client and service_type to the practice
     await db_conn.execute(
-        "UPDATE processes SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
+        "UPDATE practices SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
         int(client_id),
         uuid.UUID(int=process_id.int),
     )
 
     await referral_factory(
         partner_id=uuid.UUID(int=partner_id.int),
-        process_id=uuid.UUID(int=process_id.int),
+        practice_id=uuid.UUID(int=process_id.int),
     )
 
     # ── Step 3: EventBus handler → accrual ──────────────────────────────────
@@ -105,7 +105,7 @@ async def test_full_flow_process_to_paid_email(
     monkeypatch.setattr(events_mod, "get_pool", fake_get_pool)
 
     await handle_practice_status_changed({
-        "process_id": str(uuid.UUID(int=process_id.int)),
+        "practice_id": str(uuid.UUID(int=process_id.int)),
         "new_status": "completed",
     })
 

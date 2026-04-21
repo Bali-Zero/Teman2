@@ -113,7 +113,7 @@ class BulkReassignRequest(BaseModel):
 
 
 class ReferralCreate(BaseModel):
-    process_id: UUID
+    practice_id: UUID
     notes: str | None = None
 
 
@@ -274,11 +274,11 @@ async def me_referrals(
         partner_id = row["partner_id"]
         rows = await conn.fetch(
             """
-            SELECT pr.id, pr.process_id, pr.referred_at,
+            SELECT pr.id, pr.practice_id, pr.referred_at,
                    p.status AS process_status, p.service_type,
                    c.full_name AS client_name
             FROM partner_referrals pr
-            LEFT JOIN processes p ON p.id = pr.process_id
+            LEFT JOIN practices p ON p.id = pr.practice_id
             LEFT JOIN clients c ON c.id = p.client_id
             WHERE pr.partner_id = $1
             ORDER BY pr.referred_at DESC
@@ -288,7 +288,7 @@ async def me_referrals(
     return [
         {
             "id": str(r["id"]),
-            "process_id": str(r["process_id"]),
+            "practice_id": str(r["practice_id"]),
             "service_type": r["service_type"],
             "process_status": r["process_status"],
             "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
@@ -560,18 +560,18 @@ async def create_referral(
             )
             rid = await svc.repo.insert_referral(
                 partner_id=partner_id,
-                process_id=body.process_id,
+                practice_id=body.practice_id,
                 referred_by_user_id=UUID(str(user["user_id"])),
                 notes=body.notes,
             )
-            return {"id": str(rid), "partner_id": str(partner_id), "process_id": str(body.process_id)}
+            return {"id": str(rid), "partner_id": str(partner_id), "practice_id": str(body.practice_id)}
     except HTTPException:
         raise
     except asyncpg.UniqueViolationError:
-        raise HTTPException(status_code=409, detail="process already has a referral")
+        raise HTTPException(status_code=409, detail="practice already has a referral")
     except Exception as e:
         if "unique" in str(e).lower():
-            raise HTTPException(status_code=409, detail="process already has a referral")
+            raise HTTPException(status_code=409, detail="practice already has a referral")
         logger.exception("create_referral failed")
         raise HTTPException(status_code=500, detail="internal error")
 

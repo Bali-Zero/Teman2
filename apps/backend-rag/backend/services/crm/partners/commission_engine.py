@@ -16,14 +16,12 @@ Append-only ledger exception (spec §Q9, plan Step 5.2):
   offsetting a pending clawback. This is implemented via a raw UPDATE on that
   single column (search for "spec §Q9" in this file).
 
-Pre-flight note (2026-04-20, outcome c):
-  The `processes` table does not exist in the live Fly.io DB — it is a test
-  stub only. Column names used in accrue_from_process() match the stub DDL
-  added to conftest.py for Task 5:
+Pre-flight note (2026-04-20, outcome c — updated CATA-1):
+  accrue_from_practice() reads from the `practices` table, which is the
+  real production domain table (not a stub). Column names confirmed from
+  migration 075 trigger and conftest stub DDL:
       status TEXT, payment_status TEXT,
-      total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ.
-  If the processes table is later migrated into production, verify these
-  column names against the real schema and add aliasing here if needed.
+      total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ, client_id.
 """
 from __future__ import annotations
 
@@ -65,56 +63,56 @@ class CommissionEngine:
 
     # ── Accrual ─────────────────────────────────────────────────────────────
 
-    async def accrue_from_process(
+    async def accrue_from_practice(
         self,
-        process_id: UUID,
+        practice_id: UUID,
         partner_id: UUID | None = None,
     ) -> UUID | None:
-        """Accrue a commission for a completed+paid process.
+        """Accrue a commission for a completed+paid practice.
 
-        Reads the process row, validates status/payment_status, resolves the
+        Reads the practice row, validates status/payment_status, resolves the
         referral and partner, computes gross/withholding/net with snapshot
         semantics, then inserts an 'accrued' commission row.
 
         Returns:
-            The new commission UUID, or None if the process is not yet eligible
+            The new commission UUID, or None if the practice is not yet eligible
             (not completed, not paid, no referral, or wrong partner_id).
 
         Idempotency:
-            key = f"accrual:{process_id}:{completed_at.isoformat()}"
-            A second call for the same process+completed_at is a no-op
+            key = f"accrual:{practice_id}:{completed_at.isoformat()}"
+            A second call for the same practice+completed_at is a no-op
             (ON CONFLICT DO NOTHING via UNIQUE index on idempotency_key).
         """
-        # Step 1: fetch process — must be completed AND paid.
-        # NOTE: Column names verified against conftest.py stub DDL (outcome c).
-        # If a real processes migration uses different names, alias here only.
+        # Step 1: fetch practice — must be completed AND paid.
+        # NOTE: Column names confirmed from migration 075 trigger (practice_id, client_id,
+        # status, payment_status) and conftest.py stub DDL (total_invoiced_idr, completed_at).
         proc = await self.conn.fetchrow(
             """
             SELECT id, status, payment_status, total_invoiced_idr, completed_at
-            FROM processes WHERE id = $1
+            FROM practices WHERE id = $1
             """,
-            process_id,
+            practice_id,
         )
         if proc is None:
-            logger.debug("accrue_from_process: process %s not found", process_id)
+            logger.debug("accrue_from_practice: practice %s not found", practice_id)
             return None
         if proc["status"] != "completed" or proc["payment_status"] != "paid":
             logger.debug(
-                "accrue_from_process: process %s not eligible (status=%s, payment_status=%s)",
-                process_id, proc["status"], proc["payment_status"],
+                "accrue_from_practice: practice %s not eligible (status=%s, payment_status=%s)",
+                practice_id, proc["status"], proc["payment_status"],
             )
             return None
 
         # Step 2: resolve referral.
-        referral = await self.repo.get_referral_by_process(process_id)
+        referral = await self.repo.get_referral_by_practice(practice_id)
         if referral is None:
-            logger.debug("accrue_from_process: no referral for process %s", process_id)
+            logger.debug("accrue_from_practice: no referral for practice %s", practice_id)
             return None
 
         # Optional sanity-check: caller can assert which partner should receive the commission.
         if partner_id is not None and referral.partner_id != partner_id:
             logger.warning(
-                "accrue_from_process: partner_id mismatch "
+                "accrue_from_practice: partner_id mismatch "
                 "(referral.partner_id=%s, caller said %s) — skipping",
                 referral.partner_id, partner_id,
             )
@@ -124,12 +122,12 @@ class CommissionEngine:
         partner = await self.repo.get_partner(referral.partner_id)
         if partner is None:
             logger.warning(
-                "accrue_from_process: partner %s not found", referral.partner_id
+                "accrue_from_practice: partner %s not found", referral.partner_id
             )
             return None
 
         # Step 4: compute amounts (all Decimal, no float).
-        # base_amount_idr = processes.total_invoiced_idr (exact column name per stub DDL).
+        # base_amount_idr = practices.total_invoiced_idr (exact column name per stub DDL).
         base = Decimal(str(proc["total_invoiced_idr"]))
 
         if partner.default_commission_type == "percentage":
@@ -148,16 +146,16 @@ class CommissionEngine:
         completed_at: datetime = proc["completed_at"] or datetime.now(timezone.utc)
         eligible = completed_at + timedelta(days=cooling_days)
 
-        # Idempotency key: unique per process + completed_at timestamp.
+        # Idempotency key: unique per practice + completed_at timestamp.
         # If completed_at changes (e.g. re-completion edge case), a new accrual fires.
-        key = f"accrual:{process_id}:{completed_at.isoformat()}"
+        key = f"accrual:{practice_id}:{completed_at.isoformat()}"
 
         try:
             cid = await self.repo.insert_commission(
                 partner_id=partner.id,
                 entry_type="accrual",
                 referral_id=referral.id,
-                process_id=process_id,
+                practice_id=practice_id,
                 base_amount_idr=base,
                 commission_type_snapshot=partner.default_commission_type,
                 commission_value_snapshot=partner.default_commission_value,
@@ -174,7 +172,7 @@ class CommissionEngine:
             )
         except asyncpg.UniqueViolationError:
             logger.info(
-                "accrue_from_process: idempotency hit for key=%s — no-op", key
+                "accrue_from_practice: idempotency hit for key=%s — no-op", key
             )
             return None
 
@@ -361,7 +359,7 @@ class CommissionEngine:
             partner_id=orig.partner_id,
             entry_type="clawback",
             referral_id=orig.referral_id,
-            process_id=orig.process_id,
+            practice_id=orig.practice_id,
             related_commission_id=orig.id,
             base_amount_idr=orig.base_amount_idr,
             commission_type_snapshot=orig.commission_type_snapshot,

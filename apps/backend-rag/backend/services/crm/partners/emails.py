@@ -214,17 +214,17 @@ async def send_commission_earned(conn: Any, commission_id: UUID) -> None:
         logger.warning("send_commission_earned: partner %s not found — skip", c.partner_id)
         return
 
-    # Fetch process + client name via JOIN
+    # Fetch practice + client name via JOIN
     proc = None
-    if c.process_id is not None:
+    if c.practice_id is not None:
         proc = await conn.fetchrow(
             """
             SELECT p.service_type, c.full_name AS client_name
-            FROM processes p
+            FROM practices p
             LEFT JOIN clients c ON c.id = p.client_id
             WHERE p.id = $1
             """,
-            c.process_id,
+            c.practice_id,
         )
 
     service_type = (proc["service_type"] if proc and proc["service_type"] else "service") if proc else "service"

@@ -29,34 +29,34 @@ PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
 async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
     """Handler for ``practice.status_changed`` events.
 
-    Triggers commission accrual when a process flips to ``completed``.
+    Triggers commission accrual when a practice flips to ``completed``.
     Payment status is re-verified inside
-    :meth:`CommissionEngine.accrue_from_process` by querying the process row
+    :meth:`CommissionEngine.accrue_from_practice` by querying the practice row
     directly — the event payload may not carry ``payment_status``.
 
     Early-exit conditions (no DB access):
     - ``new_status`` != ``"completed"``
-    - ``process_id`` is absent or falsy
-    - ``process_id`` cannot be parsed as a UUID
+    - ``practice_id`` is absent or falsy
+    - ``practice_id`` cannot be parsed as a UUID
     """
     new_status = payload.get("new_status")
-    process_id = payload.get("process_id")
+    practice_id = payload.get("practice_id")
 
-    if new_status != "completed" or not process_id:
+    if new_status != "completed" or not practice_id:
         return
 
     try:
-        pid = UUID(process_id) if isinstance(process_id, str) else process_id
+        pid = UUID(practice_id) if isinstance(practice_id, str) else practice_id
     except (ValueError, TypeError):
         logger.warning(
-            "handle_practice_status_changed: bad process_id %r", process_id
+            "handle_practice_status_changed: bad practice_id %r", practice_id
         )
         return
 
     pool = await get_pool()
     async with pool.acquire() as conn:
         engine = CommissionEngine(conn)
-        cid = await engine.accrue_from_process(pid)
+        cid = await engine.accrue_from_practice(pid)
         if cid is None:
             return
 

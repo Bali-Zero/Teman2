@@ -364,7 +364,7 @@ export default function NewPracticePage() {
       if (formData.referrer_id != null && createdPractice?.id) {
         try {
           await partnersApi.createReferral(formData.referrer_id, {
-            process_id: createdPractice.id,
+            practice_id: createdPractice.id,
           });
         } catch (referralErr) {
           // Non-fatal: practice exists. Log but don't block user.
