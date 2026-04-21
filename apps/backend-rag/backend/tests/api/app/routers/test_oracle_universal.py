@@ -109,36 +109,6 @@ async def test_health_endpoint_is_always_ok() -> None:
 
 
 @pytest.mark.asyncio
-async def test_drive_test_returns_moved_marker() -> None:
-    app = _build_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        r = await client.get("/api/oracle/drive/test")
-    assert r.status_code == 200
-    assert r.json() == {"status": "moved_to_service", "available": True}
-
-
-@pytest.mark.asyncio
-async def test_gemini_test_returns_moved_marker() -> None:
-    app = _build_app()
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        r = await client.get("/api/oracle/gemini/test")
-    assert r.status_code == 200
-    assert r.json() == {"status": "moved_to_service", "available": True}
-
-
-@pytest.mark.asyncio
-async def test_user_profile_endpoint_is_not_implemented_yet() -> None:
-    app = _build_app()
-    email = "nuzantara@example.com"
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        r = await client.get(f"/api/oracle/user/profile/{email}")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["status"] == "not_implemented"
-    assert body["email"] == email
-
-
-@pytest.mark.asyncio
 async def test_query_visa_happy_path() -> None:
     app = _build_app()
     process = AsyncMock(
@@ -1116,49 +1086,141 @@ async def test_query_malformed_service_response_logs_validation_error(caplog) ->
 
 
 # ---------------------------------------------------------------------------
-# Wave 2 — Q3 lock-in: stub endpoints are marked deprecated but still answer
+# Wave 3 — Dropped-field observability: dedicated logger + Sentry tag.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_drive_test_stub_is_marked_deprecated_in_openapi() -> None:
-    """Q3: the /drive/test, /gemini/test, and /user/profile stubs have been
-    flagged `deprecated=True` at the OpenAPI level so apps/mouth and other
-    consumers get a visible signal in generated SDKs, but the handlers
-    continue to return the same bodies for now."""
+async def test_dropped_fields_use_dedicated_logger(caplog) -> None:
+    """Wave 3: the Q1 drop WARN must emerge from the dedicated
+    `oracle.query.dropped_fields` logger so the event can be routed, muted
+    or aggregated independently of the rest of the router's chatty logs.
+
+    Until wave 3 it came from `backend.app.routers.oracle_universal`.
+    """
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="oracle.query.dropped_fields")
+
     app = _build_app()
-    spec = app.openapi()
+    process = AsyncMock(return_value=_happy_result(query="logger name drift"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "logger name drift",
+                    "domain_hint": "visa",
+                },
+            )
 
-    drive = spec["paths"]["/api/oracle/drive/test"]["get"]
-    gemini = spec["paths"]["/api/oracle/gemini/test"]["get"]
-    profile = spec["paths"]["/api/oracle/user/profile/{user_email}"]["get"]
-
-    assert drive.get("deprecated") is True
-    assert gemini.get("deprecated") is True
-    assert profile.get("deprecated") is True
-
-    # Health and query endpoints MUST NOT be flagged deprecated.
-    assert spec["paths"]["/api/oracle/health"]["get"].get("deprecated") is not True
-    assert spec["paths"]["/api/oracle/query"]["post"].get("deprecated") is not True
+    assert r.status_code == 200
+    named = [rec for rec in caplog.records if rec.name == "oracle.query.dropped_fields"]
+    assert len(named) == 1
+    assert named[0].levelname == "WARNING"
+    assert "domain_hint" in named[0].message
 
 
 @pytest.mark.asyncio
-async def test_deprecated_stubs_still_return_original_payload() -> None:
-    """Q3: existing consumers must keep working unchanged. Adding new fields
-    to the payload would be a schema break for strict clients — we only
-    flip the OpenAPI `deprecated` flag and emit an info log."""
+async def test_dropped_fields_emit_sentry_tag(monkeypatch) -> None:
+    """Wave 3: when request fields are dropped, the router must also tag the
+    current Sentry scope with `oracle.dropped_fields` = comma-joined field
+    names. This lets ops aggregate by field without relying on free-text log
+    parsing (Sentry PII redaction is already handled globally — the tag
+    value contains only field names, never user data)."""
+    recorded: list[tuple[str, str]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(key: str, value: str) -> None:
+        recorded.append((key, value))
+
+    monkeypatch.setattr(oracle_router.sentry_sdk, "set_tag", _capture)
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="sentry tag check"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "sentry tag check",
+                    "domain_hint": "tax",
+                    "context_docs": ["drive-A"],
+                },
+            )
+
+    assert r.status_code == 200
+    assert ("oracle.dropped_fields", "domain_hint,context_docs") in recorded
+
+
+@pytest.mark.asyncio
+async def test_dropped_fields_no_sentry_tag_when_empty(monkeypatch) -> None:
+    """Wave 3 negative: a request that does not trigger the drop branch
+    (default `response_format='structured'`, no hints) must NOT tag Sentry
+    — otherwise we would blow the free-tier quota with noise on every
+    request."""
+    recorded: list[tuple[str, str]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(key: str, value: str) -> None:
+        recorded.append((key, value))
+
+    monkeypatch.setattr(oracle_router.sentry_sdk, "set_tag", _capture)
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="clean request"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "clean request"},
+            )
+
+    assert r.status_code == 200
+    assert recorded == []
+
+
+# ---------------------------------------------------------------------------
+# Wave 3 — Q3 stub removal: endpoints gone, surface contract is now:
+#   POST /api/oracle/query, POST /api/oracle/feedback, GET /api/oracle/health.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_removed_stubs_return_404() -> None:
+    """Q3 (wave 3): the deprecated /drive/test, /gemini/test and
+    /user/profile/{email} endpoints were removed. Any remaining client that
+    was keeping them alive must see a real 404 so the migration is visible
+    instead of the old silent stub payload."""
     app = _build_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         drive = await client.get("/api/oracle/drive/test")
         gemini = await client.get("/api/oracle/gemini/test")
         profile = await client.get("/api/oracle/user/profile/someone@example.com")
 
-    assert drive.status_code == 200
-    assert drive.json() == {"status": "moved_to_service", "available": True}
-    assert gemini.status_code == 200
-    assert gemini.json() == {"status": "moved_to_service", "available": True}
-    assert profile.status_code == 200
-    assert profile.json() == {
-        "status": "not_implemented",
-        "email": "someone@example.com",
-    }
+    assert drive.status_code == 404
+    assert gemini.status_code == 404
+    assert profile.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_removed_stubs_absent_from_openapi() -> None:
+    """Q3 (wave 3): SDK generators (apps/mouth/src/lib/api/schema.d.ts) must
+    stop seeing these paths entirely on the next build. We assert absence
+    from the spec so a future accidental re-add is caught immediately."""
+    app = _build_app()
+    spec = app.openapi()
+    paths = spec["paths"]
+
+    assert "/api/oracle/drive/test" not in paths
+    assert "/api/oracle/gemini/test" not in paths
+    assert "/api/oracle/user/profile/{user_email}" not in paths
+
+    # Core surface must still be present and NOT flagged deprecated.
+    assert "/api/oracle/query" in paths
+    assert "/api/oracle/feedback" in paths
+    assert "/api/oracle/health" in paths
+    assert paths["/api/oracle/health"]["get"].get("deprecated") is not True
+    assert paths["/api/oracle/query"]["post"].get("deprecated") is not True
