@@ -443,8 +443,13 @@ class NLMPipeline:
     def _consolidate(self, claims: list[dict], cluster: str) -> dict:
         """Consolidation phase: save claims, recalculate SVS/NHS, generate handoff."""
         # 1. Save new claims
+        # ClaimRecord.to_dict() omits falsy values, so re-inject source_ids=[] when missing
+        # to avoid TypeError on required positional argument.
         claim_records = [
-            ClaimRecord(**{k: v for k, v in c.items() if k in ClaimRecord.__dataclass_fields__})
+            ClaimRecord(**{
+                **{"source_ids": []},
+                **{k: v for k, v in c.items() if k in ClaimRecord.__dataclass_fields__},
+            })
             for c in claims
             if claims  # skip if empty
         ]
