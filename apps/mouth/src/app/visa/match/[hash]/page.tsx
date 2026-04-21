@@ -10,6 +10,7 @@ import {
   useHaptic,
 } from "@balizero/core";
 import { ChatAccordion } from "@/components/visa/ChatAccordion";
+import { HandoffWaLink } from "@/components/visa/HandoffWaLink";
 
 interface MatchResult {
   hash: string;
@@ -22,6 +23,10 @@ interface MatchResult {
   alternatives: string[];
   referral_mode: boolean;
   result_url: string;
+  nationality: string;
+  purpose: string;
+  duration_months: number;
+  budget_band: string;
   session_jwt: string | null;
 }
 
@@ -63,17 +68,14 @@ export default function VisaMatchResultPage({
     return (
       <AppFrame funnel="visa" title="Your case needs a conversation" subtitle="The form can't capture everything. A 15-minute WhatsApp review with our visa team is faster than any guess.">
         <p style={{ lineHeight: 1.6 }}>{data.reason}</p>
-        <AppWhatsAppCTA
-          source="visa_match"
-          headline="Free 15-minute visa review"
-          description="Tell us what you're trying to do. We'll pick the right route and the real cost."
-          resultHash={data.hash}
-          whatsappContext={[
-            { label: "Case", value: "Non-standard / borderline" },
-            { label: "Route", value: "Free 15-min review requested" },
-          ]}
-          defaultLabel="Start on WhatsApp →"
-          onCaptured={({ leadIntentId }) => tracker.whatsappHandoff(leadIntentId)}
+        {/* TODO(Task 12): fire visaWaClick telemetry with source=wizard_abstained */}
+        <HandoffWaLink
+          phone={process.env.NEXT_PUBLIC_WA_PHONE ?? "+6285156005858"}
+          nationality={data.nationality}
+          purpose={data.purpose}
+          durationMonths={data.duration_months}
+          budgetBand={data.budget_band}
+          reason={data.reason}
         />
         <AppShareBar url={publicUrl} title="Bali Zero — Visa review" onShare={(c) => tracker.shareClicked(c)} />
       </AppFrame>

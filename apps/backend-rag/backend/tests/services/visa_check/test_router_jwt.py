@@ -32,6 +32,12 @@ def test_match_response_schema_exposes_session_jwt(response_builder):
     assert "session_jwt" in fields, "MatchResponse missing session_jwt field"
 
 
+def test_match_response_schema_exposes_echo_fields(response_builder):
+    fields = response_builder.model_fields
+    for name in ("nationality", "purpose", "duration_months", "budget_band"):
+        assert name in fields, f"MatchResponse missing {name} echo field"
+
+
 @pytest.mark.asyncio
 async def test_submit_match_returns_valid_jwt_with_check_hash_claim(monkeypatch):
     from backend.app.routers import visa_check as router_mod

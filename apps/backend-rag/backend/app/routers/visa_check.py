@@ -134,6 +134,10 @@ class MatchResponse(BaseModel):
     alternatives: list[VisaType]
     referral_mode: bool
     result_url: str
+    nationality: str
+    purpose: str
+    duration_months: int
+    budget_band: str
     session_jwt: str | None = None  # populated by POST, absent on GET
 
 
@@ -262,6 +266,10 @@ async def submit_match(
         alternatives=[VisaType(v) for v in saved.alternatives],
         referral_mode=result.referral_mode,
         result_url=f"/visa/match/{saved.hash}",
+        nationality=saved.nationality,
+        purpose=saved.purpose,
+        duration_months=saved.duration_months,
+        budget_band=saved.budget_band,
         session_jwt=_issue_visa_funnel_jwt(saved.hash),
     )
 
@@ -316,4 +324,8 @@ async def get_match(
         alternatives=[VisaType(v) for v in saved.alternatives],
         referral_mode=(saved.recommended_visa is None),
         result_url=f"/visa/match/{saved.hash}",
+        nationality=saved.nationality,
+        purpose=saved.purpose,
+        duration_months=saved.duration_months,
+        budget_band=saved.budget_band,
     )
