@@ -63,6 +63,25 @@ class VisaMeta:
     fit_tags: frozenset[str] = field(default_factory=frozenset)
 
 
+class FitTag:
+    """String constants for VisaMeta.fit_tags values. Single source of truth
+    shared with match_tree.py so string renames are mechanical (grep + replace)
+    rather than silent drift. Not an Enum because fit_tags values are used in
+    plain-string comparisons inside frozensets and serialised to clients.
+    """
+
+    SHORT_TERM = "short_term"
+    NO_BUDGET_GATE = "no_budget_gate"
+    MIXED_PURPOSE = "mixed_purpose"
+    SOCIAL_VISIT = "social_visit"
+    MULTI_ENTRY = "multi_entry"
+    FREQUENT_TRAVEL = "frequent_travel"
+    PRE_PMA = "pre_pma"
+    INVOICES_INDONESIAN_CLIENTS = "invoices_indonesian_clients"
+    GOLDEN_VISA = "golden_visa"
+    FOREIGN_EMPLOYER_SALARY = "foreign_employer_salary"
+
+
 def _build_meta() -> dict[VisaType, VisaMeta]:
     """Construct VISA_META. Deferred to avoid circular import at module load."""
     from backend.services.visa_check.match_tree import Purpose
@@ -85,7 +104,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Pure tourism single entry. Extendable twice ×60d = 180d max.",
             seed_source=SEED,
             duration_source=C_RULES,
-            fit_tags=frozenset({"short_term", "no_budget_gate"}),
+            fit_tags=frozenset({FitTag.SHORT_TERM, FitTag.NO_BUDGET_GATE}),
         ),
         # NOTE: C2 and D2 share name/name_id in the seed; disambiguated by `category`.
         VisaType.C2: VisaMeta(
@@ -99,7 +118,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Business meetings, no paid work. Extendable ×2.",
             seed_source=SEED,
             duration_source=C_RULES,
-            fit_tags=frozenset({"mixed_purpose"}),
+            fit_tags=frozenset({FitTag.MIXED_PURPOSE}),
         ),
         VisaType.C6: VisaMeta(
             name_en="Visit Visa Social Activity",
@@ -112,7 +131,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Family visit / NGO / religious activity. Non-commercial.",
             seed_source=SEED,
             duration_source=C_RULES,
-            fit_tags=frozenset({"social_visit"}),
+            fit_tags=frozenset({FitTag.SOCIAL_VISIT}),
         ),
         VisaType.C7: VisaMeta(
             name_en="Visit Visa Penampilan Seni dan Budaya",
@@ -187,7 +206,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="1- or 2-year multiple-entry business. Users who travel in/out.",
             seed_source=SEED_NB2,
             duration_source=NB2,
-            fit_tags=frozenset({"multi_entry", "frequent_travel"}),
+            fit_tags=frozenset({FitTag.MULTI_ENTRY, FitTag.FREQUENT_TRAVEL}),
         ),
         VisaType.D12: VisaMeta(
             name_en="Visit Visa Pre-Investment",
@@ -200,7 +219,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Scouting visa: evaluate market before committing to PT PMA.",
             seed_source=SEED_NB2,
             duration_source=NB2,
-            fit_tags=frozenset({"pre_pma"}),
+            fit_tags=frozenset({FitTag.PRE_PMA}),
         ),
         # ── E-series (KITAS / Limited Stay) ───────────────────
         VisaType.E23: VisaMeta(
@@ -226,7 +245,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Freelance — for users invoicing Indonesian clients, not foreign employers.",
             seed_source=SEED_NB2,
             duration_source=NB2,
-            fit_tags=frozenset({"invoices_indonesian_clients"}),
+            fit_tags=frozenset({FitTag.INVOICES_INDONESIAN_CLIENTS}),
         ),
         VisaType.E28A: VisaMeta(
             name_en="Investor Visa",
@@ -275,7 +294,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Golden visa for 55+ retirees. 5-year single block.",
             seed_source=SEED,
             duration_source=NB2,
-            fit_tags=frozenset({"golden_visa"}),
+            fit_tags=frozenset({FitTag.GOLDEN_VISA}),
         ),
         VisaType.E33F: VisaMeta(
             name_en="Second Home Visa Elderly for 1 Year",
@@ -300,7 +319,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             notes="Remote worker salaried by foreign employer. USD 60k savings proof.",
             seed_source=SEED,
             duration_source=NB2,
-            fit_tags=frozenset({"foreign_employer_salary"}),
+            fit_tags=frozenset({FitTag.FOREIGN_EMPLOYER_SALARY}),
         ),
     }
 
@@ -324,6 +343,7 @@ EXTENSION_POLICY: dict[VisaType, tuple[int, int]] = {
 __all__ = [
     "VisaType",
     "VisaMeta",
+    "FitTag",
     "VISA_META",
     "DEFAULT_DURATION_DAYS",
     "EXTENSION_POLICY",

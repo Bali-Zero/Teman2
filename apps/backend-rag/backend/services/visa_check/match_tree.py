@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from backend.services.visa_check.catalogue import VisaMeta, VisaType
+from backend.services.visa_check.catalogue import FitTag, VisaMeta, VisaType
 
 # VISA_META is imported lazily inside _rank_for_purpose() to break the
 # circular import: catalogue._build_meta() imports Purpose from this module,
@@ -57,11 +57,8 @@ class BudgetBand(str, Enum):
     OVER_500M = "over_500m"
 
 
-# Ceiling values are set just below each band's upper bound so that a visa
-# whose min_budget_idr equals the band's nominal upper limit is NOT
-# considered affordable for that band (e.g. E33G at 50M is not "under 50M").
 _BUDGET_CEILING: dict[BudgetBand, int] = {
-    BudgetBand.UNDER_50M: 49_999_999,      # strictly less than 50M
+    BudgetBand.UNDER_50M: 50_000_000,
     BudgetBand.MID_50_500M: 500_000_000,
     BudgetBand.OVER_500M: 10_000_000_000,
 }
@@ -177,16 +174,18 @@ _STEPS_BY_PURPOSE: dict[Purpose, list[str]] = {
 
 
 def _budget_fits(meta: VisaMeta, band: BudgetBand) -> bool:
-    """True if the user's budget band ceiling is ≥ the visa's min_budget_idr.
+    """True if the user's budget band ceiling strictly exceeds the visa's min_budget_idr.
 
-    The UNDER_50M ceiling is set to 49,999,999 so that a visa with
-    min_budget_idr == 50,000,000 (e.g. E33G) is NOT considered affordable
-    at the under-50M band — preventing the scoring system from recommending
-    an unaffordable visa to an under-budget user.
+    Strict `>` so that a visa with min_budget_idr == 50,000,000 (e.g. E33G)
+    is NOT considered affordable at the under-50M band (ceiling 50M). This
+    keeps the band semantics consistent with their labels:
+    - UNDER_50M  = budget strictly less than 50M
+    - MID_50_500M = budget in [50M, 500M)
+    - OVER_500M  = budget > 500M (ceiling effectively unbounded)
     """
     if meta.min_budget_idr is None:
         return True
-    return _BUDGET_CEILING[band] >= meta.min_budget_idr
+    return _BUDGET_CEILING[band] > meta.min_budget_idr
 
 
 def _duration_fits(meta: VisaMeta, months: int) -> bool:
@@ -230,12 +229,12 @@ def _score(meta: VisaMeta, purpose: Purpose, months: int, band: BudgetBand) -> f
     # Niche tag penalty: E23_FREELANCE is specifically for users billing
     # Indonesian clients, not for the generic "work remotely for a foreign
     # employer" use-case that WORK_REMOTE implies by default.
-    if "invoices_indonesian_clients" in meta.fit_tags and purpose == Purpose.WORK_REMOTE:
+    if FitTag.INVOICES_INDONESIAN_CLIENTS in meta.fit_tags and purpose == Purpose.WORK_REMOTE:
         score -= 0.15
 
     # Multi-entry penalty: D2 / multi-entry visas assume frequent short trips
     # and are semantically unsuitable for users planning continuous residence.
-    if "multi_entry" in meta.fit_tags:
+    if FitTag.MULTI_ENTRY in meta.fit_tags:
         score -= 0.30
 
     return max(0.0, min(1.0, round(score, 3)))
