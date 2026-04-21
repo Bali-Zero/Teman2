@@ -137,7 +137,9 @@ async def test_lock_timeout_does_not_crash(handler: MemoryHandler, mock_orchestr
     handler._memory_orchestrator = mock_orchestrator
     handler._lock_timeout = 0.05  # Very short timeout
 
-    lock = handler._memory_locks["user@test.com"]
+    # Locks are now keyed by "user_id::session_id"; when the caller omits
+    # session_id the sentinel "__nosession__" is used.
+    lock = handler._memory_locks["user@test.com::__nosession__"]
     await lock.acquire()  # Hold the lock
 
     try:
@@ -260,3 +262,153 @@ async def test_lazy_orchestrator_init_failure():
     with patch("backend.services.memory.MemoryOrchestrator", side_effect=RuntimeError("DB down")):
         result = await handler.get_memory_orchestrator()
         assert result is None
+
+
+# ============================================================
+# Session-scoped locking (feat/react-memory-hardening)
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_save_concurrent_different_sessions_not_serialized(
+    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+) -> None:
+    """Two saves for the same user but different session_id must run in
+    parallel — the lock is now keyed by ``(user_id, session_id)``, so
+    cross-session traffic should no longer serialize.
+
+    Proof is deterministic: both coroutines are required to reach
+    ``process_conversation`` before either is allowed to return. If the
+    new lock were still user-scoped, only one would enter and the second
+    would time out on the barrier event — turning the regression into a
+    visible ``TimeoutError``/``AssertionError`` instead of a silent pass.
+    """
+    handler._memory_orchestrator = mock_orchestrator
+
+    entered_queries: set[str] = set()
+    both_entered = asyncio.Event()
+
+    async def tracked_process(**kwargs: object) -> FakeProcessResult:
+        entered_queries.add(str(kwargs.get("user_message", "?")))
+        if len(entered_queries) == 2:
+            # Second entrant flips the barrier so both can complete.
+            both_entered.set()
+        try:
+            await asyncio.wait_for(both_entered.wait(), timeout=1.0)
+        except asyncio.TimeoutError as exc:
+            raise AssertionError(
+                "Session-scoped saves were serialized unexpectedly; "
+                "only one branch entered process_conversation within 1s.",
+            ) from exc
+        return FakeProcessResult()
+
+    mock_orchestrator.process_conversation = tracked_process
+
+    tasks = [
+        asyncio.create_task(
+            handler.save_conversation_memory(
+                user_id="user@test.com",
+                query="q0",
+                answer="a0",
+                session_id="sess-A",
+            ),
+        ),
+        asyncio.create_task(
+            handler.save_conversation_memory(
+                user_id="user@test.com",
+                query="q1",
+                answer="a1",
+                session_id="sess-B",
+            ),
+        ),
+    ]
+    await asyncio.gather(*tasks)
+
+    assert entered_queries == {"q0", "q1"}
+
+
+@pytest.mark.asyncio
+async def test_save_concurrent_same_session_serialized(
+    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+) -> None:
+    """Two saves for the same user AND session_id must serialize: the
+    second caller has to wait for the first lock holder to release before
+    entering process_conversation."""
+    handler._memory_orchestrator = mock_orchestrator
+
+    concurrency_peak = 0
+    concurrency_current = 0
+    lock_probe = asyncio.Lock()
+
+    async def tracked_process(**_kwargs: object) -> FakeProcessResult:
+        nonlocal concurrency_peak, concurrency_current
+        async with lock_probe:
+            concurrency_current += 1
+            concurrency_peak = max(concurrency_peak, concurrency_current)
+        # Hold the critical section long enough for the second task to
+        # queue up on the user+session lock.
+        await asyncio.sleep(0.05)
+        async with lock_probe:
+            concurrency_current -= 1
+        return FakeProcessResult()
+
+    mock_orchestrator.process_conversation = tracked_process
+
+    tasks = [
+        asyncio.create_task(
+            handler.save_conversation_memory(
+                user_id="user@test.com",
+                query=f"q{i}",
+                answer=f"a{i}",
+                session_id="sess-SAME",
+            ),
+        )
+        for i in range(2)
+    ]
+    await asyncio.gather(*tasks)
+
+    # Under correct serialization, the two tasks never overlap inside
+    # process_conversation -> peak concurrency is 1.
+    assert concurrency_peak == 1, (
+        f"same-session saves overlapped (peak={concurrency_peak}); "
+        "session-scoped lock is not serializing."
+    )
+
+
+@pytest.mark.asyncio
+async def test_save_backward_compat_no_session_id(
+    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+) -> None:
+    """Calling save_conversation_memory without session_id must still work
+    and must register a lock entry under the sentinel ``__nosession__`` key,
+    preserving the pre-refactor serialization contract for legacy callers."""
+    handler._memory_orchestrator = mock_orchestrator
+
+    await handler.save_conversation_memory(
+        user_id="user@test.com", query="q", answer="a",
+    )
+
+    mock_orchestrator.process_conversation.assert_awaited_once()
+    # The lock dict now keys by "user_id::session_id" — when session_id is
+    # omitted the sentinel "__nosession__" must appear.
+    assert "user@test.com::__nosession__" in handler._memory_locks
+
+
+@pytest.mark.asyncio
+async def test_create_save_task_propagates_session_id(
+    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+) -> None:
+    """create_save_task must forward session_id through to the coroutine
+    and include it in the task name for observability."""
+    handler._memory_orchestrator = mock_orchestrator
+
+    task = handler.create_save_task(
+        user_id="user@test.com",
+        query="q",
+        answer="a",
+        session_id="sess-X",
+    )
+    assert task is not None
+    assert task.get_name() == "memory-save:user@test.com:sess-X"
+    await task
+    assert "user@test.com::sess-X" in handler._memory_locks
