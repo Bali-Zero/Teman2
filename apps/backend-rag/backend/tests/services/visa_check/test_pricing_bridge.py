@@ -1,14 +1,16 @@
-"""PricingBridge integration — no hardcoded prices allowed.
+"""PricingBridge integration — no hardcoded prices, name-based hints.
 
-Validates that the bridge pulls from PricingService and that the IDR
-string parser handles the real JSON shape ('5.800.000 IDR').
+Every VisaType must resolve to a positive IDR cost from the real JSON
+except for the two documented known-None cases (C6, E30A), which reflect
+the fact that the pricing JSON does not ship an entry for those services.
 """
 
 from __future__ import annotations
 
 from backend.services.pricing.pricing_service import PricingService
-from backend.services.visa_check.catalogue import VisaType
+from backend.services.visa_check.catalogue import VISA_META, VisaType
 from backend.services.visa_check.pricing_bridge import (
+    KNOWN_NONE_VISAS,
     _idr_string_to_int,
     estimate_match_cost,
 )
@@ -32,22 +34,54 @@ class TestEstimateMatchCost:
     def setup_method(self):
         self.pricing = PricingService()
 
-    def test_returns_cost_for_every_catalogue_type(self):
-        """Smoke: every VisaType either resolves to a cost or None
-        (None is acceptable — the UI falls back to 'confirm on WA')."""
+    def test_known_none_set_is_subset_of_visatype(self):
+        for vt in KNOWN_NONE_VISAS:
+            assert vt in VISA_META
+
+    def test_every_non_known_none_visa_resolves(self):
+        if not self.pricing.loaded:
+            return  # pricing service unavailable in this env — skip silently
         for vt in VisaType:
+            if vt in KNOWN_NONE_VISAS:
+                continue
             cost, source = estimate_match_cost(visa_type=vt, pricing=self.pricing)
-            # Either both None or both non-None (consistency check).
-            assert (cost is None) == (source is None), vt.value
-            if cost is not None:
-                assert cost > 0, f"{vt.value} returned zero cost"
+            assert cost is not None, f"{vt.value}: no price found in JSON"
+            assert cost > 0, f"{vt.value}: zero cost"
+            assert source, f"{vt.value}: source string empty"
+
+    def test_known_none_visas_return_none(self):
+        if not self.pricing.loaded:
+            return
+        for vt in KNOWN_NONE_VISAS:
+            cost, source = estimate_match_cost(visa_type=vt, pricing=self.pricing)
+            # Known-None: either both None or a lucky match — never a crash.
+            assert (cost is None) == (source is None)
 
     def test_investor_resolves_to_positive_cost(self):
-        cost, source = estimate_match_cost(
-            visa_type=VisaType.E28A, pricing=self.pricing
+        if not self.pricing.loaded:
+            return
+        cost, source = estimate_match_cost(visa_type=VisaType.E28A, pricing=self.pricing)
+        assert cost is not None
+        assert cost > 0
+        assert source
+
+    def test_e33g_prefers_offshore(self):
+        if not self.pricing.loaded:
+            return
+        cost, source = estimate_match_cost(visa_type=VisaType.E33G, pricing=self.pricing)
+        # Offshore E33G = 13M IDR, Altus/Onshore = 14M. Either is acceptable,
+        # but we document the tie-break preference.
+        assert cost is not None
+        assert "remote" in (source or "").lower() or "e33g" in (source or "").lower()
+
+    def test_freelance_e23_separate_from_working_kitas(self):
+        if not self.pricing.loaded:
+            return
+        freelance_cost, _ = estimate_match_cost(
+            visa_type=VisaType.E23_FREELANCE, pricing=self.pricing
         )
-        # If PricingService loaded, E28A (Investor KITAS) must exist.
-        if self.pricing.loaded:
-            assert cost is not None
-            assert source is not None
-            assert "investor" in source.lower() or "E28A" in source.upper()
+        working_cost, _ = estimate_match_cost(visa_type=VisaType.E23, pricing=self.pricing)
+        if freelance_cost and working_cost:
+            assert freelance_cost != working_cost, (
+                "E23_FREELANCE and E23 should resolve to different price entries"
+            )

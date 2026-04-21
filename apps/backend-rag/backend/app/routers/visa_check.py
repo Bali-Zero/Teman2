@@ -126,8 +126,13 @@ class MatchResponse(BaseModel):
 
 def _processing_days(visa_type: VisaType) -> int:
     """Rough processing estimate for the result page; we don't persist it."""
-    # Tourism single-entry: ~10 working days. KITAS: ~20-30. Defaults safe.
-    if visa_type in {VisaType.B211A, VisaType.C1, VisaType.C2, VisaType.C7, VisaType.C7A, VisaType.C7B}:
+    # Single-entry C-series and short-stay visit visas process in ~10 working days.
+    # KITAS / multi-entry / yearly visas process in ~20–30 days.
+    if visa_type in {
+        VisaType.C1, VisaType.C2, VisaType.C6,
+        VisaType.C7, VisaType.C7A, VisaType.C7B,
+        VisaType.C18, VisaType.C22A,
+    }:
         return 10
     return 25
 
