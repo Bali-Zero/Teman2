@@ -7,11 +7,8 @@ is (a) present in the seed and (b) has matching name/category.
 from __future__ import annotations
 
 import ast
-import json
 import re
 from pathlib import Path
-
-import pytest
 
 from backend.services.visa_check.catalogue import (
     DEFAULT_DURATION_DAYS,
