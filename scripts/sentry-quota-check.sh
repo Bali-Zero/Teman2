@@ -57,11 +57,16 @@ fi
 
 # The env values come from runtime — we read them via fly ssh console with a
 # tiny python one-liner so we don't have to parse the Dockerfile.
-RUNTIME_ENV="$(
-    fly ssh console --app "$APP" --command \
-        "python -c 'import os,json; print(json.dumps({k:os.getenv(k,\"\") for k in [\"ENVIRONMENT\",\"SENTRY_TRACES_SAMPLE_RATE\",\"SENTRY_PROFILES_SAMPLE_RATE\",\"SENTRY_SEND_DEFAULT_PII\",\"SKIP_SENTRY_INIT\",\"SENTRY_DSN\"]}))'" \
+# Read runtime env via `fly ssh console`. The command emits status banners
+# ("No machine specified…", "Connecting to…") before the actual output, so we
+# grep only the JSON line. Using a heredoc avoids shell-escaping hell.
+RUNTIME_RAW="$(
+    fly ssh console --app "$APP" --quiet --command \
+        'python -c "import os,json; keys=[\"ENVIRONMENT\",\"SENTRY_TRACES_SAMPLE_RATE\",\"SENTRY_PROFILES_SAMPLE_RATE\",\"SENTRY_SEND_DEFAULT_PII\",\"SKIP_SENTRY_INIT\",\"SENTRY_DSN\"]; print(\"SQC_JSON:\"+json.dumps({k:os.getenv(k,\"\") for k in keys}))"' \
         2>/dev/null || true
 )"
+
+RUNTIME_ENV="$(echo "$RUNTIME_RAW" | grep -o 'SQC_JSON:{.*}' | head -1 | sed 's/^SQC_JSON://')"
 
 if [[ -z "$RUNTIME_ENV" ]]; then
     alert "unable to read runtime env from $APP (is a machine running?)"
@@ -90,8 +95,9 @@ if [[ "$DSN_PRESENT" != "yes" ]]; then
     exit 0
 fi
 
-# PII bypass check.
-case "${SEND_PII,,}" in
+# PII bypass check (bash 3.x-compatible lowercase via tr).
+SEND_PII_LC="$(printf '%s' "$SEND_PII" | tr '[:upper:]' '[:lower:]')"
+case "$SEND_PII_LC" in
     1|true|yes)
         alert "SENTRY_SEND_DEFAULT_PII is truthy — PII scrubbing is bypassed. Unset immediately."
         exit 2
