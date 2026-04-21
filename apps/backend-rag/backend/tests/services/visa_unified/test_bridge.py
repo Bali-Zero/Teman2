@@ -97,6 +97,34 @@ async def test_get_funnel_context_returns_none_for_expired_row():
 
 
 @pytest.mark.asyncio
+async def test_get_funnel_context_allows_null_created_at():
+    """A row with NULL created_at bypasses TTL and is returned.
+
+    Rationale: TTL is a safety net against replay attacks; authoritative
+    freshness comes from the JWT's `exp` claim (see Task 2). If the DB
+    row has no created_at (shouldn't happen in production but is
+    permitted by the schema), we still return the context rather than
+    discard it silently.
+    """
+    row = {
+        "hash": "nullts1111111111",
+        "nationality": "USA",
+        "purpose": "work_remote",
+        "duration_months": 12,
+        "budget_band": "50m_500m",
+        "recommended_visa": "E33G",
+        "recommendation_reason": "…",
+        "alternatives": json.dumps(["E23-FREELANCE"]),
+        "estimated_cost_idr": 13_000_000,
+        "created_at": None,  # legitimate NULL
+    }
+    pool = _FakePool(row=row)
+    ctx = await get_funnel_context("nullts1111111111", pool)
+    assert ctx is not None, "NULL created_at must not be treated as expired"
+    assert ctx.check_hash == "nullts1111111111"
+
+
+@pytest.mark.asyncio
 async def test_get_funnel_context_flags_referral_mode_when_visa_is_null():
     abstained_row = {
         "hash": "other11111111111",
