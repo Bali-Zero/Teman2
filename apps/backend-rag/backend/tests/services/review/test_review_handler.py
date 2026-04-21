@@ -96,6 +96,32 @@ async def test_send_review_request_happy_path(repo_and_telegram):
 
 
 @pytest.mark.asyncio
+async def test_send_review_request_with_canva_url_adds_button(repo_and_telegram):
+    """When draft has canva_edit_url, keyboard exposes it as a URL button."""
+    repo, tg = repo_and_telegram
+    handler = ReviewHandler(repo=repo, telegram=tg, owner_chat_id=OWNER_CHAT_ID)
+    canva_url = "https://www.canva.com/design/DAHE6lx1lf8/edit"
+    req = ReviewRequest(
+        draft_id=DID,
+        topic="B211A",
+        tone_register="analitico",
+        cover_image_url="https://tigris/cover.png",
+        first_slide_text="Primo slide",
+        canva_edit_url=canva_url,
+    )
+    result = await handler.send_review_request(req)
+    assert result.ok is True
+    kb = tg.send_photo_url.call_args.kwargs["reply_markup"]
+    # First row: approve/edit/reject unchanged
+    assert len(kb["inline_keyboard"][0]) == 3
+    # Second row: Canva URL button
+    assert len(kb["inline_keyboard"]) == 2
+    canva_btn = kb["inline_keyboard"][1][0]
+    assert canva_btn["url"] == canva_url
+    assert "Canva" in canva_btn["text"]
+
+
+@pytest.mark.asyncio
 async def test_send_review_request_telegram_fail(repo_and_telegram):
     repo, tg = repo_and_telegram
     tg.send_photo_url = AsyncMock(

@@ -90,7 +90,10 @@ class ReviewHandler:
         self,
         request: ReviewRequest,
     ) -> ReviewSendResult:
-        keyboard = build_primary_keyboard(request.draft_id)
+        keyboard = build_primary_keyboard(
+            request.draft_id,
+            canva_edit_url=request.canva_edit_url,
+        )
         caption = request.to_caption()
         sr: SendResult = await self.telegram.send_photo_url(
             chat_id=self.owner_chat_id,
