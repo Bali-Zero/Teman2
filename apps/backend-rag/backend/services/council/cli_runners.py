@@ -138,8 +138,9 @@ class GeminiCLIRunner(CLIRunner):
 class DeepSeekHTTPRunner(CLIRunner):
     """DeepSeek via HTTP API — Legge 1 explicit exception (SYMBIOSIS.md:176).
 
-    Pattern mirrors apps/war-room/agents/05_image_brainstorm.py (urllib -> HTTP).
-    We use httpx (async, Golden Rule 4). API key required.
+    Originally prototyped in the WR1 image_brainstorm agent (removed
+    2026-04-22). This implementation uses httpx (async, Golden Rule 4);
+    API key required.
     """
 
     name = "deepseek"

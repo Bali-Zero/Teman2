@@ -1,21 +1,22 @@
 """Build canva_pending.json from WR2 slides_json.
 
-Format is bit-for-bit compatible with the one already produced by
-apps/war-room/agents/06_canva_builder.py so the existing
-APPLICA_WAR_ROOM.md runbook can consume it unchanged.
+Format is the one consumed by the APPLICA_WAR_ROOM.md runbook (shipped
+alongside claude_invoker.py at runbooks/APPLICA_WAR_ROOM.md). The
+Council decides tone + structure, the Visual service produces images,
+and this module composes the operations array using stable element IDs
+of template DAHE6lx1lf8.
 
-The WR2-side change is: instead of going through Claude Director
-(WR1 stage 04) + canva_builder (WR1 stage 06), the Council decides
-tone + structure and the Visual service produces images. This module
-then composes the operations array using stable element IDs of template
-DAHE6lx1lf8.
+Historical note: the legacy WR1 pipeline (apps/war-room/, removed
+2026-04-22) used to emit this same schema from a bash-composed
+06_canva_builder.py agent. The format is preserved verbatim so any
+archived canva_pending.json remains replayable.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-# Master template from WR1 — reused in WR2. See APPLICA_WAR_ROOM.md.
+# Master carousel template. See runbooks/APPLICA_WAR_ROOM.md.
 TEMPLATE_DESIGN_ID = "DAHE6lx1lf8"
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
@@ -139,8 +140,9 @@ def build_canva_pending(
 ) -> dict[str, Any]:
     """Build the full canva_pending.json payload from WR2 draft data.
 
-    The schema mirrors apps/war-room/output/canva/canva_pending.json
-    (WR1-produced) so APPLICA_WAR_ROOM.md reads this without changes.
+    Schema matches the one APPLICA_WAR_ROOM.md (shipped in runbooks/)
+    expects: a dict with keys template_design_id, folder_id, topic, tone,
+    slides, slides_count, operations.
     """
     if tone not in VALID_TONES:
         raise ValueError(

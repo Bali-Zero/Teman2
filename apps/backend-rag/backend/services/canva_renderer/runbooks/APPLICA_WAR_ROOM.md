@@ -1,11 +1,17 @@
 # War Room — Carousel Apply Prompt (v3 — daily neutral)
 
-> Questo prompt è neutro e riutilizzabile ogni giorno. Legge sempre i dati freschi dal file di output del giorno.
+> Questo prompt è neutro e riutilizzabile ogni giorno. Legge sempre i dati
+> freschi dal file di output del giorno. Il chiamante (`claude_invoker.py`)
+> antepone una riga "Apply the canva_pending.json at path: <PATH>" che vale
+> più del placeholder qui sotto.
 
 ---
 
-Leggi il file /Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/canva_pending.json.
-Esegui i seguenti step nell'ordine esatto. Non chiedere conferma tra uno step e l'altro. Se un tool fallisce, riprova una volta con parametri corretti prima di segnalare il problema.
+Leggi il file canva_pending.json indicato nell'header del prompt (il
+chiamante inietta sempre un path assoluto). Esegui i seguenti step
+nell'ordine esatto. Non chiedere conferma tra uno step e l'altro. Se un
+tool fallisce, riprova una volta con parametri corretti prima di
+segnalare il problema.
 
 STEP 0 — Lettura e validazione input
 Dal canva_pending.json estrai e tieni in memoria per tutta la sessione:

@@ -1,7 +1,8 @@
 """Fireworks Flux.1 Dev fallback client for Visual Generator.
 
-Used only when Imagen 4 fails all retries. Pattern mirrors
-apps/war-room/mcp/fireworks_mcp.py but async/httpx + cost tracked.
+Used only when Imagen 4 fails all retries. Pattern originates from the
+pre-WR2 fireworks MCP wrapper (WR1 tree, removed 2026-04-22); this
+module is async/httpx + cost tracked.
 
 Cost: ~$0.03/image, no tier difference.
 """

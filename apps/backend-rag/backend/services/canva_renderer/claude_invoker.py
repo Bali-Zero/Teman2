@@ -24,9 +24,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SEC = 600  # 10 min — full APPLICA_WAR_ROOM runbook can take 5-8 min
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
-APPLICA_RUNBOOK_PATH = Path(
-    "/Users/nuzantara/Desktop/nuzantara/apps/war-room/APPLICA_WAR_ROOM.md",
-)
+# Runbook ships next to this module (portable across Pro/Air/CI). Historical
+# note: WR1 kept it at apps/war-room/APPLICA_WAR_ROOM.md — that tree was
+# decommissioned 2026-04-22 when WR2 took over the headless Canva apply.
+APPLICA_RUNBOOK_PATH = Path(__file__).parent / "runbooks" / "APPLICA_WAR_ROOM.md"
 
 # Regex pool, tried in order: JSON field, markdown link, bare URL
 _CANVA_URL_RE = re.compile(r"https?://(?:www\.)?canva\.com/d/([A-Za-z0-9_\-]+)")
@@ -104,8 +105,8 @@ def _build_prompt(canva_pending_path: Path) -> str:
     if not APPLICA_RUNBOOK_PATH.is_file():
         raise CanvaInvokeError(
             f"runbook not found at {APPLICA_RUNBOOK_PATH}. "
-            "Is the war-room app on Pro? WR1 removal plan must preserve "
-            "this file until WR2 has its own runbook.",
+            "It should ship inside the canva_renderer package — did the "
+            "runbooks/ directory get excluded from a build?",
         )
     runbook = APPLICA_RUNBOOK_PATH.read_text(encoding="utf-8")
     contract = (

@@ -155,11 +155,12 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.env\.test$"),
         ".env.test: test fixture env, never production",
     ),
-    # War room Canva builder: contains external Canva template IDs,
-    # not credentials (verified manually 2026-04-12).
+    # WR2 canva_renderer: ships external Canva template IDs, not credentials.
     (
-        re.compile(r"(^|/)apps/war-room/agents/.*\.py$"),
-        "war-room agents: contain external Canva template IDs, not credentials",
+        re.compile(
+            r"(^|/)apps/backend-rag/backend/services/canva_renderer/.*\.py$"
+        ),
+        "canva_renderer: external Canva template IDs, not credentials",
     ),
     # Frontend book metadata: detect-secrets flags `serviceKey: "b1-visit-visa"`
     # as a "Secret Keyword" hit. Book/service catalog data, never credentials.
