@@ -28,6 +28,7 @@ from backend.app.dependencies import (
     get_orchestrator,
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
+from backend.core.observability import init_observability, is_enabled as _lf_enabled
 from backend.db.repositories.conversation_repository import ConversationRepository
 from backend.services.agents.team_agent_config import (
     AgentRole,
@@ -162,6 +163,67 @@ router = APIRouter(
 )
 
 
+async def _process_query_traced(
+    *,
+    orchestrator: "AgenticRAGOrchestrator",
+    query_kwargs: dict,
+    authenticated_user_id: str | None,
+    session_id: str | None,
+    query_id: str,
+    ab_variants: dict,
+):
+    """Run orchestrator.process_query under a Langfuse span (no-op if disabled).
+
+    Kept as a thin wrapper so the trace boundary is visible from the route
+    body without cluttering it. Anthropic calls inside are auto-instrumented
+    via OpenInference — this span becomes their parent.
+    """
+    if not _lf_enabled():
+        return await orchestrator.process_query(**query_kwargs)
+    try:
+        from langfuse import get_client
+    except Exception:
+        return await orchestrator.process_query(**query_kwargs)
+    lf = get_client()
+    if lf is None:
+        return await orchestrator.process_query(**query_kwargs)
+
+    # PII-safe span input: hash + length only. Raw query / retrieved docs
+    # / answer content never cross the Langfuse boundary. See README.md
+    # "Langfuse POC" for the full UU PDP compliance note.
+    query_str = str(query_kwargs.get("query", ""))
+    query_hash = hashlib.sha256(query_str.encode("utf-8")).hexdigest()[:16]
+    with lf.start_as_current_span(
+        name="agentic_rag.query",
+        input={"query_hash": query_hash, "query_length": len(query_str)},
+        metadata={
+            "user_id_hash": hashlib.sha256(
+                (authenticated_user_id or "").encode("utf-8"),
+            ).hexdigest()[:16],
+            "session_id": session_id,
+            "query_id": query_id,
+            "ab_variants": ab_variants,
+            "route": "/api/agentic-rag/query",
+        },
+    ) as span:
+        result = await orchestrator.process_query(**query_kwargs)
+        try:
+            span.update(
+                output={
+                    "route_used": getattr(result, "route_used", None),
+                    "document_count": getattr(result, "document_count", None),
+                    "model_used": getattr(result, "model_used", None),
+                    "abstain": getattr(result, "abstain", False),
+                    "evidence_score": getattr(result, "evidence_score", None),
+                    # No answer text — may contain PII from RAG retrieval.
+                },
+            )
+        except Exception:
+            # Never let observability break the request
+            pass
+        return result
+
+
 class ConversationMessageInput(BaseModel):
     """Single message in conversation history from frontend"""
 
@@ -284,6 +346,11 @@ async def query_agentic_rag(
         f"expansion={ab_variants['query_expansion']}",
     )
 
+    # Langfuse POC: idempotent init, no-op when disabled or keys missing.
+    # See backend/core/observability.py + apps/backend-rag/README.md (Langfuse POC).
+    if _lf_enabled():
+        init_observability(service_name="nuzantara-rag")
+
     try:
         query_start_time = time.time()
 
@@ -319,7 +386,17 @@ async def query_agentic_rag(
         if conversation_history:
             query_kwargs["conversation_history"] = conversation_history
 
-        result = await orchestrator.process_query(**query_kwargs)
+        # Langfuse POC: wrap the heavy orchestrator call. Anthropic SDK calls
+        # made inside are auto-traced via OpenInference instrumentation, so
+        # this span becomes the parent of the full LLM chain.
+        result = await _process_query_traced(
+            orchestrator=orchestrator,
+            query_kwargs=query_kwargs,
+            authenticated_user_id=authenticated_user_id,
+            session_id=request.session_id,
+            query_id=query_id,
+            ab_variants=ab_variants,
+        )
 
         # Calculate response time
         response_time = time.time() - query_start_time
