@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from backend.services.canva_renderer.claude_invoker import (
-    APPLICA_RUNBOOK_PATH,
     CanvaInvokeError,
     extract_canva_urls,
 )
@@ -59,18 +58,3 @@ class TestExtractCanvaUrls:
     def test_raises_on_empty_output(self) -> None:
         with pytest.raises(CanvaInvokeError, match="empty output"):
             extract_canva_urls("")
-
-
-class TestRunbookPath:
-    def test_runbook_resolves_relative_to_module(self) -> None:
-        """Runbook must ship with the module (portable across machines)."""
-        assert APPLICA_RUNBOOK_PATH.is_file(), (
-            f"APPLICA_WAR_ROOM.md must live at {APPLICA_RUNBOOK_PATH} "
-            "so Pro/Air/CI all resolve it without an absolute home path."
-        )
-
-    def test_runbook_is_canva_renderer_internal(self) -> None:
-        """Decommission guard: runbook is NOT in apps/war-room anymore."""
-        parts = APPLICA_RUNBOOK_PATH.parts
-        assert "canva_renderer" in parts
-        assert "war-room" not in parts  # i.e. not apps/war-room
