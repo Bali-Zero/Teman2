@@ -19,6 +19,16 @@ These are two products with overlapping positioning but non-overlapping strength
 
 **Goal:** a single visa funnel at `balizero.com/visa` that combines the deterministic Check wizard (the conversion engine) with the Oracle chat (the edge-case fallback), under one design, one domain, one analytics funnel.
 
+## Terminology note: "wizard_abstained"
+
+The Visa Check backend (shipped in PR #143) already returns a boolean flag in the `/api/visa/match` JSON response named `referral_mode`. The name is legacy and ambiguous — it has nothing to do with partner referrals or affiliate programs. It signals that `match_tree.py` **abstained**: the deterministic tree explored, found no branch that gives a sensible recommendation, and asks the UI to route the user to human review. It fires in exactly three scenarios:
+
+1. `purpose == OTHER` — the user picked "Something else / not sure" at step 2.
+2. `purpose == LONG_TOURISM and duration_months > 6` — tourism visas cap at ~180 days under Indonesian law.
+3. `purpose == INVESTOR and budget_band == UNDER_50M` — E28A/D12/E33G all have minimum capital or savings requirements above that ceiling.
+
+**Throughout this spec, the concept is called `wizard_abstained`.** This mirrors the `ABSTAIN` state already used by the RAG reasoning module (`evidence_score < 0.15`) elsewhere in the codebase. The JSON field name `referral_mode` is retained at the API boundary to avoid a breaking contract change — renaming it is a separate follow-up PR if we want naming consistency across frontend+backend.
+
 ## Scope: what ships in this merge
 
 **Frontend:**
@@ -29,7 +39,7 @@ These are two products with overlapping positioning but non-overlapping strength
 - Consent banner (`ConsentBanner.tsx` from Oracle) mounted once on `/visa` root (cookie-based dismiss, stored under `.balizero.com`).
 - Privacy at `/visa/privacy`, terms at `/visa/terms`. Ported verbatim from Oracle, updated to reference the new canonical URL.
 - Clock page `/visa/clock/{hash}` gains the same chat accordion with urgency-aware copy ("Timeline shows D-7. Ask questions now before it's too late.").
-- `referral_mode=true` cases (OTHER purpose, tourism > 6 months, investor under-budget) **skip the chat accordion entirely** and render a pre-compiled `wa.me` link with a summary of the quiz answers + the reason the tree couldn't pick a visa. The 2026-04-19 CRO audit confirms referrals are the hottest leads — chat AI is the wrong answer for them.
+- `wizard_abstained` cases (where the wizard returns `referral_mode=true` in its JSON — see terminology note above) **skip the chat accordion entirely** and render a pre-compiled `wa.me` link with a summary of the quiz answers + the reason the tree couldn't pick a visa. The 2026-04-19 CRO audit shows that users who reach this state are the hottest leads we have (they're self-identifying as "my case is not standard") — handing them to an AI chat first is the wrong answer; they want a human immediately.
 
 **Backend:**
 
@@ -81,7 +91,7 @@ balizero.com/visa (landing)
                 └─ step 1 nationality → step 2 purpose → step 3 duration → step 4 budget
                      └─ POST /api/visa/match (existing, returns hash + NEW session_jwt)
                           │
-                          ├─ referral_mode=true → /visa/match/{hash}?referral=1
+                          ├─ referral_mode=true (wizard_abstained) → /visa/match/{hash}?handoff=1
                           │      └─ NO chat; pre-compiled wa.me link with quiz summary
                           │
                           └─ referral_mode=false → /visa/match/{hash}
@@ -167,9 +177,9 @@ def augment_chat_system_prompt(ctx: FunnelContext, base: str) -> str:
     """Prepend ground-truth paragraph to the Oracle system prompt.
 
     The augmentation names the visa, the Bali Zero price, and the alternatives
-    so the LLM cannot contradict the wizard. For referral_mode users (rare
-    path since they skip the chat, but defensive) it tells the LLM to gather
-    details for WhatsApp rather than invent advice.
+    so the LLM cannot contradict the wizard. For wizard_abstained users
+    (rare path since they skip the chat, but defensive) it tells the LLM to
+    gather details for WhatsApp rather than invent advice.
     """
 ```
 
@@ -195,9 +205,9 @@ A 301 is permanent; de-indexing later requires Google to re-crawl and figure out
 
 Gemini redteam: _"leaky paywall is a good trade-off, goal is conversion not monetization"_. Fingerprinting adds GDPR complexity (Indonesian UU-PDP also applies), breaks on browser updates, and the users sophisticated enough to clear cookies are exactly the users who read the room and escalate to WhatsApp anyway. The paywall exists to create urgency, not to enforce billing.
 
-### Why `referral_mode` skips chat entirely
+### Why `wizard_abstained` users skip chat entirely
 
-Codex + Gemini converged: referral leads are hot; routing them through an AI first is a step backward. The wa.me link is pre-compiled with the quiz answers serialized as a readable summary ("Italian investor, budget <50M IDR, 12 months, no clear visa match — please advise"), so the Bali Zero team picks up a hot lead with context, not a cold handoff.
+Codex + Gemini converged: when the wizard abstains (the user's case falls outside the deterministic tree — OTHER purpose, tourism > 6mo, investor under-budget), the lead is hot. These users have self-identified as "my case is not standard"; routing them through an AI chat first is a step backward and wastes the signal. The wa.me link is pre-compiled with the quiz answers serialized as a readable summary ("Italian investor, budget <50M IDR, 12 months, no clear visa match — please advise"), so the Bali Zero team picks up a warm-handed lead with context, not a cold handoff.
 
 ## Testing strategy
 
@@ -208,7 +218,7 @@ Codex + Gemini converged: referral leads are hot; routing them through an AI fir
 3. `test_bridge.py::test_get_funnel_context_returns_none_for_expired_row` — 30d TTL.
 4. `test_bridge.py::test_augment_chat_system_prompt_includes_visa_code` — substring match.
 5. `test_bridge.py::test_augment_chat_system_prompt_includes_cost_and_alternatives`
-6. `test_bridge.py::test_augment_for_referral_mode_shifts_tone_to_handoff`
+6. `test_bridge.py::test_augment_for_wizard_abstained_shifts_tone_to_handoff`
 7. `test_visa_check_router.py::test_submit_match_returns_session_jwt` — verify JWT structure + claims.
 8. `test_visa_check_router.py::test_session_jwt_signed_with_correct_key`
 9. `test_visa_oracle_chat.py::test_chat_with_check_hash_validates_jwt_or_401`
@@ -218,14 +228,14 @@ Codex + Gemini converged: referral leads are hot; routing them through an AI fir
 10. `VisaChat.accordion.test.tsx::test_closed_by_default`
 11. `VisaChat.accordion.test.tsx::test_clicking_header_opens_inline`
 12. `VisaChat.accordion.test.tsx::test_sends_check_hash_and_jwt_on_first_message`
-13. `VisaChat.accordion.test.tsx::test_does_not_render_for_referral_mode_true`
-14. `ReferralWaLink.test.tsx::test_generates_wa_me_with_encoded_summary` — assert `?text=` contains quiz fields.
+13. `VisaChat.accordion.test.tsx::test_does_not_render_when_wizard_abstained`
+14. `HandoffWaLink.test.tsx::test_generates_wa_me_with_encoded_summary` — assert `?text=` contains quiz fields.
 15. `middleware.test.ts::test_visa_subdomain_redirects_301_to_path` — 6 redirect rules.
 
 **E2E (new Playwright spec, 3 scenarios):**
 
 16. Full happy path: landing → match wizard → result → expand chat → ask 1 question → answer received.
-17. Referral path: investor + under-50M → result shows `referral=1` → no chat accordion → wa.me link present.
+17. Wizard-abstained path: investor + under-50M → result shows `handoff=1` query param → no chat accordion → wa.me link present.
 18. Subdomain redirect: hit `visa.balizero.com/privacy` → land at `balizero.com/visa/privacy`.
 
 **Integration (smoke):**
@@ -243,7 +253,7 @@ Codex + Gemini converged: referral leads are hot; routing them through an AI fir
 - `visa_result_view` — `{ hash, recommended_visa, referral_mode, source: "match" | "clock" }`.
 - `visa_chat_opened` — `{ hash, remaining_questions }`.
 - `visa_chat_question_sent` — `{ hash, question_index, confidence_bucket }`.
-- `visa_wa_click` — `{ hash, source: "primary" | "chat_handoff" | "referral", referral_mode }`.
+- `visa_wa_click` — `{ hash, source: "primary" | "chat_handoff" | "wizard_abstained", referral_mode }`.
 - `visa_paywall_hit` — `{ hash, question_index }`.
 - `visa_subdomain_redirect` — `{ from_path, to_path }` (middleware, first 30 days only, for validation).
 
@@ -255,7 +265,7 @@ Target: **≥ 15%** over the first 30 days post-merge.
 
 - Chat adoption: `visa_chat_opened / visa_result_view` ≥ 10%.
 - Chat-to-WA conversion: `visa_wa_click[source=chat_handoff] / visa_chat_opened` ≥ 25%.
-- Referral WA conversion: `visa_wa_click[source=referral] / (visa_result_view where referral_mode=1)` ≥ 40% — referrals are hot, this measures whether the wa.me pre-compile works.
+- Wizard-abstained WA conversion: `visa_wa_click[source=wizard_abstained] / (visa_result_view where referral_mode=1)` ≥ 40% — these are hot leads, this measures whether the wa.me pre-compile works.
 
 **Alert thresholds (for follow-up sprint, not this PR):**
 
@@ -282,7 +292,7 @@ Target: **≥ 15%** over the first 30 days post-merge.
    - `backend/app/routers/visa_oracle.py` extended to validate JWT + accept `check_hash`.
    - `apps/mouth/src/components/visa/VisaChat.tsx` (moved + restyled) + `QuestionCounter.tsx` + `ConsentBanner.tsx`.
    - `apps/mouth/src/app/visa/match/[hash]/page.tsx` — accordion integration.
-   - `apps/mouth/src/app/visa/match/[hash]/ReferralWaLink.tsx` — new component.
+   - `apps/mouth/src/app/visa/match/[hash]/HandoffWaLink.tsx` — new component rendered when `referral_mode=true` (wizard_abstained).
    - `apps/mouth/src/app/visa/clock/[hash]/page.tsx` — accordion integration.
    - `apps/mouth/src/app/visa/privacy/page.tsx` + `terms/page.tsx` (ported).
    - `apps/mouth/src/middleware.ts` — 6-rule redirect block.
@@ -298,7 +308,7 @@ Target: **≥ 15%** over the first 30 days post-merge.
 Budget: **5 working days** (consensus from Codex + DeepSeek).
 
 - **Day 1** — backend bridge + JWT emission + tests (9 cases). Small frontend move: components `visa-oracle/` → `visa/`.
-- **Day 2** — accordion chat integration in `/visa/match/{hash}`, referral wa.me link component, frontend tests (6 cases).
+- **Day 2** — accordion chat integration in `/visa/match/{hash}`, `HandoffWaLink` component for wizard_abstained path, frontend tests (6 cases).
 - **Day 3** — clock branch gets the accordion + urgency copy. Privacy/terms ports. Consent banner mount.
 - **Day 4** — middleware redirects 6-rule, sitemap update, internal-link rewrite pass, cleanup of `(visa-oracle)/`. GSC change-of-address submission.
 - **Day 5** — Playwright E2E (3 scenarios), telemetry wiring, deploy to Fly+Vercel, post-deploy verification via `scripts/post-deploy-verify.sh`, smoke test the 9 GA4 events in DebugView.
