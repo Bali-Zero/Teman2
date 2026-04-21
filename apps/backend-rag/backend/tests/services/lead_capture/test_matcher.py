@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # Import the script file directly (it lives in /scripts/, not in a package).
-_SCRIPT_PATH = Path(__file__).resolve().parents[4] / "scripts" / "lead_intent_matcher.py"
+_SCRIPT_PATH = Path(__file__).resolve().parents[6] / "scripts" / "lead_intent_matcher.py"
 sys.path.insert(0, str(_SCRIPT_PATH.parent))
 import lead_intent_matcher as m  # noqa: E402
 

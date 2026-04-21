@@ -1249,7 +1249,7 @@ describe("CrmApi", () => {
         });
 
         expect((crmApi as any).client.request).toHaveBeenCalledWith(
-          "/api/crm/interactions?interaction_type=whatsapp&limit=50",
+          "/api/crm/interactions/?interaction_type=whatsapp&limit=50",
         );
         expect(result).toHaveLength(2);
       });
