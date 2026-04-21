@@ -328,6 +328,15 @@ def register_handlers(
     except ImportError as exc:
         logger.warning("compliance_handlers not loaded: %s", exc)
 
+    # ── Partner handlers (2026-04-20) ──────────────────────────────────
+    try:
+        from backend.app.db import set_pool as _set_pool
+        _set_pool(db_pool)
+        from backend.services.crm.partners.events import register_partner_handlers
+        register_partner_handlers(bus)
+    except ImportError as exc:
+        logger.warning("partner handlers not loaded: %s", exc)
+
     logger.info(
         f"✅ EventBus handlers registered: "
         f"{len(bus._subscribers)} event types"
