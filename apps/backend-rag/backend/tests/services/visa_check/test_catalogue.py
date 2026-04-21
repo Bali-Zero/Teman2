@@ -22,9 +22,22 @@ from backend.services.visa_check.catalogue import (
 )
 from backend.services.visa_check.match_tree import Purpose
 
-REPO_ROOT = Path(__file__).resolve().parents[6]
+
+def _find_repo_root(start: Path) -> Path:
+    """Walk up from `start` until a directory containing `.git` is found.
+
+    Works for both plain checkouts (`.git/` dir) and worktrees
+    (`.git` file pointing to the real gitdir). Fails loudly if no
+    repo root is found — never silently resolves to the filesystem root.
+    """
+    for parent in [start, *start.parents]:
+        if (parent / ".git").exists():
+            return parent
+    raise RuntimeError(f"no .git found walking up from {start}")
+
+
+REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 SEED_PATH = REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
-PRICING_PATH = REPO_ROOT / "apps/backend-rag/backend/data/bali_zero_official_prices_2025.json"
 
 
 def _load_seed() -> dict[str, dict]:
@@ -125,6 +138,9 @@ class TestDerivedDicts:
 
 class TestPurposeCoverage:
     def test_every_non_other_purpose_has_at_least_one_match(self):
+        # Purpose.OTHER is the catch-all referral branch — no visa is ever
+        # surfaced for it (the match_tree returns referral_mode=True), so
+        # it intentionally has no VISA_META entries.
         for p in Purpose:
             if p == Purpose.OTHER:
                 continue

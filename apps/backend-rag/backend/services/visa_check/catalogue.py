@@ -87,6 +87,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             duration_source=C_RULES,
             fit_tags=frozenset({"short_term", "no_budget_gate"}),
         ),
+        # NOTE: C2 and D2 share name/name_id in the seed; disambiguated by `category`.
         VisaType.C2: VisaMeta(
             name_en="Visit Visa Business",
             name_id="Visa Kunjungan Bisnis",
@@ -174,6 +175,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             duration_source=NB2,
         ),
         # ── D-series (Multiple Entry) ─────────────────────────
+        # NOTE: see C2 above — D2 shares the same name/name_id (Multiple Entry variant).
         VisaType.D2: VisaMeta(
             name_en="Visit Visa Business",
             name_id="Visa Kunjungan Bisnis",
@@ -303,6 +305,8 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
     }
 
 
+# VISA_META is built via a function so the Purpose import can be deferred
+# (match_tree.py imports from this module → circular import otherwise).
 VISA_META: dict[VisaType, VisaMeta] = _build_meta()
 
 
