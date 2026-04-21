@@ -149,7 +149,26 @@ jobs:
           flyctl ssh console \
             --app nuzantara-rag \
             --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'"
-          echo "✅ Migrations OK"
+          echo "✅ SQL v2 migrations OK"
+
+      # Python-idiom migrations (db/migrations_v2 SQL runner doesn't discover these).
+      # Add a new apply_migration_NNN.py step below when introducing a new one.
+      # These are idempotent (IF NOT EXISTS guards + ON CONFLICT DO NOTHING).
+      - name: Run Python migration 119 (partners)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_119'"
+          echo "✅ Python migration 119 OK"
+
+      - name: Run Python migration 120 (partner_email_outbox)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
+          echo "✅ Python migration 120 OK"
 
   deploy:
     name: Fly.io rolling deploy
