@@ -123,15 +123,9 @@ def main() -> int:
         ))
         # lkpm_reports: created by old-style migration_063 (backend/migrations/
         # *.py), which the modern runner (db/migrations_v2/*.sql) does not
-        # discover. migrations_v2 108_lkpm_receipts.sql FK-references it and
-        # 110_lkpm_allowlist_krisna.sql ALTERs it, so without this stub those
-        # two migrations fail on a fresh CI DB. Minimal columns only — enough
-        # for 108's FK target (id) and 110's ALTER (lkpm_assigned_to). No
-        # SQLModel class references it, so no stub Table registration needed.
-        # Full schema mirrors backend/migrations/migration_063_lkpm_reports.py
-        # plus the ALTER ADDs from migrations 093 + 100a. CI's SQL-v2 runner
-        # doesn't execute those Python migrations, so we inline the canonical
-        # final shape here. Kept idempotent with `IF NOT EXISTS`.
+        # discover. Full schema mirrored from migration_063 + 100a so tests
+        # that INSERT into realized_equipment_* / validation_* / oss_* /
+        # narrative_* work on a fresh CI DB. Idempotent: IF NOT EXISTS.
         conn.execute(text(
             """
             CREATE TABLE IF NOT EXISTS lkpm_reports (
@@ -186,7 +180,21 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
+        # system_settings: created by old-style migration_062
+        # (backend/migrations/*.sql), same scar as lkpm_reports. Used by
+        # test_compliance_alerts_router for the compliance_alert_autotune_enabled
+        # kill switch; without this, the whole router test file errors on
+        # UndefinedTableError at the first query.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
@@ -223,6 +231,44 @@ def main() -> int:
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
+
+    # SQLModel declares `created_at`/`updated_at` with `default_factory=datetime.utcnow`
+    # — that default is APPLIED BY THE APP, not by the DB. Raw asyncpg INSERTs in
+    # tests (test_compliance_alerts_router, etc.) bypass the ORM and hit
+    # NotNullViolationError. Add the DB-side DEFAULT NOW() on the columns that
+    # really need it so test helpers don't have to spell it out in every INSERT.
+    # Safe on re-run: `ALTER COLUMN ... SET DEFAULT` is idempotent.
+    TIMESTAMPED_TABLES_COLUMNS = [
+        ("clients", "created_at"),
+        ("clients", "updated_at"),
+        ("companies", "created_at"),
+        ("companies", "updated_at"),
+        ("practices", "created_at"),
+        ("practices", "updated_at"),
+    ]
+    with engine.begin() as conn:
+        for table, column in TIMESTAMPED_TABLES_COLUMNS:
+            conn.execute(text(
+                f"ALTER TABLE IF EXISTS {table} "
+                f"ALTER COLUMN {column} SET DEFAULT NOW()"
+            ))
+    print(f"[bootstrap] DEFAULT NOW() ensured on {len(TIMESTAMPED_TABLES_COLUMNS)} timestamp columns")
+
+    # Production-only columns that prod picked up via hand-ALTER but that
+    # never got a migration file. Tests (lkpm_readypack, drive_poll,
+    # invoicing) INSERT into them, so CI fresh DB needs them added.
+    # Same scar family as the migration 118 referrer_url case (2026-04-21).
+    PROD_ONLY_COLUMNS = [
+        ("clients", "google_drive_folder_id", "TEXT"),
+    ]
+    with engine.begin() as conn:
+        for table, column, ctype in PROD_ONLY_COLUMNS:
+            conn.execute(text(
+                f"ALTER TABLE IF EXISTS {table} "
+                f"ADD COLUMN IF NOT EXISTS {column} {ctype}"
+            ))
+    print(f"[bootstrap] prod-only columns ensured: {PROD_ONLY_COLUMNS}")
+
     return 0
 
 
