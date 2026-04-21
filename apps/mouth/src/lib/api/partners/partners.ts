@@ -149,7 +149,7 @@ export interface ReassignBody {
 
 export interface BulkReassignBody {
   partner_ids: number[];
-  assigned_to: string;
+  new_user_id: string;
   reason: string;
 }
 

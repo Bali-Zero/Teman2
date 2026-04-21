@@ -86,7 +86,7 @@ export default function OrphanedPartnersPage() {
     try {
       const result = await partnersApi.bulkReassign({
         partner_ids: Array.from(selectedIds),
-        assigned_to: targetAssignee,
+        new_user_id: targetAssignee,
         reason: reasonText.trim(),
       });
       toastSuccess(`${result.updated_count} partner${result.updated_count !== 1 ? "s" : ""} reassigned`);
