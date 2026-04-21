@@ -379,3 +379,33 @@ Un lettore che scorre rapidamente deve portare a casa questi cinque fatti:
 5. **Coverage matrix bug architetturale**: le pipeline ingerono su `CLUSTER_ROTATION` (es. NB-2 cluster A-E), ma `gap_scanner layer-B` misura su `DOMAIN_TOPICS.topics` (8 topic fissi per dominio). Le due liste non convergono. Coverage 100% GAP è un artefatto di misura, non una diagnosi di ingestion.
 
 Questa mappa è il substrato di Fase 2 (sacred reading) e Fase 3 (redesign). Da qui, ogni proposta deve (a) ridurre ridondanza, (b) chiudere un loop aperto, (c) rendere accessibile un NB orfano, oppure (d) allineare due fonti di verità divergenti. Proposte che non fanno nessuna di queste quattro cose sono ornamentali.
+
+---
+
+## 9. Post-publication correction (2026-04-22 Sprint 0 investigation)
+
+Eseguendo Sprint 0 §2.5 "Investigate nb3/8/10 state write-back" e §2.6 "Investigate coverage_matrix divergence", è emerso che **i due bug segnalati in §4 (degraded nb3/nb8/nb10) e in §5 (coverage matrix frozen) sono falsi positivi** con la stessa causa radice: **i file di stato runtime sono tracciati in git E marcati in `.gitignore`**. Il git honors la tracciatura. Ogni `git checkout` ripristina il file al contenuto del commit HEAD (tipicamente 2026-04-12 o precedente), sovrascrivendo la scrittura che la pipeline effettua correttamente a runtime.
+
+### Cosa correggere nelle classificazioni di §4.1
+
+- **nb3_pipeline, nb8_pipeline, nb10_pipeline**: da "degraded" a "**healthy**". Il log conferma COMPLETE + synth daily OK; il state file appariva stale solo per il bug git.
+- **Coverage matrix §5**: non è "layer-B non gira" o "gap_scanner non scrive"; è "git overwrite". `gap_scanner.py:317 _save_gap_state` scrive regolarmente, ma al successivo checkout il contenuto torna al commit del 2026-04-12.
+
+### Cosa resta corretto in §4.1
+
+- **nb2_pipeline** BROKEN — confermato bug cron timezone (fix applicato Sprint 0.1).
+- **yt_monitor** BROKEN — feedparser era davvero mancante (risolto pre-sessione).
+- **multimodal_pipeline** BROKEN — wrapper venv era davvero rotto (risolto da sessione concorrente, commit `52a60db43`).
+- **Gap strutturale heartbeat §4.2**: 10 wrapper non chiamavano mai `heartbeat_monitor --record` — bug reale, fix applicato Sprint 0.4 (commit `0b7f2e6cf`).
+
+### Impatto sullo "Stato sinottico" §8
+
+Punto 2 andrebbe ri-scritto: "3 pipeline broken" resta (con un fix applicato a nb2, uno pre-sessione, uno dalla parallela). "4 degradate" scende a **1** (solo freshness_monitor Gemini noise resta degradato, perché Gemini API è fuori dal nostro controllo).
+
+Punto 5 "Coverage matrix bug architetturale" resta valido in astratto (le due checklist `CLUSTER_ROTATION` vs `DOMAIN_TOPICS.topics` divergono davvero), ma la percezione "100% GAP" era amplificata dal git overwrite — i dati live del gap_scanner potrebbero mostrare una distribuzione diversa quando non soggetti a ripristino git.
+
+### Dettagli completi
+
+Vedi `BUGS_FOUND.md` (Bug 1) sulla stessa directory — elenca i ~40 file affected, il fix consigliato (`git rm --cached` dedicato su main), e perché non è stato applicato qui (out-of-scope per il branch analisi, conflitti attesi con sessioni parallele attive).
+
+**Lezione operativa per future analisi**: prima di classificare "pipeline degraded" basandosi su discrepanza log vs state file, verifica `git ls-files <state-file>` e `grep <state-file> .gitignore`. Se entrambi non-vuoti → sospetta il tracked-before-ignore, non la pipeline.
