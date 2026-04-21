@@ -200,35 +200,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     );
   }
 
-  // 6. Visa Oracle pages (visa.balizero.com)
-  const visaOracleBase = 'https://visa.balizero.com';
-  const visaOraclePages = [
+  // 6. Visa funnel pages (balizero.com/visa — consolidated 2026-04-21,
+  // was previously at visa.balizero.com; the subdomain now 302-redirects
+  // to these canonical paths via middleware.ts).
+  const visaPages = [
     {
-      url: visaOracleBase,
+      url: `${baseUrl}/visa`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.9,
     },
     {
-      url: `${visaOracleBase}/quiz`,
+      url: `${baseUrl}/visa/match`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
-      priority: 0.8,
+      priority: 0.9,
     },
     {
-      url: `${visaOracleBase}/privacy`,
+      url: `${baseUrl}/visa/clock`,
       lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.4,
+      changeFrequency: 'weekly' as const,
+      priority: 0.9,
     },
     {
-      url: `${visaOracleBase}/terms`,
+      url: `${baseUrl}/visa/privacy`,
       lastModified: new Date(),
       changeFrequency: 'monthly' as const,
-      priority: 0.4,
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/visa/terms`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
     },
   ];
-  routes.push(...visaOraclePages);
+  routes.push(...visaPages);
 
   // 7. KBLI Sector pages (/kbli/sectors + /kbli/sectors/[id])
   try {
