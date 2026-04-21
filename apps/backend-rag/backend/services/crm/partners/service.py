@@ -34,6 +34,20 @@ class PartnersService:
         created_by: UUID | None = None,
         **optional: Any,
     ) -> UUID:
+        # NB-2 immigration compliance gate (CRIT-5):
+        # entity_type='foreign' violates Indonesian KITAS conditions for most
+        # foreign partners. Paying commission to a foreign partner on a standard
+        # KITAS (E23/E33E/F/G) constitutes Indonesian-source income, which
+        # breaches KITAS conditions — consequences: KITAS revocation + cekal
+        # blacklist for the partner; complicity exposure for Bali Zero PT PMA.
+        # Until the foreign_kitap/foreign_offshore split is designed, block at
+        # service layer. Spec §Q4 + council synthesis 2026-04-21.
+        if entity_type == "foreign":
+            raise ConflictError(
+                "entity_type='foreign' is temporarily disabled pending legal/tax review. "
+                "See docs/superpowers/reviews/2026-04-21-partners-v1/04-nb2.md for context. "
+                "v1.1 will split into foreign_kitap and foreign_offshore variants."
+            )
         try:
             pid = await self.repo.insert_partner(
                 full_name=full_name,

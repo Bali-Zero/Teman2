@@ -10,6 +10,10 @@ import { api } from '@/lib/api';
 
 export type PartnerStatus = 'pending_review' | 'active' | 'inactive' | 'suspended';
 export type EntityType = "individual" | "corporate_pt" | "corporate_cv" | "foreign";
+// NB: "foreign" is accepted by the type but REJECTED by the backend service
+// layer as of 2026-04-21 (CRIT-5). Do not offer it in UI dropdowns until
+// v1.1 splits into foreign_kitap / foreign_offshore.
+// See: docs/superpowers/reviews/2026-04-21-partners-v1/04-nb2.md
 export type CommissionTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type TaxWithholdingCategory = 'tbd' | 'withheld_tarif_umum' | 'withheld_tarif_final' | 'exempt';
 export type CommissionStatus =

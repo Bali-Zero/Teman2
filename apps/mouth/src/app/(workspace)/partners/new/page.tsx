@@ -280,7 +280,9 @@ export default function NewPartnerPage() {
                     <option value="individual">Individual</option>
                     <option value="corporate_pt">Corporate PT</option>
                     <option value="corporate_cv">Corporate CV</option>
-                    <option value="foreign">Foreign</option>
+                    {/* "foreign" intentionally omitted — CRIT-5 (NB-2 compliance):
+                        backend rejects entity_type='foreign' pending legal/tax review.
+                        v1.1 will add foreign_kitap + foreign_offshore options. */}
                   </select>
                 </FieldGroup>
                 <FieldGroup label="Phone">

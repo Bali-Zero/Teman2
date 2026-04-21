@@ -237,3 +237,24 @@ async def test_update_partner_rejects_partner_role_self_update(
         )
     assert exc.value.status_code == 403
     assert "may not update" in exc.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_create_partner_blocks_entity_type_foreign(db_conn, user_factory):
+    """CRIT-5: entity_type='foreign' must be rejected at service layer (NB-2 compliance).
+
+    Paying commission to a foreign partner on a standard KITAS violates KITAS
+    conditions against Indonesian-source income. Blocked until v1.1 splits into
+    foreign_kitap / foreign_offshore variants.
+    """
+    admin = await user_factory(role="admin")
+    svc = PartnersService(db_conn)
+    with pytest.raises(ConflictError) as exc:
+        await svc.create_partner(
+            full_name="Hotel X",
+            email="hotelx@foreign.io",
+            entity_type="foreign",
+            created_by=admin,
+        )
+    assert exc.value.status_code == 409
+    assert "foreign" in exc.value.detail.lower()
