@@ -207,6 +207,7 @@ File changes tracciati automaticamente — non serve salvarli.
 10. **Async HTTP Clients** — NEVER `httpx.AsyncClient()` in methods/loops. Persistent `_get_client`, close in `lifespan`.
 11. **Flat Qdrant Payloads** — Never nested. Use `kode_kbli`, `judul`, `content`, `pma_status` etc.
 12. **PricingTool Only** — All prices from `PricingTool`. Never hardcode/guess.
+13. **No Paid Anthropic API** — HARD RULE. Never add `ANTHROPIC_API_KEY` to any env (dev, Fly secrets, CI, cron). All Claude calls go through `backend/llm/claude_oauth_client.py` which shells out to the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` (Max subscription quota). If you see `anthropic.Anthropic(api_key=…)`, `from anthropic import Anthropic`, or `ANTHROPIC_API_KEY` anywhere outside that client's comment block explaining why it's banned, it's a bug — remove it. The same rule applies to Anthropic-on-Bedrock / Anthropic-on-Vertex paid endpoints.
 
 ## 5. Critical Paths
 
@@ -371,9 +372,19 @@ Core Guardian V3 runs every 3h fixing lint issues in worktree. Do NOT interfere.
 - Git sync: post-commit hook. Pro→Air auto-pull. Air→Pro push. GitHub: only Pro→origin.
 - CLAUDE.md: IDENTICAL on both — git-tracked
 
-## 13. Anthropic API — Quick Reference
+## 13. Anthropic API — Quick Reference (OAuth-ONLY — no paid key)
 
 > Full patterns: `docs/ANTHROPIC_API_REFERENCE.md`
+
+**HARD RULE (Golden Rule #13):** never `ANTHROPIC_API_KEY`, never
+`anthropic.Anthropic(api_key=…)`, never Bedrock/Vertex paid endpoints. All
+Claude traffic goes through `backend/llm/claude_oauth_client.py` which
+shells out to the `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` from the Max
+subscription. Cron agents must invoke `claude -p` subprocess, not the
+Anthropic SDK. Any paid-API addition is a reverted PR, no exceptions.
+
+The "features" below are the ones the OAuth client opts into when it spawns
+the CLI — they are not a license to reintroduce the SDK.
 
 ### Adaptive Thinking (REQUIRED on 4.6)
 

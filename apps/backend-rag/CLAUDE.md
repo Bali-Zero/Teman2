@@ -7,6 +7,38 @@
 
 ## Critical Gotchas
 
+### Anthropic Access Is OAuth-Only — Never `ANTHROPIC_API_KEY` (HARD RULE)
+
+Project-wide Golden Rule #13. Every Claude call in this backend goes through
+`backend/llm/claude_oauth_client.py`, which spawns the `claude` CLI with
+`CLAUDE_CODE_OAUTH_TOKEN` (Max subscription quota). The module also strips
+`ANTHROPIC_API_KEY` from `os.environ` before each subprocess invocation so a
+stray key in `.env` or in a forgotten export cannot silently convert Max
+usage into metered pay-as-you-go billing (see `claude_oauth_client.py:86-95`
+and its test `tests/unit/llm/test_claude_oauth_client.py`).
+
+Three things are banned everywhere in this backend:
+
+1. `anthropic.Anthropic(...)` / `from anthropic import Anthropic` (SDK).
+2. Any reference to `ANTHROPIC_API_KEY` in code, env files, Fly secrets,
+   `.github/workflows/*.yml`, or cron wrappers — except the stripping logic
+   in `claude_oauth_client.py` and the scar note in global CLAUDE.md.
+3. Anthropic-on-Bedrock / Anthropic-on-Vertex paid endpoints.
+
+Checks before deploy:
+
+```bash
+# must return empty
+rg -nP '(ANTHROPIC_API_KEY|anthropic\.Anthropic\(|from anthropic import)' \
+  apps/backend-rag/backend | grep -v 'claude_oauth_client.py\|test_claude_oauth'
+# must return empty
+fly secrets list -a nuzantara-rag | grep -i anthropic_api_key
+```
+
+Kill-switch if the OAuth token itself is compromised: `unset
+CLAUDE_CODE_OAUTH_TOKEN` → `claude_oauth_client.py` raises before any paid
+fallback is possible (it has none).
+
 ### Sentry PII Redaction Is Load-Bearing (2026-04-21)
 
 `backend/app/setup/sentry_config.py::_before_send` is the only thing stopping
