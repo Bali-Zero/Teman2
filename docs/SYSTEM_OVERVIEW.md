@@ -212,14 +212,11 @@ The Nuzantara system is organized across 4 dimensions as defined in [SYSTEM_MAP_
 
 - `/api/oracle/ingest`
 
-### Oracle v5.3 - Ultra Hybrid (6 endpoints)
+### Oracle v5.3 - Ultra Hybrid (3 endpoints)
 
 **GET:**
 
-- `/api/oracle/drive/test`
-- `/api/oracle/gemini/test`
 - `/api/oracle/health`
-- `/api/oracle/user/profile/{user_email}`
 
 **POST:**
 
