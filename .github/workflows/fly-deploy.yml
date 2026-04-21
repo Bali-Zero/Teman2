@@ -151,25 +151,6 @@ jobs:
             --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'"
           echo "✅ SQL v2 migrations OK"
 
-      # Python-idiom migrations (db/migrations_v2 SQL runner doesn't discover these).
-      # Add a new apply_migration_NNN.py step below when introducing a new one.
-      # These are idempotent (IF NOT EXISTS guards + ON CONFLICT DO NOTHING).
-      - name: Run Python migration 119 (partners)
-        timeout-minutes: 2
-        run: |
-          flyctl ssh console \
-            --app nuzantara-rag \
-            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_119'"
-          echo "✅ Python migration 119 OK"
-
-      - name: Run Python migration 120 (partner_email_outbox)
-        timeout-minutes: 2
-        run: |
-          flyctl ssh console \
-            --app nuzantara-rag \
-            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
-          echo "✅ Python migration 120 OK"
-
   deploy:
     name: Fly.io rolling deploy
     needs: run-migrations # BLOCCATO se migration fallisce
@@ -192,9 +173,68 @@ jobs:
             --dockerfile apps/backend-rag/Dockerfile \
             --config apps/backend-rag/fly.toml
 
+  # Python-idiom migrations must run AFTER the new image is live, because
+  # the SQL v2 migration runner (in run-migrations above) doesn't discover
+  # backend/migrations/migration_NNN_*.py files — those are wrapped by
+  # apply_migration_NNN.py scripts that need to exist in the deployed image.
+  # Running them on the OLD image fails with "No module named ...apply_migration_119".
+  # Add a new step below for each new Python migration. All scripts are
+  # idempotent (IF NOT EXISTS guards + ON CONFLICT DO NOTHING), so re-running
+  # on subsequent deploys is a no-op.
+  run-python-migrations:
+    name: Run Python-idiom migrations (post-deploy, idempotent)
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Wait for new image to be serving
+        run: |
+          # Post-deploy rolling restart may take ~20s for the new image to
+          # accept ssh. Short polling loop.
+          for i in $(seq 1 6); do
+            if flyctl ssh console --app nuzantara-rag --command "test -f /app/backend/migrations/apply_migration_119.py && echo ready" 2>/dev/null | grep -q ready; then
+              echo "✅ New image live (apply_migration_119.py present)"
+              exit 0
+            fi
+            echo "Tentativo $i/6 — waiting 10s for new image..."
+            sleep 10
+          done
+          echo "❌ New image does not expose apply_migration_119.py after 60s"
+          exit 1
+
+      - name: Run Python migration 119 (partners)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_119'"
+          echo "✅ Python migration 119 OK"
+
+      - name: Run Python migration 120 (partner_email_outbox)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
+          echo "✅ Python migration 120 OK"
+
+      - name: Notifica Telegram — Python migration fallita
+        if: failure()
+        run: |
+          MESSAGE="⚠️ *Python migration FALLITA*%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}%0A%0ANote: la nuova immagine è già live e serve traffico. Il modulo che dipende dalla migration potrebbe essere in stato degraded. Investigare manualmente."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
   post-deploy-health:
     name: Post-deploy health check + rollback
-    needs: deploy
+    needs: [deploy, run-python-migrations]
     runs-on: ubuntu-latest
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
