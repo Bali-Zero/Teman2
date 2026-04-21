@@ -103,6 +103,7 @@ class MemoryHandler:
         user_id: str,
         query: str,
         answer: str,
+        session_id: str | None = None,
         metrics_collector: "MetricsCollector | None" = None,
     ) -> None:
         """
@@ -112,13 +113,19 @@ class MemoryHandler:
         to the database for future context enrichment. Called asynchronously
         after response generation to avoid blocking.
 
-        RACE CONDITION PROTECTION: Uses per-user lock to prevent concurrent
-        memory saves for the same user from corrupting data.
+        RACE CONDITION PROTECTION: Uses a per-``(user_id, session_id)`` lock
+        to prevent concurrent memory saves for the same user+session from
+        corrupting data, while allowing parallel saves across sessions of the
+        same user (e.g. a multi-tab UI). When ``session_id`` is ``None`` the
+        effective key is ``f"{user_id}::__nosession__"``, preserving the
+        pre-refactor behaviour of serialising everything for that user.
 
         Args:
             user_id: User identifier (email or UUID)
             query: User's original query
             answer: AI's generated response
+            session_id: Optional session identifier used to scope the lock.
+                Pass ``None`` (default) for backward-compatible behaviour.
             metrics_collector: Optional metrics collector for recording lock contention
 
         Note:
@@ -135,7 +142,8 @@ class MemoryHandler:
         if len(self._memory_locks) > self._MAX_LOCKS:
             self._evict_stale_locks()
 
-        lock = self._memory_locks[user_id]
+        lock_key = f"{user_id}::{session_id or '__nosession__'}"
+        lock = self._memory_locks[lock_key]
         lock_start_time = time.time()
 
         try:
@@ -182,6 +190,7 @@ class MemoryHandler:
         user_id: str,
         query: str,
         answer: str,
+        session_id: str | None = None,
         metrics_collector: "MetricsCollector | None" = None,
     ) -> asyncio.Task | None:
         """
@@ -194,6 +203,9 @@ class MemoryHandler:
             user_id: User identifier
             query: User's query
             answer: AI's response
+            session_id: Optional session identifier propagated to
+                ``save_conversation_memory`` for session-scoped locking
+                and task naming.
             metrics_collector: Optional metrics collector
 
         Returns:
@@ -203,8 +215,14 @@ class MemoryHandler:
             return None
 
         task = asyncio.create_task(
-            self.save_conversation_memory(user_id, query, answer, metrics_collector),
-            name=f"memory-save:{user_id}",
+            self.save_conversation_memory(
+                user_id=user_id,
+                query=query,
+                answer=answer,
+                session_id=session_id,
+                metrics_collector=metrics_collector,
+            ),
+            name=f"memory-save:{user_id}:{session_id or '__nosession__'}",
         )
         self._inflight_tasks.add(task)
         task.add_done_callback(self._on_save_task_done)

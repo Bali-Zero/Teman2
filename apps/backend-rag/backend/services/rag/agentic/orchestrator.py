@@ -398,6 +398,7 @@ class AgenticRAGOrchestrator:
                         user_id=user_id,
                         query=query,
                         answer=result.answer,
+                        session_id=session_id,
                         metrics_collector=metrics_collector,
                     )
                     logger.debug(f"🧠 [Sync] Dispatched memory save task for {user_id}")
