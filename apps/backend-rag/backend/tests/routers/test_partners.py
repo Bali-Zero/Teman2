@@ -157,7 +157,8 @@ class TestCreatePartner:
     @pytest.mark.integration
     def test_create_partner_team_auto_assigns_self(self, team_app, fake_team) -> None:
         app, client, pool, conn = team_app
-        partner = _make_partner(assigned_to=uuid.UUID(fake_team["user_id"]))
+        # CATA-5: assigned_to is str (team_members.id VARCHAR), not UUID
+        partner = _make_partner(assigned_to=fake_team["user_id"])
         with (
             patch("backend.app.routers.partners.PartnersService") as MockSvc,
         ):
@@ -729,7 +730,8 @@ class TestCreateReferralCata3:
         """Team member can create referral when they own the partner and practice has no client."""
         _, client, pool, conn = team_app
         # Partner is owned by the team member
-        partner_owned_by_team = _make_partner(assigned_to=uuid.UUID(fake_team["user_id"]))
+        # CATA-5: assigned_to is str (team_members.id VARCHAR), not UUID
+        partner_owned_by_team = _make_partner(assigned_to=fake_team["user_id"])
         # practice_row has no client_id → skip client ownership check
         practice_row = {"id": _PROCESS_ID, "client_id": None}
         with patch("backend.app.routers.partners.PartnersService") as MockSvc:
@@ -878,7 +880,8 @@ class TestMeEndpoints:
     def test_me_partner_returns_own_profile(self, partner_app) -> None:
         _, client, pool, conn = partner_app
         partner = _make_partner()
-        # asyncpg Record-like dict for "SELECT partner_id FROM users ..."
+        # asyncpg Record-like dict for "SELECT partner_id FROM team_members ..."
+        # CATA-5: router queries team_members.partner_id (not users — doesn't exist in prod)
         conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
         with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value

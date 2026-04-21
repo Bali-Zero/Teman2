@@ -1,4 +1,7 @@
 # backend/services/crm/partners/repository.py
+# CATA-5: Production has NO `users` table. Team identity lives in
+# team_members(id VARCHAR) with email-like string IDs. All user/actor
+# identifier params use str (not UUID). Partner-entity IDs stay UUID.
 from __future__ import annotations
 
 import json
@@ -57,8 +60,9 @@ class PartnersRepository:
         full_name: str,
         email: str,
         entity_type: EntityType,
-        assigned_to: UUID | None = None,
-        created_by: UUID | None = None,
+        # CATA-5: assigned_to and created_by are team_members.id (VARCHAR string IDs)
+        assigned_to: str | None = None,
+        created_by: str | None = None,
         **optional: Any,
     ) -> UUID:
         await self._assert_email_is_not_internal(email)
@@ -77,15 +81,18 @@ class PartnersRepository:
     async def _assert_email_is_not_internal(self, email: str) -> None:
         """Reject partner emails that match an internal team/admin user.
 
+        CATA-5: Queries team_members table (not users — which doesn't exist in
+        production). team_members.active guards deactivated members.
+
         KNOWN RACE: This is a SELECT-then-INSERT pattern without a cross-table
-        DB constraint. A concurrent INSERT into users with role in (team,admin)
-        between this check and the partners INSERT would slip through. v2
-        should add a SERIALIZABLE transaction wrapper or a cross-table unique
-        trigger. For v1 the race window is narrow and acceptable (rare admin
-        operation concurrent with partner onboarding).
+        DB constraint. A concurrent INSERT into team_members between this check
+        and the partners INSERT would slip through. v2 should add a SERIALIZABLE
+        transaction wrapper or a cross-table unique trigger. For v1 the race
+        window is narrow and acceptable (rare admin operation concurrent with
+        partner onboarding).
         """
         row = await self.conn.fetchrow(
-            "SELECT 1 FROM users WHERE email = $1 AND role IN ('team','admin')",
+            "SELECT 1 FROM team_members WHERE email = $1 AND role IN ('team','admin') AND active = TRUE",
             email,
         )
         if row is not None:
@@ -98,7 +105,8 @@ class PartnersRepository:
     async def list_partners(
         self,
         *,
-        assigned_to: UUID | None = None,
+        # CATA-5: assigned_to is team_members.id (VARCHAR string ID)
+        assigned_to: str | None = None,
         onboarding_status: str | None = None,
         orphaned: bool = False,
         search: str | None = None,
@@ -146,13 +154,15 @@ class PartnersRepository:
             partner_id,
         )
 
-    async def reassign_partner(self, partner_id: UUID, new_user_id: UUID | None) -> None:
+    async def reassign_partner(self, partner_id: UUID, new_user_id: str | None) -> None:
+        # CATA-5: new_user_id is team_members.id (VARCHAR string ID)
         await self.conn.execute(
             "UPDATE partners SET assigned_to = $2, updated_at = now() WHERE id = $1",
             partner_id, new_user_id,
         )
 
-    async def orphan_partners_of_user(self, user_id: UUID) -> int:
+    async def orphan_partners_of_user(self, user_id: str) -> int:
+        # CATA-5: user_id is team_members.id (VARCHAR string ID)
         result = await self.conn.execute(
             "UPDATE partners SET assigned_to = NULL, updated_at = now() WHERE assigned_to = $1",
             user_id,
@@ -171,7 +181,8 @@ class PartnersRepository:
 
     async def insert_referral(
         self, *, partner_id: UUID, practice_id: int,
-        referred_by_user_id: UUID | None = None,
+        # CATA-5: referred_by_user_id is team_members.id (VARCHAR string ID)
+        referred_by_user_id: str | None = None,
         share_percent: Decimal = Decimal("100.00"),
         notes: str | None = None,
     ) -> UUID:
@@ -236,7 +247,8 @@ class PartnersRepository:
         practice_id: int | None = None,
         related_commission_id: UUID | None = None,
         rule_source: RuleSource = "partner_default",
-        assigned_to_snapshot: UUID | None = None,
+        # CATA-5: assigned_to_snapshot is team_members.id (VARCHAR string ID)
+        assigned_to_snapshot: str | None = None,
         withholding_category: WithholdingCategory = "tbd",
         withholding_rate: Decimal = Decimal("0.0"),
         withholding_amount_idr: Decimal = Decimal("0.0"),
@@ -304,8 +316,9 @@ class PartnersRepository:
         commission_id: UUID,
         new_status: CommissionStatus,
         *,
-        approved_by: UUID | None = None,
-        paid_by: UUID | None = None,
+        # CATA-5: approved_by and paid_by are team_members.id (VARCHAR string IDs)
+        approved_by: str | None = None,
+        paid_by: str | None = None,
         paid_via: str | None = None,
         payment_reference: str | None = None,
         payment_proof_url: str | None = None,
@@ -379,7 +392,8 @@ class PartnersRepository:
         subject: str,
         body_markdown: str,
         idempotency_key: str,
-        created_by: UUID | None = None,
+        # CATA-5: created_by is team_members.id (VARCHAR string ID)
+        created_by: str | None = None,
     ) -> UUID:
         """Enqueue an email send. Idempotent via idempotency_key.
 
@@ -477,7 +491,8 @@ class PartnersRepository:
         *,
         partner_id: UUID,
         action: str,
-        actor_user_id: UUID | None = None,
+        # CATA-5: actor_user_id is team_members.id (VARCHAR string ID)
+        actor_user_id: str | None = None,
         before: dict | None = None,
         after: dict | None = None,
         reason: str | None = None,

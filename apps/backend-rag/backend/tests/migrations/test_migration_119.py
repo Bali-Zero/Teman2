@@ -1,8 +1,13 @@
 """
-Tests for Migration 119: Partners module — 4 tables + users.partner_id + 2 system settings.
+Tests for Migration 119: Partners module — 4 tables + team_members.partner_id + system settings.
 
 Verifies SQL structure, required columns, indexes, constraints, and idempotency
 without requiring a live database connection (AsyncMock pattern).
+
+CATA-5: Production has NO `users` table. Identity for team/admin roles lives in
+team_members(id VARCHAR). All FK targets updated from users(id) to team_members(id).
+The partner_id column is added to team_members (not users), and the index is
+idx_team_members_partner_id (not idx_users_partner_id).
 
 Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
 Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1 (lines 98-318)
@@ -126,7 +131,11 @@ async def test_migration_119_idempotent():
 
 @pytest.mark.asyncio
 async def test_migration_119_rollback():
-    """rollback() must drop all 4 tables and clean system_settings."""
+    """rollback() must drop all 4 tables and clean system_settings.
+
+    CATA-5: rollback drops team_members.partner_id (not users.partner_id).
+    Index name is idx_team_members_partner_id.
+    """
     conn = AsyncMock()
     await apply(conn)
     await rollback(conn)
@@ -138,7 +147,8 @@ async def test_migration_119_rollback():
     assert "DROP TABLE IF EXISTS partners" in sql
     assert "partner_clawback_auto_writeoff_idr" in sql
     assert "partner_accrual_cooling_off_days" in sql
-    assert "DROP INDEX IF EXISTS idx_users_partner_id" in sql
+    # CATA-5: was idx_users_partner_id — production uses team_members
+    assert "DROP INDEX IF EXISTS idx_team_members_partner_id" in sql
     assert "DROP COLUMN IF EXISTS partner_id" in sql
 
 
@@ -149,7 +159,11 @@ async def test_migration_119_rollback():
 
 @pytest.mark.asyncio
 async def test_migration_119_rollback_fk_order():
-    """Rollback must drop child tables before parent (FK-safe order per spec §3.6)."""
+    """Rollback must drop child tables before parent (FK-safe order per spec §3.6).
+
+    CATA-5: partner_id column is on team_members (not users). The index
+    idx_team_members_partner_id must be dropped before DROP TABLE partners.
+    """
     conn = AsyncMock()
     await rollback(conn)
     sql = _collect_sql(conn.execute.call_args_list)
@@ -159,10 +173,11 @@ async def test_migration_119_rollback_fk_order():
     pos_referrals = sql.find("partner_referrals")
     pos_partners = sql.find("DROP TABLE IF EXISTS partners")
 
-    pos_users_partner_id = sql.find("DROP COLUMN IF EXISTS partner_id")
-    assert pos_users_partner_id != -1, "rollback must drop users.partner_id column"
-    assert pos_users_partner_id < pos_partners, \
-        "users.partner_id must be dropped before DROP TABLE partners"
+    # CATA-5: was users.partner_id — production uses team_members.partner_id
+    pos_team_members_partner_id = sql.find("DROP COLUMN IF EXISTS partner_id")
+    assert pos_team_members_partner_id != -1, "rollback must drop team_members.partner_id column"
+    assert pos_team_members_partner_id < pos_partners, \
+        "team_members.partner_id must be dropped before DROP TABLE partners"
 
     # Children must be dropped before parent
     assert pos_audit < pos_partners, "partner_audit_log must be dropped before partners"
@@ -176,14 +191,18 @@ async def test_migration_119_rollback_fk_order():
 
 
 @pytest.mark.asyncio
-async def test_migration_119_adds_users_partner_id():
-    """apply() must include ALTER TABLE users ADD COLUMN partner_id."""
+async def test_migration_119_adds_team_members_partner_id():
+    """apply() must include ALTER TABLE team_members ADD COLUMN partner_id.
+
+    CATA-5: Production has no `users` table. The reverse FK partner_id column
+    is added to team_members (not users). Index is idx_team_members_partner_id.
+    """
     conn = AsyncMock()
     await apply(conn)
     sql = _collect_sql(conn.execute.call_args_list)
     assert "partner_id" in sql
-    assert "users" in sql
-    assert "idx_users_partner_id" in sql
+    assert "team_members" in sql
+    assert "idx_team_members_partner_id" in sql
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +250,8 @@ EXPECTED_INDEXES = [
     "idx_partner_commissions_assigned_to_snapshot",
     "idx_partner_audit_log_partner_id",
     "idx_partner_audit_log_at",
-    "idx_users_partner_id",
+    # CATA-5: was idx_users_partner_id — production uses team_members, not users
+    "idx_team_members_partner_id",
 ]
 
 

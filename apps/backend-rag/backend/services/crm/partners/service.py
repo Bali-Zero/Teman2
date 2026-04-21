@@ -1,4 +1,7 @@
 # backend/services/crm/partners/service.py
+# CATA-5: Production has NO `users` table. Team identity lives in
+# team_members(id VARCHAR) with email-like string IDs. All user/actor
+# identifier params use str (not UUID). Partner-entity IDs stay UUID.
 from __future__ import annotations
 
 import logging
@@ -30,8 +33,9 @@ class PartnersService:
         full_name: str,
         email: str,
         entity_type: str,
-        assigned_to: UUID | None = None,
-        created_by: UUID | None = None,
+        # CATA-5: assigned_to and created_by are team_members.id (VARCHAR string IDs)
+        assigned_to: str | None = None,
+        created_by: str | None = None,
         **optional: Any,
     ) -> UUID:
         # NB-2 immigration compliance gate (CRIT-5):
@@ -74,15 +78,16 @@ class PartnersService:
         )
         return pid
 
-    async def get_partner(self, partner_id: UUID, *, actor_user: UUID) -> Partner:
+    async def get_partner(self, partner_id: UUID, *, actor_user: str) -> Partner:
         return await verify_partner_access(self, actor_user, partner_id)
 
     async def list_partners(
         self,
         *,
-        actor_user: UUID,
+        # CATA-5: actor_user is team_members.id (VARCHAR string ID)
+        actor_user: str,
         actor_role: str,
-        assigned_to: UUID | None = None,
+        assigned_to: str | None = None,
         onboarding_status: str | None = None,
         orphaned: bool = False,
         search: str | None = None,
@@ -100,7 +105,8 @@ class PartnersService:
         self,
         partner_id: UUID,
         *,
-        actor_user: UUID,
+        # CATA-5: actor_user is team_members.id (VARCHAR string ID)
+        actor_user: str,
         actor_role: str,
         **fields: Any,
     ) -> None:
@@ -122,7 +128,8 @@ class PartnersService:
             after=fields,
         )
 
-    async def activate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+    async def activate_partner(self, partner_id: UUID, *, actor_user: str) -> None:
+        # CATA-5: actor_user is team_members.id (VARCHAR string ID)
         if not await _is_admin(self.conn, actor_user):
             raise HTTPException(status_code=403, detail="admin only")
         await self.repo.activate_partner(partner_id)
@@ -132,7 +139,8 @@ class PartnersService:
             actor_user_id=actor_user,
         )
 
-    async def deactivate_partner(self, partner_id: UUID, *, actor_user: UUID) -> None:
+    async def deactivate_partner(self, partner_id: UUID, *, actor_user: str) -> None:
+        # CATA-5: actor_user is team_members.id (VARCHAR string ID)
         if not await _is_admin(self.conn, actor_user):
             raise HTTPException(status_code=403, detail="admin only")
         await self.repo.deactivate_partner(partner_id)
@@ -146,8 +154,9 @@ class PartnersService:
         self,
         partner_id: UUID,
         *,
-        new_user_id: UUID | None,
-        actor_user: UUID,
+        # CATA-5: new_user_id and actor_user are team_members.id (VARCHAR string IDs)
+        new_user_id: str | None,
+        actor_user: str,
         reason: str | None,
     ) -> None:
         if not await _is_admin(self.conn, actor_user):
@@ -169,7 +178,8 @@ class PartnersService:
             reason=reason,
         )
 
-    async def orphan_partners_of_user(self, user_id: UUID, *, actor_user: UUID) -> int:
+    async def orphan_partners_of_user(self, user_id: str, *, actor_user: str) -> int:
+        # CATA-5: user_id and actor_user are team_members.id (VARCHAR string IDs)
         if not await _is_admin(self.conn, actor_user):
             raise HTTPException(status_code=403, detail="admin only")
         affected = await self.repo.list_partners(assigned_to=user_id)
@@ -192,29 +202,34 @@ class PartnersService:
         await self.repo.mark_welcome_sent(partner_id)
 
 
-async def _is_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
-    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+async def _is_admin(conn: asyncpg.Connection, user_id: str) -> bool:
+    # CATA-5: Query team_members, not users (production has no `users` table).
+    # team_members.id is VARCHAR (email-like string, e.g. "zero@balizero.com").
+    row = await conn.fetchrow("SELECT role FROM team_members WHERE id = $1", user_id)
     return bool(row) and row["role"] == "admin"
 
 
-async def _get_role(conn: asyncpg.Connection, user_id: UUID) -> str | None:
-    row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+async def _get_role(conn: asyncpg.Connection, user_id: str) -> str | None:
+    # CATA-5: Query team_members, not users.
+    row = await conn.fetchrow("SELECT role FROM team_members WHERE id = $1", user_id)
     return row["role"] if row else None
 
 
 async def verify_partner_access(
-    svc: PartnersService, actor_user: UUID, partner_id: UUID
+    svc: PartnersService, actor_user: str, partner_id: UUID
 ) -> Partner:
+    # CATA-5: actor_user is team_members.id (VARCHAR string ID)
     role = await _get_role(svc.conn, actor_user)
     return await verify_partner_access_with_role(svc, actor_user, role, partner_id)
 
 
 async def verify_partner_access_with_role(
     svc: PartnersService,
-    actor_user: UUID,
+    actor_user: str,
     actor_role: str | None,
     partner_id: UUID,
 ) -> Partner:
+    # CATA-5: actor_user is team_members.id (VARCHAR string ID)
     partner = await svc.repo.get_partner(partner_id)
     if partner is None:
         raise HTTPException(status_code=404, detail="partner not found")
@@ -223,9 +238,10 @@ async def verify_partner_access_with_role(
     if actor_role == "team" and partner.assigned_to == actor_user:
         return partner
     if actor_role == "partner":
-        # Check via users table: user.partner_id matches partner.id
+        # CATA-5: Check via team_members table (not users — doesn't exist in production).
+        # team_members.partner_id was added by this migration (migration 119).
         row = await svc.conn.fetchrow(
-            "SELECT partner_id FROM users WHERE id = $1", actor_user
+            "SELECT partner_id FROM team_members WHERE id = $1", actor_user
         )
         if row and row["partner_id"] == partner_id:
             return partner

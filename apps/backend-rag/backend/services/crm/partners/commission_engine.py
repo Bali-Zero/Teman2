@@ -188,7 +188,8 @@ class CommissionEngine:
 
     # ── Approve ─────────────────────────────────────────────────────────────
 
-    async def approve(self, commission_id: UUID, *, actor: UUID) -> None:
+    async def approve(self, commission_id: UUID, *, actor: str) -> None:
+        # CATA-5: actor is team_members.id (VARCHAR string ID)
         """Transition a commission from 'accrued' to 'approved'.
 
         Gates:
@@ -291,7 +292,8 @@ class CommissionEngine:
         self,
         commission_id: UUID,
         *,
-        actor: UUID,
+        # CATA-5: actor is team_members.id (VARCHAR string ID)
+        actor: str,
         paid_via: str,
         payment_reference: str,
         payment_proof_url: str | None = None,
@@ -316,7 +318,8 @@ class CommissionEngine:
         self,
         original_commission_id: UUID,
         *,
-        actor: UUID,
+        # CATA-5: actor is team_members.id (VARCHAR string ID)
+        actor: str,
         reason: str,
         amount_idr: Decimal | None = None,
     ) -> UUID:
@@ -406,7 +409,8 @@ class CommissionEngine:
         self,
         clawback_id: UUID,
         *,
-        actor: UUID,
+        # CATA-5: actor is team_members.id (VARCHAR string ID)
+        actor: str,
         reason: str,
     ) -> None:
         """Manually waive a 'clawback_pending' commission (operator decision)."""
