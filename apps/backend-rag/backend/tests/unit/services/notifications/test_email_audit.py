@@ -205,6 +205,43 @@ def test_notify_email_failure_critical_sends_telegram(monkeypatch):
     assert b"waiting_docs_client" in data
 
 
+def test_notify_alert_distinguishes_resurrectable_from_non_resurrectable(monkeypatch):
+    """Alert footer must tell the operator whether to wait or act (Q3 fix).
+
+    - hr_bonus (resurrectable): "Queued for retry..."
+    - welcome (non-resurrectable): "Not queued for retry..."
+    """
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
+
+    with patch(
+        "backend.services.notifications.email_audit.urllib.request.urlopen"
+    ) as mock_open:
+        notify_email_failure_critical(
+            email_type="hr_bonus",
+            to_email="asya@balizero.com",
+            subject="s",
+            practice_id=1,
+            error="e",
+        )
+    data_hr = mock_open.call_args[0][1]
+    assert b"Queued+for+retry" in data_hr
+    assert b"Not+queued" not in data_hr
+
+    with patch(
+        "backend.services.notifications.email_audit.urllib.request.urlopen"
+    ) as mock_open:
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email="c@example.com",
+            subject="s",
+            practice_id=None,
+            error="e",
+        )
+    data_welcome = mock_open.call_args[0][1]
+    assert b"Not+queued+for+retry" in data_welcome
+    assert b"manual+recovery" in data_welcome
+
+
 def test_notify_email_failure_critical_no_token_is_noop(monkeypatch):
     """Without TELEGRAM_BOT_TOKEN, the function should not raise and not
     attempt any network call."""

@@ -7,8 +7,9 @@ loops (retry worker iterates up to 50 rows per cron tick) so the
 overhead matters.
 
 Pattern replicates ``backend/services/naga/deps.py``: lazy-singleton
-global, re-created if closed. No explicit lifespan hook — FastAPI
-shutdown drops the event loop which closes the underlying connections.
+global, re-created if closed. ``close_email_client`` is registered
+in the FastAPI lifespan shutdown hook (``app_factory.lifespan``) so
+connections are released cleanly on rolling deploys.
 
 Usage:
 

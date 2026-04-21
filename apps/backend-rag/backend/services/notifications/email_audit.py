@@ -201,13 +201,23 @@ def notify_email_failure_critical(
     short_subj = (subject or "").strip()[:120]
     short_err = error.strip().replace("\n", " ")[:400]
 
+    # Tell the operator whether to wait for retry or act immediately.
+    # Non-resurrectable types (personalized HTML / attachments) bypass the
+    # retry queue — a stub "[RETRY] original subject was X" email would
+    # confuse the client, so record_email_result leaves retry_after=None
+    # and escalate_unrecoverable pages again on the next monitor pass.
+    if email_type in NON_RESURRECTABLE_EMAIL_TYPES:
+        footer = "Not queued for retry (personalized body) — manual recovery required."
+    else:
+        footer = "Queued for retry. Check `email_send_log` if it escalates."
+
     text = (
         "🚨 *Email delivery failure* — critical path\n\n"
         f"*Type:* `{email_type}`{practice_fragment}\n"
         f"*To:* `{to_email}`\n"
         f"*Subject:* {short_subj}\n"
         f"*Error:* `{short_err}`\n\n"
-        "Queued for retry. Check `email_send_log` if it escalates."
+        f"{footer}"
     )
 
     try:
