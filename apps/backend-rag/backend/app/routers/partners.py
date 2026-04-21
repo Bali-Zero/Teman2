@@ -150,23 +150,83 @@ class WaiveRequest(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+def _is_admin_user(user: dict[str, Any]) -> bool:
+    """True if the user has admin-equivalent access.
+
+    Production reality (discovered 2026-04-21 during browser QA):
+    team_members.role carries job titles like 'Founder', 'CEO',
+    'Executive Consultant' — NOT a flat 'admin'/'team' enum. The
+    canonical admin allowlist lives in settings.admin_emails_set.
+
+    Admin access = email in admin_emails_set, OR (role IN {'admin',
+    'founder'} case-insensitive for legacy compatibility).
+    """
+    from backend.app.core.config import settings
+    email = (user.get("email") or "").strip().lower()
+    if email and email in settings.admin_emails_set:
+        return True
+    role = (user.get("role") or "").strip().lower()
+    return role in {"admin", "founder"}
+
+
+def _is_partner_role(user: dict[str, Any]) -> bool:
+    """True if the user is logged in as a partner (not internal team)."""
+    role = (user.get("role") or "").strip().lower()
+    return role == "partner"
+
+
 def _require_admin(user: dict[str, Any]) -> None:
-    """Raise 403 if user is not admin."""
-    if user.get("role") != "admin":
+    """Raise 403 if user is not admin-equivalent (email allowlist or legacy role)."""
+    if not _is_admin_user(user):
         raise HTTPException(status_code=403, detail="admin only")
 
 
+_INTERNAL_ROLES_ALWAYS_ALLOWED: frozenset[str] = frozenset(
+    {
+        # Legacy/test conventions
+        "admin",
+        "team",
+        # Production team_members.role values (job titles, lowercase-checked)
+        "founder",
+        "ceo",
+        "board member",
+        "team leader",
+        "supervisor",
+        "tax lead",
+        "tax manager",
+        "tax care",
+        "accounting",
+        "marketing & accounting",
+        "executive consultant",
+        "specialist advisor",
+        "junior consultant",
+        "reception",
+        "member",
+    }
+)
+
+
 def _require_team_or_admin(user: dict[str, Any]) -> None:
-    """Raise 403 if user is not team or admin.
+    """Raise 403 if user is partner-role or has no recognized internal role.
 
     CATA-2: list/create partner endpoints and CATA-3: referral creation
-    must be blocked at the router for the 'partner' role (and any unknown
-    role). Only team members and admins interact with partners on behalf of
-    the business.
+    must be blocked at the router for the 'partner' role. Only internal
+    users (team members or admin-equivalent) interact with partners on
+    behalf of the business.
+
+    Production 'team_members.role' is a free-text job title ('Founder',
+    'Tax Lead', etc.). Whitelist covers legacy values ('admin', 'team')
+    plus the actual production role strings. Admin-email allowlist also
+    allows access. Falls closed: unknown role + non-admin email → 403.
     """
-    role = user.get("role")
-    if role not in ("team", "admin"):
+    if _is_partner_role(user):
         raise HTTPException(status_code=403, detail="team or admin role required")
+    if _is_admin_user(user):
+        return
+    role = (user.get("role") or "").strip().lower()
+    if role in _INTERNAL_ROLES_ALWAYS_ALLOWED:
+        return
+    raise HTTPException(status_code=403, detail="team or admin role required")
 
 
 def _require_finance(user: dict[str, Any]) -> None:
