@@ -216,6 +216,78 @@ def method_name(self, param: str, limit: int = 10) -> Result:
 4. **Structured Logging**: Use `logger` instead of `print()`
 5. **Error Handling**: Always handle exceptions appropriately
 
+## Sentry Error Tracking
+
+Sentry is initialized in `backend/app/setup/sentry_config.py` and wired from
+all three entrypoints (`main_cloud`, `main_api`, `main_rag`). Configuration
+is entirely env-driven.
+
+### Env vars
+
+| Variable                        | Default (prod)         | Purpose                                                          |
+| ------------------------------- | ---------------------- | ---------------------------------------------------------------- |
+| `SENTRY_DSN`                    | (unset → Sentry off)   | Set in Fly secrets for `nuzantara-rag`                           |
+| `SKIP_SENTRY_INIT`              | unset                  | Kill-switch. Any truthy value → `init_sentry()` is a no-op       |
+| `SENTRY_TRACES_SAMPLE_RATE`     | `0.0`                  | APM opt-in. Keep `<= 0.02` in prod (free-tier quota)             |
+| `SENTRY_PROFILES_SAMPLE_RATE`   | `0.0`                  | Profiling opt-in                                                 |
+| `SENTRY_SEND_DEFAULT_PII`       | unset (false)          | Leave unset; PII scrubbing is handled by `before_send`           |
+| `SENTRY_RELEASE`                | `nuzantara-backend@1.0.0` | Set per deploy for release-health tracking                    |
+| `ENVIRONMENT`                   | `development`          | `production` unlocks quota-safe defaults                         |
+
+### PII policy (UU PDP)
+
+The `_before_send` hook scrubs every event before it leaves the process:
+
+- **Redacted keys** (case-insensitive, any nesting depth):
+  `npwp`, `nib`, `tax_id`, `passport`, `email`, `phone`, `client_id`,
+  `name`, `surname`, plus any suffixed variants (`client_email`,
+  `primary_surname`, …).
+- **Redacted patterns in free text**: email regex
+  (`[\w.+-]+@[\w.-]+\.[\w.-]+`) and Bali Zero client_id pattern
+  (`CL-\d{3,}`).
+- **Query strings**: parsed `k=v&k=v` and redacted per-key; non-PII keys
+  survive for debuggability.
+- **Applies to**: `request.data`, `request.query_string`, `request.url`,
+  `exception.values[*].stacktrace.frames[*].vars`, `breadcrumbs`,
+  `user`, `extra`, `contexts`, top-level `message`.
+
+Contract is enforced by `tests/test_sentry_pii_redaction.py` (13 cases).
+**Do not bypass this hook.** If you add a new PII field, update both
+`_PII_KEY_SUBSTRINGS` in `sentry_config.py` and `PII_SAMPLES` in the test.
+
+### Quota policy
+
+Free tier = 5,000 events/month shared across error + transaction.
+`traces_sample_rate = 0.1` would burn that in days on a real-traffic deploy,
+after which Sentry silently drops error events too. Defaults therefore:
+
+- Prod: `SENTRY_TRACES_SAMPLE_RATE = 0.0` (errors only).
+- Dev: `1.0` (full tracing, local only).
+- Opt-in: if APM is needed in prod, set it explicitly and keep it
+  `<= 0.02`. `scripts/sentry-quota-check.sh` flags violations.
+
+### Alert dedup with Telegram — NOT YET ACTIVE (follow-up)
+
+Cron failures and deploy crashes already page Telegram
+(`~/scripts/fly-health-check.sh`, `.github/workflows/fly-deploy.yml`),
+so ideally those events would be dropped at the Sentry layer to avoid
+duplicate alerts. However, no code in the repo currently tags events
+with `sentry_sdk.set_tag("source", "cron")` / `"deploy"`, so a filter
+here would be a no-op. Tagging needs to be added at the cron entrypoints
+(`cron-wrapper.sh`, `auto_sentinel.sh`, `cron_notifiers.py`) before we
+re-introduce the filter. Tracked as a follow-up; not blocking this PR.
+
+### Kill-switch
+
+If Sentry itself misbehaves (noisy alerts, SDK bug), flip the switch:
+
+```bash
+fly secrets set SKIP_SENTRY_INIT=1 -a nuzantara-rag
+```
+
+`init_sentry()` returns immediately on startup and no events are emitted.
+Unset the secret to re-enable.
+
 ## Deployment
 
 Deployed on Fly.io:
