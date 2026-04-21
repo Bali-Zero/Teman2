@@ -1,0 +1,24 @@
+# Commission earned — {{ client_display }}
+
+Hi {{ partner.full_name }},
+
+Good news: a commission has been paid for your referral on the
+**{{ service_type }}** service for **{{ client_display }}**.
+
+| Field | Amount (IDR) |
+|---|---|
+| Gross | {{ gross_idr }} |
+| Withholding ({{ withholding_category }}) | {{ withholding_idr }} |
+| **Net paid** | **{{ net_idr }}** |
+
+**Paid via:** {{ paid_via }} · **Reference:** {{ payment_reference }} ·
+**Paid at:** {{ paid_at }}
+
+{% if receipt_file_url %}
+Receipt: {{ receipt_file_url }}
+{% endif %}
+
+Reminder: if the client refunds or cancels after payment, a clawback is
+deducted from your next commission automatically.
+
+— Zantara, Bali Zero
