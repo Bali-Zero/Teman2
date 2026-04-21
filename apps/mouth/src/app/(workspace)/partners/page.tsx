@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Handshake,
@@ -58,7 +58,15 @@ function TierBadge({ tier }: { tier: string }) {
 export default function PartnersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // useToast returns a fresh object on every render; stash the error fn in a
+  // ref so loadPartners can stay referentially stable. Without this, the
+  // `[filters, loadPartners]` useEffect re-fires every render and the table
+  // re-renders continuously (visually "vibrates").
   const { error: toastError } = useToast();
+  const toastErrorRef = useRef(toastError);
+  useEffect(() => {
+    toastErrorRef.current = toastError;
+  }, [toastError]);
   const { options: teamMemberOptions } = useTeamMemberOptions();
 
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -95,11 +103,11 @@ export default function PartnersPage() {
     } catch (err) {
       logger.error("Failed to load partners", { component: "PartnersPage" }, err as Error);
       setError("Failed to load partners. Please try again.");
-      toastError("Failed to load partners");
+      toastErrorRef.current("Failed to load partners");
     } finally {
       setIsLoading(false);
     }
-  }, [toastError]);
+  }, []);
 
   useEffect(() => {
     loadPartners(filters);
