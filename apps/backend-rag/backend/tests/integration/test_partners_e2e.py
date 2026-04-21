@@ -15,12 +15,17 @@ from __future__ import annotations
 import contextlib
 import uuid
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
 from backend.services.crm.partners.commission_engine import CommissionEngine
 from backend.services.crm.partners.events import handle_practice_status_changed
-from backend.services.crm.partners.emails import send_welcome, send_commission_earned
+from backend.services.crm.partners.emails import (
+    enqueue_welcome,
+    enqueue_commission_earned,
+    flush_outbox,
+)
 from backend.services.crm.partners.service import PartnersService
 import backend.services.crm.partners.events as events_mod
 
@@ -60,12 +65,19 @@ async def test_full_flow_process_to_paid_email(
         lambda: [{"name": "KITAS E33G", "price_display": "Rp 12.500.000"}],
     )
 
-    # ── Step 1: Admin activates partner → then send welcome email ───────────
+    # ── Step 1: Admin activates partner → enqueue welcome → flush ───────────
+    # CRIT-2: enqueue inside activation, then flush_outbox sends the email.
     svc = PartnersService(db_conn)
     await svc.activate_partner(uuid.UUID(int=partner_id.int), actor_user=uuid.UUID(int=admin_id.int))
-    await send_welcome(db_conn, uuid.UUID(int=partner_id.int))
+    with patch(
+        "backend.services.crm.partners.emails._build_pricing_services",
+        return_value=[{"name": "KITAS E33G", "price_display": "Rp 12.500.000"}],
+    ):
+        await enqueue_welcome(db_conn, uuid.UUID(int=partner_id.int))
+    result = await flush_outbox(db_conn)
+    assert result["sent"] == 1, f"Expected 1 sent, got {result}"
 
-    assert len(send_calls) == 1, f"Expected 1 call after welcome, got {len(send_calls)}"
+    assert len(send_calls) == 1, f"Expected 1 call after welcome flush, got {len(send_calls)}"
     assert "Welcome" in send_calls[0]["subject"] or "welcome" in send_calls[0]["subject"].lower(), \
         f"Welcome subject not found: {send_calls[0]['subject']}"
 
@@ -119,14 +131,17 @@ async def test_full_flow_process_to_paid_email(
     assert c.status == "accrued", f"Expected status=accrued, got {c.status}"
 
     # 10% of 15_000_000 = 1_500_000 gross.
-    # pph23 rate: check what the engine uses — typically 2% withholding for pph23.
-    # We just verify gross matches.
+    # 10% of 15_000_000 = 1_500_000 gross.
+    # CRIT-7 (PPh surcharge for partners without NPWP):
+    #   pph23 base = 2.0%, no-NPWP surcharge = 20% of base → effective = 2.4%
+    #   withholding = 1_500_000 * 2.4% = 36_000
+    #   net = 1_500_000 - 36_000 = 1_464_000
     assert c.gross_amount_idr == Decimal("1500000"), \
         f"Expected gross 1500000, got {c.gross_amount_idr}"
-    assert c.withholding_amount_idr == Decimal("30000"), \
-        f"Expected withholding 30000 (2% pph23 of 1500000), got {c.withholding_amount_idr}"
-    assert c.net_amount_idr == Decimal("1470000"), \
-        f"Expected net 1470000 (gross - withholding), got {c.net_amount_idr}"
+    assert c.withholding_amount_idr == Decimal("36000"), \
+        f"Expected withholding 36000 (2.4% pph23+surcharge of 1500000), got {c.withholding_amount_idr}"
+    assert c.net_amount_idr == Decimal("1464000"), \
+        f"Expected net 1464000 (gross - withholding), got {c.net_amount_idr}"
 
     # ── Step 5: Fast-forward cooling-off ────────────────────────────────────
     await db_conn.execute(
@@ -141,13 +156,15 @@ async def test_full_flow_process_to_paid_email(
     assert refreshed.status == "approved", f"Expected approved, got {refreshed.status}"
 
     # ── Step 7: Mark paid + commission email ─────────────────────────────────
+    # CRIT-2: enqueue inside mark_paid txn, then flush_outbox sends the email.
     await engine.mark_paid(
         c.id,
         actor=uuid.UUID(int=admin_id.int),
         paid_via="BCA transfer",
         payment_reference="TX-20260520-001",
     )
-    await send_commission_earned(db_conn, c.id)
+    await enqueue_commission_earned(db_conn, c.id)
+    await flush_outbox(db_conn)
 
     # ── Step 8: Verify commission email was sent ─────────────────────────────
     commission_call = next(

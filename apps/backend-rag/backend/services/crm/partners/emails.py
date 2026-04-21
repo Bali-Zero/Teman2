@@ -167,6 +167,182 @@ def _build_pricing_services() -> list[dict[str, str]]:
 
 # ─── Public API ─────────────────────────────────────────────────────────────
 
+async def enqueue_welcome(
+    conn: Any,
+    partner_id: UUID,
+    actor_user: UUID | None = None,
+) -> None:
+    """Enqueue a welcome email. Idempotent per partner_id.
+
+    CRIT-2: Must be called INSIDE the transaction that activates the partner.
+    The email payload is frozen at enqueue time and sent later by flush_outbox().
+    """
+    from backend.services.crm.partners.repository import PartnersRepository
+    repo = PartnersRepository(conn)
+    p = await repo.get_partner(partner_id)
+    if p is None:
+        logger.warning("enqueue_welcome: partner %s not found — skip", partner_id)
+        return
+    if p.welcome_email_sent_at is not None:
+        logger.info(
+            "enqueue_welcome: welcome already sent for partner %s — skip (idempotent)",
+            partner_id,
+        )
+        return
+
+    pricing = _build_pricing_services()
+    commission_rate = (
+        f"{p.default_commission_value}%"
+        if p.default_commission_type == "percentage"
+        else f"IDR {p.default_commission_value:,.0f}"
+    )
+    tpl = _env.get_template("welcome.md.j2")
+    body = tpl.render(
+        partner=p,
+        commission_rate=commission_rate,
+        commission_type=p.default_commission_type,
+        pricing_services=pricing,
+    )
+    await repo.insert_email_outbox(
+        email_type="welcome",
+        partner_id=partner_id,
+        commission_id=None,
+        to_email=p.email,
+        cc_emails=None,
+        subject="Welcome to Bali Zero Partners",
+        body_markdown=body,
+        idempotency_key=f"welcome:{partner_id}",
+        created_by=actor_user,
+    )
+    logger.info("enqueue_welcome: enqueued for partner %s (%s)", partner_id, p.email)
+
+
+async def enqueue_commission_earned(
+    conn: Any,
+    commission_id: UUID,
+    actor_user: UUID | None = None,
+) -> None:
+    """Enqueue a commission-earned email. Idempotent per commission_id.
+
+    CRIT-2: Must be called INSIDE the transaction that marks the commission paid.
+    The email payload is frozen at enqueue time and sent later by flush_outbox().
+    """
+    from backend.services.crm.partners.repository import PartnersRepository
+    repo = PartnersRepository(conn)
+    c = await repo.get_commission(commission_id)
+    if c is None or c.status != "paid":
+        logger.info(
+            "enqueue_commission_earned: commission %s not found or not paid — skip",
+            commission_id,
+        )
+        return
+    if c.commission_email_sent_at is not None:
+        logger.info(
+            "enqueue_commission_earned: already sent for commission %s — skip (idempotent)",
+            commission_id,
+        )
+        return
+
+    p = await repo.get_partner(c.partner_id)
+    if p is None:
+        logger.warning(
+            "enqueue_commission_earned: partner %s not found — skip", c.partner_id
+        )
+        return
+
+    proc = None
+    if c.practice_id is not None:
+        proc = await conn.fetchrow(
+            """
+            SELECT p.service_type, c.full_name AS client_name
+            FROM practices p
+            LEFT JOIN clients c ON c.id = p.client_id
+            WHERE p.id = $1
+            """,
+            c.practice_id,
+        )
+
+    service_type = (proc["service_type"] if proc and proc["service_type"] else "service") if proc else "service"
+    raw_client_name = (proc["client_name"] or "") if proc else ""
+    client_display = _sterilize(raw_client_name) if raw_client_name else "client"
+
+    cc_list: list[str] = []
+    if c.assigned_to_snapshot is not None:
+        row = await conn.fetchrow(
+            "SELECT email FROM users WHERE id = $1", c.assigned_to_snapshot
+        )
+        if row and row["email"]:
+            cc_list.append(row["email"])
+
+    tpl = _env.get_template("commission.md.j2")
+    body = tpl.render(
+        partner=p,
+        client_display=client_display,
+        service_type=service_type,
+        gross_idr=f"{c.gross_amount_idr:,.0f}",
+        withholding_idr=f"{c.withholding_amount_idr:,.0f}",
+        withholding_category=c.withholding_category,
+        net_idr=f"{c.net_amount_idr:,.0f}",
+        paid_via=c.paid_via or "",
+        payment_reference=c.payment_reference or "",
+        paid_at=c.paid_at.isoformat() if c.paid_at else "",
+        receipt_file_url=c.receipt_file_url,
+    )
+    subject = f"Commissione maturata — {client_display}"
+
+    await repo.insert_email_outbox(
+        email_type="commission_earned",
+        partner_id=c.partner_id,
+        commission_id=commission_id,
+        to_email=p.email,
+        cc_emails=cc_list or None,
+        subject=subject,
+        body_markdown=body,
+        idempotency_key=f"commission:{commission_id}",
+        created_by=actor_user,
+    )
+    logger.info(
+        "enqueue_commission_earned: enqueued for commission %s to %s",
+        commission_id, p.email,
+    )
+
+
+async def flush_outbox(conn: Any, limit: int = 50) -> dict:
+    """Send pending outbox emails synchronously (for /flush endpoint or cron).
+
+    Returns counts: {'sent': N, 'retried': N, 'dlq': N}.
+
+    v1: synchronous. v2 will replace with an async worker process.
+    """
+    from backend.services.crm.partners.repository import PartnersRepository
+    repo = PartnersRepository(conn)
+    pending = await repo.list_pending_outbox(limit=limit)
+    sent = retried = dlq = 0
+    for row in pending:
+        try:
+            await _post_email(
+                to=row["to_email"],
+                cc=list(row["cc_emails"]) if row["cc_emails"] else [],
+                subject=row["subject"],
+                body=row["body_markdown"],
+            )
+            await repo.mark_outbox_sent(row["id"])
+            # Also stamp the idempotency column on the source record.
+            if row["email_type"] == "welcome":
+                await repo.mark_welcome_sent(row["partner_id"])
+            elif row["email_type"] == "commission_earned" and row["commission_id"]:
+                await repo.mark_commission_email_sent(row["commission_id"])
+            sent += 1
+        except Exception as e:
+            new_attempts = (row["attempts"] or 0) + 1
+            await repo.mark_outbox_retry(row["id"], str(e)[:500])
+            if new_attempts >= 5:
+                dlq += 1
+            else:
+                retried += 1
+    return {"sent": sent, "retried": retried, "dlq": dlq}
+
+
 async def send_welcome(conn: Any, partner_id: UUID) -> None:
     """
     Send the partner welcome email.

@@ -436,7 +436,7 @@ class TestActivateDeactivate:
     def test_activate_admin_succeeds_204(self, admin_app) -> None:
         _, client, _, _ = admin_app
         with patch("backend.app.routers.partners.PartnersService") as MockSvc, \
-             patch("backend.services.crm.partners.emails.send_welcome", new=AsyncMock()):
+             patch("backend.services.crm.partners.emails.enqueue_welcome", new=AsyncMock()):
             svc_instance = MockSvc.return_value
             svc_instance.activate_partner = AsyncMock()
             resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
@@ -762,7 +762,7 @@ class TestCommissions:
     def test_mark_paid_admin_succeeds_204(self, admin_app) -> None:
         _, client, _, _ = admin_app
         with patch("backend.app.routers.partners.CommissionEngine") as MockEngine, \
-             patch("backend.services.crm.partners.emails.send_commission_earned", new=AsyncMock()):
+             patch("backend.services.crm.partners.emails.enqueue_commission_earned", new=AsyncMock()):
             engine_instance = MockEngine.return_value
             engine_instance.mark_paid = AsyncMock()
             resp = client.post(

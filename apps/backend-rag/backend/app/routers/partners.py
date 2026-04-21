@@ -507,18 +507,23 @@ async def activate_partner(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
-    """Activate a partner. Admin only."""
+    """Activate a partner. Admin only.
+
+    CRIT-2: welcome email is enqueued atomically inside the same transaction
+    that activates the partner. The send happens via /outbox/flush or cron.
+    """
     _require_admin(user)
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
-            await svc.activate_partner(partner_id, actor_user=UUID(str(user["user_id"])))
-            # Trigger welcome email if emails module is available (Task 8)
-            try:
-                from backend.services.crm.partners.emails import send_welcome
-                await send_welcome(conn, partner_id)
-            except ImportError:
-                pass  # emails module not yet implemented (Task 8)
+            async with conn.transaction():
+                await svc.activate_partner(
+                    partner_id, actor_user=UUID(str(user["user_id"]))
+                )
+                from backend.services.crm.partners.emails import enqueue_welcome
+                await enqueue_welcome(
+                    conn, partner_id, actor_user=UUID(str(user["user_id"]))
+                )
             return Response(status_code=204)
     except HTTPException:
         raise
@@ -815,27 +820,33 @@ async def mark_paid_commission(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Response:
-    """Mark a commission as paid. Admin + finance permission."""
+    """Mark a commission as paid. Admin + finance permission.
+
+    CRIT-2: commission-earned email is enqueued atomically inside the same
+    transaction that flips status to 'paid'. The send happens via /outbox/flush
+    or cron — eliminating the window where a Brevo failure could leave the
+    commission stuck in 'paid' with the email permanently lost (FSM blocks
+    paid->paid retry).
+    """
     _require_admin(user)
     _require_finance(user)
     try:
         async with pool.acquire() as conn:
             engine = CommissionEngine(conn)
-            await engine.mark_paid(
-                commission_id,
-                actor=UUID(str(user["user_id"])),
-                paid_via=body.paid_via,
-                payment_reference=body.payment_reference,
-                payment_proof_url=body.payment_proof_url,
-                receipt_type=body.receipt_type,
-                receipt_file_url=body.receipt_file_url,
-            )
-            # Trigger commission-paid email if emails module is available (Task 8)
-            try:
-                from backend.services.crm.partners.emails import send_commission_earned
-                await send_commission_earned(conn, commission_id)
-            except ImportError:
-                pass
+            async with conn.transaction():
+                await engine.mark_paid(
+                    commission_id,
+                    actor=UUID(str(user["user_id"])),
+                    paid_via=body.paid_via,
+                    payment_reference=body.payment_reference,
+                    payment_proof_url=body.payment_proof_url,
+                    receipt_type=body.receipt_type,
+                    receipt_file_url=body.receipt_file_url,
+                )
+                from backend.services.crm.partners.emails import enqueue_commission_earned
+                await enqueue_commission_earned(
+                    conn, commission_id, actor_user=UUID(str(user["user_id"]))
+                )
             return Response(status_code=204)
     except HTTPException:
         raise
@@ -843,6 +854,32 @@ async def mark_paid_commission(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
         logger.exception("mark_paid_commission failed")
+        raise HTTPException(status_code=500, detail="internal error")
+
+
+@router.post("/outbox/flush")
+async def flush_email_outbox(
+    limit: int = 50,
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict:
+    """Synchronously send pending outbox emails. Admin + finance only.
+
+    v1: synchronous — suitable for manual retries and cron.
+    v2 will replace with an async worker process.
+
+    Returns: {'sent': N, 'retried': N, 'dlq': N}
+    """
+    _require_admin(user)
+    _require_finance(user)
+    try:
+        async with pool.acquire() as conn:
+            from backend.services.crm.partners.emails import flush_outbox
+            return await flush_outbox(conn, limit=limit)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("flush_email_outbox failed")
         raise HTTPException(status_code=500, detail="internal error")
 
 
