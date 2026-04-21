@@ -327,3 +327,194 @@ async def test_record_failure_does_not_downgrade_success():
     result = await orch.publish_all(_draft())
     # publication succeeded; recording failure is isolated
     assert result.ok_count == 1
+
+
+# ── Kill switch ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_kill_switch_off_skips_all_publishers():
+    """When kill_switch_check() returns False, no publisher is invoked."""
+    ig = _ScriptedPublisher(
+        platform_name=Platform.INSTAGRAM,
+        script=[_ok(Platform.INSTAGRAM, "ig-should-not-fire")],
+    )
+    x = _ScriptedPublisher(
+        platform_name=Platform.X,
+        script=[_ok(Platform.X, "x-should-not-fire")],
+    )
+
+    async def kill_switch_off() -> bool:
+        return False
+
+    orch = PublisherOrchestrator(
+        publishers=[ig, x],
+        max_retries=3,
+        backoffs_s=_fast_backoffs(),
+        kill_switch_check=kill_switch_off,
+    )
+    result = await orch.publish_all(_draft())
+
+    assert ig.call_count == 0
+    assert x.call_count == 0
+    assert result.ok_count == 0
+    assert result.failure_count == 2
+    for pr in result.per_platform:
+        assert pr.ok is False
+        assert pr.error == "wr2_publisher_kill_switch_off"
+        assert pr.attempts == 0
+
+
+@pytest.mark.asyncio
+async def test_kill_switch_on_lets_publishers_run():
+    """When kill_switch_check() returns True, publication proceeds normally."""
+    ig = _ScriptedPublisher(
+        platform_name=Platform.INSTAGRAM,
+        script=[_ok(Platform.INSTAGRAM, "ig-1")],
+    )
+
+    async def kill_switch_on() -> bool:
+        return True
+
+    orch = PublisherOrchestrator(
+        publishers=[ig],
+        max_retries=3,
+        backoffs_s=_fast_backoffs(),
+        kill_switch_check=kill_switch_on,
+    )
+    result = await orch.publish_all(_draft())
+
+    assert ig.call_count == 1
+    assert result.ok_count == 1
+
+
+@pytest.mark.asyncio
+async def test_no_kill_switch_check_defaults_to_allow():
+    """Backwards compatible: orchestrators without kill switch still publish."""
+    ig = _ScriptedPublisher(
+        platform_name=Platform.INSTAGRAM,
+        script=[_ok(Platform.INSTAGRAM, "ig-1")],
+    )
+    orch = PublisherOrchestrator(
+        publishers=[ig],
+        max_retries=3,
+        backoffs_s=_fast_backoffs(),
+    )
+    result = await orch.publish_all(_draft())
+    assert result.ok_count == 1
+
+
+@pytest.mark.asyncio
+async def test_kill_switch_skips_record_to_db():
+    """Orchestrator must NOT record war_room_post rows when switch is off."""
+    ig = _ScriptedPublisher(
+        platform_name=Platform.INSTAGRAM,
+        script=[_ok(Platform.INSTAGRAM, "ig-1")],
+    )
+    repo = AsyncMock()
+    repo.get_posts_for_draft = AsyncMock(return_value=[])
+    repo.create_post = AsyncMock()
+
+    async def kill_switch_off() -> bool:
+        return False
+
+    orch = PublisherOrchestrator(
+        publishers=[ig],
+        repo=repo,
+        max_retries=3,
+        backoffs_s=_fast_backoffs(),
+        kill_switch_check=kill_switch_off,
+    )
+    result = await orch.publish_all(_draft())
+
+    assert ig.call_count == 0
+    assert result.ok_count == 0
+    repo.create_post.assert_not_awaited()
+    # We also should not waste a query on existing posts when switch is off.
+    repo.get_posts_for_draft.assert_not_awaited()
+
+
+# ── DB-backed kill-switch helper ───────────────────────────────
+
+
+class _FakeAcquire:
+    """Minimal async context manager returning a pre-baked conn."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return None
+
+
+class _FakePool:
+    def __init__(self, *, conn=None, raise_exc: Exception | None = None):
+        self._conn = conn
+        self._raise_exc = raise_exc
+
+    def acquire(self):
+        if self._raise_exc is not None:
+            raise self._raise_exc
+        return _FakeAcquire(self._conn)
+
+
+@pytest.mark.asyncio
+async def test_db_kill_switch_reads_system_settings_true():
+    from backend.services.publisher.orchestrator import (
+        build_db_kill_switch_check,
+    )
+
+    conn = AsyncMock()
+    conn.fetchval = AsyncMock(return_value="true")
+    pool = _FakePool(conn=conn)
+
+    check = build_db_kill_switch_check(pool)
+    assert await check() is True
+    conn.fetchval.assert_awaited_once()
+    args = conn.fetchval.await_args.args
+    assert "wr2_publisher_enabled" in args[1]  # arg 0 = SQL, arg 1 = key
+
+
+@pytest.mark.asyncio
+async def test_db_kill_switch_defaults_to_off_when_unset():
+    """Missing row (NULL) → False. Safe default: publisher stays disabled."""
+    from backend.services.publisher.orchestrator import (
+        build_db_kill_switch_check,
+    )
+
+    conn = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=None)
+    pool = _FakePool(conn=conn)
+
+    check = build_db_kill_switch_check(pool)
+    assert await check() is False
+
+
+@pytest.mark.asyncio
+async def test_db_kill_switch_off_when_value_is_not_true():
+    from backend.services.publisher.orchestrator import (
+        build_db_kill_switch_check,
+    )
+
+    conn = AsyncMock()
+    conn.fetchval = AsyncMock(return_value="false")
+    pool = _FakePool(conn=conn)
+
+    check = build_db_kill_switch_check(pool)
+    assert await check() is False
+
+
+@pytest.mark.asyncio
+async def test_db_kill_switch_fails_closed_on_db_error():
+    """DB error → False (fail closed). Never publish if we can't read the flag."""
+    from backend.services.publisher.orchestrator import (
+        build_db_kill_switch_check,
+    )
+
+    pool = _FakePool(raise_exc=RuntimeError("pg unreachable"))
+
+    check = build_db_kill_switch_check(pool)
+    assert await check() is False

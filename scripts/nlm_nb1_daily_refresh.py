@@ -94,14 +94,11 @@ BUNDLE_MAP = {
         "triggers": [
             "apps/federation/",
             "apps/bali-intel-scraper/",
-            "apps/war-room/",
             "apps/evaluator/",
         ],
         "patterns": [
             "apps/federation/**/*.py",
             "apps/bali-intel-scraper/**/*.py",
-            "apps/war-room/**/*.py",
-            "apps/war-room/**/*.sh",
             "apps/evaluator/**/*.py",
         ],
         "excludes": ["node_modules", ".venv", "__pycache__", "build", "dist"],
