@@ -128,35 +128,65 @@ def main() -> int:
         # two migrations fail on a fresh CI DB. Minimal columns only — enough
         # for 108's FK target (id) and 110's ALTER (lkpm_assigned_to). No
         # SQLModel class references it, so no stub Table registration needed.
+        # Full schema mirrors backend/migrations/migration_063_lkpm_reports.py
+        # plus the ALTER ADDs from migrations 093 + 100a. CI's SQL-v2 runner
+        # doesn't execute those Python migrations, so we inline the canonical
+        # final shape here. Kept idempotent with `IF NOT EXISTS`.
         conn.execute(text(
             """
             CREATE TABLE IF NOT EXISTS lkpm_reports (
                 id SERIAL PRIMARY KEY,
-                client_id INTEGER,
-                quarter TEXT,
-                year INTEGER,
-                status TEXT DEFAULT 'draft',
+                client_id INTEGER NOT NULL,
+                company_id INTEGER,
+                quarter TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
                 lkpm_assigned_to TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                updated_at TIMESTAMPTZ DEFAULT NOW()
+                realized_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_equipment_import BIGINT NOT NULL DEFAULT 0,
+                realized_building_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_building_import BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                realized_land BIGINT NOT NULL DEFAULT 0,
+                realized_working_capital BIGINT NOT NULL DEFAULT 0,
+                realized_other BIGINT NOT NULL DEFAULT 0,
+                cumulative_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_equipment_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_land BIGINT NOT NULL DEFAULT 0,
+                cumulative_working_capital BIGINT NOT NULL DEFAULT 0,
+                cumulative_other BIGINT NOT NULL DEFAULT 0,
+                current_tki INTEGER NOT NULL DEFAULT 0,
+                current_tka INTEGER NOT NULL DEFAULT 0,
+                quarterly_revenue BIGINT NOT NULL DEFAULT 0,
+                annual_revenue BIGINT NOT NULL DEFAULT 0,
+                narrative_obstacles TEXT,
+                narrative_plans TEXT,
+                validation_status TEXT NOT NULL DEFAULT 'pending',
+                validation_alerts JSONB NOT NULL DEFAULT '[]',
+                validated_at TIMESTAMPTZ,
+                validated_by TEXT,
+                client_approved BOOLEAN NOT NULL DEFAULT FALSE,
+                client_approved_at TIMESTAMPTZ,
+                oss_submitted BOOLEAN NOT NULL DEFAULT FALSE,
+                oss_submitted_at TIMESTAMPTZ,
+                oss_submitted_by TEXT,
+                oss_receipt_number TEXT,
+                oss_receipt_file_url TEXT,
+                data_source TEXT NOT NULL DEFAULT 'manual',
+                has_ai_categorized_items BOOLEAN NOT NULL DEFAULT FALSE,
+                ai_categorized_count INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT uq_lkpm_report UNIQUE (client_id, quarter, year)
             )
             """,
         ))
-        # system_settings: created by old-style migration_062
-        # (backend/migrations/*.sql), same scar as lkpm_reports. Used by
-        # test_compliance_alerts_router for the compliance_alert_autotune_enabled
-        # kill switch; without this, the whole router test file errors on
-        # UndefinedTableError at the first query.
-        conn.execute(text(
-            """
-            CREATE TABLE IF NOT EXISTS system_settings (
-                key VARCHAR(100) PRIMARY KEY,
-                value TEXT NOT NULL,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            )
-            """,
-        ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
@@ -193,44 +223,6 @@ def main() -> int:
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
-
-    # SQLModel declares `created_at`/`updated_at` with `default_factory=datetime.utcnow`
-    # — that default is APPLIED BY THE APP, not by the DB. Raw asyncpg INSERTs in
-    # tests (test_compliance_alerts_router, etc.) bypass the ORM and hit
-    # NotNullViolationError. Add the DB-side DEFAULT NOW() on the columns that
-    # really need it so test helpers don't have to spell it out in every INSERT.
-    # Safe on re-run: `ALTER COLUMN ... SET DEFAULT` is idempotent.
-    TIMESTAMPED_TABLES_COLUMNS = [
-        ("clients", "created_at"),
-        ("clients", "updated_at"),
-        ("companies", "created_at"),
-        ("companies", "updated_at"),
-        ("practices", "created_at"),
-        ("practices", "updated_at"),
-    ]
-    with engine.begin() as conn:
-        for table, column in TIMESTAMPED_TABLES_COLUMNS:
-            conn.execute(text(
-                f"ALTER TABLE IF EXISTS {table} "
-                f"ALTER COLUMN {column} SET DEFAULT NOW()"
-            ))
-    print(f"[bootstrap] DEFAULT NOW() ensured on {len(TIMESTAMPED_TABLES_COLUMNS)} timestamp columns")
-
-    # Production-only columns that prod picked up via hand-ALTER but that
-    # never got a migration file. Tests (lkpm_readypack, drive_poll,
-    # invoicing) INSERT into them, so CI fresh DB needs them added.
-    # Same scar family as the migration 118 referrer_url case (2026-04-21).
-    PROD_ONLY_COLUMNS = [
-        ("clients", "google_drive_folder_id", "TEXT"),
-    ]
-    with engine.begin() as conn:
-        for table, column, ctype in PROD_ONLY_COLUMNS:
-            conn.execute(text(
-                f"ALTER TABLE IF EXISTS {table} "
-                f"ADD COLUMN IF NOT EXISTS {column} {ctype}"
-            ))
-    print(f"[bootstrap] prod-only columns ensured: {PROD_ONLY_COLUMNS}")
-
     return 0
 
 
