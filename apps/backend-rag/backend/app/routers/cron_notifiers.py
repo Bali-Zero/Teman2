@@ -234,11 +234,20 @@ async def run_compliance_forecast(request: Request) -> dict[str, Any]:
 
 @router.post("/all")
 async def run_all_notifiers(request: Request) -> dict[str, Any]:
-    """Run all three notifiers in sequence. Single cron endpoint."""
+    """Run all four notifiers in sequence. Single cron endpoint.
+
+    The response still returns HTTP 200 (unchanged for monitoring
+    compatibility — the Air cron wrapper treats non-200 as outright
+    failures) but the body now carries ``status`` = ``partial_failure`` when
+    any sub-task raised. Monitoring dashboards that already consume this
+    endpoint can treat ``status != "ok"`` as an alert condition without
+    causing a regression today.
+    """
     _verify_api_key(request)
     db_pool = _get_db_pool(request)
 
     results: dict[str, Any] = {}
+    errors: list[dict[str, str]] = []
 
     # 1. Visa expiry (with kill switch)
     try:
@@ -257,6 +266,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Visa expiry notifier failed: {e}", exc_info=True)
         results["visa_expiry"] = {"error": str(e)}
+        errors.append({"notifier": "visa_expiry", "error": str(e)})
 
     # 2. Unpaid invoices
     try:
@@ -267,6 +277,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Unpaid invoice notifier failed: {e}", exc_info=True)
         results["unpaid_invoices"] = {"error": str(e)}
+        errors.append({"notifier": "unpaid_invoices", "error": str(e)})
 
     # 3. Stale practices
     try:
@@ -277,6 +288,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Stale practice notifier failed: {e}", exc_info=True)
         results["stale_practices"] = {"error": str(e)}
+        errors.append({"notifier": "stale_practices", "error": str(e)})
 
     # 4. LKPM deadlines (kill switch handled inside the notifier)
     try:
@@ -287,6 +299,8 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"LKPM deadline notifier failed: {e}", exc_info=True)
         results["lkpm_deadlines"] = {"error": str(e)}
+        errors.append({"notifier": "lkpm_deadlines", "error": str(e)})
 
-    logger.info(f"All notifiers completed: {results}")
-    return results
+    status = "partial_failure" if errors else "ok"
+    logger.info(f"All notifiers completed (status={status}): {results}")
+    return {"status": status, "errors": errors, "results": results}

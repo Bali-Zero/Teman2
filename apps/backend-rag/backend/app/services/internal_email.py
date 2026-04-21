@@ -13,11 +13,17 @@ History:
   and 3dffb6e6e (hr_leave_notifier.py). Both regressed because the receiving
   Pydantic model declares ``cc: str | None`` and rejects list payloads with
   422. Centralizing here removes the duplication that enabled the recurrence.
+- 2026-04-21: added ``email_type`` / ``pool`` kwargs for ``email_send_log``
+  audit trail (migration 126). Critical email types (see
+  ``email_audit.CRITICAL_EMAIL_TYPES``) additionally page the owner via
+  Telegram on failure. Audit is opt-in per call — omitting ``pool`` keeps
+  the legacy fire-and-forget behavior bit-for-bit identical.
 
 Semantics:
 - Fire-and-forget: ``send_internal_email`` catches every exception and logs a
-  warning. It NEVER raises. Callers should treat email delivery as best-effort
-  and rely on operational monitoring (logs, dashboards) to surface failures.
+  warning. It NEVER raises unless ``raise_on_failure=True``. When ``pool``
+  and ``email_type`` are provided, failures are also persisted so the retry
+  worker can re-attempt delivery.
 - Schedule via FastAPI ``BackgroundTasks`` if invoked from a request handler,
   so the client does not pay the network latency.
 
@@ -29,8 +35,19 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import httpx
+
+from backend.services.notifications.email_audit import (
+    is_critical,
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
+
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +66,10 @@ async def send_internal_email(
     cc: list[str] | None = None,
     log_context: str | None = None,
     raise_on_failure: bool = False,
+    email_type: str | None = None,
+    pool: asyncpg.Pool | None = None,
+    practice_id: int | None = None,
+    client_id: int | None = None,
 ) -> None:
     """Send an email through the internal Brevo adapter.
 
@@ -71,7 +92,26 @@ async def send_internal_email(
             ``"hr_leave req=42"`` or ``"crm bonus practice=99"``).
         raise_on_failure: when True, re-raise after logging instead of
             swallowing. Default False (fire-and-forget).
+        email_type: audit classification (e.g. ``"hr_bonus"``,
+            ``"cron_visa"``). Required if ``pool`` is provided. If present in
+            :data:`CRITICAL_EMAIL_TYPES`, failures also page via Telegram.
+        pool: if provided alongside ``email_type``, writes pre/post audit
+            rows to ``email_send_log`` so the retry worker can recover.
+        practice_id / client_id: correlation keys for audit & dashboard.
     """
+    audit_enabled = pool is not None and email_type is not None
+    row_id: int | None = None
+
+    if audit_enabled:
+        row_id = await log_email_attempt(
+            pool,  # type: ignore[arg-type]
+            email_type=email_type,  # type: ignore[arg-type]
+            to_email=to,
+            subject=subject,
+            practice_id=practice_id,
+            client_id=client_id,
+        )
+
     try:
         payload: dict[str, str] = {
             "to": to,
@@ -95,11 +135,34 @@ async def send_internal_email(
             payload.get("cc", ""),
             log_context or "",
         )
+        if audit_enabled:
+            await record_email_result(
+                pool,  # type: ignore[arg-type]
+                row_id,
+                status="sent",
+                provider="brevo",
+            )
     except Exception as e:
         logger.warning(
             "Internal email failed (context=%s): %s",
             log_context or "",
             e,
         )
+        if audit_enabled:
+            await record_email_result(
+                pool,  # type: ignore[arg-type]
+                row_id,
+                status="failed",
+                provider="brevo",
+                error_message=str(e),
+            )
+            if is_critical(email_type):  # type: ignore[arg-type]
+                notify_email_failure_critical(
+                    email_type=email_type,  # type: ignore[arg-type]
+                    to_email=to,
+                    subject=subject,
+                    practice_id=practice_id,
+                    error=str(e),
+                )
         if raise_on_failure:
             raise

@@ -22,6 +22,11 @@ from googleapiclient.errors import HttpError as GoogleHttpError
 from backend.app.utils.logging_utils import get_logger
 from backend.services.integrations.service_account_drive_service import ServiceAccountDriveService
 from backend.services.invoicing.invoice_generator import InvoiceGenerator
+from backend.services.notifications.email_audit import (
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
 
 logger = get_logger(__name__)
 
@@ -112,8 +117,20 @@ class InvoiceAutomationService:
                 return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
 
             # Step 3: Send invoice email to client
+            # Audit bug #9: failure now persists to email_send_log AND
+            # pages the owner via Telegram when the client email is lost —
+            # previously AR aging started silently with email_sent=False
+            # only visible during Asya's manual ledger review.
             email_sent = False
             if client_data.get("email"):
+                audit_row_id = await log_email_attempt(
+                    self.db_pool,
+                    email_type="invoice_client",
+                    to_email=client_data["email"],
+                    subject=f"Invoice {invoice_number} from Zantara Indonesia",
+                    practice_id=practice_id,
+                    client_id=client_data["id"],
+                )
                 try:
                     await self._send_invoice_email_to_client(
                         client_email=client_data["email"],
@@ -125,16 +142,28 @@ class InvoiceAutomationService:
                         triggered_by=triggered_by,
                     )
                     email_sent = True
-                    logger.info(f"Invoice email sent to client {client_data['email']}")
-                except httpx.HTTPStatusError as email_error:
-                    logger.warning(
-                        f"Email API returned {email_error.response.status_code} "
-                        f"sending invoice to {client_data['email']}: {email_error}",
+                    await record_email_result(
+                        self.db_pool, audit_row_id, status="sent", provider="brevo",
                     )
-                except httpx.HTTPError as email_error:
-                    logger.warning(f"Failed to send invoice email to client: {email_error}")
-                except Exception:
-                    logger.exception(f"Unexpected error sending invoice email to {client_data['email']}")
+                    logger.info(f"Invoice email sent to client {client_data['email']}")
+                except Exception as email_error:
+                    err_msg = str(email_error)
+                    if isinstance(email_error, httpx.HTTPStatusError):
+                        err_msg = f"status={email_error.response.status_code} {err_msg}"
+                    logger.warning(
+                        f"Failed to send invoice email to {client_data['email']}: {err_msg}",
+                    )
+                    await record_email_result(
+                        self.db_pool, audit_row_id, status="failed", provider="brevo",
+                        error_message=err_msg,
+                    )
+                    notify_email_failure_critical(
+                        email_type="invoice_client",
+                        to_email=client_data["email"],
+                        subject=f"Invoice {invoice_number}",
+                        practice_id=practice_id,
+                        error=err_msg,
+                    )
             else:
                 logger.warning(f"Client {client_data['id']} has no email, skipping email")
 
