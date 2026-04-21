@@ -20,7 +20,33 @@ Spec: docs/superpowers/specs/2026-04-19-seo-guardian-cell-design.md
 Decision memo: ~/.claude/projects/-Users-nuzantara/memory/
                 decision_seo_guardian_cell_v2_1.md
 """
+from apps.evaluator.seo_cell.bayesian_calibrator import (
+    BayesianCalibrator,
+    CalibrationResult,
+    DEFAULT_WEIGHTS,
+    SENSOR_NAMES,
+    measure_lift,
+)
 from apps.evaluator.seo_cell.cell import create_seo_cell
 from apps.evaluator.seo_cell.phase import SEOPhase, is_pre_natal
+from apps.evaluator.seo_cell.tier_gating_policy import (
+    RoutingDecision,
+    RoutingTarget,
+    TierGatingPolicy,
+    infer_tier,
+)
 
-__all__ = ["create_seo_cell", "SEOPhase", "is_pre_natal"]
+__all__ = [
+    "BayesianCalibrator",
+    "CalibrationResult",
+    "DEFAULT_WEIGHTS",
+    "RoutingDecision",
+    "RoutingTarget",
+    "SENSOR_NAMES",
+    "SEOPhase",
+    "TierGatingPolicy",
+    "create_seo_cell",
+    "infer_tier",
+    "is_pre_natal",
+    "measure_lift",
+]
