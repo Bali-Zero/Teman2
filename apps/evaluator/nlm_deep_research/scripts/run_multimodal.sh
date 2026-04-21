@@ -26,7 +26,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../../.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 LOG_DIR="$PROJECT_ROOT/apps/evaluator/nlm_deep_research/output"
 LOG_FILE="$LOG_DIR/multimodal_$(date +%Y%m%d_%H%M%S).log"
 
@@ -48,7 +48,7 @@ fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S WITA')] Starting multimodal pipeline..." | tee -a "$LOG_FILE"
 
 cd "$PROJECT_ROOT"
-$PYTHON -m apps.evaluator.nlm_deep_research.multimodal_pipeline --run "$@" 2>&1 | tee -a "$LOG_FILE"
+PYTHONPATH=. $PYTHON -m apps.evaluator.nlm_deep_research.multimodal_pipeline --run "$@" 2>&1 | tee -a "$LOG_FILE"
 
 EXIT_CODE="${PIPESTATUS[0]}"
 
