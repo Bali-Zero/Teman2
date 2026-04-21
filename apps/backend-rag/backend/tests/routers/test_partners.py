@@ -224,8 +224,13 @@ class TestListPartners:
             svc_instance.list_partners = AsyncMock(return_value=[partner])
             resp = client.get("/api/partners")
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
-        assert len(resp.json()) == 1
+        # CRIT-8: response is now a paginated envelope, not a raw list
+        data = resp.json()
+        assert isinstance(data, dict)
+        assert "partners" in data
+        assert "total" in data
+        assert len(data["partners"]) == 1
+        assert data["total"] == 1
 
     @pytest.mark.integration
     def test_list_partners_team_scopes_to_self(self, team_app, fake_team) -> None:
@@ -239,6 +244,39 @@ class TestListPartners:
         call_kwargs = svc_instance.list_partners.await_args.kwargs
         assert call_kwargs["actor_role"] == "team"
         assert str(call_kwargs["actor_user"]) == fake_team["user_id"]
+
+    @pytest.mark.integration
+    def test_list_partners_returns_envelope_shape(self, admin_app) -> None:
+        """CRIT-8: GET /api/partners must return {partners, total, page, page_size}."""
+        _, client, _, _ = admin_app
+        partner = _make_partner()
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.list_partners = AsyncMock(return_value=[partner])
+            resp = client.get("/api/partners")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert set(data.keys()) >= {"partners", "total", "page", "page_size"}
+        assert data["page"] == 1
+        assert data["page_size"] == 50
+
+    @pytest.mark.integration
+    def test_list_partners_pagination_slices_correctly(self, admin_app) -> None:
+        """CRIT-8: page + page_size params slice the result set correctly."""
+        _, client, _, _ = admin_app
+        # Create 3 partners
+        partners = [_make_partner(id=uuid.uuid4()) for _ in range(3)]
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.list_partners = AsyncMock(return_value=partners)
+            resp = client.get("/api/partners?page=2&page_size=2")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 3
+        assert data["page"] == 2
+        assert data["page_size"] == 2
+        # Page 2 with page_size=2 from 3 items → 1 item
+        assert len(data["partners"]) == 1
 
 
 # ── 2b. CATA-2: role gate + DTO stripping ────────────────────────────────────
@@ -334,9 +372,10 @@ class TestListPartnersCata2:
             svc_instance.list_partners = AsyncMock(return_value=[partner])
             resp = client.get("/api/partners")
         assert resp.status_code == 200
+        # CRIT-8: envelope shape
         data = resp.json()
-        assert len(data) == 1
-        row = data[0]
+        assert len(data["partners"]) == 1
+        row = data["partners"][0]
         assert "npwp" not in row, "NPWP leaked in list view"
         assert "bank_account_number" not in row, "Bank account leaked"
         assert "iban" not in row, "IBAN leaked"

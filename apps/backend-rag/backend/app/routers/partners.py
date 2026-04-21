@@ -287,6 +287,8 @@ async def list_partners(
     onboarding_status: str | None = None,
     orphaned: bool = False,
     search: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
@@ -295,11 +297,15 @@ async def list_partners(
     CATA-2: partner role blocked at router. Response strips sensitive
     fields (NPWP, NIK, bank/IBAN/e-wallet details) — use the detail
     endpoint for full data (which enforces verify_partner_access_with_role).
+
+    CRIT-8: returns a paginated envelope {partners, total, page, page_size}
+    instead of a raw list. v1 fetches all matching rows and slices in
+    Python; v1.1 should push pagination to SQL for large datasets.
     """
     _require_team_or_admin(user)  # CATA-2: partner role cannot list all partners
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
-        partners = await svc.list_partners(
+        all_partners = await svc.list_partners(
             actor_user=UUID(str(user["user_id"])),
             actor_role=user.get("role", "team"),
             assigned_to=assigned_to,
@@ -307,7 +313,15 @@ async def list_partners(
             orphaned=orphaned,
             search=search,
         )
-        return [_partner_to_list_dict(p) for p in partners]
+        total = len(all_partners)
+        offset = (page - 1) * page_size
+        page_rows = all_partners[offset: offset + page_size]
+        return {
+            "partners": [_partner_to_list_dict(p) for p in page_rows],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
 
 
 @router.get("/me")
