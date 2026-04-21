@@ -7,13 +7,29 @@
  */
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { routeTitles } from "@/types/navigation";
 import { cn } from "@/lib/utils";
-import { PortalNotificationsPopover } from "./PortalNotifications";
-import { SuperuserImpersonationBar } from "./SuperuserImpersonationBar";
+
+// Lazy: notifications + impersonation are not first-paint critical.
+// Reduces parallel chunks on /portal/* — ERR_INSUFFICIENT_RESOURCES mitigation.
+const PortalNotificationsPopover = dynamic(
+  () =>
+    import("./PortalNotifications").then((m) => ({
+      default: m.PortalNotificationsPopover,
+    })),
+  { ssr: false },
+);
+const SuperuserImpersonationBar = dynamic(
+  () =>
+    import("./SuperuserImpersonationBar").then((m) => ({
+      default: m.SuperuserImpersonationBar,
+    })),
+  { ssr: false },
+);
 
 interface PortalHeaderProps {
   userName: string;

@@ -56,20 +56,47 @@ vi.mock("@/components/workspace/Header", () => ({
   ),
 }));
 
-vi.mock("@/components/portal", () => ({
-  PortalBottomNav: () => <nav data-testid="bottom-nav">Bottom Nav</nav>,
-  PortalHeader: ({
-    userName,
-    onToggleSidebar,
-  }: {
-    userName: string;
-    onToggleSidebar: () => void;
-  }) => <header data-testid="portal-header">Portal Header: {userName}</header>,
+// The authenticated layout imports PortalHeader + PortalErrorBoundary from
+// their own files (not the @/components/portal barrel) to keep the layout
+// chunk graph small. PortalBottomNav is loaded via next/dynamic, which is
+// also mocked below to return the real module synchronously in tests.
+vi.mock("@/components/portal/PortalHeader", () => ({
+  PortalHeader: ({ userName }: { userName: string }) => (
+    <header data-testid="portal-header">Portal Header: {userName}</header>
+  ),
+}));
+
+vi.mock("@/components/portal/PortalErrorBoundary", () => ({
   PortalErrorBoundary: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
-  PortalCardSkeleton: () => <div>Loading...</div>,
-  PortalPageLoader: () => <div>Loading...</div>,
+}));
+
+vi.mock("@/components/portal/PortalBottomNav", () => ({
+  PortalBottomNav: () => <nav data-testid="bottom-nav">Bottom Nav</nav>,
+}));
+
+// next/dynamic defaults to a Promise-returning loader; in vitest/jsdom the
+// component never resolves, which makes PortalBottomNav render as undefined.
+// Replace dynamic() with a pass-through that invokes the loader eagerly and
+// returns whatever the mocked module exports. Works for both named-export
+// ({ default: m.Foo }) and default-export imports.
+vi.mock("next/dynamic", () => ({
+  default: (
+    loader: () => Promise<{ default: React.ComponentType<unknown> }>,
+  ) => {
+    const Component = (props: unknown) => {
+      const [Resolved, setResolved] =
+        React.useState<React.ComponentType<unknown> | null>(null);
+      React.useEffect(() => {
+        loader().then((mod) => setResolved(() => mod.default));
+      }, []);
+      if (!Resolved) return null;
+      return <Resolved {...(props as object)} />;
+    };
+    Component.displayName = "DynamicMock";
+    return Component;
+  },
 }));
 
 vi.mock("@/components/ui/toast", () => ({
