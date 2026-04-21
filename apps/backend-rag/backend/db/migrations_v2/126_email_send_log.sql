@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS email_send_log (
     retry_after       TIMESTAMP WITH TIME ZONE,
 
     CONSTRAINT ck_email_send_log_status
-        CHECK (status IN ('sending','sent','failed','retry_scheduled','skipped_idempotent','escalated')),
+        CHECK (status IN ('sending','sent','failed','retry_scheduled',
+                          'skipped_idempotent','escalated','superseded')),
     CONSTRAINT ck_email_send_log_provider
         CHECK (provider IS NULL OR provider IN ('brevo','zoho','skipped','unknown'))
 );
@@ -62,14 +63,19 @@ CREATE INDEX IF NOT EXISTS ix_email_send_log_client
     ON email_send_log (client_id, created_at DESC)
     WHERE client_id IS NOT NULL;
 
--- Seed kill-switch setting for new email-health cron (defaults to enabled).
--- Follows the existing pattern used by 114_compliance_alerts.sql.
+-- Seed kill-switch setting for new email-health cron (defaults to DISABLED
+-- so the first deploy doesn't start hammering Brevo on any retry_scheduled
+-- or failed rows before the baseline is confirmed healthy — matches the
+-- opt-in pattern already used by visa_expiry_notifier_enabled).
+-- Operator action to activate:
+--     UPDATE system_settings SET value='true'
+--      WHERE key='email_health_monitor_enabled';
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables
                WHERE table_name = 'system_settings') THEN
         INSERT INTO system_settings (key, value, updated_at) VALUES
-            ('email_health_monitor_enabled', 'true', NOW())
+            ('email_health_monitor_enabled', 'false', NOW())
         ON CONFLICT (key) DO NOTHING;
     END IF;
 END$$;

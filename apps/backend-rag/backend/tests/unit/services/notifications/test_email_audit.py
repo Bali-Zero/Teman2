@@ -114,6 +114,47 @@ async def test_record_email_result_null_row_id_is_noop(fake_pool):
 
 
 @pytest.mark.asyncio
+async def test_record_email_result_non_resurrectable_skips_retry_schedule(fake_pool):
+    """Client-facing types whose body can't be reconstructed must NOT
+    get a retry_after (review fix #3): the retry worker would send a
+    stub meta-email which is worse than direct escalation."""
+    # fetchrow returns attempt_number=1 + email_type='completion_client'
+    fake_pool._conn.fetchrow = AsyncMock(
+        return_value={"attempt_number": 1, "email_type": "completion_client"},
+    )
+
+    await record_email_result(
+        fake_pool, 7, status="failed", provider="brevo", error_message="500"
+    )
+
+    # Inspect the UPDATE call — retry_after arg (4th positional after
+    # the UPDATE sql) must be None.
+    update_call = fake_pool._conn.execute.call_args
+    # Args are: (sql, row_id, status, provider, error_message, retry_after)
+    # Positional (not kwargs).
+    assert update_call.args[5] is None, (
+        "completion_client must not schedule retry — should be None"
+    )
+
+
+@pytest.mark.asyncio
+async def test_record_email_result_resurrectable_schedules_retry(fake_pool):
+    """Stateless types (hr_bonus) DO get a retry_after on first failure."""
+    fake_pool._conn.fetchrow = AsyncMock(
+        return_value={"attempt_number": 1, "email_type": "hr_bonus"},
+    )
+
+    await record_email_result(
+        fake_pool, 7, status="failed", provider="brevo", error_message="500"
+    )
+
+    update_call = fake_pool._conn.execute.call_args
+    assert update_call.args[5] is not None, (
+        "hr_bonus attempt=1 must schedule retry (1h backoff)"
+    )
+
+
+@pytest.mark.asyncio
 async def test_record_email_result_invalid_status_coerced_to_failed(fake_pool):
     """Unknown status strings should be coerced to 'failed' so the row is
     still reachable by the retry worker."""
