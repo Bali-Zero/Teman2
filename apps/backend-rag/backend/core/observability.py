@@ -98,11 +98,11 @@ def init_observability(
                 flush_at=int(os.getenv("LANGFUSE_FLUSH_AT", "15")),
                 flush_interval=float(os.getenv("LANGFUSE_FLUSH_INTERVAL", "1.0")),
             )
-            # Best-effort sanity: auth_check exists on v3 client
-            try:
-                _CLIENT.auth_check()
-            except Exception as exc:
-                logger.warning("langfuse.auth_check_failed error=%s", exc)
+            # NOTE: intentionally no auth_check() here — the Langfuse SDK
+            # docstring explicitly warns "This method is blocking. It is
+            # discouraged to use it in production code." Validity of keys
+            # is checked once at `fly secrets set` time; invalid keys at
+            # runtime surface as 401s on the async flush (logged by SDK).
 
             if instrument_anthropic:
                 _try_instrument_anthropic()

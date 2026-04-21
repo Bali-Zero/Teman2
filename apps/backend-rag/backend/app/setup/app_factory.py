@@ -84,6 +84,21 @@ async def lifespan(app: FastAPI):
 
     async def _background_init():
         """Initialize all services in background after server starts listening."""
+        # Langfuse POC observability (feat/observability-langfuse-poc).
+        # Init here, not in create_app(), because:
+        # 1. We're past the uvicorn "accept connections" point — safe to
+        #    spend ms on setup without tripping Fly's 60s health grace.
+        # 2. Langfuse SDK does its own OTEL tracer_provider registration.
+        #    Running in a background task keeps that off the main loop.
+        # Heavy pip imports (langfuse, openinference) live inside
+        # init_observability(); the no-op path costs ~1ms.
+        try:
+            from backend.core.observability import init_observability
+
+            await asyncio.to_thread(init_observability, "nuzantara-rag")
+        except Exception as e:
+            logger.warning(f"⚠️ Langfuse init skipped: {e}")
+
         try:
             from backend.services.monitoring.alert_service import AlertService
 
@@ -225,6 +240,18 @@ async def lifespan(app: FastAPI):
 
     # ========== SHUTDOWN PHASE ==========
     logger.info("🛑 Shutting down ZANTARA services...")
+
+    # Flush Langfuse FIRST — before httpx clients close, so the SDK can
+    # still POST its span buffer to cloud.langfuse.com. Fly kill_timeout
+    # is 30s; Langfuse flush is bounded by LANGFUSE_FLUSH_INTERVAL (1s
+    # default). Runs off-loop to avoid blocking the event loop on HTTP.
+    try:
+        from backend.core.observability import shutdown_observability
+
+        await asyncio.to_thread(shutdown_observability)
+        logger.info("✅ Langfuse flushed")
+    except Exception as e:
+        logger.warning(f"⚠️ Langfuse shutdown skipped: {e}")
 
     # Shutdown Workflow Queue Worker
     workflow_worker_task = getattr(app.state, "_workflow_worker_task", None)
