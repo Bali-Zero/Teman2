@@ -113,3 +113,41 @@ async def test_get_match_does_not_regenerate_jwt(monkeypatch):
     response = await router_mod.get_match(hash="xyz1234567890000", db_pool=None)
     # session_jwt is optional on GET; we assert it's absent or null-ish.
     assert getattr(response, "session_jwt", None) in (None, "")
+
+
+def test_clock_response_schema_exposes_session_jwt():
+    from backend.app.routers.visa_check import ClockResponse
+    assert "session_jwt" in ClockResponse.model_fields
+
+
+@pytest.mark.asyncio
+async def test_submit_clock_returns_valid_jwt_with_check_hash_claim(monkeypatch):
+    from backend.app.routers import visa_check as router_mod
+
+    async def _fake_save_clock(self, **kwargs):
+        from backend.services.visa_check.repository import VisaClockResult
+        from datetime import date, datetime, timezone
+        return VisaClockResult(
+            hash="clock1234567890",
+            visa_type=kwargs["visa_type"],
+            entry_date=kwargs["entry_date"],
+            expiry_date=kwargs["expiry_date"],
+            extensions_possible=kwargs["extensions_possible"],
+            extension_days=kwargs["extension_days"],
+            created_at=datetime.now(timezone.utc),
+        )
+
+    monkeypatch.setattr(router_mod.VisaCheckRepository, "save_clock", _fake_save_clock)
+
+    from datetime import date
+    payload = router_mod.ClockRequest(
+        visa_type=router_mod.VisaType.C1,
+        entry_date=date.today(),
+        in_country_now=True,
+    )
+    response = await router_mod.submit_clock(payload, db_pool=None)
+    assert response.session_jwt
+    claims = _decode(response.session_jwt)  # helper already in this file
+    assert claims["sub"] == "clock1234567890"
+    assert claims["type"] == "visa_funnel"
+    assert claims["exp"] - claims["iat"] == 3600

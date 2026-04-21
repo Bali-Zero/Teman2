@@ -12,6 +12,7 @@ import {
   useHaptic,
   type TimelineCheckpoint,
 } from "@balizero/core";
+import { ChatAccordion } from "@/components/visa/ChatAccordion";
 
 interface ClockResult {
   hash: string;
@@ -22,6 +23,7 @@ interface ClockResult {
   extension_days: number;
   checkpoints: { label: string; at: string; title: string; body: string }[];
   result_url: string;
+  session_jwt: string | null;
 }
 
 export default function VisaClockResultPage({
@@ -142,6 +144,15 @@ export default function VisaClockResultPage({
         </div>
         <AppResultTimeline checkpoints={checkpoints} expiryDate={data.expiry_date} />
       </section>
+
+      {/* Chat accordion — only present on fresh POST result (session_jwt non-null) */}
+      {data.session_jwt ? (
+        <ChatAccordion
+          checkHash={data.hash}
+          sessionJwt={data.session_jwt}
+          daysRemaining={daysLeft}
+        />
+      ) : null}
 
       {/* Email opt-in */}
       <section>

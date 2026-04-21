@@ -6,9 +6,18 @@ import { VisaChat } from "./VisaChat";
 export interface ChatAccordionProps {
   checkHash: string;
   sessionJwt: string;
+  daysRemaining?: number;
 }
 
-export function ChatAccordion({ checkHash, sessionJwt }: ChatAccordionProps) {
+function deriveLabel(daysRemaining?: number): string {
+  if (daysRemaining !== undefined) {
+    if (daysRemaining <= 7) return "Urgent: ask questions before expiry";
+    if (daysRemaining <= 30) return "2 weeks or less — ask 3 free questions";
+  }
+  return "Have doubts? Ask 3 free questions";
+}
+
+export function ChatAccordion({ checkHash, sessionJwt, daysRemaining }: ChatAccordionProps) {
   const [open, setOpen] = useState(false);
 
   if (!sessionJwt) return null;
@@ -41,7 +50,7 @@ export function ChatAccordion({ checkHash, sessionJwt }: ChatAccordionProps) {
           cursor: "pointer",
         }}
       >
-        <span>Have doubts? Ask 3 free questions</span>
+        <span>{deriveLabel(daysRemaining)}</span>
         <span aria-hidden="true" style={{ fontSize: "1.25rem" }}>
           {open ? "−" : "+"}
         </span>

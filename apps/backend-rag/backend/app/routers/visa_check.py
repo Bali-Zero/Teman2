@@ -107,6 +107,7 @@ class ClockResponse(BaseModel):
     extension_days: int
     checkpoints: list[ClockCheckpointPayload]
     result_url: str
+    session_jwt: str | None = None  # populated by POST, absent on GET
 
 
 class MatchRequest(BaseModel):
@@ -211,6 +212,7 @@ async def submit_clock(
             for c in timeline.checkpoints
         ],
         result_url=f"/visa/clock/{saved.hash}",
+        session_jwt=_issue_visa_funnel_jwt(saved.hash),
     )
 
 
