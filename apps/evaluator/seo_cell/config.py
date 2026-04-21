@@ -7,7 +7,12 @@ from pathlib import Path
 # ── Paths ──────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data" / "seo_cell"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# NOTE: DATA_DIR is NOT created at import time. Importing this module must be
+# a pure, side-effect-free operation so that pytest collection, tooling, and
+# test fixtures (tmp_path-style) can reason about the filesystem without the
+# real cell polluting the workspace. Call ensure_data_dir() at the writer
+# site instead (cell_birth_date() and create_seo_cell() do this today).
 
 DNA_PATH = Path(__file__).resolve().parent / "dna.json"
 DB_PATH = DATA_DIR / "seo_cell.db"
@@ -37,6 +42,19 @@ SLEEP_HOURS = (2, 6)             # 02:00-06:00 WITA
 _BIRTH_DATE_MARKER = DATA_DIR / "birth_date.txt"
 
 
+def ensure_data_dir() -> Path:
+    """Create ``DATA_DIR`` on demand and return it.
+
+    Importing this module must stay side-effect-free (see note next to
+    the DATA_DIR declaration). Writers that actually need the directory
+    on disk — currently :func:`cell_birth_date` (writes the birth-date
+    marker) and :func:`apps.evaluator.seo_cell.cell.create_seo_cell`
+    (opens the SQLite memory stack) — must call this first.
+    """
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    return DATA_DIR
+
+
 def cell_birth_date() -> datetime:
     """Returns the cell's immutable birth date.
 
@@ -45,6 +63,7 @@ def cell_birth_date() -> datetime:
     """
     if _BIRTH_DATE_MARKER.exists():
         return datetime.fromisoformat(_BIRTH_DATE_MARKER.read_text().strip())
+    ensure_data_dir()
     now = datetime.now(timezone.utc)
     _BIRTH_DATE_MARKER.write_text(now.isoformat())
     return now
