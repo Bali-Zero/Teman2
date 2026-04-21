@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Visa Oracle',
-  description: 'How Visa Oracle handles your data and protects your privacy.',
+  title: 'Privacy Policy — Bali Zero — Visa',
+  description: 'How Bali Zero — Visa handles your data and protects your privacy.',
 };
 
 export default function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto py-8" style={{ color: 'var(--tx-primary)' }}>
       <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--bz-accent)' }}>
-        Privacy Policy — Visa Oracle
+        Privacy Policy — Bali Zero — Visa
       </h1>
       <p className="text-sm mb-10" style={{ color: 'var(--tx-secondary)' }}>
         Last updated: April 2026
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           1. What We Collect
         </h2>
         <p style={{ color: 'var(--tx-secondary)' }}>
-          We collect the following information when you use Visa Oracle:
+          We collect the following information when you use Bali Zero — Visa:
         </p>
         <ul
           className="list-disc list-inside mt-2 space-y-1"

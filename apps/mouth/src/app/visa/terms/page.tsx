@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Visa Oracle',
+  title: 'Terms of Service — Bali Zero — Visa',
   description:
-    'Terms and conditions for using Visa Oracle, an AI-powered Indonesian visa guidance tool.',
+    'Terms and conditions for using Bali Zero — Visa, an AI-powered Indonesian visa guidance tool.',
 };
 
 export default function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto py-8" style={{ color: 'var(--tx-primary)' }}>
       <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--bz-accent)' }}>
-        Terms of Service — Visa Oracle
+        Terms of Service — Bali Zero — Visa
       </h1>
       <p className="text-sm mb-10" style={{ color: 'var(--tx-secondary)' }}>
         Last updated: April 2026
@@ -21,7 +21,7 @@ export default function TermsPage() {
           1. Informational Only
         </h2>
         <p style={{ color: 'var(--tx-secondary)' }}>
-          Visa Oracle provides general informational guidance about Indonesian immigration. This is
+          Bali Zero — Visa provides general informational guidance about Indonesian immigration. This is
           not legal advice. Immigration regulations change frequently and information presented here
           may not reflect the most recent changes.
         </p>
@@ -44,7 +44,7 @@ export default function TermsPage() {
         </h2>
         <p style={{ color: 'var(--tx-secondary)' }}>
           Bali Zero is a licensed immigration consultancy registered in Indonesia, not a law firm.
-          While our team provides professional immigration services, the AI-powered Visa Oracle tool
+          While our team provides professional immigration services, the AI-powered Bali Zero — Visa tool
           offers general guidance only and does not constitute formal legal counsel.
         </p>
       </section>
@@ -75,7 +75,7 @@ export default function TermsPage() {
           6. Changes
         </h2>
         <p style={{ color: 'var(--tx-secondary)' }}>
-          We may update these terms at any time. Continued use of Visa Oracle after changes
+          We may update these terms at any time. Continued use of Bali Zero — Visa after changes
           constitutes your acceptance of the updated terms.
         </p>
       </section>
