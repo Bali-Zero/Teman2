@@ -216,6 +216,7 @@ def method_name(self, param: str, limit: int = 10) -> Result:
 4. **Structured Logging**: Use `logger` instead of `print()`
 5. **Error Handling**: Always handle exceptions appropriately
 
+
 ## Sentry Error Tracking
 
 Sentry is initialized in `backend/app/setup/sentry_config.py` and wired from
@@ -287,6 +288,66 @@ fly secrets set SKIP_SENTRY_INIT=1 -a nuzantara-rag
 
 `init_sentry()` returns immediately on startup and no events are emitted.
 Unset the secret to re-enable.
+
+
+## Langfuse POC (Observability)
+
+Branch: `feat/observability-langfuse-poc` — 2-week POC on Langfuse cloud free
+tier (50k observations / month). Goal: validate cache-hit rate and per-route
+cost breakdown before deciding whether to promote to self-hosted Langfuse v3.
+
+### What is instrumented
+
+1. `POST /api/agentic-rag/query` — parent span `agentic_rag.query`. Anthropic
+   SDK calls made inside the orchestrator auto-attach via OpenInference
+   instrumentation, so the full LLM chain becomes queryable.
+2. `ToneCouncil.run` (Consiglio v1) — parent span `tone_council.run` with the
+   chosen register and scars count as output.
+3. `scripts/federation_orchestrator.py` — root span `federation.orchestrate`;
+   per-agent child spans (`federation.dispatch.<cmd>`, `federation.classify`).
+
+Target files:
+
+- `backend/core/observability.py` — idempotent init + kill-switch.
+- `backend/app/routers/agentic_rag.py` — `_process_query_traced` wrapper.
+- `backend/services/council/tone_council.py` — `_maybe_council_span` helper.
+
+### Enable
+
+Set these on the `nuzantara-rag` Fly app:
+
+```bash
+fly secrets set \
+  LANGFUSE_PUBLIC_KEY=pk-lf-... \
+  LANGFUSE_SECRET_KEY=sk-lf-... \
+  LANGFUSE_HOST=https://us.cloud.langfuse.com \
+  -a nuzantara-rag
+```
+
+Default host is `https://us.cloud.langfuse.com`. Keep `LANGFUSE_ENABLED`
+unset to enable (default), or set to any other value to disable.
+
+### Kill-switch (rollback without deploy)
+
+```bash
+fly secrets set LANGFUSE_ENABLED=false -a nuzantara-rag
+```
+
+All spans become no-ops immediately on the next request. The only cost of
+the POC when disabled is ~10ms of module import time and two feature-flag
+reads per instrumented call site. Unsetting the keys has the same effect.
+
+### Success metrics (end of POC)
+
+- p95 overhead per traced route < 20ms vs. baseline (Fly dashboard).
+- Cache-hit rate on Anthropic calls visible in Langfuse (`cache_read_tokens`
+  on captured generations).
+- Per-route cost breakdown matches our internal `llm_cost_tracker`
+  aggregation within ±5%.
+
+If any of the above fails, revert by merging a `fly secrets set
+LANGFUSE_ENABLED=false` commit — no code rollback required.
+
 
 ## Deployment
 
