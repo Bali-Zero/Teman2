@@ -239,7 +239,6 @@ ENDPOINT_CLASSIFICATION = {
         "/bali-zero/chat-stream",
         "/api/knowledge/collections",
         "/api/oracle/personalities",
-        "/api/oracle/gemini/test",
     ],
     # JWT endpoints (require user authentication)
     "jwt": [
