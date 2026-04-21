@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import glob
 import json
 import os
 import re
@@ -72,6 +73,20 @@ AIR_LOGS = {
     "air-kb-ingest": LOGS_DIR / "kb_ingest.log",
     "air-judgement-day": LOGS_DIR / "judgement_day.log",
 }
+
+# Cron-agent logs — audit 2026-04-19 blind-spot #1: cron-agent jobs write logs
+# under ~/logs/cron-agent*/ but system_doctor never read them. Each glob is
+# expanded at scan time via `glob.glob()` so new cron-agent buckets are picked
+# up automatically. Paths use Path.home() — never hardcoded /Users/.
+CRON_AGENT_LOG_GLOBS: list[str] = [
+    str(Path.home() / "logs" / "cron-agent" / "*.log"),
+    str(Path.home() / "logs" / "cron-agent-*" / "*.log"),
+]
+# Max offending log files to surface as individual SystemCheck entries — cap
+# so one runaway log tree doesn't drown the Telegram summary.
+CRON_AGENT_MAX_OFFENDERS = 8
+CRON_AGENT_EXIT_CODE_RE = re.compile(r"exit code\s+[1-9]\d*", re.IGNORECASE)
+CRON_AGENT_ERROR_RE = re.compile(r"\bERROR\b")
 
 # Staleness thresholds in hours
 STALENESS = {
@@ -404,6 +419,20 @@ def collect_launchd_bad_exits() -> list[SystemCheck]:
 
     bad = data.get("bad", [])
 
+    # Audit 2026-04-19 blind-spot #3: surface historical zombies (agents with
+    # >=3 consecutive bad exits) even if they're currently running — that's
+    # the crash-loop case the old criterion missed.
+    historical_findings: list = []
+    try:
+        # Late import: sentinel_lib sits next to this script but system_doctor
+        # runs from cron with no package context, so a top-level import would
+        # bloat startup for every run.
+        sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+        from sentinel_lib import zombie_hunter as _zh  # type: ignore
+        historical_findings = _zh.detect_zombies()
+    except Exception as e:
+        log(f"zombie_hunter historical scan failed: {type(e).__name__}: {e}")
+
     if stale:
         return [SystemCheck(
             id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
@@ -411,15 +440,39 @@ def collect_launchd_bad_exits() -> list[SystemCheck]:
             message=f"State file not refreshed (ts={ts_str or 'missing'}) — sensor may be down",
         )]
 
-    if not bad:
+    if not bad and not historical_findings:
         return [SystemCheck(
             id="zombie-hunter-state", name="Zombie Hunter State", group="self-repair",
             status="ok", last_run=ts_str, message="No launchd agents in bad-exit state",
         )]
 
     checks = []
+    # Historical zombies (crash-loop detection) — listed first because a
+    # currently-running agent that crashes every cycle is more actionable
+    # than one that's already stopped.
+    already_flagged: set[str] = set()
+    for f in historical_findings:
+        already_flagged.add(f.label)
+        running_marker = " (crash-loop: process running)" if f.currently_running else ""
+        checks.append(SystemCheck(
+            id=f"launchd-history-{f.label}", name=f.label, group="self-repair",
+            status="error", last_run=ts_str,
+            message=f"{f.reason}{running_marker}, last exit={f.last_exit_code}",
+            needs_ai=True,
+            ai_context=(
+                f"LaunchAgent {f.label} has {f.consecutive_bad_exits} consecutive "
+                f"non-zero exits in its rolling history window "
+                f"(see ~/.agent/decisions/state/launchd_bad_exits.json). "
+                f"Currently running: {f.currently_running}."
+            ),
+        ))
     for entry in bad:
         label = entry.get("label", "?")
+        if label in already_flagged:
+            # Avoid duplicating current+historical entries for the same label
+            # — the historical check already includes last_exit and is more
+            # specific.
+            continue
         last_exit = entry.get("last_exit", "?")
         checks.append(SystemCheck(
             id=f"launchd-{label}", name=label, group="self-repair",
@@ -429,6 +482,114 @@ def collect_launchd_bad_exits() -> list[SystemCheck]:
             ai_context=f"LaunchAgent {label} exited with code {last_exit}. "
                        f"Check `launchctl print gui/$(id -u)/{label}` and log under ~/logs/",
         ))
+    return checks
+
+
+def collect_cron_agent_logs() -> list[SystemCheck]:
+    """Scan ~/logs/cron-agent*/*.log for ERROR lines and non-zero exit codes.
+
+    Audit 2026-04-19 (blind-spot #1): cron-agent jobs on Air write logs here
+    but `gather_health` never opened them — silent failures were invisible.
+    Each offending file becomes a MEDIUM (`warning`) SystemCheck. Missing
+    tree degrades to LOW severity (also `warning`, but `stale=True`) —
+    backward-compat for machines without any cron-agent jobs yet.
+    """
+    checks: list[SystemCheck] = []
+
+    matched_files: list[Path] = []
+    for pattern in CRON_AGENT_LOG_GLOBS:
+        matched_files.extend(Path(p) for p in glob.glob(pattern))
+
+    if not matched_files:
+        # LOW severity: represented as `warning` + stale=True so the existing
+        # status pipeline treats it as informational, not a hard failure.
+        return [SystemCheck(
+            id="cron-agent-logs",
+            name="Cron-agent logs",
+            group="self-repair",
+            status="warning",
+            stale=True,
+            message=(
+                f"No files matched cron-agent globs "
+                f"({CRON_AGENT_LOG_GLOBS}) — not found on this host"
+            ),
+        )]
+
+    offenders: list[tuple[Path, list[str]]] = []  # (file, matching lines)
+    clean_count = 0
+    for log_path in matched_files:
+        try:
+            text = log_path.read_text(errors="replace")
+        except OSError as e:
+            checks.append(SystemCheck(
+                id=f"cron-agent-{log_path.stem}",
+                name=f"cron-agent {log_path.name}",
+                group="self-repair",
+                status="warning",
+                stale=True,
+                message=f"Cannot read log: {type(e).__name__}",
+            ))
+            continue
+
+        # Only inspect the tail — cron-agent logs append forever; matching
+        # every historical error would spam the health report.
+        lines = text.splitlines()
+        tail = lines[-200:] if len(lines) > 200 else lines
+        matches = [
+            l for l in tail
+            if CRON_AGENT_ERROR_RE.search(l) or CRON_AGENT_EXIT_CODE_RE.search(l)
+        ]
+
+        if matches:
+            offenders.append((log_path, matches))
+        else:
+            clean_count += 1
+
+    if not offenders:
+        checks.append(SystemCheck(
+            id="cron-agent-logs",
+            name="Cron-agent logs",
+            group="self-repair",
+            status="ok",
+            message=f"Scanned {clean_count} cron-agent log(s) — clean",
+        ))
+        return checks
+
+    for log_path, matches in offenders[:CRON_AGENT_MAX_OFFENDERS]:
+        snippet = "\n".join(m[:200] for m in matches[-3:])
+        checks.append(SystemCheck(
+            id=f"cron-agent-{log_path.stem}",
+            name=f"cron-agent {log_path.name}",
+            group="self-repair",
+            # MEDIUM severity per audit spec — `warning` in doctor's taxonomy.
+            status="warning",
+            message=(
+                f"{len(matches)} ERROR/exit-code line(s) in tail of "
+                f"{log_path.name}"
+            ),
+            needs_ai=True,
+            ai_context=f"Path: {log_path}\nRecent offenders:\n{snippet}",
+        ))
+
+    overflow = len(offenders) - CRON_AGENT_MAX_OFFENDERS
+    if overflow > 0:
+        checks.append(SystemCheck(
+            id="cron-agent-overflow",
+            name="Cron-agent logs (overflow)",
+            group="self-repair",
+            status="warning",
+            message=f"+{overflow} additional cron-agent log(s) with errors",
+        ))
+
+    if clean_count:
+        checks.append(SystemCheck(
+            id="cron-agent-clean",
+            name="Cron-agent logs (clean)",
+            group="self-repair",
+            status="ok",
+            message=f"{clean_count} cron-agent log(s) OK",
+        ))
+
     return checks
 
 
@@ -1184,6 +1345,7 @@ def main() -> None:
         ("Backend health", collect_backend_health),
         ("Core Guardian", collect_core_guardian),
         ("Launchd bad exits", collect_launchd_bad_exits),
+        ("Cron-agent logs", collect_cron_agent_logs),
         ("Frontend health", collect_frontend_health),
         ("SSL certs", collect_ssl_certs),
         ("Fly resources", collect_fly_resources),
