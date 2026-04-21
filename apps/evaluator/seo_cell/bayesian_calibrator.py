@@ -47,8 +47,8 @@ SENSOR_NAMES: tuple[str, ...] = (
     "gsc",
     "ga4",
     "kg",
-    "war_room",
-    "competitor",
+    "war_room_event",
+    "competitor_serp",
     "cannibalization",
 )
 
