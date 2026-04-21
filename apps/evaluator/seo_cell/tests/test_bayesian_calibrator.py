@@ -65,8 +65,8 @@ def _synthetic_corpus(n: int, true_weights: dict[str, float]) -> list[Brief]:
             "gsc": (i * 7 % 11) / 10.0,
             "ga4": (i * 13 % 11) / 10.0,
             "kg": (i * 17 % 11) / 10.0,
-            "war_room": (i * 19 % 11) / 10.0,
-            "competitor": (i * 23 % 11) / 10.0,
+            "war_room_event": (i * 19 % 11) / 10.0,
+            "competitor_serp": (i * 23 % 11) / 10.0,
             "cannibalization": (i * 29 % 11) / 10.0,
         }
         lift = sum(true_weights[k] * x[k] for k in SENSOR_NAMES)
@@ -85,14 +85,16 @@ def test_default_weights_are_six_positive_sensors_summing_to_one():
 
 
 def test_sensor_names_match_dna_exactly():
-    # Must align with dna.json `boundaries.reads_from` (excluding
-    # `own_urls_embeddings` which is not a scoring input).
+    # Must align with the sensor instance `.name` attributes, which are
+    # the user-facing API pinned by `tests/test_integration_wave1.py`
+    # and pulled from the sensor classes themselves. See NOTES.md §A1
+    # for the history of this contract (wave 1 ➜ wave 2 fix).
     assert SENSOR_NAMES == (
         "gsc",
         "ga4",
         "kg",
-        "war_room",
-        "competitor",
+        "war_room_event",
+        "competitor_serp",
         "cannibalization",
     )
 
@@ -185,8 +187,8 @@ def test_calibrator_recovers_true_weights_on_clean_signal():
         "gsc": 0.30,
         "ga4": 0.20,
         "kg": 0.20,
-        "war_room": 0.10,
-        "competitor": 0.10,
+        "war_room_event": 0.10,
+        "competitor_serp": 0.10,
         "cannibalization": 0.10,
     }
     briefs = _synthetic_corpus(n=60, true_weights=true)
@@ -208,8 +210,8 @@ def test_calibrator_weights_never_negative():
             "gsc": 0.50,
             "ga4": 0.00,
             "kg": 0.00,
-            "war_room": 0.50,
-            "competitor": 0.00,
+            "war_room_event": 0.50,
+            "competitor_serp": 0.00,
             "cannibalization": 0.00,
         },
     )
