@@ -215,23 +215,126 @@ class TextChunker:
         self, text: str, page_markers: list[int] = None, metadata: dict[str, Any] = None,
     ) -> list[dict[str, Any]]:
         """
-        Alternative chunking that respects page boundaries (for PDFs).
+        Page-aware chunking: honours page boundaries from PDF extraction.
+
+        Each chunk is guaranteed to contain text from exactly ONE source page,
+        so ``chunk["page"]`` can be trusted downstream (citations, UI, KG
+        ingestion). When a page is longer than ``chunk_size`` the per-page
+        text is split with the standard semantic splitter; when it is shorter
+        it becomes a single chunk. Consecutive pages are NEVER merged, which
+        is the whole point compared to ``semantic_chunk``.
 
         Args:
-            text: Full text content
-            page_markers: Character positions where pages start
-            metadata: Base metadata
+            text: Full joined text as produced by parsers
+                (``extract_text_from_pdf(..., return_page_markers=True)``).
+            page_markers: Character offsets where each page starts in
+                ``text``. ``page_markers[i]`` is the start of page ``i+1``.
+                When falsy OR the marker list is inconsistent with ``text``,
+                we fall back to standard semantic chunking (OCR path,
+                markers mismatched content, etc.).
+            metadata: Optional base metadata propagated to every chunk.
 
         Returns:
-            List of chunks with page number tracking
+            List of chunk dicts. Each chunk carries at minimum:
+            ``text``, ``chunk_index``, ``total_chunks``, ``chunk_length``,
+            ``page`` (1-based page number), ``page_chunk_index``
+            (index within that page).
         """
-        if not page_markers:
-            # Fall back to standard semantic chunking
+        if not page_markers or not text or not text.strip():
             return self.semantic_chunk(text, metadata)
 
-        # TODO(#76): Implement page-aware chunking (respect page_markers boundaries,
-        # record metadata["page"] per chunk).
-        return self.semantic_chunk(text, metadata)
+        # Sanity: markers must be strictly sorted and inside [0, len(text)].
+        # Any violation (e.g. OCR-path with empty markers, corrupt offsets)
+        # is treated as "no markers" so we degrade gracefully instead of
+        # producing garbage page numbers.
+        text_len = len(text)
+        prev = -1
+        for off in page_markers:
+            if not isinstance(off, int) or off < 0 or off > text_len or off <= prev:
+                logger.warning(
+                    "chunk_by_pages: inconsistent page_markers (%s for text len %d); "
+                    "falling back to semantic_chunk.",
+                    page_markers,
+                    text_len,
+                )
+                return self.semantic_chunk(text, metadata)
+            prev = off
+
+        # Slice the full text at each marker boundary so we know exactly
+        # what text belongs to which page. The last page runs to EOF.
+        page_texts: list[str] = []
+        for i, start in enumerate(page_markers):
+            end = page_markers[i + 1] if i + 1 < len(page_markers) else text_len
+            page_texts.append(text[start:end])
+
+        # Chunk each page individually, respecting chunk_size. The overlap
+        # policy here is deliberately intra-page only — overlap that crosses
+        # a page boundary would defeat the purpose of page-aware chunking.
+        chunk_objects: list[dict[str, Any]] = []
+        for page_idx, page_text in enumerate(page_texts, start=1):
+            if not page_text.strip():
+                continue
+            try:
+                if self.separators:
+                    raw_chunks = self._split_text_recursive(page_text, self.separators[0])
+                else:
+                    raw_chunks = [page_text]
+            except Exception as e:
+                logger.error(f"Error chunking page {page_idx}: {e}")
+                raise
+
+            if self.chunk_overlap > 0 and len(raw_chunks) > 1:
+                overlapped: list[str] = []
+                for i, chunk in enumerate(raw_chunks):
+                    if i > 0:
+                        overlap_text = (
+                            raw_chunks[i - 1][-self.chunk_overlap:]
+                            if len(raw_chunks[i - 1]) > self.chunk_overlap
+                            else raw_chunks[i - 1]
+                        )
+                        chunk = overlap_text + chunk
+                    overlapped.append(chunk)
+                raw_chunks = overlapped
+
+            for local_idx, chunk_text in enumerate(raw_chunks):
+                if not chunk_text.strip():
+                    continue
+                obj = {
+                    "text": chunk_text,
+                    "page": page_idx,
+                    "page_chunk_index": local_idx,
+                    "chunk_length": len(chunk_text),
+                }
+                if metadata:
+                    obj.update(metadata)
+                    # Never let caller-provided metadata shadow the
+                    # page-tracking fields — they are load-bearing.
+                    obj["page"] = page_idx
+                    obj["page_chunk_index"] = local_idx
+                chunk_objects.append(obj)
+
+        # Truncate AFTER per-page chunking to honour the max_chunks cap.
+        if len(chunk_objects) > self.max_chunks:
+            logger.warning(
+                f"chunk_by_pages: produced {len(chunk_objects)} chunks, "
+                f"truncating to {self.max_chunks}",
+            )
+            chunk_objects = chunk_objects[: self.max_chunks]
+
+        # Fill in global chunk_index / total_chunks (computed last so it
+        # reflects the post-truncation reality).
+        total = len(chunk_objects)
+        for idx, obj in enumerate(chunk_objects):
+            obj["chunk_index"] = idx
+            obj["total_chunks"] = total
+
+        logger.info(
+            "chunk_by_pages: %d chunks across %d pages (avg length: %d)",
+            total,
+            len(page_texts),
+            sum(c["chunk_length"] for c in chunk_objects) // total if total else 0,
+        )
+        return chunk_objects
 
 
 def semantic_chunk(text: str, max_tokens: int = 500, overlap: int = 50) -> list[str]:

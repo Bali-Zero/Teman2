@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from typing import Union
 
 try:
     from PyPDF2 import PdfReader
@@ -24,6 +25,11 @@ from ebooklib import epub
 
 logger = logging.getLogger(__name__)
 
+# Separator used between PDF pages. Kept as a module-level constant so
+# `chunk_by_pages` can recompute identical offsets from any text produced
+# by `extract_text_from_pdf(..., return_page_markers=True)`.
+PDF_PAGE_SEPARATOR = "\n\n"
+
 
 class DocumentParseError(Exception):
     """Custom exception for document parsing errors"""
@@ -31,26 +37,70 @@ class DocumentParseError(Exception):
     pass
 
 
-async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> str:
+def _join_pages_with_markers(text_parts: list[str]) -> tuple[str, list[int]]:
+    """Join per-page text fragments and record the character offset where each
+    page starts in the joined string.
+
+    Uses the module-level PDF_PAGE_SEPARATOR so page boundaries remain
+    consistent with the single-string path. Empty pages are preserved as
+    zero-length spans so every input page gets exactly one marker.
+
+    Returns:
+        (full_text, page_markers) where page_markers[i] = start offset of
+        page i+1 in full_text. len(page_markers) == len(text_parts).
+    """
+    markers: list[int] = []
+    cursor = 0
+    sep = PDF_PAGE_SEPARATOR
+    sep_len = len(sep)
+    for idx, part in enumerate(text_parts):
+        markers.append(cursor)
+        cursor += len(part)
+        if idx < len(text_parts) - 1:
+            cursor += sep_len
+    return sep.join(text_parts), markers
+
+
+async def extract_text_from_pdf_async(
+    file_path: str,
+    use_ocr: bool = False,
+    return_page_markers: bool = False,
+) -> Union[str, tuple[str, list[int]]]:
     """
     Async version of PDF extraction for use in async contexts.
+
+    Args:
+        file_path: Path to PDF file.
+        use_ocr: Force OCR even if text extraction succeeds.
+        return_page_markers: If True, also return a list of character offsets
+            marking where each page starts in the joined text. Backward
+            compatible default (False) returns only the text string.
     """
     try:
         logger.info(f"Parsing PDF (async): {file_path}")
 
         reader = PdfReader(file_path)
-        text_parts = []
+        text_parts: list[str] = []
+        extracted_pages: list[str] = []
 
         for page_num, page in enumerate(reader.pages, 1):
             try:
                 text = page.extract_text()
                 if text:
                     text_parts.append(text)
+                    extracted_pages.append(text)
+                else:
+                    extracted_pages.append("")
             except Exception as e:
                 logger.warning(f"Error extracting page {page_num}: {e}")
+                extracted_pages.append("")
                 continue
 
-        full_text = "\n\n".join(text_parts)
+        if return_page_markers:
+            full_text, page_markers = _join_pages_with_markers(extracted_pages)
+        else:
+            full_text = PDF_PAGE_SEPARATOR.join(text_parts)
+            page_markers = None
 
         # If no text found, try OCR (for scanned PDFs)
         if not full_text.strip() or use_ocr:
@@ -59,6 +109,11 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
                 ocr_text = await extract_text_from_pdf_ocr_async(file_path)
                 if ocr_text and ocr_text.strip():
                     logger.info(f"OCR extraction successful: {len(ocr_text)} characters")
+                    if return_page_markers:
+                        # OCR path does not preserve reliable page offsets.
+                        # Return empty marker list so callers fall back to
+                        # semantic chunking (see chunker.chunk_by_pages).
+                        return ocr_text, []
                     return ocr_text
                 if not full_text.strip():
                     raise DocumentParseError(
@@ -75,6 +130,8 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
             raise DocumentParseError(f"No text extracted from PDF: {file_path}")
 
         logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
+        if return_page_markers:
+            return full_text, page_markers
         return full_text
 
     except DocumentParseError:
@@ -83,7 +140,11 @@ async def extract_text_from_pdf_async(file_path: str, use_ocr: bool = False) -> 
         raise DocumentParseError(f"Failed to parse PDF {file_path}: {str(e)}") from e
 
 
-def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
+def extract_text_from_pdf(
+    file_path: str,
+    use_ocr: bool = False,
+    return_page_markers: bool = False,
+) -> Union[str, tuple[str, list[int]]]:
     """
     Extract text content from PDF file.
     Falls back to OCR if no text is found (for scanned PDFs).
@@ -91,9 +152,16 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
     Args:
         file_path: Path to PDF file
         use_ocr: Force OCR even if text extraction succeeds
+        return_page_markers: If True, also return a list of character offsets
+            marking where each page starts in the joined text. Backward
+            compatible default (False) returns only the text string, which
+            keeps existing callers unchanged.
 
     Returns:
-        Extracted text as string
+        When return_page_markers is False (default): extracted text as string.
+        When True: tuple of (text, page_markers). OCR/Vision fallback paths
+        return [] for page_markers since per-page offsets are not reliable
+        there; callers should then fall back to semantic chunking.
 
     Raises:
         DocumentParseError: If parsing fails
@@ -102,18 +170,27 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
         logger.info(f"Parsing PDF: {file_path}")
 
         reader = PdfReader(file_path)
-        text_parts = []
+        text_parts: list[str] = []
+        extracted_pages: list[str] = []
 
         for page_num, page in enumerate(reader.pages, 1):
             try:
                 text = page.extract_text()
                 if text:
                     text_parts.append(text)
+                    extracted_pages.append(text)
+                else:
+                    extracted_pages.append("")
             except Exception as e:
                 logger.warning(f"Error extracting page {page_num}: {e}")
+                extracted_pages.append("")
                 continue
 
-        full_text = "\n\n".join(text_parts)
+        if return_page_markers:
+            full_text, page_markers = _join_pages_with_markers(extracted_pages)
+        else:
+            full_text = PDF_PAGE_SEPARATOR.join(text_parts)
+            page_markers = None
 
         # If no text found, try OCR (for scanned PDFs)
         if not full_text.strip() or use_ocr:
@@ -122,6 +199,8 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                 ocr_text = extract_text_from_pdf_ocr(file_path)
                 if ocr_text and ocr_text.strip():
                     logger.info(f"OCR extraction successful: {len(ocr_text)} characters")
+                    if return_page_markers:
+                        return ocr_text, []
                     return ocr_text
                 if not full_text.strip():
                     # Last resort: try vision model (skip if already in async context)
@@ -146,6 +225,8 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
                                 logger.info(
                                     f"Vision extraction successful: {len(vision_text)} characters",
                                 )
+                                if return_page_markers:
+                                    return vision_text, []
                                 return vision_text
                     except Exception as vision_err:
                         logger.warning(f"Vision extraction failed: {vision_err}")
@@ -164,6 +245,8 @@ def extract_text_from_pdf(file_path: str, use_ocr: bool = False) -> str:
             raise DocumentParseError(f"No text extracted from PDF: {file_path}")
 
         logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
+        if return_page_markers:
+            return full_text, page_markers
         return full_text
 
     except DocumentParseError:
