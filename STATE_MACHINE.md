@@ -356,14 +356,219 @@ Line 1021-1025: `await nlm_task` inside an `except (asyncio.CancelledError, Exce
 
 ## 4. Coverage boundaries (what this diagram does NOT model)
 
-Out of scope for Wave 1, tracked for Wave 2:
+Out of scope for Wave 1, tracked for Wave 2+:
 
-- **`execute_react_loop_stream`** — diagrammed as divergence only (§U5), not fully expanded. Has extra early-exit cases, yields events, no post-loop tier1 regen retry tracking.
-- **Gating internals** — `QueryGates.run_all_gates` is a composite of 6+ gates (injection, greeting, casual, identity, clarification, out-of-domain); treated as a single state.
+- **`execute_react_loop_stream`** — expanded in §5 (Wave 3). Wave 2 only closed U5 (shared-flipper divergence via `apply_shared_trusted_flippers`). Wave 3 fully diagrams the streaming loop, its yield protocol, and sync-vs-stream transition drift.
+- **Gating internals** — `QueryGates.run_all_gates` is a composite of 6 gates (security → greeting → casual → identity → clarification → out_of_domain). Wave 3 opens the black box in `apps/backend-rag/backend/tests/unit/services/rag/agentic/QUERY_GATES.md`.
 - **QueryPlanner internal states** — shadow mode spawns a background task; the sync-active branch is linear.
 - **`prepare_query_context`** — parallel sub-SM inside `PrepareContext`: entity extraction, legacy KG retrieval, LangGraph workflow synthesis. All three run via `asyncio.gather(..., return_exceptions=True)` — any raise is converted to fallback values. Not diagrammed.
-- **`response_pipeline.process`** — the verification pipeline is a sub-machine (verify → clean → citations). Treated as a black box.
+- **`response_pipeline.process`** — Wave 3 breaks open the pipeline in `RESPONSE_PIPELINE.md` (VerificationStage → PostProcessingStage → CitationStage → FormatStage).
 
 ---
 
-**End of Wave 1 state machine map.** Proceed to `TEST_GAPS.md`.
+## 5. Streaming ReAct loop — `execute_react_loop_stream` (Wave 3)
+
+**Scope:** `reasoning.py::execute_react_loop_stream` (lines 914-1407). Post-Wave 2 (SCAR §U5) the two paths share `apply_shared_trusted_flippers` for the final-answer-level trusted-flipper pair (pricing markers + has-tools). Everything else documented below is either **intentional divergence** or **streaming-only protocol** (yield events, per-tool execution, token chunking).
+
+### 5.1 Mermaid diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> StreamLoopEntry
+
+    StreamLoopEntry : while current_step < max_steps
+    StreamLoopEntry --> StreamStepIncrement : enter
+    StreamStepIncrement : current_step += 1
+    StreamStepIncrement --> YieldThinking
+
+    YieldThinking : yield {"type": "thinking",\n"data": "Step N: Processing..."}
+    YieldThinking --> StreamBuildMessage
+
+    StreamBuildMessage : step 1 → initial_prompt + images\nelse → "Original user query: ...\\n\\nObservation: ..."\n(no images beyond step 1)
+    StreamBuildMessage --> StreamSendMessage
+
+    StreamSendMessage : llm_gateway.send_message(\nenable_function_calling=True,\nimages=step_images)
+    StreamSendMessage --> StreamParseFirst : ok
+    StreamSendMessage --> StreamYieldError : Resource/Timeout/ValueError/RuntimeError
+    StreamYieldError : yield {"type": "error",\n"data": {"message": ...}}
+    StreamYieldError --> StreamLoopBreak
+
+    StreamParseFirst : parse_tool_calls_from_response\n→ tool_call = tool_calls[0] if tool_calls\n(stream takes ONLY first — never parallel)
+    StreamParseFirst --> StreamHasToolCall : tool_call is not None
+    StreamParseFirst --> StreamNoToolCall : tool_call is None
+
+    StreamHasToolCall : yield {"type": "tool_call",\n"data": {tool, args}}
+    StreamHasToolCall --> StreamExecTool
+
+    StreamExecTool : execute_tool(...)\n(NO try/except wrapper —\nraises propagate unlike sync)
+    StreamExecTool --> StreamCitationHandle : ok
+    StreamCitationHandle : if vector_search: handle_vector_search_sources
+    StreamCitationHandle --> StreamImageHandle
+
+    StreamImageHandle : if generate_image:\nhandle_generate_image_result +\nyield {"type": "image", ...} if payload
+    StreamImageHandle --> StreamAppendStep
+
+    StreamAppendStep : AgentStep(step=current_step,\naction=tool_call, observation=result)\n→ state.steps.append\n→ context_gathered.append if non-empty
+    StreamAppendStep --> StreamYieldObservation
+
+    StreamYieldObservation : yield {"type": "observation",\n"data": result[:500]}
+    StreamYieldObservation --> StreamVecEarlyExit
+
+    StreamVecEarlyExit : should_early_exit_on_vector_search?\n(same predicate as sync)
+    StreamVecEarlyExit --> StreamLoopBreak : True
+    StreamVecEarlyExit --> StreamCrmEarlyExit : False
+
+    StreamCrmEarlyExit : tool_name == "crm_query"\n+ len(result) > 10 ?\n(STREAM-ONLY, §U5)
+    StreamCrmEarlyExit --> StreamTrustedCrmSet : True →\nstate.trusted_tools_used = True\n+ break
+    StreamTrustedCrmSet --> StreamLoopBreak
+    StreamCrmEarlyExit --> StreamComplexLog : False
+    StreamComplexLog : vector_search + intent in\nCOMPLEX_QUERY_INTENTS → log only\n(loop continues)
+    StreamComplexLog --> StreamLoopEntry
+
+    StreamNoToolCall : "Final Answer:" in text\nOR current_step ≥ max_steps ?
+    StreamNoToolCall --> StreamSetFinalAnswer : True
+    StreamNoToolCall --> StreamAppendThoughtStep : False
+    StreamSetFinalAnswer : state.final_answer =\nextract_final_answer_text(...)\n+ AgentStep(is_final=True)
+    StreamSetFinalAnswer --> StreamLoopBreak
+    StreamAppendThoughtStep : AgentStep(thought only)
+    StreamAppendThoughtStep --> StreamLoopEntry
+
+    StreamLoopBreak --> StreamTrustedPre
+
+    StreamTrustedPre : state.trusted_tools_used OR\ndetect_trusted_tool_usage(steps)\n(same as sync)
+    StreamTrustedPre --> StreamEvidenceCalc
+
+    StreamEvidenceCalc : compute_evidence_score(...)\n→ state.evidence_score
+    StreamEvidenceCalc --> StreamLowConfEmit
+
+    StreamLowConfEmit : await emit_low_confidence_event(\ncontext="streaming")
+    StreamLowConfEmit --> StreamYieldEvidence
+
+    StreamYieldEvidence : yield {"type": "evidence_score",\n"data": {"score": ...}}
+    StreamYieldEvidence --> StreamMarkersFlip
+
+    StreamMarkersFlip : if not trusted:\ndetect_trusted_context_markers(context)\n(STREAM-ONLY, §U5 intentional widen)
+    StreamMarkersFlip --> StreamSubstantialFlip : marker hit → trusted=True
+    StreamMarkersFlip --> StreamSubstantialFlip : no hit
+
+    StreamSubstantialFlip : if not trusted:\ndetect_substantial_context(context)\n(STREAM-ONLY, §U5)
+    StreamSubstantialFlip --> StreamSharedFlippers
+
+    StreamSharedFlippers : apply_shared_trusted_flippers(\npricing markers + has-tools)\n(SHARED with sync, Wave 2 U5 fix)
+    StreamSharedFlippers --> StreamLowEvidenceGate
+
+    StreamLowEvidenceGate : should_apply_low_evidence_policy?
+    StreamLowEvidenceGate --> StreamCriticalAbstain : True + is_critical
+    StreamLowEvidenceGate --> StreamTier1Regen : True + non-critical
+    StreamLowEvidenceGate --> StreamSkipLog : False + skip_rag<0.15
+    StreamLowEvidenceGate --> StreamTrustedLog : False + trusted<0.15
+    StreamLowEvidenceGate --> StreamGenerateIfNeeded : no branch matches
+
+    StreamCriticalAbstain : state.final_answer =\n_get_localized_stub("abstain", language)\n(NB: SYNC uses "abstain_detailed")
+    StreamCriticalAbstain --> StreamGenerateIfNeeded
+    StreamTier1Regen : build_tier1_prompt + send_message
+    StreamTier1Regen --> StreamGenerateIfNeeded : ok
+    StreamTier1Regen --> StreamTier1Stub : Resource/Timeout/ValueError/RuntimeError
+    StreamTier1Stub : state.final_answer =\n_get_localized_stub("abstain", language)
+    StreamTier1Stub --> StreamGenerateIfNeeded
+    StreamSkipLog --> StreamGenerateIfNeeded
+    StreamTrustedLog --> StreamGenerateIfNeeded
+
+    StreamGenerateIfNeeded : no final_answer?
+    StreamGenerateIfNeeded --> StreamCtxAnswer : context gathered\n+ (score≥0.15 OR skip_rag OR trusted)
+    StreamGenerateIfNeeded --> StreamCtxAbstainItalian : context + critical + low score\n(HARDCODED Italian, not localized stub)
+    StreamGenerateIfNeeded --> StreamCtxTier1 : context + non-critical + low
+    StreamGenerateIfNeeded --> StreamSkipRagAnswer : skip_rag + no context
+    StreamGenerateIfNeeded --> StreamNoCtxCritical : no context + critical
+    StreamGenerateIfNeeded --> StreamNoCtxTier1 : no context + non-critical
+    StreamGenerateIfNeeded --> StreamStubFilter : already has final_answer
+
+    StreamCtxAnswer --> StreamStubFilter
+    StreamCtxAbstainItalian --> StreamStubFilter
+    StreamCtxTier1 --> StreamStubFilter
+    StreamSkipRagAnswer --> StreamStubFilter
+    StreamNoCtxCritical --> StreamStubFilter
+    StreamNoCtxTier1 --> StreamStubFilter
+
+    StreamStubFilter : if final_answer contains\n"no further action needed" /\n"observation: none"\n→ stub("confused", language)
+    StreamStubFilter --> StreamPipelineVerify
+
+    StreamPipelineVerify : if final_answer AND response_pipeline:\nresponse_pipeline.process(...)\n→ update final_answer, sources
+    StreamPipelineVerify --> StreamPipelineFallback : ValueError/RuntimeError/KeyError
+    StreamPipelineFallback : post_process_response(final_answer, query)
+    StreamPipelineFallback --> StreamTokenChunking
+    StreamPipelineVerify --> StreamTokenChunking : ok
+
+    StreamTokenChunking : if final_answer:\nfor chunk in chunks(20):\nyield {"type": "token", "data": chunk}
+    StreamTokenChunking --> StreamYieldSources
+
+    StreamYieldSources : if state.sources:\nyield {"type": "sources", "data": ...}
+    StreamYieldSources --> [*]
+```
+
+### 5.2 Transitions table (streaming-only or diverging)
+
+The table below enumerates **transitions introduced or diverging from §2 (sync)**. Transitions that behave identically to sync (e.g. R1 LoopEntry → StepIncrement, R8 QualityCheck mechanics) are not duplicated here.
+
+| # | From | To | Condition / guard | Sync counterpart |
+|---|------|-----|-------------------|------------------|
+| S1 | `StreamStepIncrement` | `YieldThinking` | always — yields `{"type": "thinking"}` before LLM call | N/A (sync emits no event) |
+| S2 | `StreamBuildMessage` | `StreamSendMessage` | step > 1 prompt includes `"Original user query: {query}"` header that sync omits — helps streaming keep context across yields | §R1-modified |
+| S3 | `StreamBuildMessage` | `StreamSendMessage` | images only on step 1 (`step_images = images if state.current_step == 1 else None`) — sync has no image param | new |
+| S4 | `StreamSendMessage` | `StreamYieldError → StreamLoopBreak` | `ResourceExhausted | ServiceUnavailable | asyncio.TimeoutError | ValueError | RuntimeError` → yield `{"type": "error"}` + break | §R4 (sync: `set_span_status("error")` + break, no yield) |
+| S5 | `StreamParseFirst` | `StreamHasToolCall` | `tool_calls[0] if tool_calls else None` — stream takes **only the first tool call**, never parallel. Sync does `asyncio.gather` on all. | §R5 (sync native/regex parse → N-parallel) |
+| S6 | `StreamHasToolCall` | `StreamExecTool` | yields `{"type": "tool_call", "data": {tool, args}}` before execution | N/A |
+| S7 | `StreamExecTool` | `StreamCitationHandle` | `execute_tool` called directly — **NO try/except wrapper**. A raise propagates, breaking the generator. Sync has `_exec_tool_wrapper` that captures raises as `"Error: {e}"`. | §R7 + I-R8 divergent |
+| S8 | `StreamImageHandle` | `StreamAppendStep → StreamYieldObservation` | if `generate_image` result has payload → yield `{"type": "image"}` event. Sync only persists. | new |
+| S9 | `StreamYieldObservation` | `StreamVecEarlyExit` | yields first 500 chars of `tool_result` | N/A |
+| S10 | `StreamVecEarlyExit` | `StreamLoopBreak` | same predicate as §R11 (`should_early_exit_on_vector_search`) | §R11 |
+| S11 | `StreamCrmEarlyExit` | `StreamTrustedCrmSet → StreamLoopBreak` | **STREAM-ONLY (§U5):** `tool_name == "crm_query" AND len(tool_result) > 10` → `state.trusted_tools_used = True` + break. Sync has no CRM-specific early exit — it relies on the post-loop `detect_trusted_tool_usage`. | N/A (sync-relies-on-post-loop) |
+| S12 | `StreamComplexLog` | `StreamLoopEntry` | `vector_search + intent in COMPLEX_QUERY_INTENTS` → log only, loop continues (sync: same behavior, same log) | §R12 (same semantics) |
+| S13 | `StreamNoToolCall` | `StreamAppendThoughtStep → StreamLoopEntry` | same as §R14 | §R14 |
+| S14 | `StreamLoopBreak` | `StreamTrustedPre` | always — post-loop path begins | §R17 |
+| S15 | `StreamEvidenceCalc` | `StreamLowConfEmit` | `await emit_low_confidence_event(..., log_context="streaming")` — sync calls without the `log_context` kwarg (§R18 is decomposed here) | new kwarg |
+| S16 | `StreamLowConfEmit` | `StreamYieldEvidence` | yield `{"type": "evidence_score", "data": {"score": ...}}` | N/A |
+| S17 | `StreamMarkersFlip` | `StreamSubstantialFlip` | **STREAM-ONLY (§U5, WAVE 2 locked):** if `not trusted_tools_used` then `detect_trusted_context_markers(state.context_gathered)`. Sync does NOT run this — deliberate widening of stream's trusted path. | N/A |
+| S18 | `StreamSubstantialFlip` | `StreamSharedFlippers` | **STREAM-ONLY (§U5):** if still `not trusted`, `detect_substantial_context` flips to True based on total context length. Sync does NOT. | N/A |
+| S19 | `StreamSharedFlippers` | `StreamLowEvidenceGate` | SHARED: `apply_shared_trusted_flippers(...)` — identical call-site as sync per Wave 2. | §R19-R20 (same) |
+| S20 | `StreamLowEvidenceGate` | `StreamCriticalAbstain` | **KEY DIVERGENCE:** stream sets `_get_localized_stub("abstain", language)`. Sync sets `_get_localized_stub("abstain_detailed", language)`. Two different stub keys for the *same* semantic branch. | §R21 (stub key drift) |
+| S21 | `StreamLowEvidenceGate` | `StreamTier1Regen` | same as sync §R22 but without `accumulated_usage + final_usage` accumulation (stream never tracks tokens) | §R22 (token-tracking drift) |
+| S22 | `StreamTier1Regen` | `StreamTier1Stub` | same narrow exception tuple as sync U1 contract (tripwire locked in Wave 2) | §R24 |
+| S23 | `StreamGenerateIfNeeded` | `StreamCtxAbstainItalian` | **KEY DIVERGENCE:** stream sets a **hardcoded Italian string** (lines 1217-1224) for critical-domain + low-score + has-context case. Sync uses `_get_localized_stub("abstain_detailed", language)`. Breaks language invariant for non-Italian users in streaming. | §R26 (language drift) |
+| S24 | `StreamGenerateIfNeeded` | `StreamNoCtxCritical` | no-context critical path: `_get_localized_stub("abstain", language)` (same key as S20) | sync uses same key for this branch |
+| S25 | `StreamStubFilter` | `StreamPipelineVerify` | filter stub responses containing `"no further action needed"` / `"observation: none"` — applies **only in streaming**. Sync does not filter these before pipeline. | N/A (sync passes raw to pipeline) |
+| S26 | `StreamPipelineVerify` | `StreamPipelineFallback → StreamTokenChunking` | `ValueError | RuntimeError | KeyError` → `post_process_response(final_answer, query)`. Same as sync §R30. | §R30 |
+| S27 | `StreamPipelineVerify` | `StreamTokenChunking` | ok — final_answer updated from `processed["response"]`; `state.sources` updated from `processed["citations"]` if present | §R30 sync path |
+| S28 | `StreamTokenChunking` | `StreamYieldSources` | **STREAM-ONLY:** chunk final_answer into 20-char pieces → yield `{"type": "token"}` per chunk. Sync returns the answer as a single string. | N/A |
+| S29 | `StreamYieldSources` | `[*]` | if `hasattr(state, "sources") and state.sources` → yield `{"type": "sources", "data": ...}` as closing event | N/A |
+
+### 5.3 Invariants (streaming)
+
+Paired with §2.3 (sync). **Invariant names use the `I-S*` prefix** to distinguish from inner-sync invariants `I-R*`.
+
+- **I-S1 (yield ordering)**: the event stream follows a strict partial order per iteration: `thinking → [tool_call → observation → (optional image)]` or `thinking → (terminal, no tool_call)`. After loop break: `evidence_score → (token chunks) → (sources)`. A consumer can rely on `evidence_score` arriving **before** the first `token`.
+- **I-S2 (single tool per step)**: streaming executes at most one tool per iteration (`tool_calls[0]`). Unlike sync (which parallelizes N tools with `asyncio.gather`), streaming budget is literally `max_steps = step count`. I-R7 does NOT apply.
+- **I-S3 (tool raise kills generator)**: `execute_tool` has no wrapper in the streaming path. If a tool implementation raises, the AsyncGenerator raises and the consumer sees an incomplete event stream (no `evidence_score`, no `token`). This differs from I-R8 (sync converts tool raise to `"Error: {e}"` observation). **This is an intentional difference; streaming callers must handle generator exceptions.**
+- **I-S4 (CRM early-exit trusted flip)**: in streaming, a successful `crm_query` (result > 10 chars) sets `state.trusted_tools_used = True` **inside the loop** and breaks. Sync sets trusted only *after* the loop via `detect_trusted_tool_usage` scanning `state.steps`. The end state is equivalent (trusted=True after CRM success) but the timing and the code path differ.
+- **I-S5 (context widening is streaming-only)**: `detect_trusted_context_markers` and `detect_substantial_context` flippers run **only in streaming**. Sync's evidence gate is stricter: the same query + tools + context can be "low-evidence-blocked" in sync yet "trusted-path-passed" in stream. Documented intent; do not cross-port.
+- **I-S6 (stub key drift, language-sensitive)**: in the override-existing-answer branch (`should_apply_low_evidence_policy == True` + is_critical), sync uses `stub("abstain_detailed", language)` and stream uses `stub("abstain", language)`. For the no-context critical branch, both use `stub("abstain", language)`. Callers/tests asserting on stub text must therefore distinguish (override vs no-context) x (sync vs stream).
+- **I-S7 (hardcoded Italian leak)**: the no-context/low-score + has-context + is-critical branch (§S23) **does not honor the detected language**. Italian speakers see the right text; all other users see Italian. Deliberate current behavior — flagged for Wave 4+ refactor.
+- **I-S8 (token chunk size invariant)**: `chunk_size = 20` characters. A final_answer of length `L` produces `ceil(L / 20)` token events. Consumers cannot assume word boundaries.
+- **I-S9 (generator closure)**: a streaming invocation yields at minimum one event. Even on step-1 raise → yields `{"type": "error"}` then ends. On happy path: ≥ 1 thinking + ≥ 1 token. On empty final_answer (unreachable in practice per I-R2 via fallbacks), the token loop iterates 0 times and sources may or may not yield.
+
+### 5.4 Sync ↔ stream drift summary (for Wave 4 planning)
+
+| Drift | Direction | Fixable? |
+|-------|-----------|----------|
+| Stub key for override-answer critical branch (`"abstain"` vs `"abstain_detailed"`) | stream softer | YES — unify to `"abstain_detailed"` if semantic parity is desired |
+| Hardcoded Italian vs `_get_localized_stub` in §S23 | stream broken for non-IT | YES — replace with `_get_localized_stub` call |
+| Step 2+ prompt prefix (`"Original user query:"`) | stream helps LLM keep context | behavioral choice; keep |
+| `detect_trusted_context_markers` / `detect_substantial_context` absent in sync | stream more permissive | per §U5 WAVE 2 decision: keep divergence, do NOT cross-port |
+| `crm_query` in-loop trusted flip | stream sets trusted earlier | redundant but harmless post helper unification |
+| Tool raise handling (stream propagates, sync captures) | stream harder to recover | behavioral choice; consumers handle generator exceptions |
+| Token usage tracking | stream does not track | consumer protocol; not currently needed |
+| `post_process_response` awaited in sync vs not in stream fallback | divergent `await` | harmless — `post_process_response` is sync-callable in both |
+
+---
+
+**End of Wave 3 streaming state machine map.** Sub-machine coverage (`QueryGates` + `ResponsePipeline`) documented in `apps/backend-rag/backend/tests/unit/services/rag/agentic/QUERY_GATES.md` and `RESPONSE_PIPELINE.md`. Regression tests in `test_orchestrator_state_machine_wave3_stream.py` / `_wave3_nlm.py` / `test_query_gates_composite.py` / `test_response_pipeline_stages.py`.
