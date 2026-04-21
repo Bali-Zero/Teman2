@@ -13,6 +13,7 @@ Features:
 """
 
 import hashlib
+import itertools
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -24,6 +25,56 @@ import httpx
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
+
+
+# Realistic desktop user agents. Wave 1 research (PR #174) noted that 5/8
+# .go.id domains reject the default "ZantaraBot/1.0" UA; round-robin through
+# these to look like organic traffic. Order matters ONLY for determinism in
+# tests — production just cycles.
+REALISTIC_USER_AGENTS: list[str] = [
+    # Chrome stable, macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4_1) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Chrome stable, Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Firefox, Linux
+    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    # Safari, macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+    # Edge, Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+]
+
+
+class UserAgentRotator:
+    """Thread-unsafe round-robin UA rotator. One instance per scraper is
+    plenty — httpx AsyncClient is the bottleneck, not this.
+    """
+
+    def __init__(self, agents: list[str] | None = None) -> None:
+        if agents is None:
+            self._agents = list(REALISTIC_USER_AGENTS)
+        else:
+            self._agents = list(agents)
+        if not self._agents:
+            raise ValueError("UserAgentRotator requires at least one UA.")
+        self._cycle = itertools.cycle(self._agents)
+
+    def next(self) -> str:
+        return next(self._cycle)
+
+    @property
+    def size(self) -> int:
+        return len(self._agents)
+
+
+# HTTP status codes that indicate UA-based blocking / WAF. When any of these
+# come back we (a) rotate UA on next retry and (b) optionally hand off to
+# Playwright if the source config allows it.
+_BLOCK_STATUSES = frozenset({401, 403, 406, 429, 503})
 
 
 class SourceType(str, Enum):
@@ -54,6 +105,11 @@ class SourceConfig:
     timeout: int = 30
     max_retries: int = 3
     enabled: bool = True
+    # New in wave 2 — keep as keyword-only defaults so existing callers (and
+    # the DEFAULT_SOURCES literals below) stay byte-identical.
+    rotate_user_agent: bool = True
+    use_playwright_fallback: bool = False
+    http2: bool = True
 
 
 @dataclass
@@ -122,12 +178,19 @@ class LegalScraper:
         ),
     }
 
-    def __init__(self, custom_sources: dict[str, SourceConfig] | None = None) -> None:
+    def __init__(
+        self,
+        custom_sources: dict[str, SourceConfig] | None = None,
+        user_agent_rotator: UserAgentRotator | None = None,
+    ) -> None:
         """
         Initialize the legal scraper.
 
         Args:
-            custom_sources: Optional custom source configurations
+            custom_sources: Optional custom source configurations.
+            user_agent_rotator: Optional custom UA rotator. If None, a default
+                one with REALISTIC_USER_AGENTS is used. Injectable so tests can
+                assert the rotation order deterministically.
         """
         self.sources = custom_sources or self.DEFAULT_SOURCES.copy()
         self.scrape_stats = {
@@ -136,26 +199,48 @@ class LegalScraper:
             "failed_requests": 0,
             "documents_found": 0,
             "last_run": None,
+            # Wave 2 counters — cheap, useful for dashboards.
+            "playwright_fallback_invocations": 0,
+            "playwright_fallback_successes": 0,
+            "user_agent_rotations": 0,
         }
         self._client: httpx.AsyncClient | None = None
+        self._ua_rotator = user_agent_rotator or UserAgentRotator()
 
         logger.info("✅ LegalScraper initialized")
         logger.info(f"   Sources configured: {len(self.sources)}")
+        logger.info(f"   UA rotation pool: {self._ua_rotator.size} agents")
         for _src_id, src in self.sources.items():
             status = "✅ enabled" if src.enabled else "❌ disabled"
-            logger.info(f"   - {src.name}: {status}")
+            fallback = " +playwright" if src.use_playwright_fallback else ""
+            logger.info(f"   - {src.name}: {status}{fallback}")
 
     def _get_client(self) -> httpx.AsyncClient:
         """Get or create the shared async client.
 
         Headers and timeouts are passed per-request (in _fetch_with_retry) so that
         each SourceConfig can use its own values without leaking between sources.
+
+        HTTP/2 is enabled by default (requires the optional ``h2`` package,
+        which ships with httpx[http2]); if h2 is missing at runtime we log a
+        warning and fall back to HTTP/1.1 transparently.
         """
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                follow_redirects=True,
-                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
-            )
+            try:
+                self._client = httpx.AsyncClient(
+                    follow_redirects=True,
+                    http2=True,
+                    limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+                )
+            except ImportError:
+                logger.warning(
+                    "httpx http2=True failed (install httpx[http2] / h2); "
+                    "falling back to HTTP/1.1",
+                )
+                self._client = httpx.AsyncClient(
+                    follow_redirects=True,
+                    limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+                )
         return self._client
 
     async def close(self) -> None:
@@ -163,6 +248,19 @@ class LegalScraper:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
         logger.info("LegalScraper HTTP client closed.")
+
+    def _build_request_headers(self, source: SourceConfig) -> dict[str, str]:
+        """Merge source headers with a rotated UA (if enabled).
+
+        Never mutates ``source.headers`` — returns a shallow copy with the UA
+        swapped in. Callers that want the source UA verbatim set
+        ``source.rotate_user_agent = False``.
+        """
+        headers = dict(source.headers)
+        if source.rotate_user_agent:
+            headers["User-Agent"] = self._ua_rotator.next()
+            self.scrape_stats["user_agent_rotations"] += 1
+        return headers
 
     async def scrape_source(
         self,
@@ -272,15 +370,26 @@ class LegalScraper:
         url: str,
         source: SourceConfig,
     ) -> httpx.Response | None:
-        """Fetch URL with retry logic"""
+        """Fetch URL with retry logic.
+
+        Every attempt rotates the UA (when ``source.rotate_user_agent``), so a
+        single 403 does not keep hitting the WAF with the same fingerprint. If
+        httpx exhausts retries AND ``source.use_playwright_fallback`` is set,
+        a real browser is spun up as a last resort. The Playwright response is
+        returned as a minimally-shaped ``httpx.Response`` so the caller path
+        (BeautifulSoup, etc.) is unchanged.
+        """
         import asyncio
+
+        saw_block_status = False
 
         for attempt in range(source.max_retries):
             try:
                 self.scrape_stats["total_requests"] += 1
+                headers = self._build_request_headers(source)
                 response = await client.get(
                     url,
-                    headers=source.headers,
+                    headers=headers,
                     timeout=source.timeout,
                 )
                 response.raise_for_status()
@@ -292,8 +401,11 @@ class LegalScraper:
 
             except httpx.HTTPStatusError as e:
                 self.scrape_stats["failed_requests"] += 1
-                logger.warning(f"   HTTP {e.response.status_code} for {url}")
-                if e.response.status_code == 429:  # Rate limited
+                status = e.response.status_code
+                logger.warning(f"   HTTP {status} for {url}")
+                if status in _BLOCK_STATUSES:
+                    saw_block_status = True
+                if status == 429:  # Rate limited
                     wait_time = (attempt + 1) * 5
                     logger.info(f"   Rate limited, waiting {wait_time}s...")
                     await asyncio.sleep(wait_time)
@@ -312,8 +424,80 @@ class LegalScraper:
                 if attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)
 
+        # Last-resort: browser fallback for sources that opt in. We only use
+        # it when we genuinely saw a block-style status, because Playwright is
+        # ~10–100× slower than httpx and we don't want it on every timeout.
+        if source.use_playwright_fallback and saw_block_status:
+            logger.info(
+                f"   httpx exhausted retries with block statuses for {url}; "
+                "trying Playwright fallback.",
+            )
+            pw_response = await self._fetch_with_playwright(url, source)
+            if pw_response is not None:
+                await asyncio.sleep(source.rate_limit_delay)
+                return pw_response
+
         logger.error(f"   Failed to fetch {url} after {source.max_retries} attempts")
         return None
+
+    async def _fetch_with_playwright(
+        self,
+        url: str,
+        source: SourceConfig,
+    ) -> httpx.Response | None:
+        """Render ``url`` in a real headless browser and return its HTML.
+
+        Wraps the Playwright result in an ``httpx.Response`` so existing
+        parsing code (which reads ``response.text`` / ``response.status_code``)
+        does not need to know the fallback ran. Import is deferred so test
+        envs without Playwright installed do not pay the import cost unless
+        the fallback is actually invoked.
+        """
+        self.scrape_stats["playwright_fallback_invocations"] += 1
+        try:
+            from playwright.async_api import async_playwright  # type: ignore
+        except ImportError:
+            logger.error(
+                "Playwright fallback requested but playwright is not installed. "
+                "Run: pip install playwright && playwright install chromium",
+            )
+            return None
+
+        ua = self._ua_rotator.next() if source.rotate_user_agent else source.headers.get(
+            "User-Agent",
+            REALISTIC_USER_AGENTS[0],
+        )
+
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(headless=True)
+                context = await browser.new_context(user_agent=ua)
+                page = await context.new_page()
+                # source.timeout is httpx-seconds; Playwright expects ms.
+                await page.goto(url, timeout=source.timeout * 1000)
+                # Wait until the network stops; polite + gives JS-heavy pages
+                # (most .go.id portals) enough time to hydrate.
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=source.timeout * 1000)
+                except Exception:
+                    pass
+                html = await page.content()
+                status = 200  # Playwright does not easily expose the final status
+                await context.close()
+                await browser.close()
+        except Exception as e:
+            logger.warning(f"   Playwright fallback failed for {url}: {e}")
+            return None
+
+        self.scrape_stats["playwright_fallback_successes"] += 1
+        logger.info(f"   Playwright fallback rendered {url} ({len(html)} bytes)")
+        # Construct a minimal httpx.Response the caller can treat identically.
+        request = httpx.Request("GET", url, headers={"User-Agent": ua})
+        return httpx.Response(
+            status_code=status,
+            content=html.encode("utf-8"),
+            request=request,
+        )
 
     def _parse_document_item(
         self,
