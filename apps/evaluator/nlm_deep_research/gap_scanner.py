@@ -211,8 +211,15 @@ def _extract_gap_topics(response: str) -> list[str]:
     if text.startswith("{"):
         try:
             obj = json.loads(text)
-            if isinstance(obj, dict) and isinstance(obj.get("answer"), str):
-                text = obj["answer"].strip()
+            # Two known envelope shapes exist in the wild:
+            #   {"answer": "...", "conversation_id": "...", ...}         (flat)
+            #   {"value": {"answer": "...", "conversation_id": "..."}}   (wrapped)
+            # The live `nlm query notebook` CLI as of 2026-04-22 emits the
+            # wrapped variant; older mocks used the flat one. Support both.
+            if isinstance(obj, dict):
+                inner = obj.get("value") if isinstance(obj.get("value"), dict) else obj
+                if isinstance(inner, dict) and isinstance(inner.get("answer"), str):
+                    text = inner["answer"].strip()
         except (json.JSONDecodeError, ValueError):
             # Not a well-formed envelope — keep the raw text and rely on the
             # line-level filter below to drop leaking keys.
