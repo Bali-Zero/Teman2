@@ -32,6 +32,14 @@ class _UUIDWithId(uuid.UUID):
     def id(self) -> "_UUIDWithId":
         return self
 
+class _IntWithId(int):
+    """int subclass with an `.id` property for factory pattern compat.
+    Used for the live clients table which has INTEGER primary key."""
+
+    @property
+    def id(self) -> "_IntWithId":
+        return self
+
 import asyncpg
 import pytest_asyncio
 
@@ -111,13 +119,19 @@ CREATE TABLE IF NOT EXISTS users (
     partner_id UUID
 );
 
+-- NOTE: clients table already exists in the dev DB with many dependents.
+-- We do NOT create/drop it — we use it as-is. The client_factory
+-- inserts rows and cleans them up after each test.
+
 CREATE TABLE IF NOT EXISTS processes (
     id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     status             TEXT NOT NULL DEFAULT 'pending',
     payment_status     TEXT NOT NULL DEFAULT 'pending',
     total_invoiced_idr NUMERIC(16,2) NOT NULL DEFAULT 0,
-    completed_at       TIMESTAMPTZ
+    completed_at       TIMESTAMPTZ,
+    client_id          INTEGER,
+    service_type       TEXT
 );
 
 -- PRE-FLIGHT NOTE (2026-04-20): processes table does not exist in the live DB
@@ -354,6 +368,7 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
         default_commission_type: str = "percentage",
         default_commission_value: Decimal = Decimal("10.0"),
         tax_withholding_category: str = "tbd",
+        preferred_language: str = "en",
     ) -> _UUIDWithId:
         _counter[0] += 1
         _full_name = full_name or f"Test Partner {_counter[0]}"
@@ -363,13 +378,13 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
             INSERT INTO partners
                 (full_name, email, entity_type, assigned_to,
                  default_commission_type, default_commission_value,
-                 tax_withholding_category)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 tax_withholding_category, preferred_language)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
             """,
             _full_name, _email, entity_type, assigned_to,
             default_commission_type, default_commission_value,
-            tax_withholding_category,
+            tax_withholding_category, preferred_language,
         )
         return _UUIDWithId(bytes=row["id"].bytes)
 
@@ -406,3 +421,133 @@ def referral_factory(
 async def admin(user_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]]) -> _UUIDWithId:
     """Inserts an admin user and returns its UUID (with .id attribute)."""
     return await user_factory(role="admin")
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client_factory(db_conn: asyncpg.Connection):
+    """Returns an async callable that inserts a clients row (into the existing live table)
+    and returns an _IntWithId (int subclass with .id property).
+    Cleans up inserted rows after the test.
+
+    The live clients table uses INTEGER primary key (not UUID).
+    We never CREATE or DROP this table — only INSERT and DELETE rows by id.
+    """
+    _counter = [0]
+    _inserted_ids: list[int] = []
+
+    async def _create(
+        *,
+        full_name: str | None = None,
+        email: str | None = None,
+    ) -> _IntWithId:
+        _counter[0] += 1
+        _full_name = full_name or f"Test Client {_counter[0]}"
+        _email = email or f"client-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
+        row = await db_conn.fetchrow(
+            "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+            _full_name, _email,
+        )
+        cid = _IntWithId(row["id"])
+        _inserted_ids.append(int(cid))
+        return cid
+
+    yield _create
+
+    # Cleanup: delete inserted test clients (dependent rows deleted via CASCADE or already gone)
+    if _inserted_ids:
+        await db_conn.execute(
+            "DELETE FROM clients WHERE id = ANY($1::int[])",
+            _inserted_ids,
+        )
+
+
+@pytest_asyncio.fixture(scope="function")
+def commission_factory(
+    db_conn: asyncpg.Connection,
+    process_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
+) -> Callable[..., Coroutine[Any, Any, "_UUIDWithId"]]:
+    """Returns an async callable that inserts a partner_commissions row and returns its UUID.
+
+    Accepts:
+    - partner_id: UUID (required)
+    - process_client_id: UUID | None — if given, creates a process linked to this client
+    - status: CommissionStatus, default 'accrued'
+    - net_amount_idr: Decimal, default 500_000
+    - gross_amount_idr: Decimal, default same as net_amount_idr
+    - withholding_amount_idr: Decimal, default 0
+    - withholding_category: str, default 'tbd'
+    - paid_via: str | None
+    - payment_reference: str | None
+    - receipt_file_url: str | None
+    """
+    async def _create(
+        *,
+        partner_id: uuid.UUID,
+        process_client_id: int | None = None,
+        status: str = "accrued",
+        net_amount_idr: Decimal = Decimal("500000"),
+        gross_amount_idr: Decimal | None = None,
+        withholding_amount_idr: Decimal = Decimal("0"),
+        withholding_category: str = "tbd",
+        paid_via: str | None = None,
+        payment_reference: str | None = None,
+        receipt_file_url: str | None = None,
+    ) -> _UUIDWithId:
+        _gross = gross_amount_idr if gross_amount_idr is not None else net_amount_idr
+
+        # Create a process stub (optionally linked to a client)
+        proc_id = await process_factory(
+            status="completed" if status in ("approved", "paid") else "pending",
+            payment_status="paid" if status == "paid" else "pending",
+            total_invoiced_idr=_gross,
+        )
+        # If client provided, update the process to link it + set a service_type
+        if process_client_id is not None:
+            await db_conn.execute(
+                "UPDATE processes SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
+                int(process_client_id), uuid.UUID(int=proc_id.int),
+            )
+
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        paid_at = now if status == "paid" else None
+
+        row = await db_conn.fetchrow(
+            """
+            INSERT INTO partner_commissions (
+                partner_id, process_id,
+                entry_type, base_amount_idr,
+                commission_type_snapshot, commission_value_snapshot,
+                rule_source,
+                gross_amount_idr, withholding_category,
+                withholding_rate, withholding_amount_idr, net_amount_idr,
+                status, accrued_at, eligible_for_approval_at,
+                paid_at, paid_via, payment_reference, receipt_file_url
+            ) VALUES (
+                $1, $2,
+                'accrual', $3,
+                'percentage', 10.0,
+                'partner_default',
+                $4, $5,
+                0.0, $6, $7,
+                $8, NOW(), NOW(),
+                $9, $10, $11, $12
+            )
+            RETURNING id
+            """,
+            uuid.UUID(int=partner_id.int),
+            uuid.UUID(int=proc_id.int),
+            _gross,        # base_amount_idr
+            _gross,        # gross_amount_idr
+            withholding_category,
+            withholding_amount_idr,
+            net_amount_idr,
+            status,
+            paid_at,
+            paid_via,
+            payment_reference,
+            receipt_file_url,
+        )
+        return _UUIDWithId(bytes=row["id"].bytes)
+
+    return _create
