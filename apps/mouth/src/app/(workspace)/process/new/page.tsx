@@ -75,7 +75,8 @@ export default function NewPracticePage() {
     assigned_to: "",
     priority: "normal" as "normal" | "high" | "urgent",
     start_date: "",
-    referrer_id: null as number | null,
+    // CRIT-8 residual: partners use UUID strings now
+    referrer_id: null as string | null,
   });
 
   // Client Search State

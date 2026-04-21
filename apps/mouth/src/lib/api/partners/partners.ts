@@ -211,11 +211,12 @@ export interface AuditLogEntry {
   at: string;
 }
 
-// CRIT-8: aligned to backend CommissionMarkPaidRequest (paid_via + payment_reference are required in backend)
-// The UI may prompt for these; keeping optional here so callers can pass partial data gracefully.
+// CRIT-8: aligned to backend CommissionMarkPaidRequest.
+// paid_via + payment_reference are REQUIRED by the backend; sending
+// undefined returns 422. Callers must validate prompt/input before invoking.
 export interface MarkPaidBody {
-  paid_via?: string;
-  payment_reference?: string;
+  paid_via: string;
+  payment_reference: string;
   payment_proof_url?: string;
   receipt_type?: 'kwitansi' | 'invoice' | 'none';
   receipt_file_url?: string;

@@ -252,11 +252,20 @@ export default function FinanceQueuePage() {
   };
 
   const handleMarkPaid = async (id: string) => {
+    // CRIT-8 residual: backend requires paid_via + payment_reference. Prompt must succeed.
+    const via = prompt("Paid via (required, e.g. BCA, Cash):");
+    if (!via?.trim()) {
+      toastError("Paid via is required");
+      return;
+    }
+    const ref = prompt("Payment reference (required, e.g. TX-20260520-001):");
+    if (!ref?.trim()) {
+      toastError("Payment reference is required");
+      return;
+    }
     setActioningId(id);
-    const ref = prompt("Payment reference (optional):");
-    const via = prompt("Paid via (e.g. BCA, Cash):");
     try {
-      await partnersApi.markPaid(id, { payment_reference: ref || undefined, paid_via: via || undefined });
+      await partnersApi.markPaid(id, { paid_via: via.trim(), payment_reference: ref.trim() });
       toastSuccess("Commission marked as paid");
       await loadCommissions();
     } catch {
