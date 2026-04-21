@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 21 · **Packages:** 5
+**Apps:** 20 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -57,7 +57,6 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `osint-nexus` |  |
 | `osint-nexus-ui` |  |
 | `team-agent` |  |
-| `war-room` | **Automated Marketing & Journalism Pipeline** |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
 | `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
 <!-- DOCSYNC:LIVING_ORGANS_END -->
@@ -67,7 +66,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 252 routers, 484 services, 806 test files
+- **Backend:** Python 3.11+, FastAPI, 253 routers, 487 services, 812 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)

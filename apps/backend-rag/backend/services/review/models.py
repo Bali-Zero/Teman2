@@ -54,6 +54,7 @@ class ReviewRequest:
     first_slide_text: str
     rejected_registers: list[str] | None = None
     ultra_cost_usd: float | None = None
+    canva_edit_url: str | None = None
 
     def to_caption(self, max_chars: int = 1000) -> str:
         parts = [
@@ -71,6 +72,8 @@ class ReviewRequest:
         )
         if self.ultra_cost_usd is not None:
             parts.append(f"<i>Costo immagini:</i> ${self.ultra_cost_usd:.2f}")
+        if self.canva_edit_url:
+            parts.append("🎨 <i>Canva editabile — usa il bottone qui sotto.</i>")
         caption = "\n".join(parts)
         if len(caption) > max_chars:
             return caption[: max_chars - 1] + "…"
@@ -146,32 +149,47 @@ def decode_callback(payload: str) -> ReviewCallback:
 # ── Inline keyboard builders ──────────────────────────────────────────
 
 
-def build_primary_keyboard(draft_id: UUID) -> dict:
-    """Top-level keyboard: Approva / Edit / Rifiuta."""
-    return {
-        "inline_keyboard": [
-            [
-                {
-                    "text": "✅ Approva",
-                    "callback_data": encode_callback(
-                        ReviewAction.APPROVE, draft_id,
-                    ),
-                },
-                {
-                    "text": "✏️ Edit",
-                    "callback_data": encode_callback(
-                        ReviewAction.EDIT, draft_id,
-                    ),
-                },
-                {
-                    "text": "❌ Rifiuta",
-                    "callback_data": encode_callback(
-                        ReviewAction.REJECT, draft_id,
-                    ),
-                },
-            ]
+def build_primary_keyboard(
+    draft_id: UUID,
+    *,
+    canva_edit_url: str | None = None,
+) -> dict:
+    """Top-level keyboard: Approva / Edit / Rifiuta.
+
+    When ``canva_edit_url`` is set (draft was rendered via canva_renderer),
+    a second row with a URL button opens the Canva editor in-place so Zero
+    can tweak the design before approving.
+    """
+    rows: list[list[dict]] = [
+        [
+            {
+                "text": "✅ Approva",
+                "callback_data": encode_callback(
+                    ReviewAction.APPROVE, draft_id,
+                ),
+            },
+            {
+                "text": "✏️ Edit",
+                "callback_data": encode_callback(
+                    ReviewAction.EDIT, draft_id,
+                ),
+            },
+            {
+                "text": "❌ Rifiuta",
+                "callback_data": encode_callback(
+                    ReviewAction.REJECT, draft_id,
+                ),
+            },
         ]
-    }
+    ]
+    if canva_edit_url:
+        rows.append([
+            {
+                "text": "🎨 Apri in Canva",
+                "url": canva_edit_url,
+            },
+        ])
+    return {"inline_keyboard": rows}
 
 
 def build_reject_reason_keyboard(draft_id: UUID) -> dict:

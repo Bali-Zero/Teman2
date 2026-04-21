@@ -44,9 +44,6 @@ archives/kbli-feb2026/KBLI_2025_*.json
 # Coverage reports (auto-generated)
 **/coverage/
 
-# War room outputs (raw AI dumps)
-apps/war-room/output/
-
 # Auto-generated LLMs files
 apps/mouth/scripts/generate-llms-full.ts
 

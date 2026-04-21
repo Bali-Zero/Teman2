@@ -28,9 +28,8 @@
 
 ### Production workloads
 
-- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services in CLAUDE.md §Tech Stack auto-sync). Prompt SSOT: `backend/prompts/zantara_core.py`.
+- **`apps/backend-rag/`** — RAG backend (FastAPI, deploy Fly.io; count routers/services in CLAUDE.md §Tech Stack auto-sync). Prompt SSOT: `backend/prompts/zantara_core.py`. Include WR2 pipeline (`backend/services/{war_room,council,visual,canva_renderer,review,publisher}/`).
 - **`apps/mouth/`** — Next.js frontend (Vercel). kita/my/prime.balizero.com.
-- **`apps/war-room/`** — Carosello marketing pipeline (8 agents Exa+xAI+NLM → Flux.1 → Canva → TG).
 - **`apps/bali-intel-scraper/`** — Intel pipeline daily 03:00 WITA (solo Pro, NOT Fly). Articoli MDX → GitHub → Vercel.
 - **`apps/zantara-media/`** — Curator Agent GARUDA (Sprint 5.1 LIVE). Drive indexer + Qdrant `garuda_assets` + Postgres `garuda_index`.
 
