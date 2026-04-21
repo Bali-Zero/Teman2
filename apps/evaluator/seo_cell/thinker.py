@@ -17,14 +17,23 @@ signal).
 """
 from __future__ import annotations
 
+import json
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from cell_core.lifecycle import Maturation
 from cell_core.types import HomeostaticState, Proposal, SensorReading
 
 from apps.evaluator.seo_cell import config
+from apps.evaluator.seo_cell.bayesian_calibrator import (
+    DEFAULT_WEIGHTS,
+    PATTERN_ID,
+    SENSOR_NAMES,
+)
 from apps.evaluator.seo_cell.phase import SEOPhase, is_pre_natal
+
+if TYPE_CHECKING:
+    from cell_core.genome import Genome
 
 logger = logging.getLogger("seo_cell.thinker")
 
@@ -36,6 +45,54 @@ class SEOThinker:
         # Snapshot of last readings for external inspection (actor, tests).
         self._last_readings: list[SensorReading] = []
         self._last_phase: SEOPhase | None = None
+
+    def current_weights(
+        self,
+        *,
+        genome: "Genome",
+        cell_name: str = "seo-guardian",
+    ) -> dict[str, float]:
+        """Read calibrated sensor weights from the genome, or defaults.
+
+        The Bayesian calibrator is the only writer of this pattern (see
+        :mod:`apps.evaluator.seo_cell.bayesian_calibrator`). The thinker
+        reads on every pulse where scoring is needed. Missing or
+        malformed rows fall back to :data:`DEFAULT_WEIGHTS` — the cell
+        never hard-fails because of a bad genome row.
+        """
+        rows = genome.get_active(
+            cell=cell_name, entry_type="pattern", limit=50,
+        )
+        for row in rows:
+            if row.get("id") != PATTERN_ID:
+                continue
+            procedure = row.get("procedure") or ""
+            try:
+                parsed = json.loads(procedure)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "[thinker] %s procedure is not JSON — using defaults",
+                    PATTERN_ID,
+                )
+                return dict(DEFAULT_WEIGHTS)
+            if not isinstance(parsed, dict):
+                return dict(DEFAULT_WEIGHTS)
+            # Require the exact 6-sensor contract; reject partial rows.
+            if set(parsed.keys()) != set(SENSOR_NAMES):
+                logger.warning(
+                    "[thinker] %s missing sensors — using defaults", PATTERN_ID,
+                )
+                return dict(DEFAULT_WEIGHTS)
+            try:
+                weights = {k: float(parsed[k]) for k in SENSOR_NAMES}
+            except (TypeError, ValueError):
+                return dict(DEFAULT_WEIGHTS)
+            total = sum(weights.values())
+            if total <= 0:
+                return dict(DEFAULT_WEIGHTS)
+            # Re-normalise defensively so a drifted pattern still sums to 1.
+            return {k: v / total for k, v in weights.items()}
+        return dict(DEFAULT_WEIGHTS)
 
     def current_phase(
         self,
