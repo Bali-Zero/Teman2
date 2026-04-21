@@ -1118,33 +1118,14 @@ response = requests.post(
 
 ### Oracle v5.3 - Ultra Hybrid
 
-#### `GET /api/oracle/drive/test`
-
-Test Google Drive integration
-
-**File:** `app/routers/oracle_universal.py`
-
----
-
-#### `GET /api/oracle/gemini/test`
-
-Test Google Gemini integration
-
-**File:** `app/routers/oracle_universal.py`
-
----
+> Wave 3 (2026-04-22): removed the unused `GET /api/oracle/drive/test`,
+> `GET /api/oracle/gemini/test` and `GET /api/oracle/user/profile/{user_email}`
+> stubs. Drive/Gemini health is exposed via the shared service layer; user
+> profile lookup lives in the `users` router.
 
 #### `GET /api/oracle/health`
 
 Health check for Oracle v5.3 services
-
-**File:** `app/routers/oracle_universal.py`
-
----
-
-#### `GET /api/oracle/user/profile/{user_email}`
-
-Get user profile with localization preferences
 
 **File:** `app/routers/oracle_universal.py`
 
