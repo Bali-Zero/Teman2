@@ -131,11 +131,39 @@ jobs:
             -d "text=${MESSAGE}" \
             -d "parse_mode=HTML" || true
 
-  run-migrations:
-    name: Run DB migrations on Fly.io
-    needs: pre-deploy-gate # only after gate passes
+  deploy:
+    name: Fly.io rolling deploy
+    needs: pre-deploy-gate # deploy first — migrations need NEW image on container
     runs-on: ubuntu-latest
-    # Job-level env so both setup-flyctl and the flyctl ssh call see the token.
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy (rolling strategy, monorepo context)
+        run: |
+          flyctl deploy \
+            --strategy rolling \
+            --app nuzantara-rag \
+            --remote-only \
+            --dockerfile apps/backend-rag/Dockerfile \
+            --config apps/backend-rag/fly.toml
+
+  run-migrations:
+    name: Run DB migrations on Fly.io (post-deploy)
+    # Must run AFTER deploy swap: flyctl ssh console runs on the CURRENT
+    # container, which must contain the new code introducing the migration
+    # module (e.g. backend.migrations.apply_migration_119). If this job
+    # preceded deploy, `python -m backend.migrations.apply_migration_NNN`
+    # would fail with ModuleNotFoundError on the old image.
+    # Migrations are idempotent (IF NOT EXISTS + ON CONFLICT DO NOTHING),
+    # so running them once per deploy is safe.
+    needs: deploy
+    runs-on: ubuntu-latest
     env:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl ≥0.3 reads this name
@@ -143,7 +171,7 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Run DB migrations via flyctl console
+      - name: Run SQL v2 migrations via flyctl console
         timeout-minutes: 3 # step-level timeout (flyctl ssh no longer supports --timeout)
         run: |
           flyctl ssh console \
@@ -169,28 +197,6 @@ jobs:
             --app nuzantara-rag \
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
           echo "✅ Python migration 120 OK"
-
-  deploy:
-    name: Fly.io rolling deploy
-    needs: run-migrations # BLOCCATO se migration fallisce
-    runs-on: ubuntu-latest
-    env:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy (rolling strategy, monorepo context)
-        run: |
-          flyctl deploy \
-            --strategy rolling \
-            --app nuzantara-rag \
-            --remote-only \
-            --dockerfile apps/backend-rag/Dockerfile \
-            --config apps/backend-rag/fly.toml
 
   post-deploy-health:
     name: Post-deploy health check + rollback
@@ -275,17 +281,22 @@ jobs:
             -d "parse_mode=Markdown" || true
 
   # ---------------------------------------------------------------------------
-  # Edge-case coverage: upstream crashes *before* post-deploy-health runs.
+  # Edge-case coverage: deploy/migration crashes *before* post-deploy-health.
   #
-  # The `post-deploy-health` job chains `needs: deploy`, so when the `deploy` or
-  # `run-migrations` jobs fail outright (flyctl crash, network error, image
-  # build fail, timeout), GitHub Actions marks `post-deploy-health` as SKIPPED
-  # — not failed — and none of its Telegram alerts or rollback steps ever fire.
+  # `deploy` runs before `run-migrations` (migrations need the NEW image on the
+  # container — see run-migrations comment). post-deploy-health chains
+  # `needs: deploy` via the health step. When `deploy` crashes (flyctl error,
+  # network, image build fail, timeout), GitHub marks post-deploy-health as
+  # SKIPPED — not failed — and none of its Telegram alerts or rollback steps
+  # fire. Same story when `run-migrations` fails AFTER a successful swap
+  # (new release IS live but DB migration never ran — worse than the old order
+  # because now the app may hit a schema mismatch).
   #
-  # This job watches those upstream failures and sends the Telegram notification
-  # that would otherwise be silently swallowed. No rollback is issued: if
-  # `run-migrations` or `deploy` crash, no new Fly release has shipped yet, so
-  # the previous release remains live. We only need visibility.
+  # This job watches those upstream failures and sends the Telegram alert
+  # that would otherwise be silently swallowed. No rollback is issued
+  # automatically — if run-migrations fails post-swap, Zero must decide
+  # whether to `flyctl releases rollback` or fix the migration and re-run.
+  # The alert makes the decision visible.
   #
   # The `if:` guard uses `always()` so the job still evaluates when upstream
   # jobs fail/skip (otherwise GitHub skips it too). The inner expression then
@@ -298,7 +309,6 @@ jobs:
       always() &&
       (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
     runs-on: ubuntu-latest
-
     steps:
       - name: Determine failing stage
         id: stage
