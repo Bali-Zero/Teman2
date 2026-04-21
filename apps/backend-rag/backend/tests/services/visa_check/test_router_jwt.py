@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from jose import jwt
@@ -90,10 +90,12 @@ async def test_submit_match_returns_valid_jwt_with_check_hash_claim(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_get_match_does_not_regenerate_jwt(monkeypatch):
-    """GET /api/visa/match/{hash} should NOT issue a JWT — it is a read
-    endpoint used to re-render the result page from a shareable URL.
-    Chat auth must be obtained fresh from submit_match."""
+async def test_get_match_also_issues_session_jwt(monkeypatch):
+    """GET /api/visa/match/{hash} now issues a session_jwt so the result
+    page (shareable URL loaded via GET) can authenticate chat requests.
+    The hash is already the public token to access this row; the JWT
+    adds a 1h replay window but no additional info leak.
+    """
     from backend.app.routers import visa_check as router_mod
 
     async def _fake_load(self, *args, **kwargs) -> object:
@@ -111,8 +113,10 @@ async def test_get_match_does_not_regenerate_jwt(monkeypatch):
     monkeypatch.setattr(router_mod.VisaCheckRepository, "bump_view_count", AsyncMock())
 
     response = await router_mod.get_match(hash="xyz1234567890000", db_pool=None)
-    # session_jwt is optional on GET; we assert it's absent or null-ish.
-    assert getattr(response, "session_jwt", None) in (None, "")
+    assert response.session_jwt, "GET must issue a JWT for the shareable-URL chat flow"
+    claims = _decode(response.session_jwt)
+    assert claims["sub"] == "xyz1234567890000"
+    assert claims["type"] == "visa_funnel"
 
 
 def test_clock_response_schema_exposes_session_jwt():
@@ -125,8 +129,9 @@ async def test_submit_clock_returns_valid_jwt_with_check_hash_claim(monkeypatch)
     from backend.app.routers import visa_check as router_mod
 
     async def _fake_save_clock(self, **kwargs):
+        from datetime import datetime, timezone
+
         from backend.services.visa_check.repository import VisaClockResult
-        from datetime import date, datetime, timezone
         return VisaClockResult(
             hash="clock1234567890",
             visa_type=kwargs["visa_type"],
