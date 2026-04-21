@@ -7,6 +7,31 @@
 
 ## Critical Gotchas
 
+### Sentry PII Redaction Is Load-Bearing (2026-04-21)
+
+`backend/app/setup/sentry_config.py::_before_send` is the only thing stopping
+UU PDP-regulated PII (NPWP, NIB, passport, email, phone, client_id, name,
+surname) from leaking to Sentry cloud on every exception. Three rules:
+
+1. **Never remove the `before_send=_before_send` kwarg** from `sentry_sdk.init`.
+   Sentry has NO opt-in knob for this behavior — without the hook, every
+   unhandled exception with a request body in locals leaks PII.
+2. **Never set `SENTRY_SEND_DEFAULT_PII=1`** in production. `send_default_pii`
+   would add IP addresses and user headers on top of the fields the hook is
+   already redacting; `scripts/sentry-quota-check.sh` alerts on this.
+3. **Never raise `SENTRY_TRACES_SAMPLE_RATE > 0.02`** in production. Free tier
+   is 5k events/month shared across errors AND transactions; APM sampling
+   burns it silently, after which error events are dropped too. Default is
+   `0.0` in prod — APM is opt-in per deploy.
+
+When you add a new PII-bearing field to a router:
+
+- Add the substring to `_PII_KEY_SUBSTRINGS` in `sentry_config.py`.
+- Add a case to `PII_SAMPLES` in `tests/test_sentry_pii_redaction.py`.
+- Run `SKIP_SENTRY_INIT=1 PYTHONPATH=. pytest tests/test_sentry_pii_redaction.py -q`.
+
+Kill-switch for the whole integration: `fly secrets set SKIP_SENTRY_INIT=1 -a nuzantara-rag`.
+
 ### Migration Runner Was Executing ROLLBACK Section In-Transaction (SCAR 2026-04-19, FIXED)
 
 `backend/db/migration_base.py` `BaseMigration.apply()` previously read the
