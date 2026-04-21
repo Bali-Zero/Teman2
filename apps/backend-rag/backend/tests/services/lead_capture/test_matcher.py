@@ -11,8 +11,14 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Import the script file directly (it lives in /scripts/, not in a package).
-_SCRIPT_PATH = Path(__file__).resolve().parents[4] / "scripts" / "lead_intent_matcher.py"
+# Import the script file directly (it lives in monorepo-root /scripts/,
+# not in a package). From this file, the monorepo root is parents[6]:
+# test_matcher.py (0) → lead_capture/ (1) → services/ (2) → tests/ (3)
+# → backend/ (4) → apps/backend-rag/ (5) → apps/ (6) → monorepo root.
+# The previous parents[4] and parents[5] values pointed inside
+# apps/backend-rag (where scripts/ doesn't exist), causing
+# ModuleNotFoundError at collection time on CI.
+_SCRIPT_PATH = Path(__file__).resolve().parents[6] / "scripts" / "lead_intent_matcher.py"
 sys.path.insert(0, str(_SCRIPT_PATH.parent))
 import lead_intent_matcher as m  # noqa: E402
 
