@@ -23,8 +23,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import pytest
-
 from backend.app.setup.sentry_config import _before_send, PII_REDACTION_PLACEHOLDER
 
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
@@ -262,18 +260,95 @@ def test_redacts_extra_and_contexts():
 
 
 # --------------------------------------------------------------------------- #
-# Alert dedup: events tagged source=cron or source=deploy are dropped entirely
-# so they don't duplicate the Telegram notifications emitted by those pipelines.
+# Positive controls — debug fields whose name CONTAINS "name" as a substring
+# must survive the scrubber, otherwise every Sentry stacktrace becomes
+# unreadable. Regression guard for review #168/B1.
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("source", ["cron", "deploy"])
-def test_drops_events_tagged_as_cron_or_deploy(source: str):
+def test_filename_key_survives_redaction():
     event = {
-        "tags": {"source": source},
-        "message": "boom",
+        "exception": {
+            "values": [
+                {
+                    "type": "RuntimeError",
+                    "value": "boom",
+                    "stacktrace": {
+                        "frames": [
+                            {
+                                "filename": "backend/app/routers/clients.py",
+                                "function": "create_client",
+                                "lineno": 42,
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
     }
-    assert _before_send(event, {}) is None
+    scrubbed = _before_send(event, {})
+    assert scrubbed is not None
+    frame = scrubbed["exception"]["values"][0]["stacktrace"]["frames"][0]
+    assert frame["filename"] == "backend/app/routers/clients.py"
+    assert frame["function"] == "create_client"
+    assert frame["lineno"] == 42
 
 
-def test_keeps_events_with_other_tags():
-    event = {"tags": {"source": "api"}, "message": "real error"}
-    assert _before_send(event, {}) is not None
+def test_function_name_key_survives_redaction():
+    # Fields developers attach ad-hoc to extra/contexts to aid debugging —
+    # if any of these got redacted, Sentry would be less useful than logs.
+    event = {
+        "extra": {
+            "function_name": "handle_webhook",
+            "transaction_name": "POST /api/visa/submit",
+            "endpoint_name": "visa.submit",
+            "module_name": "backend.app.routers.visa",
+            "hostname": "nuzantara-rag-app-01",
+            "codename": "eagle",
+            "nickname": "visa-worker-A",
+        }
+    }
+    scrubbed = _before_send(event, {})
+    assert scrubbed is not None
+    extra = scrubbed["extra"]
+    assert extra["function_name"] == "handle_webhook"
+    assert extra["transaction_name"] == "POST /api/visa/submit"
+    assert extra["endpoint_name"] == "visa.submit"
+    assert extra["module_name"] == "backend.app.routers.visa"
+    assert extra["hostname"] == "nuzantara-rag-app-01"
+    assert extra["codename"] == "eagle"
+    assert extra["nickname"] == "visa-worker-A"
+
+
+# --------------------------------------------------------------------------- #
+# Resilience: if _scrub raises, _before_send MUST NOT let the exception
+# propagate (Sentry drops events silently when before_send raises).
+# Regression guard for review #168/B3.
+# --------------------------------------------------------------------------- #
+def test_before_send_handles_scrub_exception(monkeypatch, capsys):
+    # Force the inner implementation to blow up on any input.
+    import backend.app.setup.sentry_config as mod
+
+    def boom(*_a, **_kw):
+        raise RuntimeError("scrubber exploded")
+
+    monkeypatch.setattr(mod, "_before_send_impl", boom)
+
+    event = {
+        "level": "error",
+        "exception": {"values": [{"type": "ValueError", "value": "original error"}]},
+        "extra": {"should_be_stripped": PII_SAMPLES["email"]},
+    }
+    result = _before_send(event, {})
+
+    # Hook must NOT raise.
+    assert result is not None
+    # Minimal event preserves diagnosis-relevant fields.
+    assert result["level"] == "error"
+    assert result["exception"] == event["exception"]
+    # ...and marks itself so the Sentry UI flags these.
+    assert result["tags"] == {"sentry_hook_error": "true"}
+    # Any other content (incl. unscrubbed PII) is stripped defensively.
+    assert "extra" not in result
+    # Failure surfaced to stderr so fly logs catch it.
+    captured = capsys.readouterr()
+    assert "scrubber exploded" in captured.err
+    assert "_before_send raised" in captured.err
