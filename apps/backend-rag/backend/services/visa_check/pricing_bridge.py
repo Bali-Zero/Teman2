@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 # Map our VisaType codes to substrings likely to appear in the
 # price JSON keys (e.g. "C2 Business", "Investor KITAS 2 Years").
 _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
-    VisaType.B211A: ("B211A", "Tourism"),
     VisaType.C1: ("C1", "Tourism"),
     VisaType.C2: ("C2 Business",),
     VisaType.C7: ("C7", "Internship"),
