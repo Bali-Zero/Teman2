@@ -1,18 +1,26 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/workspace/AppSidebar";
-import {
-  PortalBottomNav,
-  PortalHeader,
-  PortalErrorBoundary,
-} from "@/components/portal";
+import { PortalHeader } from "@/components/portal/PortalHeader";
+import { PortalErrorBoundary } from "@/components/portal/PortalErrorBoundary";
 import { ToastProvider } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { portalNavigation } from "@/types/navigation";
 import { AdminImpersonationProvider } from "@/contexts/AdminImpersonationContext";
+
+// Lazy: bottom nav is mobile-only and below-fold on desktop.
+// Reduces parallel chunks on /portal/* — ERR_INSUFFICIENT_RESOURCES mitigation.
+const PortalBottomNav = dynamic(
+  () =>
+    import("@/components/portal/PortalBottomNav").then((m) => ({
+      default: m.PortalBottomNav,
+    })),
+  { ssr: false },
+);
 
 export default function PortalLayout({
   children,
