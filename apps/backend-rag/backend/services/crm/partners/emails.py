@@ -38,11 +38,41 @@ _env = jinja2.Environment(
 # Sender MUST be zantara@balizero.com per feedback_email_sender memory rule.
 SENDER_EMAIL = "zantara@balizero.com"
 SENDER_NAME = "Zantara"
-NOTIFICATIONS_ENDPOINT = os.environ.get(
-    "NOTIFICATIONS_ENDPOINT",
-    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
-)
-X_API_KEY = os.environ.get("NOTIFICATIONS_X_API_KEY", "zantara-secret-2024")
+
+
+def _get_endpoint() -> str:
+    """Return the notifications endpoint URL, raising if env var is unset.
+
+    CRIT-4: The previous os.environ.get() fallback pointed to the production
+    URL and a literal API key. Any dev/CI/local environment without these env
+    vars would silently route emails through production credentials — a Golden
+    Rule #6 violation.
+
+    Resolved at call time (not import time) so tests that mock _post_email
+    bypass this check entirely without needing to set env vars.
+    """
+    endpoint = os.environ.get("NOTIFICATIONS_ENDPOINT")
+    if not endpoint:
+        raise RuntimeError(
+            "NOTIFICATIONS_ENDPOINT is not set — refusing to fall back to production. "
+            "Set it in .env, docker-compose env, or fly secrets."
+        )
+    return endpoint
+
+
+def _get_api_key() -> str:
+    """Return the notifications API key, raising if env var is unset.
+
+    CRIT-4: Same reasoning as _get_endpoint. The literal 'zantara-secret-2024'
+    fallback was a hard-coded production credential in source code.
+    """
+    key = os.environ.get("NOTIFICATIONS_X_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "NOTIFICATIONS_X_API_KEY is not set — refusing to fall back. "
+            "Set it in .env, docker-compose env, or fly secrets."
+        )
+    return key
 
 
 # ─── Internal helpers ───────────────────────────────────────────────────────
@@ -66,9 +96,9 @@ async def _post_email(*, to: str, cc: list[str] | None, subject: str, body: str)
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         r = await client.post(
-            NOTIFICATIONS_ENDPOINT,
+            _get_endpoint(),
             json=payload,
-            headers={"X-API-Key": X_API_KEY},
+            headers={"X-API-Key": _get_api_key()},
         )
         r.raise_for_status()
 
