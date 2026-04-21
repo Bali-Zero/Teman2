@@ -13,11 +13,13 @@ const API_BASE =
 async function apiFetch<T>(
   path: string,
   body: Record<string, unknown>,
+  extraHeaders: Record<string, string> = {},
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   });
@@ -63,8 +65,10 @@ export async function sendChatMessage(
   message: string,
   quizAnswers?: QuizAnswers,
   conversationHistory?: ChatMessage[],
+  checkHash?: string,
+  sessionJwt?: string,
 ): Promise<ChatResponse> {
-  return apiFetch<ChatResponse>("/api/v1/visa-oracle/chat", {
+  const body: Record<string, unknown> = {
     session_id: sessionId,
     message,
     language: detectBrowserLanguage(),
@@ -72,7 +76,13 @@ export async function sendChatMessage(
     ...(conversationHistory
       ? { conversation_history: conversationHistory }
       : {}),
-  });
+    ...(checkHash ? { check_hash: checkHash } : {}),
+  };
+  const headers: Record<string, string> = {};
+  if (checkHash && sessionJwt) {
+    headers["Authorization"] = `Bearer ${sessionJwt}`;
+  }
+  return apiFetch<ChatResponse>("/api/v1/visa-oracle/chat", body, headers);
 }
 
 export async function triggerHandoff(

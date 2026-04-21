@@ -236,20 +236,31 @@ export function middleware(request: NextRequest) {
     return rewriteResponse;
   }
 
-  // === VISA DOMAIN (visa.balizero.com) ===
-  // Dedicated Visa Oracle webapp — rewrites all paths to /visa-oracle/* prefix.
-  // The route group (visa-oracle) lives at /visa-oracle/* to avoid conflicts
-  // with existing routes (/chat, /privacy, /terms etc).
+  // === VISA DOMAIN (visa.balizero.com) — LEGACY, redirect to /visa ===
+  // The visa funnel was consolidated at balizero.com/visa (see spec
+  // 2026-04-21-visa-funnel-fusion.md). This block remaps legacy
+  // Oracle subdomain paths 1:1 to the canonical /visa paths with a
+  // temporary 302 so GSC can propagate the change of address. When
+  // traffic drops to < 1% of peak for 30 days, the DNS record for
+  // visa.balizero.com is removed entirely.
   if (isVisaDomain) {
-    const rewriteUrl = request.nextUrl.clone();
-    if (pathname === "/" || pathname === "") {
-      rewriteUrl.pathname = "/visa-oracle";
-    } else if (!pathname.startsWith("/visa-oracle")) {
-      rewriteUrl.pathname = `/visa-oracle${pathname}`;
-    }
-    const rewriteResponse = NextResponse.rewrite(rewriteUrl);
-    rewriteResponse.headers.set("x-pathname", pathname);
-    return rewriteResponse;
+    const target = new URL(request.url);
+    target.hostname = "balizero.com";
+    target.port = "";
+    target.protocol = "https:";
+
+    const legacy = pathname.replace(/\/+$/, "") || "/";
+    const map: Record<string, string> = {
+      "/": "/visa",
+      "/quiz": "/visa/match",
+      "/result": "/visa/match",
+      "/chat": "/visa/match",
+      "/privacy": "/visa/privacy",
+      "/terms": "/visa/terms",
+    };
+    target.pathname = map[legacy] ?? "/visa";
+
+    return NextResponse.redirect(target, 302);
   }
 
   // === TAX DOMAIN (tax.balizero.com) ===

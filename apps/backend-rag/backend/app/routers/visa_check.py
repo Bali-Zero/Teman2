@@ -12,12 +12,14 @@ Nothing here recommends visas by ML — the decision tree is in
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Path
+from jose import jwt
 from pydantic import BaseModel, Field, field_validator
 
+from backend.app.core.config import settings
 from backend.app.dependencies import get_database_pool
 from backend.app.utils.logging_utils import get_logger
 from backend.services.pricing.pricing_service import PricingService
@@ -33,6 +35,21 @@ from backend.services.visa_check.catalogue import (
 from backend.services.visa_check.match_tree import BudgetBand, Purpose
 
 logger = get_logger(__name__)
+
+_VISA_FUNNEL_JWT_TTL_SECONDS = 3600
+
+
+def _issue_visa_funnel_jwt(check_hash: str) -> str:
+    """Short-lived token that grants chat access for THIS wizard only."""
+    now = datetime.now(timezone.utc)
+    claims = {
+        "sub": check_hash,
+        "type": "visa_funnel",
+        "iat": now,
+        "exp": now + timedelta(seconds=_VISA_FUNNEL_JWT_TTL_SECONDS),
+    }
+    return jwt.encode(claims, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
 
 router = APIRouter(prefix="/api/visa", tags=["visa-check"])
 
@@ -90,6 +107,7 @@ class ClockResponse(BaseModel):
     extension_days: int
     checkpoints: list[ClockCheckpointPayload]
     result_url: str
+    session_jwt: str | None = None  # populated by POST, absent on GET
 
 
 class MatchRequest(BaseModel):
@@ -117,6 +135,11 @@ class MatchResponse(BaseModel):
     alternatives: list[VisaType]
     referral_mode: bool
     result_url: str
+    nationality: str
+    purpose: str
+    duration_months: int
+    budget_band: str
+    session_jwt: str | None = None  # populated by POST, absent on GET
 
 
 # ============================================================
@@ -189,6 +212,7 @@ async def submit_clock(
             for c in timeline.checkpoints
         ],
         result_url=f"/visa/clock/{saved.hash}",
+        session_jwt=_issue_visa_funnel_jwt(saved.hash),
     )
 
 
@@ -244,6 +268,11 @@ async def submit_match(
         alternatives=[VisaType(v) for v in saved.alternatives],
         referral_mode=result.referral_mode,
         result_url=f"/visa/match/{saved.hash}",
+        nationality=saved.nationality,
+        purpose=saved.purpose,
+        duration_months=saved.duration_months,
+        budget_band=saved.budget_band,
+        session_jwt=_issue_visa_funnel_jwt(saved.hash),
     )
 
 
@@ -297,4 +326,8 @@ async def get_match(
         alternatives=[VisaType(v) for v in saved.alternatives],
         referral_mode=(saved.recommended_visa is None),
         result_url=f"/visa/match/{saved.hash}",
+        nationality=saved.nationality,
+        purpose=saved.purpose,
+        duration_months=saved.duration_months,
+        budget_band=saved.budget_band,
     )
