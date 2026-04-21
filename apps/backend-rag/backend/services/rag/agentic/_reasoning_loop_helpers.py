@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -49,19 +50,156 @@ COMPLEX_QUERY_INTENTS: frozenset[str] = frozenset(
 _VECTOR_SEARCH_MIN_CONTENT_LEN = 10
 _EARLY_EXIT_MIN_TOOL_RESULT_LEN = 500
 
+# OpenRouter occasionally wraps a tool-call payload in nested ```json ... ```
+# fences (```json\n```json\n{...}\n```\n```). The regex matches one fenced
+# block whose body is itself another fenced block, and the substitution keeps
+# only the inner body so subsequent passes can operate on the raw JSON. We
+# iterate until the string stabilises because wrapping can be deeper than 2.
+_NESTED_FENCE_RE = re.compile(
+    r"```(?:json)?\s*\n?```(?:json)?\s*\n?(.*?)\n?```\s*\n?```",
+    re.DOTALL,
+)
+# Single-fence unwrapper, applied after nested fences have been flattened so
+# degraded extraction sees plain text around the JSON object.
+_SINGLE_FENCE_RE = re.compile(r"```(?:json)?\s*\n?(.*?)\n?```", re.DOTALL)
+_TOOL_NAME_MARKER = '"tool_name"'
+
+
+def _strip_nested_fences(text: str) -> str:
+    """Collapse nested ```json``` fence wrappers until the string stabilises.
+
+    OpenRouter's non-OpenAI-compatible endpoints sometimes double-wrap their
+    payload. A single `re.sub` call only peels one layer, so we loop until
+    the substitution is a no-op (or a small cap is reached as a belt-and-
+    braces bound against pathological inputs).
+    """
+    previous = None
+    current = text
+    # Bound iterations: deepest observed nesting is 2, cap at 8 to be safe.
+    for _ in range(8):
+        if current == previous:
+            break
+        previous = current
+        current = _NESTED_FENCE_RE.sub(r"\1", current)
+    return _SINGLE_FENCE_RE.sub(r"\1", current)
+
+
+def _find_first_balanced_tool_object(text: str) -> str | None:
+    """Return the first ``{...}`` substring containing ``"tool_name"``.
+
+    Scans character-by-character tracking brace depth while respecting
+    JSON string quoting (so ``{"x": "}{"}`` counts as one balanced object,
+    not three). Returns the smallest well-formed balanced slice starting
+    at a ``{`` that, once closed at depth 0, contains the literal
+    ``"tool_name"`` marker. Returns ``None`` if no such slice exists.
+
+    Intentionally non-greedy: we only want the first viable object so the
+    degraded path does not over-match on surrounding prose.
+    """
+    start: int | None = None
+    depth = 0
+    in_string = False
+    escape = False
+
+    i = 0
+    length = len(text)
+    while i < length:
+        ch = text[i]
+
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            i += 1
+            continue
+
+        if ch == '"':
+            in_string = True
+            i += 1
+            continue
+
+        if ch == "{":
+            if start is None:
+                start = i
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and start is not None:
+                    candidate = text[start : i + 1]
+                    if _TOOL_NAME_MARKER in candidate:
+                        return candidate
+                    # Reset and keep scanning for the next top-level object.
+                    start = None
+        i += 1
+
+    return None
+
+
+def _tool_call_from_json(isolated_json: str) -> Any:
+    """Build a ``ToolCall`` from a raw OpenRouter-style JSON slice.
+
+    Accepts the output of :func:`_find_first_balanced_tool_object` — a
+    single balanced object that contains ``"tool_name"``. Returns a
+    :class:`ToolCall` populated from the JSON (mapping ``tool_input`` /
+    ``arguments`` / ``parameters`` to the dataclass's ``arguments`` field),
+    or ``None`` if the slice is not valid JSON, is missing ``tool_name``,
+    or the arguments are not a mapping.
+
+    ``ToolCall`` is imported lazily to avoid a module-load cycle with
+    ``tool_executor`` and to keep this helper file cheap to import.
+    """
+    try:
+        parsed = json.loads(isolated_json)
+    except json.JSONDecodeError as exc:
+        logger.debug("regex_degraded JSON decode failed: %s", exc)
+        return None
+
+    if not isinstance(parsed, dict):
+        return None
+
+    tool_name = parsed.get("tool_name")
+    if not isinstance(tool_name, str) or not tool_name:
+        return None
+
+    # OpenRouter callers use "tool_input"; some clients use "arguments" or
+    # "parameters". Accept any of them, default to an empty dict so a call
+    # with no args is still usable downstream.
+    arguments = (
+        parsed.get("tool_input")
+        or parsed.get("arguments")
+        or parsed.get("parameters")
+        or {}
+    )
+    if not isinstance(arguments, dict):
+        return None
+
+    from backend.services.tools.definitions import ToolCall
+
+    return ToolCall(tool_name=tool_name, arguments=arguments)
+
 
 def parse_tool_calls_from_response(
     response_obj: Any,
     text_response: str,
 ) -> tuple[list[Any], str]:
-    """Parse tool calls from a model response (native first, regex fallback).
+    """Parse tool calls from a model response (native → regex → regex_degraded).
 
     Returns ``(tool_calls, mode)`` where ``mode`` is one of:
       - ``"native"`` — at least one valid call found via
         ``response_obj.candidates[*].content.parts``;
       - ``"regex"`` — native yielded nothing, fallback parsed a valid
         call from ``text_response``;
-      - ``"none"`` — neither path produced a valid call (empty list).
+      - ``"regex_degraded"`` — native and regex both failed; a third
+        pass unwraps nested ```json``` fences (OpenRouter double-wrap)
+        and extracts the first brace-balanced JSON object containing
+        ``"tool_name"``, then retries ``parse_tool_call`` on that slice.
+        Activates only when the standard regex fallback produced an
+        invalid call;
+      - ``"none"`` — none of the paths produced a valid call (empty list).
 
     The sync loop executes all returned calls in parallel; the streaming
     loop uses only the first element.
@@ -96,6 +234,26 @@ def parse_tool_calls_from_response(
     tc = parse_tool_call(text_response, use_native=False)
     if is_valid_tool_call(tc):
         return [tc], "regex"
+
+    # regex_degraded: only triggered when native yielded nothing AND the
+    # plain regex fallback produced an invalid tool_call.
+    #
+    # The standard parser (``parse_tool_call_regex`` in ``tool_executor.py``)
+    # only understands ``ACTION: tool(args)`` text; it does not recognise
+    # OpenRouter's ``{"tool_name": ..., "tool_input": ...}`` JSON shape. So
+    # once we've isolated a brace-balanced JSON object we must build the
+    # ``ToolCall`` directly rather than delegating back to ``parse_tool_call``
+    # (which would return ``None`` and collapse the degraded path to ``"none"``).
+    unwrapped = _strip_nested_fences(text_response)
+    isolated = _find_first_balanced_tool_object(unwrapped)
+    if isolated is not None:
+        tc_degraded = _tool_call_from_json(isolated)
+        if is_valid_tool_call(tc_degraded):
+            logger.debug(
+                "parse_tool_calls_from_response: recovered via regex_degraded (len=%d)",
+                len(isolated),
+            )
+            return [tc_degraded], "regex_degraded"
 
     return [], "none"
 
