@@ -98,6 +98,10 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)e2e/.*\.spec\.(ts|js)$"),
         "e2e/ Playwright spec: test fixture",
     ),
+    (
+        re.compile(r"(^|/)scripts/wr2-cron-wrapper\.sh$"),
+        "scripts/wr2-cron-wrapper.sh: shell wrapper with example placeholders",
+    ),
     # Agent decision files and session archives (historical context, not active credentials)
     (
         re.compile(r"(^|/)\.agent/.*"),

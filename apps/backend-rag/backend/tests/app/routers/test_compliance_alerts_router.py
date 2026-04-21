@@ -107,14 +107,14 @@ async def _insert_client(pool: asyncpg.Pool, email: str, assigned_to: str | None
     async with pool.acquire() as conn:
         if assigned_to is not None:
             row = await conn.fetchrow(
-                "INSERT INTO clients (full_name, email, assigned_to) VALUES ($1,$2,$3) RETURNING id, full_name, email, assigned_to",
+                "INSERT INTO clients (full_name, email, assigned_to, created_at) VALUES ($1,$2,$3,NOW()) RETURNING id, full_name, email, assigned_to",
                 "Router Test Client",
                 email,
                 assigned_to,
             )
         else:
             row = await conn.fetchrow(
-                "INSERT INTO clients (full_name, email) VALUES ($1,$2) RETURNING id, full_name, email",
+                "INSERT INTO clients (full_name, email, created_at) VALUES ($1,$2,NOW()) RETURNING id, full_name, email",
                 "Router Test Client",
                 email,
             )
@@ -307,7 +307,7 @@ async def test_team_blocked_on_null_assigned_client(db_pool: asyncpg.Pool) -> No
     # Insert a client with assigned_to = NULL (no owner)
     async with db_pool.acquire() as conn:
         client_id = await conn.fetchval(
-            "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+            "INSERT INTO clients (full_name, email, created_at) VALUES ($1, $2, NOW()) RETURNING id",
             "Unassigned Client",
             f"null-{uuid4().hex[:6]}@example.com",
         )

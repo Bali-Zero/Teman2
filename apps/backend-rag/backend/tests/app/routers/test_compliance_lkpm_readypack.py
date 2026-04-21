@@ -164,7 +164,7 @@ async def _insert_client(pool: asyncpg.Pool) -> int:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO clients (full_name, email, google_drive_folder_id)
+            INSERT INTO clients (full_name, email, google_drive_folder_id, created_at)
             VALUES ('RP Router Test', 'rp_router@example.com', 'drive_folder_rp')
             RETURNING id
             """

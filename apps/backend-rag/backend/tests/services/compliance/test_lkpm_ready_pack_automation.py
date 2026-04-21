@@ -158,8 +158,8 @@ async def client_row(db_tx) -> dict:
     conn, _ = db_tx
     row = await conn.fetchrow(
         """
-        INSERT INTO clients (full_name, email, google_drive_folder_id)
-        VALUES ($1, $2, $3)
+        INSERT INTO clients (full_name, email, google_drive_folder_id, created_at)
+        VALUES ($1, $2, $3, NOW())
         RETURNING id, full_name, email, google_drive_folder_id
         """,
         "PT Test Pack",

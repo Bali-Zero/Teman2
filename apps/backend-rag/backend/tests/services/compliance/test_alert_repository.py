@@ -20,7 +20,7 @@ pytestmark = pytest.mark.integration
 
 async def _insert_client(conn: asyncpg.Connection) -> int:
     return await conn.fetchval(
-        "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+        "INSERT INTO clients (full_name, email, created_at) VALUES ($1, $2, NOW()) RETURNING id",
         "Repo Test Client", "repo-test@example.com",
     )
 

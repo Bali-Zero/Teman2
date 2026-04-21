@@ -49,7 +49,7 @@ async def sample_client(db_tx: asyncpg.Connection) -> dict:
     # Minimal client insert — no preferred_language (column does not exist).
     row = await db_tx.fetchrow(
         """
-        INSERT INTO clients (full_name, email)
+        INSERT INTO clients (full_name, email, created_at)
         VALUES ($1, $2)
         RETURNING id, full_name, email
         """,
