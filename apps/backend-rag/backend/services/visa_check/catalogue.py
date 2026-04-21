@@ -53,7 +53,7 @@ class VisaMeta:
     name_en: str
     name_id: str
     category: str
-    purposes: frozenset["Purpose"]
+    purposes: frozenset[Purpose]
     duration_days: int
     extensions: tuple[int, int]      # (count, days_each); (0, 0) = non-extendable
     min_budget_idr: int | None       # None = no budget gate
