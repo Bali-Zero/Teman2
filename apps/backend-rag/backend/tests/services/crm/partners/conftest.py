@@ -267,9 +267,29 @@ CREATE TABLE IF NOT EXISTS partner_audit_log (
     reason        TEXT,
     at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS partner_email_outbox (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email_type TEXT NOT NULL CHECK (email_type IN ('welcome','commission_earned')),
+    partner_id UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
+    commission_id UUID REFERENCES partner_commissions(id) ON DELETE RESTRICT,
+    to_email TEXT NOT NULL,
+    cc_emails TEXT[] DEFAULT '{}',
+    subject TEXT NOT NULL,
+    body_markdown TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','sent','failed_dlq')),
+    attempts INT NOT NULL DEFAULT 0,
+    last_error TEXT,
+    next_retry_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    idempotency_key TEXT UNIQUE
+);
 """
 
 _TEARDOWN_SQL = """
+DROP TABLE IF EXISTS partner_email_outbox;
 DROP TABLE IF EXISTS partner_audit_log;
 DROP TABLE IF EXISTS partner_commissions;
 DROP TABLE IF EXISTS partner_referrals;

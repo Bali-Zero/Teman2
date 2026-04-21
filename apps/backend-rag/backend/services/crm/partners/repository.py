@@ -366,6 +366,110 @@ class PartnersRepository:
     async def delete_commission(self, commission_id: UUID) -> None:
         raise RuntimeError("partner_commissions is append-only; delete is forbidden")
 
+    # ── Email outbox (CRIT-2) ───────────────────────────────────────────
+
+    async def insert_email_outbox(
+        self,
+        *,
+        email_type: str,
+        partner_id: UUID,
+        commission_id: UUID | None,
+        to_email: str,
+        cc_emails: list[str] | None,
+        subject: str,
+        body_markdown: str,
+        idempotency_key: str,
+        created_by: UUID | None = None,
+    ) -> UUID:
+        """Enqueue an email send. Idempotent via idempotency_key.
+
+        Intended to be called INSIDE the same transaction that performs the
+        state change that triggers the email. That way, email delivery cannot
+        diverge from the business state (CRIT-2).
+        """
+        row = await self.conn.fetchrow(
+            """
+            INSERT INTO partner_email_outbox (
+                email_type, partner_id, commission_id,
+                to_email, cc_emails, subject, body_markdown,
+                idempotency_key, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (idempotency_key) DO NOTHING
+            RETURNING id
+            """,
+            email_type, partner_id, commission_id,
+            to_email, cc_emails or [], subject, body_markdown,
+            idempotency_key, created_by,
+        )
+        if row is None:
+            # Already enqueued (ON CONFLICT DO NOTHING hit). Return existing id.
+            existing = await self.conn.fetchrow(
+                "SELECT id FROM partner_email_outbox WHERE idempotency_key = $1",
+                idempotency_key,
+            )
+            return existing["id"]
+        return row["id"]
+
+    async def list_pending_outbox(self, limit: int = 50) -> list[dict]:
+        """Return outbox rows ready to send, oldest first."""
+        rows = await self.conn.fetch(
+            """
+            SELECT id, email_type, partner_id, commission_id,
+                   to_email, cc_emails, subject, body_markdown,
+                   attempts, next_retry_at
+            FROM partner_email_outbox
+            WHERE status = 'pending' AND next_retry_at <= now()
+            ORDER BY next_retry_at ASC
+            LIMIT $1
+            """,
+            limit,
+        )
+        return [dict(r) for r in rows]
+
+    async def mark_outbox_sent(self, outbox_id: UUID) -> None:
+        """Mark an outbox row as successfully sent."""
+        await self.conn.execute(
+            "UPDATE partner_email_outbox "
+            "SET status='sent', sent_at=now(), last_error=NULL "
+            "WHERE id = $1",
+            outbox_id,
+        )
+
+    async def mark_outbox_retry(self, outbox_id: UUID, error: str) -> None:
+        """Record a transient failure and apply exponential backoff.
+
+        Backoff schedule (by attempt count after increment):
+          1st failure → retry in  1 min
+          2nd failure → retry in  5 min
+          3rd failure → retry in 30 min
+          4th failure → retry in  2 h
+          5th+ failure → failed_dlq (no further retries)
+        """
+        row = await self.conn.fetchrow(
+            "SELECT attempts FROM partner_email_outbox WHERE id = $1", outbox_id,
+        )
+        if row is None:
+            return
+        attempts = row["attempts"] + 1
+        if attempts >= 5:
+            await self.conn.execute(
+                "UPDATE partner_email_outbox "
+                "SET status='failed_dlq', attempts=$2, last_error=$3, next_retry_at=now() "
+                "WHERE id = $1",
+                outbox_id, attempts, error,
+            )
+            return
+
+        backoff_minutes = {1: 1, 2: 5, 3: 30, 4: 120}[attempts]
+        await self.conn.execute(
+            f"UPDATE partner_email_outbox "
+            f"SET status='pending', attempts=$2, last_error=$3, "
+            f"next_retry_at=now() + interval '{backoff_minutes} minutes' "
+            f"WHERE id = $1",
+            outbox_id, attempts, error,
+        )
+
     # ── Audit log ───────────────────────────────────────────────────────
 
     async def insert_audit(
