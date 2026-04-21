@@ -6,6 +6,11 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
+# CATA-5: Production has NO `users` table. Team identity lives in
+# team_members(id VARCHAR) with email-like string IDs (e.g. "zero@balizero.com").
+# All user/actor identifier fields use str, NOT UUID.
+# Partner-entity identifiers (partners.id, partner_referrals.id, etc.) stay UUID.
+
 EntityType = Literal["individual", "corporate_pt", "corporate_cv", "foreign"]
 WithholdingCategory = Literal["pph21", "pph23", "exempt", "tbd"]
 CommissionType = Literal["percentage", "flat"]
@@ -49,12 +54,13 @@ class Partner:
     ewallet_number: str | None = None
     iban: str | None = None
     payment_notes: str | None = None
-    assigned_to: UUID | None = None
+    # CATA-5: assigned_to and created_by are team_members.id (VARCHAR string IDs)
+    assigned_to: str | None = None
     pdp_consent_at: datetime | None = None
     pdp_consent_version: str | None = None
     terms_accepted_at: datetime | None = None
     terms_version: str | None = None
-    created_by: UUID | None = None
+    created_by: str | None = None
     deactivated_at: datetime | None = None
     welcome_email_sent_at: datetime | None = None
 
@@ -66,7 +72,8 @@ class PartnerReferral:
     practice_id: int
     share_percent: Decimal
     referred_at: datetime
-    referred_by_user_id: UUID | None = None
+    # CATA-5: referred_by_user_id is team_members.id (VARCHAR string ID)
+    referred_by_user_id: str | None = None
     notes: str | None = None
 
 
@@ -92,11 +99,12 @@ class PartnerCommission:
     referral_id: UUID | None = None
     practice_id: int | None = None
     related_commission_id: UUID | None = None
-    assigned_to_snapshot: UUID | None = None
+    # CATA-5: assigned_to_snapshot, approved_by, paid_by are team_members.id (VARCHAR string IDs)
+    assigned_to_snapshot: str | None = None
     approved_at: datetime | None = None
-    approved_by: UUID | None = None
+    approved_by: str | None = None
     paid_at: datetime | None = None
-    paid_by: UUID | None = None
+    paid_by: str | None = None
     paid_via: str | None = None
     payment_reference: str | None = None
     payment_proof_url: str | None = None
@@ -115,7 +123,8 @@ class PartnerAuditLogEntry:
     partner_id: UUID
     action: str
     at: datetime
-    actor_user_id: UUID | None = None
+    # CATA-5: actor_user_id is team_members.id (VARCHAR string ID)
+    actor_user_id: str | None = None
     before_json: dict | None = None
     after_json: dict | None = None
     reason: str | None = None

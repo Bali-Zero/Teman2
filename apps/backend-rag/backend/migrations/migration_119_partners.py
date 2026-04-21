@@ -13,7 +13,9 @@ Schema
 - partner_referrals: links partners to existing practices (v1: 1-to-1)
 - partner_commissions: append-only ledger (accrued → approved → paid, with clawback)
 - partner_audit_log: immutable event trail for every partner/commission state change
-- users.partner_id: reverse FK so partner-role users can resolve their own record
+- team_members.partner_id: reverse FK so partner-role team members can resolve their
+  own record (CATA-5: production has NO `users` table; team identity lives in
+  team_members(id VARCHAR) with email-like string IDs)
 
 System settings
 ---------------
@@ -21,6 +23,12 @@ System settings
 - partner_accrual_cooling_off_days: days before accrual becomes eligible (default 30)
 
 Idempotent: safe to re-run.
+
+CATA-5 fix (2026-04-21): All FK targets changed from users(id UUID) to
+team_members(id VARCHAR). User-identity columns (assigned_to, created_by,
+referred_by_user_id, assigned_to_snapshot, approved_by, paid_by, actor_user_id)
+changed from UUID to VARCHAR. The users.partner_id block replaced with
+team_members.partner_id addition.
 
 Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
 Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1
@@ -85,7 +93,8 @@ async def apply(conn: Any) -> None:
                     -- lifecycle
                     onboarding_status         TEXT NOT NULL DEFAULT 'pending_approval'
                         CHECK (onboarding_status IN ('pending_approval','active','inactive')),
-                    assigned_to               UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: assigned_to references team_members(id VARCHAR), not users(id UUID)
+                    assigned_to               VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
 
                     -- UU PDP + T&C
                     pdp_consent_at            TIMESTAMPTZ,
@@ -95,7 +104,8 @@ async def apply(conn: Any) -> None:
 
                     -- audit + idempotency
                     created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    created_by                UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: created_by references team_members(id VARCHAR), not users(id UUID)
+                    created_by                VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
                     updated_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
                     deactivated_at            TIMESTAMPTZ,
                     welcome_email_sent_at     TIMESTAMPTZ
@@ -123,22 +133,26 @@ async def apply(conn: Any) -> None:
     )
 
     # -------------------------------------------------------------------------
-    # 2. users.partner_id — reverse FK so partner-role users resolve their record
+    # 2. team_members.partner_id — reverse FK so partner-role team members resolve
+    #    their own partner record.
+    #    CATA-5: Production has NO `users` table. Identity for team/admin roles lives
+    #    in team_members(id VARCHAR). This column is added idempotently because
+    #    team_members is a pre-existing production table.
     # -------------------------------------------------------------------------
     await conn.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
                 SELECT 1 FROM information_schema.columns
-                WHERE table_name = 'users' AND column_name = 'partner_id'
+                WHERE table_name = 'team_members' AND column_name = 'partner_id'
             ) THEN
-                ALTER TABLE users ADD COLUMN partner_id UUID REFERENCES partners(id) ON DELETE SET NULL;
+                ALTER TABLE team_members ADD COLUMN partner_id UUID REFERENCES partners(id) ON DELETE SET NULL;
             END IF;
         END $$;
     """)
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_users_partner_id"
-        " ON users (partner_id) WHERE partner_id IS NOT NULL;"
+        "CREATE INDEX IF NOT EXISTS idx_team_members_partner_id"
+        " ON team_members (partner_id) WHERE partner_id IS NOT NULL;"
     )
 
     # -------------------------------------------------------------------------
@@ -158,7 +172,8 @@ async def apply(conn: Any) -> None:
                     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
                         CHECK (share_percent > 0 AND share_percent <= 100),
                     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    referred_by_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: referred_by_user_id references team_members(id VARCHAR)
+                    referred_by_user_id  VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
                     notes                TEXT,
 
                     CONSTRAINT partner_referrals_practice_unique_v1 UNIQUE (practice_id)
@@ -205,7 +220,8 @@ async def apply(conn: Any) -> None:
                     commission_value_snapshot NUMERIC(14,4) NOT NULL,
                     rule_source              TEXT NOT NULL DEFAULT 'partner_default'
                         CHECK (rule_source IN ('partner_default','manual_override')),
-                    assigned_to_snapshot     UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: assigned_to_snapshot references team_members(id VARCHAR)
+                    assigned_to_snapshot     VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
 
                     -- amounts (IDR; clawbacks store NEGATIVE)
                     gross_amount_idr         NUMERIC(16,2) NOT NULL,
@@ -225,9 +241,11 @@ async def apply(conn: Any) -> None:
                     accrued_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
                     eligible_for_approval_at TIMESTAMPTZ NOT NULL,
                     approved_at              TIMESTAMPTZ,
-                    approved_by              UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: approved_by references team_members(id VARCHAR)
+                    approved_by              VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
                     paid_at                  TIMESTAMPTZ,
-                    paid_by                  UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: paid_by references team_members(id VARCHAR)
+                    paid_by                  VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
                     paid_via                 TEXT,
                     payment_reference        TEXT,
                     payment_proof_url        TEXT,
@@ -284,7 +302,8 @@ async def apply(conn: Any) -> None:
                 CREATE TABLE partner_audit_log (
                     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     partner_id    UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-                    actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: actor_user_id references team_members(id VARCHAR)
+                    actor_user_id VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
                     action        TEXT NOT NULL,
                     before_json   JSONB,
                     after_json    JSONB,
@@ -324,7 +343,8 @@ async def apply(conn: Any) -> None:
 
     logger.info(
         "Migration 119: partners + partner_referrals + partner_commissions"
-        " + partner_audit_log + users.partner_id + 5 system_settings rows"
+        " + partner_audit_log + team_members.partner_id + 5 system_settings rows"
+        " (CATA-5: FK targets team_members(id VARCHAR), not users(id UUID))"
     )
 
 
@@ -333,9 +353,10 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS partner_audit_log;")
     await conn.execute("DROP TABLE IF EXISTS partner_commissions;")
     await conn.execute("DROP TABLE IF EXISTS partner_referrals;")
-    # Drop users.partner_id index + column before dropping partners (it references partners.id)
-    await conn.execute("DROP INDEX IF EXISTS idx_users_partner_id;")
-    await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
+    # Drop team_members.partner_id index + column before dropping partners (it references partners.id)
+    # CATA-5: was users.partner_id — production table is team_members, not users.
+    await conn.execute("DROP INDEX IF EXISTS idx_team_members_partner_id;")
+    await conn.execute("ALTER TABLE team_members DROP COLUMN IF EXISTS partner_id;")
     await conn.execute("DROP TABLE IF EXISTS partners;")
     await conn.execute(
         "DELETE FROM system_settings WHERE key IN ("
@@ -345,6 +366,6 @@ async def rollback(conn: Any) -> None:
         ");"
     )
     logger.info(
-        "Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
+        "Migration 119 rollback: 4 tables dropped, team_members.partner_id removed,"
         " 5 system_settings rows deleted"
     )

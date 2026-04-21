@@ -56,7 +56,8 @@ async def apply(conn: Any) -> None:
 
                     -- Audit
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                    -- CATA-5: created_by references team_members(id VARCHAR), not users(id UUID)
+                    created_by VARCHAR REFERENCES team_members(id) ON DELETE SET NULL,
 
                     -- Idempotency: one outbox row per (type, partner_id, commission_id)
                     -- Prevents double-enqueue if the mutation is retried.
