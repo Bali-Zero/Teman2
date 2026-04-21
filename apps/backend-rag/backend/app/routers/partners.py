@@ -39,6 +39,7 @@ from pydantic import BaseModel, EmailStr
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.crm.partners.commission_engine import CommissionEngine
 from backend.services.crm.partners.service import (
+    INTERNAL_ROLES_ALWAYS_ALLOWED as _SERVICE_INTERNAL_ROLES,
     PartnersService,
     verify_partner_access_with_role,
 )
@@ -181,29 +182,10 @@ def _require_admin(user: dict[str, Any]) -> None:
         raise HTTPException(status_code=403, detail="admin only")
 
 
-_INTERNAL_ROLES_ALWAYS_ALLOWED: frozenset[str] = frozenset(
-    {
-        # Legacy/test conventions
-        "admin",
-        "team",
-        # Production team_members.role values (job titles, lowercase-checked)
-        "founder",
-        "ceo",
-        "board member",
-        "team leader",
-        "supervisor",
-        "tax lead",
-        "tax manager",
-        "tax care",
-        "accounting",
-        "marketing & accounting",
-        "executive consultant",
-        "specialist advisor",
-        "junior consultant",
-        "reception",
-        "member",
-    }
-)
+# CATA-6: SSOT lives in backend.services.crm.partners.service. Kept as a
+# module-level re-export so callers that imported this name from the router
+# (tests, etc.) keep working, but there is only ONE source of truth.
+_INTERNAL_ROLES_ALWAYS_ALLOWED: frozenset[str] = _SERVICE_INTERNAL_ROLES
 
 
 def _require_team_or_admin(user: dict[str, Any]) -> None:
