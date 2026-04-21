@@ -17,7 +17,7 @@ from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from backend.app.dependencies import get_current_user, get_search_service
@@ -728,3 +728,437 @@ async def test_query_empty_kg_result_still_shapes_response() -> None:
     assert body["citations"] == []
     assert body["domain_confidence"] == {}
     assert "threshold" in body["routing_reason"]
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — upstream timeout (the big missing of wave 1)
+# ---------------------------------------------------------------------------
+#
+# The router does NOT wrap process_query in asyncio.wait_for, so a TimeoutError
+# raised by the service is just another exception that flows through the
+# `except Exception` branch. These tests lock in that behavior: if someone
+# later wraps the call in a timeout, they need to explicitly choose a
+# taxonomy (timeout → 504 vs. timeout → success=False) and update the tests.
+
+
+@pytest.mark.asyncio
+async def test_query_upstream_timeout_is_swallowed_as_200_success_false() -> None:
+    """`asyncio.TimeoutError` from OracleService must not leak a 500.
+
+    It flows through the same generic-exception branch as any other upstream
+    failure, producing a 200 with `success=False`. The error string carries
+    the timeout marker so the caller can distinguish timeouts from other
+    failures without a stack trace.
+    """
+    import asyncio
+
+    app = _build_app()
+    process = AsyncMock(side_effect=asyncio.TimeoutError())
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "slow query that will time out upstream"},
+            )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["success"] is False
+    # TimeoutError's str() is empty but the type name is carried — at minimum
+    # the response must set success=False and zero out the metrics.
+    assert body["execution_time_ms"] == 0
+    assert body["document_count"] == 0
+    assert body["answer"] is None
+    assert body["sources"] == []
+    process.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_query_upstream_timeout_with_message_surfaces_error_string() -> None:
+    """When the service raises a TimeoutError subclass with a message (e.g.
+    httpx.ReadTimeout-style), the router should surface the message in the
+    error field without wrapping or re-raising."""
+    import asyncio
+
+    class _NamedTimeout(asyncio.TimeoutError):
+        pass
+
+    app = _build_app()
+    process = AsyncMock(
+        side_effect=_NamedTimeout("qdrant upstream exceeded 5s deadline"),
+    )
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "another slow one"},
+            )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["success"] is False
+    assert "qdrant upstream exceeded 5s" in body["error"]
+
+
+@pytest.mark.asyncio
+async def test_query_simulated_wait_for_timeout_is_swallowed() -> None:
+    """If a caller later wraps `oracle_service.process_query` in
+    `asyncio.wait_for`, the resulting TimeoutError must still be handled
+    cleanly. Simulate it by wrapping the mock itself."""
+    import asyncio
+
+    async def _slow_service(**_: Any) -> dict[str, Any]:
+        await asyncio.sleep(10)  # would exceed any reasonable deadline
+        return _happy_result(query="never reached")
+
+    async def _timing_out(**kwargs: Any) -> dict[str, Any]:
+        # 10ms is tiny but non-zero — the sleep inside will always exceed it
+        return await asyncio.wait_for(_slow_service(**kwargs), timeout=0.01)
+
+    app = _build_app()
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", side_effect=_timing_out):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "query that triggers wait_for timeout"},
+            )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["success"] is False
+    # Do NOT assert on error string content — asyncio.TimeoutError's str()
+    # is "" on 3.11+, so the field may be empty. The contract we lock in
+    # is: no 500, no stack trace, success=False.
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — get_current_user 401 propagation
+# ---------------------------------------------------------------------------
+#
+# `get_current_user` is a FastAPI dependency. When it raises HTTPException,
+# FastAPI short-circuits before the router body runs, and the router's
+# `except HTTPException: raise` branch is never even reached. These tests
+# verify the dependency wiring is honored end-to-end — the wave 1 tests
+# all used a fake `get_current_user` that always succeeded, so this path
+# was completely untested at the router level.
+
+
+@pytest.mark.asyncio
+async def test_query_returns_401_when_auth_dependency_raises() -> None:
+    """If `get_current_user` raises HTTPException(401), the /query endpoint
+    must respond 401 — the oracle_service.process_query must not even be
+    invoked."""
+    app = FastAPI()
+    app.include_router(router)
+
+    async def failing_auth() -> dict[str, Any]:
+        raise HTTPException(status_code=401, detail="token expired")
+
+    async def fake_search_service() -> Any:
+        return object()
+
+    app.dependency_overrides[get_current_user] = failing_auth
+    app.dependency_overrides[get_search_service] = fake_search_service
+
+    process = AsyncMock(return_value=_happy_result(query="should never run"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "any valid query here"},
+            )
+    assert r.status_code == 401
+    assert r.json() == {"detail": "token expired"}
+    process.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_query_auth_failure_propagates_custom_status() -> None:
+    """Any HTTPException from the auth dependency must propagate its status
+    verbatim (not be rewritten to 500 or swallowed into a 200)."""
+    app = FastAPI()
+    app.include_router(router)
+
+    async def forbidden_auth() -> dict[str, Any]:
+        raise HTTPException(
+            status_code=403,
+            detail="account suspended",
+            headers={"X-Bali-Reason": "kyc-pending"},
+        )
+
+    async def fake_search_service() -> Any:
+        return object()
+
+    app.dependency_overrides[get_current_user] = forbidden_auth
+    app.dependency_overrides[get_search_service] = fake_search_service
+
+    process = AsyncMock(return_value=_happy_result(query="should never run"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "a perfectly valid query string"},
+            )
+    assert r.status_code == 403
+    assert r.json() == {"detail": "account suspended"}
+    assert r.headers.get("x-bali-reason") == "kyc-pending"
+    process.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — Pydantic limit boundary (50 passes, 51 rejects)
+# ---------------------------------------------------------------------------
+#
+# Wave 1 `test_query_rejects_limit_out_of_range` tested 0 and 51, but not the
+# inclusive upper bound 50. These lock in the `ge=1, le=50` contract on both
+# sides: exact boundary values should not drift under Pydantic upgrades.
+
+
+@pytest.mark.asyncio
+async def test_query_accepts_limit_equal_to_upper_bound() -> None:
+    """limit=50 is the documented maximum — it must pass validation and
+    be forwarded to the service as-is."""
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="boundary limit"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "boundary limit", "limit": 50},
+            )
+    assert r.status_code == 200
+    process.assert_awaited_once()
+    assert process.await_args.kwargs["request_limit"] == 50
+
+
+@pytest.mark.asyncio
+async def test_query_accepts_limit_equal_to_lower_bound() -> None:
+    """limit=1 is the documented minimum — it must pass validation and
+    be forwarded as-is."""
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="lower bound limit"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "lower bound limit", "limit": 1},
+            )
+    assert r.status_code == 200
+    process.assert_awaited_once()
+    assert process.await_args.kwargs["request_limit"] == 1
+
+
+@pytest.mark.asyncio
+async def test_query_rejects_limit_51_with_pydantic_detail() -> None:
+    """limit=51 is one over the upper bound — Pydantic must reject with 422
+    and the detail payload must point at the `limit` field so clients can
+    surface the error."""
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="should never run"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "valid query", "limit": 51},
+            )
+    assert r.status_code == 422
+    body = r.json()
+    assert body["detail"][0]["loc"][-1] == "limit"
+    process.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — quirk-lock-in tests for Q1 (silently-dropped request fields)
+# ---------------------------------------------------------------------------
+#
+# Wave 1 audit flagged `domain_hint`, `context_docs`, and `response_format`
+# as defined on the request model but not forwarded to oracle_service.
+# Wave 2 decision (see WAVE2_NOTES.md Q1): keep the fields — removing them
+# is a breaking OpenAPI change (apps/mouth consumes the schema) — but log a
+# WARN when any of them is provided so we at least know the drop is
+# happening. These tests lock in both halves: the drop (service call kwargs
+# do NOT contain the fields) AND the log line.
+
+
+@pytest.mark.asyncio
+async def test_query_domain_hint_is_not_forwarded_to_service(caplog) -> None:
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="hint passthrough check"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "hint passthrough check", "domain_hint": "tax"},
+            )
+    assert r.status_code == 200
+    kwargs = process.await_args.kwargs
+    assert "domain_hint" not in kwargs
+    assert "request_domain_hint" not in kwargs
+    assert any("domain_hint" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_query_context_docs_is_not_forwarded_to_service(caplog) -> None:
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="docs passthrough check"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "docs passthrough check",
+                    "context_docs": ["drive-file-1", "drive-file-2"],
+                },
+            )
+    assert r.status_code == 200
+    kwargs = process.await_args.kwargs
+    assert "context_docs" not in kwargs
+    assert "request_context_docs" not in kwargs
+    assert any("context_docs" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_query_response_format_is_not_forwarded_to_service(caplog) -> None:
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="format passthrough check"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "format passthrough check",
+                    "response_format": "conversational",
+                },
+            )
+    assert r.status_code == 200
+    kwargs = process.await_args.kwargs
+    assert "response_format" not in kwargs
+    assert "request_response_format" not in kwargs
+    # The default "structured" is not noisy-logged — only overrides are.
+    assert any("response_format" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_query_default_response_format_does_not_log_drop_warning(caplog) -> None:
+    """If the client does not override `response_format` (stays at the
+    default 'structured'), the router must NOT emit the Q1 drop warning —
+    otherwise every request would log spam."""
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="default fmt"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "default fmt"},  # no response_format override
+            )
+    assert r.status_code == 200
+    # No warning record mentioning the unwired fields
+    matching = [rec for rec in caplog.records if "not forwarded" in rec.message]
+    assert matching == []
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — Q2 lock-in: ValidationError now has a dedicated branch
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_query_malformed_service_response_logs_validation_error(caplog) -> None:
+    """Q2: when oracle_service returns a dict that does not match
+    OracleQueryResponse, the router must:
+    - still answer 200 (contract unchanged, no breaking caller impact),
+    - set success=False (same as before),
+    - but tag the error string with `response_validation_error:` and emit
+      a WARN log — so Sentry can distinguish schema drift from a true
+      runtime fault.
+    """
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+
+    app = _build_app()
+    # Missing required field execution_time_ms → ValidationError
+    bad = {
+        "success": True,
+        "query": "schema drift",
+        "sources": [],
+        "document_count": 0,
+    }
+    process = AsyncMock(return_value=bad)
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "schema drift check"},
+            )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["success"] is False
+    assert body["error"].startswith("response_validation_error:")
+    validation_logs = [
+        rec for rec in caplog.records
+        if "validation failed" in rec.message and rec.levelname == "WARNING"
+    ]
+    assert len(validation_logs) == 1
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 — Q3 lock-in: stub endpoints are marked deprecated but still answer
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_drive_test_stub_is_marked_deprecated_in_openapi() -> None:
+    """Q3: the /drive/test, /gemini/test, and /user/profile stubs have been
+    flagged `deprecated=True` at the OpenAPI level so apps/mouth and other
+    consumers get a visible signal in generated SDKs, but the handlers
+    continue to return the same bodies for now."""
+    app = _build_app()
+    spec = app.openapi()
+
+    drive = spec["paths"]["/api/oracle/drive/test"]["get"]
+    gemini = spec["paths"]["/api/oracle/gemini/test"]["get"]
+    profile = spec["paths"]["/api/oracle/user/profile/{user_email}"]["get"]
+
+    assert drive.get("deprecated") is True
+    assert gemini.get("deprecated") is True
+    assert profile.get("deprecated") is True
+
+    # Health and query endpoints MUST NOT be flagged deprecated.
+    assert spec["paths"]["/api/oracle/health"]["get"].get("deprecated") is not True
+    assert spec["paths"]["/api/oracle/query"]["post"].get("deprecated") is not True
+
+
+@pytest.mark.asyncio
+async def test_deprecated_stubs_still_return_original_payload() -> None:
+    """Q3: existing consumers must keep working unchanged. Adding new fields
+    to the payload would be a schema break for strict clients — we only
+    flip the OpenAPI `deprecated` flag and emit an info log."""
+    app = _build_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        drive = await client.get("/api/oracle/drive/test")
+        gemini = await client.get("/api/oracle/gemini/test")
+        profile = await client.get("/api/oracle/user/profile/someone@example.com")
+
+    assert drive.status_code == 200
+    assert drive.json() == {"status": "moved_to_service", "available": True}
+    assert gemini.status_code == 200
+    assert gemini.json() == {"status": "moved_to_service", "available": True}
+    assert profile.status_code == 200
+    assert profile.json() == {
+        "status": "not_implemented",
+        "email": "someone@example.com",
+    }
