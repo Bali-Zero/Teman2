@@ -14,17 +14,73 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Expanded domain → notebook mapping (4 → 8+)
-# NB IDs from nlm_verifier.py + nlm_notebook_registry.py
-DOMAIN_NOTEBOOK_MAP_V2: dict[str, list[str]] = {
+# Base domain → notebook mapping (4 NB today).
+# NB IDs taken from nlm_verifier.py + nlm_notebook_registry.py.
+# This is the SAFE default the chat has always shipped with.
+# NOTE: the "property" entry still points at NB-3 Company here because that
+# was the historical fallback when NB-5 did not yet exist in production.
+# The extended map below corrects this; enable via NLM_EXTENDED_ROUTING.
+_BASE_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
     "visa": ["cff93ab0-813a-42f2-a8de-36987e724271"],          # NB-2
     "immigration": ["cff93ab0-813a-42f2-a8de-36987e724271"],    # NB-2
     "tax": ["d4b2eedb-9863-4a1a-81ff-a11b0b45d853"],           # NB-4
     "legal": ["933509f9-1561-403d-bd44-4a7a67a36df2"],          # NB-3
     "company": ["933509f9-1561-403d-bd44-4a7a67a36df2"],        # NB-3
     "kbli": ["cff93ab0-813a-42f2-a8de-36987e724271"],           # NB-2
-    "property": ["933509f9-1561-403d-bd44-4a7a67a36df2"],       # NB-3 (legal covers property)
+    "property": ["933509f9-1561-403d-bd44-4a7a67a36df2"],       # NB-3 (historical fallback)
 }
+
+# Extended map — adds NB-5..8 and NB-10 so RAG can reach every notebook the
+# evaluator pipelines already feed nightly. Also corrects the `property`
+# entry to point at NB-5 and adds an `operations`/`editorial`/`lifestyle`/
+# `team` alias set that mirrors the keywords used by
+# `nlm_notebook_registry.NLM_NOTEBOOKS` (the authoritative registry).
+#
+# Sources:
+#   - NB-5 (property)    d9438180-5e63-4e2a-a473-6061101f6a8d
+#   - NB-6 (operations)  85207af3-352f-4554-8d2a-18f42cc541ba
+#   - NB-7 (editorial)   f51ab8a0-50d0-49f1-a64f-ebc131fed7b8
+#   - NB-8 (lifestyle)   4fd8cd0f-93f1-4e43-9c9e-86c0d581852c
+#   - NB-10 (team)       f0307c2c-9220-4160-93c8-f4a6ef4a3b65
+_EXTENDED_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
+    **_BASE_DOMAIN_NOTEBOOK_MAP,
+    "property": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],       # NB-5 (corrected)
+    "real_estate": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],    # NB-5
+    "zoning": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],         # NB-5
+    "operations": ["85207af3-352f-4554-8d2a-18f42cc541ba"],     # NB-6
+    "compliance": ["85207af3-352f-4554-8d2a-18f42cc541ba"],     # NB-6
+    "editorial": ["f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"],      # NB-7
+    "content": ["f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"],        # NB-7
+    "lifestyle": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],      # NB-8
+    "expat": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],          # NB-8
+    "healthcare": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],     # NB-8
+    "team": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],           # NB-10
+    "hr": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],             # NB-10
+    "payroll": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],        # NB-10
+}
+
+
+def _extended_routing_enabled() -> bool:
+    """Read env var at call time so tests and dev restarts flip cleanly."""
+    import os
+    raw = os.environ.get("NLM_EXTENDED_ROUTING", "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _active_domain_map() -> dict[str, list[str]]:
+    """Return the map used for real routing — extended only when the flag is set."""
+    return (
+        _EXTENDED_DOMAIN_NOTEBOOK_MAP
+        if _extended_routing_enabled()
+        else _BASE_DOMAIN_NOTEBOOK_MAP
+    )
+
+
+# Public alias retained for backwards-compat with any importer that
+# references DOMAIN_NOTEBOOK_MAP_V2 directly. It mirrors the base map so
+# existing behavior is unchanged when the flag is off, and points at the
+# extended map when the flag is on at import time.
+DOMAIN_NOTEBOOK_MAP_V2: dict[str, list[str]] = _active_domain_map()
 
 # Cross-domain queries fan out to multiple notebooks
 CROSS_DOMAIN_NOTEBOOKS: dict[str, list[str]] = {
@@ -36,7 +92,30 @@ CROSS_DOMAIN_NOTEBOOKS: dict[str, list[str]] = {
         "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
         "cff93ab0-813a-42f2-a8de-36987e724271",  # NB-2
     ],
+    # Extended cross-domain patterns only kick in when NLM_EXTENDED_ROUTING=1
+    # (guarded inside _resolve_notebooks). Declared here so the shapes are
+    # visible in one place.
+    "property+tax": [
+        "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
+        "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
+    ],
+    "property+company": [
+        "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
+        "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
+    ],
+    "team+tax": [
+        "f0307c2c-9220-4160-93c8-f4a6ef4a3b65",  # NB-10
+        "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
+    ],
+    "operations+compliance": [
+        "85207af3-352f-4554-8d2a-18f42cc541ba",  # NB-6
+    ],
 }
+
+# Pairs that only become meaningful once extended routing is on
+_EXTENDED_CROSS_KEYS = frozenset(
+    {"property+tax", "property+company", "team+tax", "operations+compliance"}
+)
 
 # Redis cache config
 NLM_CACHE_TTL = 86400  # 24 hours
@@ -134,15 +213,53 @@ class NLMOrchestrator:
             return None
 
     def _resolve_notebooks(self, domain: str, is_cross_domain: bool) -> list[str]:
-        """Resolve which notebook(s) to query for a domain."""
-        if is_cross_domain and self._correlator is not None:
-            # Use correlator for cross-domain detection
-            # Try predefined cross-domain patterns first
-            for key, nbs in CROSS_DOMAIN_NOTEBOOKS.items():
-                if domain in key:
-                    return nbs
+        """Resolve which notebook(s) to query for a domain.
 
-        notebooks = DOMAIN_NOTEBOOK_MAP_V2.get(domain, [])
+        Behaviour is controlled by the ``NLM_EXTENDED_ROUTING`` env var:
+
+        - ``unset`` / ``0`` / ``false`` — only the base 4-NB map is used for
+          routing (visa/immigration/kbli → NB-2, legal/company/property →
+          NB-3, tax → NB-4). A *shadow-mode* log line is emitted whenever the
+          extended map would have picked a different notebook, so the
+          divergence is observable without changing user-visible responses.
+        - ``1`` / ``true`` / ``yes`` — the extended map is the live map:
+          ``property`` resolves to NB-5, ``operations`` to NB-6, ``editorial``
+          to NB-7, ``lifestyle`` to NB-8, ``team`` to NB-10 (plus aliases).
+        """
+        extended = _extended_routing_enabled()
+
+        if is_cross_domain and self._correlator is not None:
+            for key, nbs in CROSS_DOMAIN_NOTEBOOKS.items():
+                if domain not in key:
+                    continue
+                if key in _EXTENDED_CROSS_KEYS and not extended:
+                    # Don't ship a cross-NB fan-out to a freshly-added NB
+                    # until Zero flips the flag; log the would-be choice.
+                    logger.info(
+                        "nlm_routing shadow: cross '%s' -> %s (extended only)",
+                        key,
+                        nbs,
+                    )
+                    continue
+                return nbs
+
+        active = _active_domain_map()
+        notebooks = active.get(domain, [])
+
+        if not extended:
+            # Shadow-mode observability: log when the extended map would have
+            # returned something different from the base map (typically the
+            # property/operations/editorial/lifestyle/team branches).
+            ext_choice = _EXTENDED_DOMAIN_NOTEBOOK_MAP.get(domain, [])
+            if ext_choice and ext_choice != notebooks:
+                logger.info(
+                    "nlm_routing shadow: domain='%s' live=%s extended=%s "
+                    "(set NLM_EXTENDED_ROUTING=1 to make extended the live map)",
+                    domain,
+                    notebooks or None,
+                    ext_choice,
+                )
+
         return notebooks
 
     async def _query_single(
@@ -215,7 +332,7 @@ class NLMOrchestrator:
             return None
 
         try:
-            notebooks = DOMAIN_NOTEBOOK_MAP_V2.get(domain, [])
+            notebooks = _active_domain_map().get(domain, [])
             if not notebooks:
                 return None
 
@@ -238,7 +355,7 @@ class NLMOrchestrator:
         if self._cache is None or not result.answer:
             return
         try:
-            notebooks = result.notebooks_queried or DOMAIN_NOTEBOOK_MAP_V2.get(domain, [])
+            notebooks = result.notebooks_queried or _active_domain_map().get(domain, [])
             if notebooks:
                 await self._cache.set(
                     question,
