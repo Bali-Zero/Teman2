@@ -40,11 +40,11 @@ export default function PartnerReferralsPage() {
             <tbody className="divide-y divide-white/10">
               {referrals.map((r) => (
                 <tr key={r.id} className="text-gray-200 hover:bg-white/5">
-                  <td className="px-4 py-2">{r.referred_client_name ?? "—"}</td>
-                  <td className="px-4 py-2">{r.practice_type_name ?? "—"}</td>
-                  <td className="px-4 py-2">{r.status}</td>
+                  <td className="px-4 py-2">{r.client_display ?? "—"}</td>
+                  <td className="px-4 py-2">{r.service_type ?? r.practice_type_name ?? "—"}</td>
+                  <td className="px-4 py-2">{r.process_status ?? r.status}</td>
                   <td className="px-4 py-2">
-                    {new Date(r.created_at).toLocaleDateString("id-ID", {
+                    {new Date(r.referred_at ?? r.created_at).toLocaleDateString("id-ID", {
                       year: "numeric",
                       month: "short",
                       day: "numeric",

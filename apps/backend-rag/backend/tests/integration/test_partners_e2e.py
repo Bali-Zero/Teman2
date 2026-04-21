@@ -123,6 +123,10 @@ async def test_full_flow_process_to_paid_email(
     # We just verify gross matches.
     assert c.gross_amount_idr == Decimal("1500000"), \
         f"Expected gross 1500000, got {c.gross_amount_idr}"
+    assert c.withholding_amount_idr == Decimal("30000"), \
+        f"Expected withholding 30000 (2% pph23 of 1500000), got {c.withholding_amount_idr}"
+    assert c.net_amount_idr == Decimal("1470000"), \
+        f"Expected net 1470000 (gross - withholding), got {c.net_amount_idr}"
 
     # ── Step 5: Fast-forward cooling-off ────────────────────────────────────
     await db_conn.execute(

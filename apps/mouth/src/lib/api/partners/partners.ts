@@ -13,13 +13,16 @@ export type EntityType = "individual" | "corporate_pt" | "corporate_cv" | "forei
 export type CommissionTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 export type TaxWithholdingCategory = 'tbd' | 'withheld_tarif_umum' | 'withheld_tarif_final' | 'exempt';
 export type CommissionStatus =
+  | 'accrued'           // from commission engine FSM
   | 'pending_approval'
   | 'approved'
   | 'ready_to_pay'
   | 'paid'
   | 'clawback_pending'
+  | 'offset_applied'    // from commission engine FSM
   | 'clawed_back'
-  | 'waived';
+  | 'waived'
+  | 'repaid';           // from commission engine FSM
 
 export interface Partner {
   id: number;
@@ -55,13 +58,18 @@ export interface PartnerReferral {
   id: number;
   partner_id: number;
   referred_client_id?: number;
-  referred_client_name?: string;
+  referred_client_name?: string;      // kept for backward-compat with team-side endpoints
+  client_display?: string;            // from /api/partners/me/referrals (sterilized name)
   referred_practice_id?: number;
+  process_id?: number;
+  process_status?: string;            // from /me/referrals
   practice_type_name?: string;
+  service_type?: string;              // from /me/referrals
   status: string;
   commission_amount?: number;
   commission_status: CommissionStatus;
   created_at: string;
+  referred_at?: string;               // /me/referrals uses this instead of created_at
 }
 
 export interface PartnerCommission {

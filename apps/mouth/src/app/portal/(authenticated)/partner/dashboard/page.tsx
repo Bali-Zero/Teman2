@@ -51,10 +51,10 @@ export default function PartnerDashboardPage() {
 
   const totalEarned = commissions
     .filter((c) => c.status === "paid")
-    .reduce((sum, c) => sum + (c.net_amount ?? 0), 0);
+    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
   const totalPending = commissions
     .filter((c) => c.status === "accrued" || c.status === "approved" || c.status === "pending_approval")
-    .reduce((sum, c) => sum + (c.net_amount ?? 0), 0);
+    .reduce((sum, c) => sum + Number(c.net_amount ?? 0), 0);
   const recentReferrals = referrals.slice(0, 5);
   const recentCommissions = commissions.slice(0, 5);
 
@@ -104,11 +104,11 @@ export default function PartnerDashboardPage() {
               <tbody className="divide-y divide-white/10">
                 {recentReferrals.map((r) => (
                   <tr key={r.id} className="text-gray-200">
-                    <td className="px-4 py-2">{r.referred_client_name ?? "—"}</td>
-                    <td className="px-4 py-2">{r.practice_type_name ?? "—"}</td>
-                    <td className="px-4 py-2">{r.status}</td>
+                    <td className="px-4 py-2">{r.client_display ?? "—"}</td>
+                    <td className="px-4 py-2">{r.service_type ?? r.practice_type_name ?? "—"}</td>
+                    <td className="px-4 py-2">{r.process_status ?? r.status}</td>
                     <td className="px-4 py-2">
-                      {new Date(r.created_at).toLocaleDateString("id-ID")}
+                      {new Date(r.referred_at ?? r.created_at).toLocaleDateString("id-ID")}
                     </td>
                   </tr>
                 ))}
