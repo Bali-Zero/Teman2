@@ -67,7 +67,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 252 routers, 475 services, 793 test files
+- **Backend:** Python 3.11+, FastAPI, 252 routers, 478 services, 795 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -102,7 +102,20 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no 2>/
 
 - Use `Edit`, `Write`, `Bash` without asking permission
 - **NEVER** ask "should I write this?" — just do it
-- Only ask for: architecture trade-offs, production deploys, destructive ops
+
+### Autonomous Operations — read `AUTONOMOUS_OPS.md` at project root
+
+The user has pre-authorized a specific scope of autonomous action (commits,
+push, PRs, auto-merge when CI green, deploy via `fly-deploy.yml`, post-deploy
+browser QA). **Do not ask for confirmation** on anything listed as
+"autonomous" for the active Level in that file. Only ask for confirmation on
+items listed as "requires confirmation" or unlisted (conservative default).
+
+Read `AUTONOMOUS_OPS.md` fully before acting on: git push, PR operations,
+deploy, `fly ssh`, or any change to shared state. Check the "active since"
+date — if stale (>30 days), fall back to conservative mode and ask the user
+to re-certify. The user is not a developer; their veto is NOT the safety
+layer — the guardrails listed in that file are.
 
 ### Browser Automation Rules
 
@@ -441,7 +454,34 @@ Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 
 Check `~/.agent/decisions/claude_tasks/` at session start. Work by `priority` (HIGH first), then `created_at`. Delete file after fix + verify with `test_cmd`.
 
+## 16. Research Capture Convention
+
+Quando l'assistente produce una ricerca sostanziosa per un caso cliente Bali Zero, va salvata — non deve morire nella scrollback.
+
+**Dove:** `~/Desktop/nuzantara/research/{property,visa,tax,hr,compliance}/YYYY-MM-DD-topic-slug.md`
+
+**Frontmatter obbligatorio:**
+```yaml
+---
+date: YYYY-MM-DD
+domain: property|visa|tax|hr|compliance
+client_case: <breve descrizione>
+sources: <n>
+---
+```
+
+**Trigger (proponi save quando TUTTI veri):** risposta ≥ ~400 parole sostanziali · ≥ 3 fonti distinte · contiene checklist/procedura/lista documenti · dominio in {property, visa/immigration, tax, HR, compliance} · legata a caso cliente o scenario concreto.
+
+**Formato proposta (una riga):** *"Questa mi sembra da salvare in `research/<domain>/` — procedo? (y/n)"*
+
+**Su y:**
+1. Scrivi file con frontmatter + body verbatim
+2. Appendi una riga in `~/.claude/projects/-Users-nuzantara/memory/MEMORY.md` sotto `## Research Captures` (formato: `- YYYY-MM-DD <domain> <slug> → research/<domain>/<file>.md — <one-line summary>`)
+3. **Solo se domain=property:** push del body come text source su NotebookLM NB-5 (`d9438180-5e63-4e2a-a473-6061101f6a8d`) via `mcp__notebooklm-mcp__source_add`. Altri domini: non toccare i NB curati.
+
+**Non promuovere mai automaticamente a KB ufficiale** (`apps/backend-rag/backend/kb/`): quello è curato, le research capture restano in `research/` come livello "ad-hoc auditable".
+
 ---
 
-**Last Updated:** 2026-03-31
+**Last Updated:** 2026-04-21
 **Maintained by:** Bali Zero AI Team
