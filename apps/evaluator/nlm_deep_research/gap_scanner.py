@@ -208,8 +208,10 @@ def _extract_gap_topics(response: str) -> list[str]:
         parsed = None
 
     if isinstance(parsed, dict):
-        # Common NLM CLI shape: {"answer": "...", "sources_used": [...], ...}
-        answer = parsed.get("answer") or parsed.get("response") or ""
+        # Common NLM CLI shape: {"value": {"answer": "...", "sources_used": [...], ...}}
+        # Older shape: {"answer": "...", ...}
+        inner = parsed.get("value") if isinstance(parsed.get("value"), dict) else parsed
+        answer = inner.get("answer") or inner.get("response") or ""
         text = answer if isinstance(answer, str) else str(answer)
 
     gaps: list[str] = []
