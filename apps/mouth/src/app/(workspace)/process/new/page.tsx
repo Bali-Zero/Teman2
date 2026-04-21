@@ -25,6 +25,7 @@ import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { ReferrerDropdown } from "@/components/partners/ReferrerDropdown";
 
 interface ServiceItem {
   code: string;
@@ -73,6 +74,7 @@ export default function NewPracticePage() {
     assigned_to: "",
     priority: "normal" as "normal" | "high" | "urgent",
     start_date: "",
+    referrer_id: null as number | null,
   });
 
   // Client Search State
@@ -341,7 +343,7 @@ export default function NewPracticePage() {
         });
       }
 
-      const backendData: CreatePracticeParams = {
+      const backendData = {
         client_id: result.data.client_id,
         practice_type_code: result.data.practice_type_code,
         status: "inquiry",
@@ -352,7 +354,8 @@ export default function NewPracticePage() {
           : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
-      };
+        ...(formData.referrer_id ? { referrer_id: formData.referrer_id } : {}),
+      } as CreatePracticeParams;
 
       const createdPractice = await api.crm.createPractice(
         backendData,
@@ -781,6 +784,21 @@ export default function NewPracticePage() {
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
               />
             </div>
+          </div>
+
+          {/* Referrer (Partner) */}
+          <div className="space-y-2">
+            <label className={labelClass}>
+              Referrer{" "}
+              <span className="text-[var(--foreground-muted)] font-normal">
+                (optional)
+              </span>
+            </label>
+            <ReferrerDropdown
+              value={formData.referrer_id}
+              onChange={(id) => setFormData((prev) => ({ ...prev, referrer_id: id }))}
+              className="w-full"
+            />
           </div>
 
           {/* Notes */}
