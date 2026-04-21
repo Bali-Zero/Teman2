@@ -5,7 +5,9 @@ They import Bali Zero brand (colors, fonts) from brand.json constants below.
 Google Fonts used as CDN fallback — local fonts on Pro are preferred but
 templates must work in any environment.
 
-Reference: docs/war-room-2.0-design.md §5.1 + apps/war-room/config/brand.json
+Reference: docs/war-room-2.0-design.md §5.1. Brand values below were
+originally sourced from the WR1 config/brand.json (removed 2026-04-22);
+WR2 keeps them inline since the Layout Renderer is a pure-Python stage.
 """
 
 from __future__ import annotations
@@ -15,7 +17,7 @@ from enum import Enum
 
 from backend.services.war_room.models import Platform
 
-# ── Brand constants (mirror apps/war-room/config/brand.json) ─────────
+# ── Brand constants (inlined from WR1's brand.json) ──────────────────
 
 BRAND_BG = "#373d42"
 BRAND_TEXT_PRIMARY = "#FFFFFF"

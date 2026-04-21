@@ -188,3 +188,52 @@ def test_caption_escapes_html():
     caption = req.to_caption()
     assert "<script>" not in caption
     assert "&lt;script&gt;" in caption
+
+
+# ── Canva edit URL integration ──────────────────────────────────────
+
+
+def test_caption_includes_canva_hint_when_url_set():
+    req = ReviewRequest(
+        draft_id=DID,
+        topic="t",
+        tone_register="analitico",
+        cover_image_url="https://x/c.jpg",
+        first_slide_text="b",
+        canva_edit_url="https://www.canva.com/design/XYZ/edit",
+    )
+    caption = req.to_caption()
+    # Canva cue is rendered (keyboard handles the link itself).
+    assert "Canva" in caption
+
+
+def test_caption_no_canva_hint_when_url_missing():
+    req = ReviewRequest(
+        draft_id=DID,
+        topic="t",
+        tone_register="analitico",
+        cover_image_url="https://x/c.jpg",
+        first_slide_text="b",
+    )
+    caption = req.to_caption()
+    assert "Canva" not in caption
+
+
+def test_primary_keyboard_without_canva_is_unchanged():
+    kb = build_primary_keyboard(DID)
+    assert len(kb["inline_keyboard"]) == 1
+    assert len(kb["inline_keyboard"][0]) == 3
+
+
+def test_primary_keyboard_with_canva_url_adds_second_row():
+    url = "https://www.canva.com/design/XYZ/edit"
+    kb = build_primary_keyboard(DID, canva_edit_url=url)
+    # first row: approve/edit/reject unchanged
+    assert len(kb["inline_keyboard"][0]) == 3
+    # second row: single URL button pointing to Canva
+    assert len(kb["inline_keyboard"]) == 2
+    canva_btn = kb["inline_keyboard"][1][0]
+    assert canva_btn["url"] == url
+    assert "Canva" in canva_btn["text"]
+    # URL buttons must NOT carry callback_data
+    assert "callback_data" not in canva_btn

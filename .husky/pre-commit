@@ -35,7 +35,7 @@ fi
 
 # Check for console.log in TypeScript/JavaScript files (exclude webapp browser context and monitoring dashboard)
 echo "📜 Checking for console.log statements in TypeScript/JavaScript files..."
-JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'apps/webapp/src/lib/ai-bridge.ts' | grep -v 'apps/mouth/src/lib/monitoring-dashboard.ts' | grep -v 'apps/mouth/src/app/layout.tsx' | grep -v 'apps/kbli-navigator/' | grep -v 'apps/war-room/' | grep -v 'src/lib/logger\.ts$' | grep -v 'lib/logger\.ts$' | grep -v '/e2e/' | grep -v '/public/' | grep -v '/scripts/' | grep -v 'console\.ts$' | grep -v 'scripts/validate-openapi\.js' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v '__tests__' || true)
+JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'apps/webapp/src/lib/ai-bridge.ts' | grep -v 'apps/mouth/src/lib/monitoring-dashboard.ts' | grep -v 'apps/mouth/src/app/layout.tsx' | grep -v 'apps/kbli-navigator/' | grep -v 'src/lib/logger\.ts$' | grep -v 'lib/logger\.ts$' | grep -v '/e2e/' | grep -v '/public/' | grep -v '/scripts/' | grep -v 'console\.ts$' | grep -v 'scripts/validate-openapi\.js' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v '__tests__' || true)
 if [ -n "$JS_FILES" ]; then
     if echo "$JS_FILES" | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
         echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."

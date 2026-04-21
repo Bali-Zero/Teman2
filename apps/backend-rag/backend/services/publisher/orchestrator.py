@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +32,43 @@ from backend.services.war_room.models import (
 from backend.services.war_room.repository import WarRoomRepository
 
 logger = logging.getLogger(__name__)
+
+KILL_SWITCH_ERROR = "wr2_publisher_kill_switch_off"
+KILL_SWITCH_SETTING_KEY = "wr2_publisher_enabled"
+
+
+def build_db_kill_switch_check(
+    db_pool: Any,
+) -> Callable[[], Awaitable[bool]]:
+    """Return an awaitable that reports whether the WR2 publisher is enabled.
+
+    Reads ``system_settings.value`` for key ``wr2_publisher_enabled``.
+    Returns ``True`` iff the value equals the string ``"true"`` (matching the
+    convention used by ``cron_notifiers.py`` and ``wr2_canva_apply.py``).
+
+    Fails **closed**: missing key or any DB error returns ``False`` so a
+    partially degraded environment cannot accidentally publish. Zero flips the
+    switch on explicitly with::
+
+        UPDATE system_settings SET value='true' WHERE key='wr2_publisher_enabled';
+    """
+
+    async def _check() -> bool:
+        try:
+            async with db_pool.acquire() as conn:
+                value = await conn.fetchval(
+                    "SELECT value FROM system_settings WHERE key = $1",
+                    KILL_SWITCH_SETTING_KEY,
+                )
+        except Exception as exc:  # noqa: BLE001 — fail closed
+            logger.warning(
+                "wr2 publisher kill-switch read failed (%s): defaulting to OFF",
+                exc,
+            )
+            return False
+        return value == "true"
+
+    return _check
 
 
 @dataclass
@@ -65,6 +103,7 @@ class PublisherOrchestrator:
         *,
         max_retries: int = 3,
         backoffs_s: tuple[float, ...] | None = None,
+        kill_switch_check: Callable[[], Awaitable[bool]] | None = None,
     ) -> None:
         if not publishers:
             raise ValueError("PublisherOrchestrator requires >= 1 publisher")
@@ -72,6 +111,7 @@ class PublisherOrchestrator:
         self.repo = repo
         self.max_retries = max_retries
         self.backoffs_s = backoffs_s or self.DEFAULT_BACKOFFS_S
+        self.kill_switch_check = kill_switch_check
         self.logger = logger
 
     async def publish_all(
@@ -82,6 +122,29 @@ class PublisherOrchestrator:
         force: bool = False,
     ) -> PublisherOrchestratorResult:
         result = PublisherOrchestratorResult(draft_id=draft.draft_id)
+
+        # Kill switch: if the caller wired one and it reports "off", stub out
+        # a failure result per platform with attempts=0 so nothing fires and
+        # the audit trail still shows every target was considered.
+        if self.kill_switch_check is not None:
+            allowed = await self.kill_switch_check()
+            if not allowed:
+                self.logger.info(
+                    "wr2 publisher kill switch OFF — skipping %d platform(s) for draft %s",
+                    len(self.publishers),
+                    draft.draft_id,
+                )
+                result.per_platform = [
+                    PublishResult(
+                        ok=False,
+                        platform=pub.platform_name,
+                        draft_id=draft.draft_id,
+                        attempts=0,
+                        error=KILL_SWITCH_ERROR,
+                    )
+                    for pub in self.publishers
+                ]
+                return result
 
         # Idempotency check — skip platforms where we already published
         already: dict[str, str] = {}

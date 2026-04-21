@@ -505,7 +505,6 @@ apps/mouth/public/audio/*.mp3
 apps/mouth/public/videos/*.mp4
 apps/kbli-navigator/public/*.mp4
 apps/backend-rag/data/assets/*.pdf
-apps/war-room/docs/*.pdf
 data/kb_sources/**/*.pdf
 data/kbli_pdfs/
 docs/team-guides/*.pdf
@@ -554,11 +553,7 @@ apps/backend-rag/training-data/
 apps/*/package-lock.json
 apps/team-agent/bridge/package-lock.json
 
-# War-room output artifacts
-apps/war-room/output/
-apps/war-room/logs/
-
-# Backend test/state artifacts  
+# Backend test/state artifacts
 apps/backend-rag/business-testing/
 apps/backend-rag/reports/
 
