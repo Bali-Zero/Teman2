@@ -34,7 +34,6 @@ from pydantic import BaseModel, EmailStr
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.crm.partners.commission_engine import CommissionEngine
 from backend.services.crm.partners.service import (
-    ConflictError,
     PartnersService,
     verify_partner_access_with_role,
 )
