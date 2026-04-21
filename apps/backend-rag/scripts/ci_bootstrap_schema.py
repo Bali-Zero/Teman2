@@ -142,7 +142,21 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
+        # system_settings: created by old-style migration_062
+        # (backend/migrations/*.sql), same scar as lkpm_reports. Used by
+        # test_compliance_alerts_router for the compliance_alert_autotune_enabled
+        # kill switch; without this, the whole router test file errors on
+        # UndefinedTableError at the first query.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
