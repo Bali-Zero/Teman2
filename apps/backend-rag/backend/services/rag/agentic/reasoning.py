@@ -55,6 +55,7 @@ from backend.services.rag.agentic._reasoning_loop_helpers import (
     should_early_exit_on_vector_search,
 )
 from backend.services.rag.agentic._reasoning_policy import (
+    apply_shared_trusted_flippers,
     detect_llm_has_tools,
     detect_pricing_data_in_answer,
     should_apply_low_evidence_policy,
@@ -520,24 +521,15 @@ class ReasoningEngine:
 
             set_span_status("ok")
 
-        # ==================== ANSWER CONTENT CHECK ====================
-        # If the LLM produced pricing numbers in the final answer, it
-        # almost certainly used tool output — don't override it.
-        if not trusted_tools_used and detect_pricing_data_in_answer(state.final_answer):
-            trusted_tools_used = True
-
-        # ==================== POLICY ENFORCEMENT ====================
-        # Skip evidence check when the LLM had tools available and chose
-        # to answer directly — trust its judgment.
-        if state.final_answer:
-            has_tools, tool_count = detect_llm_has_tools(llm_gateway)
-            if has_tools:
-                logger.info(
-                    "🔍 [Tools Available] LLM had %d tools and produced answer, "
-                    "skipping strict evidence check",
-                    tool_count,
-                )
-                trusted_tools_used = True
+        # ==================== TRUSTED FLIPPERS (SHARED) ====================
+        # Pricing-in-answer + LLM-had-tools checks — identical in both
+        # sync and streaming pipelines. Extracted to _reasoning_policy.py
+        # so the two pipelines cannot drift on this predicate (SCAR §U5).
+        trusted_tools_used = apply_shared_trusted_flippers(
+            trusted_tools_used=trusted_tools_used,
+            final_answer=state.final_answer,
+            llm_gateway=llm_gateway,
+        )
 
         state.trusted_tools_used = trusted_tools_used
 
@@ -1089,37 +1081,34 @@ Do not invent information. If the context is insufficient, admit it.
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
-        # ==================== TRUSTED TOOLS FALLBACK CHECK ====================
-        # Streaming-only: if no trusted tool detected from steps, scan
-        # context_gathered for pricing/team/KG output markers.
+        # ==================== STREAM-ONLY PRE-FLIPPERS ====================
+        # INTENTIONAL divergence from the sync pipeline (SCAR §U5):
+        # streaming is more permissive about trusted-path detection because
+        # it doesn't always traverse the step-level `detect_trusted_tool_usage`
+        # signal (early-exits can bypass it). Two extra widenings:
+        #   1. detect_trusted_context_markers: scan joined context for
+        #      pricing/team/KG markers (tool output echoed back).
+        #   2. detect_substantial_context: total context length > threshold
+        #      implies the LLM had evidence to work with.
+        # Docstrings in _reasoning_evidence.py explicitly flag these as
+        # streaming-only fallbacks — do NOT mirror into the sync pipeline
+        # without a deliberate review of the resulting behavior change.
         if not trusted_tools_used:
             marker_hit, _ = detect_trusted_context_markers(state.context_gathered)
             if marker_hit:
                 trusted_tools_used = True
 
-        # If the ReAct loop gathered substantial context from ANY tool,
-        # the LLM had evidence to work with — bypass strict evidence check.
         if not trusted_tools_used and detect_substantial_context(state.context_gathered):
             trusted_tools_used = True
 
-        # ==================== ANSWER CONTENT CHECK ====================
-        # If the LLM produced pricing numbers in the final answer, it
-        # almost certainly used tool output — don't override it.
-        if not trusted_tools_used and detect_pricing_data_in_answer(state.final_answer):
-            trusted_tools_used = True
-
-        # ==================== POLICY ENFORCEMENT ====================
-        # Skip evidence check when the LLM had tools available and chose
-        # to answer directly — trust its judgment.
-        if state.final_answer:
-            has_tools, tool_count = detect_llm_has_tools(llm_gateway)
-            if has_tools:
-                logger.info(
-                    "🔍 [Tools Available] LLM had %d tools and produced answer, "
-                    "skipping strict evidence check",
-                    tool_count,
-                )
-                trusted_tools_used = True
+        # ==================== TRUSTED FLIPPERS (SHARED) ====================
+        # Same helper as the sync pipeline — pricing-in-answer + has-tools.
+        # Extracted so the two pipelines cannot drift on this pair.
+        trusted_tools_used = apply_shared_trusted_flippers(
+            trusted_tools_used=trusted_tools_used,
+            final_answer=state.final_answer,
+            llm_gateway=llm_gateway,
+        )
 
         state.trusted_tools_used = trusted_tools_used
 

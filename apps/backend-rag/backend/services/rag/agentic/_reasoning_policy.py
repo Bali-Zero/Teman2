@@ -101,3 +101,53 @@ def should_apply_low_evidence_policy(
         and not skip_rag
         and not trusted_tools_used,
     )
+
+
+def apply_shared_trusted_flippers(
+    *,
+    trusted_tools_used: bool,
+    final_answer: str | None,
+    llm_gateway: Any,
+) -> bool:
+    """Apply the trusted-path flippers shared between sync and streaming.
+
+    Both pipelines apply these two late-stage checks after evidence score
+    computation, in the same order, with the same semantics:
+
+        1. Pricing-in-answer:    Rp / IDR / "juta" markers in final_answer
+                                 imply tool output was consumed → trust it.
+        2. LLM-had-tools:        gateway._gemini_tools non-empty AND
+                                 final_answer non-empty → trust LLM's
+                                 decision to answer directly.
+
+    Extracted so neither pipeline can drift on the predicate. Callers
+    retain responsibility for the stream-specific *pre-flippers*
+    (detect_trusted_context_markers, detect_substantial_context) — those
+    are an intentional streaming-only widening (see _reasoning_evidence.py
+    docstrings).
+
+    Args:
+        trusted_tools_used: current value (may have been flipped True
+            already by earlier checks).
+        final_answer: state.final_answer at this point.
+        llm_gateway: the gateway object (has `_gemini_tools` attribute).
+
+    Returns:
+        Possibly updated `trusted_tools_used` value. Never flips True→False.
+    """
+    # 1. Pricing in answer
+    if not trusted_tools_used and detect_pricing_data_in_answer(final_answer):
+        trusted_tools_used = True
+
+    # 2. LLM had tools + produced answer → trust judgment
+    if final_answer:
+        has_tools, tool_count = detect_llm_has_tools(llm_gateway)
+        if has_tools:
+            logger.info(
+                "🔍 [Tools Available] LLM had %d tools and produced answer, "
+                "skipping strict evidence check",
+                tool_count,
+            )
+            trusted_tools_used = True
+
+    return trusted_tools_used
