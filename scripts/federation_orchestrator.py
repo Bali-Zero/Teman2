@@ -21,7 +21,8 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from contextlib import contextmanager
+from typing import Any, TypedDict
 
 from dotenv import load_dotenv
 
@@ -41,6 +42,53 @@ from federation_capability_table import (
     match_domains,
     suggest_agents,
 )
+
+# Make backend/core/observability.py importable from scripts/ (POC-scope).
+_BACKEND_RAG = Path(__file__).resolve().parent.parent / "apps" / "backend-rag"
+if str(_BACKEND_RAG) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_RAG))
+try:
+    from backend.core.observability import (  # type: ignore
+        init_observability as _lf_init,
+        is_enabled as _lf_is_enabled,
+        shutdown_observability as _lf_shutdown,
+    )
+except Exception:  # noqa: BLE001 — observability must never break the CLI
+    _lf_init = None
+    _lf_is_enabled = lambda: False  # noqa: E731
+    _lf_shutdown = lambda: None  # noqa: E731
+
+
+@contextmanager
+def _lf_span(*, name: str, input_data: dict | None = None, metadata: dict | None = None):
+    """Yield a Langfuse span when enabled, else None.
+
+    Callers treat the yielded value as optional. User exceptions inside
+    the `with` block are propagated unchanged; only observability setup
+    errors are swallowed.
+    """
+    sync_cm = None
+    if _lf_is_enabled() and _lf_init is not None:
+        try:
+            _lf_init(service_name="nuzantara-federation")
+            from langfuse import get_client  # type: ignore
+
+            lf = get_client()
+            if lf is not None:
+                sync_cm = lf.start_as_current_span(
+                    name=name,
+                    input=input_data or {},
+                    metadata=metadata or {},
+                )
+        except Exception:
+            sync_cm = None
+
+    if sync_cm is None:
+        yield None
+        return
+
+    with sync_cm as span:
+        yield span
 
 # ═══════════════════════════════════════════════════════
 # Config
@@ -83,17 +131,30 @@ class FederationState(TypedDict, total=False):
 # ═══════════════════════════════════════════════════════
 async def run_dispatch(cmd: str, prompt: str) -> str:
     """Execute ai-dispatch.sh and return output."""
-    proc = await asyncio.create_subprocess_exec(
-        str(DISPATCH_SCRIPT), cmd, prompt,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        cwd=str(PROJECT_ROOT),
+    # Langfuse POC: one span per dispatched agent (gemini-search, codex, etc).
+    lf_span_ctx = _lf_span(
+        name=f"federation.dispatch.{cmd}",
+        input_data={"cmd": cmd, "prompt": prompt[:500]},
     )
-    stdout, stderr = await proc.communicate()
-    output = stdout.decode().strip()
-    if proc.returncode != 0 and not output:
-        output = f"[DISPATCH ERROR exit={proc.returncode}] {stderr.decode().strip()}"
-    return output
+    with lf_span_ctx as span:
+        proc = await asyncio.create_subprocess_exec(
+            str(DISPATCH_SCRIPT), cmd, prompt,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(PROJECT_ROOT),
+        )
+        stdout, stderr = await proc.communicate()
+        output = stdout.decode().strip()
+        if proc.returncode != 0 and not output:
+            output = f"[DISPATCH ERROR exit={proc.returncode}] {stderr.decode().strip()}"
+        if span is not None:
+            try:
+                span.update(
+                    output={"exit_code": proc.returncode, "output_len": len(output)},
+                )
+            except Exception:
+                pass
+        return output
 
 
 def append_audit(entry: dict) -> None:
@@ -138,6 +199,17 @@ async def classify_node(state: FederationState) -> dict:
     """Classify the task using local Ollama (Qwen 3.5:9b) with capability-aware routing."""
     task = state["task"]
 
+    lf_span_ctx = _lf_span(
+        name="federation.classify",
+        input_data={"task": task[:500]},
+    )
+    with lf_span_ctx as span:
+        return await _classify_node_inner(state, task, _span=span)
+
+
+async def _classify_node_inner(
+    state: FederationState, task: str, *, _span: Any = None
+) -> dict:
     # Pre-filter: keyword matching against capability table
     matched = match_domains(task)
     keyword_suggestions = suggest_agents(task)
@@ -451,7 +523,19 @@ def main():
     print(f"  Task: {task[:100]}")
     print()
 
-    result = asyncio.run(app.ainvoke(initial_state))
+    # Langfuse POC: root span for the whole orchestrator run.
+    try:
+        with _lf_span(
+            name="federation.orchestrate",
+            input_data={"task": task[:500]},
+            metadata={"non_interactive": non_interactive, "telegram": bool(telegram_chat_id)},
+        ):
+            result = asyncio.run(app.ainvoke(initial_state))
+    finally:
+        try:
+            _lf_shutdown()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
