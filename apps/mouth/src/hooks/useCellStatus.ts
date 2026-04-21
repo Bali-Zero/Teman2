@@ -51,18 +51,7 @@ export function useCellStatus(pollIntervalMs: number = 10000) {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://nuzantara-rag.fly.dev"}/api/cell/status`,
-        {
-          headers: {
-            Authorization: `Bearer ${api.getToken()}`,
-          },
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await api.get<CellStatus>("/api/cell/status");
       setStatus(data);
       setError(null);
     } catch (err) {
