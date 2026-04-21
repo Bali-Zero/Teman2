@@ -6,6 +6,7 @@ import {
   AppTrustStrip,
   useFunnelApp,
 } from "@balizero/core";
+import { ConsentBanner } from "@/components/visa/ConsentBanner";
 
 export default function VisaEntryPage() {
   const tracker = useFunnelApp("visa_clock"); // "entry" funnel event; branch_selected fires on click
@@ -112,6 +113,7 @@ export default function VisaEntryPage() {
           }
         `}</style>
       </div>
+      <ConsentBanner />
     </AppFrame>
   );
 }

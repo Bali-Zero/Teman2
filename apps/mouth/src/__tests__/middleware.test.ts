@@ -446,4 +446,33 @@ describe("Middleware - Multi-domain Routing", () => {
       expect(response.headers.get("x-pathname")).toBe("/chat/conversation/123");
     });
   });
+
+  // =======================================================================
+  // visa.balizero.com → balizero.com/visa (spec 2026-04-21-visa-funnel-fusion)
+  // 1:1 302 redirects so GSC change-of-address propagates cleanly; after
+  // 30d of near-zero traffic, DNS is removed and this block stops firing.
+  // =======================================================================
+  describe("visa.balizero.com legacy subdomain redirects", () => {
+    const cases: Array<[string, string]> = [
+      ["/", "/visa"],
+      ["/quiz", "/visa/match"],
+      ["/result", "/visa/match"],
+      ["/chat", "/visa/match"],
+      ["/privacy", "/visa/privacy"],
+      ["/terms", "/visa/terms"],
+      ["/random-unmapped-path", "/visa"],
+    ];
+
+    for (const [from, to] of cases) {
+      it(`redirects 302 ${from} → balizero.com${to}`, () => {
+        const req = createRequest(`https://visa.balizero.com${from}`);
+        const res = middleware(req);
+        expect(res.status).toBe(302);
+        const location = res.headers.get("location")!;
+        const url = new URL(location);
+        expect(url.hostname).toBe("balizero.com");
+        expect(url.pathname).toBe(to);
+      });
+    }
+  });
 });
