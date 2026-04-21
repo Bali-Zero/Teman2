@@ -190,16 +190,37 @@ def _query_notebook(notebook_id: str, query: str, timeout: int = NLM_QUERY_TIMEO
 
 
 def _extract_gap_topics(response: str) -> list[str]:
-    """Extract gap topic questions from NLM response."""
+    """Extract gap topic questions from NLM response.
+
+    The `nlm query notebook` CLI emits a pretty-printed JSON object with
+    an ``answer`` field that holds the actual text. Naively splitting the
+    raw stdout on newlines captures the JSON scaffolding (``"answer":``,
+    ``"conversation_id":`` …) instead of the questions. Parse the JSON
+    first and fall back to the raw text only when the shape is unexpected.
+    """
     if not response:
         return []
-    lines = response.strip().split("\n")
-    gaps = []
-    for line in lines:
-        clean = line.strip().lstrip("0123456789.-) *#").strip()
+
+    text = response.strip()
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        parsed = None
+
+    if isinstance(parsed, dict):
+        # Common NLM CLI shape: {"answer": "...", "sources_used": [...], ...}
+        answer = parsed.get("answer") or parsed.get("response") or ""
+        text = answer if isinstance(answer, str) else str(answer)
+
+    gaps: list[str] = []
+    for line in text.split("\n"):
+        clean = line.strip().lstrip("0123456789.-)* #").strip().strip('"').strip()
+        # Skip JSON-ish noise that may survive if parsing failed
+        if clean.startswith('"') or clean.endswith(('{', '}', '[', ']', ',')):
+            continue
+        if clean.startswith(("answer:", "conversation_id:", "sources_used:", "citations:", "references:")):
+            continue
         if len(clean) > 15 and "?" in clean:
-            gaps.append(clean[:200])
-        elif len(clean) > 15:
             gaps.append(clean[:200])
     return gaps[:8]  # At most 8 gap topics
 
