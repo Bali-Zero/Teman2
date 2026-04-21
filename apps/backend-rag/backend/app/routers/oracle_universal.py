@@ -239,38 +239,3 @@ async def oracle_health_check() -> dict[str, Any]:
         "mode": "Refactored (Service Layer)",
         "timestamp": time.time(),
     }
-
-
-@router.get("/drive/test", deprecated=True)
-async def test_drive_connection() -> dict[str, Any]:
-    """Stub retained for backwards compatibility (Q3 wave 2 audit).
-
-    Google Drive health is now exposed through the shared service layer.
-    No internal callers remain; endpoint kept only because it is part of
-    the published OpenAPI schema consumed by apps/mouth.
-    """
-    logger.info("oracle_universal: deprecated /drive/test called")
-    return {"status": "moved_to_service", "available": True}
-
-
-@router.get("/gemini/test", deprecated=True)
-async def test_gemini_integration() -> dict[str, Any]:
-    """Stub retained for backwards compatibility (Q3 wave 2 audit).
-
-    Gemini health is now exposed through the shared service layer. See
-    /drive/test for the same rationale.
-    """
-    logger.info("oracle_universal: deprecated /gemini/test called")
-    return {"status": "moved_to_service", "available": True}
-
-
-@router.get("/user/profile/{user_email}", deprecated=True)
-async def get_user_profile_endpoint(user_email: str) -> dict[str, Any]:
-    """Stub retained for backwards compatibility (Q3 wave 2 audit).
-
-    Real user-profile lookup lives behind `/api/users/profile` in the
-    users router. This path is kept only so apps/mouth's generated
-    schema does not break mid-migration.
-    """
-    logger.info("oracle_universal: deprecated /user/profile/{email} called")
-    return {"status": "not_implemented", "email": user_email}

@@ -240,51 +240,6 @@ class TestOracleUniversalIntegration:
             response = client.post("/api/oracle/feedback", json=payload)
             assert response.status_code == 422  # Validation error
 
-    @pytest.mark.asyncio
-    async def test_user_profile_endpoint(self, client, mock_current_user):
-        """Test user profile endpoint"""
-        with patch(
-            "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
-        ):
-            with patch(
-                "backend.app.routers.oracle_universal.db_manager.get_user_profile",
-                new_callable=AsyncMock,
-            ) as mock_profile:
-                mock_profile.return_value = {
-                    "name": "Test User",
-                    "email": "test@example.com",
-                    "language": "en",
-                }
-
-                response = client.get("/api/oracle/user/profile/test@example.com")
-                assert response.status_code in [200, 404]
-
-    @pytest.mark.asyncio
-    async def test_drive_test_endpoint(self, client, mock_current_user):
-        """Test drive test endpoint"""
-        with patch(
-            "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
-        ):
-            with patch(
-                "backend.app.routers.oracle_universal.google_services.drive_service"
-            ) as mock_drive:
-                mock_drive.files.return_value.list.return_value.execute.return_value = {"files": []}
-
-                response = client.get("/api/oracle/drive/test")
-                assert response.status_code in [200, 503]
-
-    @pytest.mark.asyncio
-    async def test_gemini_test_endpoint(self, client, mock_current_user):
-        """Test gemini test endpoint"""
-        with patch(
-            "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
-        ):
-            with patch(
-                "backend.app.routers.oracle_universal.google_services.gemini_available", True
-            ):
-                response = client.get("/api/oracle/gemini/test")
-                assert response.status_code in [200, 503]
-
     def test_generate_query_hash(self):
         """Test query hash generation"""
         from backend.app.routers.oracle_universal import generate_query_hash
