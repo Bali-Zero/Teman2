@@ -727,7 +727,6 @@ class OrchestratorCore:
         # Active mode: produces QueryPlan consumed by CRAG Router.
         # Shadow mode: logs plan but doesn't route (backward-compatible).
         query_plan = None
-        crag_decision = None
         if self._query_planner:
             if _USE_QUERY_PLANNER:
                 query_plan = self._query_planner.plan(query, user_context)
@@ -739,7 +738,7 @@ class OrchestratorCore:
                         enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
                         enable_deep_research=_ENABLE_DEEP_RESEARCH,
                     )
-                    crag_decision = _crag_router.route(query_plan)
+                    _crag_router.route(query_plan)
             else:
                 spawn(
                     self._run_query_planner_shadow(query, user_context),
@@ -1218,7 +1217,7 @@ class OrchestratorCore:
                     logger.warning(
                         "[Grading ACTIVE] Answer grade FAIL — marking low confidence",
                     )
-                    state.evidence_score = min(state.evidence_score or 0.5, 0.15)
+                    state.evidence_score = min(state.evidence_score or 0.5, 0.14)
 
                 # If hallucination LLM-verified as FAIL, add warning
                 hlm = results.get("hallucination_llm", results.get("hallucination", {}))
@@ -1226,7 +1225,7 @@ class OrchestratorCore:
                     logger.warning(
                         "[Grading ACTIVE] Hallucination FAIL — adding warning",
                     )
-                    state.evidence_score = min(state.evidence_score or 0.5, 0.15)
+                    state.evidence_score = min(state.evidence_score or 0.5, 0.14)
 
         except Exception as e:
             logger.warning("[Grading] Gate execution error (non-blocking): %s", e)
