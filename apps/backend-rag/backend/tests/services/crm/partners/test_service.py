@@ -3,6 +3,7 @@ import pytest
 from decimal import Decimal
 from fastapi import HTTPException
 
+import uuid
 from uuid import uuid4
 from backend.services.crm.partners.service import (
     PartnersService,
@@ -191,12 +192,17 @@ async def test_deactivate_partner_soft_delete_preserves_history(
 
 @pytest.mark.asyncio
 async def test_create_rejects_partner_with_internal_email(svc, user_factory):
-    """create_partner raises ConflictError (409) when email matches a team/admin user."""
-    admin = await user_factory(role="admin", email="conflict@balizero.com")
+    """create_partner raises ConflictError (409) when email matches a team/admin user.
+
+    CATA-5: user_factory uses @test.invalid domain so the row is cleaned up
+    automatically by db_conn teardown.
+    """
+    conflict_email = "conflict-internal@test.invalid"
+    admin = await user_factory(role="admin", email=conflict_email)
     with pytest.raises(ConflictError) as exc:
         await svc.create_partner(
             full_name="Conflict Test",
-            email="conflict@balizero.com",
+            email=conflict_email,
             entity_type="individual",
             created_by=admin,
         )
@@ -223,10 +229,11 @@ async def test_update_partner_rejects_partner_role_self_update(
     """update_partner rejects partner-role actor at service layer (spec §7.2)."""
     partner_id = await partner_factory()
     # Link a partner-role user to this partner
+    # CATA-5: user_factory returns string ID; update team_members, not users
     partner_user = await user_factory(role="partner")
     await db_conn.execute(
-        "UPDATE users SET partner_id = $2 WHERE id = $1",
-        partner_user, partner_id,
+        "UPDATE team_members SET partner_id = $2 WHERE id = $1",
+        str(partner_user), uuid.UUID(int=partner_id.int),
     )
     svc = PartnersService(db_conn)
     with pytest.raises(HTTPException) as exc:
