@@ -50,7 +50,7 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
     if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
         DATABASE_URL="$DATABASE_URL_LOCAL"
     else
-        echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:PW@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
+        echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:<password>@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
         exit 74
     fi
     export DATABASE_URL

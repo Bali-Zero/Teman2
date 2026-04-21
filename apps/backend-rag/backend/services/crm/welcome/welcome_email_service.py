@@ -30,6 +30,12 @@ import httpx
 from backend.app.core.config import settings
 from backend.services.crm.birthday_notifier_service import NATIONALITY_LANGUAGE_MAP
 from backend.services.crm.welcome.welcome_templates import WELCOME_EMAIL_SUBJECT
+from backend.services.notifications.email_audit import (
+    log_email_attempt,
+    notify_email_failure_critical,
+    record_email_result,
+)
+from backend.services.notifications.email_http import get_email_client
 
 if TYPE_CHECKING:
     import asyncpg
@@ -240,15 +246,35 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
         else:
             logger.warning("WelcomeEmail: brochure unavailable for client %d", client_id)
 
-    # Send
-    async with httpx.AsyncClient(timeout=30.0) as http:
+    # Audit row — written before network call so a crash mid-send is visible.
+    audit_row_id = await log_email_attempt(
+        db_pool,
+        email_type="welcome",
+        to_email=email,
+        subject=subject,
+        client_id=client_id,
+    )
+
+    # Send — wrapped so an exception is captured into the audit trail
+    # instead of propagating up and being counted as a permanent failure
+    # (the welcome_email_queue row was already DELETEd, so losing it here
+    # means the email is gone forever without this audit).
+    send_error: str | None = None
+    status_code = 0
+    try:
+        http = await get_email_client()
         resp = await http.post(
             _EMAIL_API_URL,
             json=payload,
             headers={"X-API-Key": _EMAIL_API_KEY},
         )
+        status_code = resp.status_code
+        if status_code != 200:
+            send_error = f"status={status_code} body={resp.text[:200]}"
+    except Exception as e:
+        send_error = f"exception: {e}"
 
-    if resp.status_code == 200:
+    if send_error is None:
         async with db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -260,13 +286,26 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
                 ACTIVITY_ACTION,
                 f"lang={lang} email={email}",
             )
+        await record_email_result(
+            db_pool, audit_row_id, status="sent", provider="brevo",
+        )
         logger.info("WelcomeEmail: sent to client %d (lang=%s, email=%s)", client_id, lang, email)
     else:
         logger.error(
-            "WelcomeEmail: send failed for client %d: %d %s",
+            "WelcomeEmail: send failed for client %d: %s",
             client_id,
-            resp.status_code,
-            resp.text[:200],
+            send_error,
+        )
+        await record_email_result(
+            db_pool, audit_row_id, status="failed", provider="brevo",
+            error_message=send_error,
+        )
+        notify_email_failure_critical(
+            email_type="welcome",
+            to_email=email,
+            subject=subject,
+            practice_id=None,
+            error=send_error,
         )
 
 

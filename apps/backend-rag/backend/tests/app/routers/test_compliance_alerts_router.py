@@ -15,8 +15,8 @@ and cannot see uncommitted data from a test transaction.
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncGenerator
 from datetime import date, timedelta
-from typing import AsyncGenerator
 from uuid import uuid4
 
 import asyncpg
@@ -103,18 +103,28 @@ async def db_tx(db_pool: asyncpg.Pool) -> AsyncGenerator[asyncpg.Connection, Non
 
 
 async def _insert_client(pool: asyncpg.Pool, email: str, assigned_to: str | None = None) -> dict:
-    """Insert a client row with real commit (visible across connections)."""
+    """Insert a client row with real commit (visible across connections).
+
+    `created_at` is required by the clients schema (NOT NULL, no DB default on
+    CI's baseline migration) — inserting without it causes the test to fail
+    with NotNullViolationError. Passing NOW() explicitly keeps the test
+    compatible with both local dev (where a default may exist) and CI.
+    """
     async with pool.acquire() as conn:
         if assigned_to is not None:
             row = await conn.fetchrow(
-                "INSERT INTO clients (full_name, email, assigned_to) VALUES ($1,$2,$3) RETURNING id, full_name, email, assigned_to",
+                "INSERT INTO clients (full_name, email, assigned_to, created_at) "
+                "VALUES ($1,$2,$3,NOW()) "
+                "RETURNING id, full_name, email, assigned_to",
                 "Router Test Client",
                 email,
                 assigned_to,
             )
         else:
             row = await conn.fetchrow(
-                "INSERT INTO clients (full_name, email) VALUES ($1,$2) RETURNING id, full_name, email",
+                "INSERT INTO clients (full_name, email, created_at) "
+                "VALUES ($1,$2,NOW()) "
+                "RETURNING id, full_name, email",
                 "Router Test Client",
                 email,
             )
@@ -307,7 +317,9 @@ async def test_team_blocked_on_null_assigned_client(db_pool: asyncpg.Pool) -> No
     # Insert a client with assigned_to = NULL (no owner)
     async with db_pool.acquire() as conn:
         client_id = await conn.fetchval(
-            "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
+            "INSERT INTO clients (full_name, email, created_at) "
+            "VALUES ($1, $2, NOW()) "
+            "RETURNING id",
             "Unassigned Client",
             f"null-{uuid4().hex[:6]}@example.com",
         )

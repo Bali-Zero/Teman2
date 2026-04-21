@@ -153,19 +153,28 @@ async def _create_hr_bonus_on_completed(
 
             # Notify HR admin (Asya) via email
             await _notify_hr_bonus_pending(
-                assigned_to, practice_type_code, rate["amount_idr"], practice_id,
+                db_pool,
+                assigned_to,
+                practice_type_code,
+                rate["amount_idr"],
+                practice_id,
             )
     except Exception as e:
         logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
 
 
 async def _notify_hr_bonus_pending(
+    db_pool: asyncpg.Pool,
     employee_email: str,
     practice_type: str,
     amount_idr: int,
     practice_id: int,
 ) -> None:
-    """Send email to HR admin (Asya) when a bonus needs approval."""
+    """Send email to HR admin (Asya) when a bonus needs approval.
+
+    Audited via ``email_send_log``; failures page the owner (hr_bonus is a
+    critical email type in ``email_audit.CRITICAL_EMAIL_TYPES``).
+    """
     from html import escape
 
     amount_fmt = f"Rp {amount_idr:,}".replace(",", ".")
@@ -188,6 +197,9 @@ async def _notify_hr_bonus_pending(
         subject=f"HR Bonus Pending: {practice_label} — {amount_fmt}",
         body=html_body,
         log_context=f"crm bonus practice={practice_id}",
+        email_type="hr_bonus",
+        pool=db_pool,
+        practice_id=practice_id,
     )
 
 

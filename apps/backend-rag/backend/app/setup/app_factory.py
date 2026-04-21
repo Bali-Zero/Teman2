@@ -463,6 +463,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing DeepSeek client: {e}")
 
+    # Close the persistent httpx.AsyncClient used by the email pipeline
+    # (Golden Rule #10). Lazy-created on first use by get_email_client().
+    try:
+        from backend.services.notifications.email_http import close_email_client
+
+        await close_email_client()
+        logger.info("✅ Email http client closed")
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"⚠️ Error closing email http client: {e}")
+
     logger.info("✅ ZANTARA shutdown complete")
 
 
