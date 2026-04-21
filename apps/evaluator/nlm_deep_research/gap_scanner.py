@@ -190,16 +190,53 @@ def _query_notebook(notebook_id: str, query: str, timeout: int = NLM_QUERY_TIMEO
 
 
 def _extract_gap_topics(response: str) -> list[str]:
-    """Extract gap topic questions from NLM response."""
+    """Extract gap topic questions from NLM response.
+
+    The NLM CLI sometimes returns a JSON envelope
+    (``{"answer": "...", "conversation_id": "...", "sources_used": [], ...}``)
+    instead of the bare model output. The older implementation split the
+    whole response by newlines, so envelope keys like ``"conversation_id": ...``
+    ended up in ``coverage_matrix.json`` as fake gap topics (35 corrupted
+    entries observed in the 2026-04-03 run — see wave 1 triage report).
+
+    Guard: if the response parses as JSON and contains an ``answer`` field,
+    use that field as the text to split on. Otherwise fall back to the
+    previous behaviour. Defensive filter also drops obvious JSON-key lines
+    (``"foo": ...``, ``"foo":``) in case the CLI emits half-valid output.
+    """
     if not response:
         return []
-    lines = response.strip().split("\n")
-    gaps = []
+
+    text = response.strip()
+    if text.startswith("{"):
+        try:
+            obj = json.loads(text)
+            if isinstance(obj, dict) and isinstance(obj.get("answer"), str):
+                text = obj["answer"].strip()
+        except (json.JSONDecodeError, ValueError):
+            # Not a well-formed envelope — keep the raw text and rely on the
+            # line-level filter below to drop leaking keys.
+            pass
+
+    lines = text.split("\n")
+    gaps: list[str] = []
     for line in lines:
         clean = line.strip().lstrip("0123456789.-) *#").strip()
-        if len(clean) > 15 and "?" in clean:
+        if len(clean) <= 15:
+            continue
+        # Drop obvious JSON key-value leakage. Keys always start with a
+        # double-quoted identifier immediately followed by ``:``. This is
+        # cheap and catches the corruption even when json.loads bails.
+        stripped = clean.rstrip(",").strip()
+        if stripped.startswith('"') and '":' in stripped[:60]:
+            # Only reject if the line looks like a bare JSON k/v — natural
+            # prose containing a quoted phrase followed by a colon (rare) is
+            # far less likely to start with a literal double-quote AND have
+            # the colon within the first 60 chars.
+            continue
+        if "?" in clean:
             gaps.append(clean[:200])
-        elif len(clean) > 15:
+        else:
             gaps.append(clean[:200])
     return gaps[:8]  # At most 8 gap topics
 
