@@ -55,6 +55,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
+      { title: "Partners", href: "/partners", icon: "Handshake" },
       { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
       { title: "LKPM", href: "/lkpm", icon: "ClipboardCheck" },
       {
@@ -147,6 +148,10 @@ export const routeTitles: Record<string, string> = {
   "/team/timesheet": "Timesheet",
   "/team/calendar": "Team Calendar",
   "/calendar": "Bali Zero Calendar",
+  "/partners": "Partners",
+  "/partners/new": "New Partner",
+  "/partners/orphaned": "Orphaned Partners",
+  "/partners/finance": "Finance Queue",
   "/hr": "HR / Payroll",
   "/hr/bonuses": "Bonuses",
   "/hr/payroll": "Payroll",

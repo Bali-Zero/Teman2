@@ -1,0 +1,41 @@
+# Welcome to Bali Zero Partners
+
+Hi {{ partner.full_name }},
+
+Welcome aboard! You're now part of the Bali Zero partner network.
+
+## Commission structure
+
+Your default commission is **{{ commission_rate }}**
+({{ commission_type }}). Commission accrues on each completed + paid process
+that lists you as the referrer.
+
+Payment flow:
+1. Process marked **completed + paid** → commission accrues.
+2. 30-day cooling-off period (eligible date shown in your dashboard).
+3. Asya reviews and approves for payout.
+4. Paid via bank transfer (or e-wallet) in IDR. Payment proof uploaded.
+
+## Our services
+
+{% for service in pricing_services %}
+- **{{ service.name }}** — from {{ service.price_display }}
+{% endfor %}
+
+Full pricing on your partner dashboard.
+
+## Terms
+
+- Commission is paid **only** when the linked process is **completed + paid**.
+- Refunds within 30 days trigger a clawback deducted from your next accrual.
+- Your personal data is stored for referral tracking and commission payment
+  only (UU PDP 27/2022). You may request deletion by replying to this email.
+
+## Your portal
+
+Access your referrals and commissions at
+https://kita.balizero.com/portal/partner/dashboard
+
+Questions? Reply to this email.
+
+— Zantara, Bali Zero
