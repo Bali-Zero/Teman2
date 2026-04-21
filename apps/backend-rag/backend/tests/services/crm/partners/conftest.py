@@ -123,14 +123,13 @@ CREATE TABLE IF NOT EXISTS users (
 -- We do NOT create/drop it — we use it as-is. The client_factory
 -- inserts rows and cleans them up after each test.
 
--- CATA-1 NOTE: practices is a real production table (id=INTEGER in dev DB).
+-- CATA-4 NOTE: practices is a real production table (id=INTEGER in dev DB).
 -- We create a TEMPORARY TABLE practices that shadows the real one for this
 -- connection session only (pg_temp schema is always first in search_path).
--- The temp table uses UUID id matching the partners module design, with the
--- 4 columns CommissionEngine reads. It is dropped in teardown.
--- This is the same isolation pattern used before CATA-1 with the processes stub.
+-- The temp table uses SERIAL PRIMARY KEY (INTEGER) matching production practices.id,
+-- with the 4 columns CommissionEngine reads. It is dropped in teardown.
 CREATE TEMP TABLE IF NOT EXISTS practices (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                 SERIAL PRIMARY KEY,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
     status             TEXT NOT NULL DEFAULT 'pending',
     payment_status     TEXT NOT NULL DEFAULT 'pending',
@@ -196,11 +195,10 @@ CREATE TABLE IF NOT EXISTS partners (
 CREATE TABLE IF NOT EXISTS partner_referrals (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partner_id           UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-    -- NOTE: In production, partner_referrals.practice_id FK references practices(id).
-    -- In tests, practices.id is INTEGER on the dev DB (type mismatch with UUID).
-    -- We omit the FK constraint here so tests run against the partner module logic
-    -- without depending on the real practices schema. The FK is enforced in migration 119.
-    practice_id          UUID NOT NULL,
+    -- NOTE: In production, partner_referrals.practice_id FK references practices(id) INTEGER.
+    -- FK omitted: PostgreSQL disallows FK constraints on permanent tables referencing temp tables.
+    -- The temp practices table uses INTEGER (SERIAL) matching production. Type is enforced here.
+    practice_id          INTEGER NOT NULL,
     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
         CHECK (share_percent > 0 AND share_percent <= 100),
     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -213,8 +211,9 @@ CREATE TABLE IF NOT EXISTS partner_commissions (
     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partner_id               UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
     referral_id              UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
-    -- FK omitted for same reason as partner_referrals.practice_id (see above).
-    practice_id              UUID,
+    -- practice_id is INTEGER matching production practices.id.
+    -- FK omitted: PostgreSQL disallows FK constraints on permanent tables referencing temp tables.
+    practice_id              INTEGER,
     entry_type               TEXT NOT NULL
         CHECK (entry_type IN ('accrual','clawback','manual_adjustment')),
     related_commission_id    UUID REFERENCES partner_commissions(id) ON DELETE RESTRICT,
@@ -343,9 +342,12 @@ def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, An
 
 
 @pytest_asyncio.fixture(scope="function")
-def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
+def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, _IntWithId]]:
     """Returns an async callable that inserts a practice row into the temp practices
     table (session-scoped, shadows the real public.practices for this connection).
+
+    CATA-4: practices.id is SERIAL PRIMARY KEY (INTEGER) matching production. The DB
+    auto-assigns the id; we return the RETURNING id as _IntWithId.
 
     Accepts optional kwargs for columns required by CommissionEngine:
     - total_invoiced_idr: NUMERIC(16,2), default 0
@@ -359,21 +361,20 @@ def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any
         status: str = "pending",
         payment_status: str = "pending",
         completed_at: datetime | None = None,
-    ) -> _UUIDWithId:
-        pid = _UUIDWithId(int=uuid.uuid4().int)
+    ) -> _IntWithId:
         _completed_at = completed_at or (
             datetime.now(timezone.utc) if status == "completed" else None
         )
-        await db_conn.execute(
+        row = await db_conn.fetchrow(
             """
             INSERT INTO practices
-                (id, total_invoiced_idr, status, payment_status, completed_at)
-            VALUES ($1, $2, $3, $4, $5)
+                (total_invoiced_idr, status, payment_status, completed_at)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
             """,
-            uuid.UUID(int=pid.int),
             total_invoiced_idr, status, payment_status, _completed_at,
         )
-        return pid
+        return _IntWithId(row["id"])
 
     return _create
 
@@ -430,10 +431,10 @@ def referral_factory(
     async def _create(
         *,
         partner_id: uuid.UUID,
-        practice_id: uuid.UUID | None = None,
+        practice_id: int | None = None,
         share_percent: Decimal = Decimal("100.00"),
     ) -> _UUIDWithId:
-        _practice_id = practice_id or await practice_factory()
+        _practice_id = practice_id if practice_id is not None else int(await practice_factory())
         row = await db_conn.fetchrow(
             """
             INSERT INTO partner_referrals (partner_id, practice_id, share_percent)
@@ -535,7 +536,7 @@ def commission_factory(
         if practice_client_id is not None:
             await db_conn.execute(
                 "UPDATE practices SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
-                int(practice_client_id), uuid.UUID(int=prac_id.int),
+                int(practice_client_id), int(prac_id),
             )
 
         from datetime import datetime, timedelta, timezone
@@ -566,7 +567,7 @@ def commission_factory(
             RETURNING id
             """,
             uuid.UUID(int=partner_id.int),
-            uuid.UUID(int=prac_id.int),
+            int(prac_id),
             _gross,        # base_amount_idr
             _gross,        # gross_amount_idr
             withholding_category,

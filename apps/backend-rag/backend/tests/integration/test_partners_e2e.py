@@ -95,12 +95,12 @@ async def test_full_flow_process_to_paid_email(
     await db_conn.execute(
         "UPDATE practices SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
         int(client_id),
-        uuid.UUID(int=process_id.int),
+        int(process_id),
     )
 
     await referral_factory(
         partner_id=uuid.UUID(int=partner_id.int),
-        practice_id=uuid.UUID(int=process_id.int),
+        practice_id=int(process_id),
     )
 
     # ── Step 3: EventBus handler → accrual ──────────────────────────────────
@@ -117,7 +117,7 @@ async def test_full_flow_process_to_paid_email(
     monkeypatch.setattr(events_mod, "get_pool", fake_get_pool)
 
     await handle_practice_status_changed({
-        "practice_id": str(uuid.UUID(int=process_id.int)),
+        "practice_id": str(int(process_id)),
         "new_status": "completed",
     })
 

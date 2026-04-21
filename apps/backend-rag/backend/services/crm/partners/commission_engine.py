@@ -63,7 +63,7 @@ class CommissionEngine:
 
     async def accrue_from_practice(
         self,
-        practice_id: UUID,
+        practice_id: int,
         partner_id: UUID | None = None,
     ) -> UUID | None:
         """Accrue a commission for a completed+paid practice.

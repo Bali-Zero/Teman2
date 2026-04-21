@@ -113,7 +113,7 @@ class BulkReassignRequest(BaseModel):
 
 
 class ReferralCreate(BaseModel):
-    practice_id: UUID
+    practice_id: int
     notes: str | None = None
 
 

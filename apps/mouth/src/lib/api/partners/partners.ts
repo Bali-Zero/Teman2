@@ -195,8 +195,9 @@ export interface BulkReassignBody {
 }
 
 export interface CreateReferralBody {
-  // CRIT-8: practice_id is UUID string
-  practice_id: string;
+  // CATA-4: practice_id is INTEGER (production practices.id is INTEGER, not UUID).
+  // Serializes as JSON number. Backend ReferralCreate model expects int.
+  practice_id: number;
   notes?: string;
 }
 

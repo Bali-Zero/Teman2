@@ -40,16 +40,16 @@ async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
     - ``practice_id`` cannot be parsed as a UUID
     """
     new_status = payload.get("new_status")
-    practice_id = payload.get("practice_id")
+    practice_id_raw = payload.get("practice_id")
 
-    if new_status != "completed" or not practice_id:
+    if new_status != "completed" or not practice_id_raw:
         return
 
     try:
-        pid = UUID(practice_id) if isinstance(practice_id, str) else practice_id
+        pid = int(practice_id_raw) if not isinstance(practice_id_raw, int) else practice_id_raw
     except (ValueError, TypeError):
         logger.warning(
-            "handle_practice_status_changed: bad practice_id %r", practice_id
+            "handle_practice_status_changed: bad practice_id %r", practice_id_raw
         )
         return
 

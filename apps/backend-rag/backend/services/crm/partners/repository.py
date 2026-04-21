@@ -170,7 +170,7 @@ class PartnersRepository:
     # ── Referrals ───────────────────────────────────────────────────────
 
     async def insert_referral(
-        self, *, partner_id: UUID, practice_id: UUID,
+        self, *, partner_id: UUID, practice_id: int,
         referred_by_user_id: UUID | None = None,
         share_percent: Decimal = Decimal("100.00"),
         notes: str | None = None,
@@ -186,7 +186,7 @@ class PartnersRepository:
         )
         return row["id"]
 
-    async def get_referral_by_practice(self, practice_id: UUID) -> PartnerReferral | None:
+    async def get_referral_by_practice(self, practice_id: int) -> PartnerReferral | None:
         row = await self.conn.fetchrow(
             "SELECT * FROM partner_referrals WHERE practice_id = $1", practice_id
         )
@@ -233,7 +233,7 @@ class PartnersRepository:
         net_amount_idr: Decimal,
         idempotency_key: str,
         referral_id: UUID | None = None,
-        practice_id: UUID | None = None,
+        practice_id: int | None = None,
         related_commission_id: UUID | None = None,
         rule_source: RuleSource = "partner_default",
         assigned_to_snapshot: UUID | None = None,

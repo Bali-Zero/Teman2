@@ -63,7 +63,7 @@ class Partner:
 class PartnerReferral:
     id: UUID
     partner_id: UUID
-    practice_id: UUID
+    practice_id: int
     share_percent: Decimal
     referred_at: datetime
     referred_by_user_id: UUID | None = None
@@ -90,7 +90,7 @@ class PartnerCommission:
     created_at: datetime
 
     referral_id: UUID | None = None
-    practice_id: UUID | None = None
+    practice_id: int | None = None
     related_commission_id: UUID | None = None
     assigned_to_snapshot: UUID | None = None
     approved_at: datetime | None = None

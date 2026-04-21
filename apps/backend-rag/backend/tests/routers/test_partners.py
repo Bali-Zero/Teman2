@@ -613,7 +613,7 @@ class TestReferrals:
             svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"practice_id": str(_PROCESS_ID)},
+                json={"practice_id": 1},
             )
         assert resp.status_code == 201
         data = resp.json()
@@ -634,7 +634,7 @@ class TestReferrals:
             )
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"practice_id": str(_PROCESS_ID)},
+                json={"practice_id": 1},
             )
         assert resp.status_code == 409
 
@@ -702,7 +702,7 @@ class TestCreateReferralCata3:
         _, client, _, _ = partner_app
         resp = client.post(
             f"/api/partners/{_PARTNER_ID}/referrals",
-            json={"practice_id": str(_PROCESS_ID), "notes": "fraud attempt"},
+            json={"practice_id": 1, "notes": "fraud attempt"},
         )
         assert resp.status_code == 403
         assert "team or admin" in resp.json()["detail"].lower()
@@ -719,7 +719,7 @@ class TestCreateReferralCata3:
             svc_instance.repo.get_partner = AsyncMock(return_value=partner_owned_by_other)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"practice_id": str(_PROCESS_ID)},
+                json={"practice_id": 1},
             )
         assert resp.status_code == 403
         assert "team members may only create referrals for partners they own" in resp.json()["detail"]
@@ -740,7 +740,7 @@ class TestCreateReferralCata3:
             conn.fetchrow = AsyncMock(return_value=practice_row)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"practice_id": str(_PROCESS_ID)},
+                json={"practice_id": 1},
             )
         assert resp.status_code == 201
         assert resp.json()["id"] == str(_REFERRAL_ID)
@@ -757,7 +757,7 @@ class TestCreateReferralCata3:
             svc_instance.repo.insert_referral = AsyncMock(return_value=_REFERRAL_ID)
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
-                json={"practice_id": str(_PROCESS_ID)},
+                json={"practice_id": 1},
             )
         assert resp.status_code == 201
 

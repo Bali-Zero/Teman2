@@ -154,7 +154,7 @@ async def apply(conn: Any) -> None:
                 CREATE TABLE partner_referrals (
                     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     partner_id           UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
-                    practice_id          UUID NOT NULL REFERENCES practices(id) ON DELETE RESTRICT,
+                    practice_id          INTEGER NOT NULL REFERENCES practices(id) ON DELETE RESTRICT,
                     share_percent        NUMERIC(5,2) NOT NULL DEFAULT 100.00
                         CHECK (share_percent > 0 AND share_percent <= 100),
                     referred_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -191,7 +191,7 @@ async def apply(conn: Any) -> None:
                     id                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     partner_id               UUID NOT NULL REFERENCES partners(id) ON DELETE RESTRICT,
                     referral_id              UUID REFERENCES partner_referrals(id) ON DELETE RESTRICT,
-                    practice_id              UUID REFERENCES practices(id) ON DELETE RESTRICT,
+                    practice_id              INTEGER REFERENCES practices(id) ON DELETE RESTRICT,
 
                     -- row type
                     entry_type               TEXT NOT NULL
