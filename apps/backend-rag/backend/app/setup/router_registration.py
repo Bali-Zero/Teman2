@@ -437,6 +437,7 @@ def include_light_routers(api: FastAPI) -> None:
         newsletter,
         nusantara_health,
         omnichannel,
+        partners,  # [PARTNERS] CRM Partners module v1 (PR #141 + follow-ups)
         performance,
         portal,
         portal_admin,
@@ -510,6 +511,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_analytics.router)
     api.include_router(crm_portal_integration.router)
+    api.include_router(partners.router)  # [PARTNERS] /api/partners/* — CRM Partners module
 
     # Channel system + Omnichannel router (unified inbox)
     api.include_router(channels.router)  # /api/channels (health, DLQ, conversations)
