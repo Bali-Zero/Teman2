@@ -266,12 +266,16 @@ after which Sentry silently drops error events too. Defaults therefore:
 - Opt-in: if APM is needed in prod, set it explicitly and keep it
   `<= 0.02`. `scripts/sentry-quota-check.sh` flags violations.
 
-### Alert dedup with Telegram
+### Alert dedup with Telegram — NOT YET ACTIVE (follow-up)
 
 Cron failures and deploy crashes already page Telegram
-(`~/scripts/fly-health-check.sh`, `.github/workflows/fly-deploy.yml`).
-Any Sentry event with `tags.source in {cron, deploy}` is dropped by
-`_before_send`, so the same incident doesn't fire twice.
+(`~/scripts/fly-health-check.sh`, `.github/workflows/fly-deploy.yml`),
+so ideally those events would be dropped at the Sentry layer to avoid
+duplicate alerts. However, no code in the repo currently tags events
+with `sentry_sdk.set_tag("source", "cron")` / `"deploy"`, so a filter
+here would be a no-op. Tagging needs to be added at the cron entrypoints
+(`cron-wrapper.sh`, `auto_sentinel.sh`, `cron_notifiers.py`) before we
+re-introduce the filter. Tracked as a follow-up; not blocking this PR.
 
 ### Kill-switch
 

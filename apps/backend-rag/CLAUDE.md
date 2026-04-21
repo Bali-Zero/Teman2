@@ -26,7 +26,10 @@ surname) from leaking to Sentry cloud on every exception. Three rules:
 
 When you add a new PII-bearing field to a router:
 
-- Add the substring to `_PII_KEY_SUBSTRINGS` in `sentry_config.py`.
+- Add the token to `_PII_KEY_SUBSTRINGS` in `sentry_config.py` (or to
+  `_PII_EXACT_KEYS` if the bare key would collide with debug fields —
+  e.g. `name` is exact-match-only because `filename`/`function_name`
+  must survive).
 - Add a case to `PII_SAMPLES` in `tests/test_sentry_pii_redaction.py`.
 - Run `SKIP_SENTRY_INIT=1 PYTHONPATH=. pytest tests/test_sentry_pii_redaction.py -q`.
 
