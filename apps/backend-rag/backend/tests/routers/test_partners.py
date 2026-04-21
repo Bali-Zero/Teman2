@@ -241,6 +241,126 @@ class TestListPartners:
         assert str(call_kwargs["actor_user"]) == fake_team["user_id"]
 
 
+# ── 2b. CATA-2: role gate + DTO stripping ────────────────────────────────────
+
+class TestListPartnersCata2:
+    """CATA-2: Router-level role gate and list DTO PII stripping."""
+
+    @pytest.mark.unit
+    def test_require_team_or_admin_blocks_partner_role(self) -> None:
+        from fastapi import HTTPException
+        user = {"role": "partner", "permissions": []}
+        with pytest.raises(HTTPException) as exc_info:
+            partners_module._require_team_or_admin(user)
+        assert exc_info.value.status_code == 403
+        assert "team or admin" in exc_info.value.detail.lower()
+
+    @pytest.mark.unit
+    def test_require_team_or_admin_blocks_unknown_role(self) -> None:
+        from fastapi import HTTPException
+        user = {"role": "finance", "permissions": []}
+        with pytest.raises(HTTPException) as exc_info:
+            partners_module._require_team_or_admin(user)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.unit
+    def test_require_team_or_admin_allows_team(self) -> None:
+        user = {"role": "team", "permissions": []}
+        partners_module._require_team_or_admin(user)  # must not raise
+
+    @pytest.mark.unit
+    def test_require_team_or_admin_allows_admin(self) -> None:
+        user = {"role": "admin", "permissions": ["finance.mark_paid"]}
+        partners_module._require_team_or_admin(user)  # must not raise
+
+    @pytest.mark.integration
+    def test_list_partners_forbidden_for_partner_role(self, partner_app) -> None:
+        _, client, _, _ = partner_app
+        resp = client.get("/api/partners")
+        assert resp.status_code == 403
+        assert "team or admin" in resp.json()["detail"].lower()
+
+    @pytest.mark.integration
+    def test_create_partner_forbidden_for_partner_role(self, partner_app) -> None:
+        _, client, _, _ = partner_app
+        resp = client.post(
+            "/api/partners",
+            json={"full_name": "Hotel Kama", "email": "h@k.io", "entity_type": "individual"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.unit
+    def test_partner_to_list_dict_strips_sensitive_fields(self) -> None:
+        """_partner_to_list_dict must exclude all _SENSITIVE_PARTNER_FIELDS."""
+        partner = _make_partner(
+            npwp="01.234.567.8-901.000",
+            nik="3171010101010001",
+            fiscal_address="Jl. Raya Kuta 1",
+            bank_name="BCA",
+            bank_account_holder="Test Partner",
+            bank_account_number="1234567890",
+            ewallet_type="GoPay",
+            ewallet_number="08123456789",
+            iban="ID00BANK0000000000",
+            payment_notes="wired monthly",
+            payment_currency="IDR",
+        )
+        result = partners_module._partner_to_list_dict(partner)
+        for field in partners_module._SENSITIVE_PARTNER_FIELDS:
+            assert field not in result, f"Sensitive field {field!r} leaked in list view"
+
+    @pytest.mark.unit
+    def test_partner_to_list_dict_retains_non_sensitive_fields(self) -> None:
+        """Non-sensitive fields (name, email, status) must still appear in list view."""
+        partner = _make_partner()
+        result = partners_module._partner_to_list_dict(partner)
+        assert "full_name" in result
+        assert "email" in result
+        assert "onboarding_status" in result
+        assert "entity_type" in result
+        assert "id" in result
+
+    @pytest.mark.integration
+    def test_list_partners_admin_response_strips_banking_fields(self, admin_app) -> None:
+        """Even admin callers must not receive banking PII in the list endpoint."""
+        _, client, _, _ = admin_app
+        partner = _make_partner(
+            npwp="01.234.567.8-901.000",
+            bank_account_number="1234567890",
+            iban="ID00BANK0000000000",
+        )
+        with patch("backend.app.routers.partners.PartnersService") as MockSvc:
+            svc_instance = MockSvc.return_value
+            svc_instance.list_partners = AsyncMock(return_value=[partner])
+            resp = client.get("/api/partners")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        row = data[0]
+        assert "npwp" not in row, "NPWP leaked in list view"
+        assert "bank_account_number" not in row, "Bank account leaked"
+        assert "iban" not in row, "IBAN leaked"
+
+    @pytest.mark.integration
+    def test_get_partner_detail_returns_full_record(self, admin_app) -> None:
+        """GET /api/partners/{id} (detail, with access control) must return full fields."""
+        _, client, _, _ = admin_app
+        partner = _make_partner(
+            npwp="01.234.567.8-901.000",
+            bank_account_number="1234567890",
+        )
+        with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+            async def _verify(*a, **kw):
+                return partner
+            mock_verify.side_effect = _verify
+            resp = client.get(f"/api/partners/{_PARTNER_ID}")
+        assert resp.status_code == 200
+        data = resp.json()
+        # Detail endpoint uses _partner_to_dict (full record)
+        assert data.get("npwp") == "01.234.567.8-901.000"
+        assert data.get("bank_account_number") == "1234567890"
+
+
 # ── 3. get_partner ────────────────────────────────────────────────────────────
 
 class TestGetPartner:

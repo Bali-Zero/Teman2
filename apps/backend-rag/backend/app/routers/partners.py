@@ -146,6 +146,19 @@ def _require_admin(user: dict[str, Any]) -> None:
         raise HTTPException(status_code=403, detail="admin only")
 
 
+def _require_team_or_admin(user: dict[str, Any]) -> None:
+    """Raise 403 if user is not team or admin.
+
+    CATA-2: list/create partner endpoints and CATA-3: referral creation
+    must be blocked at the router for the 'partner' role (and any unknown
+    role). Only team members and admins interact with partners on behalf of
+    the business.
+    """
+    role = user.get("role")
+    if role not in ("team", "admin"):
+        raise HTTPException(status_code=403, detail="team or admin role required")
+
+
 def _require_finance(user: dict[str, Any]) -> None:
     """Raise 403 if user lacks the explicit finance.mark_paid permission.
 
@@ -204,6 +217,36 @@ def _partner_to_dict(p: Any) -> dict[str, Any]:
     return dict(p)
 
 
+# Fields that must NOT appear in list-endpoint responses.
+# They contain banking PII / tax identifiers that are only needed in the
+# detail endpoint, which enforces verify_partner_access_with_role.
+_SENSITIVE_PARTNER_FIELDS: frozenset[str] = frozenset({
+    "npwp",
+    "nik",
+    "fiscal_address",
+    "bank_name",
+    "bank_account_holder",
+    "bank_account_number",
+    "ewallet_type",
+    "ewallet_number",
+    "iban",
+    "payment_notes",
+    "payment_currency",
+})
+
+
+def _partner_to_list_dict(p: Any) -> dict[str, Any]:
+    """Partner → dict for LIST endpoints. Strips banking/tax PII.
+
+    Sensitive fields require going to the detail endpoint, which has
+    explicit access control via verify_partner_access_with_role.
+    """
+    d = _partner_to_dict(p)
+    for field in _SENSITIVE_PARTNER_FIELDS:
+        d.pop(field, None)
+    return d
+
+
 # ── Partner CRUD ─────────────────────────────────────────────────────────────
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -213,6 +256,7 @@ async def create_partner(
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
     """Create a new partner. Team members auto-assign to themselves."""
+    _require_team_or_admin(user)  # CATA-2: partner role cannot create partner records
     try:
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
@@ -246,7 +290,13 @@ async def list_partners(
     user: dict[str, Any] = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> Any:
-    """List partners. Team members see only their own."""
+    """List partners. Team members see only their own.
+
+    CATA-2: partner role blocked at router. Response strips sensitive
+    fields (NPWP, NIK, bank/IBAN/e-wallet details) — use the detail
+    endpoint for full data (which enforces verify_partner_access_with_role).
+    """
+    _require_team_or_admin(user)  # CATA-2: partner role cannot list all partners
     async with pool.acquire() as conn:
         svc = PartnersService(conn)
         partners = await svc.list_partners(
@@ -257,7 +307,7 @@ async def list_partners(
             orphaned=orphaned,
             search=search,
         )
-        return [_partner_to_dict(p) for p in partners]
+        return [_partner_to_list_dict(p) for p in partners]
 
 
 @router.get("/me")
