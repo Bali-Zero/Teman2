@@ -507,3 +507,161 @@ MVP ships successfully when:
 5. Zero reports: "I saved >30 min vs. old Telegram flow" after 1 week of use.
 
 Future dashboards follow the same shape when these criteria are met.
+
+---
+
+## 17. Council Review Revisions (2026-04-21)
+
+Three independent Claude Opus 4.7 red-team reviewers audited this spec. The
+following revisions are **binding on implementation** and override any
+conflicting earlier section.
+
+### 17.1 UX — from architecture council
+
+**R1. Auto-expand modal threshold moves from SLA<2h to SLA<30min** (§4.2 override).
+At 2h there is no causal link between a timer tick and the layout takeover —
+this is "mode confusion" (Cooper). At <30min the urgency is objectively real.
+Between 2h and 30min the surface uses a persistent titlebar flash + badge
+count instead of full-screen takeover.
+
+**R2. Panel C minimum width 30% (was 25%)**. Review cards with SLA countdown +
+metadata + action buttons need at least 432px on a 1440px display. Panels
+become user-resizable with position persisted in SQLite (`cockpit_prefs` table).
+
+**R3. "Defer all" replaces free-text with a segmented picker**: Emergency /
+Sleep / Presentation / Other. "Other" reveals an optional free-text field.
+Audit trail in `cockpit_deferrals.jsonl` gains a structured `reason_category`
+column. Click time drops from ~8s to ~2s.
+
+**R4. macOS notification uses `requestUserAttention(.critical)` not `.informational`**.
+Produces continuous dock bounce until app is foregrounded. Dock bounce
+"once" (original spec) is invisible to a user in fullscreen on another Space.
+Plus: parallel Telegram message with `nuzantara-cockpit://review/<id>`
+deeplink so phone-side reach is guaranteed.
+
+### 17.2 Reliability — from risk-hunter council
+
+**R5. Command injection hardening in Mata Garuda CLI bridge** (§8 override).
+The subprocess bridge MUST construct arguments as discrete argv elements via
+Rust `Command::arg()`. No `shell: true`, no string interpolation. `topic_id`
+is validated as UUID or integer BEFORE the call. `--body` is written to a
+Tauri tempfile (`~/Library/Caches/nuzantara-cockpit/mutation-<uuid>.json`)
+and passed as a file path, never inline. Severity if missed: CRITICAL —
+adversary writing into `garuda:processed` could inject shell commands running
+as user on Pro.
+
+**R6. Compare-and-swap UPDATE on pending_topic.status** (§6 step 13 override).
+Replace naive `UPDATE pending_topic SET status='approved' WHERE id=$1` with:
+
+```sql
+UPDATE pending_topic
+   SET status='approved'
+ WHERE id=$1 AND status='pending_review'
+ RETURNING id;
+```
+
+Check returned row count. If 0, status was changed elsewhere (Telegram
+auto-reject, concurrent cockpit tab). Show dedicated UI: "Decision conflict:
+this topic was auto-rejected while you were reviewing. [View scar]". Prevents
+silent override of Telegram auto-reject and silent double-publish. Severity
+if missed: CRITICAL.
+
+**R7. Idempotency-Key on every cockpit action POST** (§8 + §9 override). Every
+user click that mutates state generates a UUID v4 in React, stored in the
+SQLite `cockpit_actions` row, sent as `X-Idempotency-Key` HTTP header. The 4
+new backend endpoints deduplicate via `idempotency_keys` table (TTL 24h).
+Queue replay on reconnect is safe. Severity if missed: HIGH — backend could
+fire a second publish cycle on retry.
+
+**R8. Rust event buffer during React hydration** (§7 override). Tauri Rust core
+maintains a ring buffer (capacity 100) for all events received before React
+emits `ready` IPC signal. On ready, drains in order, then resumes normal
+emit. For XStream channels (`garuda:*`), persist last-seen entry ID in SQLite
+(`xstream_cursor` table) per channel; on Tauri restart, resume from that ID
+instead of `$`. Severity if missed: HIGH — events permanently lost on cold
+start.
+
+**R9. Event deduplication via UUID, not timestamp** (§7 override). Every
+`war_room:events` publish carries `event_id = UUID v4`. Every polling endpoint
+row carries `last_event_id`. Rust core maintains a `HashSet<Uuid>` sliding
+window (capacity 500, TTL 120s). Before IPC emit, check set membership. Dedup
+key is UUID, not SHA256 of fields (timestamp collisions during rapid stage
+transitions produce false negatives). Severity if missed: MEDIUM —
+double-renders and double-modal-opens.
+
+**R10. Connection status as first-class UI state** (§7 + §5.4 override). Bottom
+strip gets a 4th indicator: `redis_primary` (green) / `redis_fallback_air`
+(amber) / `polling_only` (red pulse). During the 7s retry blackout, SLA
+countdowns in Panel C show a "⚠ connection dropping" overlay. Rust pings the
+Air tunnel (`127.0.0.1:16379`) ONCE before declaring it as available
+fallback; if ping fails, go direct to polling-only mode with clear UI.
+
+**R11. Dirty-state autosave before any modal auto-opens** (§5.3 override).
+Before Panel C modal auto-expands (R1 applies at <30min), check Zustand
+`panel_b.editor.dirty` flag. If true: (a) call Tauri command to persist the
+editor's current text to SQLite `cached_topics.draft_edit`, (b) show
+non-blocking toast "Draft saved — review gate opening", (c) THEN open the
+modal. On modal dismiss, restore `draft_edit` into the editor. Severity if
+missed: MEDIUM — work loss surprises users and erodes cockpit trust.
+
+### 17.3 Implementation — from feasibility council
+
+**R12. Canva preview: Option A only** (§5.3 override). Server-side export via
+Canva Connect `GET /v1/designs/{id}/pages/export` (scope `design:content:read`
+already granted in `~/.canva_tokens.json`). 11 PNGs stored to Tigris, URLs
+returned in the backend response. Cockpit renders `<img src>` with preloaded
+blobs cached in SQLite on first fetch. Option B (iframe editor) is **hard
+blocked** (Canva Embed SDK is partner-only, no webview allowed). Option C
+(Playwright CSS patch) is visually inconsistent vs published — fallback only
+if Canva API unreachable for >2h.
+
+**R13. No WYSIWYG inline text editing** (§5.3 override). Metadata-only editing:
+user clicks slide → modal text editor → save → `pending_topic.status` flips
+to `awaiting_revision` → re-enters layout stage 6 → Canva API re-commits via
+`start-editing-transaction` → `commit-editing-transaction` → new PNG export.
+Round-trip 3-10 minutes (depending on preprocessor window). UI shows
+"Re-rendering layout..." with Playwright/Canva progress indicator. Users
+must be told upfront this is the cost; no live preview is possible without
+the Canva Embed SDK (blocked per R12).
+
+**R14. Tauri Rust core concrete dependencies** (§3 elaboration):
+
+- `redis = "0.25"` with `tokio-comp` feature; use `ConnectionManager` for
+  auto-reconnect; bounded `tokio::sync::mpsc::channel(256)` between listener
+  and IPC emitter; drop-oldest on full + log.
+- `tauri-plugin-sql v2` with `sqlite` feature; `PRAGMA journal_mode=WAL` and
+  `PRAGMA busy_timeout=5000` set as connection options.
+- `tokio::process::Command` with `.kill_on_drop(true)` wrapped in
+  `tokio::time::timeout(Duration::from_secs(N))`. 30s for `ssh`/`fly`, 10s
+  for `curl`. Expose via Tauri command returning `Result<String, String>`.
+
+**R15. No virtualization needed at MVP for Panel B timeline**. 50 topics × 11
+stages = 550 DOM nodes renders cleanly on M4 Pro. Pattern from
+`apps/mouth/src/components/chat/ChatMessageListVirtualized.tsx` is already in
+the repo; swap-in is a 0.5d change if concurrent topic count exceeds 100.
+Use `useMemo` + `React.memo` per topic row at MVP.
+
+### 17.4 Timeline impact
+
+These 15 revisions add **~4 days** to the original 3-week estimate:
+
+- R5 (CLI injection hardening): +0.5d (Rust Command::arg + validator)
+- R6+R7 (compare-and-swap + idempotency): +1d across 4 endpoints
+- R8+R9 (event buffer + UUID dedup): +1d Rust
+- R10 (connection_status UI): +0.5d
+- R11 (dirty-state autosave): +0.5d
+- R12 (Canva server-side export endpoint): +0.5d backend
+- R1-R4 (UX micro-adjustments): +0d (layout-only changes)
+- R13-R15 (documentation + limitations communicated): +0d
+
+**Revised total: ~3.5 weeks.**
+
+### 17.5 Explicitly NOT changed
+
+- Single-user MVP on Pro (Zero only)
+- Tauri v2 + React 19 stack
+- 3-panel + bottom strip layout shape
+- Telegram parallel channel preserved
+- 11-stage WR pipeline model
+- Mata Garuda as read-only source (cockpit never writes into garuda:\*)
+- Auto-reject at 48h hard SLA (existing Telegram behavior, unchanged)
