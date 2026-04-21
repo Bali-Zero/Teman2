@@ -20,11 +20,13 @@ import {
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
+import * as partnersApi from "@/lib/api/partners/partners";
 import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
+import { ReferrerDropdown } from "@/components/partners/ReferrerDropdown";
 
 interface ServiceItem {
   code: string;
@@ -73,6 +75,8 @@ export default function NewPracticePage() {
     assigned_to: "",
     priority: "normal" as "normal" | "high" | "urgent",
     start_date: "",
+    // CRIT-8 residual: partners use UUID strings now
+    referrer_id: null as string | null,
   });
 
   // Client Search State
@@ -341,7 +345,7 @@ export default function NewPracticePage() {
         });
       }
 
-      const backendData: CreatePracticeParams = {
+      const backendData = {
         client_id: result.data.client_id,
         practice_type_code: result.data.practice_type_code,
         status: "inquiry",
@@ -352,11 +356,22 @@ export default function NewPracticePage() {
           : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
-      };
+      } as CreatePracticeParams;
 
       const createdPractice = await api.crm.createPractice(
         backendData,
       );
+
+      if (formData.referrer_id != null && createdPractice?.id) {
+        try {
+          await partnersApi.createReferral(formData.referrer_id, {
+            practice_id: createdPractice.id,
+          });
+        } catch (referralErr) {
+          // Non-fatal: practice exists. Log but don't block user.
+          console.warn("Referral row creation failed", referralErr);
+        }
+      }
       const apiDuration = performance.now() - apiStart;
       casesMetrics.trackApiCall(
         "/api/crm/practices/create",
@@ -781,6 +796,21 @@ export default function NewPracticePage() {
                 className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
               />
             </div>
+          </div>
+
+          {/* Referrer (Partner) */}
+          <div className="space-y-2">
+            <label className={labelClass}>
+              Referrer{" "}
+              <span className="text-[var(--foreground-muted)] font-normal">
+                (optional)
+              </span>
+            </label>
+            <ReferrerDropdown
+              value={formData.referrer_id}
+              onChange={(id) => setFormData((prev) => ({ ...prev, referrer_id: id }))}
+              className="w-full"
+            />
           </div>
 
           {/* Notes */}

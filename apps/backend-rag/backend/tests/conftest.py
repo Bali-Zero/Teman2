@@ -42,6 +42,7 @@ def mock_db_pool():
     """Standard mock asyncpg connection pool.
 
     Supports: async with pool.acquire() as conn
+              async with conn.transaction()  (no-op async context manager)
     Usage: pool, conn = mock_db_pool
     """
     pool = MagicMock()
@@ -54,7 +55,17 @@ def mock_db_pool():
         async def __aexit__(self, *args):
             return None
 
+    class _TransactionCtx:
+        async def __aenter__(self):
+            return None
+
+        async def __aexit__(self, *args):
+            return None
+
     pool.acquire = MagicMock(return_value=_AsyncCtx())
+    # conn.transaction() must return an async context manager, not a coroutine.
+    # AsyncMock would make it a coroutine; use MagicMock returning _TransactionCtx.
+    conn.transaction = MagicMock(return_value=_TransactionCtx())
     return pool, conn
 
 
