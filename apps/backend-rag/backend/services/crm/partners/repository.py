@@ -337,8 +337,24 @@ class PartnersRepository:
                      receipt_type, receipt_file_url]
         if new_status == "waived":
             fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
-        sql = f"UPDATE partner_commissions SET {', '.join(fragments)} WHERE id = $1"
-        await self.conn.execute(sql, *args)
+        # CRIT-1: Add WHERE status = old_status to detect concurrent mutations.
+        # If another process already transitioned this commission between our
+        # get_commission read and this UPDATE, the row count will be 0 and we
+        # raise RuntimeError rather than silently succeeding on a stale read.
+        old_status_placeholder = f"${len(args)+1}"
+        args.append(current.status)
+        sql = (
+            f"UPDATE partner_commissions SET {', '.join(fragments)} "
+            f"WHERE id = $1 AND status = {old_status_placeholder}"
+        )
+        result = await self.conn.execute(sql, *args)
+        # asyncpg returns "UPDATE <n>"; 0 rows = concurrent change detected.
+        if not result.endswith(" 1"):
+            raise RuntimeError(
+                f"Concurrent status change detected on commission {commission_id}: "
+                f"expected status={current.status!r} but UPDATE affected no rows. "
+                f"The commission may have been modified by a concurrent request."
+            )
 
     async def mark_commission_email_sent(self, commission_id: UUID) -> None:
         await self.conn.execute(

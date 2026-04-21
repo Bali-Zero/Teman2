@@ -200,12 +200,13 @@ class CommissionEngine:
           If the clawback magnitude exceeds the accrual's net, no offset is
           applied this round (partial offsets are v2 scope).
 
-        Atomicity note (v1):
-          The offset writes two rows sequentially on a single connection.
-          If a crash occurs between the net UPDATE and the clawback status
-          UPDATE, the accrual row will have a reduced net but the clawback
-          will still be 'clawback_pending'. This is flagged DONE_WITH_CONCERNS
-          for v2 to wrap in an explicit transaction.
+        Atomicity (CRIT-1, 2026-04-21):
+          The offset block (net UPDATE + clawback status transition) and the
+          approve transition are wrapped in a single async transaction. Crash
+          safety: if any step fails, all writes roll back and the commission
+          remains 'accrued'. Concurrent-change protection: update_commission_status
+          now includes WHERE status = old_status in the UPDATE and raises
+          RuntimeError on 0-row result (concurrent mutation detected).
         """
         c = await self.repo.get_commission(commission_id)
         if c is None:
@@ -226,52 +227,59 @@ class CommissionEngine:
                 "withholding category is tbd — set pph21|pph23|exempt first"
             )
 
-        # Offset against oldest clawback_pending, if any.
-        pending = await self.repo.list_pending_clawbacks(c.partner_id)
-        offset_applied_id: UUID | None = None
-        if pending:
-            oldest = pending[0]
-            # offset_amount is positive (magnitude of the negative clawback).
-            offset_amount = -oldest.net_amount_idr
-            new_net = c.net_amount_idr - offset_amount
+        # CRIT-1: Wrap the offset + approve transition in a single transaction.
+        # The previous implementation did two sequential UPDATEs without a
+        # transaction — a crash between them left the ledger inconsistent
+        # (accrual net reduced, clawback still 'clawback_pending'). Additionally,
+        # concurrent approvals for the same partner could double-apply the same
+        # oldest clawback row (update_commission_status uses read-check-write,
+        # which is now guarded by a WHERE status = old_status clause in the repo).
+        async with self.conn.transaction():
+            pending = await self.repo.list_pending_clawbacks(c.partner_id)
+            offset_applied_id: UUID | None = None
+            if pending:
+                oldest = pending[0]
+                # offset_amount is positive (magnitude of the negative clawback).
+                offset_amount = -oldest.net_amount_idr
+                new_net = c.net_amount_idr - offset_amount
 
-            if new_net <= 0:
-                # Clawback exceeds this accrual — defer to next approval cycle.
-                # Partial offsets require additional policy decisions (v2 scope).
+                if new_net <= 0:
+                    # Clawback exceeds this accrual — defer to next approval cycle.
+                    # Partial offsets require additional policy decisions (v2 scope).
+                    logger.info(
+                        "approve: clawback %s (magnitude %s) exceeds accrual %s net %s "
+                        "— no offset this round",
+                        oldest.id, offset_amount, c.id, c.net_amount_idr,
+                    )
+                else:
+                    # ONE LEGAL LEDGER MUTATION (spec §Q9, plan Step 5.2):
+                    # Reduce this accrual's net by the clawback magnitude before
+                    # flipping the status to 'approved'. This is the only place
+                    # where a pre-existing commission row's net_amount_idr is
+                    # updated (all other commission writes go through insert_commission).
+                    await self.conn.execute(
+                        "UPDATE partner_commissions SET net_amount_idr = $2 WHERE id = $1",
+                        c.id,
+                        new_net,
+                    )
+                    await self.repo.update_commission_status(oldest.id, "offset_applied")
+                    offset_applied_id = oldest.id
+                    logger.info(
+                        "approve: offset clawback %s against accrual %s "
+                        "(net reduced %s → %s IDR)",
+                        oldest.id, c.id, c.net_amount_idr, new_net,
+                    )
+
+            await self.repo.update_commission_status(
+                commission_id, "approved", approved_by=actor
+            )
+            if offset_applied_id:
                 logger.info(
-                    "approve: clawback %s (magnitude %s) exceeds accrual %s net %s "
-                    "— no offset this round",
-                    oldest.id, offset_amount, c.id, c.net_amount_idr,
+                    "approve: commission %s approved with clawback %s offset",
+                    commission_id, offset_applied_id,
                 )
             else:
-                # ONE LEGAL LEDGER MUTATION (spec §Q9, plan Step 5.2):
-                # Reduce this accrual's net by the clawback magnitude before
-                # flipping the status to 'approved'. This is the only place
-                # where a pre-existing commission row's net_amount_idr is
-                # updated (all other commission writes go through insert_commission).
-                await self.conn.execute(
-                    "UPDATE partner_commissions SET net_amount_idr = $2 WHERE id = $1",
-                    c.id,
-                    new_net,
-                )
-                await self.repo.update_commission_status(oldest.id, "offset_applied")
-                offset_applied_id = oldest.id
-                logger.info(
-                    "approve: offset clawback %s against accrual %s "
-                    "(net reduced %s → %s IDR)",
-                    oldest.id, c.id, c.net_amount_idr, new_net,
-                )
-
-        await self.repo.update_commission_status(
-            commission_id, "approved", approved_by=actor
-        )
-        if offset_applied_id:
-            logger.info(
-                "approve: commission %s approved with clawback %s offset",
-                commission_id, offset_applied_id,
-            )
-        else:
-            logger.info("approve: commission %s approved (no clawback offset)", commission_id)
+                logger.info("approve: commission %s approved (no clawback offset)", commission_id)
 
     # ── Mark paid ───────────────────────────────────────────────────────────
 
