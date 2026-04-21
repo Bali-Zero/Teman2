@@ -216,6 +216,21 @@ def main() -> int:
             ))
     print(f"[bootstrap] DEFAULT NOW() ensured on {len(TIMESTAMPED_TABLES_COLUMNS)} timestamp columns")
 
+    # Production-only columns that prod picked up via hand-ALTER but that
+    # never got a migration file. Tests (lkpm_readypack, drive_poll,
+    # invoicing) INSERT into them, so CI fresh DB needs them added.
+    # Same scar family as the migration 118 referrer_url case (2026-04-21).
+    PROD_ONLY_COLUMNS = [
+        ("clients", "google_drive_folder_id", "TEXT"),
+    ]
+    with engine.begin() as conn:
+        for table, column, ctype in PROD_ONLY_COLUMNS:
+            conn.execute(text(
+                f"ALTER TABLE IF EXISTS {table} "
+                f"ADD COLUMN IF NOT EXISTS {column} {ctype}"
+            ))
+    print(f"[bootstrap] prod-only columns ensured: {PROD_ONLY_COLUMNS}")
+
     return 0
 
 
