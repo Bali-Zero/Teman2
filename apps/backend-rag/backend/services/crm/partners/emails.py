@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
-    autoescape=False,
+    autoescape=jinja2.select_autoescape([]),  # markdown-only, no HTML escaping needed
     keep_trailing_newline=True,
 )
 
