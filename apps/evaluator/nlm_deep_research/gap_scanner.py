@@ -211,8 +211,15 @@ def _extract_gap_topics(response: str) -> list[str]:
     if text.startswith("{"):
         try:
             obj = json.loads(text)
-            if isinstance(obj, dict) and isinstance(obj.get("answer"), str):
-                text = obj["answer"].strip()
+            # Two known envelope shapes exist in the wild:
+            #   {"answer": "...", "conversation_id": "...", ...}         (flat)
+            #   {"value": {"answer": "...", "conversation_id": "..."}}   (wrapped)
+            # The live `nlm query notebook` CLI as of 2026-04-22 emits the
+            # wrapped variant; older mocks used the flat one. Support both.
+            if isinstance(obj, dict):
+                inner = obj.get("value") if isinstance(obj.get("value"), dict) else obj
+                if isinstance(inner, dict) and isinstance(inner.get("answer"), str):
+                    text = inner["answer"].strip()
         except (json.JSONDecodeError, ValueError):
             # Not a well-formed envelope — keep the raw text and rely on the
             # line-level filter below to drop leaking keys.
@@ -423,6 +430,14 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
     matrix = _load_matrix()
     state = _load_gap_state()
 
+    # Count query infrastructure failures separately so a total CLI
+    # outage (e.g. `nlm` not in PATH) doesn't masquerade as a normal
+    # 100% GAP result — which would leave heartbeat green and Zero
+    # unaware. See scar: 2026-04-19 Layer B run silently reported "ok"
+    # while 56/56 queries failed with Errno 2: 'nlm'.
+    total_queries_attempted = 0
+    total_queries_failed = 0
+
     for domain, config in DOMAIN_TOPICS.items():
         nb_id = config["notebook_id"]
         label = config["label"]
@@ -435,8 +450,11 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
             result["total_topics"] += 1
 
             if not dry_run:
+                total_queries_attempted += 1
                 query = FRESHNESS_QUERY_TEMPLATE.format(topic=topic)
                 response = _query_notebook(nb_id, query, timeout=90)
+                if response is None:
+                    total_queries_failed += 1
                 classification = _classify_freshness(response)
             else:
                 classification = "FRESH"  # dry run stub
@@ -497,6 +515,30 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
 
     if result["errors"]:
         result["status"] = "partial"
+
+    # Infrastructure-failure guard: if we attempted queries but every
+    # single one failed, treat the whole run as failed so the bash
+    # wrapper does NOT register a heartbeat and the cron alert fires.
+    # A single successful query in the batch is enough to keep the run
+    # alive — the legitimate per-topic GAPs will still show up in
+    # coverage_matrix as GAP classifications.
+    if (
+        not dry_run
+        and total_queries_attempted > 0
+        and total_queries_failed == total_queries_attempted
+    ):
+        result["status"] = "failed"
+        result["errors"].append(
+            f"all {total_queries_failed}/{total_queries_attempted} NLM queries "
+            f"failed — check that the `nlm` CLI is on PATH and OAuth token "
+            f"is valid; heartbeat NOT recorded to avoid falso-OK "
+            f"(cicatrix 2026-04-19)."
+        )
+        logger.error(
+            "Layer B: infrastructure failure — %d/%d queries failed",
+            total_queries_failed,
+            total_queries_attempted,
+        )
 
     return result
 
