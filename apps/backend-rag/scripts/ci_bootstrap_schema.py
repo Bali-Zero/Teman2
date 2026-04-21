@@ -179,6 +179,29 @@ def main() -> int:
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
+
+    # SQLModel declares `created_at`/`updated_at` with `default_factory=datetime.utcnow`
+    # — that default is APPLIED BY THE APP, not by the DB. Raw asyncpg INSERTs in
+    # tests (test_compliance_alerts_router, etc.) bypass the ORM and hit
+    # NotNullViolationError. Add the DB-side DEFAULT NOW() on the columns that
+    # really need it so test helpers don't have to spell it out in every INSERT.
+    # Safe on re-run: `ALTER COLUMN ... SET DEFAULT` is idempotent.
+    TIMESTAMPED_TABLES_COLUMNS = [
+        ("clients", "created_at"),
+        ("clients", "updated_at"),
+        ("companies", "created_at"),
+        ("companies", "updated_at"),
+        ("practices", "created_at"),
+        ("practices", "updated_at"),
+    ]
+    with engine.begin() as conn:
+        for table, column in TIMESTAMPED_TABLES_COLUMNS:
+            conn.execute(text(
+                f"ALTER TABLE IF EXISTS {table} "
+                f"ALTER COLUMN {column} SET DEFAULT NOW()"
+            ))
+    print(f"[bootstrap] DEFAULT NOW() ensured on {len(TIMESTAMPED_TABLES_COLUMNS)} timestamp columns")
+
     return 0
 
 
