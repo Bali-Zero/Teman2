@@ -27,6 +27,7 @@ import time
 import traceback
 from typing import Any
 
+import sentry_sdk
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -36,6 +37,12 @@ from backend.services.oracle.oracle_service import oracle_service
 from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
+
+# Dedicated logger for the Q1 drop-field WARN so ops can route, mute or
+# aggregate it independently of the router's other output. Sentry tag key
+# is `oracle.dropped_fields` (field names only — Sentry PII redaction is
+# handled globally in backend/app/setup/sentry_config.py).
+_DROPPED_FIELDS_LOGGER = logging.getLogger("oracle.query.dropped_fields")
 
 
 class ConversationMessage(BaseModel):
@@ -158,11 +165,16 @@ async def hybrid_oracle_query(
         if getattr(request, k) not in (None, "structured")
     ]
     if _unwired:
-        logger.warning(
+        _DROPPED_FIELDS_LOGGER.warning(
             "oracle_universal: request fields %s provided but not forwarded "
             "to OracleService (see WAVE2_NOTES.md Q1)",
             _unwired,
         )
+        # Sentry aggregation tag. No user data — only the field names we
+        # already expose in the OpenAPI schema. `set_tag` is a no-op when
+        # Sentry is not initialised (SENTRY_DSN unset or SKIP_SENTRY_INIT=1),
+        # so it is safe to call unconditionally.
+        sentry_sdk.set_tag("oracle.dropped_fields", ",".join(_unwired))
 
     try:
         result = await oracle_service.process_query(

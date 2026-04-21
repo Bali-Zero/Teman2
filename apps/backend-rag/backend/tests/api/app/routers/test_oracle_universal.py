@@ -1086,6 +1086,103 @@ async def test_query_malformed_service_response_logs_validation_error(caplog) ->
 
 
 # ---------------------------------------------------------------------------
+# Wave 3 — Dropped-field observability: dedicated logger + Sentry tag.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_dropped_fields_use_dedicated_logger(caplog) -> None:
+    """Wave 3: the Q1 drop WARN must emerge from the dedicated
+    `oracle.query.dropped_fields` logger so the event can be routed, muted
+    or aggregated independently of the rest of the router's chatty logs.
+
+    Until wave 3 it came from `backend.app.routers.oracle_universal`.
+    """
+    import logging as _logging
+
+    caplog.set_level(_logging.WARNING, logger="oracle.query.dropped_fields")
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="logger name drift"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "logger name drift",
+                    "domain_hint": "visa",
+                },
+            )
+
+    assert r.status_code == 200
+    named = [rec for rec in caplog.records if rec.name == "oracle.query.dropped_fields"]
+    assert len(named) == 1
+    assert named[0].levelname == "WARNING"
+    assert "domain_hint" in named[0].message
+
+
+@pytest.mark.asyncio
+async def test_dropped_fields_emit_sentry_tag(monkeypatch) -> None:
+    """Wave 3: when request fields are dropped, the router must also tag the
+    current Sentry scope with `oracle.dropped_fields` = comma-joined field
+    names. This lets ops aggregate by field without relying on free-text log
+    parsing (Sentry PII redaction is already handled globally — the tag
+    value contains only field names, never user data)."""
+    recorded: list[tuple[str, str]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(key: str, value: str) -> None:
+        recorded.append((key, value))
+
+    monkeypatch.setattr(oracle_router.sentry_sdk, "set_tag", _capture)
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="sentry tag check"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={
+                    "query": "sentry tag check",
+                    "domain_hint": "tax",
+                    "context_docs": ["drive-A"],
+                },
+            )
+
+    assert r.status_code == 200
+    assert ("oracle.dropped_fields", "domain_hint,context_docs") in recorded
+
+
+@pytest.mark.asyncio
+async def test_dropped_fields_no_sentry_tag_when_empty(monkeypatch) -> None:
+    """Wave 3 negative: a request that does not trigger the drop branch
+    (default `response_format='structured'`, no hints) must NOT tag Sentry
+    — otherwise we would blow the free-tier quota with noise on every
+    request."""
+    recorded: list[tuple[str, str]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(key: str, value: str) -> None:
+        recorded.append((key, value))
+
+    monkeypatch.setattr(oracle_router.sentry_sdk, "set_tag", _capture)
+
+    app = _build_app()
+    process = AsyncMock(return_value=_happy_result(query="clean request"))
+    with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            r = await client.post(
+                "/api/oracle/query",
+                json={"query": "clean request"},
+            )
+
+    assert r.status_code == 200
+    assert recorded == []
+
+
+# ---------------------------------------------------------------------------
 # Wave 3 — Q3 stub removal: endpoints gone, surface contract is now:
 #   POST /api/oracle/query, POST /api/oracle/feedback, GET /api/oracle/health.
 # ---------------------------------------------------------------------------
