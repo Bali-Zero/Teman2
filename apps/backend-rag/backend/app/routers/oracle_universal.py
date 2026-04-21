@@ -28,7 +28,7 @@ import traceback
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.app.dependencies import get_current_user, get_search_service
 from backend.app.models import UserProfile
@@ -149,6 +149,21 @@ async def hybrid_oracle_query(
     Ultra Hybrid Oracle Query - v5.3 (Refactored)
     Integrates Qdrant search, Google Drive, and Gemini reasoning via OracleService.
     """
+    # Known-unwired request fields (Q1 from wave 1 audit). Logged so that
+    # clients sending them know the hint is silently dropped until the service
+    # layer consumes it. Contract is kept so the OpenAPI schema stays stable.
+    _unwired = [
+        k
+        for k in ("domain_hint", "context_docs", "response_format")
+        if getattr(request, k) not in (None, "structured")
+    ]
+    if _unwired:
+        logger.warning(
+            "oracle_universal: request fields %s provided but not forwarded "
+            "to OracleService (see WAVE2_NOTES.md Q1)",
+            _unwired,
+        )
+
     try:
         result = await oracle_service.process_query(
             request_query=request.query,
@@ -173,6 +188,27 @@ async def hybrid_oracle_query(
 
     except HTTPException:
         raise
+    except ValidationError as e:
+        # Q2 (wave 2): a ValidationError here means the upstream service
+        # returned a dict that does not match OracleQueryResponse. Without
+        # this branch it was swallowed by the generic handler and looked
+        # identical to a runtime error, hiding real service-schema drift.
+        # Semantics are unchanged (still 200 + success=False) — only the
+        # log line is elevated to WARN with an explicit tag so Sentry can
+        # separate schema drift from transient service failures.
+        logger.warning(
+            "oracle_universal: OracleQueryResponse validation failed — "
+            "upstream OracleService returned a dict that does not match "
+            "the router contract. error=%s",
+            e,
+        )
+        return OracleQueryResponse(
+            success=False,
+            query=request.query,
+            error=f"response_validation_error: {e}",
+            execution_time_ms=0,
+            document_count=0,
+        )
     except Exception as e:
         logger.error(f"❌ Oracle Router Error: {e}")
         logger.debug(traceback.format_exc())
@@ -205,19 +241,36 @@ async def oracle_health_check() -> dict[str, Any]:
     }
 
 
-@router.get("/drive/test")
+@router.get("/drive/test", deprecated=True)
 async def test_drive_connection() -> dict[str, Any]:
-    """Test Google Drive integration"""
+    """Stub retained for backwards compatibility (Q3 wave 2 audit).
+
+    Google Drive health is now exposed through the shared service layer.
+    No internal callers remain; endpoint kept only because it is part of
+    the published OpenAPI schema consumed by apps/mouth.
+    """
+    logger.info("oracle_universal: deprecated /drive/test called")
     return {"status": "moved_to_service", "available": True}
 
 
-@router.get("/gemini/test")
+@router.get("/gemini/test", deprecated=True)
 async def test_gemini_integration() -> dict[str, Any]:
-    """Test Google Gemini integration"""
+    """Stub retained for backwards compatibility (Q3 wave 2 audit).
+
+    Gemini health is now exposed through the shared service layer. See
+    /drive/test for the same rationale.
+    """
+    logger.info("oracle_universal: deprecated /gemini/test called")
     return {"status": "moved_to_service", "available": True}
 
 
-@router.get("/user/profile/{user_email}")
+@router.get("/user/profile/{user_email}", deprecated=True)
 async def get_user_profile_endpoint(user_email: str) -> dict[str, Any]:
-    """Get user profile with localization preferences"""
+    """Stub retained for backwards compatibility (Q3 wave 2 audit).
+
+    Real user-profile lookup lives behind `/api/users/profile` in the
+    users router. This path is kept only so apps/mouth's generated
+    schema does not break mid-migration.
+    """
+    logger.info("oracle_universal: deprecated /user/profile/{email} called")
     return {"status": "not_implemented", "email": user_email}
