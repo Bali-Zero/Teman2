@@ -9,6 +9,7 @@ import {
   useFunnelApp,
   useHaptic,
 } from "@balizero/core";
+import { ChatAccordion } from "@/components/visa/ChatAccordion";
 
 interface MatchResult {
   hash: string;
@@ -21,6 +22,7 @@ interface MatchResult {
   alternatives: string[];
   referral_mode: boolean;
   result_url: string;
+  session_jwt: string | null;
 }
 
 export default function VisaMatchResultPage({
@@ -144,6 +146,11 @@ export default function VisaMatchResultPage({
             If your case changes: {data.alternatives.join(" · ")}. Ask us on WhatsApp for the trade-off.
           </p>
         </section>
+      ) : null}
+
+      {/* Ask follow-up questions (chat) */}
+      {data.session_jwt ? (
+        <ChatAccordion checkHash={data.hash} sessionJwt={data.session_jwt} />
       ) : null}
 
       {/* WhatsApp CTA — sticky after scroll past stamp */}
