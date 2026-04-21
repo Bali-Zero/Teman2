@@ -81,16 +81,14 @@ async def test_retry_claims_row_and_succeeds(monitor, fake_pool):
     fake_pool._conn.fetch.return_value = [failed_row]
     fake_pool._conn.fetchval.return_value = 43  # new audit row id
 
+    mock_client = MagicMock()
     with patch(
-        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
-    ) as mock_client_cls:
-        mock_client = MagicMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
+        "backend.services.notifications.email_health_monitor.get_email_client",
+        new=AsyncMock(return_value=mock_client),
+    ):
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
-        mock_client_cls.return_value = mock_client
 
         stats = await monitor.check_and_retry_failed_emails()
 
@@ -124,16 +122,14 @@ async def test_retry_closes_original_row_on_success(monitor, fake_pool):
     fake_pool._conn.fetch.return_value = [failed_row]
     fake_pool._conn.fetchval.return_value = 43
 
+    mock_client = MagicMock()
     with patch(
-        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
-    ) as mock_client_cls:
-        mock_client = MagicMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
+        "backend.services.notifications.email_health_monitor.get_email_client",
+        new=AsyncMock(return_value=mock_client),
+    ):
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_client.post = AsyncMock(return_value=mock_response)
-        mock_client_cls.return_value = mock_client
 
         await monitor.check_and_retry_failed_emails()
 
@@ -172,14 +168,12 @@ async def test_retry_marks_original_superseded_on_failure(monitor, fake_pool):
     fake_pool._conn.fetch.return_value = [failed_row]
     fake_pool._conn.fetchval.return_value = 43
 
+    mock_client = MagicMock()
     with patch(
-        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
-    ) as mock_client_cls:
-        mock_client = MagicMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
+        "backend.services.notifications.email_health_monitor.get_email_client",
+        new=AsyncMock(return_value=mock_client),
+    ):
         mock_client.post = AsyncMock(side_effect=RuntimeError("still down"))
-        mock_client_cls.return_value = mock_client
 
         await monitor.check_and_retry_failed_emails()
 
@@ -208,14 +202,12 @@ async def test_retry_marks_failed_again_when_brevo_errors(monitor, fake_pool):
     fake_pool._conn.fetch.return_value = [failed_row]
     fake_pool._conn.fetchval.return_value = 43
 
+    mock_client = MagicMock()
     with patch(
-        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
-    ) as mock_client_cls:
-        mock_client = MagicMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
+        "backend.services.notifications.email_health_monitor.get_email_client",
+        new=AsyncMock(return_value=mock_client),
+    ):
         mock_client.post = AsyncMock(side_effect=RuntimeError("network"))
-        mock_client_cls.return_value = mock_client
 
         stats = await monitor.check_and_retry_failed_emails()
 

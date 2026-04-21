@@ -27,6 +27,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
 
@@ -290,13 +291,13 @@ class InvoiceAutomationService:
             "cc": ", ".join(cc_emails),
             "attachments": [{"name": filename, "content": pdf_b64}],
         }
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                _EMAIL_API_URL,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-                json=payload,
-            )
-            response.raise_for_status()
+        client = await get_email_client()
+        response = await client.post(
+            _EMAIL_API_URL,
+            headers={"X-API-Key": _EMAIL_API_KEY},
+            json=payload,
+        )
+        response.raise_for_status()
 
         logger.info(f"Invoice email sent to {client_email} from zantara@ (cc: {cc_emails})")
         return True
@@ -336,13 +337,13 @@ class InvoiceAutomationService:
             "body": body_html,
             "attachments": [{"name": filename, "content": pdf_b64}],
         }
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                _EMAIL_API_URL,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-                json=payload,
-            )
-            response.raise_for_status()
+        client = await get_email_client()
+        response = await client.post(
+            _EMAIL_API_URL,
+            headers={"X-API-Key": _EMAIL_API_KEY},
+            json=payload,
+        )
+        response.raise_for_status()
 
         logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} from zantara@")
         return True

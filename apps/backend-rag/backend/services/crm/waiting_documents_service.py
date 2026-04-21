@@ -10,7 +10,6 @@ import os
 from typing import Any
 
 import asyncpg
-import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
@@ -21,6 +20,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -262,13 +262,13 @@ The Zantara Indonesia Team
         # 1) Brevo
         try:
             html_body = body.replace("\n", "<br>")
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    _EMAIL_API_URL,
-                    headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={"to": to_email, "subject": subject, "body": html_body},
-                )
-                response.raise_for_status()
+            client = await get_email_client()
+            response = await client.post(
+                _EMAIL_API_URL,
+                headers={"X-API-Key": _EMAIL_API_KEY},
+                json={"to": to_email, "subject": subject, "body": html_body},
+            )
+            response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")
             await record_email_result(
                 self.db_pool, row_id, status="sent", provider="brevo",

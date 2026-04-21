@@ -33,7 +33,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
-import httpx
+from backend.services.notifications.email_http import get_email_client
 
 if TYPE_CHECKING:
     import asyncpg
@@ -158,17 +158,17 @@ class EmailHealthMonitor:
 
         err_msg: str | None = None
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    _EMAIL_API_URL,
-                    headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={
-                        "to": row["to_email"],
-                        "subject": f"[RETRY] {(row['subject'] or 'Bali Zero notification')[:480]}",
-                        "body": retry_body,
-                    },
-                )
-                resp.raise_for_status()
+            client = await get_email_client()
+            resp = await client.post(
+                _EMAIL_API_URL,
+                headers={"X-API-Key": _EMAIL_API_KEY},
+                json={
+                    "to": row["to_email"],
+                    "subject": f"[RETRY] {(row['subject'] or 'Bali Zero notification')[:480]}",
+                    "body": retry_body,
+                },
+            )
+            resp.raise_for_status()
         except Exception as e:
             err_msg = str(e)
 

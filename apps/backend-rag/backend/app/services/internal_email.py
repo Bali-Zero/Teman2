@@ -37,14 +37,13 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-import httpx
-
 from backend.services.notifications.email_audit import (
     is_critical,
     log_email_attempt,
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_http import get_email_client
 
 if TYPE_CHECKING:
     import asyncpg
@@ -121,13 +120,13 @@ async def send_internal_email(
         if cc:
             payload["cc"] = ", ".join(cc)
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                _EMAIL_API_URL,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-                json=payload,
-            )
-            response.raise_for_status()
+        client = await get_email_client()
+        response = await client.post(
+            _EMAIL_API_URL,
+            headers={"X-API-Key": _EMAIL_API_KEY},
+            json=payload,
+        )
+        response.raise_for_status()
 
         logger.info(
             "Internal email sent: to=%s cc=%s context=%s",

@@ -9,11 +9,15 @@ from backend.app.services.internal_email import send_internal_email
 
 
 def _make_mock_client() -> tuple:
+    """Mock the persistent httpx client returned by get_email_client().
+
+    2026-04-21: refactored from per-call httpx.AsyncClient() to a shared
+    persistent client (Golden Rule #10). The mock now represents the
+    bare client object, not a context-manager factory.
+    """
     mock_response = MagicMock()
     mock_response.raise_for_status = MagicMock()
-    mock_client = AsyncMock()
-    mock_client.__aenter__.return_value = mock_client
-    mock_client.__aexit__.return_value = None
+    mock_client = MagicMock()
     mock_client.post = AsyncMock(return_value=mock_response)
     return mock_client, mock_response
 
@@ -24,8 +28,8 @@ class TestSendInternalEmail:
         mock_client, _ = _make_mock_client()
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             await send_internal_email(
                 to="kadek.tax@balizero.com",
@@ -47,8 +51,8 @@ class TestSendInternalEmail:
         mock_client, _ = _make_mock_client()
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             await send_internal_email(
                 to="solo@balizero.com",
@@ -65,8 +69,8 @@ class TestSendInternalEmail:
         mock_client, _ = _make_mock_client()
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             await send_internal_email(
                 to="solo@balizero.com",
@@ -101,8 +105,8 @@ class TestSendInternalEmail:
         mock_client.post = AsyncMock(side_effect=fake_post)
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             await send_internal_email(
                 to="kadek.tax@balizero.com",
@@ -130,8 +134,8 @@ class TestSendInternalEmail:
         mock_client.post = AsyncMock(return_value=mock_response)
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             # Must not raise
             await send_internal_email(
@@ -150,8 +154,8 @@ class TestSendInternalEmail:
         )
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             # Must not raise
             await send_internal_email(
@@ -177,8 +181,8 @@ class TestSendInternalEmail:
         mock_client.post = AsyncMock(return_value=mock_response)
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             with pytest.raises(httpx.HTTPStatusError):
                 await send_internal_email(
@@ -198,8 +202,8 @@ class TestSendInternalEmail:
         )
 
         with patch(
-            "backend.app.services.internal_email.httpx.AsyncClient",
-            return_value=mock_client,
+            "backend.app.services.internal_email.get_email_client",
+            new=AsyncMock(return_value=mock_client),
         ):
             with pytest.raises(httpx.ConnectError):
                 await send_internal_email(

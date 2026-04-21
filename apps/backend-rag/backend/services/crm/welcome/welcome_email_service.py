@@ -35,6 +35,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_http import get_email_client
 
 if TYPE_CHECKING:
     import asyncpg
@@ -261,12 +262,12 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
     send_error: str | None = None
     status_code = 0
     try:
-        async with httpx.AsyncClient(timeout=30.0) as http:
-            resp = await http.post(
-                _EMAIL_API_URL,
-                json=payload,
-                headers={"X-API-Key": _EMAIL_API_KEY},
-            )
+        http = await get_email_client()
+        resp = await http.post(
+            _EMAIL_API_URL,
+            json=payload,
+            headers={"X-API-Key": _EMAIL_API_KEY},
+        )
         status_code = resp.status_code
         if status_code != 200:
             send_error = f"status={status_code} body={resp.text[:200]}"
