@@ -52,10 +52,13 @@ export default function PartnerProfilePage() {
         <h2 className="text-sm font-medium text-gray-300 mb-4">Account Status</h2>
         <dl>
           <Field label="Status" value={partner.onboarding_status} />
-          <Field label="Commission Tier" value={partner.commission_tier} />
+          {/* CRIT-8: commission_tier is optional; backend uses default_commission_type + value */}
+          <Field label="Commission Policy" value={partner.commission_tier ?? (partner.default_commission_value ? `${partner.default_commission_value}${partner.default_commission_type === 'percentage' ? '%' : ' IDR flat'}` : undefined)} />
           <Field label="Tax Withholding Category" value={partner.tax_withholding_category} />
-          <Field label="Tax ID (NPWP)" value={partner.tax_id} />
-          <Field label="PDP Consent" value={partner.pdp_consent ? "Yes" : "No"} />
+          {/* CRIT-8: backend field is 'npwp', not 'tax_id' */}
+          <Field label="Tax ID (NPWP)" value={partner.npwp} />
+          {/* CRIT-8: pdp_consent boolean removed; use pdp_consent_at presence */}
+          <Field label="PDP Consent" value={partner.pdp_consent_at ? "Yes" : "No"} />
           {partner.pdp_consent_at && (
             <Field
               label="PDP Consent Date"
@@ -70,7 +73,8 @@ export default function PartnerProfilePage() {
         <dl>
           <Field label="Payment Method" value={partner.payment_method} />
           <Field label="Bank Name" value={partner.bank_name} />
-          <Field label="Account Holder" value={partner.bank_account_name} />
+          {/* CRIT-8: backend field is 'bank_account_holder', not 'bank_account_name' */}
+          <Field label="Account Holder" value={partner.bank_account_holder} />
           <Field label="Account Number" value={partner.bank_account_number} />
         </dl>
       </div>

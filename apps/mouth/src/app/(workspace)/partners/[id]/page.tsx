@@ -41,10 +41,10 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 ];
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  pending_review: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Review" },
+  // CRIT-8: aligned to backend PartnerStatus enum
+  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Approval" },
   active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
   inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
-  suspended: { bg: "bg-red-500/20", text: "text-red-400", label: "Suspended" },
 };
 
 const COMMISSION_STATUS_STYLES: Record<string, { bg: string; text: string }> = {
@@ -87,14 +87,21 @@ function ProfileTab({ partner }: { partner: Partner }) {
             {statusStyle.label}
           </span>
         } />
-        <InfoRow label="Commission Tier" value={<span className="capitalize">{partner.commission_tier}</span>} />
+        {partner.commission_tier && (
+          <InfoRow label="Commission Tier" value={<span className="capitalize">{partner.commission_tier}</span>} />
+        )}
+        {partner.default_commission_type && (
+          <InfoRow
+            label="Commission Policy"
+            value={`${partner.default_commission_value} ${partner.default_commission_type === 'percentage' ? '%' : 'IDR flat'}`}
+          />
+        )}
         <InfoRow label="Assigned To" value={partner.assigned_to} />
-        <InfoRow label="PDP Consent" value={partner.pdp_consent ? (
-          <span className="flex items-center gap-1 text-green-400"><CheckCircle size={12} /> Yes</span>
+        <InfoRow label="PDP Consent" value={partner.pdp_consent_at ? (
+          <span className="flex items-center gap-1 text-green-400"><CheckCircle size={12} /> Yes ({new Date(partner.pdp_consent_at).toLocaleDateString()})</span>
         ) : (
           <span className="flex items-center gap-1 text-red-400"><XCircle size={12} /> No</span>
         )} />
-        {partner.pdp_consent_at && <InfoRow label="Consent Date" value={new Date(partner.pdp_consent_at).toLocaleDateString()} />}
         <InfoRow label="Welcome Email" value={partner.welcome_email_sent_at ? new Date(partner.welcome_email_sent_at).toLocaleDateString() : "Not sent"} />
       </div>
       {partner.notes && (
@@ -109,14 +116,15 @@ function ProfileTab({ partner }: { partner: Partner }) {
 
 function FiscalTab({ partner }: { partner: Partner }) {
   const taxLabels: Record<string, string> = {
+    // CRIT-8: aligned to backend TaxWithholdingCategory enum
     tbd: "TBD — not yet determined",
-    withheld_tarif_umum: "Withheld — Tarif Umum",
-    withheld_tarif_final: "Withheld — Tarif Final",
+    pph21: "PPh 21 (withheld)",
+    pph23: "PPh 23 (withheld)",
     exempt: "Exempt",
   };
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-0">
-      <InfoRow label="NPWP (Tax ID)" value={partner.tax_id} />
+      <InfoRow label="NPWP (Tax ID)" value={partner.npwp} />
       <InfoRow label="Withholding Category" value={taxLabels[partner.tax_withholding_category] || partner.tax_withholding_category} />
       {partner.commission_rate_override != null && (
         <InfoRow label="Rate Override" value={`${partner.commission_rate_override}%`} />
@@ -134,12 +142,12 @@ function PaymentTab({ partner }: { partner: Partner }) {
       <InfoRow label="Payment Method" value={partner.payment_method} />
       <InfoRow label="Bank Name" value={partner.bank_name} />
       <InfoRow label="Account Number" value={partner.bank_account_number} />
-      <InfoRow label="Account Holder" value={partner.bank_account_name} />
+      <InfoRow label="Account Holder" value={partner.bank_account_holder} />
     </div>
   );
 }
 
-function ReferralsTab({ partnerId }: { partnerId: number }) {
+function ReferralsTab({ partnerId }: { partnerId: string }) {
   const [referrals, setReferrals] = useState<PartnerReferral[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -174,7 +182,7 @@ function ReferralsTab({ partnerId }: { partnerId: number }) {
             const cs = COMMISSION_STATUS_STYLES[r.commission_status] || { bg: "bg-gray-500/20", text: "text-gray-400" };
             return (
               <tr key={r.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">{r.referred_client_name || `Client #${r.referred_client_id}`}</td>
+                <td className="px-4 py-3 text-sm text-zinc-300">{r.referred_client_name || (r.referred_client_id ? `Client ${r.referred_client_id.substring(0, 8)}…` : "—")}</td>
                 <td className="px-4 py-3 text-sm text-zinc-400">{r.practice_type_name || "—"}</td>
                 <td className="px-4 py-3 text-sm text-zinc-300">
                   {r.commission_amount != null ? formatIDR(r.commission_amount) : "—"}
@@ -193,7 +201,7 @@ function ReferralsTab({ partnerId }: { partnerId: number }) {
   );
 }
 
-function CommissionsTab({ partnerId }: { partnerId: number }) {
+function CommissionsTab({ partnerId }: { partnerId: string }) {
   const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -229,7 +237,7 @@ function CommissionsTab({ partnerId }: { partnerId: number }) {
             const cs = COMMISSION_STATUS_STYLES[c.status] || { bg: "bg-gray-500/20", text: "text-gray-400" };
             return (
               <tr key={c.id}>
-                <td className="px-4 py-3 text-sm text-zinc-300">{c.practice_type_name || `Practice #${c.practice_id}`}</td>
+                <td className="px-4 py-3 text-sm text-zinc-300">{c.practice_type_name || (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}</td>
                 <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.gross_amount)}</td>
                 <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.net_amount)}</td>
                 <td className="px-4 py-3">
@@ -247,7 +255,7 @@ function CommissionsTab({ partnerId }: { partnerId: number }) {
   );
 }
 
-function AuditTab({ partnerId }: { partnerId: number }) {
+function AuditTab({ partnerId }: { partnerId: string }) {
   const [auditEntries, setAuditEntries] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -306,7 +314,8 @@ export default function PartnerDetailPage() {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const partnerId = params?.id ? Number(params.id) : 0;
+  // CRIT-8: partner IDs are UUIDs (strings). Number(uuid) → NaN → every fetch fails.
+  const partnerId = params?.id ? String(params.id) : "";
   const [partner, setPartner] = useState<Partner | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -415,7 +424,7 @@ export default function PartnerDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {/* Status actions */}
-          {partner.onboarding_status === "pending_review" && (
+          {partner.onboarding_status === "pending_approval" && (
             <Button
               size="sm"
               disabled={isActioning}

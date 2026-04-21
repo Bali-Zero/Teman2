@@ -41,11 +41,12 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
 
 interface CommissionRowProps {
   commission: PartnerCommission;
-  onApprove?: (id: number) => void;
-  onMarkPaid?: (id: number) => void;
-  onClawback?: (id: number) => void;
-  onWaive?: (id: number) => void;
-  actioningId: number | null;
+  // CRIT-8: commission IDs are UUID strings
+  onApprove?: (id: string) => void;
+  onMarkPaid?: (id: string) => void;
+  onClawback?: (id: string) => void;
+  onWaive?: (id: string) => void;
+  actioningId: string | null;
 }
 
 function CommissionRow({
@@ -62,11 +63,12 @@ function CommissionRow({
   return (
     <tr className="hover:bg-zinc-800/30 transition-colors">
       <td className="px-4 py-3">
-        <div className="text-sm font-medium text-zinc-100">{c.partner_name || `Partner #${c.partner_id}`}</div>
+        {/* CRIT-8: partner_id is a UUID string */}
+        <div className="text-sm font-medium text-zinc-100">{c.partner_name || `Partner ${c.partner_id.substring(0, 8)}…`}</div>
         <div className="text-xs text-zinc-500">{c.client_name || ""}</div>
       </td>
       <td className="px-4 py-3 text-sm text-zinc-400 hidden md:table-cell">
-        {c.practice_type_name || `Practice #${c.practice_id}`}
+        {c.practice_type_name || (c.practice_id ? `Practice ${c.practice_id.substring(0, 8)}…` : "—")}
       </td>
       <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.gross_amount)}</td>
       <td className="px-4 py-3 text-sm text-zinc-300">{formatIDR(c.net_amount)}</td>
@@ -128,11 +130,12 @@ function CommissionRow({
 interface CommissionSectionProps {
   title: string;
   commissions: PartnerCommission[];
-  onApprove?: (id: number) => void;
-  onMarkPaid?: (id: number) => void;
-  onClawback?: (id: number) => void;
-  onWaive?: (id: number) => void;
-  actioningId: number | null;
+  // CRIT-8: commission IDs are UUID strings
+  onApprove?: (id: string) => void;
+  onMarkPaid?: (id: string) => void;
+  onClawback?: (id: string) => void;
+  onWaive?: (id: string) => void;
+  actioningId: string | null;
   emptyMessage: string;
 }
 
@@ -206,7 +209,8 @@ export default function FinanceQueuePage() {
   const [commissions, setCommissions] = useState<PartnerCommission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actioningId, setActioningId] = useState<number | null>(null);
+  // CRIT-8: commission IDs are UUID strings
+  const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Admin gate — redirect non-admin users back to partners list
   useEffect(() => {
@@ -233,7 +237,8 @@ export default function FinanceQueuePage() {
 
   useEffect(() => { loadCommissions(); }, [loadCommissions]);
 
-  const handleApprove = async (id: number) => {
+  // CRIT-8: commission IDs are UUID strings
+  const handleApprove = async (id: string) => {
     setActioningId(id);
     try {
       await partnersApi.approveCommission(id);
@@ -246,11 +251,12 @@ export default function FinanceQueuePage() {
     }
   };
 
-  const handleMarkPaid = async (id: number) => {
+  const handleMarkPaid = async (id: string) => {
     setActioningId(id);
     const ref = prompt("Payment reference (optional):");
+    const via = prompt("Paid via (e.g. BCA, Cash):");
     try {
-      await partnersApi.markPaid(id, { payment_reference: ref || undefined });
+      await partnersApi.markPaid(id, { payment_reference: ref || undefined, paid_via: via || undefined });
       toastSuccess("Commission marked as paid");
       await loadCommissions();
     } catch {
@@ -260,7 +266,7 @@ export default function FinanceQueuePage() {
     }
   };
 
-  const handleClawback = async (id: number) => {
+  const handleClawback = async (id: string) => {
     setActioningId(id);
     const reason = prompt("Clawback reason (required):");
     if (!reason?.trim()) { setActioningId(null); return; }
@@ -275,7 +281,7 @@ export default function FinanceQueuePage() {
     }
   };
 
-  const handleWaive = async (id: number) => {
+  const handleWaive = async (id: string) => {
     setActioningId(id);
     const reason = prompt("Waive reason (required):");
     if (!reason?.trim()) { setActioningId(null); return; }

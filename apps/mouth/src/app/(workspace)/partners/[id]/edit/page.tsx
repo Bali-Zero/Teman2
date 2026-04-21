@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { Partner, UpdatePartnerBody, CommissionTier, TaxWithholdingCategory } from "@/lib/api/partners/partners";
+import type { Partner, UpdatePartnerBody, TaxWithholdingCategory } from "@/lib/api/partners/partners";
 
 type FormSection = "profile" | "fiscal" | "payment" | "commission";
 
@@ -26,14 +26,17 @@ interface EditFormState {
   nationality: string;
   company_name: string;
   work_role: string;
-  tax_id: string;
+  // CRIT-8: was 'tax_id', backend expects 'npwp'
+  npwp: string;
   payment_method: string;
   bank_name: string;
   bank_account_number: string;
-  bank_account_name: string;
+  // CRIT-8: was 'bank_account_name', backend expects 'bank_account_holder'
+  bank_account_holder: string;
   tax_withholding_category: TaxWithholdingCategory;
-  commission_tier: CommissionTier;
-  commission_rate_override: string;
+  // CRIT-8: commission_tier replaced by default_commission_type + default_commission_value
+  default_commission_type: 'percentage' | 'flat';
+  default_commission_value: string;
   notes: string;
 }
 
@@ -76,14 +79,17 @@ function partnerToFormState(partner: Partner): EditFormState {
     nationality: partner.nationality || "",
     company_name: partner.company_name || "",
     work_role: partner.work_role || "",
-    tax_id: partner.tax_id || "",
+    // CRIT-8: backend field is 'npwp'
+    npwp: partner.npwp || "",
     payment_method: partner.payment_method || "bank_transfer",
     bank_name: partner.bank_name || "",
     bank_account_number: partner.bank_account_number || "",
-    bank_account_name: partner.bank_account_name || "",
+    // CRIT-8: backend field is 'bank_account_holder'
+    bank_account_holder: partner.bank_account_holder || "",
     tax_withholding_category: partner.tax_withholding_category,
-    commission_tier: partner.commission_tier,
-    commission_rate_override: partner.commission_rate_override != null ? String(partner.commission_rate_override) : "",
+    // CRIT-8: commission fields from backend
+    default_commission_type: partner.default_commission_type || "percentage",
+    default_commission_value: partner.default_commission_value != null ? String(partner.default_commission_value) : "10",
     notes: partner.notes || "",
   };
 }
@@ -93,7 +99,8 @@ export default function EditPartnerPage() {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useToast();
 
-  const partnerId = params?.id ? Number(params.id) : 0;
+  // CRIT-8: partner IDs are UUIDs (strings)
+  const partnerId = params?.id ? String(params.id) : "";
   const [partner, setPartner] = useState<Partner | null>(null);
   const [form, setForm] = useState<EditFormState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +134,7 @@ export default function EditPartnerPage() {
 
     setIsSubmitting(true);
     try {
+      // CRIT-8: field names aligned to backend PartnerUpdate model
       const body: UpdatePartnerBody = {
         full_name: form.full_name.trim(),
         phone: form.phone.trim() || undefined,
@@ -134,15 +142,14 @@ export default function EditPartnerPage() {
         nationality: form.nationality.trim() || undefined,
         company_name: form.company_name.trim() || undefined,
         work_role: form.work_role.trim() || undefined,
-        tax_id: form.tax_id.trim() || undefined,
-        payment_method: form.payment_method || undefined,
+        npwp: form.npwp.trim() || undefined,
         bank_name: form.bank_name.trim() || undefined,
         bank_account_number: form.bank_account_number.trim() || undefined,
-        bank_account_name: form.bank_account_name.trim() || undefined,
+        bank_account_holder: form.bank_account_holder.trim() || undefined,
         tax_withholding_category: form.tax_withholding_category,
-        commission_tier: form.commission_tier,
-        commission_rate_override: form.commission_rate_override
-          ? parseFloat(form.commission_rate_override)
+        default_commission_type: form.default_commission_type,
+        default_commission_value: form.default_commission_value
+          ? parseFloat(form.default_commission_value)
           : undefined,
         notes: form.notes.trim() || undefined,
       };
@@ -248,8 +255,9 @@ export default function EditPartnerPage() {
           {/* Fiscal */}
           {activeSection === "fiscal" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* CRIT-8: was 'tax_id', backend field is 'npwp' */}
               <FieldGroup label="NPWP (Tax ID)">
-                <Input value={form.tax_id} onChange={(v) => setField("tax_id", v)} placeholder="XX.XXX.XXX.X-XXX.XXX" />
+                <Input value={form.npwp} onChange={(v) => setField("npwp", v)} placeholder="XX.XXX.XXX.X-XXX.XXX" />
               </FieldGroup>
               <FieldGroup label="Tax Withholding Category">
                 <select
@@ -257,9 +265,10 @@ export default function EditPartnerPage() {
                   onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                 >
+                  {/* CRIT-8: aligned to backend enum (pph21/pph23) */}
                   <option value="tbd">TBD (not yet determined)</option>
-                  <option value="withheld_tarif_umum">Withheld — Tarif Umum</option>
-                  <option value="withheld_tarif_final">Withheld — Tarif Final</option>
+                  <option value="pph21">PPh 21 (withheld)</option>
+                  <option value="pph23">PPh 23 (withheld)</option>
                   <option value="exempt">Exempt</option>
                 </select>
               </FieldGroup>
@@ -286,33 +295,32 @@ export default function EditPartnerPage() {
               <FieldGroup label="Account Number">
                 <Input value={form.bank_account_number} onChange={(v) => setField("bank_account_number", v)} placeholder="Account number" />
               </FieldGroup>
+              {/* CRIT-8: was 'bank_account_name', backend field is 'bank_account_holder' */}
               <FieldGroup label="Account Holder Name">
-                <Input value={form.bank_account_name} onChange={(v) => setField("bank_account_name", v)} placeholder="Name on account" />
+                <Input value={form.bank_account_holder} onChange={(v) => setField("bank_account_holder", v)} placeholder="Name on account" />
               </FieldGroup>
             </div>
           )}
 
-          {/* Commission */}
+          {/* Commission — CRIT-8: commission_tier replaced by default_commission_type + value */}
           {activeSection === "commission" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldGroup label="Commission Tier">
+              <FieldGroup label="Commission Type">
                 <select
-                  value={form.commission_tier}
-                  onChange={(e) => setField("commission_tier", e.target.value as CommissionTier)}
+                  value={form.default_commission_type}
+                  onChange={(e) => setField("default_commission_type", e.target.value as 'percentage' | 'flat')}
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                 >
-                  <option value="bronze">Bronze</option>
-                  <option value="silver">Silver</option>
-                  <option value="gold">Gold</option>
-                  <option value="platinum">Platinum</option>
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="flat">Flat (IDR)</option>
                 </select>
               </FieldGroup>
-              <FieldGroup label="Rate Override (%)">
+              <FieldGroup label={form.default_commission_type === 'percentage' ? "Commission Rate (%)" : "Commission Amount (IDR)"}>
                 <Input
-                  value={form.commission_rate_override}
-                  onChange={(v) => setField("commission_rate_override", v)}
+                  value={form.default_commission_value}
+                  onChange={(v) => setField("default_commission_value", v)}
                   type="number"
-                  placeholder="Leave empty for tier default"
+                  placeholder={form.default_commission_type === 'percentage' ? "e.g. 10" : "e.g. 500000"}
                 />
               </FieldGroup>
             </div>

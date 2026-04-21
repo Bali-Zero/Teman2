@@ -6,8 +6,9 @@ import * as partnersApi from "@/lib/api/partners/partners";
 import type { Partner } from "@/lib/api/partners/partners";
 
 interface ReferrerDropdownProps {
-  value: number | null;
-  onChange: (partnerId: number | null) => void;
+  // CRIT-8: partner IDs are UUID strings
+  value: string | null;
+  onChange: (partnerId: string | null) => void;
   className?: string;
   disabled?: boolean;
   placeholder?: string;
@@ -78,7 +79,8 @@ export function ReferrerDropdown({
         value={value ?? ""}
         onChange={(e) => {
           const v = e.target.value;
-          onChange(v === "" ? null : Number(v));
+          // CRIT-8: partner IDs are UUID strings — no Number() conversion
+          onChange(v === "" ? null : v);
         }}
         disabled={disabled}
         className="w-full pl-8 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -86,7 +88,8 @@ export function ReferrerDropdown({
         <option value="">{placeholder}</option>
         {partners.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.full_name} ({p.commission_tier})
+            {/* CRIT-8: commission_tier is optional; use default_commission_value as fallback */}
+            {p.full_name}{p.commission_tier ? ` (${p.commission_tier})` : p.default_commission_value ? ` (${p.default_commission_value}${p.default_commission_type === 'percentage' ? '%' : ' IDR'})` : ''}
           </option>
         ))}
       </select>

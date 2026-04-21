@@ -20,7 +20,8 @@ export default function OrphanedPartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  // CRIT-8: partner IDs are UUID strings
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetAssignee, setTargetAssignee] = useState("");
   const [reasonText, setReasonText] = useState("");
   const [reasonError, setReasonError] = useState("");
@@ -50,7 +51,7 @@ export default function OrphanedPartnersPage() {
 
   useEffect(() => { loadOrphaned(); }, [loadOrphaned]);
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

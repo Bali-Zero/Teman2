@@ -23,12 +23,11 @@ import * as partnersApi from "@/lib/api/partners/partners";
 import type { Partner, PartnerFilters } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
-// Status badge styles
+// Status badge styles — CRIT-8: aligned to backend PartnerStatus enum
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  pending_review: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Review" },
+  pending_approval: { bg: "bg-amber-500/20", text: "text-amber-400", label: "Pending Approval" },
   active: { bg: "bg-green-500/20", text: "text-green-400", label: "Active" },
   inactive: { bg: "bg-gray-500/20", text: "text-gray-400", label: "Inactive" },
-  suspended: { bg: "bg-red-500/20", text: "text-red-400", label: "Suspended" },
 };
 
 const TIER_STYLES: Record<string, { bg: string; text: string }> = {
@@ -195,10 +194,10 @@ export default function PartnersPage() {
             className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
           >
             <option value="">All statuses</option>
-            <option value="pending_review">Pending Review</option>
+            {/* CRIT-8: aligned to backend PartnerStatus enum */}
+            <option value="pending_approval">Pending Approval</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-            <option value="suspended">Suspended</option>
           </select>
 
           {/* Assigned to filter */}
@@ -320,7 +319,14 @@ export default function PartnersPage() {
                     <StatusBadge status={partner.onboarding_status} />
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
-                    <TierBadge tier={partner.commission_tier} />
+                    {/* CRIT-8: commission_tier is optional; backend uses default_commission_type + value */}
+                    {partner.commission_tier ? <TierBadge tier={partner.commission_tier} /> : (
+                      <span className="text-xs text-zinc-600 italic">
+                        {partner.default_commission_type
+                          ? `${partner.default_commission_value} ${partner.default_commission_type === 'percentage' ? '%' : 'IDR'}`
+                          : "—"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-sm text-zinc-400">

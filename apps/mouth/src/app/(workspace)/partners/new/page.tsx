@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import * as partnersApi from "@/lib/api/partners/partners";
-import type { CreatePartnerBody, CommissionTier, TaxWithholdingCategory, EntityType } from "@/lib/api/partners/partners";
+import type { CreatePartnerBody, TaxWithholdingCategory, EntityType } from "@/lib/api/partners/partners";
 import { useTeamMemberOptions } from "@/hooks/useTeamMembers";
 
 // NB-2 guardrail: warn if work_role matches sponsor/guarantor patterns
@@ -32,16 +32,21 @@ interface FormState {
   nationality: string;
   company_name: string;
   work_role: string;
-  tax_id: string;
+  // CRIT-8: was 'tax_id', backend expects 'npwp'
+  npwp: string;
   payment_method: string;
   bank_name: string;
   bank_account_number: string;
-  bank_account_name: string;
+  // CRIT-8: was 'bank_account_name', backend expects 'bank_account_holder'
+  bank_account_holder: string;
   tax_withholding_category: TaxWithholdingCategory;
-  commission_tier: CommissionTier;
-  commission_rate_override: string;
+  // CRIT-8: commission_tier removed — backend uses default_commission_type + default_commission_value
+  default_commission_type: 'percentage' | 'flat';
+  default_commission_value: string;
   assigned_to: string;
   notes: string;
+  // pdp_consent: UI-only checkbox that gates submit; not sent in payload.
+  // On submit, send pdp_consent_version when checked.
   pdp_consent: boolean;
 }
 
@@ -54,14 +59,14 @@ const INITIAL_FORM: FormState = {
   nationality: "",
   company_name: "",
   work_role: "",
-  tax_id: "",
+  npwp: "",
   payment_method: "bank_transfer",
   bank_name: "",
   bank_account_number: "",
-  bank_account_name: "",
+  bank_account_holder: "",
   tax_withholding_category: "tbd",
-  commission_tier: "bronze",
-  commission_rate_override: "",
+  default_commission_type: "percentage",
+  default_commission_value: "10",
   assigned_to: "",
   notes: "",
   pdp_consent: false,
@@ -170,6 +175,8 @@ export default function NewPartnerPage() {
 
     setIsSubmitting(true);
     try {
+      // CRIT-8: field names aligned to backend PartnerCreate model.
+      // pdp_consent (boolean) is not accepted by backend; send pdp_consent_version when box is checked.
       const body: CreatePartnerBody = {
         full_name: form.full_name.trim(),
         email: form.email.trim(),
@@ -179,23 +186,23 @@ export default function NewPartnerPage() {
         nationality: form.nationality.trim() || undefined,
         company_name: form.company_name.trim() || undefined,
         work_role: form.work_role.trim() || undefined,
-        tax_id: form.tax_id.trim() || undefined,
-        payment_method: form.payment_method || undefined,
+        npwp: form.npwp.trim() || undefined,
         bank_name: form.bank_name.trim() || undefined,
         bank_account_number: form.bank_account_number.trim() || undefined,
-        bank_account_name: form.bank_account_name.trim() || undefined,
+        bank_account_holder: form.bank_account_holder.trim() || undefined,
         tax_withholding_category: form.tax_withholding_category,
-        commission_tier: form.commission_tier,
-        commission_rate_override: form.commission_rate_override
-          ? parseFloat(form.commission_rate_override)
+        default_commission_type: form.default_commission_type,
+        default_commission_value: form.default_commission_value
+          ? parseFloat(form.default_commission_value)
           : undefined,
         assigned_to: form.assigned_to || undefined,
         notes: form.notes.trim() || undefined,
-        pdp_consent: form.pdp_consent,
+        pdp_consent_version: form.pdp_consent ? "2026-04-20-v1" : undefined,
       };
 
       const partner = await partnersApi.createPartner(body);
       toastSuccess(`Partner ${partner.full_name} created`);
+      // CRIT-8: partner.id is a UUID string, no Number() conversion needed
       router.push(`/partners/${partner.id}`);
     } catch (err) {
       logger.error("Failed to create partner", { component: "NewPartnerPage" }, err as Error);
@@ -355,8 +362,8 @@ export default function NewPartnerPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FieldGroup label="NPWP (Tax ID)">
                   <Input
-                    value={form.tax_id}
-                    onChange={(v) => setField("tax_id", v)}
+                    value={form.npwp}
+                    onChange={(v) => setField("npwp", v)}
                     placeholder="XX.XXX.XXX.X-XXX.XXX"
                   />
                 </FieldGroup>
@@ -366,9 +373,10 @@ export default function NewPartnerPage() {
                     onChange={(e) => setField("tax_withholding_category", e.target.value as TaxWithholdingCategory)}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
+                    {/* CRIT-8: aligned to backend TaxWithholdingCategory enum (pph21/pph23) */}
                     <option value="tbd">TBD (not yet determined)</option>
-                    <option value="withheld_tarif_umum">Withheld — Tarif Umum</option>
-                    <option value="withheld_tarif_final">Withheld — Tarif Final</option>
+                    <option value="pph21">PPh 21 (withheld)</option>
+                    <option value="pph23">PPh 23 (withheld)</option>
                     <option value="exempt">Exempt</option>
                   </select>
                 </FieldGroup>
@@ -415,8 +423,8 @@ export default function NewPartnerPage() {
                 </FieldGroup>
                 <FieldGroup label="Account Holder Name">
                   <Input
-                    value={form.bank_account_name}
-                    onChange={(v) => setField("bank_account_name", v)}
+                    value={form.bank_account_holder}
+                    onChange={(v) => setField("bank_account_holder", v)}
                     placeholder="Name as on bank account"
                   />
                 </FieldGroup>
@@ -431,25 +439,24 @@ export default function NewPartnerPage() {
                 <Briefcase size={16} className="text-amber-400" />
                 <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Commission Policy</h2>
               </div>
+              {/* CRIT-8: commission_tier replaced by default_commission_type + default_commission_value */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldGroup label="Commission Tier">
+                <FieldGroup label="Commission Type">
                   <select
-                    value={form.commission_tier}
-                    onChange={(e) => setField("commission_tier", e.target.value as CommissionTier)}
+                    value={form.default_commission_type}
+                    onChange={(e) => setField("default_commission_type", e.target.value as 'percentage' | 'flat')}
                     className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-amber-500"
                   >
-                    <option value="bronze">Bronze</option>
-                    <option value="silver">Silver</option>
-                    <option value="gold">Gold</option>
-                    <option value="platinum">Platinum</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="flat">Flat (IDR)</option>
                   </select>
                 </FieldGroup>
-                <FieldGroup label="Rate Override (%)">
+                <FieldGroup label={form.default_commission_type === 'percentage' ? "Commission Rate (%)" : "Commission Amount (IDR)"}>
                   <Input
-                    value={form.commission_rate_override}
-                    onChange={(v) => setField("commission_rate_override", v)}
+                    value={form.default_commission_value}
+                    onChange={(v) => setField("default_commission_value", v)}
                     type="number"
-                    placeholder="Leave empty to use tier default"
+                    placeholder={form.default_commission_type === 'percentage' ? "e.g. 10" : "e.g. 500000"}
                   />
                 </FieldGroup>
               </div>
