@@ -248,8 +248,8 @@ export default function ContactPage() {
               >
                 {[
                   {
-                    href: "/visa-oracle",
-                    label: "Visa Oracle — KITAS, Golden Visa, Digital Nomad",
+                    href: "/visa",
+                    label: "Visa Check — KITAS, Golden Visa, Digital Nomad",
                   },
                   {
                     href: "/kbli",

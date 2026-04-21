@@ -31,12 +31,16 @@ interface VisaChatProps {
   quizAnswers?: QuizAnswers;
   initialSessionId?: string;
   visas?: VisaRecommendation[];
+  checkHash?: string;
+  sessionJwt?: string;
 }
 
 export function VisaChat({
   quizAnswers,
   initialSessionId,
   visas,
+  checkHash,
+  sessionJwt,
 }: VisaChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     INITIAL_SYSTEM_MESSAGE,
@@ -102,6 +106,8 @@ export function VisaChat({
         trimmed,
         quizAnswers,
         messages,
+        checkHash,
+        sessionJwt,
       );
 
       const assistantMessage: ChatMessage = {

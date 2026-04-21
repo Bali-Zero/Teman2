@@ -46,7 +46,7 @@ const SERVICES: Service[] = [
       "Dependent family visa packaging",
       "Overstay & obsolete-status recovery",
     ],
-    cta: { label: "Open Visa Oracle", href: "/visa-oracle" },
+    cta: { label: "Open Visa Check", href: "/visa" },
     priceLabel: "From",
     priceFrom: "$350 / visa",
   },
@@ -363,7 +363,7 @@ export default function ServicesPage() {
               {
                 n: "01",
                 title: "Scope it",
-                body: "WhatsApp or Visa Oracle for a first read — free, under 15 min.",
+                body: "WhatsApp or Visa Check for a first read — free, under 15 min.",
                 accent: "#c8102e",
               },
               {

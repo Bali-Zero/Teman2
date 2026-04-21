@@ -15,7 +15,7 @@ const SECTIONS = [
   {
     title: "Visas",
     description: "KITAS, Golden Visa, Digital Nomad, E33G.",
-    href: "/visa-oracle",
+    href: "/visa",
     accent: "#c8102e",
   },
   {
