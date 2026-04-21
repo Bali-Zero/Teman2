@@ -400,7 +400,17 @@ class ReasoningEngine:
                                 f"Output from {tool_call.tool_name}: {tool_result}",
                             )
 
-                        # Update step counter if we ran multiple tools
+                        # Update step counter if we ran multiple tools.
+                        # §U6 (STATE_MACHINE.md): `current_step` is incremented
+                        # by `len(tool_calls) - 1` *in addition to* the per-iteration
+                        # `+= 1` at the top of the loop. This models parallel tool
+                        # calls as consuming proportional budget — if max_steps=3
+                        # and step 1 fires 5 parallel tools, `current_step` jumps to
+                        # 5, the next `while current_step < max_steps` check fails,
+                        # and the loop exits. This is INTENDED fair-budget
+                        # enforcement, not an off-by-one bug: each parallel tool
+                        # produces its own AgentStep (I-R7) and each tool call
+                        # consumes one unit of budget.
                         if len(tool_calls) > 1:
                             state.current_step += len(tool_calls) - 1
 
@@ -564,6 +574,13 @@ class ReasoningEngine:
                 )
                 final_prompt = build_tier1_prompt(query, state.context_gathered)
                 tier1_start_time = time.time()
+                # Tier1 regen exception contract (§U1 in STATE_MACHINE.md):
+                # We catch the LLM-level error family only. Anything outside
+                # this tuple (e.g. TypeError, ConnectionError from an unusual
+                # transport bug) is deliberately let through to the outer
+                # `execute_react_loop` caller, which wraps it as RuntimeError
+                # in `orchestrator_core.execute_react_loop`. Widening to
+                # bare `Exception` here would hide real programmer errors.
                 try:
                     (
                         state.final_answer,

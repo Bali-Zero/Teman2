@@ -1016,12 +1016,24 @@ class OrchestratorCore:
                 logger.warning("NLM enrichment skipped (error): %s", exc)
                 nlm_result = None
         elif nlm_task and not nlm_task.done():
-            # Not in CAUTIOUS zone — cancel the speculative task
+            # Not in CAUTIOUS zone — cancel the speculative task (§I-O4).
             nlm_task.cancel()
             try:
                 await nlm_task
-            except (asyncio.CancelledError, Exception):
-                pass  # Task cancelled cleanly
+            except asyncio.CancelledError:
+                # Expected outcome of cancel() — normal path.
+                pass
+            except Exception as exc:  # noqa: BLE001 — see §U3
+                # §U3 (STATE_MACHINE.md): the speculative NLM task runs
+                # outside the main critical path; any error it raises is
+                # surfaced here but must not block the response. Log at
+                # DEBUG level so ops can still diagnose a misbehaving
+                # NLM provider via `grep "NLM task cancel-path exception"`.
+                logger.debug(
+                    "NLM task cancel-path exception swallowed: %s: %s",
+                    type(exc).__name__,
+                    exc,
+                )
 
         if nlm_result and nlm_domain:
             result.nlm_enrichment = {
