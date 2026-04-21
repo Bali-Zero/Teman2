@@ -337,6 +337,31 @@ All spans become no-ops immediately on the next request. The only cost of
 the POC when disabled is ~10ms of module import time and two feature-flag
 reads per instrumented call site. Unsetting the keys has the same effect.
 
+`LANGFUSE_ENABLED` **defaults to `true`** when keys are present — there is
+no need to set it explicitly to enable. Valid disable values: `false`
+(case-insensitive). Anything else, including missing, counts as enabled.
+
+### PII hardening (UU PDP)
+
+Spans carry hashes and lengths, never raw user input / LLM output:
+
+- `query_hash` = first 16 hex chars of SHA-256(query)
+- `query_length` = character count
+- `user_id_hash` (never raw email)
+- No `answer`, no `rationale`, no retrieved KB content.
+
+The OpenInference Anthropic instrumentor is configured with
+`hide_input_messages` + `hide_output_messages` = `True` by default so the
+raw prompts Claude sees (and its responses) are not sent to Langfuse.
+
+For ad-hoc debugging (local only, never prod), you can opt back in:
+
+```bash
+export LANGFUSE_TRACE_LLM_MESSAGES=true
+```
+
+The setting is logged at init so it is visible in `fly logs`.
+
 ### Success metrics (end of POC)
 
 - p95 overhead per traced route < 20ms vs. baseline (Fly dashboard).
