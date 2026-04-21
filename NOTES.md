@@ -154,7 +154,7 @@ Tested via WebFetch (from a clean residential-like IP) on 2026-04-22:
 | `peraturan.bpk.go.id` | 403 | WAF / bot blocking |
 | `jdih.bpk.go.id` | 403 | WAF / bot blocking |
 | `klinik.kemenkumham.go.id` | ENOTFOUND | Subdomain dead |
-| `www.dpmptsp.baliprov.go.id` | ENOTFOUND | Dead or DNS-fragile |
+| `tarubali.baliprov.go.id` | Canonical (SIGTARU Bali) | RTRW/RDTR authoritative; `www.dpmptsp.baliprov.go.id` (tested 2026-04-22, ENOTFOUND) is licensing portal, different scope |
 | `bpjsketenagakerjaan.go.id` | 200 | Clean static content |
 
 Ratio: ~3/8 usable with naive fetch. Three are hard-blocked (BPK family = 403), two are DNS-dead, one needs JS rendering, one is timeout-prone.

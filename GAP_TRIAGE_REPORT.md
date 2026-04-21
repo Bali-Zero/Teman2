@@ -40,12 +40,12 @@ Total wave 2 effort estimate: **~8-10 days of focused work** to close the top-24
 |---|--------|-------|----------|-------------|--------|
 | 1 | immigration | KITAS requirements and process 2025 | CRITICAL | Gov site (imigrasi.go.id + Permenkumham) | M |
 | 2 | immigration | KITAS renewal procedure and timeline | CRITICAL | Gov site | S |
-| 3 | immigration | KITAP eligibility and conversion from KITAS | CRITICAL | Gov site + UU 6/2011 | M |
+| 3 | immigration | KITAP eligibility and conversion from KITAS | CRITICAL | Gov site + UU 6/2011 jo. UU 63/2024 (3rd amendment) | M |
 | 4 | immigration | B211A visa digital nomad Indonesia | CRITICAL | Gov site (imigrasi) + Perpres | S |
 | 5 | immigration | E-visa online application process | CRITICAL | evisa.imigrasi.go.id (portal) | S |
 | 6 | immigration | Spouse/dependent KITAS (ikut suami/istri) | HIGH | Gov site | M |
 | 7 | immigration | TKA (foreign worker permit) requirements | HIGH | kemnaker.go.id + Permenaker | M |
-| 8 | immigration | Immigration fines and overstay penalties | HIGH | UU 6/2011 §119-124 | S |
+| 8 | immigration | Immigration fines and overstay penalties | HIGH | UU 6/2011 §119-124 jo. UU 63/2024 | S |
 | 9 | company | PT PMA setup requirements 2025 | CRITICAL | oss.go.id + BKPM regs + PP 5/2021 | M |
 | 10 | company | OSS-RBA online registration process | CRITICAL | oss.go.id (JS-heavy) | M |
 | 11 | company | NIB (Nomor Induk Berusaha) registration | CRITICAL | oss.go.id + PP 5/2021 | S |
@@ -110,13 +110,13 @@ Constraint: canonical source (`.go.id` or published regulation), not blog. Verif
 
 ### 3.1 KITAS requirements 2025 (Gap #1)
 - **Source:** `https://www.imigrasi.go.id/site/lang?lang=en-US` → "ITAS" section. 301 redirect to legacy rewrite, returns 200. Language via query-string, NOT `/en/`.
-- **Regulation:** UU 6/2011 + **Permenkumham 22/2023** (operative for post-Omnibus procedures).
+- **Regulation:** UU 6/2011 jo. **UU 63/2024** (3rd amendment, integrates MERP into KITAS/KITAP) + **Permenkumham 22/2023 jo. Permenkumham 11/2024** (Golden Visa adjustments, operative for post-Omnibus procedures).
 - **BPK mirror `peraturan.bpk.go.id/Details/234928/permenkumham-no-22-tahun-2023` returns 403** — wave 2 needs Playwright stealth for BPK family.
 - **Fallback:** hukumonline.com licensed mirror (TBD on authorization).
 
 ### 3.2 PT PMA setup requirements 2025 (Gap #9)
 - **Source:** `https://oss.go.id/` — root 200, deep paths 404 (JS-rendered). **Needs Playwright.**
-- **Regulation:** PP 5/2021 (Risk-Based Licensing) + Perka BKPM 4/2021 (procedure) + Perpres 10/2021 & 49/2021 (DNI). All four load-bearing.
+- **Regulation:** PP 28/2025 (Risk-Based Licensing, supersedes PP 5/2021 where conflicting) + **Perka Menteri Investasi/BKPM 5/2025** (procedure, supersedes Perka BKPM 4/2021; reduced PT PMA paid-up capital from IDR 10B to IDR 2.5B) + Perpres 10/2021 & 49/2021 (DNI). Perka BKPM 4/2021 historical only.
 - **Secondary:** `bkpm.go.id/id/publikasi/...` — English summaries are reliably fetchable.
 - **Gap is procedural** (NIB → SIUP → KBLI validation sequence), not pricing. Internal `VISA_TYPES_REFERENCE.md` already covers pricing.
 
@@ -127,10 +127,9 @@ Constraint: canonical source (`.go.id` or published regulation), not blog. Verif
 - **Fallback:** `pajak.go.id/id/siaran-pers` (press releases, less timeout-prone).
 
 ### 3.4 RTRW Bali zoning 2024 (Gap #25)
-- **Source:** `www.dpmptsp.baliprov.go.id` — **ENOTFOUND** 2026-04-22. Fragile or down.
-- **Regulation:** **Perda Bali 3/2023** (RTRW 2023-2043). Regency RDTR varies — Badung/Gianyar/Tabanan separate Perda each.
+- **Source:** `tarubali.baliprov.go.id` (SIGTARU Bali, sistema informasi geospasial tata ruang) — autoritativo per RTRW/RDTR provinciale. Il dominio `dpmptsp.baliprov.go.id` testato 2026-04-22 era il portale licensing DPMPTSP (scope diverso) e ha dato ENOTFOUND.
+- **Regulation:** **Perda Bali 2/2023** (RTRW Provinsi Bali 2023-2043). Regency RDTR varies — Badung/Gianyar/Tabanan separate Perda each.
 - **Internal cross-ref:** PostGIS `bali_zoning_layers` (powering prime.balizero.com) is already populated — discover source shapefile and reuse.
-- **Source TBD — escalate to Zero** for alternative (internal Drive PDFs or direct regency DPMPTSP ask).
 
 ### 3.5 BPJS rates 2025 (Gaps #34, #35)
 - **Source:** `bpjsketenagakerjaan.go.id` returns 200 clean — **green-zone**. `bpjs-kesehatan.go.id` needs verification.
@@ -152,10 +151,10 @@ Constraint: canonical source (`.go.id` or published regulation), not blog. Verif
 
 - **Gap triage completeness:** 56/56 topics classified with domain, severity, source type, effort. ✅
 - **Top-5 sources validated:**
-  - KITAS: ✅ source URL confirmed (imigrasi.go.id via legacy redirect). Permenkumham 22/2023 identified as operative regulation.
-  - PT PMA: ⚠️ OSS.go.id JS-rendered, needs Playwright for deep content. Regulation PP 5/2021 + Perka BKPM 4/2021 identified.
+  - KITAS: ✅ source URL confirmed (imigrasi.go.id via legacy redirect). **Permenkumham 22/2023 jo. Permenkumham 11/2024** operative; underlying law UU 6/2011 jo. UU 63/2024.
+  - PT PMA: ⚠️ OSS.go.id JS-rendered, needs Playwright for deep content. Regulation **PP 28/2025 + Perka BKPM 5/2025** (supersedes PP 5/2021 + Perka BKPM 4/2021).
   - CoreTax: ⚠️ pajak.go.id timeouts, PMK 81/2024 identified as operative. Source TBD on reliable access path.
-  - RTRW Bali: ❌ dpmptsp.baliprov.go.id ENOTFOUND. **"Source TBD"** — needs escalation to Zero for alternative (internal Drive PDFs or regency DPMPTSP sites).
+  - RTRW Bali: ✅ `tarubali.baliprov.go.id` è l'host canonico (SIGTARU Bali, riferimento ufficiale per Perda 2/2023 RTRW 2023-2043). Portale confermato autoritativo via NB-5 e peraturan.bpk.go.id/Details/262423.
   - BPJS: ✅ bpjsketenagakerjaan.go.id fetchable clean 200. Clearest green-zone case. PP numbers identified for all 5 sub-programs.
 - **Chunker fix testable:** ✅ 8-test matrix with specific assertions and fixture requirements in `NOTES.md`.
 - **Scraping decision quantified:** ✅ Free vs Hobby vs Standard tier costs, req/min quotas, 3/8 success ratio on naive fetch. Decision rationale cites SYMBIOSIS law 2 as binding.
@@ -166,7 +165,7 @@ Constraint: canonical source (`.go.id` or published regulation), not blog. Verif
 
 **Code:** (1) chunker fix + tests; (2) `LegalScraper` extensions: UA rotation, HTTP/2, Playwright fallback; (3) `dream.py`: real httpx+readability-lxml scraper with Redis rate-limit.
 
-**Content remediation (top-5 first):** (4) KITAS via imigrasi.go.id; (5) PT PMA via OSS (needs Playwright); (6) BPJS rates (cleanest, 1-day); (7) RTRW Bali — **escalate to Zero** for source access; (8) CoreTax — retry DJP with Playwright.
+**Content remediation (top-5 first):** (4) KITAS via imigrasi.go.id; (5) PT PMA via OSS (needs Playwright); (6) BPJS rates (cleanest, 1-day); (7) RTRW Bali: use `tarubali.baliprov.go.id` (SIGTARU Bali, confirmed authoritative) + regency RDTR Perda (Badung/Gianyar/Tabanan/etc separate); (8) CoreTax — retry DJP with Playwright.
 
 **Infrastructure:** (9) re-run Layer A — current `coverage_matrix.json` essential-questions field is corrupted with raw JSON leakage; fix `_extract_gap_topics()` or upstream NLM CLI output; (10) `scrape_success_rate{host=...}` metric to Langfuse/Sentry; (11) decide raw-HTML staging (Postgres vs FS) for audit trail.
 
