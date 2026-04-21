@@ -12,7 +12,7 @@ PricingService is mocked in test 2 to avoid file-loading dependencies.
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -105,3 +105,24 @@ async def test_send_commission_earned_sterilizes_client_name(
     assert "Mario R." in body, (
         f"Expected sterilized name 'Mario R.' in email body, got:\n{body}"
     )
+
+
+@pytest.mark.asyncio
+async def test_build_pricing_services_returns_real_data_or_empty():
+    """Integration smoke test: verify traversal produces non-empty list when
+    pricing JSON is loaded, or empty when not loaded. Either is acceptable;
+    the thing we're guarding against is the previous 0-services-always bug.
+    """
+    from backend.services.crm.partners.emails import _build_pricing_services, get_pricing_service
+    svc = get_pricing_service()
+    services = _build_pricing_services()
+    if getattr(svc, "loaded", False):
+        # If pricing is loaded in test env, we should get non-zero services
+        assert len(services) > 0, "PricingService loaded but _build_pricing_services returned 0 — traversal bug"
+        sample = services[0]
+        assert "name" in sample
+        assert "price_display" in sample
+        assert isinstance(sample["name"], str)
+    else:
+        # Gracefully degraded — empty list is fine, but don't crash
+        assert services == []

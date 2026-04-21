@@ -53,8 +53,8 @@ async def _post_email(*, to: str, cc: list[str] | None, subject: str, body: str)
 
     Payload shape matches the existing endpoint contract used by
     welcome_email_service.py — fields: to, subject, body, cc.
-    We also include from_email/from_name as optional metadata the endpoint
-    may forward to Brevo; if the endpoint ignores them it's a no-op.
+    Sender (from_email / from_name) is set server-side; the payload does not
+    include those fields.
     """
     payload: dict[str, Any] = {
         "to": to,
@@ -92,48 +92,46 @@ def _sterilize(name: str) -> str:
 
 
 def _build_pricing_services() -> list[dict[str, str]]:
-    """
-    Return a flat list of {name, price_display} from PricingService.get_all_prices().
+    """Return list of {name, price_display} pairs from PricingService.
 
-    PricingService.get_all_prices() returns a dict whose top-level keys are
-    service categories (e.g. "visa", "kitas", "business_setup", ...) and whose
-    values are lists of service dicts OR nested dicts depending on data shape.
+    The pricing JSON has 3 levels:
+      services (top) -> sub_category (dict) -> service_name (dict key) -> {price, duration, ...}
 
-    We walk one level deep and extract any entry that has at least a "name" key.
-    If the service data includes a "price" or "starting_from" field we format it;
-    otherwise we fall back to "On request".
+    We flatten to a list of {name, price_display}. Returns empty list if
+    PricingService is not loaded (graceful degradation for the welcome
+    email — terms still communicate; services list is absent).
 
     Golden Rule #12: prices ONLY from PricingTool/PricingService, never hardcoded.
     """
     svc = get_pricing_service()
-    if not svc.loaded:
-        logger.warning("emails._build_pricing_services: PricingService not loaded, returning empty list")
+    if not getattr(svc, "loaded", False):
+        logger.warning("PricingService not loaded — welcome email services list will be empty")
         return []
-
-    all_prices = svc.get_all_prices()
+    all_prices = svc.get_all_prices() or {}
+    top = all_prices.get("services", all_prices)
     result: list[dict[str, str]] = []
-
-    def _fmt_price(entry: dict[str, Any]) -> str:
-        for key in ("starting_from", "price", "price_idr", "amount"):
-            v = entry.get(key)
-            if v is not None:
-                try:
-                    num = float(str(v).replace(",", "").replace(".", "").strip())
-                    return f"Rp {num:,.0f}"
-                except (ValueError, TypeError):
-                    return str(v)
-        return "On request"
-
-    for _category, items in all_prices.items():
-        if isinstance(items, list):
-            for item in items:
+    if not isinstance(top, dict):
+        return result
+    for sub_cat, entries in top.items():
+        if isinstance(entries, dict):
+            for service_name, entry in entries.items():
+                if not isinstance(entry, dict):
+                    continue
+                price_str = entry.get("price") or entry.get("final_price") or "On request"
+                if not isinstance(price_str, str):
+                    price_str = str(price_str)
+                result.append({
+                    "name": str(service_name),
+                    "price_display": price_str,
+                })
+        elif isinstance(entries, list):
+            # Legacy flat-list shape, keep for safety
+            for item in entries:
                 if isinstance(item, dict) and "name" in item:
-                    result.append({"name": item["name"], "price_display": _fmt_price(item)})
-        elif isinstance(items, dict):
-            for _sub_key, item in items.items():
-                if isinstance(item, dict) and "name" in item:
-                    result.append({"name": item["name"], "price_display": _fmt_price(item)})
-
+                    result.append({
+                        "name": str(item["name"]),
+                        "price_display": str(item.get("price_display") or item.get("price") or "On request"),
+                    })
     return result
 
 
