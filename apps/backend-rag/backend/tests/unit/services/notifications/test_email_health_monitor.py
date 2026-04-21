@@ -108,6 +108,91 @@ async def test_retry_claims_row_and_succeeds(monitor, fake_pool):
 
 
 @pytest.mark.asyncio
+async def test_retry_closes_original_row_on_success(monitor, fake_pool):
+    """After a successful retry, BOTH the new row and the original
+    'retry_scheduled' row must reach status='sent'. Review fix #1:
+    prevents orphan rows accumulating invisibly in the dashboard."""
+    failed_row = {
+        "id": 42,
+        "email_type": "hr_bonus",
+        "to_email": "asya@balizero.com",
+        "subject": "Bonus Pending",
+        "practice_id": 7,
+        "client_id": None,
+        "attempt_number": 1,
+    }
+    fake_pool._conn.fetch.return_value = [failed_row]
+    fake_pool._conn.fetchval.return_value = 43
+
+    with patch(
+        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        await monitor.check_and_retry_failed_emails()
+
+    # Both the new row (43) and the original (42) should appear in the
+    # 'sent' UPDATE via ANY($1::bigint[]).
+    sent_update_args = [
+        call.args for call in fake_pool._conn.execute.call_args_list
+        if "status = 'sent'" in str(call)
+    ]
+    # find the one with the bigint[] payload
+    ids_payload = None
+    for args in sent_update_args:
+        for a in args:
+            if isinstance(a, list) and 43 in a and 42 in a:
+                ids_payload = a
+                break
+    assert ids_payload == [43, 42], (
+        "Original row id=42 must be closed alongside the new retry row id=43"
+    )
+
+
+@pytest.mark.asyncio
+async def test_retry_marks_original_superseded_on_failure(monitor, fake_pool):
+    """After a retry that fails again, the original row is marked
+    'superseded' so escalate_unrecoverable doesn't double-count it
+    with the new retry row."""
+    failed_row = {
+        "id": 42,
+        "email_type": "hr_bonus",
+        "to_email": "asya@balizero.com",
+        "subject": "s",
+        "practice_id": 7,
+        "client_id": None,
+        "attempt_number": 1,
+    }
+    fake_pool._conn.fetch.return_value = [failed_row]
+    fake_pool._conn.fetchval.return_value = 43
+
+    with patch(
+        "backend.services.notifications.email_health_monitor.httpx.AsyncClient"
+    ) as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.post = AsyncMock(side_effect=RuntimeError("still down"))
+        mock_client_cls.return_value = mock_client
+
+        await monitor.check_and_retry_failed_emails()
+
+    superseded_updates = [
+        call for call in fake_pool._conn.execute.call_args_list
+        if "superseded" in str(call)
+    ]
+    assert superseded_updates, (
+        "Original row must be marked status='superseded' on retry failure"
+    )
+
+
+@pytest.mark.asyncio
 async def test_retry_marks_failed_again_when_brevo_errors(monitor, fake_pool):
     """A retry that still fails leaves a new 'failed' row with a fresh
     retry_after for the *next* attempt."""

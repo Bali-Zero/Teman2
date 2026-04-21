@@ -43,6 +43,23 @@ CRITICAL_EMAIL_TYPES: frozenset[str] = frozenset({
     "welcome",
 })
 
+# Email types whose body cannot be reconstructed at retry time
+# (personalized HTML, document URLs, brochure attachments). The retry
+# worker would produce a "[RETRY] original subject was X" stub — a
+# confusing meta-email from the client's point of view. For these types,
+# a first failure is escalated directly to the owner via Telegram and
+# the row is marked `retry_after=NULL` so `check_and_retry_failed_emails`
+# never touches it. `escalate_unrecoverable` picks it up on the next
+# monitor pass. Team-facing and stateless notifications (hr_bonus,
+# waiting_docs_team, completion_team, invoice_client, cron_*) are
+# acceptable to retry because a resent plain notification still conveys
+# the actionable content.
+NON_RESURRECTABLE_EMAIL_TYPES: frozenset[str] = frozenset({
+    "waiting_docs_client",
+    "completion_client",
+    "welcome",
+})
+
 # Retry schedule: 1h after first failure, 4h after second, escalate after third.
 _RETRY_BACKOFF = (
     timedelta(hours=1),
@@ -113,17 +130,25 @@ async def record_email_result(
 
     retry_after: datetime | None = None
     if status == "failed":
-        # Read current attempt_number to decide next retry window.
+        # Read current attempt_number + email_type to decide next retry window.
+        # Non-resurrectable types skip retry entirely — retry_after stays
+        # None and escalate_unrecoverable() picks them up directly.
         try:
             async with pool.acquire() as conn:
-                attempt_n = await conn.fetchval(
-                    "SELECT attempt_number FROM email_send_log WHERE id = $1",
+                row = await conn.fetchrow(
+                    "SELECT attempt_number, email_type FROM email_send_log WHERE id = $1",
                     row_id,
                 )
-                if attempt_n and attempt_n <= len(_RETRY_BACKOFF):
-                    retry_after = datetime.now(tz=timezone.utc) + _RETRY_BACKOFF[attempt_n - 1]
-                    # attempt 3 = no more retries; retry_after stays None →
-                    # escalate_unrecoverable() will pick it up.
+                if row:
+                    attempt_n = row["attempt_number"]
+                    et = row["email_type"]
+                    if et in NON_RESURRECTABLE_EMAIL_TYPES:
+                        # leave retry_after=None → escalated on next monitor pass
+                        pass
+                    elif attempt_n and attempt_n <= len(_RETRY_BACKOFF):
+                        retry_after = datetime.now(tz=timezone.utc) + _RETRY_BACKOFF[attempt_n - 1]
+                        # attempt 3 = no more retries; retry_after stays None →
+                        # escalate_unrecoverable() will pick it up.
         except Exception as exc:
             logger.warning("email_audit: could not resolve attempt_n for %d: %s", row_id, exc)
 

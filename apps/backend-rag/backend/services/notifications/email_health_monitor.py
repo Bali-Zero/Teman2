@@ -117,9 +117,12 @@ class EmailHealthMonitor:
         """Re-attempt delivery for one email_send_log row.
 
         Inserts a new audit row for the retry attempt (attempt_number+1)
-        so the original 'failed' row stays as a historical record and the
-        new row reflects the outcome. Returns True on success.
+        so the timeline is preserved. The ORIGINAL row (previously
+        claimed to ``status='retry_scheduled'``) is closed to the same
+        terminal status as the new row so it doesn't accumulate as an
+        orphan invisible to the dashboard. Returns True on success.
         """
+        original_id = row["id"]
         attempt_n = row["attempt_number"] + 1
 
         async with self.db_pool.acquire() as conn:
@@ -171,14 +174,18 @@ class EmailHealthMonitor:
 
         async with self.db_pool.acquire() as conn:
             if err_msg is None:
+                # Close both the new retry row AND the original claim row
+                # to 'sent' — the original row was sitting at
+                # 'retry_scheduled' and would otherwise never reach a
+                # terminal state, becoming dashboard-invisible bloat.
                 await conn.execute(
                     """
                     UPDATE email_send_log
                        SET status = 'sent', provider = 'brevo',
                            sent_at = NOW(), retry_after = NULL
-                     WHERE id = $1
+                     WHERE id = ANY($1::bigint[])
                     """,
-                    new_id,
+                    [new_id, original_id],
                 )
                 return True
 
@@ -188,6 +195,11 @@ class EmailHealthMonitor:
             next_retry: datetime | None = None
             if attempt_n < len(_RETRY_BACKOFF) + 1 and attempt_n < MAX_ATTEMPTS:
                 next_retry = datetime.now(tz=timezone.utc) + _RETRY_BACKOFF[attempt_n - 1]
+            # Close the new retry row as 'failed' (it carries the new
+            # attempt_number and next retry_after), AND close the original
+            # claim row as 'failed' with NULL retry_after so it's treated
+            # as already-escalated-to-successor — the new row is the one
+            # the retry worker / escalator will now act on.
             await conn.execute(
                 """
                 UPDATE email_send_log
@@ -198,6 +210,16 @@ class EmailHealthMonitor:
                 new_id,
                 err_msg[:4000],
                 next_retry,
+            )
+            await conn.execute(
+                """
+                UPDATE email_send_log
+                   SET status = 'superseded',
+                       error_message = 'superseded_by_retry',
+                       retry_after = NULL
+                 WHERE id = $1
+                """,
+                original_id,
             )
             return False
 
@@ -238,10 +260,17 @@ class EmailHealthMonitor:
     # ------------------------------------------------------------------
 
     async def escalate_unrecoverable(self) -> dict[str, int]:
-        """Escalate rows with attempt_number>=MAX_ATTEMPTS and status='failed'.
+        """Escalate rows that can't recover via retry.
 
-        Marks them ``escalated`` so they're only paged once; Telegram
-        alert lists them in a single consolidated message.
+        Two categories, both marked ``escalated`` so they're paged once:
+
+        - ``status='failed'`` AND ``attempt_number>=3`` — exhausted retry
+          budget for retryable types.
+        - ``status='failed'`` AND ``retry_after IS NULL`` AND
+          ``attempt_number<3`` — non-resurrectable types (client-facing
+          emails with personalized HTML / attachments). These never
+          entered the retry queue because retrying with a stub body
+          would be worse than alerting the owner for manual recovery.
         """
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -250,7 +279,10 @@ class EmailHealthMonitor:
                        client_id, attempt_number, error_message, created_at
                   FROM email_send_log
                  WHERE status = 'failed'
-                   AND attempt_number >= $1
+                   AND (
+                         attempt_number >= $1
+                      OR retry_after IS NULL
+                   )
                  ORDER BY created_at ASC
                  LIMIT 50
                 """,
