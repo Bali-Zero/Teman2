@@ -115,11 +115,18 @@ class SEOThinker:
                 gsc_query_count = int(r.value.get("query_count", 0))
                 break
 
-        # website_organic lead count comes from CRM via a future sensor
-        # (Sprint 2 — lead_attribution_sensor). Until then the memory
-        # context carries a rolling count written by the actor on every
-        # pulse, starting at 0.
-        lead_count = 0  # pessimistic default; pre_natal stays locked
+        # website_organic lead count will come from CRM via Sprint 2's
+        # lead_attribution_sensor. That sensor has NOT shipped yet, and
+        # nothing in this codebase currently writes a rolling counter
+        # into memory_context — the earlier comment that claimed the
+        # actor populates one was aspirational, not accurate.
+        #
+        # Consequence: pre_natal stays locked on the leads criterion
+        # regardless of real traffic, which is the intended safe default
+        # until the sensor lands. Do NOT read memory_context here to
+        # paper over the gap — a zero from a missing sensor is honest,
+        # a fake non-zero would silently graduate the cell.
+        lead_count = 0
 
         pre_natal = is_pre_natal(
             gsc_query_count=gsc_query_count,
