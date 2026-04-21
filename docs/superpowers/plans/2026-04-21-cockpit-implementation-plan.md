@@ -992,3 +992,318 @@ critique — this is the same process used for the spec (§17).
    checkpoints.
 
 User decides after reading the plan + reviewer outputs.
+
+---
+
+## Council Review Findings (2026-04-21)
+
+Four federated LLMs audited this plan: **Gemini 3.1 Pro** (architecture), **DeepSeek R1** (non-obvious risks), **NotebookLM grounded NB-1** (codebase-truth), **Codex xhigh** (feasibility — timeout during review, deferred). The following **15 binding changes** apply before execution.
+
+### NotebookLM — Codebase-truth findings (CRITICAL, ground-truth verified)
+
+**NLM-C1 — Anti-pattern on `idempotency_keys` centralized table**
+**Severity: CRITICAL (architectural coherence)**
+Nuzantara has no centralized `idempotency_keys` table. The consolidated pattern
+is per-domain idempotency: `compliance_alerts.dedup_key`,
+`funnel_sessions ON CONFLICT (session_id)`, BlogBatchPublisher
+`slug+draft_id` on filesystem. Creating migration 127 with a universal
+`idempotency_keys` table violates the established design.
+
+**Fix:** Drop migration 127 entirely. For R7 idempotency on the new cockpit
+endpoints, add a domain-specific column `cockpit_action_uuid TEXT UNIQUE` on
+the pending_topic table (or a new narrow `cockpit_actions` table tied to
+topics), not a generic key-value store. Update Task 1.2 SQLite migration
+only — the Rust side writes this UUID to SQLite + backend POST — no new PG
+table.
+
+**NLM-C2 — Canva export headless via backend is BLOCKED by existing MCP constraint**
+**Severity: CRITICAL (implementation blocker)**
+The existing comment in `apps/war-room/agents/06_canva_builder.py` states
+verbatim: _"Il MCP Canva è accessibile SOLO dalla sessione interattiva
+Claude Code (OAuth bound al browser). Non è raggiungibile da
+subprocess/claude -p."_ Task 4.1 (R12) assumes the backend can call
+`GET /v1/designs/{id}/pages/export` directly from Fly.io. This breaks unless
+the cockpit uses `scripts/canva_oauth.py` to get fresh tokens bound to the
+cockpit's WebView rather than the Claude Code session.
+
+**Fix (2-phase):**
+
+- Phase A (MVP M4): cockpit fetches `canva_pending.json` (already produced
+  by war-room/agents/06_canva_builder.py), renders a **synthetic 11-slide
+  preview locally** from JSON structure + Flux.1 images (already in S3 cache
+  per spec §5.3). This is visually approximate — acceptable for review
+  decisions. Text edits flip `pending_topic.status=awaiting_revision` which
+  feeds back into the existing war-room pipeline (the pipeline re-runs
+  canva_builder which writes a new canva_pending.json).
+- Phase B (post-MVP): implement a dedicated Canva OAuth flow for cockpit
+  using `scripts/canva_oauth.py` patterns (browser-based consent bound to
+  cockpit WebView). Defer to Milestone 8 (future PR).
+
+**NLM-C3 — Redis tunnel port 16379 is UNVERIFIED**
+**Severity: MEDIUM (unknown assumption)**
+No trace in NB-1 of a `~/tunnel-air.sh` script or port 16379 mapping.
+The Redis infrastructure referenced is Fly.io `redis://redis:6379/0`.
+
+**Fix:** Before starting M1, Zero runs `crontab -l | grep tunnel` on Pro.
+If no tunnel exists, M1 Task 1.3 fallback uses a DIFFERENT mechanism: SSH
+direct redis-cli forwarding via `tokio-openssh` crate, spawned on first
+primary failure. Update Task 1.3 fallback block.
+
+**NLM-C4 — RBAC pattern CONFIRMED**
+Use `HybridAuthMiddleware` (accepts `nz_access_token` cookie + `Authorization: Bearer`).
+`is_crm_admin(current_user)` check on the 4 new endpoints. Admin set:
+`{zero@, antonellosiano@, asya@balizero.com}` (global) + `damar@, admin@`
+(CRM extras). No plan change needed — already aligned.
+
+### DeepSeek R1 — Non-obvious risks
+
+**DS-C1 — M1 ships incomplete contracts, M2/M3 build on sand**
+**Severity: CRITICAL**
+M1 Task 1.3 Redis listener has a placeholder `subscribe_loop` that does
+nothing. M2.1 assumes the listener is functional. Tokio vs std::thread
+choice NOT locked in M1 → M2 discovers incompatibility → full refactor.
+
+**Fix:** M1 Task 1.3 becomes a **contract stub**: Rust trait
+`EventSource { fn subscribe(&self) -> Receiver<CockpitEvent> }` with
+an in-memory mock implementation emitting sample events. M2.1 swaps the
+mock for the real Redis impl. This locks the async architecture in M1.
+
+**DS-C2 — R11 autosave depends on Zustand dirty flag from M3 slice**
+**Severity: HIGH**
+M4 autosave needs `panelBStore.editor.dirty`. M3 builds panelB. If M3
+slips, M4 autosave is dead code.
+
+**Fix:** Move `editor.dirty` flag creation to M1 as part of the generic
+Zustand setup (prefsStore sibling). Even without editor content, the flag
+infrastructure exists so M4 can rely on it regardless of M3 timing.
+
+**DS-C3 — Backend 409 Conflict pattern absence**
+**Severity: MEDIUM**
+Task 4.9 compare-and-swap needs backend to return HTTP 409 on 0-row UPDATE.
+No existing Nuzantara endpoint does this — you're introducing the pattern.
+
+**Fix:** Add Task 1.6 (new): audit `apps/backend-rag/backend/app/routers/`
+for existing 409 response patterns; if absent, extract a helper
+`conflict_response(current_state)` in
+`apps/backend-rag/backend/app/utils/error_handlers.py` in Task 3.1
+(add as sub-step before M3 endpoint implementations).
+
+**DS-C4 — 3.5w timeline underbuffered for integration unknowns**
+**Severity: MEDIUM**
+7 systems interacting (Canva API + Redis + Telegram + backend + Tauri +
+SQLite + launchd notifications) — no buffer for discoveries like NLM-C2
+or NLM-C3. High probability M5-M7 compress into a "big bang" week.
+
+**Fix:** Insert **Milestone 0 (3 days)** before M1: proof-of-concept for
+the 3 riskiest integrations — (a) Canva synthetic preview rendering from
+canva_pending.json (NLM-C2 phase A), (b) Redis tunnel availability check
+(NLM-C3), (c) Tauri `requestUserAttention(.critical)` smoke test. Adjusted
+timeline: **4 weeks total** (M0 + 3.5w).
+
+### Gemini 3.1 Pro — Architecture & test coverage
+
+**GEM-A1 — No shared types between Rust and TypeScript**
+**Severity: MEDIUM (95% confidence)**
+Manual sync of `CockpitEvent`/`ConnectionStatus` between Rust struct and
+TS interface will drift → silent deserialization panics.
+
+**Fix:** Add `ts-rs` crate to Rust deps (Task 1.1 Cargo.toml). Mark all
+IPC types with `#[derive(TS)]`. Build step generates `src/ipc/types.ts`
+from Rust source. Zero manual sync.
+
+**GEM-A2 — Playwright E2E referenced in spec §12 but missing from plan**
+**Severity: HIGH (100% confidence)**
+Spec §12 requires E2E via Playwright-on-Tauri-webview. Plan has zero
+Playwright tasks across M1-M7.
+
+**Fix:** Add **Task 1.7 (new)**: install `@playwright/test` +
+`tauri-driver`, write a smoke test (`tests/e2e/boot.spec.ts`) that
+launches the Tauri window and asserts 3 panels visible. Subsequent
+milestones add their own E2E as part of definition-of-done.
+
+**GEM-A3 — JWT token stored in plain-text config.toml**
+**Severity: HIGH (85% confidence)**
+Task 1.5 README describes `jwt_token = ""` field in config.toml.
+File system access = credentials exposed.
+
+**Fix:** Add **Task 1.8 (new)**: use `keyring` crate (Rust, backed by
+macOS Keychain) for JWT token storage. config.toml stores only
+non-sensitive URLs. Keychain access via
+`keyring::Entry::new("nuzantara-cockpit", "jwt")`.
+
+**GEM-A4 — M3 → M6 backend endpoint deadlock**
+**Severity: HIGH (90% confidence)**
+M3.4 frontend calls `POST /api/war-room/topic/override`. Endpoint is
+defined only in M6.3. M3 cannot be tested end-to-end until M6.
+
+**Fix:** Move M6.3 (POST /topic/override endpoint) to M3. Rebalance:
+M3 becomes 5 days (was 4), M6 becomes 1 day (was 2). No net extra time.
+
+**GEM-A5 — Task 4.5 (ReviewModal) is monolithic**
+**Severity: HIGH (95% confidence)**
+"Create ReviewModal.tsx with Mata Garuda dossier + research + 3 angles +
+Flux images" is a 2-day task, not bite-sized.
+
+**Fix:** Split 4.5 into 4.5a (shell modal layout), 4.5b (dossier pane),
+4.5c (research+angles pane), 4.5d (Flux images pane + regenerate).
+Each ~1 hour. No net extra time.
+
+**GEM-A6 — Task 6.2 (Mata Garuda bridge) mixes security-critical concerns**
+**Severity: HIGH (90% confidence)**
+Single Rust module handles input validation + tempfile I/O + subprocess +
+JSON parsing. Hard to audit for R5 injection safety.
+
+**Fix:** Split 6.2 into 6.2a (`mata_garuda_bridge/input.rs` UUID validation),
+6.2b (`mata_garuda_bridge/tempfile.rs` body serialization), 6.2c
+(`mata_garuda_bridge/exec.rs` Command::arg execution), 6.2d
+(`mata_garuda_bridge/parse.rs` stdout JSON parsing). Each module gets its
+own unit tests.
+
+### Codex — Feasibility (returned after delay)
+
+**CDX-1 — Task 1.3 placeholder is too fragile. Replace with complete skeleton.**
+
+```rust
+use std::{collections::VecDeque, sync::Arc, time::Duration};
+use futures_util::StreamExt;
+use serde::Serialize;
+use tauri::{AppHandle, Emitter};
+use tokio::{sync::{Mutex, watch}, time::sleep};
+
+#[derive(Clone, Serialize)]
+struct RedisEvent { channel: String, payload: String }
+
+type Ring = Arc<Mutex<VecDeque<RedisEvent>>>;
+
+async fn push_ring(ring: &Ring, ev: RedisEvent) {
+    let mut q = ring.lock().await;
+    if q.len() == 100 { q.pop_front(); }
+    q.push_back(ev);
+}
+
+pub async fn subscribe_loop(
+    app: AppHandle,
+    redis_url: String,
+    channel: String,
+    ring: Ring,
+    mut stop: watch::Receiver<bool>,
+) {
+    let mut backoff = Duration::from_secs(1);
+
+    loop {
+        if *stop.borrow() { return; }
+
+        let client = match redis::Client::open(redis_url.as_str()) {
+            Ok(c) => c,
+            Err(_) => { sleep(backoff).await; backoff = (backoff * 2).min(Duration::from_secs(30)); continue; }
+        };
+
+        let mut pubsub = match client.get_async_pubsub().await {
+            Ok(p) => p,
+            Err(_) => { sleep(backoff).await; backoff = (backoff * 2).min(Duration::from_secs(30)); continue; }
+        };
+
+        if pubsub.subscribe(&channel).await.is_err() {
+            sleep(backoff).await;
+            backoff = (backoff * 2).min(Duration::from_secs(30));
+            continue;
+        }
+
+        backoff = Duration::from_secs(1);
+        let mut stream = pubsub.on_message();
+
+        loop {
+            tokio::select! {
+                _ = stop.changed() => { if *stop.borrow() { return; } }
+                msg = stream.next() => match msg {
+                    Some(m) => if let Ok(payload) = m.get_payload::<String>() {
+                        let ev = RedisEvent { channel: m.get_channel_name().into(), payload };
+                        push_ring(&ring, ev.clone()).await;
+                        let _ = app.emit("redis-message", ev);
+                    },
+                    None => break,
+                }
+            }
+        }
+    }
+}
+```
+
+This replaces the placeholder in Task 1.3 Step 1.
+
+**CDX-2 — CAS UPDATE is correct under READ COMMITTED.**
+Codex confirms Task 4.9 pattern is atomic in PostgreSQL: the second request
+acquires the row lock, then Postgres re-evaluates `WHERE status='pending_review'`;
+if the first request changed status, 0 rows returned. This contradicts DS-C2's
+concern — the pattern is safe without extra locking. **No change needed.**
+
+**CDX-3 — Task 6.2 mata-garuda binary path.**
+Hard-coded `mata-garuda` in PATH breaks when cockpit is launched from Dock/Launchpad
+(login-shell PATH not inherited). The actual binary in this repo is
+`/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/mata-garuda`.
+
+**Fix:**
+
+```rust
+let bin = std::env::var("MATA_GARUDA_BIN")
+    .unwrap_or_else(|_| "/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/mata-garuda".into());
+```
+
+Update Task 6.2 to use this pattern. Document `MATA_GARUDA_BIN` env var in
+the `config.toml` of Task 1.5 runbook.
+
+**CDX-4 — Canva export rate limiting (Task 4.1).**
+Canva Connect has 200/hr limit per token. 20 topics ready simultaneously
+would burst-exhaust. Need a global token bucket:
+
+- Max ~150 calls/hr safety headroom
+- `max_concurrent=3` exports in flight
+- Exponential polling: 5s → 15s → 30s → 60s
+- Respect `Retry-After` header on 429
+
+**Fix:** Task 4.1 adds a canva_export_queue worker with token bucket in
+`backend/services/war_room/canva_export_queue.py`. Frontend enqueues, worker
+drains. Cockpit polls `pending_topic.canva_preview_urls` — null means still
+queued. This also absorbs NLM-C2 concerns for phase-A fallback.
+
+**CDX-5 — GitHub workflow `actions/setup-rust` does NOT exist.**
+Task 7.1 references a non-existent action. Use:
+
+```yaml
+- uses: dtolnay/rust-toolchain@stable
+  with:
+    components: clippy,rustfmt
+- uses: Swatinem/rust-cache@v2
+```
+
+Update Task 7.1 YAML.
+
+### Revised timeline
+
+| Milestone                 | Old duration | New duration | Delta                        |
+| ------------------------- | ------------ | ------------ | ---------------------------- |
+| **M0 — PoC** (new, DS-C4) | —            | 3d           | +3d                          |
+| M1 — Foundation           | 3d           | 3d           | 0                            |
+| M2 — Panel A              | 3d           | 3d           | 0                            |
+| M3 — Panel B              | 4d           | 5d           | +1d (GEM-A4 absorbs M6.3)    |
+| M4 — Panel C              | 5d           | 5d           | 0 (GEM-A5 split is zero-sum) |
+| M5 — Bottom strip         | 2d           | 2d           | 0                            |
+| M6 — Bridge + endpoints   | 2d           | 1d           | -1d (GEM-A4 absorbed)        |
+| M7 — DMG + polish         | 1d           | 1d           | 0                            |
+| **Total**                 | **3.5w**     | **4w**       | **+3d**                      |
+
+### New tasks to add to M1
+
+- **Task 1.6**: Backend conflict-response helper (DS-C3)
+- **Task 1.7**: Playwright E2E smoke test setup (GEM-A2)
+- **Task 1.8**: JWT via macOS Keychain via `keyring` crate (GEM-A3)
+- **Task 1.9**: `ts-rs` shared types generation (GEM-A1)
+- **Task 1.10** (ex-DS-C2): Zustand `editor.dirty` flag infrastructure
+
+### Explicit NON-changes
+
+- Tauri v2 + React 19 stack: unchanged
+- 7-milestone structure: unchanged (add M0 as PoC prefix)
+- Telegram parallel preservation: unchanged
+- Spec §17 R1-R15 bindings: unchanged (all still required)
+- `is_crm_admin` RBAC pattern: unchanged (NLM-C4 confirmed)
