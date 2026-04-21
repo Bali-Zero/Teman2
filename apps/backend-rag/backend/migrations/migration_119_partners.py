@@ -305,20 +305,26 @@ async def apply(conn: Any) -> None:
     )
 
     # -------------------------------------------------------------------------
-    # 6. system_settings seed rows (spec §3.5)
+    # 6. system_settings seed rows (spec §3.5 + CRIT-7)
     # -------------------------------------------------------------------------
     await conn.execute("""
         INSERT INTO system_settings (key, value, description) VALUES
           ('partner_clawback_auto_writeoff_idr', '0',
            'If > 0, clawback rows below this IDR amount auto-waive on creation. Default 0 = disabled.'),
           ('partner_accrual_cooling_off_days', '30',
-           'Days between accrual and eligibility for approval. Default 30.')
+           'Days between accrual and eligibility for approval. Default 30.'),
+          ('partner_withholding_rate_pph21', '2.5',
+           'Default PPh21 withholding rate (percent) for individual partners with NPWP. Asya to confirm.'),
+          ('partner_withholding_rate_pph23', '2.0',
+           'Default PPh23 withholding rate (percent) for corporate partners. Asya to confirm.'),
+          ('partner_withholding_no_npwp_surcharge', '20',
+           'Additional percentage surcharge on PPh rates for partners without NPWP (Indonesian tax law default).')
         ON CONFLICT (key) DO NOTHING;
     """)
 
     logger.info(
         "Migration 119: partners + partner_referrals + partner_commissions"
-        " + partner_audit_log + users.partner_id + 2 system_settings rows"
+        " + partner_audit_log + users.partner_id + 5 system_settings rows"
     )
 
 
@@ -332,10 +338,13 @@ async def rollback(conn: Any) -> None:
     await conn.execute("ALTER TABLE users DROP COLUMN IF EXISTS partner_id;")
     await conn.execute("DROP TABLE IF EXISTS partners;")
     await conn.execute(
-        "DELETE FROM system_settings WHERE key IN "
-        "('partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days');"
+        "DELETE FROM system_settings WHERE key IN ("
+        "'partner_clawback_auto_writeoff_idr','partner_accrual_cooling_off_days',"
+        "'partner_withholding_rate_pph21','partner_withholding_rate_pph23',"
+        "'partner_withholding_no_npwp_surcharge'"
+        ");"
     )
     logger.info(
         "Migration 119 rollback: 4 tables dropped, users.partner_id removed,"
-        " 2 system_settings rows deleted"
+        " 5 system_settings rows deleted"
     )

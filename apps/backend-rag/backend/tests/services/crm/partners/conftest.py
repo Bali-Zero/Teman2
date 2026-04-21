@@ -145,8 +145,11 @@ CREATE TABLE IF NOT EXISTS system_settings (
     value TEXT NOT NULL DEFAULT '0'
 );
 INSERT INTO system_settings (key, value) VALUES
-    ('partner_clawback_auto_writeoff_idr', '0'),
-    ('partner_accrual_cooling_off_days',   '30')
+    ('partner_clawback_auto_writeoff_idr',   '0'),
+    ('partner_accrual_cooling_off_days',     '30'),
+    ('partner_withholding_rate_pph21',       '2.5'),
+    ('partner_withholding_rate_pph23',       '2.0'),
+    ('partner_withholding_no_npwp_surcharge','20')
 ON CONFLICT (key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS partners (

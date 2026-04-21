@@ -7,6 +7,10 @@ tables + system_settings + practices stub).
 See conftest.py for fixture definitions — CATA-1 fix: practices is the real
 production table. The 4 columns required by CommissionEngine are confirmed
 from migration 075 trigger payload.
+
+CRIT-7: _WITHHOLDING_RATES dict removed. Rates now resolved from system_settings
+at accrual time via _get_withholding_rate() / _system_setting_decimal().
+conftest _SCHEMA_SQL seeds the 3 new keys (pph21=2.5, pph23=2.0, surcharge=20).
 """
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -27,11 +31,16 @@ async def engine(db_conn):
 
 @pytest.mark.asyncio
 async def test_accrue_creates_accrued_row_with_cooling_off(
-    engine, partner_factory, practice_factory, referral_factory
+    engine, partner_factory, practice_factory, referral_factory, db_conn
 ):
+    # CRIT-7: partner needs NPWP to avoid the no-NPWP surcharge.
+    # Without NPWP: 2.0 + 0.4 = 2.4%. With NPWP: 2.0% as expected.
     p = await partner_factory(
         default_commission_value=Decimal("10.0"),
         tax_withholding_category="pph23",
+    )
+    await db_conn.execute(
+        "UPDATE partners SET npwp = '01.234.567.8-901.000' WHERE id = $1", p.id
     )
     proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
@@ -295,3 +304,102 @@ async def test_update_commission_status_detects_concurrent_change(
     # — the point is that it must NOT silently succeed.
     with pytest.raises((ValueError, RuntimeError)):
         await engine.repo.update_commission_status(cid, "approved")
+
+
+# ---------------------------------------------------------------------------
+# CRIT-7: Withholding rates from system_settings + no-NPWP surcharge
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_accrue_uses_pph23_rate_from_system_settings(
+    engine, partner_factory, practice_factory, referral_factory
+):
+    """Default pph23 rate in settings is 2.0%. Partner HAS NPWP — no surcharge."""
+    p = await partner_factory(
+        tax_withholding_category="pph23",
+        default_commission_value=Decimal("10.0"),
+    )
+    # Give the partner an NPWP so no surcharge applies.
+    await engine.repo.conn.execute(
+        "UPDATE partners SET npwp = '01.234.567.8-901.000' WHERE id = $1", p.id
+    )
+    proc = await practice_factory(
+        total_invoiced_idr=Decimal("10000000"),
+        status="completed",
+        payment_status="paid",
+    )
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
+
+    cid = await engine.accrue_from_practice(proc.id, p.id)
+    assert cid is not None
+    c = await engine.repo.get_commission(cid)
+
+    # gross = 10M * 10% = 1M; withholding rate = 2.0%; withholding = 20k; net = 980k
+    assert c.withholding_rate == Decimal("2.0")
+    assert c.withholding_amount_idr == Decimal("20000")
+    assert c.net_amount_idr == Decimal("980000")
+
+
+@pytest.mark.asyncio
+async def test_accrue_applies_no_npwp_surcharge_on_pph21(
+    engine, partner_factory, practice_factory, referral_factory
+):
+    """Partner pph21 WITHOUT NPWP → 2.5% + 20% surcharge of base = 3.0% effective."""
+    p = await partner_factory(
+        tax_withholding_category="pph21",
+        default_commission_value=Decimal("10.0"),
+    )
+    # Explicitly ensure npwp is NULL (factory default; just making the intent clear).
+    await engine.repo.conn.execute(
+        "UPDATE partners SET npwp = NULL WHERE id = $1", p.id
+    )
+    proc = await practice_factory(
+        total_invoiced_idr=Decimal("10000000"),
+        status="completed",
+        payment_status="paid",
+    )
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
+
+    cid = await engine.accrue_from_practice(proc.id, p.id)
+    assert cid is not None
+    c = await engine.repo.get_commission(cid)
+
+    # effective = 2.5 + (2.5 * 20 / 100) = 2.5 + 0.5 = 3.0%
+    # gross = 10M * 10% = 1M; withholding = 1M * 3% / 100 = 30k
+    assert c.withholding_rate == Decimal("3.0")
+    assert c.withholding_amount_idr == Decimal("30000")
+
+
+@pytest.mark.asyncio
+async def test_accrue_reads_rate_from_updated_system_setting(
+    engine, partner_factory, practice_factory, referral_factory, db_conn
+):
+    """Admin changes pph23 rate mid-flight — next accrual picks up the new rate."""
+    # Change pph23 rate from 2.0 to 1.5
+    await db_conn.execute(
+        "UPDATE system_settings SET value = '1.5' "
+        "WHERE key = 'partner_withholding_rate_pph23'"
+    )
+    p = await partner_factory(
+        tax_withholding_category="pph23",
+        default_commission_value=Decimal("10.0"),
+    )
+    # Partner has NPWP → no surcharge
+    await db_conn.execute(
+        "UPDATE partners SET npwp = '99.999.999.9-999.000' WHERE id = $1", p.id
+    )
+    proc = await practice_factory(
+        total_invoiced_idr=Decimal("10000000"),
+        status="completed",
+        payment_status="paid",
+    )
+    await referral_factory(partner_id=p.id, practice_id=proc.id)
+
+    cid = await engine.accrue_from_practice(proc.id, p.id)
+    assert cid is not None
+    c = await engine.repo.get_commission(cid)
+
+    # Rate should be 1.5% (the updated value, not the default 2.0%)
+    assert c.withholding_rate == Decimal("1.5")
+    # gross = 1M; withholding = 1M * 1.5 / 100 = 15k
+    assert c.withholding_amount_idr == Decimal("15000")

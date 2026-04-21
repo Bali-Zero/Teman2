@@ -37,16 +37,14 @@ from backend.services.crm.partners.repository import PartnersRepository
 
 logger = logging.getLogger(__name__)
 
-# Withholding rates keyed by tax_withholding_category.
+# CRIT-7: Withholding rates are now stored in system_settings (not hardcoded).
+# See _get_withholding_rate() and _system_setting_decimal() for the lookup.
+# Keys in system_settings:
+#   partner_withholding_rate_pph21          (default 2.5, percent)
+#   partner_withholding_rate_pph23          (default 2.0, percent)
+#   partner_withholding_no_npwp_surcharge   (default 20, percent of base rate)
 # Rates are Decimal to avoid float rounding errors throughout all math.
-# v1 placeholder values — Asya to confirm with tax advisor.
-# Source: spec §4.4 rule 4.
-_WITHHOLDING_RATES: dict[str, Decimal] = {
-    "pph21": Decimal("2.5"),
-    "pph23": Decimal("2.0"),
-    "exempt": Decimal("0"),
-    "tbd": Decimal("0"),  # also blocks approve() — see gate below
-}
+# v1 default values — Asya to confirm with tax advisor after first 3 payouts.
 
 
 class CommissionEngine:
@@ -136,7 +134,13 @@ class CommissionEngine:
             # flat: commission_value is the fixed IDR amount regardless of base
             gross = partner.default_commission_value
 
-        rate = _WITHHOLDING_RATES.get(partner.tax_withholding_category, Decimal("0"))
+        # CRIT-7: Resolve rate from system_settings (not hardcoded dict).
+        # has_npwp is True only if the npwp field is set AND non-empty.
+        has_npwp = bool(partner.npwp and partner.npwp.strip())
+        rate = await self._get_withholding_rate(
+            partner.tax_withholding_category,
+            has_npwp=has_npwp,
+        )
         # Withholding is quantized to whole IDR (no fractional rupiah).
         withholding = (gross * rate / Decimal("100")).quantize(Decimal("1"))
         net = gross - withholding
@@ -425,3 +429,72 @@ class CommissionEngine:
             return int(row["value"]) if row else default
         except (ValueError, TypeError):
             return default
+
+    async def _system_setting_decimal(self, key: str, default: Decimal) -> Decimal:
+        """Read a Decimal value from the system_settings table.
+
+        Returns `default` if the key is absent or the value cannot be
+        coerced to Decimal (e.g. empty string, garbage data).
+        """
+        row = await self.conn.fetchrow(
+            "SELECT value FROM system_settings WHERE key = $1", key
+        )
+        try:
+            return Decimal(row["value"]) if row else default
+        except (ValueError, TypeError):
+            logger.warning(
+                "system_settings key %r has unparseable value — using default %s",
+                key, default,
+            )
+            return default
+
+    async def _get_withholding_rate(
+        self,
+        category: str,
+        *,
+        has_npwp: bool,
+    ) -> Decimal:
+        """Resolve withholding rate for a commission accrual.
+
+        CRIT-7: Rates are read from system_settings at accrual time so they
+        can be adjusted without a code deploy (Asya changes the row, next
+        accrual picks it up).
+
+        Rules:
+        - exempt: always 0 regardless of NPWP.
+        - tbd: always 0 (and blocked at approve() regardless).
+        - pph21 / pph23: base rate from system_settings.
+          If the partner does NOT have an NPWP, add a surcharge:
+            effective = base + (base * surcharge_percent / 100)
+          This matches Indonesia's default PPh surcharge for taxpayers
+          without NPWP (PPh 21 Pasal 21 ayat 5a, 20% additional).
+        - Unknown categories: log a warning, return 0.
+        """
+        if category in ("exempt", "tbd"):
+            return Decimal("0")
+
+        if category == "pph21":
+            base = await self._system_setting_decimal(
+                "partner_withholding_rate_pph21", Decimal("2.5")
+            )
+        elif category == "pph23":
+            base = await self._system_setting_decimal(
+                "partner_withholding_rate_pph23", Decimal("2.0")
+            )
+        else:
+            logger.warning(
+                "CommissionEngine: unknown withholding category %r — using rate 0",
+                category,
+            )
+            return Decimal("0")
+
+        if not has_npwp:
+            # Additive percentage-point surcharge (not multiplicative):
+            #   effective = base + (base * surcharge_pct / 100)
+            # e.g. base=2.5, surcharge=20 → 2.5 + 0.5 = 3.0%
+            surcharge_pct = await self._system_setting_decimal(
+                "partner_withholding_no_npwp_surcharge", Decimal("20")
+            )
+            return base + (base * surcharge_pct / Decimal("100"))
+
+        return base
