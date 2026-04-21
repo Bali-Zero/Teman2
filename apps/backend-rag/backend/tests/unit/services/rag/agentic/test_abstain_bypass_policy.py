@@ -755,3 +755,98 @@ class TestStreamingPathParity:
             f"Context with {total_len} chars (<200) and no markers "
             "must NOT set trusted_tools_used=True"
         )
+
+
+# ============================================================
+# Class 7 — apply_shared_trusted_flippers helper (U5 unification)
+# ============================================================
+
+class TestApplySharedTrustedFlippers:
+    """
+    U5 (Wave 2): Both ReAct pipelines (sync + streaming) call the same
+    helper `apply_shared_trusted_flippers` for the *shared* portion of
+    trusted-path detection: pricing-in-answer + LLM-had-tools. The
+    streaming path has extra pre-flippers (context markers, substantial
+    context) that are INTENTIONALLY not mirrored to sync (SCAR §U5).
+
+    These tests lock in:
+    - Helper honors early-True (never flips True→False).
+    - Pricing markers set trusted=True on empty-tools gateway.
+    - Has-tools + final_answer sets trusted=True on no-pricing answer.
+    - Empty final_answer + no pricing keeps trusted=False.
+    """
+
+    @pytest.mark.unit
+    def test_early_true_preserved(self):
+        """Invariant: once True, stays True — helper never flips back."""
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
+        gw = _make_gateway(gemini_tools=[])
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=True,
+            final_answer="",  # nothing would flip from here
+            llm_gateway=gw,
+        )
+        assert result is True
+
+    @pytest.mark.unit
+    def test_pricing_marker_flips_true(self):
+        """Pricing markers in final_answer set trusted=True even with
+        empty gateway tools."""
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
+        gw = _make_gateway(gemini_tools=[])
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer="The cost is Rp 20.000.000 for PT PMA setup.",
+            llm_gateway=gw,
+        )
+        assert result is True
+
+    @pytest.mark.unit
+    def test_has_tools_flips_true_without_pricing(self):
+        """LLM had tools + non-empty final_answer → trusted=True, even
+        when no pricing marker is present."""
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
+        gw = _make_gateway(gemini_tools=[MagicMock(), MagicMock()])
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer="Requirements for KITAS are passport, sponsor, application form.",
+            llm_gateway=gw,
+        )
+        assert result is True
+
+    @pytest.mark.unit
+    def test_no_pricing_no_tools_stays_false(self):
+        """No pricing, no tools, no final_answer → helper is a no-op."""
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
+        gw = _make_gateway(gemini_tools=[])
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer="",
+            llm_gateway=gw,
+        )
+        assert result is False
+
+    @pytest.mark.unit
+    def test_empty_answer_with_tools_does_not_flip(self):
+        """Edge case: has-tools check requires non-empty final_answer.
+        Tools available + empty answer → do NOT set trusted=True.
+        The has-tools flipper is guarded on `if state.final_answer`.
+        """
+        from backend.services.rag.agentic._reasoning_policy import (
+            apply_shared_trusted_flippers,
+        )
+        gw = _make_gateway(gemini_tools=[MagicMock()])
+        result = apply_shared_trusted_flippers(
+            trusted_tools_used=False,
+            final_answer="",
+            llm_gateway=gw,
+        )
+        assert result is False
