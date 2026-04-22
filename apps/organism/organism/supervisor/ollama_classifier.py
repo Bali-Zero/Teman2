@@ -107,10 +107,18 @@ class OllamaClassifier:
         first_token = first_token.strip(".,!?;:'\"()[]{}")
         if first_token in VALID_BUCKETS:
             return first_token
-        # Fallback — scan full response for any valid bucket
+        # Fallback — scan full response for earliest-mentioned valid bucket.
+        # Deterministic: picks the bucket whose name appears first in the text
+        # (semantically: "primary topic" of an ambiguous model response).
+        earliest: tuple[int, str] | None = None
         for bucket in VALID_BUCKETS:
-            if bucket in raw:
-                return bucket
+            idx = raw.find(bucket)
+            if idx == -1:
+                continue
+            if earliest is None or idx < earliest[0]:
+                earliest = (idx, bucket)
+        if earliest is not None:
+            return earliest[1]
         log.warning("classifier: unrecognized output %r", raw[:100])
         return DEFAULT_BUCKET
 

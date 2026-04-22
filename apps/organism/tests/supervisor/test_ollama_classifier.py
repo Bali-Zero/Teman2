@@ -183,3 +183,33 @@ async def test_classify_all_valid_buckets_round_trip(fake_redis):
         ):
             result = await clf._classify(_events(["probe"]))
         assert result == bucket
+
+
+@pytest.mark.asyncio
+async def test_classify_ambiguous_response_picks_earliest_mention(fake_redis):
+    """Multi-bucket response must deterministically return earliest-mentioned bucket."""
+    clf = OllamaClassifier(incident_store=IncidentStore(redis=fake_redis))
+    # "deploy" at index 17, "network" at index 43 — deploy should win
+    with patch(
+        "asyncio.create_subprocess_exec",
+        AsyncMock(return_value=_MockProc(
+            b"This looks like a deploy issue, but could be a network problem"
+        )),
+    ):
+        result = await clf._classify(_events(["rollback"]))
+    assert result == "deploy"
+
+
+@pytest.mark.asyncio
+async def test_classify_ambiguous_response_reversed_order(fake_redis):
+    """Same prompt with reversed mention order — network now earliest."""
+    clf = OllamaClassifier(incident_store=IncidentStore(redis=fake_redis))
+    # "network" at index 17, "deploy" at index 46 — network should win
+    with patch(
+        "asyncio.create_subprocess_exec",
+        AsyncMock(return_value=_MockProc(
+            b"This looks like a network issue, but could be a deploy problem"
+        )),
+    ):
+        result = await clf._classify(_events(["rollback"]))
+    assert result == "network"
