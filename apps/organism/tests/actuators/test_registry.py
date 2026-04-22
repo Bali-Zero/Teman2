@@ -37,6 +37,14 @@ async def test_registry_includes_cleanup_suite(fake_redis):
 
 
 @pytest.mark.asyncio
+async def test_registry_includes_propose_yaml_rule(fake_redis):
+    """W4.A — propose_yaml_rule is wired (zero-arg, shells out to git/gh)."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert "propose_yaml_rule" in reg
+    assert reg["propose_yaml_rule"].name == "propose_yaml_rule"
+
+
+@pytest.mark.asyncio
 async def test_quarantine_gets_redis_injected(fake_redis):
     reg = build_actuator_registry(redis=fake_redis)
     q = reg["quarantine"]
