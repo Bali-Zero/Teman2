@@ -19,3 +19,6 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "fakeredis>=2.20"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "gauntlet: manual adversarial scenario tests (exclude from CI)",
+]
