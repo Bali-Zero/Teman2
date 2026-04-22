@@ -24,3 +24,24 @@ def test_truncates_to_max_length():
     result = sanitize_payload(big, max_kb=2)
     import json
     assert len(json.dumps(result)) <= 2048
+
+
+def test_event_payload_with_path_serializable_through_sanitize():
+    """W0.2 guardians pass Path in payload — sanitize must not raise TypeError."""
+    from pathlib import Path
+    result = sanitize_payload({"log_path": Path("/tmp/test.log"), "agent": "x"})
+    assert result["agent"] == "x"
+    # Path was converted via default=str during size check but preserved as-is in walk
+    # (walk's catch-all returns obj untouched for non-string/dict/list)
+
+
+def test_truncation_handles_nested_dict():
+    """Long string inside nested dict must be trimmed to respect 2KB cap."""
+    import json
+    payload = {"meta": {"description": "a" * 3000}, "title": "ok"}
+    result = sanitize_payload(payload, max_kb=2)
+    assert len(json.dumps(result, default=str)) <= 2048
+    # Ensure structure preserved
+    assert "meta" in result
+    assert "title" in result
+    assert result["title"] == "ok"

@@ -50,16 +50,40 @@ def sanitize_payload(payload: dict, *, max_kb: int = 2) -> dict:
         return obj
 
     sanitized = _walk(payload)
-    encoded = json.dumps(sanitized)
     limit = max_kb * 1024
-    if len(encoded) > limit:
-        # Preserve structure, truncate string fields proportionally
-        for key in sanitized:
-            if isinstance(sanitized[key], str) and len(sanitized[key]) > 100:
-                overflow = len(encoded) - limit
-                cut = min(len(sanitized[key]), overflow + 20)
-                sanitized[key] = sanitized[key][: len(sanitized[key]) - cut] + "…"
-                encoded = json.dumps(sanitized)
-                if len(encoded) <= limit:
-                    break
+
+    def _encoded_len() -> int:
+        return len(json.dumps(sanitized, default=str))
+
+    if _encoded_len() > limit:
+        # Collect all (parent, key, value) triples where value is a long string
+        # Sorted by string length descending so we trim worst offenders first.
+        def _walk_strings(obj, path=()):
+            results = []
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    results.extend(_walk_strings(v, path + (k,)))
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj):
+                    results.extend(_walk_strings(v, path + (i,)))
+            elif isinstance(obj, str) and len(obj) > 20:
+                results.append((path, obj))
+            return results
+
+        def _set_at(path, value):
+            cursor = sanitized
+            for step in path[:-1]:
+                cursor = cursor[step]
+            cursor[path[-1]] = value
+
+        string_entries = sorted(_walk_strings(sanitized), key=lambda t: -len(t[1]))
+        for path, value in string_entries:
+            if _encoded_len() <= limit:
+                break
+            overflow = _encoded_len() - limit
+            cut = min(len(value) - 1, overflow + 20)
+            if cut <= 0:
+                continue
+            _set_at(path, value[: len(value) - cut] + "…")
+
     return sanitized
