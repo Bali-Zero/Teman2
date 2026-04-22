@@ -25,16 +25,16 @@ rules:
     confidence: 1.0
 
   - id: scheduled_cleanup_cache_weekly
-    match: {kind: scheduled_tick, payload.day_of_week: 0, payload.hour: 4}
+    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 4}
     action: {actuator: cleanup_cache, params: {}}
     confidence: 1.0
 
   - id: scheduled_cleanup_branches_weekly
-    match: {kind: scheduled_tick, payload.day_of_week: 0, payload.hour: 5}
+    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 5}
     action: {actuator: cleanup_branches, params: {}}
     confidence: 1.0
 
-  - id: scheduled_cleanup_zombie_plist_monthly
-    match: {kind: scheduled_tick, payload.day_of_week: 0, payload.hour: 6}
+  - id: scheduled_cleanup_zombie_plist_monthly_first_sunday
+    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 6, payload.day_of_month_lte: 7}
     action: {actuator: cleanup_zombie_plist, params: {}}
     confidence: 0.9

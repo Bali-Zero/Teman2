@@ -86,6 +86,13 @@ class RuleMatcher:
                             return False
                     except (TypeError, ValueError):
                         return False
+                elif pkey.endswith("_lte"):
+                    real_key = pkey[: -len("_lte")]
+                    try:
+                        if float(event.payload.get(real_key, float("inf"))) > float(v):
+                            return False
+                    except (TypeError, ValueError):
+                        return False
                 else:
                     if event.payload.get(pkey) != v:
                         return False

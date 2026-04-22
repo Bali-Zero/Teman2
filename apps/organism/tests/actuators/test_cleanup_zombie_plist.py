@@ -108,3 +108,26 @@ async def test_handles_missing_launchagents_dir(fake_redis, tmp_path, monkeypatc
     )
     assert result["success"] is True
     assert result["removed_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_skips_malformed_plist(fake_redis, tmp_path, monkeypatch):
+    """Unreadable/corrupted plist must NOT be deleted — safe default is skip."""
+    _setup(fake_redis, tmp_path, monkeypatch)
+    la_dir = tmp_path / "launchagents"
+    la_dir.mkdir()
+    # Write garbage that plistlib cannot parse
+    plist_path = la_dir / "com.balizero.broken.plist"
+    plist_path.write_bytes(b"<not a valid plist>")
+
+    with patch(
+        "asyncio.create_subprocess_exec",
+        AsyncMock(return_value=_OK(stdout=b"PID\tStatus\tLabel\n")),
+    ):
+        result = await CleanupZombiePlist(launchagents_dir=la_dir).run(
+            params={}, correlation_id="c",
+        )
+    assert result["success"] is True
+    assert result["removed_count"] == 0
+    # File NOT deleted
+    assert plist_path.exists()

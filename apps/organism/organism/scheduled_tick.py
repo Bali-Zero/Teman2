@@ -21,7 +21,8 @@ async def main() -> None:
         kind="scheduled_tick",
         payload={
             "hour": now.hour,
-            "day_of_week": now.weekday(),  # Monday=0
+            "day_of_week": now.weekday(),  # Monday=0, Sunday=6
+            "day_of_month": now.day,
             "ts_utc": now.isoformat(),
         },
     )

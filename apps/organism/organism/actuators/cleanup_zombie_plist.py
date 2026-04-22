@@ -24,6 +24,7 @@ class CleanupZombiePlist(ActuatorBase):
     name = "cleanup_zombie_plist"
 
     def __init__(self, *, launchagents_dir: Path | None = None):
+        super().__init__()
         self.launchagents_dir = launchagents_dir or LAUNCHAGENTS_DIR
 
     async def _execute(self, params: dict) -> dict:
@@ -60,7 +61,10 @@ class CleanupZombiePlist(ActuatorBase):
                 continue  # actively loaded, not a zombie
             # Parse plist to find referenced script/binary
             referenced = self._referenced_program(plist_path)
-            if referenced and referenced.exists():
+            if referenced is None:
+                # Unreadable / malformed plist — skip for safety (don't auto-delete)
+                continue
+            if referenced.exists():
                 continue  # program still exists, keep the plist
             zombies.append((plist_path, label))
         return zombies
