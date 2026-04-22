@@ -166,9 +166,11 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
     except Exception as exc:  # noqa: BLE001 — intentional catch-all
         # Use stderr (→ fly logs) rather than `logger`: if the hook is
         # being triggered by a logging-related exception, `logger` itself
-        # may be the thing that's broken.
+        # may be the thing that's broken. This is the documented escape
+        # hatch for Golden Rule #8 — noqa prevents the compliance test
+        # from flagging it.
         import sys
-        print(
+        print(  # noqa: T201 — see comment above; logger is unsafe here
             f"[sentry_config] _before_send raised {type(exc).__name__}: {exc}",
             file=sys.stderr,
         )
