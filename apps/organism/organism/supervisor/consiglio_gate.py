@@ -8,6 +8,7 @@ spec §External LLM arsenal) and returns votes. 3/4 agree → proceed. Else
 Only invoked for:
 - rollback_deploy (can break prod for real clients)
 - propose_yaml_rule (writes new rule to repo → long-lived effect)
+- consolidate_redundancy (opens shared-infra PRs → cross-team review required)
 
 For W2 shadow mode: even irreversible decisions go through this gate.
 Dispatcher (W1.C) separately enforces HUMAN_ONLY_ACTUATORS blacklist

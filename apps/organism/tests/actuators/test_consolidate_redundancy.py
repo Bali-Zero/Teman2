@@ -97,9 +97,9 @@ async def test_unknown_id_returns_error(fake_redis, tmp_path, monkeypatch):
 async def test_execute_opens_pr_on_success(fake_redis, tmp_path, monkeypatch):
     _setup(fake_redis, tmp_path, monkeypatch)
     path = _write_redundancies(tmp_path)
-    monkeypatch.chdir(tmp_path)  # so relative docs/organism/consolidations/ is writable
 
     mock_spawn = AsyncMock(side_effect=[
+        _ok_proc(stdout=str(tmp_path).encode() + b"\n"),  # git rev-parse --show-toplevel
         _ok_proc(),  # git checkout -b
         _ok_proc(),  # git add
         _ok_proc(),  # git commit
@@ -125,9 +125,11 @@ async def test_execute_opens_pr_on_success(fake_redis, tmp_path, monkeypatch):
 async def test_execute_fails_on_checkout_error(fake_redis, tmp_path, monkeypatch):
     _setup(fake_redis, tmp_path, monkeypatch)
     path = _write_redundancies(tmp_path)
-    monkeypatch.chdir(tmp_path)
 
-    mock_spawn = AsyncMock(side_effect=[_ok_proc(returncode=1)])  # checkout fails
+    mock_spawn = AsyncMock(side_effect=[
+        _ok_proc(stdout=str(tmp_path).encode() + b"\n"),  # git rev-parse succeeds
+        _ok_proc(returncode=1),  # checkout fails
+    ])
     act = ConsolidateRedundancy(yaml_path=path)
     with patch("asyncio.create_subprocess_exec", mock_spawn):
         result = await act.run(
@@ -136,6 +138,25 @@ async def test_execute_fails_on_checkout_error(fake_redis, tmp_path, monkeypatch
         )
     assert result["success"] is False
     assert "checkout" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_execute_fails_when_not_in_repo(fake_redis, tmp_path, monkeypatch):
+    """Supervisor CWD not inside repo → git rev-parse fails → clean error, not crash."""
+    _setup(fake_redis, tmp_path, monkeypatch)
+    path = _write_redundancies(tmp_path)
+
+    mock_spawn = AsyncMock(side_effect=[
+        _ok_proc(returncode=128),  # git rev-parse fails with typical "not a git repository" exit
+    ])
+    act = ConsolidateRedundancy(yaml_path=path)
+    with patch("asyncio.create_subprocess_exec", mock_spawn):
+        result = await act.run(
+            params={"redundancy_id": "test_merge"},
+            correlation_id="c",
+        )
+    assert result["success"] is False
+    assert "git rev-parse" in result["error"]
 
 
 @pytest.mark.asyncio
