@@ -19,7 +19,8 @@ Flow:
 9. gh pr create --title + --body describing candidate origin + provenance
 10. gh pr merge --auto --squash (rule becomes live once CI green)
 
-Failure modes: each step short-circuits with structured error dict.
+Failure modes: each step short-circuits by raising RuntimeError so ActuatorBase
+emits propose_yaml_rule_failed (not _done) and monitoring captures them.
 """
 from __future__ import annotations
 
@@ -51,12 +52,12 @@ class ProposeYamlRule(ActuatorBase):
         candidate = params.get("rule_candidate")
         validation = self._validate_candidate(candidate)
         if validation is not None:
-            return {"success": False, "error": validation}
+            raise RuntimeError(f"validation: {validation}")
 
         # Anchor to repo root — Supervisor daemon may run outside repo
         rc, repo_root_out, err = await self._run(["git", "rev-parse", "--show-toplevel"])
         if rc != 0 or not repo_root_out.strip():
-            return {"success": False, "error": f"git rev-parse failed: {err[:200]}"}
+            raise RuntimeError(f"git rev-parse failed: {err[:200]}")
         repo_root = Path(repo_root_out.strip())
 
         rule_id = candidate["id"]
@@ -74,11 +75,7 @@ class ProposeYamlRule(ActuatorBase):
         # 1. branch
         rc, _, err = await self._run(["git", "checkout", "-b", branch])
         if rc != 0:
-            return {
-                "success": False,
-                "error": f"checkout -b {branch}: {err[:200]}",
-                "branch": branch,
-            }
+            raise RuntimeError(f"checkout -b {branch}: {err[:200]}")
         try:
             # 2. write YAML + test
             yaml_path = repo_root / yaml_rel
@@ -93,18 +90,18 @@ class ProposeYamlRule(ActuatorBase):
                 "git", "add", str(yaml_path), str(test_path),
             ])
             if rc != 0:
-                return {"success": False, "error": f"git add: {err[:200]}", "branch": branch}
+                raise RuntimeError(f"git add: {err[:200]}")
             rc, _, err = await self._run([
                 "git", "commit",
                 "-m", f"feat(organism): propose learned rule {rule_id}",
             ])
             if rc != 0:
-                return {"success": False, "error": f"git commit: {err[:200]}", "branch": branch}
+                raise RuntimeError(f"git commit: {err[:200]}")
 
             # 4. push
             rc, _, err = await self._run(["git", "push", "-u", "origin", branch])
             if rc != 0:
-                return {"success": False, "error": f"git push: {err[:200]}", "branch": branch}
+                raise RuntimeError(f"git push: {err[:200]}")
 
             # 5. gh pr create
             pr_body = self._render_pr_body(candidate, yaml_rel, test_rel)
@@ -115,11 +112,7 @@ class ProposeYamlRule(ActuatorBase):
                 "--head", branch,
             ])
             if rc != 0:
-                return {
-                    "success": False,
-                    "error": f"gh pr create: {err[:200]}",
-                    "branch": branch,
-                }
+                raise RuntimeError(f"gh pr create: {err[:200]}")
             pr_url = out.strip().splitlines()[-1] if out.strip() else ""
 
             # 6. auto-merge
@@ -137,11 +130,7 @@ class ProposeYamlRule(ActuatorBase):
                 "auto_merge_enabled": auto_merge_enabled,
             }
         except OSError as exc:
-            return {
-                "success": False,
-                "error": f"file io: {exc}",
-                "branch": branch,
-            }
+            raise RuntimeError(f"file io: {exc}") from exc
 
     async def _dry_run(self, params: dict) -> dict:
         candidate = params.get("rule_candidate")

@@ -74,9 +74,7 @@ async def test_validates_rule_id_format(fake_redis, tmp_path, monkeypatch):
         assert result["success"] is False, f"accepted bad id: {bad_id!r}"
 
 
-@pytest.mark.asyncio
-async def test_accepts_valid_id(fake_redis, tmp_path, monkeypatch):
-    _setup(fake_redis, tmp_path, monkeypatch)
+def test_accepts_valid_id():
     good_ids = ["valid_id", "abc", "a12_b34", "rule_for_cron_agent_burst"]
     for gid in good_ids:
         assert RULE_ID_RE.match(gid), f"regex rejected valid id: {gid}"
@@ -220,3 +218,33 @@ async def test_auto_merge_failure_still_reports_pr_url(fake_redis, tmp_path, mon
     assert result["success"] is True
     assert "pull/7" in result["pr_url"]
     assert result["auto_merge_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_execute_emits_failed_event_on_validation_error(fake_redis, tmp_path, monkeypatch):
+    """Critical fix: structured errors must emit propose_yaml_rule_failed, not _done."""
+    import json
+    from organism.redis_bus import EventBus
+    bus = EventBus(redis=fake_redis, jsonl_path=tmp_path / "e.jsonl")
+    monkeypatch.setattr("organism.emit._get_bus", lambda: bus)
+    monkeypatch.setattr("organism.actuators.base.WAL_DIR", tmp_path / "wal")
+
+    act = ProposeYamlRule()
+    result = await act.run(
+        params={"rule_candidate": "not a dict"},
+        correlation_id="c-fail-event",
+    )
+    assert result["success"] is False
+
+    # Check EventBus — should have ONE `propose_yaml_rule_failed` event, NOT `_done`.
+    entries = await fake_redis.xrange("organism:events")
+    kinds = []
+    for _, fields in entries:
+        raw = fields.get(b"data") if isinstance(fields, dict) else fields["data"]
+        if isinstance(raw, (bytes, bytearray)):
+            raw = raw.decode("utf-8")
+        data = json.loads(raw)
+        if data.get("source") == "actuator.propose_yaml_rule":
+            kinds.append(data["kind"])
+    assert "propose_yaml_rule_failed" in kinds
+    assert "propose_yaml_rule_done" not in kinds
