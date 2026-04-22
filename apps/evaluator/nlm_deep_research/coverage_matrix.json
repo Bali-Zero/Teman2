@@ -1,13 +1,13 @@
 {
   "immigration": {
     "gaps": [
-      "\"answer\": \"Il testo integrale della circolare SE Kemnaker No. 3/836/PK.04/I/2026 definisce ufficialmente la regola della \\\"One Sponsor Policy\\\"?\\nL'integrazione automatica del MERP stabilita dalla UU ",
-      "\"conversation_id\": \"3e8fe6db-8873-4689-9bff-226ee875c09d\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Quali sono le disposizioni esatte della potenziale nuova legge UU No. 1 Tahun 2026 sull'immigrazione e in che modo modifica la UU No. 63 Tahun 2024?",
+      "L'integrazione automatica del MERP stabilita dalla UU No. 63 Tahun 2024 si applica universalmente a tutti gli indici KITAS o solo a categorie specifiche?",
+      "Quali sono le mansioni specifiche aggiornate permesse o vietate ai lavoratori stranieri (TKA) nell'eventualit\u00e0 che i Kepmenaker 228/2019 e 349/2019 siano stati recentemente emendati?",
+      "Come si risolve l'esatta sovrapposizione e la potenziale coesistenza normativa tra il Permenkumham 22/2023 e il nuovo Permenimipas 5/2025?",
+      "Qual \u00e8 il numero statistico esatto di deportazioni ed esecuzioni coercitive effettuate dal Tim Pora a Bali nel biennio 2025-2026?"
     ],
-    "gaps_updated": "2026-04-03T13:43:12.586016+00:00",
+    "gaps_updated": "2026-04-21T21:37:20.725853+00:00",
     "label": "Immigration & Visa",
     "coverage": {
       "KITAS requirements and process 2025": "GAP",
@@ -25,13 +25,13 @@
   },
   "company": {
     "gaps": [
-      "\"answer\": \"Quali sono i requisiti esatti di esperienza pregressa per l'ottenimento del Sertifikat Badan Usaha (SBU) per una PT PMA di nuova costituzione nei KBLI di costruzione post-Omnibus Law?\\nQual",
-      "\"conversation_id\": \"cd8add2e-e29c-4bc3-ae11-45d6f2cc0bd4\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Quali sono le aliquote percentuali esatte e i massimali in Rupiah per i contributi obbligatori BPJS Kesehatan e Ketenagakerjaan a carico di una PT PMA per i propri direttori stranieri?",
+      "Quali sono i termini contrattuali esatti e le quote minime di ripartizione degli utili imposti per la kemitraan obbligatoria tra una PT PMA e una UMKM per il KBLI 73100 (status PMA TERBATAS al 49%) se",
+      "Qual \u00e8 la soglia minima esatta di salario mensile richiesta dal Ministero del Lavoro per approvare l'RPTKA di uno specialista straniero in una PT PMA con KBLI 70209 (status PMA TERBUKA) dopo le riform",
+      "In che modo le normative consuetudinarie dei Desa Adat a Bali possono legalmente opporsi all'approvazione spaziale KKPR emessa automaticamente dal sistema OSS-RBA (PP 28/2025) per una PT PMA con KBLI ",
+      "Quali sono le percentuali esatte di riduzione della ritenuta d'acconto sui dividendi previste dal trattato P3B tra Italia e Indonesia per un investitore in una PT PMA con KBLI 56101 (status PMA TERBUK"
     ],
-    "gaps_updated": "2026-04-03T13:44:08.066122+00:00",
+    "gaps_updated": "2026-04-21T21:38:23.136155+00:00",
     "label": "Company Setup & KBLI",
     "coverage": {
       "PT PMA setup requirements 2025": "GAP",
@@ -49,13 +49,13 @@
   },
   "tax": {
     "gaps": [
-      "\"answer\": \"Quando verr\u00e0 ufficialmente firmata dal Presidente Prabowo la revisione del PP 55/2022 per il regime UMKM dello 0,5%?\\nCome verr\u00e0 ristrutturato il Tax Holiday per rimanere compatibile con la",
-      "\"conversation_id\": \"542c5155-af86-4a43-94b8-58ceada047fe\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "In quale data esatta verr\u00e0 promulgata la revisione del PP 55/2022 e in che modo il KUP regoler\u00e0 le sanzioni in CoreTax per le PT PMA che decadono dal regime UMKM?",
+      "Quali sono le specifiche tecniche delle API e le direttive PER-DJP definitive per l'integrazione diretta dei software ERP aziendali con il nuovo ecosistema CoreTax?",
+      "Con quali procedure esatte un expat SPDN deve dichiarare i capital gain su asset cripto detenuti all'estero nella propria SPT Tahunan all'interno di CoreTax rispetto a un SPLN?",
+      "Quali parametri algoritmici specifici utilizzer\u00e0 il modulo CRM di CoreTax per valutare se una holding estera SPLN supera il Principal Purpose Test stabilito dal PMK 112/2025?",
+      "Quali direttive PER-DJP specifiche regoleranno la modulistica in CoreTax per il reinvestimento domestico dei dividendi al fine di garantire l'esenzione PPh a un azionista SPDN?"
     ],
-    "gaps_updated": "2026-04-03T13:44:58.388821+00:00",
+    "gaps_updated": "2026-04-21T21:39:12.254225+00:00",
     "label": "Tax & Fiscal",
     "coverage": {
       "PPh 21 rates and calculation for expats": "GAP",
@@ -73,13 +73,13 @@
   },
   "property": {
     "gaps": [
-      "\"answer\": \"Qual \u00e8 il prezzo medio di mercato attuale per are per terreni in leasehold rispetto all'acquisto tramite PT PMA con titolo HGB nelle sotto-zone di Canggu per il 2026\\nQuali sono i costi leg",
-      "\"conversation_id\": \"73bcd55c-d360-4f28-b112-dfbe44aef542\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Qual \u00e8 il prezzo medio di mercato per are nel 2026 per terreni acquisibili legalmente tramite Hak Guna Bangunan o leasehold, escludendo la pratica illegale del nominee, in aree con zonasi RTRW turisti",
+      "A quanto ammontano i costi medi esatti di costruzione al metro quadro per una villa su un terreno in Hak Pakai nel pieno rispetto delle normative edilizie e della zonasi RTRW?",
+      "Quante condanne penali o confische sono state effettivamente eseguite a Bali contro stranieri per l'uso illegale di prestanome (nominee) sotto il nuovo Perda Bali 4/2026?",
+      "Quali sono i costi legali medi e le tempistiche reali in un tribunale indonesiano per risolvere una disputa su un contratto di leasehold regolarmente registrato in conformit\u00e0 alla zonasi RTRW?",
+      "Quali sono le aliquote fiscali esatte sui redditi da locazione previste dal trattato contro la doppia imposizione tra Indonesia e Italia per una PT PMA che opera legalmente in Hak Guna Bangunan?"
     ],
-    "gaps_updated": "2026-04-03T13:45:40.574414+00:00",
+    "gaps_updated": "2026-04-21T21:39:59.749685+00:00",
     "label": "Property & Real Estate",
     "coverage": {
       "HGB title for foreigners in Indonesia": "GAP",
@@ -97,13 +97,13 @@
   },
   "operations": {
     "gaps": [
-      "\"answer\": \"Qual \u00e8 la formula esatta e il tariffario aggiornato al 2026 per il calcolo della retribusi del PBG (Persetujuan Bangunan Gedung) per le strutture commerciali a Bali?\\nQuali sono le procedur",
-      "\"conversation_id\": \"4fabb6ba-10af-4158-bb5a-1e5280ad4e6e\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Quali sono le specifiche tecniche e i protocolli API per l'integrazione diretta dei software HR di una PT PMA con i sistemi Coretax e SIPP Online per la sincronizzazione dei dati BPJS e PPh 21?",
+      "Quali sono le sanzioni esatte previste dalle Awig-Awig dei singoli Desa Adat a Bali per le PT PMA turistiche che non rispettano le quote locali di assunzione dei residenti del banjar (WNI)?",
+      "Quali sono i recenti precedenti giurisprudenziali del Pengadilan Hubungan Industrial di Denpasar riguardo al calcolo del pesangon per i lavoratori WNI in caso di revoca del NIB per mancato invio del L",
+      "Quali sono i requisiti strutturali e i limiti esatti di profondit\u00e0 imposti dal SIMBG per ottenere il PBG per infrastrutture commerciali sotterranee sviluppate da una PT PMA nella reggenza di Badung?",
+      "Qual \u00e8 la procedura operativa e la modulistica esatta per richiedere l'esenzione dalla tassa PBJT del 10% al Bapenda per una PT PMA a Bali che fornisce servizi di ospitalit\u00e0 a delegazioni diplomatiche"
     ],
-    "gaps_updated": "2026-04-03T13:46:39.484521+00:00",
+    "gaps_updated": "2026-04-21T21:40:51.346604+00:00",
     "label": "Operations & Compliance",
     "coverage": {
       "UMR/UMK Bali minimum wage 2025": "GAP",
@@ -121,13 +121,13 @@
   },
   "editorial": {
     "gaps": [
-      "\"answer\": \"Qual \u00e8 il budget mensile esatto destinato all'amplificazione a pagamento dei contenuti editoriali in lingua inglese\\nCome deve essere adattato culturalmente il tono di voce Zantara per mass",
-      "\"conversation_id\": \"6ac08048-f29f-4428-a078-bb6a59f6f88a\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Quali sono le identit\u00e0 esatte e le credenziali verificabili dei partner legali e fiscali esterni necessari per massimizzare i segnali E-E-A-T negli articoli YMYL per il mercato anglofono?",
+      "Qual \u00e8 il budget finanziario specifico allocato per l'acquisizione di backlink istituzionali di Tier 1 e le campagne di digital PR rivolte all'audience internazionale inglese?",
+      "Quali sono i dati storici precisi sul traffico organico in lingua inglese che fungono da baseline per misurare l'obiettivo strategico di crescita SEO del centocinquanta percento?",
+      "Quali sono i system prompt esatti forniti a Zantara AI per strutturare automaticamente il markup JSON-LD e ottimizzare i contenuti per la Generative Engine Optimization?",
+      "Quali sono le linee guida di visual design e i requisiti UI/UX specifici per la creazione di infografiche e asset multimediali a supporto delle pillar pages B2B destinate agli expat?"
     ],
-    "gaps_updated": "2026-04-03T13:47:21.489072+00:00",
+    "gaps_updated": "2026-04-21T21:41:39.634398+00:00",
     "label": "Editorial & Content",
     "coverage": {
       "Google Helpful Content Update 2024": "GAP",
@@ -145,13 +145,13 @@
   },
   "lifestyle": {
     "gaps": [
-      "\"answer\": \"Quali sono i costi esatti e le procedure doganali per importare i propri mobili e beni personali dall'Italia a Bali?\\nQual \u00e8 la procedura legale completa per registrare un matrimonio misto ",
-      "\"conversation_id\": \"6d6bec41-1395-472f-a6fe-1c61e3810c97\",",
-      "\"sources_used\": [],",
-      "\"citations\": {},",
-      "\"references\": []"
+      "Quali sono le procedure e i costi doganali esatti per importare i propri mobili e beni personali dall'estero a Bali?",
+      "Qual \u00e8 l'iter legale completo per ottenere la cittadinanza indonesiana dopo aver posseduto un KITAP per diversi anni?",
+      "Quali sono le leggi e le procedure relative al divorzio o all'affidamento dei figli per coppie di expat residenti in Indonesia?",
+      "Quali sono i requisiti e le licenze specifiche per aprire una societ\u00e0 PT PMA dedicata esclusivamente al trading di criptovalute?",
+      "Quali sono le normative e i dazi doganali per l'importazione permanente di un veicolo o una moto privata dall'Europa all'Indonesia?"
     ],
-    "gaps_updated": "2026-04-03T13:48:04.668193+00:00",
+    "gaps_updated": "2026-04-21T21:42:16.040723+00:00",
     "label": "Expat Life & Bali",
     "coverage": {
       "International health insurance Bali 2025": "GAP",

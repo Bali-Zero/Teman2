@@ -1,0 +1,16 @@
+{
+  "source_id": "bpjs_ketenagakerjaan",
+  "name": "BPJS Ketenagakerjaan",
+  "base_url": "https://www.bpjsketenagakerjaan.go.id/",
+  "pages": [
+    {
+      "url": "https://www.bpjsketenagakerjaan.go.id",
+      "status": 200,
+      "bytes": 96772,
+      "file": "www.bpjsketenagakerjaan.go.id.html"
+    }
+  ],
+  "errors": [],
+  "fetched_at": "2026-04-21T21:45:18.654790+00:00",
+  "playwright_invocations_for_source": 0
+}
