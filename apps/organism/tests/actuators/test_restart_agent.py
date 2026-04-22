@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -66,3 +67,33 @@ async def test_execute_full_label_passthrough(fake_redis, tmp_path, monkeypatch)
     )
     assert "com.third.party.agent" in result["would_kickstart"]
     assert "com.balizero" not in result["would_kickstart"]
+
+
+@pytest.mark.asyncio
+async def test_execute_raises_on_timeout(fake_redis, tmp_path, monkeypatch):
+    """Hung launchctl must be killed + raise RuntimeError, not block forever."""
+    from organism.redis_bus import EventBus
+    bus = EventBus(redis=fake_redis, jsonl_path=tmp_path / "e.jsonl")
+    monkeypatch.setattr("organism.emit._get_bus", lambda: bus)
+    monkeypatch.setattr("organism.actuators.base.WAL_DIR", tmp_path / "wal")
+
+    # Mock subprocess that hangs (communicate never returns)
+    class _HangingProc:
+        returncode = None
+        async def communicate(self):
+            await asyncio.sleep(3600)  # never
+
+        def kill(self):
+            self.returncode = -9
+
+        async def wait(self):
+            return
+
+    with patch("asyncio.create_subprocess_exec", AsyncMock(return_value=_HangingProc())):
+        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
+            result = await RestartAgent().run(
+                params={"agent_ref": "hung-agent"},
+                correlation_id="c",
+            )
+    assert result["success"] is False
+    assert "timed out" in result["error"].lower() or "timeout" in result["error"].lower()

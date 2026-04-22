@@ -28,17 +28,22 @@ class RestartAgent(ActuatorBase):
         agent_ref = params["agent_ref"]
         label = self._label(agent_ref)
         proc = await asyncio.create_subprocess_exec(
-            "launchctl",
-            "kickstart",
-            "-k",
-            f"gui/{os.getuid()}/{label}",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            "launchctl", "kickstart", "-k", f"gui/{os.getuid()}/{label}",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
-        out, err = await proc.communicate()
+        try:
+            out, err = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+                await proc.wait()
+            except ProcessLookupError:
+                pass
+            raise RuntimeError(
+                f"launchctl kickstart timed out after 30s (label={label})"
+            )
         return {
-            "agent_ref": agent_ref,
-            "label": label,
+            "agent_ref": agent_ref, "label": label,
             "returncode": proc.returncode,
             "stdout": out.decode("utf-8", errors="replace")[:500],
             "stderr": err.decode("utf-8", errors="replace")[:500],
