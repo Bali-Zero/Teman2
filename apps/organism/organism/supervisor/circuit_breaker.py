@@ -35,9 +35,14 @@ class CircuitBreaker:
         return count < self.max_tries
 
     async def record_failure(self, target: str) -> int:
+        """Record a failure. TTL is anchored to the FIRST failure only — subsequent
+        failures within the window leave the TTL unchanged, preserving the
+        sliding-window semantic per spec.
+        """
         key = CB_KEY_PREFIX + target
         count = await self.redis.incr(key)
-        await self.redis.expire(key, self.cooldown_seconds)
+        if int(count) == 1:
+            await self.redis.expire(key, self.cooldown_seconds)
         return int(count)
 
     async def record_success(self, target: str) -> None:

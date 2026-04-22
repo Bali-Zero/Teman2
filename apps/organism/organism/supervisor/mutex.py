@@ -4,7 +4,10 @@ Prevents two actuators from running concurrently on the same target.
 Release is owner-checked (classic Redlock-lite: only lock owner can
 release, preventing late delete races).
 """
+import logging
 import secrets
+
+log = logging.getLogger(__name__)
 
 
 MUTEX_KEY_PREFIX = "organism:mutex:"
@@ -33,17 +36,24 @@ class Mutex:
         return lock_id if acquired else None
 
     async def release(self, target: str, lock_id: str) -> bool:
-        """Release only if caller owns the lock. Returns True if released."""
+        """Release only if caller owns the lock. Returns True if released.
+
+        Primary path: atomic Lua compare-and-delete.
+        Fallback path: non-atomic GET+DEL (logged with warning — TOCTOU race
+        possible under real Redis instability, only hits in prod if eval() fails).
+        """
         key = MUTEX_KEY_PREFIX + target
         try:
             result = await self.redis.eval(_RELEASE_LUA, 1, key, lock_id)
             return int(result) == 1
-        except Exception:
-            # Fallback (should not happen in prod — fakeredis supports eval)
+        except Exception as exc:
+            log.warning(
+                "mutex: eval() failed for key=%s, falling back to non-atomic GET+DEL: %s",
+                key, exc,
+            )
             current = await self.redis.get(key)
             if current is None:
                 return False
-            # Normalize to str for compare
             if isinstance(current, bytes):
                 current = current.decode("utf-8")
             if current == lock_id:
