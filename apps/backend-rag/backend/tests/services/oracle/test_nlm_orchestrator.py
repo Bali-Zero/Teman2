@@ -343,3 +343,122 @@ class TestExtendedRoutingFlag:
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", value)
         orch = self._make_orch()
         assert orch._resolve_notebooks("property", is_cross_domain=False) == [expected_nb]
+
+
+class TestSefirotIntegration:
+    """Sefirot cascade integration into nlm_orchestrator._resolve_notebooks.
+
+    Flag SEFIROT_ROUTING gates the behaviour:
+
+    - off (default): keyword logic runs as before, sefirot_router emits shadow log
+    - on: when a query matches a curated path, cascade wins over keyword logic
+    """
+
+    def _make_orch(self) -> NLMOrchestrator:
+        return NLMOrchestrator(
+            enrichment_service=AsyncMock(),
+            cache_service=AsyncMock(),
+            redis_client=AsyncMock(),
+        )
+
+    def test_sefirot_off_falls_back_to_keyword_logic(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With sefirot OFF, even a query that would match keeps keyword routing."""
+        monkeypatch.delenv("SEFIROT_ROUTING", raising=False)
+        monkeypatch.setenv("NLM_EXTENDED_ROUTING", "1")
+        orch = self._make_orch()
+        # PT PMA query would match sefirot; but flag off → use keyword on domain=company
+        nbs = orch._resolve_notebooks(
+            "company",
+            is_cross_domain=False,
+            question="I want to open a PT PMA",
+        )
+        assert nbs == [NB_3_COMPANY]
+
+    def test_sefirot_on_pt_pma_query_returns_cascade(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With sefirot ON, PT PMA query returns the 5-NB cascade."""
+        monkeypatch.setenv("SEFIROT_ROUTING", "1")
+        monkeypatch.setenv("NLM_EXTENDED_ROUTING", "1")
+        orch = self._make_orch()
+        nbs = orch._resolve_notebooks(
+            "company",
+            is_cross_domain=False,
+            question="Open a PT PMA with team in Bali",
+        )
+        # pt_pma_complete_flow: nb3, nb2, nb6, nb10, nb4 in weight order
+        assert nbs[0] == NB_3_COMPANY  # primary
+        assert len(nbs) == 5  # cascade has 5 NBs
+
+    def test_sefirot_on_no_match_falls_back_to_keyword(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With sefirot ON but no path match, keyword logic still runs."""
+        monkeypatch.setenv("SEFIROT_ROUTING", "1")
+        monkeypatch.delenv("NLM_EXTENDED_ROUTING", raising=False)
+        orch = self._make_orch()
+        nbs = orch._resolve_notebooks(
+            "visa",
+            is_cross_domain=False,
+            question="nothing special in this query",
+        )
+        # base keyword routing for visa → NB-2
+        assert nbs == ["cff93ab0-813a-42f2-a8de-36987e724271"]
+
+    def test_sefirot_on_empty_question_falls_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """With sefirot ON but empty question, skip sefirot layer entirely."""
+        monkeypatch.setenv("SEFIROT_ROUTING", "1")
+        orch = self._make_orch()
+        # question="" → sefirot is skipped; keyword routes normally
+        nbs = orch._resolve_notebooks(
+            "visa",
+            is_cross_domain=False,
+            question="",
+        )
+        assert nbs == ["cff93ab0-813a-42f2-a8de-36987e724271"]
+
+    def test_sefirot_off_emits_shadow_log(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Shadow mode: flag off + matching query still emits sefirot shadow log line."""
+        monkeypatch.delenv("SEFIROT_ROUTING", raising=False)
+        orch = self._make_orch()
+        with caplog.at_level("INFO", logger="backend.services.oracle.sefirot_router"):
+            orch._resolve_notebooks(
+                "company",
+                is_cross_domain=False,
+                question="Open a PT PMA",
+            )
+        assert any(
+            "sefirot shadow" in rec.message for rec in caplog.records
+        ), "Expected sefirot shadow log line when flag off but path matches"
+
+    def test_sefirot_on_emits_active_log(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Active mode: flag on + matching query emits 'sefirot active' INFO line."""
+        monkeypatch.setenv("SEFIROT_ROUTING", "1")
+        orch = self._make_orch()
+        with caplog.at_level("INFO", logger="backend.services.oracle.nlm_orchestrator"):
+            orch._resolve_notebooks(
+                "company",
+                is_cross_domain=False,
+                question="Open a PT PMA",
+            )
+        assert any(
+            "sefirot active" in rec.message for rec in caplog.records
+        ), "Expected 'sefirot active' log when flag on + path match"
+
+    def test_question_param_backwards_compatible_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Pre-existing callers without `question` kwarg still work."""
+        monkeypatch.delenv("SEFIROT_ROUTING", raising=False)
+        orch = self._make_orch()
+        # Legacy call signature (no question kwarg)
+        nbs = orch._resolve_notebooks("visa", is_cross_domain=False)
+        assert nbs == ["cff93ab0-813a-42f2-a8de-36987e724271"]

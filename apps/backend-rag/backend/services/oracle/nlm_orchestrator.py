@@ -187,8 +187,8 @@ class NLMOrchestrator:
             if cached is not None:
                 return cached
 
-            # Resolve notebooks
-            notebooks = self._resolve_notebooks(domain, is_cross_domain)
+            # Resolve notebooks (question passed so sefirot_router can match cascades)
+            notebooks = self._resolve_notebooks(domain, is_cross_domain, question=question)
             if not notebooks:
                 logger.debug("NLM orchestrator: no notebook for domain=%s", domain)
                 return None
@@ -212,8 +212,23 @@ class NLMOrchestrator:
             logger.warning("NLM orchestrator: unexpected error (%s)", exc, exc_info=True)
             return None
 
-    def _resolve_notebooks(self, domain: str, is_cross_domain: bool) -> list[str]:
+    def _resolve_notebooks(
+        self,
+        domain: str,
+        is_cross_domain: bool,
+        question: str = "",
+    ) -> list[str]:
         """Resolve which notebook(s) to query for a domain.
+
+        Three-layer resolution in priority order:
+
+        1. **Sefirot cascade** (``SEFIROT_ROUTING`` env, default off) — curated
+           multi-NB paths from sefirot_paths.yaml. When the query matches a
+           trigger, the cascade wins over the domain-keyword logic. In shadow
+           mode (flag off) we still log the match without returning it.
+        2. **Extended routing** (``NLM_EXTENDED_ROUTING`` env) — domain map with
+           NB-5/6/7/8/10 aliases enabled.
+        3. **Base routing** — safe default 4-NB map.
 
         Behaviour is controlled by the ``NLM_EXTENDED_ROUTING`` env var:
 
@@ -226,6 +241,27 @@ class NLMOrchestrator:
           ``property`` resolves to NB-5, ``operations`` to NB-6, ``editorial``
           to NB-7, ``lifestyle`` to NB-8, ``team`` to NB-10 (plus aliases).
         """
+        # Sefirot layer (Sprint 4) — flag-gated, shadow-logging.
+        # Imported lazily to avoid a hard dependency if the YAML is missing.
+        if question:
+            try:
+                from backend.services.oracle.sefirot_router import (  # noqa: PLC0415
+                    resolve_with_fallback,
+                )
+
+                sef_match = resolve_with_fallback(question)
+                if sef_match is not None:
+                    # Flag ON + match → cascade wins over keyword logic.
+                    cascade_ids = sef_match.notebook_ids_in_order()
+                    logger.info(
+                        "nlm_routing sefirot active: path=%s -> %d NBs",
+                        sef_match.name,
+                        len(cascade_ids),
+                    )
+                    return cascade_ids
+            except Exception as exc:  # pragma: no cover — never block routing
+                logger.debug("sefirot layer skipped: %s", exc)
+
         extended = _extended_routing_enabled()
 
         if is_cross_domain and self._correlator is not None:
