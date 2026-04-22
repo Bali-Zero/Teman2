@@ -240,6 +240,7 @@ class PracticeCreate(BaseModel):
     start_date: datetime | None = None
     notes: str | None = None
     internal_notes: str | None = None
+    family_member_id: int | None = None  # If practice is for a specific family member (dependent KITAS etc.)
 
     @field_validator("status")
     @classmethod
@@ -342,6 +343,7 @@ class PracticeResponse(BaseModel):
     completion_date: datetime | None
     expiry_date: date | None
     created_at: datetime
+    family_member_id: int | None = None
 
 
 # ================================================
@@ -383,6 +385,25 @@ async def create_practice(
                     detail=f"Practice type '{practice.practice_type_code}' not found",
                 )
 
+            # If family_member_id is set, verify it belongs to the same client.
+            # Rejecting mismatches here avoids confusing UX where a practice
+            # silently lands on the wrong client's family tree.
+            if practice.family_member_id is not None:
+                fm_client_id = await conn.fetchval(
+                    "SELECT client_id FROM client_family_members WHERE id = $1",
+                    practice.family_member_id,
+                )
+                if fm_client_id is None:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"Family member {practice.family_member_id} not found",
+                    )
+                if fm_client_id != practice.client_id:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Family member does not belong to this client",
+                    )
+
             # Use base_price if no quoted price provided
             quoted_price = practice.quoted_price or practice_type_row["base_price"]
 
@@ -416,6 +437,9 @@ async def create_practice(
             if practice.start_date is not None:
                 insert_columns.append("start_date")
                 insert_values.append(practice.start_date)
+            if practice.family_member_id is not None:
+                insert_columns.append("family_member_id")
+                insert_values.append(practice.family_member_id)
 
             placeholders = ", ".join(f"${i}" for i in range(1, len(insert_values) + 1))
             columns_str = ", ".join(insert_columns)
