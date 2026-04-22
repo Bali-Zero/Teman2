@@ -1473,15 +1473,33 @@ def main() -> None:
 
     # Emit call: separate block that does NOT swallow NameError etc.
     if _organism_available:
+        from organism.heartbeat import supervisor_heartbeat_check as _hb_check
+        import redis.asyncio as _redis_async
+
         async def _emit_cron_findings() -> None:
-            findings = await _scan_cron_agent_logs()
-            for finding in findings:
-                await _emit_event(
-                    severity=_Severity.ERROR,
-                    source="guardian.system_doctor",
-                    kind="cron_agent_failure",
-                    payload=finding,
-                )
+            r = _redis_async.from_url(
+                os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
+                decode_responses=False,
+            )
+            try:
+                status = await _hb_check(redis=r)
+                if status.should_enter_emergency_mode:
+                    log(
+                        f"organism Supervisor absent (lag={status.lag_seconds}); "
+                        f"system_doctor in emergency_mode — skipping event emit"
+                    )
+                    return
+                findings = await _scan_cron_agent_logs()
+                for finding in findings:
+                    await _emit_event(
+                        severity=_Severity.ERROR,
+                        source="guardian.system_doctor",
+                        kind="cron_agent_failure",
+                        payload=finding,
+                    )
+            finally:
+                await r.aclose()
+
         try:
             asyncio.run(_emit_cron_findings())
         except Exception as _emit_err:
