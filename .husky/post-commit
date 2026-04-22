@@ -16,3 +16,6 @@ if [ "$BRANCH" = "main" ]; then
         (git push pro main >> ~/.openclaw/logs/git-sync.log 2>&1) &
     fi
 fi
+
+# Organism adoption trigger — fire-and-forget, must NEVER block commit
+PYTHONPATH="$(git rev-parse --show-toplevel)/apps/organism" python3 -m organism.post_commit_hook 2>/dev/null || true
