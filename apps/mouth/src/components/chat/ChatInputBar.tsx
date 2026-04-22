@@ -142,6 +142,8 @@ export function ChatInputBar({
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
                 className={`rounded-xl ${showAttachMenu ? 'text-[var(--accent)] bg-[var(--accent)]/10' : ''}`}
                 aria-label="Attach file"
+                aria-haspopup="true"
+                aria-expanded={showAttachMenu}
               >
                 <Plus className="w-5 h-5" />
               </Button>

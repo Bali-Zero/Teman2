@@ -117,13 +117,20 @@ export function ChatSidebar({
                   <div
                     key={conv.id}
                     onClick={() => onConversationClick(conv.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onConversationClick(conv.id);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)] ${
                       currentConversationId === conv.id
                         ? 'sidebar-item-active text-white'
                         : 'text-gray-400'
                     }`}
                     role="button"
                     tabIndex={0}
+                    aria-current={currentConversationId === conv.id ? 'true' : undefined}
                   >
                     <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <span className="text-sm text-gray-400 truncate flex-1">
@@ -131,7 +138,8 @@ export function ChatSidebar({
                     </span>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
-                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                      aria-label="Delete conversation"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
