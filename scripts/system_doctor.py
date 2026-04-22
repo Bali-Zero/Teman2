@@ -1484,10 +1484,22 @@ def main() -> None:
             try:
                 status = await _hb_check(redis=r)
                 if status.should_enter_emergency_mode:
-                    log(
-                        f"organism Supervisor absent (lag={status.lag_seconds}); "
-                        f"system_doctor in emergency_mode — skipping event emit"
+                    # Signal emergency mode: persist to Redis for /stats endpoint,
+                    # and ALWAYS write to stderr (bypass VERBOSE gate — operational visibility).
+                    import sys as _sys
+                    _sys.stderr.write(
+                        f"[system_doctor] organism emergency_mode: "
+                        f"Supervisor absent (lag={status.lag_seconds}s) — skipping event emit\n"
                     )
+                    _sys.stderr.flush()
+                    try:
+                        await r.set(
+                            "organism:emergency_mode:system_doctor",
+                            str(time.time()),
+                            ex=3600,  # 1h TTL
+                        )
+                    except Exception:
+                        pass  # Redis may be down too — stderr is enough
                     return
                 findings = await _scan_cron_agent_logs()
                 for finding in findings:

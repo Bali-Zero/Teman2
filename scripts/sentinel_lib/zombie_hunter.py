@@ -142,7 +142,21 @@ def identify_zombies(
                 try:
                     status = await supervisor_heartbeat_check(redis=r)
                     if status.should_enter_emergency_mode:
-                        # Supervisor absent — inline detection already ran; skip emit
+                        import sys as _sys
+                        import time as _time
+                        _sys.stderr.write(
+                            f"[zombie_hunter] organism emergency_mode: "
+                            f"Supervisor absent (lag={status.lag_seconds}s) — skipping event emit\n"
+                        )
+                        _sys.stderr.flush()
+                        try:
+                            await r.set(
+                                "organism:emergency_mode:zombie_hunter",
+                                str(_time.time()),
+                                ex=3600,  # 1h TTL
+                            )
+                        except Exception:
+                            pass
                         return
                     for agent_name, info in zombies.items():
                         await emit_event(
