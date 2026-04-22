@@ -1,9 +1,9 @@
 {
-  "captured_at": "2026-04-22T12:06:13Z",
+  "captured_at": "2026-04-22T12:16:48Z",
   "gsc": {
-    "clicks_total": 0,
-    "impressions_total": 0,
-    "query_count": 0
+    "clicks_total": 56,
+    "impressions_total": 640,
+    "query_count": 76
   },
   "ga4": {
     "sessions_total": 0,
@@ -11,7 +11,7 @@
     "page_count": 0
   },
   "instagram": {
-    "followers_count": 10359,
+    "followers_count": 10360,
     "media_count": 245
   },
   "brevo": {
@@ -26,11 +26,12 @@
     "domain_rating": 0,
     "backlinks_count": 0,
     "sov_pct": 0.0,
-    "ai_citations_30d": 0
+    "ai_citations_30d": 0,
+    "source_status": "plan_insufficient"
   },
   "crm": {
-    "leads_total_90d": 0,
-    "leads_social_90d": 0,
-    "utm_coverage_pct": 0.0
+    "leads_total_90d": 324,
+    "leads_social_90d": 5,
+    "utm_coverage_pct": 0.9814814814814815
   }
 }
