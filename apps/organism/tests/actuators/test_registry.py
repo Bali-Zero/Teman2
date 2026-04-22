@@ -14,6 +14,14 @@ async def test_registry_has_all_baseline_actuators(fake_redis):
 
 
 @pytest.mark.asyncio
+async def test_registry_includes_adopt_module(fake_redis):
+    """W3.A — adopt_module is wired with redis injection."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert "adopt_module" in reg
+    assert reg["adopt_module"].name == "adopt_module"
+
+
+@pytest.mark.asyncio
 async def test_registry_includes_consolidate_redundancy(fake_redis):
     """W3.C — consolidate_redundancy is wired into the shared registry."""
     reg = build_actuator_registry(redis=fake_redis)
@@ -22,11 +30,10 @@ async def test_registry_includes_consolidate_redundancy(fake_redis):
 
 
 @pytest.mark.asyncio
-async def test_registry_includes_adopt_module(fake_redis):
-    """W3.A — adopt_module is wired with redis injection."""
+async def test_registry_includes_cleanup_suite(fake_redis):
+    """W3.B — cleanup_cache / cleanup_branches / cleanup_zombie_plist wired."""
     reg = build_actuator_registry(redis=fake_redis)
-    assert "adopt_module" in reg
-    assert reg["adopt_module"].name == "adopt_module"
+    assert {"cleanup_cache", "cleanup_branches", "cleanup_zombie_plist"} <= set(reg.keys())
 
 
 @pytest.mark.asyncio
