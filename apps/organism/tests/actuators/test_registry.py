@@ -2,16 +2,31 @@ import pytest
 from organism.actuators import build_actuator_registry
 
 
+# W1 baseline actuators — always present. Using subset check (>=) keeps this
+# test merge-safe when W3/W4 parallel PRs land their own actuators alongside.
+W1_BASELINE = {"restart_agent", "cleanup_log", "notify_telegram", "quarantine"}
+
+
 @pytest.mark.asyncio
-async def test_registry_has_all_actuators(fake_redis):
+async def test_registry_has_all_baseline_actuators(fake_redis):
     reg = build_actuator_registry(redis=fake_redis)
-    assert set(reg.keys()) == {
-        "restart_agent",
-        "cleanup_log",
-        "notify_telegram",
-        "quarantine",
-        "adopt_module",
-    }
+    assert W1_BASELINE <= set(reg.keys())
+
+
+@pytest.mark.asyncio
+async def test_registry_includes_consolidate_redundancy(fake_redis):
+    """W3.C — consolidate_redundancy is wired into the shared registry."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert "consolidate_redundancy" in reg
+    assert reg["consolidate_redundancy"].name == "consolidate_redundancy"
+
+
+@pytest.mark.asyncio
+async def test_registry_includes_adopt_module(fake_redis):
+    """W3.A — adopt_module is wired with redis injection."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert "adopt_module" in reg
+    assert reg["adopt_module"].name == "adopt_module"
 
 
 @pytest.mark.asyncio

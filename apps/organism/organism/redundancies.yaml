@@ -1,0 +1,64 @@
+# Redundancies identified in audit 2026-04-19.
+# Each entry describes a set of automations that can be merged or deleted.
+# The actuator opens one PR per redundancy with a proposed consolidation plan.
+redundancies:
+  - id: heartbeat_systems
+    description: 3 heartbeat systems can merge into 1 unified heartbeat
+    targets:
+      - olympus_heartbeat
+      - run_heartbeat_check.sh
+      - deadman-heartbeat.sh
+    strategy: merge_into_single_cron
+    severity: medium
+
+  - id: compliance_pipeline
+    description: 4 compliance systems should be 1 compliance pipeline
+    targets:
+      - compliance-ops
+      - proactive_compliance_monitor
+      - expiry_alerter.py
+      - renewal-alerts
+    strategy: merge_into_single_cron
+    severity: medium
+
+  - id: dep_audit_duplicate
+    description: dep_audit.py cron duplicates weekly-dep-audit — keep the cron, remove the Python
+    targets:
+      - dep_audit.py
+    strategy: remove_duplicate
+    prefer: weekly-dep-audit
+    severity: low
+
+  - id: weekly_review_duplicate
+    description: weekly-review cron-agent duplicates the Python version — remove the agent
+    targets:
+      - weekly-review
+    strategy: remove_duplicate
+    prefer: python_version
+    severity: low
+
+  - id: nlm_bridge_heartbeat_duplicate
+    description: nlm_bridge echo heartbeat cron duplicates agent_live_state write
+    targets:
+      - nlm_bridge_echo_heartbeat
+    strategy: remove_duplicate
+    prefer: agent_live_state
+    severity: low
+
+  - id: x_monitor_disabled_remnants
+    description: x_monitor_run_loop and x_monitor_digest_loop disabled long ago — remove
+    targets:
+      - x_monitor_run_loop
+      - x_monitor_digest_loop
+    strategy: remove_disabled_code
+    severity: low
+
+  - id: air_backup_pg_sync
+    description: 4 Air backup pg-sync scripts are mergeable into 1
+    targets:
+      - pg-sync-daily.sh
+      - pg-sync-hourly.sh
+      - pg-sync-watcher.sh
+      - pg-sync-recovery.sh
+    strategy: merge_into_single_script
+    severity: medium
