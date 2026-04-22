@@ -5,7 +5,15 @@ from organism.actuators import build_actuator_registry
 @pytest.mark.asyncio
 async def test_registry_has_all_four_actuators(fake_redis):
     reg = build_actuator_registry(redis=fake_redis)
-    assert set(reg.keys()) == {"restart_agent", "cleanup_log", "notify_telegram", "quarantine"}
+    assert set(reg.keys()) == {
+        "restart_agent",
+        "cleanup_log",
+        "notify_telegram",
+        "quarantine",
+        "cleanup_cache",
+        "cleanup_branches",
+        "cleanup_zombie_plist",
+    }
 
 
 @pytest.mark.asyncio
