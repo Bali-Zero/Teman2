@@ -14,7 +14,7 @@ rules:
     action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
     confidence: 0.85
 
-  - id: new_module_notify
+  - id: new_module_adopt
     match: {kind: new_module}
-    action: {actuator: notify_telegram, params: {message: "new module detected: {payload.path}"}}
+    action: {actuator: adopt_module, params: {module_path: "{payload.module_path}"}}
     confidence: 0.80
