@@ -73,7 +73,7 @@ async def db_pool() -> AsyncGenerator[asyncpg.Pool, None]:
     skip_reason: str | None = None
     try:
         async with pool.acquire() as conn:
-            for table in ("clients", "compliance_alerts"):
+            for table in ("clients", "compliance_alerts", "system_settings", "notification_log"):
                 exists = await conn.fetchval(
                     "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
                     "WHERE table_schema='public' AND table_name=$1)",

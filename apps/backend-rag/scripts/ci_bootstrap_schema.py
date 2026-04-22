@@ -142,7 +142,31 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
+
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+
+
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS notification_log (
+                id         BIGSERIAL PRIMARY KEY,
+                user_id    UUID NOT NULL,
+                channel    VARCHAR(20) NOT NULL,
+                ref        VARCHAR(128) NOT NULL,
+                sent_at    TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )
+            """,
+        ))
+
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings + notification_log tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
