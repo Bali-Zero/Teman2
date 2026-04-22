@@ -20,6 +20,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 HOOK_CATEGORIES = ("question", "stat", "story", "contrarian", "list")
+TONE_REGISTERS = (
+    "pedagogico", "analitico", "tecnico", "rituale",
+    "poetico", "ironico", "militante",
+)
+GEMINI_MODEL = "gemini-3.1-pro-preview"
 
 
 @dataclass(frozen=True)
@@ -113,3 +118,81 @@ class EmpiricalIGAnalyzer:
 
         logger.warning("no JSON line in claude -p output; falling back")
         return {p["post_id"]: "unknown" for p in posts}
+
+    def classify_tones_batch(self, posts: list[dict[str, Any]]) -> dict[str, str]:
+        """Classify tone register via Gemini 3.1 Pro 1M-ctx single call.
+
+        Returns ``{post_id: tone_register}``. Registers are the 7 WR2 canonical
+        ones (see TONE_REGISTERS). Same failure-fallback shape as
+        classify_hooks_batch — "unknown" on any error.
+        """
+        registers = "|".join(TONE_REGISTERS)
+        prompt_lines = [
+            "Classify the TONE REGISTER of each Instagram post. Emit ONLY a "
+            "single JSON object on the last line, no prose. "
+            f"Schema: {{\"classifications\":[{{\"post_id\":\"<id>\","
+            f"\"tone_register\":\"{registers}\"}}]}}",
+            "",
+        ]
+        for p in posts:
+            snippet = (p.get("caption") or "")[:800].replace("\n", " ")
+            prompt_lines.append(f"post_id={p['post_id']}: {snippet}")
+        prompt = "\n".join(prompt_lines)
+
+        try:
+            result = subprocess.run(
+                ["gemini", "-m", GEMINI_MODEL, "-p", prompt],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            logger.warning("gemini CLI invocation failed: %s", exc)
+            return {p["post_id"]: "unknown" for p in posts}
+
+        if result.returncode != 0:
+            logger.warning(
+                "gemini -p exited %s; falling back to 'unknown' for %d posts",
+                result.returncode,
+                len(posts),
+            )
+            return {p["post_id"]: "unknown" for p in posts}
+
+        for line in reversed(result.stdout.splitlines()):
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                parsed = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            cls = parsed.get("classifications") or []
+            return {
+                c["post_id"]: c["tone_register"]
+                for c in cls
+                if "post_id" in c and "tone_register" in c
+            }
+
+        logger.warning("no JSON line in gemini output; falling back")
+        return {p["post_id"]: "unknown" for p in posts}
+
+    @staticmethod
+    def check_skew(
+        distribution: dict[str, int],
+        *,
+        threshold: float = 0.6,
+    ) -> tuple[bool, str, float]:
+        """Gate 2 check on tone distribution.
+
+        Returns ``(ok, dominant_tone, dominant_pct)``. ``ok`` is True iff no
+        single tone accounts for more than ``threshold`` (default 60%) of
+        the sample. Empty distribution → ``(True, "", 0.0)``.
+        """
+        total = sum(distribution.values())
+        if total == 0:
+            return True, "", 0.0
+        dominant = max(distribution, key=distribution.get)
+        pct = distribution[dominant] / total
+        return (pct <= threshold, dominant, pct)
