@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nuzantara.organism.supervisor</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
+    <string>-m</string><string>organism.supervisor.daemon</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ORGANISM_SHADOW_MODE</key><string>true</string>
+    <key>ORGANISM_RULES_PATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism/organism/rules/base.yaml</string>
+    <key>ORGANISM_DECISIONS_LOG</key><string>/Users/nuzantara/logs/organism/decisions.jsonl</string>
+    <key>ORGANISM_REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
+    <key>PYTHONPATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/logs/organism/supervisor.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/logs/organism/supervisor.err</string>
+</dict>
+</plist>
