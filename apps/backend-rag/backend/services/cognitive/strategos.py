@@ -118,11 +118,26 @@ class StrategosContextBuilder:
         war_room_repo: WarRoomRepository,
         *,
         skills_snapshot_fn: SkillsSnapshotFn | None = None,
+        dossier_filter: Any = None,
     ) -> None:
         self.intel_repo = intel_repo
         self.cognitive_repo = cognitive_repo
         self.war_room_repo = war_room_repo
         self.skills_snapshot_fn = skills_snapshot_fn
+        self.dossier_filter = dossier_filter
+
+    async def _fetch_seed_thesis(self) -> str:
+        """Return last weekly brief narrative; empty string if unavailable."""
+        try:
+            fetcher = getattr(
+                self.cognitive_repo, "latest_weekly_brief_narrative", None,
+            )
+            if fetcher is None:
+                return ""
+            latest = await fetcher()
+            return latest or ""
+        except Exception:  # noqa: BLE001 — soft fallback is the contract
+            return ""
 
     async def build(self, *, week_of: date) -> StrategosContext:
         context = StrategosContext(week_of=week_of)
@@ -141,6 +156,26 @@ class StrategosContextBuilder:
                 DEFAULT_DOSSIER_LOOKBACK,
                 DEFAULT_TOP_DOSSIERS,
             )
+            if self.dossier_filter is not None and rows:
+                try:
+                    seed_thesis = await self._fetch_seed_thesis()
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("seed thesis fetch failed: %s", exc)
+                    seed_thesis = ""
+                if not seed_thesis:
+                    seed_thesis = (
+                        "Bali Zero weekly strategic priorities — "
+                        "KBLI, visa, tax, property"
+                    )
+                try:
+                    rows = await self.dossier_filter.rank(
+                        rows, seed_text=seed_thesis, top_k=len(rows),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "dossier_filter.rank failed, preserving SQL order: %s",
+                        exc,
+                    )
             context.dossiers_block = "\n".join(
                 _format_dossier_row(r) for r in rows
             )
