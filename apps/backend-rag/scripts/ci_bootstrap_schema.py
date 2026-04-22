@@ -198,16 +198,29 @@ def main() -> int:
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
 
     # Prod-only columns added by hand over time that never made it into a
-    # migration file. The SQLModel class doesn't declare them, so
-    # create_all() doesn't include them either — but router code (CRM,
-    # drive poll, lkpm ready-pack, invoicing) reads/writes them via raw
-    # SQL. Add them here so CI's fresh DB matches prod's shape.
+    # migration file. The SQLModel `Client` class in
+    # app/modules/crm/models.py doesn't declare them, so create_all()
+    # doesn't include them either — but router code (CRM, drive poll,
+    # lkpm ready-pack, invoicing, portal) reads/writes them via raw SQL.
+    # Add them here so CI's fresh DB matches prod's shape.
+    #
+    # Grep sources:
+    #   rg -n "FROM clients|SELECT\\s*\\S+\\s*clients\\." apps/backend-rag/backend
+    #
+    # Columns not yet promoted to a migration file:
+    #   google_drive_folder_id  — drive root folder per client
+    #   drive_folder_id         — legacy drive folder id (portal + events)
+    #   drive_folder_url        — legacy drive folder url (documents)
+    #   deleted_at              — soft-delete marker (portal, several routers)
     with engine.begin() as conn:
-        conn.execute(text(
-            "ALTER TABLE clients "
-            "ADD COLUMN IF NOT EXISTS google_drive_folder_id VARCHAR(100)"
-        ))
-    print("[bootstrap] clients.google_drive_folder_id ensured")
+        for stmt in (
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS google_drive_folder_id VARCHAR(100)",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_id VARCHAR(100)",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_url TEXT",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] clients prod-only columns ensured (drive + deleted_at)")
 
     return 0
 
