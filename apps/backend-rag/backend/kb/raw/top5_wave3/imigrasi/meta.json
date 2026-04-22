@@ -1,0 +1,16 @@
+{
+  "source_id": "imigrasi",
+  "name": "Direktorat Jenderal Imigrasi (KITAS/KITAP)",
+  "base_url": "https://www.imigrasi.go.id/",
+  "pages": [
+    {
+      "url": "https://www.imigrasi.go.id",
+      "status": 200,
+      "bytes": 150118,
+      "file": "www.imigrasi.go.id.html"
+    }
+  ],
+  "errors": [],
+  "fetched_at": "2026-04-21T21:45:04.127805+00:00",
+  "playwright_invocations_for_source": 0
+}

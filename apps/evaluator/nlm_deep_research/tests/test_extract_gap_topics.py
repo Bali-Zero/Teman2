@@ -54,6 +54,37 @@ def test_json_envelope_answer_field_used() -> None:
     assert "references" not in combined
 
 
+def test_nested_value_answer_envelope_supported() -> None:
+    """Wave 3 regression: NLM CLI also emits ``{"value": {"answer": "..."}}``.
+
+    When wave 2's fix only checked ``obj["answer"]`` at the top level, every
+    domain Layer A run produced zero gaps because the line-level filter
+    dropped the raw envelope keys without ever reaching the nested answer.
+    This test locks the nested-wrapper path.
+    """
+    response = (
+        '{\n'
+        '  "value": {\n'
+        '    "answer": "Quali sono le disposizioni esatte della UU No. 1/2026?\\n'
+        'L\'integrazione automatica del MERP si applica a tutte le KITAS?\\n'
+        'Quali mansioni TKA sono permesse dopo Kepmenaker 228/2019?",\n'
+        '    "conversation_id": "3e8fe6db-8873-4689-9bff-226ee875c09d",\n'
+        '    "sources_used": [],\n'
+        '    "citations": {},\n'
+        '    "references": []\n'
+        '  }\n'
+        '}'
+    )
+    gaps = _extract_gap_topics(response)
+    assert len(gaps) == 3
+    assert any("UU No. 1/2026" in g for g in gaps)
+    assert any("MERP" in g for g in gaps)
+    assert any("TKA" in g for g in gaps)
+    combined = " | ".join(gaps)
+    assert "conversation_id" not in combined
+    assert "sources_used" not in combined
+
+
 def test_plain_text_response_unchanged() -> None:
     """Non-JSON responses still work as before."""
     response = (

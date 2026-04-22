@@ -1,0 +1,4 @@
+# HTML snapshots removed from VCS (trigger false-positive secret detection
+# on asset hashes, analytics IDs, etc.) — re-downloadable via
+# `backend/services/kg_monitoring/scripts/wave3_top5_snapshot.py` on demand.
+*.html
