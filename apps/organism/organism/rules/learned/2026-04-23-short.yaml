@@ -1,0 +1,9 @@
+rules:
+- id: short
+  match:
+    kind: custom_probe_event
+  action:
+    actuator: notify_telegram
+    params:
+      message: test
+  confidence: 0.85
