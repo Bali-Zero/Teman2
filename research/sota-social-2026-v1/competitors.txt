@@ -1,0 +1,25 @@
+# 18 competitor accounts — Tribe 1 (10 agencies) + Tribe 2 (8 influencers)
+# Scope: 15 IG posts per account = 270 rows total.
+# Used by docs/runbooks/competitor-scrape-manual.md + scripts/sota_ingest_competitors.py.
+
+# Tribe 1 — direct competitors (agencies)
+lawbali agency
+emerhub agency
+incorp_indonesia agency
+cekindo_official agency
+permitindo agency
+balisolutions agency
+bli_bali agency
+kiradigital agency
+indolegal agency
+bambuhijau_konsultan agency
+
+# Tribe 2 — expat influencers
+solopreneur_bali influencer
+digitalnomadworld influencer
+nomadgate influencer
+nomadsembassy influencer
+balibuddha influencer
+reneesylvestre influencer
+thebalibible influencer
+indoexpatcommunity influencer
