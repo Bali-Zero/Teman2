@@ -142,7 +142,24 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
+        # system_settings: key/value store originally created by
+        # backend/migrations/migration_062_client_drive_subfolders.sql (old
+        # numbered series), which the modern runner (db/migrations_v2/*.sql)
+        # does not discover. migrations_v2/114_compliance_alerts.sql reads
+        # the table via a DO block guarded with an information_schema check,
+        # so migrations still apply cleanly on a fresh CI DB — but the
+        # compliance_alerts router tests (autotune gate) expect the table
+        # to exist for INSERT/UPDATE. Mirroring the legacy schema verbatim.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
