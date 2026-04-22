@@ -1,0 +1,268 @@
+# Sefirotic Paths — curated cross-NB query routing (Sprint 4)
+#
+# Sacred root (comment only, never invoked in code): in the Kabbalistic Tree of
+# Life, a single divine intention manifests through a chain of 10 sefirot (from
+# Keter to Malkhut). A query from the Bali Zero client is an analogous chain —
+# a single business intention ("open a PT PMA with team + property") emanates
+# through multiple domain NBs (company/visa/tax/operations/team).
+#
+# This YAML captures ~15 common multi-domain patterns as curated sequences of NB
+# queries. The sefirot_router consults this file when a user query matches a
+# trigger, and produces an ordered fan-out instead of a single-NB or keyword-
+# scored fan-out.
+#
+# CURATION RULES:
+#   1. Every path is human-curated. Never auto-generated via LLM.
+#   2. weight [0, 1] — the sefirot_router uses weight to order fan-out. Primary
+#      NB has weight 1.0; subordinate NBs have progressively lower weights.
+#   3. triggers are CASE-INSENSITIVE keyword fragments. First-match wins.
+#   4. aggregator: how to combine NB responses downstream.
+#      "synthesis_ordered"  — primary first, others subordinate (default)
+#      "parallel_independent" — each NB answers separately
+#      "primary_only_confirm" — primary answers, others only confirm/contradict
+#
+# Change history: append new paths; do not reorder existing ones (first-match
+# semantics). When retiring a path, set `deprecated: true` but keep the entry
+# for compatibility with in-flight queries.
+
+version: 1
+last_curated: "2026-04-22"
+
+paths:
+  - name: pt_pma_complete_flow
+    description: "PT PMA setup end-to-end — company + visa TKA + tax + OSS + HR"
+    triggers:
+      - "pt pma"
+      - "foreign company indonesia"
+      - "pma setup"
+      - "open a pma"
+    sequence:
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 company
+        key: nb3
+        weight: 1.0
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 visa TKA
+        key: nb2
+        weight: 0.6
+      - nb: "85207af3-352f-4554-8d2a-18f42cc541ba"   # NB-6 OSS-RBA
+        key: nb6
+        weight: 0.5
+      - nb: "f0307c2c-9220-4160-93c8-f4a6ef4a3b65"   # NB-10 team HR
+        key: nb10
+        weight: 0.4
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 tax
+        key: nb4
+        weight: 0.3
+    aggregator: synthesis_ordered
+
+  - name: property_foreigner_acquisition
+    description: "Foreigner acquiring Bali property — zoning + HGB + tax"
+    triggers:
+      - "foreigner buying"
+      - "acquisto proprietà"
+      - "property for foreigners"
+      - "villa for sale"
+      - "wna property"
+    sequence:
+      - nb: "d9438180-5e63-4e2a-a473-6061101f6a8d"   # NB-5 property
+        key: nb5
+        weight: 1.0
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 PT PMA vehicle
+        key: nb3
+        weight: 0.5
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 BPHTB/PBB
+        key: nb4
+        weight: 0.4
+    aggregator: synthesis_ordered
+
+  - name: kitas_e23_work_permit_full
+    description: "KITAS E23 for foreign worker — visa + company sponsor + payroll tax"
+    triggers:
+      - "kitas e23"
+      - "working kitas"
+      - "foreign worker permit"
+      - "tka kitas"
+      - "rptka"
+    sequence:
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 KITAS E23
+        key: nb2
+        weight: 1.0
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 sponsor company
+        key: nb3
+        weight: 0.6
+      - nb: "f0307c2c-9220-4160-93c8-f4a6ef4a3b65"   # NB-10 team HR
+        key: nb10
+        weight: 0.5
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 PPh 21 withholding
+        key: nb4
+        weight: 0.4
+    aggregator: synthesis_ordered
+
+  - name: kitas_e28_investor_visa
+    description: "Investor KITAS E28 — visa + PT PMA capital threshold"
+    triggers:
+      - "kitas e28"
+      - "golden visa indonesia"
+      - "investor visa indonesia"
+      - "second home visa"
+    sequence:
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 E28
+        key: nb2
+        weight: 1.0
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 investment threshold
+        key: nb3
+        weight: 0.5
+    aggregator: synthesis_ordered
+
+  - name: kitas_e33_retiree_second_home
+    description: "E33 retiree / second home / nomad — visa + expat life context"
+    triggers:
+      - "kitas e33"
+      - "retirement visa indonesia"
+      - "pensiun kitas"
+      - "nomad visa"
+      - "silver hair"
+    sequence:
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 E33
+        key: nb2
+        weight: 1.0
+      - nb: "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"   # NB-8 expat life
+        key: nb8
+        weight: 0.5
+    aggregator: synthesis_ordered
+
+  - name: employment_full_lifecycle
+    description: "Hire + payroll + BPJS + termination compliance"
+    triggers:
+      - "hiring employee indonesia"
+      - "employment contract"
+      - "pkwt pkwtt"
+      - "payroll indonesia"
+      - "bpjs compliance"
+    sequence:
+      - nb: "f0307c2c-9220-4160-93c8-f4a6ef4a3b65"   # NB-10 team HR
+        key: nb10
+        weight: 1.0
+      - nb: "85207af3-352f-4554-8d2a-18f42cc541ba"   # NB-6 labor law
+        key: nb6
+        weight: 0.7
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 PPh 21
+        key: nb4
+        weight: 0.5
+    aggregator: synthesis_ordered
+
+  - name: tax_pma_annual
+    description: "PT PMA annual tax cycle — PPh 25 + PPh 21 + SPT Tahunan"
+    triggers:
+      - "pt pma tax"
+      - "pph 25 annual"
+      - "spt tahunan badan"
+      - "corporate tax filing"
+    sequence:
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 tax
+        key: nb4
+        weight: 1.0
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 company
+        key: nb3
+        weight: 0.4
+    aggregator: synthesis_ordered
+
+  - name: oss_rba_licensing
+    description: "OSS-RBA new license + NIB + KBLI classification"
+    triggers:
+      - "oss rba"
+      - "oss-rba"
+      - "nib license"
+      - "kbli classification"
+    sequence:
+      - nb: "85207af3-352f-4554-8d2a-18f42cc541ba"   # NB-6 OSS-RBA
+        key: nb6
+        weight: 1.0
+      - nb: "933509f9-1561-403d-bd44-4a7a67a36df2"   # NB-3 KBLI + company
+        key: nb3
+        weight: 0.7
+    aggregator: synthesis_ordered
+
+  - name: overstay_deportation_enforcement
+    description: "Overstay, deportation, TIMPORA, blacklist — enforcement cases"
+    triggers:
+      - "overstay"
+      - "deportasi"
+      - "timpora"
+      - "blacklist immigration"
+      - "cekal"
+      - "visa dicabut"
+    sequence:
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 immigration
+        key: nb2
+        weight: 1.0
+    aggregator: primary_only_confirm
+
+  - name: compliance_audit_full
+    description: "Full compliance audit — BPJS + tax + LKPM + UU PDP"
+    triggers:
+      - "compliance audit"
+      - "lkpm bkpm"
+      - "uu pdp data protection"
+      - "bpjs penalty"
+    sequence:
+      - nb: "85207af3-352f-4554-8d2a-18f42cc541ba"   # NB-6 compliance
+        key: nb6
+        weight: 1.0
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 tax
+        key: nb4
+        weight: 0.6
+      - nb: "f0307c2c-9220-4160-93c8-f4a6ef4a3b65"   # NB-10 team
+        key: nb10
+        weight: 0.5
+    aggregator: synthesis_ordered
+
+  - name: property_tax_transfer
+    description: "Property transfer tax — BPHTB + PBB + AJB process"
+    triggers:
+      - "bphtb"
+      - "property transfer tax"
+      - "ajb notaris"
+      - "pbb property tax"
+    sequence:
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 tax
+        key: nb4
+        weight: 1.0
+      - nb: "d9438180-5e63-4e2a-a473-6061101f6a8d"   # NB-5 property procedure
+        key: nb5
+        weight: 0.7
+    aggregator: synthesis_ordered
+
+  - name: expat_life_bali_onboarding
+    description: "Expat life practical — healthcare + banking + schools"
+    triggers:
+      - "expat life bali"
+      - "healthcare expat"
+      - "international school bali"
+      - "open bank account foreigner"
+    sequence:
+      - nb: "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"   # NB-8 expat life
+        key: nb8
+        weight: 1.0
+    aggregator: primary_only_confirm
+
+  - name: editorial_ymyl_content
+    description: "Editorial YMYL content — E-E-A-T + citations from law NBs"
+    triggers:
+      - "seo legal content"
+      - "ymyl content"
+      - "e-e-a-t indonesia"
+      - "content gap analysis"
+    sequence:
+      - nb: "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"   # NB-7 editorial
+        key: nb7
+        weight: 1.0
+      - nb: "cff93ab0-813a-42f2-a8de-36987e724271"   # NB-2 immigration
+        key: nb2
+        weight: 0.5
+      - nb: "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # NB-4 tax
+        key: nb4
+        weight: 0.5
+      - nb: "d9438180-5e63-4e2a-a473-6061101f6a8d"   # NB-5 property
+        key: nb5
+        weight: 0.5
+    aggregator: parallel_independent
