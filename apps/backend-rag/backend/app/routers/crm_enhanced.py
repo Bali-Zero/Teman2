@@ -953,6 +953,9 @@ async def get_client_profile(
                 p.completion_date, p.title,
                 p.quoted_price, p.actual_price, p.payment_status,
                 p.assigned_to,
+                p.family_member_id,
+                fm.full_name as family_member_name,
+                fm.relationship as family_member_relationship,
                 COALESCE(pt.code, p.practice_type_code) as practice_type_code,
                 COALESCE(pt.name, p.title) as practice_type_name,
                 CASE
@@ -963,6 +966,7 @@ async def get_client_profile(
                 END as alert_color
             FROM practices p
             LEFT JOIN practice_types pt ON p.practice_type_id = pt.id
+            LEFT JOIN client_family_members fm ON p.family_member_id = fm.id
             WHERE p.client_id = $1
             ORDER BY
                 CASE p.status
