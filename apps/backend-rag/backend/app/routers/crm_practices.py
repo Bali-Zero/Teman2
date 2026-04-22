@@ -640,10 +640,13 @@ async def list_practices(
                     c.assigned_to as client_lead,
                     pt.name as practice_type_name,
                     pt.code as practice_type_code,
-                    pt.category as practice_category
+                    pt.category as practice_category,
+                    fm.full_name as family_member_name,
+                    fm.relationship as family_member_relationship
                 FROM practices p
                 JOIN clients c ON p.client_id = c.id
                 JOIN practice_types pt ON p.practice_type_id = pt.id
+                LEFT JOIN client_family_members fm ON p.family_member_id = fm.id
                 WHERE 1=1
                 """,
             ]
