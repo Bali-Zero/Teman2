@@ -11,6 +11,7 @@ async def test_registry_has_all_actuators(fake_redis):
         "notify_telegram",
         "quarantine",
         "adopt_module",
+        "propose_yaml_rule",
     }
 
 

@@ -28,8 +28,8 @@ SAFE_ACTUATORS = frozenset({
     "notify_telegram",
     "quarantine",
     "adopt_module",
+    "propose_yaml_rule",
     # W3 still adds: cleanup_cache, cleanup_branches, cleanup_zombie_plist, consolidate_redundancy
-    # W4 adds: propose_yaml_rule
 })
 
 HUMAN_ONLY_ACTUATORS = frozenset({
