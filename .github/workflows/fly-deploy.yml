@@ -227,6 +227,14 @@ jobs:
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
           echo "✅ Python migration 120 OK"
 
+      - name: Run Python migration 121 (practices.family_member_id)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_121'"
+          echo "✅ Python migration 121 OK"
+
       - name: Notifica Telegram — Python migration fallita
         if: failure()
         run: |
