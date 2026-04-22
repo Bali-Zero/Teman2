@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.balizero.sota.m13-collect</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>-lc</string>
+      <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/m13_collect_post_metrics.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>StartInterval</key>
+    <integer>21600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/sota_m13_collect.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/sota_m13_collect.error.log</string>
+
+    <key>ExitTimeOut</key>
+    <integer>600</integer>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+  </dict>
+</plist>
