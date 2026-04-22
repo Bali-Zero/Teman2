@@ -19,5 +19,6 @@
   "multimodal_pipeline": { "schedule": "weekly", "max_age_hours": 170 },
   "yajna_scan": { "schedule": "weekly_sun", "max_age_hours": 170 },
   "yin_yang_audit": { "schedule": "weekly_sun", "max_age_hours": 170 },
-  "hexagram_compute": { "schedule": "daily", "max_age_hours": 26 }
+  "hexagram_compute": { "schedule": "daily", "max_age_hours": 26 },
+  "nb0_refresh": { "schedule": "daily", "max_age_hours": 26 }
 }
