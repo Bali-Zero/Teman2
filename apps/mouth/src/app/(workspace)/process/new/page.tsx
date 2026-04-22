@@ -357,20 +357,31 @@ export default function NewPracticePage() {
         const existingPractices = await api.crm.getClientPractices(
           result.data.client_id,
         );
+        // A "duplicate" is the same practice_type AND the same family_member
+        // target — one investor KITAS for the sponsor plus three dependent
+        // KITAS for Violet/River/Tessa are four distinct processes, not four
+        // duplicates. Treat NULL family_member_id as its own bucket (main
+        // client) so the sponsor's own practice doesn't collide with the
+        // dependents'.
+        const newFamilyMemberId = result.data.family_member_id ?? null;
         const duplicateCheck = existingPractices.find(
           (p) =>
             p.practice_type_code === result.data.practice_type_code &&
+            (p.family_member_id ?? null) === newFamilyMemberId &&
             !["completed", "cancelled"].includes(p.status),
         );
 
         if (duplicateCheck) {
+          const targetLabel = duplicateCheck.family_member_name
+            ? ` for ${duplicateCheck.family_member_name}`
+            : "";
           toast.error(
             "Duplicate Process",
-            `Client already has an active ${selectedService?.name || result.data.practice_type_code} process (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
+            `Client already has an active ${selectedService?.name || result.data.practice_type_code} process${targetLabel} (ID: #${duplicateCheck.id}, Status: ${duplicateCheck.status}). Complete or cancel it first.`,
           );
           casesMetrics.trackError(
             "Duplicate Process Blocked",
-            `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}`,
+            `Prevented duplicate ${result.data.practice_type_code} for client ${result.data.client_id}${newFamilyMemberId ? ` / family_member ${newFamilyMemberId}` : ""}`,
             "CasesNewPage",
             duplicateCheck.id,
             user.email,
