@@ -134,3 +134,81 @@ def test_classify_hooks_sends_batch_prompt_to_claude():
         assert cat in prompt
     assert "p1" in prompt
     assert "p2" in prompt
+
+
+# ── Task 9: tone classifier + Gate 2 skew check ─────────────────────
+
+
+def test_classify_tones_parses_gemini_json_output():
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [
+        {"post_id": "p1", "caption": "In linea con la normativa BKPM..."},
+        {"post_id": "p2", "caption": "Another visa horror story from our client..."},
+    ]
+    fake_stdout = (
+        '{"classifications":[{"post_id":"p1","tone_register":"tecnico"},'
+        '{"post_id":"p2","tone_register":"rituale"}]}'
+    )
+    fake_proc = type("P", (), {"returncode": 0, "stdout": fake_stdout, "stderr": ""})()
+    with patch("subprocess.run", return_value=fake_proc):
+        result = analyzer.classify_tones_batch(posts)
+    assert result["p1"] == "tecnico"
+    assert result["p2"] == "rituale"
+
+
+def test_classify_tones_uses_gemini_cli():
+    """Must shell out to `gemini -m gemini-3.1-pro-preview -p <prompt>`."""
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [{"post_id": "p1", "caption": "x"}]
+    fake_proc = type("P", (), {
+        "returncode": 0,
+        "stdout": '{"classifications":[{"post_id":"p1","tone_register":"pedagogico"}]}',
+        "stderr": "",
+    })()
+    with patch("subprocess.run", return_value=fake_proc) as run_mock:
+        analyzer.classify_tones_batch(posts)
+    cmd = run_mock.call_args.args[0]
+    assert cmd[0] == "gemini"
+    assert cmd[1] == "-m"
+    assert "3.1" in cmd[2]  # model flag value contains 3.1
+    assert cmd[3] == "-p"
+    prompt = cmd[4]
+    for reg in ("pedagogico", "analitico", "tecnico", "rituale",
+                "poetico", "ironico", "militante"):
+        assert reg in prompt
+
+
+def test_classify_tones_falls_back_on_rc_nonzero():
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [{"post_id": "p1", "caption": "x"}, {"post_id": "p2", "caption": "y"}]
+    fake_proc = type("P", (), {"returncode": 2, "stdout": "", "stderr": "boom"})()
+    with patch("subprocess.run", return_value=fake_proc):
+        result = analyzer.classify_tones_batch(posts)
+    assert result == {"p1": "unknown", "p2": "unknown"}
+
+
+def test_check_skew_flags_dominant_tone():
+    """Gate 2: if one tone >60% of sample, flag as skewed."""
+    dist = {"pedagogico": 18, "analitico": 3, "tecnico": 2, "ironico": 1,
+            "rituale": 1, "militante": 0, "poetico": 0}  # 72% pedagogico
+    ok, dominant, pct = EmpiricalIGAnalyzer.check_skew(dist, threshold=0.6)
+    assert ok is False
+    assert dominant == "pedagogico"
+    assert pct == pytest.approx(0.72, abs=0.01)
+
+
+def test_check_skew_ok_when_balanced():
+    dist = {"pedagogico": 10, "analitico": 8, "tecnico": 4, "ironico": 1,
+            "rituale": 1, "militante": 1, "poetico": 0}
+    ok, _, _ = EmpiricalIGAnalyzer.check_skew(dist, threshold=0.6)
+    assert ok is True
+
+
+def test_check_skew_handles_empty_distribution():
+    ok, dominant, pct = EmpiricalIGAnalyzer.check_skew({}, threshold=0.6)
+    assert ok is True
+    assert dominant == ""
+    assert pct == 0.0
