@@ -1323,15 +1323,15 @@ export default function PratichePage() {
                                   : ""
                               }`}
                               style={{
-                                // Liquid glass: column color tint + bright specular highlight
+                                // Liquid glass: column color tint + brighter specular highlight over a lighter base
                                 background: `linear-gradient(150deg,
-                                  ${colors.gradientStart}26 0%,
-                                  ${colors.gradientEnd}14 45%,
-                                  rgba(255,255,255,0.04) 100%),
-                                  linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 30%),
-                                  rgba(20,20,24,0.55)`,
-                                borderColor: `${colors.gradientStart}55`,
-                                boxShadow: `0 1px 0 rgba(255,255,255,0.08) inset, 0 8px 24px ${colors.gradientStart}1f`,
+                                  ${colors.gradientStart}40 0%,
+                                  ${colors.gradientEnd}2a 45%,
+                                  rgba(255,255,255,0.08) 100%),
+                                  linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 35%),
+                                  rgba(44,48,56,0.40)`,
+                                borderColor: `${colors.gradientStart}7a`,
+                                boxShadow: `0 1px 0 rgba(255,255,255,0.14) inset, 0 8px 24px ${colors.gradientStart}33`,
                               }}
                               onContextMenu={(e) =>
                                 handleContextMenu(e, practice)
