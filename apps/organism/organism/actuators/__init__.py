@@ -9,6 +9,7 @@ from organism.actuators.restart_agent import RestartAgent
 from organism.actuators.cleanup_log import CleanupLog
 from organism.actuators.notify_telegram import NotifyTelegram
 from organism.actuators.quarantine import Quarantine
+from organism.actuators.adopt_module import AdoptModule
 from organism.actuators.cleanup_cache import CleanupCache
 from organism.actuators.cleanup_branches import CleanupBranches
 from organism.actuators.cleanup_zombie_plist import CleanupZombiePlist
@@ -20,6 +21,7 @@ __all__ = [
     "CleanupLog",
     "NotifyTelegram",
     "Quarantine",
+    "AdoptModule",
     "CleanupCache",
     "CleanupBranches",
     "CleanupZombiePlist",
@@ -30,14 +32,15 @@ __all__ = [
 def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
     """Return a {actuator_name: instance} map, pre-wired with shared Redis.
 
-    Used by W1.C Dispatcher / W2 main supervisor loop. Quarantine gets the
-    shared redis client; others don't need one.
+    Used by W1.C Dispatcher / W2 main supervisor loop. Quarantine and
+    AdoptModule get the shared redis client; others don't need one.
     """
     return {
         RestartAgent.name: RestartAgent(),
         CleanupLog.name: CleanupLog(),
         NotifyTelegram.name: NotifyTelegram(),
         Quarantine.name: Quarantine(redis=redis),
+        AdoptModule.name: AdoptModule(redis=redis),
         CleanupCache.name: CleanupCache(),
         CleanupBranches.name: CleanupBranches(),
         CleanupZombiePlist.name: CleanupZombiePlist(),
