@@ -28,6 +28,9 @@ export interface Practice {
   created_at: string;
   updated_at?: string;
   status_transitions?: StatusTransition[];
+  family_member_id?: number;
+  family_member_name?: string;
+  family_member_relationship?: string;
 }
 
 import type { JsonObject } from "../../types/common";
@@ -275,6 +278,9 @@ export interface ClientProfile {
     payment_status?: string;
     assigned_to?: string;
     updated_at?: string;
+    family_member_id?: number;
+    family_member_name?: string;
+    family_member_relationship?: string;
   }>;
   company_links?: ClientCompanyLink[];
   stats: {
@@ -765,6 +771,7 @@ export interface CreatePracticeParams {
   quoted_price?: number;
   assigned_to?: string; // team member email
   start_date?: string;
+  family_member_id?: number; // Optional: tag practice for a specific dependent (spouse/child)
 }
 
 // ============================================
