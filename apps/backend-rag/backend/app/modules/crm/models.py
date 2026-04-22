@@ -33,6 +33,7 @@ class Client(SQLModel, table=True):
     nationality: str | None = Field(default=None, max_length=100)
     passport_number: str | None = Field(default=None, max_length=100)
     tax_id: str | None = Field(default=None, max_length=50, index=True)
+    google_drive_folder_id: str | None = Field(default=None, max_length=100)
 
     # Status. server_default mirrors Python default for CI-from-empty-DB.
     status: str = Field(
