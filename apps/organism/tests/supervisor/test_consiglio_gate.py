@@ -150,3 +150,48 @@ async def test_prompt_includes_proposed_params_and_reasoning():
     assert "propose_yaml_rule" in prompt
     assert "rule_id" in prompt
     assert "disk_fill_custom" in prompt
+
+
+@pytest.mark.asyncio
+async def test_approve_empty_votes_defers():
+    """Runner returns {} or {'votes': []} — must defer, not silently accept."""
+    runner = _mock_runner([])  # empty votes list
+    gate = ConsiglioGate(runner=runner)
+    result = await gate.approve(_event(), _irreversible_proposed())
+    assert result.actuator == "defer_to_human"
+    assert result.params["reason"] == "consiglio_dissent"
+    assert "0/0" in result.reasoning or "0/" in result.reasoning
+
+
+@pytest.mark.asyncio
+async def test_approve_runner_returns_none_defers():
+    """Runner returns None (malformed) — must defer, not crash."""
+    from unittest.mock import AsyncMock
+    runner = AsyncMock()
+    runner.deliberate = AsyncMock(return_value=None)
+    gate = ConsiglioGate(runner=runner)
+    result = await gate.approve(_event(), _irreversible_proposed())
+    assert result.actuator == "defer_to_human"
+
+
+@pytest.mark.asyncio
+async def test_approve_params_with_datetime_serializes_cleanly():
+    """Regression for I1: proposed.params with datetime must serialize via mode='json'."""
+    from datetime import datetime, timezone
+    import json
+    runner = _mock_runner([
+        {"agree": False, "rationale": "x", "llm": "m"} for _ in range(4)
+    ])
+    gate = ConsiglioGate(runner=runner)
+    proposed = ActionDecision(
+        actuator="rollback_deploy",
+        params={"version": "v1.2.3", "committed_at": datetime(2026, 4, 22, tzinfo=timezone.utc)},
+        confidence=0.85,
+        tier="L2_claude",
+        reasoning="datetime test",
+    )
+    result = await gate.approve(_event(), proposed)
+    # The key property: the result.params["proposed"] must be JSON-serializable end-to-end
+    json.dumps(result.params["proposed"])  # must not raise TypeError
+    # Verify datetime was converted to ISO string
+    assert isinstance(result.params["proposed"]["params"]["committed_at"], str)

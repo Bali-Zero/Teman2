@@ -76,7 +76,7 @@ class ConsiglioGate:
                 actuator="defer_to_human",
                 params={
                     "reason": "consiglio_runner_error",
-                    "proposed": proposed.model_dump(),
+                    "proposed": proposed.model_dump(mode="json"),
                     "error": str(exc)[:300],
                 },
                 confidence=0.0,
@@ -87,6 +87,13 @@ class ConsiglioGate:
         votes = result.get("votes", []) if isinstance(result, dict) else []
         agree_count = sum(1 for v in votes if v.get("agree") is True)
         total = len(votes)
+
+        if not votes:
+            log.warning(
+                "consiglio_gate: runner returned no votes — treating as dissent "
+                "(proposed actuator=%s, correlation=%s)",
+                proposed.actuator, event.correlation_id,
+            )
 
         if agree_count >= REQUIRED_AGREE_VOTES:
             # Proposal approved. Preserve the proposed decision but re-tag tier.
@@ -106,7 +113,7 @@ class ConsiglioGate:
             actuator="defer_to_human",
             params={
                 "reason": "consiglio_dissent",
-                "proposed": proposed.model_dump(),
+                "proposed": proposed.model_dump(mode="json"),
                 "consiglio_result": result,
             },
             confidence=0.0,
