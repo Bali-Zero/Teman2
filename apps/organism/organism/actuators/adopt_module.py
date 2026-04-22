@@ -50,6 +50,20 @@ class AdoptModule(ActuatorBase):
                 "module_name": module_path.name,
             }
 
+        # Probationary already active — do not reset TTL
+        probationary = await self.redis.get(PROBATIONARY_KEY_PREFIX + module_path.name)
+        if probationary:
+            try:
+                promote_at = float(probationary)
+            except (ValueError, TypeError):
+                promote_at = None
+            return {
+                "adopted": False,
+                "reason": "probationary_active",
+                "module_name": module_path.name,
+                "promote_at": promote_at,
+            }
+
         # Opt-out marker
         if (module_path / ".organism_ignore").exists():
             return {
@@ -85,17 +99,29 @@ class AdoptModule(ActuatorBase):
     async def _dry_run(self, params: dict) -> dict:
         module_path = Path(params["module_path"])
         if module_path.exists():
-            signals = await self._check_maturity(module_path)
-            has_opt_out = (module_path / ".organism_ignore").exists()
-        else:
-            signals = {
-                "is_mature": False,
-                "missing": ["path_missing"],
-                "checks": {},
-                "age_seconds": None,
-                "branch": None,
-            }
-            has_opt_out = False
+            # Check idempotency first — matches _execute behavior
+            already = await self.redis.get(ADOPTED_KEY_PREFIX + module_path.name)
+            if already:
+                return {
+                    "would_adopt": False,
+                    "module_name": module_path.name,
+                    "reason": "already_adopted",
+                }
+            probationary = await self.redis.get(PROBATIONARY_KEY_PREFIX + module_path.name)
+            if probationary:
+                return {
+                    "would_adopt": False,
+                    "module_name": module_path.name,
+                    "reason": "probationary_active",
+                }
+        signals = await self._check_maturity(module_path) if module_path.exists() else {
+            "is_mature": False,
+            "missing": ["path_missing"],
+            "checks": {},
+            "age_seconds": None,
+            "branch": None,
+        }
+        has_opt_out = (module_path / ".organism_ignore").exists() if module_path.exists() else False
         would = signals["is_mature"] and not has_opt_out
         return {
             "would_adopt": would,
@@ -111,7 +137,7 @@ class AdoptModule(ActuatorBase):
         has_readme = (path / "README.md").exists()
         age_seconds = await self._git_first_commit_age(path)
         age_ok = age_seconds is not None and age_seconds > 24 * 3600
-        branch = await self._current_branch()
+        branch = await self._current_branch(cwd=path.parent.parent)
         branch_ok = bool(branch) and not any(
             branch.startswith(p) for p in WIP_BRANCH_PREFIXES
         )
@@ -154,7 +180,10 @@ class AdoptModule(ActuatorBase):
         except (asyncio.TimeoutError, ValueError, OSError):
             return None
 
-    async def _current_branch(self) -> str | None:
+    async def _current_branch(self, *, cwd: Path | None = None) -> str | None:
+        """Get current git branch. Pass cwd to ensure correct repo lookup
+        when daemon runs outside repo root.
+        """
         try:
             proc = await asyncio.create_subprocess_exec(
                 "git",
@@ -163,6 +192,7 @@ class AdoptModule(ActuatorBase):
                 "HEAD",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
             )
             out, _ = await asyncio.wait_for(proc.communicate(), timeout=5.0)
             return out.decode("utf-8", errors="replace").strip() or None

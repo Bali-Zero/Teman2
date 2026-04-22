@@ -119,6 +119,18 @@ async def test_rejects_session_branch(fake_redis, tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_rejects_chore_branch(fake_redis, tmp_path, monkeypatch):
+    _setup_bus(fake_redis, tmp_path, monkeypatch)
+    mod = _make_mature_module(tmp_path, name="wip_chore")
+    act = AdoptModule(redis=fake_redis)
+    with patch.object(act, "_git_first_commit_age", AsyncMock(return_value=3 * 86400)):
+        with patch.object(act, "_current_branch", AsyncMock(return_value="chore/lockfile")):
+            result = await act.run(params={"module_path": str(mod)}, correlation_id="c")
+    assert result["adopted"] is False
+    assert "branch_main" in result["missing"]
+
+
+@pytest.mark.asyncio
 async def test_rejects_organism_ignore_opt_out(fake_redis, tmp_path, monkeypatch):
     _setup_bus(fake_redis, tmp_path, monkeypatch)
     mod = _make_mature_module(tmp_path, name="opted_out")
@@ -185,3 +197,44 @@ async def test_accepts_package_json_as_manifest(fake_redis, tmp_path, monkeypatc
         with patch.object(act, "_current_branch", AsyncMock(return_value="main")):
             result = await act.run(params={"module_path": str(mod)}, correlation_id="c")
     assert result["adopted"] is True
+
+
+@pytest.mark.asyncio
+async def test_dry_run_reflects_already_adopted_state(fake_redis, tmp_path, monkeypatch):
+    _setup_bus(fake_redis, tmp_path, monkeypatch)
+    mod = _make_mature_module(tmp_path, name="already_adopted_mod")
+    await fake_redis.set(ADOPTED_KEY_PREFIX + "already_adopted_mod", "1")
+    act = AdoptModule(redis=fake_redis)
+    result = await act.run(
+        params={"module_path": str(mod)},
+        correlation_id="c", dry_run=True,
+    )
+    assert result["would_adopt"] is False
+    assert result["reason"] == "already_adopted"
+
+
+@pytest.mark.asyncio
+async def test_probationary_ttl_not_reset_on_reinvocation(fake_redis, tmp_path, monkeypatch):
+    """CRIT: a module in probationary state must NOT get TTL reset on re-emission."""
+    import time
+    _setup_bus(fake_redis, tmp_path, monkeypatch)
+    mod = _make_mature_module(tmp_path, name="probation_mod")
+    # Seed probationary with a specific future timestamp
+    promote_at = time.time() + 5 * 86400  # 5 days from now (not fresh 7)
+    await fake_redis.set(
+        PROBATIONARY_KEY_PREFIX + "probation_mod",
+        str(promote_at),
+        ex=int(5 * 86400),
+    )
+    original_ttl = await fake_redis.ttl(PROBATIONARY_KEY_PREFIX + "probation_mod")
+    assert original_ttl <= 5 * 86400
+
+    act = AdoptModule(redis=fake_redis)
+    with patch.object(act, "_git_first_commit_age", AsyncMock(return_value=3 * 86400)):
+        with patch.object(act, "_current_branch", AsyncMock(return_value="main")):
+            result = await act.run(params={"module_path": str(mod)}, correlation_id="c")
+    assert result["adopted"] is False
+    assert result["reason"] == "probationary_active"
+    # TTL not reset to 7d
+    new_ttl = await fake_redis.ttl(PROBATIONARY_KEY_PREFIX + "probation_mod")
+    assert new_ttl <= original_ttl + 2  # small clock drift tolerance
