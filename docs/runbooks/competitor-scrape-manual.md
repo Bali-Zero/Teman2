@@ -4,7 +4,8 @@
 **Tujuan:** mengumpulkan 270 baris data (18 akun × 15 post) dalam Google Sheet
 **Waktu total:** 25 jam, dibagi 5 hari kerja (5 jam per hari)
 **Deadline:** akhir Hari ke-6 riset SOTA (Jumat, kalau mulai Senin)
-**Google Sheet:** [link akan diberikan oleh Zero sebelum mulai]
+**Google Sheet:** https://docs.google.com/spreadsheets/d/11aeRBFi54fMXYFPeOtlB9bO9OBpGgMCQLz3mXjtLbtg/edit
+(Sheet "Vino - IG scraping" — dua tab: `Progress` untuk tracker 18 akun, `Posts` untuk data 270 post)
 
 ---
 
