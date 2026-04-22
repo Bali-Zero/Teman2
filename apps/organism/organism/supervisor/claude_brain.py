@@ -172,7 +172,12 @@ class ClaudeBrain:
         return CACHE_KEY_PREFIX + digest
 
     def _allow_this_call(self) -> bool:
-        """Sliding-window rate limit: max N calls per 60s."""
+        """Fixed-window rate limit: max N calls per 60s tumbling window.
+
+        Note: instance-level state — multiple ClaudeBrain instances do not
+        coordinate. W2 runs a single Supervisor; W3 wiring should consider
+        Redis-backed rate limit if multi-Supervisor is introduced.
+        """
         now = time.time()
         if now - self._minute_start >= 60:
             self._minute_start = now

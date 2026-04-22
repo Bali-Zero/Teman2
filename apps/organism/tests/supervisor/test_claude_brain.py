@@ -77,6 +77,7 @@ async def test_returns_cached_decision_on_hit(fake_redis):
         )
     mock_spawn.assert_not_called()
     assert result.actuator == "cleanup_log"
+    assert result.tier == "L2_claude"  # cache hit must preserve tier for audit
 
 
 @pytest.mark.asyncio
@@ -260,8 +261,9 @@ async def test_malformed_cache_entry_triggers_recompute(fake_redis):
 
 
 @pytest.mark.asyncio
-async def test_confidence_clamped_to_valid_range(fake_redis):
-    """Claude might return confidence > 1.0 — pydantic catches it."""
+async def test_confidence_out_of_range_returns_defer(fake_redis):
+    """Confidence > 1.0 triggers Pydantic ValidationError (subclass of ValueError),
+    caught by the parse-error except clause → defer_to_human. Not clamped."""
     brain = ClaudeBrain(redis=fake_redis)
     bad_resp = json.dumps({
         "actuator": "cleanup_log", "params": {}, "confidence": 1.5,
