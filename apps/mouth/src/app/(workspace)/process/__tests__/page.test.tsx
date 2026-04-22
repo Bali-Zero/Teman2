@@ -213,10 +213,21 @@ describe('Cases Page', () => {
     it('should display all practices after loading', async () => {
       render(<PratichePage />);
 
+      // Active columns render immediately; the Completed column is collapsed
+      // by default to avoid 146+ finished rows dominating the board, so we
+      // expand it before asserting on the completed-status fixture (Alice).
       await waitFor(() => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
         expect(screen.getByText('Jane Smith')).toBeInTheDocument();
         expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
+      });
+
+      const expandCompleted = screen.getByRole('button', {
+        name: /expand completed list/i,
+      });
+      expandCompleted.click();
+
+      await waitFor(() => {
         expect(screen.getByText('Alice Williams')).toBeInTheDocument();
       });
     });
@@ -249,17 +260,23 @@ describe('Cases Page', () => {
     it('should display cases in correct columns', async () => {
       render(<PratichePage />);
 
-      // Wait for data to load
       await waitFor(() => {
         expect(screen.getByText('John Doe')).toBeInTheDocument();
       });
 
-      // Verify cases are displayed in the document (they should be in their respective columns)
-      // Since the Kanban view groups by status, we just verify the cases are visible
+      // Completed column is collapsed by default — open it so the completed
+      // fixture (Alice Williams, pt_pma_setup, status=completed) renders.
+      screen
+        .getByRole('button', { name: /expand completed list/i })
+        .click();
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice Williams')).toBeInTheDocument();
+      });
+
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Jane Smith')).toBeInTheDocument();
       expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
-      expect(screen.getByText('Alice Williams')).toBeInTheDocument();
     });
 
     it('should display case count in column headers', async () => {
