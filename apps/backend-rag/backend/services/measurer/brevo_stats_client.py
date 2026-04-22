@@ -2,7 +2,14 @@
 
 Bali Zero's primary sender: zantara@balizero.com (alias damar@balizero.com).
 API key lives in ~/.nuzantara-secrets.env as SENDGRID_API_KEY (legacy var
-name, actually Brevo xkeysib-).
+name, actually Brevo xkeysib-) or BREVO_API_KEY on Pro local.
+
+Known state (2026-04-22): Brevo account has 1 placeholder list with 0
+subscribers and 0 sent campaigns. Bali Zero is NOT currently running
+newsletters via Brevo. Day-1 baseline will show brevo.total_subscribers=0
+and campaigns_analyzed=0 — this is honest reporting, not a bug. The SOTA
+playbook (Task 20) is expected to recommend activating newsletter as an
+action item.
 """
 
 from __future__ import annotations
