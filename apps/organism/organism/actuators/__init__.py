@@ -14,6 +14,7 @@ from organism.actuators.consolidate_redundancy import ConsolidateRedundancy
 from organism.actuators.cleanup_cache import CleanupCache
 from organism.actuators.cleanup_branches import CleanupBranches
 from organism.actuators.cleanup_zombie_plist import CleanupZombiePlist
+from organism.actuators.propose_yaml_rule import ProposeYamlRule
 
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     "CleanupCache",
     "CleanupBranches",
     "CleanupZombiePlist",
+    "ProposeYamlRule",
     "build_actuator_registry",
 ]
 
@@ -36,6 +38,8 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
 
     Used by W1.C Dispatcher / W2 main supervisor loop. Quarantine and
     AdoptModule get the shared redis client; others don't need one.
+    ProposeYamlRule is zero-arg — it shells out to git/gh subprocesses
+    and does not need the redis bus.
     """
     return {
         RestartAgent.name: RestartAgent(),
@@ -47,4 +51,5 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
         CleanupCache.name: CleanupCache(),
         CleanupBranches.name: CleanupBranches(),
         CleanupZombiePlist.name: CleanupZombiePlist(),
+        ProposeYamlRule.name: ProposeYamlRule(),
     }
