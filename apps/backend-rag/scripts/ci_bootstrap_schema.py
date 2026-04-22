@@ -218,9 +218,19 @@ def main() -> int:
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_id VARCHAR(100)",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_url TEXT",
             "ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+            # SQLModel's Client declares created_at/updated_at with a
+            # Python-side default_factory=datetime.utcnow but no DB
+            # server_default, so create_all() emits NOT NULL columns with
+            # no DEFAULT. Legacy tests (several conftests + a few router
+            # integration tests) INSERT without touching these columns and
+            # crash with NotNullViolationError. Prod has a DEFAULT NOW()
+            # applied by an old hand-run ALTER; replicate it here so CI
+            # matches prod behaviour without having to patch every test.
+            "ALTER TABLE clients ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE clients ALTER COLUMN updated_at SET DEFAULT NOW()",
         ):
             conn.execute(text(stmt))
-    print("[bootstrap] clients prod-only columns ensured (drive + deleted_at)")
+    print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
 
     return 0
 
