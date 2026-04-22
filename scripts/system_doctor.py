@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import asyncio
 import glob
 import json
 import os
@@ -81,6 +82,11 @@ AIR_LOGS = {
 CRON_AGENT_LOG_GLOBS: list[str] = [
     str(Path.home() / "logs" / "cron-agent" / "*.log"),
     str(Path.home() / "logs" / "cron-agent-*" / "*.log"),
+]
+# Flat list of directories for _scan_cron_agent_logs() — monkeypatchable in tests.
+CRON_AGENT_LOG_DIRS: list[Path] = [
+    Path.home() / "logs" / "cron-agent",
+    Path.home() / "logs" / "cron-agent-python",
 ]
 # Max offending log files to surface as individual SystemCheck entries — cap
 # so one runaway log tree doesn't drown the Telegram summary.
@@ -591,6 +597,40 @@ def collect_cron_agent_logs() -> list[SystemCheck]:
         ))
 
     return checks
+
+
+_CRON_SCAN_RE = re.compile(r"ERROR|exit code [1-9]", re.IGNORECASE)
+
+
+async def _scan_cron_agent_logs() -> list[dict]:
+    """Async scan of CRON_AGENT_LOG_DIRS for ERROR / exit-code lines.
+
+    Returns a list of dicts: {"agent": <stem>, "line": <matched line>,
+    "log_path": <str>}. Designed to be consumed by main() for emit_event
+    calls. Uses CRON_AGENT_LOG_DIRS (monkeypatchable in tests) rather than
+    the glob-based CRON_AGENT_LOG_GLOBS so paths are explicit.
+    """
+    findings: list[dict] = []
+    for log_dir in CRON_AGENT_LOG_DIRS:
+        log_dir = Path(log_dir)
+        if not log_dir.is_dir():
+            continue
+        log_files = await asyncio.to_thread(lambda: sorted(log_dir.glob("*.log")))
+        for log_path in log_files:
+            try:
+                text = await asyncio.to_thread(log_path.read_text, errors="replace")
+            except OSError:
+                continue
+            lines = text.splitlines()
+            tail = lines[-200:] if len(lines) > 200 else lines
+            for line in tail:
+                if _CRON_SCAN_RE.search(line):
+                    findings.append({
+                        "agent": log_path.stem,
+                        "line": line[:300],
+                        "log_path": str(log_path),
+                    })
+    return findings
 
 
 def collect_frontend_health() -> list[SystemCheck]:
@@ -1416,6 +1456,66 @@ def main() -> None:
     # Telegram summary (only if issues exist)
     if summary["warning"] > 0 or summary["error"] > 0 or summary["critical"] > 0 or all_fixes:
         report.telegram_summary = build_telegram_summary(report)
+
+    # Emit organism events for cron-agent log findings (blind-spot #1 fix).
+    # Import guard: only catches ImportError for missing organism package
+    try:
+        import sys as _sys
+        _org_path = str(PROJECT_ROOT / "apps" / "organism")
+        if _org_path not in _sys.path:
+            _sys.path.insert(0, _org_path)
+        from organism.emit import emit_event as _emit_event
+        from organism.schemas import Severity as _Severity
+        _organism_available = True
+    except ImportError as _imp_err:
+        log(f"organism not installed, cron_agent emit skipped: {_imp_err}")
+        _organism_available = False
+
+    # Emit call: separate block that does NOT swallow NameError etc.
+    if _organism_available:
+        from organism.heartbeat import supervisor_heartbeat_check as _hb_check
+        import redis.asyncio as _redis_async
+
+        async def _emit_cron_findings() -> None:
+            r = _redis_async.from_url(
+                os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
+                decode_responses=False,
+            )
+            try:
+                status = await _hb_check(redis=r)
+                if status.should_enter_emergency_mode:
+                    # Signal emergency mode: persist to Redis for /stats endpoint,
+                    # and ALWAYS write to stderr (bypass VERBOSE gate — operational visibility).
+                    import sys as _sys
+                    _sys.stderr.write(
+                        f"[system_doctor] organism emergency_mode: "
+                        f"Supervisor absent (lag={status.lag_seconds}s) — skipping event emit\n"
+                    )
+                    _sys.stderr.flush()
+                    try:
+                        await r.set(
+                            "organism:emergency_mode:system_doctor",
+                            str(time.time()),
+                            ex=3600,  # 1h TTL
+                        )
+                    except Exception:
+                        pass  # Redis may be down too — stderr is enough
+                    return
+                findings = await _scan_cron_agent_logs()
+                for finding in findings:
+                    await _emit_event(
+                        severity=_Severity.ERROR,
+                        source="guardian.system_doctor",
+                        kind="cron_agent_failure",
+                        payload=finding,
+                    )
+            finally:
+                await r.aclose()
+
+        try:
+            asyncio.run(_emit_cron_findings())
+        except Exception as _emit_err:
+            log(f"organism emit error: {_emit_err}")
 
     # Output JSON
     print(json.dumps(asdict(report), indent=2, default=str))

@@ -30,7 +30,9 @@ File schema (forward-compatible — old fields untouched)::
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -101,6 +103,90 @@ def _trailing_bad_streak(entries: Iterable[dict]) -> int:
         else:
             break
     return streak
+
+
+def identify_zombies(
+    agent_state: dict[str, dict],
+) -> dict[str, dict]:
+    """Relaxed zombie criterion for direct agent-state dicts (W0.2 blind-spot).
+
+    Accepts a dict mapping agent_name -> state dict with keys:
+      - ``consecutive_exit1``: int — number of consecutive last_exit=1 cycles
+      - ``last_pid``: int | None
+      - ``label``: str (launchd label, optional)
+
+    An agent is zombie when ``consecutive_exit1 >= CONSECUTIVE_BAD_THRESHOLD``
+    (default 3). Returns a sub-dict of zombies {agent_name: state_dict}.
+
+    Emits a ``zombie_detected`` event per zombie via organism.emit.emit_event
+    (CRITICAL severity). The emit is fire-and-forget via asyncio.run(); if the
+    organism bus is unavailable the detection still returns normally.
+    """
+    zombies: dict[str, dict] = {}
+    for agent_name, state in agent_state.items():
+        consecutive = int(state.get("consecutive_exit1", 0))
+        if consecutive >= CONSECUTIVE_BAD_THRESHOLD:
+            zombies[agent_name] = state
+
+    if zombies:
+        async def _emit_all() -> None:
+            try:
+                import redis.asyncio as redis_async
+                from organism.emit import emit_event
+                from organism.schemas import Severity
+                from organism.heartbeat import supervisor_heartbeat_check
+                r = redis_async.from_url(
+                    os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
+                    decode_responses=False,
+                )
+                try:
+                    status = await supervisor_heartbeat_check(redis=r)
+                    if status.should_enter_emergency_mode:
+                        import sys as _sys
+                        import time as _time
+                        _sys.stderr.write(
+                            f"[zombie_hunter] organism emergency_mode: "
+                            f"Supervisor absent (lag={status.lag_seconds}s) — skipping event emit\n"
+                        )
+                        _sys.stderr.flush()
+                        try:
+                            await r.set(
+                                "organism:emergency_mode:zombie_hunter",
+                                str(_time.time()),
+                                ex=3600,  # 1h TTL
+                            )
+                        except Exception:
+                            pass
+                        return
+                    for agent_name, info in zombies.items():
+                        await emit_event(
+                            severity=Severity.CRITICAL,
+                            source="guardian.zombie_hunter",
+                            kind="zombie_detected",
+                            payload={
+                                "agent": agent_name,
+                                "consecutive_exit1": info.get("consecutive_exit1"),
+                                "last_pid": info.get("last_pid"),
+                                "label": info.get("label"),
+                            },
+                        )
+                finally:
+                    await r.aclose()
+            except Exception:
+                pass
+
+        try:
+            asyncio.get_running_loop()
+            # Already inside an event loop (pytest-asyncio, async caller) — schedule fire-and-forget
+            asyncio.ensure_future(_emit_all())
+        except RuntimeError:
+            # No running loop (sync cron context) — run to completion
+            try:
+                asyncio.run(_emit_all())
+            except Exception:
+                pass  # organism bus unavailable — detection result still returned
+
+    return zombies
 
 
 def detect_zombies(
