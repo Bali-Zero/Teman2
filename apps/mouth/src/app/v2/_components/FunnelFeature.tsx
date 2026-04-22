@@ -24,6 +24,16 @@ const FUNNEL_HREF: Record<Exclude<Funnel, null>, string> = {
   property: "/property/eligibility",
 };
 
+// Separate destination for the "See transparent pricing" secondary CTA —
+// must land on an actual pricing page, not on the funnel landing.
+// Fix for CRO audit 2026-04-19 (bait-and-switch bug).
+const FUNNEL_PRICING_HREF: Record<Exclude<Funnel, null>, string> = {
+  visa: "https://visa.balizero.com/pricing",
+  kbli: "https://kita.balizero.com/kbli/pricing",
+  tax: "https://tax.balizero.com/pricing",
+  property: "https://balizero.com/pricing",
+};
+
 interface FunnelFeatureProps {
   funnel: Exclude<Funnel, null>;
   layout: LayoutMode;
@@ -377,9 +387,11 @@ export function FunnelFeature({
               </a>
 
               {/* Pricing pointer — avoids fixed-price commitment on home.
-                Full pricing lives on the dedicated service detail page. */}
+                Full pricing lives on the dedicated service detail page.
+                Fix 2026-04-22: was FUNNEL_HREF (landing page) → bait-and-
+                switch. Now FUNNEL_PRICING_HREF (real pricing page). */}
               <a
-                href={FUNNEL_HREF[funnel]}
+                href={FUNNEL_PRICING_HREF[funnel]}
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 transition-all hover:-translate-y-0.5"
                 style={{
                   background:
