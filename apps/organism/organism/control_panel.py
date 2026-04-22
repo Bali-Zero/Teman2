@@ -59,7 +59,8 @@ def create_app(*, blackout: BlackoutManager) -> FastAPI:
         return {"resumed": True}
 
     @app.get("/stats")
-    async def stats():
+    async def stats(x_organism_token: str | None = Header(None)):
+        _verify_token(x_organism_token)
         # Populated by Wave 2 when Supervisor runs.
         return {"events_processed": 0, "supervisor_alive": False}
 
@@ -70,10 +71,19 @@ def _default_app() -> FastAPI:
     """Module-level entrypoint for uvicorn --factory in the plist.
 
     Reads ORGANISM_BLACKOUT_FLAG env for flag path (default ~/tmp/organism-pause.flag).
+    Logs a warning to stderr if ORGANISM_TOKEN_PATH file doesn't exist yet.
     """
+    import sys
+    token_path = Path(os.getenv("ORGANISM_TOKEN_PATH", "/etc/organism/token"))
+    if not token_path.exists():
+        sys.stderr.write(
+            f"[control_panel] WARNING: token file {token_path} does not exist. "
+            f"All /pause /resume /stats calls will return 503 until you create it. "
+            f"Example: echo 'secret-token' > {token_path}\n"
+        )
+        sys.stderr.flush()
     flag_path = Path(os.getenv(
         "ORGANISM_BLACKOUT_FLAG",
         str(Path.home() / "tmp" / "organism-pause.flag"),
     ))
-    logger.info("Starting control panel with flag_path=%s", flag_path)
     return create_app(blackout=BlackoutManager(flag_path=flag_path))

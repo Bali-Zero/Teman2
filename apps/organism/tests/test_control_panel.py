@@ -99,3 +99,22 @@ def test_blackout_manager_rejects_out_of_range():
             bm.pause(minutes=0)
         with pytest.raises(ValueError):
             bm.pause(minutes=121)
+
+
+def test_stats_requires_token(tmp_path):
+    """W2 will populate /stats — must require auth even before content."""
+    app = create_app(blackout=BlackoutManager(flag_path=tmp_path / "pause.flag"))
+    client = TestClient(app)
+    resp = client.get("/stats")
+    assert resp.status_code in (401, 503)
+
+
+def test_stats_with_token_returns_stub(tmp_path, monkeypatch):
+    token_path = tmp_path / "token"
+    token_path.write_text("t")
+    monkeypatch.setenv("ORGANISM_TOKEN_PATH", str(token_path))
+    app = create_app(blackout=BlackoutManager(flag_path=tmp_path / "pause.flag"))
+    client = TestClient(app)
+    resp = client.get("/stats", headers={"X-Organism-Token": "t"})
+    assert resp.status_code == 200
+    assert "events_processed" in resp.json()
