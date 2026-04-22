@@ -18,24 +18,26 @@ export interface ColumnColorConfig {
 
 export const COLUMN_COLORS: Record<CaseStatus, ColumnColorConfig> = {
   inquiry: {
+    // Pastel slate — warm neutral, not cold
     label: "Inquiry",
-    gradientStart: "#6b7280",
-    gradientEnd: "#9ca3af",
-    tintBg: "rgba(156,163,175, 0.035)",
-    tintBorder: "rgba(156,163,175, 0.08)",
-    badgeBg: "rgba(156,163,175, 0.12)",
-    textColor: "#9ca3af",
-    dotColor: "bg-gray-400",
+    gradientStart: "#cbd5e1",
+    gradientEnd: "#94a3b8",
+    tintBg: "rgba(203,213,225, 0.05)",
+    tintBorder: "rgba(203,213,225, 0.12)",
+    badgeBg: "rgba(203,213,225, 0.18)",
+    textColor: "#cbd5e1",
+    dotColor: "bg-slate-300",
   },
   waiting_documents: {
+    // Pastel amber — yellow-orange, softer than the previous deep orange
     label: "Waiting Documents",
-    gradientStart: "#fb923c",
-    gradientEnd: "#f97316",
-    tintBg: "rgba(251,146,60, 0.035)",
-    tintBorder: "rgba(251,146,60, 0.08)",
-    badgeBg: "rgba(251,146,60, 0.12)",
-    textColor: "#fb923c",
-    dotColor: "bg-orange-400",
+    gradientStart: "#fbbf24",
+    gradientEnd: "#f59e0b",
+    tintBg: "rgba(251,191,36, 0.05)",
+    tintBorder: "rgba(251,191,36, 0.12)",
+    badgeBg: "rgba(251,191,36, 0.18)",
+    textColor: "#fcd34d",
+    dotColor: "bg-amber-300",
   },
   sending_invoice: {
     label: "Sending Invoice",
@@ -48,14 +50,15 @@ export const COLUMN_COLORS: Record<CaseStatus, ColumnColorConfig> = {
     dotColor: "bg-yellow-400",
   },
   on_process: {
+    // Pastel blue — airier than the previous royal blue
     label: "On Process",
-    gradientStart: "#3b82f6",
-    gradientEnd: "#2563eb",
-    tintBg: "rgba(59,130,246, 0.035)",
-    tintBorder: "rgba(59,130,246, 0.08)",
-    badgeBg: "rgba(59,130,246, 0.12)",
-    textColor: "#3b82f6",
-    dotColor: "bg-blue-500",
+    gradientStart: "#93c5fd",
+    gradientEnd: "#60a5fa",
+    tintBg: "rgba(147,197,253, 0.05)",
+    tintBorder: "rgba(147,197,253, 0.12)",
+    badgeBg: "rgba(147,197,253, 0.18)",
+    textColor: "#93c5fd",
+    dotColor: "bg-blue-300",
   },
   completed: {
     label: "Completed",
