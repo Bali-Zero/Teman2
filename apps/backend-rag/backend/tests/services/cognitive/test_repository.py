@@ -226,6 +226,24 @@ async def test_latest_brief(repo_conn):
     assert brief is not None
 
 
+@pytest.mark.asyncio
+async def test_latest_weekly_brief_narrative_returns_text(repo_conn):
+    repo, conn = repo_conn
+    conn.fetchrow = AsyncMock(
+        return_value={"narrative": "Bali Zero weekly thesis X"},
+    )
+    narrative = await repo.latest_weekly_brief_narrative()
+    assert narrative == "Bali Zero weekly thesis X"
+
+
+@pytest.mark.asyncio
+async def test_latest_weekly_brief_narrative_none_when_empty(repo_conn):
+    repo, conn = repo_conn
+    conn.fetchrow = AsyncMock(return_value=None)
+    narrative = await repo.latest_weekly_brief_narrative()
+    assert narrative is None
+
+
 # ── UltraMove ──────────────────────────────────────────────
 
 

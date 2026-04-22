@@ -312,6 +312,23 @@ class CognitiveRepository(BaseRepository):
         )
         return _row_to_brief(row) if row else None
 
+    async def latest_weekly_brief_narrative(self) -> str | None:
+        """Narrative text of the most recent weekly brief, or None.
+
+        Lightweight alternative to ``latest_brief()`` when only the narrative
+        seed is needed (e.g. Strategos reranker seed thesis). Skips the
+        ``_row_to_brief`` hydration and JSONB parsing.
+        """
+        row = await self.fetchrow_safe(
+            """
+            SELECT narrative FROM weekly_strategic_briefs
+             WHERE narrative IS NOT NULL
+             ORDER BY generated_at DESC
+             LIMIT 1;
+            """,
+        )
+        return row["narrative"] if row else None
+
     async def get_brief(self, brief_id: UUID) -> WeeklyStrategicBrief | None:
         row = await self.fetchrow_safe(
             "SELECT * FROM weekly_strategic_briefs WHERE id = $1;",
