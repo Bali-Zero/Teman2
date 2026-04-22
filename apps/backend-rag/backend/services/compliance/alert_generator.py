@@ -44,7 +44,7 @@ class AlertGeneratorService:  # pragma: no cover — shim
         # Backward-compat attribute accessed by ProactiveComplianceMonitor
         self.alerts: dict = {}
 
-    def generate_alert(self, *args, **kwargs):
+    def generate_alert(self, *args, **kwargs) -> None:
         warnings.warn(
             "AlertGeneratorService.generate_alert is a deprecated no-op; "
             "use AlertsEngine.generate_alerts(forecasts).",
@@ -52,7 +52,7 @@ class AlertGeneratorService:  # pragma: no cover — shim
         )
         return None
 
-    def find_existing_alert(self, *args, **kwargs):
+    def find_existing_alert(self, *args, **kwargs) -> None:
         warnings.warn(
             "AlertGeneratorService.find_existing_alert is a deprecated no-op; "
             "use AlertRepository.find_active_by_dedup_key.",
@@ -60,7 +60,7 @@ class AlertGeneratorService:  # pragma: no cover — shim
         )
         return None
 
-    def get_alerts_for_client(self, *args, **kwargs):
+    def get_alerts_for_client(self, *args, **kwargs) -> list:
         warnings.warn(
             "AlertGeneratorService.get_alerts_for_client is a deprecated no-op; "
             "use AlertRepository.list_by_client.",
