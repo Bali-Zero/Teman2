@@ -46,3 +46,23 @@ async def test_emit_continues_if_redis_down(tmp_path):
     await bus.emit(e)  # must NOT raise
     assert path.exists()
     assert len(path.read_text().strip().splitlines()) == 1
+
+
+@pytest.mark.asyncio
+async def test_emit_handles_non_ascii_payload(fake_redis, tmp_path):
+    """Payload with non-ASCII (Indonesian, emoji) must write cleanly to JSONL."""
+    path = tmp_path / "events.jsonl"
+    bus = EventBus(redis=fake_redis, jsonl_path=path)
+    e = Event(
+        severity=Severity.INFO,
+        source="test",
+        kind="non_ascii",
+        payload={"msg": "Halo Bali 🇮🇩 — perusahaan"},
+        correlation_id="c",
+        host="Pro",
+    )
+    await bus.emit(e)
+    content = path.read_text(encoding="utf-8")
+    assert "Bali" in content
+    assert "🇮🇩" in content
+    assert "perusahaan" in content
