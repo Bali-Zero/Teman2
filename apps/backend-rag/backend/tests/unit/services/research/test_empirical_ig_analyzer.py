@@ -62,3 +62,75 @@ def test_classified_post_engagement_rate_zero_reach():
         likes=5, comments=0, saves=1, reach=0,
     )
     assert cp.engagement_rate == 0.0
+
+
+# ── Task 8: hook classifier ─────────────────────────────────────────
+
+
+def test_classify_hooks_parses_claude_json_output():
+    """classify_hooks_batch returns {post_id: hook_type} from claude -p JSON."""
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [
+        {"post_id": "p1", "caption": "Did you know KBLI 2025 changed?"},
+        {"post_id": "p2", "caption": "3 lies about PT PMA"},
+    ]
+    fake_stdout = (
+        "I analyzed the posts.\n"
+        '{"classifications":[{"post_id":"p1","hook_type":"question"},'
+        '{"post_id":"p2","hook_type":"list"}]}'
+    )
+    fake_proc = type("P", (), {"returncode": 0, "stdout": fake_stdout, "stderr": ""})()
+    with patch("subprocess.run", return_value=fake_proc):
+        result = analyzer.classify_hooks_batch(posts)
+    assert result["p1"] == "question"
+    assert result["p2"] == "list"
+
+
+def test_classify_hooks_falls_back_on_rc_nonzero():
+    """If claude -p exits nonzero, return 'unknown' for every post."""
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [{"post_id": "p1", "caption": "x"}]
+    fake_proc = type("P", (), {"returncode": 1, "stdout": "", "stderr": "err"})()
+    with patch("subprocess.run", return_value=fake_proc):
+        result = analyzer.classify_hooks_batch(posts)
+    assert result == {"p1": "unknown"}
+
+
+def test_classify_hooks_falls_back_on_unparseable_output():
+    from unittest.mock import patch
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [{"post_id": "p1", "caption": "x"}, {"post_id": "p2", "caption": "y"}]
+    fake_proc = type("P", (), {"returncode": 0, "stdout": "just prose, no JSON", "stderr": ""})()
+    with patch("subprocess.run", return_value=fake_proc):
+        result = analyzer.classify_hooks_batch(posts)
+    assert result == {"p1": "unknown", "p2": "unknown"}
+
+
+def test_classify_hooks_sends_batch_prompt_to_claude():
+    """Verify the subprocess call uses `claude -p` with a prompt mentioning
+    hook_type categories and all post_ids."""
+    from unittest.mock import patch, MagicMock
+    analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
+    posts = [
+        {"post_id": "p1", "caption": "A"},
+        {"post_id": "p2", "caption": "B"},
+    ]
+    fake_proc = type("P", (), {
+        "returncode": 0,
+        "stdout": '{"classifications":[{"post_id":"p1","hook_type":"stat"},{"post_id":"p2","hook_type":"story"}]}',
+        "stderr": "",
+    })()
+    with patch("subprocess.run", return_value=fake_proc) as run_mock:
+        analyzer.classify_hooks_batch(posts)
+    args, kwargs = run_mock.call_args
+    cmd = args[0]
+    assert cmd[0] == "claude"
+    assert cmd[1] == "-p"
+    prompt = cmd[2]
+    # Prompt must include the allowed hook categories + both post_ids
+    for cat in ("question", "stat", "story", "contrarian", "list"):
+        assert cat in prompt
+    assert "p1" in prompt
+    assert "p2" in prompt
