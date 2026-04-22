@@ -123,22 +123,69 @@ def main() -> int:
         ))
         # lkpm_reports: created by old-style migration_063 (backend/migrations/
         # *.py), which the modern runner (db/migrations_v2/*.sql) does not
-        # discover. migrations_v2 108_lkpm_receipts.sql FK-references it and
-        # 110_lkpm_allowlist_krisna.sql ALTERs it, so without this stub those
-        # two migrations fail on a fresh CI DB. Minimal columns only — enough
-        # for 108's FK target (id) and 110's ALTER (lkpm_assigned_to). No
-        # SQLModel class references it, so no stub Table registration needed.
+        # discover. Without this stub every test touching the table fails
+        # with UndefinedColumnError for any column beyond id/client_id.
+        # Full schema mirrored from migration_063_lkpm_reports.py so that
+        # tests inserting realized_equipment_* / cumulative_* / etc. work.
         conn.execute(text(
             """
             CREATE TABLE IF NOT EXISTS lkpm_reports (
                 id SERIAL PRIMARY KEY,
-                client_id INTEGER,
-                quarter TEXT,
-                year INTEGER,
-                status TEXT DEFAULT 'draft',
+                client_id INTEGER NOT NULL,
+                quarter TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
                 lkpm_assigned_to TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
-                updated_at TIMESTAMPTZ DEFAULT NOW()
+
+                realized_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_equipment_import BIGINT NOT NULL DEFAULT 0,
+                realized_building_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_building_import BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                realized_land BIGINT NOT NULL DEFAULT 0,
+                realized_working_capital BIGINT NOT NULL DEFAULT 0,
+                realized_other BIGINT NOT NULL DEFAULT 0,
+
+                cumulative_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_equipment_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_land BIGINT NOT NULL DEFAULT 0,
+                cumulative_working_capital BIGINT NOT NULL DEFAULT 0,
+                cumulative_other BIGINT NOT NULL DEFAULT 0,
+
+                current_tki INTEGER NOT NULL DEFAULT 0,
+                current_tka INTEGER NOT NULL DEFAULT 0,
+
+                quarterly_revenue BIGINT NOT NULL DEFAULT 0,
+                annual_revenue BIGINT NOT NULL DEFAULT 0,
+
+                narrative_obstacles TEXT,
+                narrative_plans TEXT,
+
+                validation_status TEXT NOT NULL DEFAULT 'pending',
+                validation_alerts JSONB NOT NULL DEFAULT '[]',
+                validated_at TIMESTAMPTZ,
+                validated_by TEXT,
+
+                client_approved BOOLEAN NOT NULL DEFAULT FALSE,
+                client_approved_at TIMESTAMPTZ,
+
+                oss_submitted BOOLEAN NOT NULL DEFAULT FALSE,
+                oss_submitted_at TIMESTAMPTZ,
+                oss_submitted_by TEXT,
+                oss_receipt_number TEXT,
+                oss_receipt_file_url TEXT,
+
+                data_source TEXT NOT NULL DEFAULT 'manual',
+                has_ai_categorized_items BOOLEAN NOT NULL DEFAULT FALSE,
+                ai_categorized_count INTEGER NOT NULL DEFAULT 0,
+
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """,
         ))
