@@ -103,7 +103,7 @@ PYTHONPATH=. python -c "
 import asyncio, asyncpg
 from pathlib import Path
 async def run():
-    conn = await asyncpg.connect('postgresql://localhost:5432/nuzantara')
+    conn = await asyncpg.connect('postgresql://localhost:5432/nuzantara_dev')
     try:
         sql = Path('backend/db/migrations_v2/128_m13_feedback.sql').read_text()
         forward = sql.split('-- === ROLLBACK ===')[0]
