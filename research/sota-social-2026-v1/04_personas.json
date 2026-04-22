@@ -1,0 +1,494 @@
+{
+  "personas": {
+    "expat_boomer_retiree": {
+      "slug": "expat_boomer_retiree",
+      "market_segment": "expat",
+      "age_range": "58-72",
+      "geo_origin": "Australia, UK, USA, Netherlands, Germany",
+      "gender_split": "55/45 male/female",
+      "profession_past": "corporate executive, small business owner, civil servant/teacher",
+      "wealth_level": "400k-1.5M USD liquid + pension 2-5k USD/month",
+      "primary_goal": "Secure a long-stay retirement visa (KITAS Lansia/Silver Hair/Second Home) and settle legally in Bali with healthcare access and property tenure clarity.",
+      "pain_points": [
+        "KITAS Lansia age/income thresholds keep changing and agents give conflicting answers",
+        "Cannot own freehold land \u2014 confused between Hak Pakai, leasehold 25+25, and nominee schemes (which they've been warned are illegal)",
+        "Health insurance after 65 is expensive or refused \u2014 unclear if BPJS covers them as KITAS holders",
+        "Tax residency trap: 183-day rule, worldwide income, NPWP obligations vs. home-country pension taxation",
+        "Visa agent horror stories \u2014 overpaid, got wrong visa, or agent disappeared with passport",
+        "Currency risk on pension (AUD/GBP/EUR vs IDR) and difficulty opening local bank account without KITAS",
+        "Loneliness and scam exposure \u2014 widowed or solo retirees targeted by younger partners or fake investment schemes",
+        "Repatriation of remains / inheritance for Indonesian-situated assets if spouse dies"
+      ],
+      "platforms_used": [
+        "facebook",
+        "whatsapp",
+        "youtube",
+        "google_search",
+        "email"
+      ],
+      "content_preferences": [
+        "long-form explainer articles (1500+ words)",
+        "step-by-step checklists with document lists",
+        "comparison tables (visa types, costs, timelines)",
+        "YouTube walkthroughs with on-screen captions",
+        "testimonials from other retirees by name and age",
+        "downloadable PDFs"
+      ],
+      "language_primary": "en",
+      "language_secondary": [
+        "id_basic",
+        "nl",
+        "de"
+      ],
+      "decision_journey_stages": [
+        "awareness",
+        "research",
+        "consideration",
+        "validation",
+        "decision",
+        "post_purchase_reassurance"
+      ],
+      "tone_resonance": {
+        "pedagogico": 0.45,
+        "analitico": 0.3,
+        "tecnico": 0.15,
+        "rituale": 0.05,
+        "ironico": 0.05
+      },
+      "hook_patterns_that_work": [
+        "story (other retiree's journey, named, with photo)",
+        "checklist (documents needed for KITAS Lansia)",
+        "warning (avoid this nominee scheme)",
+        "comparison (Bali vs Portugal vs Malaysia MM2H)",
+        "FAQ",
+        "cost breakdown in USD/AUD"
+      ],
+      "verbatim_quotes": [
+        "I'm 67, my wife is 63, we've sold the house in Perth and we want to do this properly \u2014 no nominee, no shortcuts. Can you walk us through KITAS Lansia start to finish?",
+        "My agent in Seminyak quoted me 35 million rupiah for the retirement visa but my neighbour paid 22 million last year. How do I know what's fair and what's legitimate?",
+        "We've been coming to Ubud for 15 years on tourist visas and B211s. Now Immigration is tightening up and we're scared of being blacklisted. Is it too late to regularise?",
+        "If I buy a villa on leasehold for 25 years, I'll be 92 when it expires. What happens to my wife if I die first \u2014 does the lease transfer?",
+        "I don't trust the Facebook groups anymore, too many opinions. I want to sit down with someone qualified, see their license, and get it in writing."
+      ],
+      "trust_signals": [
+        "physical office in Kerobokan/Sanur with signage",
+        "named lawyer or notaris (PPAT) with credentials shown",
+        "Google Reviews 4.7+ with 200+ reviews mentioning retirees by name",
+        "written fixed-price quote on letterhead with tax invoice (faktur pajak)",
+        "referral from another retiree in their expat circle",
+        "press mentions in Jakarta Post, Bali Discovery, The Bali Sun",
+        "years in business (10+) and AHU/Kemenkumham registration number visible",
+        "staff who speak clear English and respond within 24h by email"
+      ]
+    },
+    "expat_techie_pma": {
+      "slug": "expat_techie_pma",
+      "market_segment": "expat",
+      "age_range": "28-42",
+      "geo_origin": "EU (DE/NL/FR/IT) + North America + AU/NZ, secondary UK + Singapore",
+      "gender_split": "72/28 male/female",
+      "profession_past": "SaaS founder/CTO, senior software engineer, digital product consultant",
+      "wealth_level": "150k-800k USD liquid + recurring MRR 8-40k USD/month",
+      "primary_goal": "Set up a compliant PT PMA in Bali to legally run my remote tech business, get a KITAS, and optimize tax residency without triggering CFC rules back home.",
+      "pain_points": [
+        "Conflicting info on minimum capital (IDR 10B paid-up vs. committed) and whether KBLI 62xxx actually allows my SaaS/consulting activity",
+        "Notary and agent quotes ranging 3x for the same PMA+KITAS package with no clear scope breakdown",
+        "Fear of accidental PE (permanent establishment) exposure in home country while being tax resident in ID",
+        "Opening a corporate BCA/Mandiri account as a fresh PMA \u2014 KYC loops, deposit requirements, rejected without local director",
+        "LKPM quarterly reporting, BPJS, and annual tax filings in Bahasa that no one warned them about at signup",
+        "Visa agent disappears after KITAS issuance \u2014 no lifecycle support for amendments, NIB/OSS updates, share transfers",
+        "Unclear if they can legally invoice international clients from the PMA without VAT/PPN traps"
+      ],
+      "platforms_used": [
+        "instagram",
+        "linkedin",
+        "whatsapp",
+        "telegram",
+        "youtube",
+        "reddit",
+        "slack",
+        "x"
+      ],
+      "content_preferences": [
+        "long-form breakdown posts with actual IDR numbers",
+        "side-by-side comparison tables (PT PMA vs KITAS investor vs E33G)",
+        "founder case studies with real timelines and costs",
+        "short explainer reels under 90s with on-screen captions",
+        "structured PDFs/checklists for OSS-RBA, LKPM, BPJS",
+        "AMA threads and Loom walkthroughs over polished ads"
+      ],
+      "language_primary": "en",
+      "language_secondary": [
+        "id",
+        "de",
+        "it",
+        "fr"
+      ],
+      "decision_journey_stages": [
+        "awareness",
+        "research",
+        "consideration",
+        "decision",
+        "post-setup compliance"
+      ],
+      "tone_resonance": {
+        "pedagogico": 0.35,
+        "analitico": 0.4,
+        "tecnico": 0.2,
+        "rituale": 0.0,
+        "poetico": 0.0,
+        "ironico": 0.05,
+        "militante": 0.0
+      },
+      "hook_patterns_that_work": [
+        "specific-number hook (e.g. 'PT PMA in 47 days, IDR 38.5M all-in')",
+        "myth-bust question ('Do you really need 10 billion rupiah in the bank?')",
+        "founder story with before/after timeline",
+        "checklist teaser ('7 things your agent won't tell you about LKPM')",
+        "side-by-side comparison",
+        "red-flag warning ('stop signing this clause')"
+      ],
+      "verbatim_quotes": [
+        "I don't need motivation, I need the actual KBLI code that lets my SaaS invoice Stripe from a PT PMA without PPN headaches.",
+        "Three agents, three prices, three different stories about the 10 billion \u2014 who's actually reading the BKPM reg here?",
+        "I'll pay premium, I just want one firm that stays with me past KITAS pickup and handles LKPM every quarter without me chasing them on WhatsApp.",
+        "My CPA back home is freaking out about CFC and PE \u2014 can you give me something in writing I can send her?",
+        "Can we do the whole thing remotely before I land, or do I really have to fly in for the notary?"
+      ],
+      "trust_signals": [
+        "founder referrals in private Slack/Telegram communities",
+        "named lawyer or notary with SIUP + PERADI number visible",
+        "transparent fixed-fee scope with what's NOT included listed",
+        "Google Reviews with recent PMA-specific cases (not just visa runs)",
+        "LinkedIn presence of the actual consultants, not just the brand",
+        "published case studies with IDR figures and timelines",
+        "written engagement letter in English + Bahasa",
+        "press mentions in Tech in Asia / KrAsia / Bali Post",
+        "direct access to a named account manager on WhatsApp"
+      ]
+    },
+    "expat_italian_aire": {
+      "slug": "expat_italian_aire",
+      "market_segment": "expat",
+      "age_range": "35-55",
+      "geo_origin": "Italy (Lombardia, Veneto, Lazio, Emilia-Romagna, Toscana)",
+      "gender_split": "65/35 male/female",
+      "profession_past": "imprenditore/PMI owner, libero professionista (architetto/consulente), digital entrepreneur",
+      "wealth_level": "250k-800k EUR liquid + property sold in IT",
+      "primary_goal": "Regolarizzare residenza fiscale Indonesia via AIRE + KITAS investitore/pensione mantenendo compliance italiana senza doppia imposizione.",
+      "pain_points": [
+        "Confusione AIRE vs residenza fiscale effettiva (183 giorni, centro interessi vitali)",
+        "Paura controlli Agenzia delle Entrate su esterovestizione e monitoraggio fiscale quadro RW",
+        "Gestione PMA vs uso personale del visto investitore (rischio revoca)",
+        "Accesso conto bancario indonesiano senza NPWP iniziale",
+        "Sanatoria IMU/successioni su immobili lasciati in Italia",
+        "Scuola figli: IB vs italiana, riconoscimento titoli",
+        "Accesso sanitario privato (BIMC, Siloam) vs rientro per interventi",
+        "Diffidenza verso agenti locali dopo esperienze con 'fixer' non qualificati",
+        "Convertibilit\u00e0 Rupia\u2192Euro e limiti bonifici cross-border",
+        "Paura Pajak audit su utili PMA non rimpatriati"
+      ],
+      "platforms_used": [
+        "whatsapp",
+        "facebook",
+        "instagram",
+        "linkedin",
+        "telegram",
+        "youtube"
+      ],
+      "content_preferences": [
+        "case study concreti con numeri (costi, tempi, tasse)",
+        "confronti Italia vs Indonesia (fiscalit\u00e0, costo vita, sanit\u00e0)",
+        "checklist documentali scaricabili",
+        "video-interviste ad altri italiani gi\u00e0 trasferiti",
+        "aggiornamenti normativi tradotti in italiano",
+        "Q&A live su AIRE/KITAS/PMA",
+        "testimonianze founder italiani con PMA attivo >3 anni"
+      ],
+      "language_primary": "it",
+      "language_secondary": [
+        "en",
+        "id"
+      ],
+      "decision_journey_stages": [
+        "awareness",
+        "research",
+        "consideration",
+        "decision",
+        "post-purchase advocacy"
+      ],
+      "tone_resonance": {
+        "pedagogico": 0.35,
+        "analitico": 0.35,
+        "tecnico": 0.2,
+        "ironico": 0.05,
+        "rituale": 0.05
+      },
+      "hook_patterns_that_work": [
+        "case study con cifre reali",
+        "question diretta su paura fiscale ('Sei davvero non residente?')",
+        "mito-vs-realt\u00e0 su AIRE",
+        "checklist numerata ('7 errori che fanno revocare il KITAS')",
+        "storia personale founder italiano",
+        "comparazione before/after trasferimento",
+        "red flag list su agenti non qualificati"
+      ],
+      "verbatim_quotes": [
+        "Ho fatto l'AIRE tre anni fa ma il commercialista mi dice che per l'Agenzia sono ancora residente in Italia \u2014 come ne esco davvero?",
+        "Ragazzi qualcuno ha aperto PMA senza passare da sponsor locale? Mi hanno chiesto 15k solo di 'facilitazione' e non mi torna.",
+        "Io a Canggu da 5 anni, KITAS investitore, ma ogni volta che rientro in Italia ho il terrore della GdF in aeroporto per il quadro RW."
+      ],
+      "trust_signals": [
+        "referral da altri italiani residenti Bali",
+        "iscrizione Ordine Consulenti del Lavoro o Commercialisti IT",
+        "partnership con studi legali italiani con sede Jakarta/Bali",
+        "testimonianze video con volto e nome reale",
+        "presenza fisica ufficio Kerobokan/Canggu visitabile",
+        "menzioni su Il Sole 24 Ore, ItaliaOggi, Corriere",
+        "Console Onorario d'Italia a Denpasar come reference",
+        "numero P.IVA indonesiana (NPWP) PMA verificabile",
+        "anni di operativit\u00e0 dichiarati con clienti storici citabili",
+        "Google Reviews in italiano >50 recensioni"
+      ]
+    },
+    "id_konsultan_kadin": {
+      "slug": "id_konsultan_kadin",
+      "market_segment": "id_domestic",
+      "age_range": "38-55",
+      "geo_origin": "Jakarta, Surabaya, Medan, Bandung, Denpasar",
+      "gender_split": "72/28 male/female",
+      "profession_past": "business consultant, corporate lawyer, accountant/tax advisor",
+      "wealth_level": "2-15 miliar IDR net worth, 500jt-3M IDR monthly revenue",
+      "primary_goal": "Espandere portfolio clienti PMA e UMKM sfruttando network KADIN e autorit\u00e0 OSS/BKPM per servizi perizinan, kepatuhan pajak e strutturazione societaria",
+      "pain_points": [
+        "Regolamentazione OSS-RBA cambia ogni 6-12 mesi, difficile mantenere clienti aggiornati senza perdere credibilit\u00e0",
+        "Competizione prezzi da konsultan abal-abal e calo fee su perizinan standard (NIB, NPWP)",
+        "Klien PMA stranieri arrivano con aspettative irrealistiche su tempi BKPM e KBLI restrittivi",
+        "Burokrasi antar-kementerian (Kemenkumham, DJP, Imigrasi, Kemnaker) non sincronizzata su sistema OSS",
+        "Coretax DJP 2025 rollout problematico, klien chiedono supporto gratuito per bug sistema",
+        "Sulit membangun trust dengan klien baru tanpa referral KADIN atau asosiasi profesi (IKPI, PERADI, IAI)"
+      ],
+      "platforms_used": [
+        "whatsapp",
+        "linkedin",
+        "instagram",
+        "youtube",
+        "telegram",
+        "email"
+      ],
+      "content_preferences": [
+        "case study PMA/UMKM reali con angka konkret",
+        "update regulasi BKPM/DJP dalam format carousel atau infografis",
+        "webinar KADIN/HIPMI dengan narasumber pejabat",
+        "thread LinkedIn analisis PP/Permen baru",
+        "video pendek penjelasan KBLI dan persyaratan modal",
+        "newsletter mingguan rangkuman perubahan aturan"
+      ],
+      "language_primary": "id",
+      "language_secondary": [
+        "en",
+        "jv"
+      ],
+      "decision_journey_stages": [
+        "awareness via KADIN event atau LinkedIn post",
+        "research cross-check regulasi via JDIH dan hukumonline",
+        "consideration compare reputasi via referral sesama anggota KADIN",
+        "consideration verifikasi sertifikasi profesi dan track record",
+        "decision setelah meeting tatap muka atau referral langsung",
+        "retention via grup WhatsApp eksklusif dan update berkala"
+      ],
+      "tone_resonance": {
+        "pedagogico": 0.15,
+        "analitico": 0.4,
+        "tecnico": 0.3,
+        "rituale": 0.1,
+        "poetico": 0.0,
+        "ironico": 0.0,
+        "militante": 0.05
+      },
+      "hook_patterns_that_work": [
+        "data statistik BKPM realisasi investasi terbaru",
+        "studi kasus klien dengan angka revenue dan timeline",
+        "kutipan pasal UU/PP spesifik dengan interpretasi praktis",
+        "pertanyaan retoris tentang kepatuhan pajak",
+        "breaking news regulasi dengan analisis dampak 24 jam",
+        "testimoni dari pejabat atau tokoh KADIN"
+      ],
+      "verbatim_quotes": [
+        "Klien saya PMA Korea tanya kenapa NIB-nya pending 3 minggu padahal OSS bilang otomatis \u2014 ini masalah sinkronisasi sistem, bukan dokumen kurang",
+        "Honestly, Coretax bikin kerjaan tambah 40% tapi fee klien nggak bisa naik, kita yang nombok waktu",
+        "Di KADIN committee terakhir sudah disampaikan ke Kementerian Investasi, tapi implementasi di daerah masih beda-beda",
+        "Kalau klien bule datang minta PT PMA modal 10 miliar untuk bisnis F&B di Bali, saya wajib edukasi dulu soal KBLI restriktif dan DNI sebelum ambil fee",
+        "Referral dari Pak Ketua KADIN daerah itu closing rate-nya 80%, dari cold lead LinkedIn paling 15%",
+        "Saya subscribe 4 platform legal database tapi tetap paling akurat JDIH langsung plus konfirmasi ke biro hukum kementerian"
+      ],
+      "trust_signals": [
+        "keanggotaan KADIN aktif dengan jabatan komite",
+        "sertifikasi profesi (Brevet A/B/C, IKPI, KKNI konsultan)",
+        "referral dari pejabat BKPM/Kemenkumham/DJP",
+        "publikasi opini di Kontan, Bisnis Indonesia, Hukumonline",
+        "narasumber webinar KADIN/HIPMI/APINDO",
+        "portfolio klien PMA besar dengan izin khusus (KBLI terbatas)",
+        "kantor fisik di CBD Jakarta/Surabaya dengan tim minimal 10 orang",
+        "LinkedIn 5000+ connections dengan engagement dari sesama profesional"
+      ]
+    },
+    "id_founder_pma": {
+      "slug": "id_founder_pma",
+      "market_segment": "id_domestic",
+      "age_range": "28-42",
+      "geo_origin": "Jakarta, Bandung, Surabaya, Bali (Indonesian nationals returning from overseas study/work)",
+      "gender_split": "70/30 male/female",
+      "profession_past": "ex-corporate consultant (BCG/McKinsey/EY), ex-tech employee (Gojek/Tokopedia/Traveloka), ex-banker (Mandiri/BCA/DBS)",
+      "wealth_level": "500M-5B IDR liquid + seed/series-A funding 100k-2M USD",
+      "primary_goal": "Strutturare la mia startup come PT PMA per ricevere investimento estero, ottenere credibilit\u00e0 internazionale e proteggere la struttura legale per scaling regionale ASEAN",
+      "pain_points": [
+        "Confusione tra PT lokal vs PT PMA: quando conviene davvero il PMA per founder indonesiano (capitale minimo 10B IDR, KBLI restrictions, nominee risks)",
+        "Tax structure complessa: PPh badan 22%, dividend WHT 20% per shareholder estero, transfer pricing scrutiny dal DJP",
+        "BKPM/OSS-RBA bureaucracy: NIB, izin usaha, LKPM reporting trimestrale, sanzioni se ritardi",
+        "Capital injection requirements: paid-up capital tracking, escrow, modal disetor minimo 25% del modal dasar",
+        "Cap table dilution con investor stranieri (VC Singapore/HK) e governance dual-class shares non riconosciuta in UU PT",
+        "Compliance multilayer: BPJS Kesehatan + Ketenagakerjaan, WLKP, RPTKA per expat hires, audit obligation se omzet >50M IDR",
+        "Exit strategy unclear: M&A vs IPO IDX vs holding Singapore \u2014 dove parcheggiare IP e cap table"
+      ],
+      "platforms_used": [
+        "linkedin",
+        "instagram",
+        "whatsapp",
+        "telegram",
+        "x",
+        "tiktok",
+        "youtube"
+      ],
+      "content_preferences": [
+        "case study founder Indonesia (DealStreetAsia, Tech in Asia)",
+        "carosello LinkedIn con breakdown legal/tax",
+        "webinar regulatory update BKPM/DJP",
+        "thread X su fundraising terms",
+        "podcast lungo formato (Endgame, Thirty Days of Lunch)",
+        "newsletter sostanziose (DailySocial, e27)"
+      ],
+      "language_primary": "id",
+      "language_secondary": [
+        "en"
+      ],
+      "decision_journey_stages": [
+        "awareness via peer founder e VC associate",
+        "research desk su regolamenti BKPM e benchmark fee studi legali",
+        "consideration con 2-3 consulenti shortlist (big4 vs boutique vs Bali Zero)",
+        "decision dopo intro call + proposal dettagliata + referenze founder esistenti",
+        "post-decision: retention su compliance ricorrente (LKPM, tax, payroll)"
+      ],
+      "tone_resonance": {
+        "analitico": 0.4,
+        "tecnico": 0.3,
+        "pedagogico": 0.2,
+        "ironico": 0.1
+      },
+      "hook_patterns_that_work": [
+        "numero specifico (es. '10B IDR minimum capital \u2014 qui come strutturarlo')",
+        "peer comparison ('cosa fanno i founder serie A')",
+        "regulatory deadline imminente",
+        "cost breakdown trasparente vs studi legali tradizionali",
+        "case study fallimento/sanzione DJP o BKPM"
+      ],
+      "verbatim_quotes": [
+        "Saya butuh PT PMA bukan karena foreign founder, tapi karena VC Singapore minta struktur yang investable \u2014 bisa bantu jelasin perbedaan dengan PT lokal plus tax implication-nya?",
+        "Capital minimum 10 miliar itu paid-up atau cuma authorized? Notaris saya bilang beda, lawyer corporate bilang beda lagi. Mau second opinion yang clear",
+        "Kita lagi closing seed round 1.5 juta USD dari VC Jepang, butuh struktur PT PMA yang siap due diligence dalam 6 minggu. Realistis nggak timeline-nya, dan berapa cost all-in termasuk LKPM setup?"
+      ],
+      "trust_signals": [
+        "referral founder portfolio (Endeavor, Antler, East Ventures alumni)",
+        "case study pubblicati su DealStreetAsia/Tech in Asia",
+        "LinkedIn thought leadership founder/partner studio",
+        "trasparenza pricing upfront (no hidden fee)",
+        "credenziali consultant (ex-big4, ex-BKPM, sertifikat konsultan pajak BKP)",
+        "Google Reviews 4.5+ con review verificabili da founder noti",
+        "response time WhatsApp <2h business hours",
+        "NDA standard + data room sicura per due diligence"
+      ]
+    },
+    "id_umkm_digital": {
+      "slug": "id_umkm_digital",
+      "market_segment": "id_domestic",
+      "age_range": "25-40",
+      "geo_origin": "Indonesia (Jabodetabek, Bandung, Surabaya, Semarang, Yogya, Bali, Medan)",
+      "gender_split": "55/45 female/male",
+      "profession_past": "warung/toko owner, marketing freelancer, fresh graduate turned reseller",
+      "wealth_level": "omzet bulanan 5-50 juta IDR, modal kerja 10-100 juta IDR",
+      "primary_goal": "Naik kelas dari warung/reseller jadi brand UMKM yang legal, bankable, dan scalable lewat Tokopedia/Shopee/TikTok Shop",
+      "pain_points": [
+        "bingung ngurus NIB, NPWP, PKP, sertifikasi halal \u2014 takut kena pajak tapi gak ngerti alurnya",
+        "margin tipis karena perang harga di Shopee/Tokopedia + ongkir subsidi hilang",
+        "algoritma TikTok Shop berubah terus, live streaming capek tapi ROAS turun",
+        "gak punya tim, semua dikerjain sendiri (admin, packing, CS, konten)",
+        "modal kerja nyangkut di stok, cashflow berantakan pas payout marketplace lambat",
+        "susah dapet pinjaman KUR/bank karena laporan keuangan gak rapi",
+        "saingan sama produk China cross-border (Shein, Temu vibes) yang lebih murah"
+      ],
+      "platforms_used": [
+        "tiktok",
+        "instagram",
+        "whatsapp",
+        "shopee",
+        "tokopedia",
+        "youtube",
+        "facebook"
+      ],
+      "content_preferences": [
+        "tutorial step-by-step bahasa santai",
+        "studi kasus UMKM yang berhasil (before/after omzet)",
+        "tips hemat pajak & legalitas",
+        "behind the scenes warehouse/packing",
+        "live shopping tricks",
+        "template caption & konten siap pakai",
+        "webinar gratis dari Kemenkop/Tokopedia/Shopee"
+      ],
+      "language_primary": "id",
+      "language_secondary": [
+        "en",
+        "jv",
+        "su"
+      ],
+      "decision_journey_stages": [
+        "awareness via FYP TikTok",
+        "research lewat komunitas WA & komentar IG",
+        "consideration baca review + tanya temen seller",
+        "decision impulsif kalau ada promo/bonus onboarding"
+      ],
+      "tone_resonance": {
+        "pedagogico": 0.45,
+        "ironico": 0.2,
+        "analitico": 0.15,
+        "militante": 0.1,
+        "rituale": 0.1
+      },
+      "hook_patterns_that_work": [
+        "angka konkret (omzet 100jt/bulan, cuan 5x lipat)",
+        "story transformasi dari nol",
+        "rahasia yang disembunyiin seller lain",
+        "checklist legalitas gratis",
+        "countdown promo/deadline pajak",
+        "pertanyaan relatable (kamu juga ngalamin ini?)",
+        "roasting kompetitor dengan humor"
+      ],
+      "verbatim_quotes": [
+        "Kak, aku omzet udah 30 juta sebulan tapi bingung, ini harus PKP belum sih? Takut kena denda tapi takut juga ribet.",
+        "Shopee payout H+7 gila sih, modal nyangkut terus. Ada yang tau solusi cashflow buat seller kecil?",
+        "Udah live 4 jam GMV cuma 500rb, algoritma TikTok Shop emang lagi aneh atau akunku yang kena shadow ban ya?",
+        "Gw mau naik kelas jadi PT biar bisa masuk Tokopedia Official Store, tapi biayanya berapa ya total sampe beres?",
+        "Produk China di Temu harganya gak masuk akal, kita sebagai UMKM lokal harus gimana supaya gak mati pelan-pelan?"
+      ],
+      "trust_signals": [
+        "testimoni video seller lain dengan omzet riil",
+        "verifikasi centang biru Tokopedia/Shopee Mall",
+        "sertifikat BPOM/Halal/SNI",
+        "liputan media (Kompas, Detik, IDN Times)",
+        "endorsement dari mentor UMKM (Tung Desem, Helmy Yahya, Raymond Chin)",
+        "komunitas WA/Telegram aktif",
+        "angka member & testimoni di landing page",
+        "gratis trial / garansi uang kembali"
+      ]
+    }
+  }
+}
