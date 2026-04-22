@@ -1,0 +1,283 @@
+{
+  "persona_weight": {
+    "expat_boomer_retiree": 0.12,
+    "expat_italian_aire": 0.13,
+    "expat_techie_pma": 0.25,
+    "id_founder_pma": 0.2,
+    "id_konsultan_kadin": 0.1,
+    "id_umkm_digital": 0.2
+  },
+  "tone_resonance": {
+    "expat_boomer_retiree": {
+      "analitico": 0.6,
+      "ironico": 0.2,
+      "militante": 0.1,
+      "pedagogico": 0.85,
+      "poetico": 0.3,
+      "rituale": 0.2,
+      "tecnico": 0.35
+    },
+    "expat_italian_aire": {
+      "analitico": 0.75,
+      "ironico": 0.4,
+      "militante": 0.2,
+      "pedagogico": 0.7,
+      "poetico": 0.3,
+      "rituale": 0.25,
+      "tecnico": 0.55
+    },
+    "expat_techie_pma": {
+      "analitico": 0.9,
+      "ironico": 0.45,
+      "militante": 0.15,
+      "pedagogico": 0.7,
+      "poetico": 0.15,
+      "rituale": 0.1,
+      "tecnico": 0.75
+    },
+    "id_founder_pma": {
+      "analitico": 0.9,
+      "ironico": 0.4,
+      "militante": 0.2,
+      "pedagogico": 0.55,
+      "poetico": 0.1,
+      "rituale": 0.1,
+      "tecnico": 0.7
+    },
+    "id_konsultan_kadin": {
+      "analitico": 0.85,
+      "ironico": 0.2,
+      "militante": 0.3,
+      "pedagogico": 0.45,
+      "poetico": 0.1,
+      "rituale": 0.35,
+      "tecnico": 0.8
+    },
+    "id_umkm_digital": {
+      "analitico": 0.45,
+      "ironico": 0.65,
+      "militante": 0.45,
+      "pedagogico": 0.85,
+      "poetico": 0.15,
+      "rituale": 0.3,
+      "tecnico": 0.3
+    }
+  },
+  "cadence_by_channel": {
+    "blog_seo": {
+      "optimal_hours_wita": [
+        10,
+        11
+      ],
+      "posts_per_day": 0.29
+    },
+    "instagram": {
+      "optimal_hours_wita": [
+        7,
+        12,
+        18,
+        19,
+        21
+      ],
+      "posts_per_day": 0.71
+    },
+    "linkedin": {
+      "optimal_hours_wita": [
+        7,
+        8,
+        12,
+        17
+      ],
+      "posts_per_day": 0.5
+    },
+    "newsletter": {
+      "optimal_hours_wita": [
+        8,
+        17
+      ],
+      "posts_per_day": 0.14
+    },
+    "podcast": {
+      "optimal_hours_wita": [
+        7,
+        18
+      ],
+      "posts_per_day": 0.07
+    },
+    "quora_reddit": {
+      "optimal_hours_wita": [
+        10,
+        14,
+        21
+      ],
+      "posts_per_day": 0.29
+    },
+    "telegram": {
+      "optimal_hours_wita": [
+        8,
+        12,
+        18
+      ],
+      "posts_per_day": 0.7
+    },
+    "threads": {
+      "optimal_hours_wita": [
+        7,
+        19,
+        22
+      ],
+      "posts_per_day": 0.8
+    },
+    "tiktok": {
+      "optimal_hours_wita": [
+        18,
+        19,
+        20,
+        21,
+        22
+      ],
+      "posts_per_day": 1.0
+    },
+    "whatsapp": {
+      "optimal_hours_wita": [
+        9,
+        12,
+        16
+      ],
+      "posts_per_day": 0.3
+    },
+    "x_twitter": {
+      "optimal_hours_wita": [
+        8,
+        12,
+        17,
+        22
+      ],
+      "posts_per_day": 0.3
+    },
+    "xiaohongshu_weibo": {
+      "optimal_hours_wita": [
+        12,
+        19,
+        21
+      ],
+      "posts_per_day": 0.14
+    },
+    "youtube_long": {
+      "optimal_hours_wita": [
+        19,
+        20,
+        21
+      ],
+      "posts_per_day": 0.14
+    },
+    "youtube_shorts": {
+      "optimal_hours_wita": [
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "posts_per_day": 0.43
+    }
+  },
+  "format_mix_by_objective": {
+    "audience": {
+      "reel_short": 0.45,
+      "short_video": 0.2,
+      "thread": 0.15,
+      "carousel": 0.1,
+      "note_post": 0.1
+    },
+    "authority": {
+      "long_post": 0.25,
+      "carousel": 0.2,
+      "long_video": 0.15,
+      "long_article": 0.15,
+      "thread": 0.15,
+      "reel_short": 0.1
+    },
+    "lead": {
+      "carousel": 0.35,
+      "reel_short": 0.25,
+      "long_post": 0.15,
+      "thread": 0.1,
+      "newsletter_email": 0.1,
+      "long_article": 0.05
+    }
+  },
+  "hook_pattern_top_by_persona": {
+    "expat_boomer_retiree": [
+      "story",
+      "list",
+      "contrarian"
+    ],
+    "expat_italian_aire": [
+      "story",
+      "stat",
+      "contrarian"
+    ],
+    "expat_techie_pma": [
+      "stat",
+      "contrarian",
+      "list"
+    ],
+    "id_founder_pma": [
+      "stat",
+      "contrarian",
+      "list"
+    ],
+    "id_konsultan_kadin": [
+      "stat",
+      "contrarian",
+      "list"
+    ],
+    "id_umkm_digital": [
+      "story",
+      "stat",
+      "question"
+    ]
+  },
+  "pillar_kpi_targets": {
+    "audience": {
+      "instagram_followers_net_new": 2500,
+      "ig_reach_per_week_target": 120000,
+      "threads_followers_net_new": 1500,
+      "newsletter_subscribers_90d_target": 1500
+    },
+    "authority": {
+      "ai_citations_90d_target": 25,
+      "branded_search_uplift_pct": 30,
+      "linkedin_followers_net_new": 800,
+      "saves_per_post_median_target": 60
+    },
+    "lead": {
+      "leads_social_90d_target": 45,
+      "leads_social_share_of_total_pct": 12.0,
+      "cr_target_pct": 3.0,
+      "utm_coverage_pct_target": 80.0
+    }
+  },
+  "channel_priority_top3": [
+    "instagram",
+    "linkedin",
+    "newsletter"
+  ],
+  "publisher_enabled_by_channel": {
+    "instagram": false,
+    "linkedin": false,
+    "tiktok": false,
+    "threads": false,
+    "x_twitter": false,
+    "youtube_long": false,
+    "youtube_shorts": false,
+    "telegram": false,
+    "whatsapp": false,
+    "newsletter": false,
+    "blog_seo": false,
+    "podcast": false,
+    "xiaohongshu_weibo": false,
+    "quora_reddit": false
+  }
+}
