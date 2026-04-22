@@ -14,7 +14,9 @@ from organism.sanitize import sanitize_payload
 from organism.redis_bus import EventBus
 
 
-ORGANISM_JSONL_DEFAULT = Path("/var/log/organism/events.jsonl")
+ORGANISM_JSONL_DEFAULT = Path(
+    os.getenv("ORGANISM_JSONL_PATH", str(Path.home() / "logs" / "organism" / "events.jsonl"))
+)
 _REDIS_URL = os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0")
 _bus_singleton: EventBus | None = None
 
@@ -28,12 +30,21 @@ def _get_bus() -> EventBus:
     return _bus_singleton
 
 
-def _host() -> str:
+def _reset_bus_for_tests() -> None:
+    """Test-only: reset singleton so the next _get_bus() creates fresh."""
+    global _bus_singleton
+    _bus_singleton = None
+
+
+def _detect_host() -> str:
     """Detect Pro vs Air from hostname."""
     h = socket.gethostname()
     if "Nuzantara-9" in h or "Air" in h:
         return "Air"
     return "Pro"
+
+
+_HOST: str = _detect_host()
 
 
 async def emit_event(
@@ -58,6 +69,6 @@ async def emit_event(
         payload=safe,
         correlation_id=correlation_id or str(uuid.uuid4()),
         is_actuation=is_actuation,
-        host=_host(),
+        host=_HOST,
     )
     await _get_bus().emit(ev)
