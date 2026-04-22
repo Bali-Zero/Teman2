@@ -615,9 +615,10 @@ async def _scan_cron_agent_logs() -> list[dict]:
         log_dir = Path(log_dir)
         if not log_dir.is_dir():
             continue
-        for log_path in sorted(log_dir.glob("*.log")):
+        log_files = await asyncio.to_thread(lambda: sorted(log_dir.glob("*.log")))
+        for log_path in log_files:
             try:
-                text = log_path.read_text(errors="replace")
+                text = await asyncio.to_thread(log_path.read_text, errors="replace")
             except OSError:
                 continue
             lines = text.splitlines()
@@ -1457,6 +1458,7 @@ def main() -> None:
         report.telegram_summary = build_telegram_summary(report)
 
     # Emit organism events for cron-agent log findings (blind-spot #1 fix).
+    # Import guard: only catches ImportError for missing organism package
     try:
         import sys as _sys
         _org_path = str(PROJECT_ROOT / "apps" / "organism")
@@ -1464,20 +1466,26 @@ def main() -> None:
             _sys.path.insert(0, _org_path)
         from organism.emit import emit_event as _emit_event
         from organism.schemas import Severity as _Severity
+        _organism_available = True
+    except ImportError as _imp_err:
+        log(f"organism not installed, cron_agent emit skipped: {_imp_err}")
+        _organism_available = False
 
+    # Emit call: separate block that does NOT swallow NameError etc.
+    if _organism_available:
         async def _emit_cron_findings() -> None:
-            cron_findings = await _scan_cron_agent_logs()
-            for finding in cron_findings:
+            findings = await _scan_cron_agent_logs()
+            for finding in findings:
                 await _emit_event(
                     severity=_Severity.ERROR,
                     source="guardian.system_doctor",
                     kind="cron_agent_failure",
                     payload=finding,
                 )
-
-        asyncio.run(_emit_cron_findings())
-    except Exception as _emit_err:
-        log(f"organism emit skipped (not available): {_emit_err}")
+        try:
+            asyncio.run(_emit_cron_findings())
+        except Exception as _emit_err:
+            log(f"organism emit error: {_emit_err}")
 
     # Output JSON
     print(json.dumps(asdict(report), indent=2, default=str))

@@ -149,20 +149,15 @@ def identify_zombies(
                 )
 
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Inside an async context (e.g. pytest-asyncio): schedule and
-                # don't block — fire-and-forget via ensure_future.
-                asyncio.ensure_future(_emit_all())
-            else:
-                loop.run_until_complete(_emit_all())
+            asyncio.get_running_loop()
+            # Already inside an event loop (pytest-asyncio, async caller) — schedule fire-and-forget
+            asyncio.ensure_future(_emit_all())
         except RuntimeError:
+            # No running loop (sync cron context) — run to completion
             try:
                 asyncio.run(_emit_all())
             except Exception:
                 pass  # organism bus unavailable — detection result still returned
-        except Exception:
-            pass  # organism bus unavailable — detection result still returned
 
     return zombies
 
