@@ -1,0 +1,190 @@
+{
+  "_meta": {
+    "version": 1,
+    "description": "Curated cross-NB claim dependencies. Hook in claim_extractor reads this file and populates 'related_claims' when a new claim matches a known pattern.",
+    "update_policy": "Human-curated only. NEVER auto-generate via LLM — risk of allucinated relations. Review required for any change.",
+    "schema": "each key is a claim-category selector 'nbX.CATEGORY[.subtopic]'. Value has 'requires_context_from' (consult these categories in other NBs for context) and 'enriches' (these categories elsewhere should be linked back).",
+    "last_curated": "2026-04-22"
+  },
+  "dependencies": {
+    "nb4.FEE_CHANGE.BPHTB": {
+      "requires_context_from": [
+        "nb5.PROCEDURAL_STEP.AJB_process",
+        "nb5.LEGAL_CHANGE.HGB_rules"
+      ],
+      "enriches": [
+        "nb5.FEE_CHANGE.property_transfer_cost"
+      ],
+      "keywords": ["bphtb", "bea perolehan hak atas tanah dan bangunan"],
+      "gloss": "BPHTB is a property transfer tax — always needs property-law context from NB-5."
+    },
+    "nb4.FEE_CHANGE.PBB": {
+      "requires_context_from": [
+        "nb5.LEGAL_CHANGE.property_tax_base"
+      ],
+      "enriches": [
+        "nb5.FEE_CHANGE.property_holding_cost"
+      ],
+      "keywords": ["pbb", "pajak bumi dan bangunan"],
+      "gloss": "Property tax recurring — NB-5 defines tax base."
+    },
+    "nb4.FEE_CHANGE.PPh_21": {
+      "requires_context_from": [
+        "nb10.ELIGIBILITY_RULE.foreign_hire_status"
+      ],
+      "enriches": [
+        "nb10.PROCEDURAL_STEP.payroll_compliance"
+      ],
+      "keywords": ["pph 21", "withholding income tax", "pemotongan pajak"],
+      "gloss": "Income tax withholding on salaries — needs employment context from NB-10."
+    },
+    "nb4.FEE_CHANGE.PPh_25": {
+      "requires_context_from": [
+        "nb3.ELIGIBILITY_RULE.PT_PMA_setup"
+      ],
+      "keywords": ["pph 25", "angsuran pajak penghasilan"],
+      "gloss": "Quarterly tax installment for PT PMA — company-setup context from NB-3."
+    },
+    "nb2.LEGAL_CHANGE.KITAS_E23": {
+      "requires_context_from": [
+        "nb3.PROCEDURAL_STEP.PT_PMA_sponsor",
+        "nb3.DOCUMENT_REQUIREMENT.sponsor_company"
+      ],
+      "enriches": [
+        "nb10.ELIGIBILITY_RULE.foreign_hire_process",
+        "nb4.FEE_CHANGE.PPh_21"
+      ],
+      "keywords": ["e23", "kitas kerja", "working kitas", "tka"],
+      "gloss": "Work KITAS requires company sponsor from NB-3 and affects payroll NB-10/tax NB-4."
+    },
+    "nb2.LEGAL_CHANGE.KITAS_E28": {
+      "requires_context_from": [
+        "nb3.LEGAL_CHANGE.foreign_investment_threshold"
+      ],
+      "keywords": ["e28", "golden visa", "investor visa"],
+      "gloss": "Investor KITAS — investment threshold defined in NB-3."
+    },
+    "nb2.LEGAL_CHANGE.KITAS_E31": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb4.FEE_CHANGE.dependent_tax_status"
+      ],
+      "keywords": ["e31", "family kitas", "dependent"],
+      "gloss": "Family KITAS — affects dependent tax status."
+    },
+    "nb2.LEGAL_CHANGE.KITAS_E33": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb8.ELIGIBILITY_RULE.expat_healthcare_coverage"
+      ],
+      "keywords": ["e33", "second home", "retirement", "nomad visa", "pensiun"],
+      "gloss": "Second Home / Nomad / Retiree KITAS — enriches NB-8 expat life."
+    },
+    "nb5.LEGAL_CHANGE.PP_28_2025": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb3.LEGAL_CHANGE.foreign_investment_property_rules"
+      ],
+      "keywords": ["pp 28/2025", "peraturan pemerintah nomor 28 tahun 2025"],
+      "gloss": "PP 28/2025 changed property rules for foreigners — ripples into PT PMA investment rules."
+    },
+    "nb5.LEGAL_CHANGE.HGB_rules": {
+      "requires_context_from": [
+        "nb3.LEGAL_CHANGE.PT_PMA_as_owner"
+      ],
+      "enriches": [
+        "nb4.FEE_CHANGE.BPHTB",
+        "nb4.FEE_CHANGE.PBB"
+      ],
+      "keywords": ["hgb", "hak guna bangunan"],
+      "gloss": "HGB title — PT PMA is the typical vehicle (NB-3), triggers property tax (NB-4)."
+    },
+    "nb5.LEGAL_CHANGE.Hak_Pakai": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb2.ELIGIBILITY_RULE.foreigner_residency_link"
+      ],
+      "keywords": ["hak pakai", "right of use"],
+      "gloss": "Hak Pakai — direct foreigner ownership path, ties to KITAS duration."
+    },
+    "nb6.LEGAL_CHANGE.OSS_RBA_changes": {
+      "requires_context_from": [
+        "nb3.PROCEDURAL_STEP.NIB_registration"
+      ],
+      "enriches": [
+        "nb3.LEGAL_CHANGE.licensing_requirements"
+      ],
+      "keywords": ["oss-rba", "online single submission", "nib"],
+      "gloss": "OSS-RBA licensing updates — company-setup NB-3 deeply affected."
+    },
+    "nb6.LEGAL_CHANGE.BPJS_rates_2025": {
+      "requires_context_from": [
+        "nb10.ELIGIBILITY_RULE.mandatory_coverage"
+      ],
+      "enriches": [
+        "nb4.FEE_CHANGE.PPh_21",
+        "nb10.PROCEDURAL_STEP.payroll_compliance"
+      ],
+      "keywords": ["bpjs ketenagakerjaan", "bpjs kesehatan", "jaminan sosial"],
+      "gloss": "BPJS contribution rate changes — payroll/tax/team trifecta."
+    },
+    "nb6.LEGAL_CHANGE.UU_Cipta_Kerja": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb10.ELIGIBILITY_RULE.employment_contract_types",
+        "nb2.LEGAL_CHANGE.KITAS_E23"
+      ],
+      "keywords": ["uu cipta kerja", "omnibus law", "uu 11/2020", "uu 6/2023"],
+      "gloss": "Omnibus employment law — PKWT/PKWTT + TKA hire rules."
+    },
+    "nb10.ELIGIBILITY_RULE.foreign_hire_process": {
+      "requires_context_from": [
+        "nb2.LEGAL_CHANGE.KITAS_E23",
+        "nb6.LEGAL_CHANGE.UU_Cipta_Kerja"
+      ],
+      "keywords": ["tka process", "foreign hire", "rptka"],
+      "gloss": "Hiring foreigners: KITAS E23 from NB-2 + labor law from NB-6."
+    },
+    "nb10.PROCEDURAL_STEP.payroll_compliance": {
+      "requires_context_from": [
+        "nb4.FEE_CHANGE.PPh_21",
+        "nb6.LEGAL_CHANGE.BPJS_rates_2025"
+      ],
+      "keywords": ["payroll", "slip gaji", "withholding"],
+      "gloss": "Monthly payroll run: tax (PPh 21) + BPJS + THR if annual."
+    },
+    "nb3.LEGAL_CHANGE.PT_PMA_capital_threshold": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb2.LEGAL_CHANGE.KITAS_E28"
+      ],
+      "keywords": ["modal pma", "pma capital", "minimum investment", "idr 10 miliar"],
+      "gloss": "PT PMA minimum capital — triggers Investor KITAS eligibility."
+    },
+    "nb3.LEGAL_CHANGE.PT_PMA_as_owner": {
+      "requires_context_from": [],
+      "enriches": [
+        "nb5.LEGAL_CHANGE.HGB_rules"
+      ],
+      "keywords": ["pt pma property", "foreign company land"],
+      "gloss": "PT PMA as property ownership vehicle — HGB context."
+    },
+    "nb8.ELIGIBILITY_RULE.expat_healthcare_coverage": {
+      "requires_context_from": [
+        "nb2.LEGAL_CHANGE.KITAS_E33",
+        "nb6.LEGAL_CHANGE.BPJS_rates_2025"
+      ],
+      "keywords": ["expat insurance", "asuransi wna", "bimc", "siloam"],
+      "gloss": "Expat healthcare — KITAS type determines BPJS eligibility."
+    },
+    "nb7.DOCUMENT_REQUIREMENT.E_E_A_T_for_legal": {
+      "requires_context_from": [
+        "nb2.LEGAL_CHANGE.KITAS_E23",
+        "nb4.FEE_CHANGE.PPh_21",
+        "nb5.LEGAL_CHANGE.HGB_rules"
+      ],
+      "keywords": ["e-e-a-t", "ymyl", "legal content seo"],
+      "gloss": "YMYL content needs authoritative citations from domain NBs."
+    }
+  }
+}

@@ -325,6 +325,8 @@ def append_claims_to_registry(
 
     # Yajña Ledger hook — record CLAIM_OFFERED for each new claim.
     # Optional, silent on failure, disabled by env YAJNA_LEDGER_DISABLED=1.
+    # Also consults the Dependency Graph (if nb_dependency.json present) and
+    # attaches related_claims pointers to the ledger metadata.
     try:
         from apps.evaluator.nlm_deep_research.yajna_ledger import (
             EVENT_CLAIM_OFFERED,
@@ -340,20 +342,48 @@ def append_claims_to_registry(
                 nb_key = p
                 break
 
+        # Load dependency graph once per batch — cached, silent on missing file.
+        try:
+            from apps.evaluator.nlm_deep_research.dependency_graph import (
+                find_dependencies_for_claim,
+                load_dependencies,
+            )
+
+            deps_map = load_dependencies()
+        except Exception:
+            deps_map = {}
+
+        def _build_meta(c: ClaimRecord) -> dict:
+            meta: dict = {
+                "category": c.category,
+                "confidence": c.confidence_score,
+                "confidence_class": c.confidence_class,
+            }
+            if deps_map and nb_key:
+                try:
+                    matches = find_dependencies_for_claim(
+                        claim_text=c.claim_text,
+                        category=c.category,
+                        nb=nb_key,
+                        deps=deps_map,
+                    )
+                    if matches:
+                        # Keep compact — top match's enriches/requires (for wire size)
+                        top = matches[0]
+                        meta["dependency"] = {
+                            "key": top["key"],
+                            "requires_context_from": top["requires_context_from"],
+                            "enriches": top["enriches"],
+                            "matched_keywords": top["matched_keywords"],
+                        }
+                except Exception:
+                    pass
+            return meta
+
         append_events_batch(
             event_type=EVENT_CLAIM_OFFERED,
             nb=nb_key,
-            entries=[
-                (
-                    c.claim_id,
-                    {
-                        "category": c.category,
-                        "confidence": c.confidence_score,
-                        "confidence_class": c.confidence_class,
-                    },
-                )
-                for c in claims
-            ],
+            entries=[(c.claim_id, _build_meta(c)) for c in claims],
         )
     except Exception as exc:  # pragma: no cover — hook must never block extractor
         logger.debug("yajna hook skipped: %s", exc)
