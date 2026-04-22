@@ -29,7 +29,7 @@ class Event(BaseModel):
     @field_validator("payload")
     @classmethod
     def _max_2kb(cls, v: dict) -> dict:
-        if len(json.dumps(v)) > 2048:
+        if len(json.dumps(v, default=str)) > 2048:
             raise ValueError("payload_too_large: max 2KB")
         return v
 
