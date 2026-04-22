@@ -30,6 +30,7 @@ File schema (forward-compatible — old fields untouched)::
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -101,6 +102,69 @@ def _trailing_bad_streak(entries: Iterable[dict]) -> int:
         else:
             break
     return streak
+
+
+def identify_zombies(
+    agent_state: dict[str, dict],
+) -> dict[str, dict]:
+    """Relaxed zombie criterion for direct agent-state dicts (W0.2 blind-spot).
+
+    Accepts a dict mapping agent_name -> state dict with keys:
+      - ``consecutive_exit1``: int — number of consecutive last_exit=1 cycles
+      - ``last_pid``: int | None
+      - ``label``: str (launchd label, optional)
+
+    An agent is zombie when ``consecutive_exit1 >= CONSECUTIVE_BAD_THRESHOLD``
+    (default 3). Returns a sub-dict of zombies {agent_name: state_dict}.
+
+    Emits a ``zombie_detected`` event per zombie via organism.emit.emit_event
+    (CRITICAL severity). The emit is fire-and-forget via asyncio.run(); if the
+    organism bus is unavailable the detection still returns normally.
+    """
+    zombies: dict[str, dict] = {}
+    for agent_name, state in agent_state.items():
+        consecutive = int(state.get("consecutive_exit1", 0))
+        if consecutive >= CONSECUTIVE_BAD_THRESHOLD:
+            zombies[agent_name] = state
+
+    if zombies:
+        async def _emit_all() -> None:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _org = str(_Path(__file__).parents[2] / "apps" / "organism")
+            if _org not in _sys.path:
+                _sys.path.insert(0, _org)
+            from organism.emit import emit_event
+            from organism.schemas import Severity
+            for agent_name, state in zombies.items():
+                await emit_event(
+                    severity=Severity.CRITICAL,
+                    source="guardian.zombie_hunter",
+                    kind="zombie_detected",
+                    payload={
+                        "agent": agent_name,
+                        "consecutive_exit1": int(state.get("consecutive_exit1", 0)),
+                        "last_pid": state.get("last_pid"),
+                    },
+                )
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Inside an async context (e.g. pytest-asyncio): schedule and
+                # don't block — fire-and-forget via ensure_future.
+                asyncio.ensure_future(_emit_all())
+            else:
+                loop.run_until_complete(_emit_all())
+        except RuntimeError:
+            try:
+                asyncio.run(_emit_all())
+            except Exception:
+                pass  # organism bus unavailable — detection result still returned
+        except Exception:
+            pass  # organism bus unavailable — detection result still returned
+
+    return zombies
 
 
 def detect_zombies(
