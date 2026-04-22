@@ -2,7 +2,9 @@
 
 Pulls:
 - Account summary (followers_count, media_count)
-- Per-post insights (likes, comments, saved, reach, impressions, video_views)
+- Per-post insights (likes, comments, saved, reach, video_views). `impressions`
+  was deprecated by Meta in Graph API v22+ for media insights; kept as
+  dataclass field with default=0 for forward compatibility if Meta reinstates.
 
 Scope: ONLY @balizero0 own account. Competitor posts are scraped manually
 (see docs/runbooks/competitor-scrape-manual.md) because Graph API requires
