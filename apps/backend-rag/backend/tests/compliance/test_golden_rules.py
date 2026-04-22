@@ -30,11 +30,23 @@ DIRS_TO_CHECK = [APP_DIR, SERVICES_DIR, CORE_DIR, MIDDLEWARE_DIR]
 
 
 def get_python_files(directory: Path) -> list[Path]:
-    """Get all Python files in a directory, excluding __pycache__."""
+    """Get all Python files in a directory, excluding __pycache__.
+
+    Also excludes:
+    - ``benchmarks/`` — standalone perf scripts, print() is the
+      intended UI.
+    - ``scripts/`` — CLI entry points, print() is again the UI.
+    """
     files = []
     for path in directory.rglob("*.py"):
-        if "__pycache__" not in str(path) and "__init__.py" not in path.name:
-            files.append(path)
+        path_str = str(path)
+        if "__pycache__" in path_str:
+            continue
+        if "__init__.py" in path.name:
+            continue
+        if "/benchmarks/" in path_str or "/scripts/" in path_str:
+            continue
+        files.append(path)
     return files
 
 
@@ -182,19 +194,41 @@ def test_golden_rule_6_no_hardcoded_secrets():
 
 
 class PrintStatementChecker(ast.NodeVisitor):
-    """AST visitor to find print() calls."""
+    """AST visitor to find print() calls.
 
-    def __init__(self, file_path: str) -> None:
+    The source is also scanned line-by-line for ``# noqa: T201`` markers
+    so callers can whitelist a specific print() that is genuinely the
+    right tool (e.g. the sentry-hook fallback that can't depend on
+    ``logger`` without risking recursion).
+    """
+
+    def __init__(self, file_path: str, noqa_lines: frozenset[int] = frozenset()) -> None:
         self.file_path = file_path
         self.violations: list[str] = []
+        self._noqa_lines = noqa_lines
 
     def visit_Call(self, node: ast.Call) -> None:
         """Check for print() calls."""
-        if isinstance(node.func, ast.Name) and node.func.id == "print":
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id == "print"
+            and node.lineno not in self._noqa_lines
+        ):
             self.violations.append(
                 f"{self.file_path}:{node.lineno} - Found print() statement - use logger instead",
             )
         self.generic_visit(node)
+
+
+def _noqa_print_lines(file_path: Path) -> frozenset[int]:
+    """Return line numbers carrying a ``# noqa: T201`` marker."""
+    try:
+        lines = file_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return frozenset()
+    return frozenset(
+        idx + 1 for idx, line in enumerate(lines) if "noqa: T201" in line
+    )
 
 
 def test_golden_rule_8_no_print_statements():
@@ -217,7 +251,10 @@ def test_golden_rule_8_no_print_statements():
             if tree is None:
                 continue
 
-            checker = PrintStatementChecker(str(file_path.relative_to(BACKEND_ROOT)))
+            checker = PrintStatementChecker(
+                str(file_path.relative_to(BACKEND_ROOT)),
+                noqa_lines=_noqa_print_lines(file_path),
+            )
             checker.visit(tree)
             violations.extend(checker.violations)
 
