@@ -22,6 +22,14 @@ async def test_registry_includes_adopt_module(fake_redis):
 
 
 @pytest.mark.asyncio
+async def test_registry_includes_consolidate_redundancy(fake_redis):
+    """W3.C — consolidate_redundancy is wired into the shared registry."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert "consolidate_redundancy" in reg
+    assert reg["consolidate_redundancy"].name == "consolidate_redundancy"
+
+
+@pytest.mark.asyncio
 async def test_registry_includes_cleanup_suite(fake_redis):
     """W3.B — cleanup_cache / cleanup_branches / cleanup_zombie_plist wired."""
     reg = build_actuator_registry(redis=fake_redis)
