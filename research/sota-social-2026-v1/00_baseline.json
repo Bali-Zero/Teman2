@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-04-22T12:16:48Z",
+  "captured_at": "2026-04-22T15:15:35Z",
   "gsc": {
     "clicks_total": 56,
     "impressions_total": 640,
@@ -11,7 +11,7 @@
     "page_count": 0
   },
   "instagram": {
-    "followers_count": 10360,
+    "followers_count": 10365,
     "media_count": 245
   },
   "brevo": {
@@ -32,6 +32,6 @@
   "crm": {
     "leads_total_90d": 324,
     "leads_social_90d": 5,
-    "utm_coverage_pct": 0.9814814814814815
+    "utm_coverage_pct": 1.0
   }
 }
