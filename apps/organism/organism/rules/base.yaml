@@ -1,0 +1,20 @@
+rules:
+  - id: cron_agent_failure_restart
+    match: {kind: cron_agent_failure, severity: [error, critical]}
+    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    confidence: 0.95
+
+  - id: disk_fill_cleanup_log
+    match: {kind: disk_fill, payload.percent_gte: 85}
+    action: {actuator: cleanup_log, params: {min_age_days: 30}}
+    confidence: 0.90
+
+  - id: zombie_detected_restart
+    match: {kind: zombie_detected}
+    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    confidence: 0.85
+
+  - id: new_module_notify
+    match: {kind: new_module}
+    action: {actuator: notify_telegram, params: {message: "new module detected: {payload.path}"}}
+    confidence: 0.80
