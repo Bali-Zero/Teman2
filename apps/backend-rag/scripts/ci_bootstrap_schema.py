@@ -179,6 +179,19 @@ def main() -> int:
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
+
+    # Prod-only columns added by hand over time that never made it into a
+    # migration file. The SQLModel class doesn't declare them, so
+    # create_all() doesn't include them either — but router code (CRM,
+    # drive poll, lkpm ready-pack, invoicing) reads/writes them via raw
+    # SQL. Add them here so CI's fresh DB matches prod's shape.
+    with engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE clients "
+            "ADD COLUMN IF NOT EXISTS google_drive_folder_id VARCHAR(100)"
+        ))
+    print("[bootstrap] clients.google_drive_folder_id ensured")
+
     return 0
 
 
