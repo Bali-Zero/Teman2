@@ -15,6 +15,7 @@ import {
   Plus,
   LayoutGrid,
   List,
+  ChevronDown,
   ChevronRight,
   Loader2,
   User,
@@ -186,6 +187,7 @@ export default function PratichePage() {
   const [selectedMonth, setSelectedMonth] = useState(
     searchParams.get("month") || currentMonthDefault,
   );
+  const [completedCollapsed, setCompletedCollapsed] = useState(true);
   const [expandedGhosts, setExpandedGhosts] = useState<Record<string, boolean>>(
     {},
   );
@@ -1170,17 +1172,43 @@ export default function PratichePage() {
                 />
 
                 <div className="p-4 flex flex-col flex-1">
-                  <div className="flex items-center justify-between mb-3">
+                  <div
+                    className={`flex items-center justify-between mb-3 ${
+                      isCompleted ? "cursor-pointer select-none" : ""
+                    }`}
+                    onClick={
+                      isCompleted
+                        ? () => setCompletedCollapsed((v) => !v)
+                        : undefined
+                    }
+                    role={isCompleted ? "button" : undefined}
+                    aria-expanded={isCompleted ? !completedCollapsed : undefined}
+                    aria-label={
+                      isCompleted
+                        ? completedCollapsed
+                          ? "Expand completed"
+                          : "Collapse completed"
+                        : undefined
+                    }
+                  >
                     <div className="flex items-center gap-2">
                       <span
                         className={`w-2 h-2 rounded-full ${colors.dotColor}`}
                       />
                       <h3
-                        className="font-semibold text-sm"
+                        className="font-semibold text-sm uppercase tracking-wider"
                         style={{ color: colors.textColor }}
                       >
                         {colors.label}
                       </h3>
+                      {isCompleted && (
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform ${
+                            completedCollapsed ? "-rotate-90" : ""
+                          }`}
+                          style={{ color: colors.textColor }}
+                        />
+                      )}
                     </div>
                     <span
                       className="text-xs px-2 py-1 rounded-full font-medium"
@@ -1226,6 +1254,24 @@ export default function PratichePage() {
                         <SkeletonCard />
                         <SkeletonCard />
                       </div>
+                    ) : isCompleted && completedCollapsed ? (
+                      <button
+                        type="button"
+                        onClick={() => setCompletedCollapsed(false)}
+                        className="w-full rounded-lg border border-dashed text-xs py-6 px-3 transition-colors hover:bg-white/5"
+                        style={{
+                          borderColor: colors.tintBorder,
+                          color: colors.textColor,
+                        }}
+                        aria-label="Expand completed list"
+                      >
+                        <p className="font-medium">
+                          {columnPractices.length} completed
+                        </p>
+                        <p className="opacity-70 mt-1 text-[10px]">
+                          Click to expand
+                        </p>
+                      </button>
                     ) : columnPractices.length === 0 && ghosts.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--bz-border)] rounded-lg bg-[var(--bz-card)]/30">
                         <FolderKanban className="w-8 h-8 text-[var(--bz-text-2)] opacity-20 mb-2" />
@@ -1239,33 +1285,54 @@ export default function PratichePage() {
                           const cardIsCompleted =
                             getStatusColumn(practice.status) === "completed";
 
+                          const serviceLabel =
+                            practice.practice_type_name ||
+                            practice.practice_type_code
+                              ?.replace(/_/g, " ")
+                              .replace(/\b\w/g, (c) => c.toUpperCase()) ||
+                            "Process";
+
+                          const teamLeaderLabel = practice.client_lead
+                            ? teamMemberOptions.find(
+                                (m) => m.value === practice.client_lead,
+                              )?.label ||
+                              practice.client_lead.split("@")[0]
+                            : null;
+
+                          const priceValue =
+                            practice.actual_price ?? practice.quoted_price ?? 0;
+                          const priceStr = priceValue
+                            ? new Intl.NumberFormat("id-ID", {
+                                notation: "compact",
+                                currency: "IDR",
+                                style: "currency",
+                                maximumFractionDigits: 0,
+                              }).format(priceValue)
+                            : null;
+
                           return (
                             <div
                               key={practice.id}
-                              className={`p-3 rounded-lg border cursor-pointer transition-all hover:shadow-xl relative group backdrop-blur-sm hover:-translate-y-1 ${
+                              className={`relative group cursor-pointer rounded-2xl border transition-all hover:-translate-y-1 hover:shadow-2xl backdrop-blur-xl ${
                                 updatingId === practice.id
                                   ? "opacity-70 pointer-events-none"
                                   : ""
                               } ${
                                 selectedPractice?.id === practice.id
-                                  ? "border-[var(--bz-accent)] ring-1 ring-[var(--bz-accent)]/30"
-                                  : cardIsCompleted
-                                    ? "border-green-500/30"
-                                    : "border-[rgba(255,255,255,0.06)] hover:border-[var(--bz-accent)]/30"
+                                  ? "ring-1 ring-[var(--bz-accent)]/50"
+                                  : ""
                               }`}
-                              style={
-                                cardIsCompleted
-                                  ? {
-                                      background:
-                                        "linear-gradient(145deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.05) 100%)",
-                                      boxShadow:
-                                        "0 4px 20px rgba(34, 197, 94, 0.15)",
-                                    }
-                                  : {
-                                      background:
-                                        "linear-gradient(145deg, rgba(40,40,45,0.7) 0%, rgba(30,30,35,0.4) 100%)",
-                                    }
-                              }
+                              style={{
+                                // Liquid glass: column color tint + bright specular highlight
+                                background: `linear-gradient(150deg,
+                                  ${colors.gradientStart}26 0%,
+                                  ${colors.gradientEnd}14 45%,
+                                  rgba(255,255,255,0.04) 100%),
+                                  linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 30%),
+                                  rgba(20,20,24,0.55)`,
+                                borderColor: `${colors.gradientStart}55`,
+                                boxShadow: `0 1px 0 rgba(255,255,255,0.08) inset, 0 8px 24px ${colors.gradientStart}1f`,
+                              }}
                               onContextMenu={(e) =>
                                 handleContextMenu(e, practice)
                               }
@@ -1274,236 +1341,242 @@ export default function PratichePage() {
                               }
                             >
                               {updatingId === practice.id && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-lg z-10">
+                                <div className="absolute inset-0 flex items-center justify-center bg-[var(--bz-card)]/80 rounded-2xl z-10">
                                   <Loader2 className="w-5 h-5 animate-spin text-[var(--bz-accent)]" />
                                 </div>
                               )}
 
-                              {/* Card Header */}
-                              <div className="flex items-start justify-between mb-1">
-                                <p className="text-sm font-medium text-[var(--bz-text-1)] line-clamp-2 pr-6 flex items-center gap-1.5">
-                                  {cardIsCompleted && (
-                                    <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                              <div className="p-4">
+                                {/* Priority / state badges above title */}
+                                {(practice.priority === "urgent" ||
+                                  practice.priority === "high" ||
+                                  cardIsCompleted ||
+                                  (practice.payment_status &&
+                                    practice.payment_status !== "paid")) && (
+                                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                                    {practice.priority === "urgent" && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wide">
+                                        urgent
+                                      </span>
+                                    )}
+                                    {practice.priority === "high" && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
+                                        high
+                                      </span>
+                                    )}
+                                    {cardIsCompleted && (
+                                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                                    )}
+                                    {practice.payment_status &&
+                                      practice.payment_status !== "paid" && (
+                                        <span
+                                          className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium uppercase tracking-wide ${
+                                            practice.payment_status === "unpaid"
+                                              ? "bg-red-500/20 text-red-400"
+                                              : "bg-yellow-500/20 text-yellow-400"
+                                          }`}
+                                        >
+                                          {practice.payment_status}
+                                        </span>
+                                      )}
+                                  </div>
+                                )}
+
+                                {/* Title: CLIENT NAME — uppercase, bold, leading */}
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  {practice.client_id ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        router.push(
+                                          `/clients/${practice.client_id}`,
+                                        );
+                                      }}
+                                      className="text-left text-[15px] font-bold text-[var(--bz-text-1)] leading-tight tracking-wide uppercase line-clamp-2 hover:text-[var(--bz-accent)] transition-colors pr-6"
+                                      title="Open client profile"
+                                      aria-label="Open client profile"
+                                    >
+                                      {practice.client_name || "Unknown Client"}
+                                    </button>
+                                  ) : (
+                                    <p className="text-[15px] font-bold text-[var(--bz-text-1)] leading-tight tracking-wide uppercase line-clamp-2 pr-6">
+                                      {practice.client_name || "Unknown Client"}
+                                    </p>
                                   )}
-                                  {practice.priority === "urgent" && (
-                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-red-500/20 text-red-400 uppercase tracking-wide">
-                                      urgent
-                                    </span>
-                                  )}
-                                  {practice.priority === "high" && (
-                                    <span className="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded bg-orange-500/15 text-orange-400 uppercase tracking-wide">
-                                      high
-                                    </span>
-                                  )}
-                                  {practice.practice_type_code
-                                    ?.toUpperCase()
-                                    .replace(/_/g, " ") || "Process"}
+
+                                  <button
+                                    className="absolute top-3 right-3 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.08)] opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => handleMenuClick(e, practice)}
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {/* Subtitle: service name */}
+                                <p
+                                  className="text-xs font-medium mb-2 line-clamp-1"
+                                  style={{ color: colors.textColor }}
+                                >
+                                  {serviceLabel}
                                 </p>
 
-                                {/* 3-Dot Menu Trigger */}
-                                <button
-                                  className="absolute top-3 right-2 p-1 rounded-md text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)] hover:bg-[rgba(255,255,255,0.05)] opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => handleMenuClick(e, practice)}
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-                              </div>
+                                {/* Family-member tag */}
+                                {practice.family_member_name && (
+                                  <p className="text-[10px] text-[var(--bz-accent)] flex items-center gap-1 mb-2">
+                                    <User className="w-2.5 h-2.5" />
+                                    <span className="truncate">
+                                      for {practice.family_member_name}
+                                      {practice.family_member_relationship
+                                        ? ` (${practice.family_member_relationship})`
+                                        : ""}
+                                    </span>
+                                  </p>
+                                )}
 
-                              <div className="flex items-center gap-1.5 mb-2">
-                                {practice.client_id ? (
+                                {/* Team leader — small muted line */}
+                                {teamLeaderLabel && (
+                                  <p className="text-[10px] text-[var(--bz-text-2)] mb-3 truncate">
+                                    {teamLeaderLabel}
+                                  </p>
+                                )}
+
+                                {/* Price — doubled size, prominent */}
+                                {priceStr && (
+                                  <p
+                                    className={`text-xl font-bold tabular-nums leading-none ${
+                                      practice.payment_status === "paid"
+                                        ? "text-green-400"
+                                        : "text-[var(--bz-text-1)]"
+                                    }`}
+                                  >
+                                    {priceStr}
+                                  </p>
+                                )}
+
+                                {/* Meta row: expiry + age chips */}
+                                {(practice.expiry_date || practice.updated_at) && (
+                                  <div className="flex items-center gap-1.5 mt-3">
+                                    {practice.expiry_date &&
+                                      (() => {
+                                        const d = Math.ceil(
+                                          (new Date(
+                                            practice.expiry_date,
+                                          ).getTime() -
+                                            Date.now()) /
+                                            86400000,
+                                        );
+                                        const expiryDateStr = new Date(
+                                          practice.expiry_date,
+                                        ).toLocaleDateString("en-GB", {
+                                          day: "2-digit",
+                                          month: "short",
+                                          year: "numeric",
+                                        });
+                                        if (d < 0)
+                                          return (
+                                            <span
+                                              className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums"
+                                              title={`Expired on ${expiryDateStr}`}
+                                            >
+                                              exp {Math.abs(d)}d ago
+                                            </span>
+                                          );
+                                        if (d <= 30)
+                                          return (
+                                            <span
+                                              className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/15 text-yellow-400 tabular-nums"
+                                              title={`Expires ${expiryDateStr}`}
+                                            >
+                                              ⏰ {d}d
+                                            </span>
+                                          );
+                                        return null;
+                                      })()}
+                                    {practice.updated_at &&
+                                      (() => {
+                                        const ageDays = Math.floor(
+                                          (Date.now() -
+                                            new Date(
+                                              practice.updated_at,
+                                            ).getTime()) /
+                                            86400000,
+                                        );
+                                        if (ageDays === 0) return null;
+                                        const label =
+                                          ageDays >= 7
+                                            ? `${Math.floor(ageDays / 7)}w`
+                                            : `${ageDays}d`;
+                                        return (
+                                          <span
+                                            className={`text-[9px] px-1.5 py-0.5 rounded tabular-nums ${
+                                              ageDays > 14
+                                                ? "bg-red-500/15 text-red-400"
+                                                : ageDays > 7
+                                                  ? "bg-yellow-500/15 text-yellow-400"
+                                                  : "text-[var(--bz-text-2)]"
+                                            }`}
+                                            title={`Last updated ${ageDays} days ago`}
+                                          >
+                                            {label}
+                                          </span>
+                                        );
+                                      })()}
+                                  </div>
+                                )}
+
+                                {/* Quick actions — hidden until hover */}
+                                <div className="flex items-center gap-1 mt-3 pt-2 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {practice.client_phone && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const phone =
+                                          practice.client_phone?.replace(
+                                            /\D/g,
+                                            "",
+                                          );
+                                        window.open(
+                                          `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
+                                          "_blank",
+                                        );
+                                      }}
+                                      className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                                      title="WhatsApp"
+                                      aria-label="Contact via WhatsApp"
+                                    >
+                                      <MessageCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  {practice.client_email && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(
+                                          `mailto:${practice.client_email}`,
+                                          "_blank",
+                                        );
+                                      }}
+                                      className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                                      title="Email"
+                                      aria-label="Send email"
+                                    >
+                                      <Mail className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       router.push(
-                                        `/clients/${practice.client_id}`,
+                                        `/clients/${practice.client_id}?tab=documents`,
                                       );
                                     }}
-                                    className="text-xs text-[var(--bz-text-2)] truncate hover:text-[var(--bz-accent)] transition-colors text-left"
-                                    title="Open client profile"
-                                    aria-label="Open client profile"
+                                    className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                                    title="View Documents"
+                                    aria-label="View documents"
                                   >
-                                    {practice.client_name || "Unknown Client"}
+                                    <FileText className="w-3.5 h-3.5" />
                                   </button>
-                                ) : (
-                                  <p className="text-xs text-[var(--bz-text-2)] truncate">
-                                    {practice.client_name || "Unknown Client"}
-                                  </p>
-                                )}
-                                {practice.payment_status &&
-                                  practice.payment_status !== "paid" && (
-                                    <span
-                                      className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 font-medium ${
-                                        practice.payment_status === "unpaid"
-                                          ? "bg-red-500/20 text-red-400"
-                                          : "bg-yellow-500/20 text-yellow-400"
-                                      }`}
-                                    >
-                                      {practice.payment_status}
-                                    </span>
-                                  )}
-                              </div>
-
-                              <div className="flex items-center justify-between">
-                                {practice.client_lead ? (
-                                  <div className="flex items-center gap-1.5 bg-[var(--bz-accent)]/10 px-2 py-0.5 rounded text-[var(--bz-accent)]">
-                                    <User className="w-3 h-3" />
-                                    <p className="text-[10px] font-medium truncate max-w-[80px]">
-                                      {teamMemberOptions.find(
-                                        (m) => m.value === practice.client_lead,
-                                      )?.label ||
-                                        practice.client_lead.split("@")[0]}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <span className="text-[9px] text-[var(--bz-text-2)] opacity-50 italic">
-                                    Unassigned
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-1.5">
-                                  {practice.actual_price ||
-                                  practice.quoted_price ? (
-                                    <span
-                                      className={`text-[10px] font-medium ${
-                                        practice.payment_status === "paid"
-                                          ? "text-green-400"
-                                          : "text-[var(--bz-accent)]"
-                                      }`}
-                                    >
-                                      {new Intl.NumberFormat("id-ID", {
-                                        notation: "compact",
-                                        currency: "IDR",
-                                        style: "currency",
-                                        maximumFractionDigits: 0,
-                                      }).format(
-                                        practice.actual_price ||
-                                          practice.quoted_price ||
-                                          0,
-                                      )}
-                                    </span>
-                                  ) : null}
-                                  <span className="text-[10px] text-[var(--bz-text-2)]">
-                                    #{practice.id}
-                                  </span>
-                                  {practice.updated_at &&
-                                    (() => {
-                                      const ageDays = Math.floor(
-                                        (Date.now() -
-                                          new Date(
-                                            practice.updated_at,
-                                          ).getTime()) /
-                                          86400000,
-                                      );
-                                      if (ageDays === 0) return null;
-                                      const label =
-                                        ageDays >= 7
-                                          ? `${Math.floor(ageDays / 7)}w`
-                                          : `${ageDays}d`;
-                                      return (
-                                        <span
-                                          className={`text-[9px] px-1 py-0.5 rounded tabular-nums ${
-                                            ageDays > 14
-                                              ? "bg-red-500/15 text-red-400"
-                                              : ageDays > 7
-                                                ? "bg-yellow-500/15 text-yellow-400"
-                                                : "text-[var(--bz-text-2)]"
-                                          }`}
-                                          title={`Last updated ${ageDays} days ago`}
-                                        >
-                                          {label}
-                                        </span>
-                                      );
-                                    })()}
-                                  {practice.expiry_date &&
-                                    (() => {
-                                      const d = Math.ceil(
-                                        (new Date(
-                                          practice.expiry_date,
-                                        ).getTime() -
-                                          Date.now()) /
-                                          86400000,
-                                      );
-                                      const expiryDateStr = new Date(
-                                        practice.expiry_date,
-                                      ).toLocaleDateString("en-GB", {
-                                        day: "2-digit",
-                                        month: "short",
-                                        year: "numeric",
-                                      });
-                                      if (d < 0)
-                                        return (
-                                          <span
-                                            className="text-[9px] px-1 py-0.5 rounded bg-red-500/20 text-red-400 tabular-nums"
-                                            title={`Expired on ${expiryDateStr}`}
-                                          >
-                                            exp {Math.abs(d)}d ago
-                                          </span>
-                                        );
-                                      if (d <= 30)
-                                        return (
-                                          <span
-                                            className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/15 text-yellow-400 tabular-nums"
-                                            title={`Expires ${expiryDateStr}`}
-                                          >
-                                            ⏰{d}d
-                                          </span>
-                                        );
-                                      return null;
-                                    })()}
                                 </div>
-                              </div>
-
-                              {/* Quick Actions */}
-                              <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--bz-border)]">
-                                {practice.client_phone && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const phone =
-                                        practice.client_phone?.replace(
-                                          /\D/g,
-                                          "",
-                                        );
-                                      window.open(
-                                        `https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your process...`,
-                                        "_blank",
-                                      );
-                                    }}
-                                    className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                                    title="WhatsApp"
-                                    aria-label="Contact via WhatsApp"
-                                  >
-                                    <MessageCircle className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                {practice.client_email && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(
-                                        `mailto:${practice.client_email}`,
-                                        "_blank",
-                                      );
-                                    }}
-                                    className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                                    title="Email"
-                                    aria-label="Send email"
-                                  >
-                                    <Mail className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(
-                                      `/clients/${practice.client_id}?tab=documents`,
-                                    );
-                                  }}
-                                  className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                                  title="View Documents"
-                                  aria-label="View documents"
-                                >
-                                  <FileText className="w-3.5 h-3.5" />
-                                </button>
                               </div>
                             </div>
                           );
