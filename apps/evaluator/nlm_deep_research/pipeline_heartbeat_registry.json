@@ -16,5 +16,7 @@
   "gap_scanner_layer_b": { "schedule": "weekly_sun", "max_age_hours": 170 },
   "gap_scanner_remediation": { "schedule": "weekly_sun", "max_age_hours": 170 },
   "freshness_monitor": { "schedule": "daily_2x", "max_age_hours": 14 },
-  "multimodal_pipeline": { "schedule": "weekly", "max_age_hours": 170 }
+  "multimodal_pipeline": { "schedule": "weekly", "max_age_hours": 170 },
+  "yajna_scan": { "schedule": "weekly_sun", "max_age_hours": 170 },
+  "yin_yang_audit": { "schedule": "weekly_sun", "max_age_hours": 170 }
 }

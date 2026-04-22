@@ -322,6 +322,42 @@ def append_claims_to_registry(
     # Count total claims
     total = sum(1 for _ in open(claims_path))
     logger.info("Appended %d claims to %s (total: %d)", len(claims), claims_path, total)
+
+    # Yajña Ledger hook — record CLAIM_OFFERED for each new claim.
+    # Optional, silent on failure, disabled by env YAJNA_LEDGER_DISABLED=1.
+    try:
+        from apps.evaluator.nlm_deep_research.yajna_ledger import (
+            EVENT_CLAIM_OFFERED,
+            append_events_batch,
+        )
+
+        # Infer nb key from claims_file path (e.g. nlm_nb4_claims.jsonl -> nb4)
+        nb_key = ""
+        stem = claims_path.stem  # e.g. nlm_nb4_claims
+        parts = stem.split("_")
+        for p in parts:
+            if p.startswith("nb") and p[2:].isdigit():
+                nb_key = p
+                break
+
+        append_events_batch(
+            event_type=EVENT_CLAIM_OFFERED,
+            nb=nb_key,
+            entries=[
+                (
+                    c.claim_id,
+                    {
+                        "category": c.category,
+                        "confidence": c.confidence_score,
+                        "confidence_class": c.confidence_class,
+                    },
+                )
+                for c in claims
+            ],
+        )
+    except Exception as exc:  # pragma: no cover — hook must never block extractor
+        logger.debug("yajna hook skipped: %s", exc)
+
     return total
 
 
