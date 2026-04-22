@@ -123,26 +123,90 @@ def main() -> int:
         ))
         # lkpm_reports: created by old-style migration_063 (backend/migrations/
         # *.py), which the modern runner (db/migrations_v2/*.sql) does not
-        # discover. migrations_v2 108_lkpm_receipts.sql FK-references it and
-        # 110_lkpm_allowlist_krisna.sql ALTERs it, so without this stub those
-        # two migrations fail on a fresh CI DB. Minimal columns only — enough
-        # for 108's FK target (id) and 110's ALTER (lkpm_assigned_to). No
-        # SQLModel class references it, so no stub Table registration needed.
+        # discover. Without this stub every test touching the table fails
+        # with UndefinedColumnError for any column beyond id/client_id.
+        # Full schema mirrored from migration_063_lkpm_reports.py so that
+        # tests inserting realized_equipment_* / cumulative_* / etc. work.
         conn.execute(text(
             """
             CREATE TABLE IF NOT EXISTS lkpm_reports (
                 id SERIAL PRIMARY KEY,
-                client_id INTEGER,
-                quarter TEXT,
-                year INTEGER,
-                status TEXT DEFAULT 'draft',
+                client_id INTEGER NOT NULL,
+                quarter TEXT NOT NULL,
+                year INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
                 lkpm_assigned_to TEXT,
-                created_at TIMESTAMPTZ DEFAULT NOW(),
+
+                realized_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_equipment_import BIGINT NOT NULL DEFAULT 0,
+                realized_building_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_building_import BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                realized_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                realized_land BIGINT NOT NULL DEFAULT 0,
+                realized_working_capital BIGINT NOT NULL DEFAULT 0,
+                realized_other BIGINT NOT NULL DEFAULT 0,
+
+                cumulative_equipment_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_equipment_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_building_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_domestic BIGINT NOT NULL DEFAULT 0,
+                cumulative_vehicle_import BIGINT NOT NULL DEFAULT 0,
+                cumulative_land BIGINT NOT NULL DEFAULT 0,
+                cumulative_working_capital BIGINT NOT NULL DEFAULT 0,
+                cumulative_other BIGINT NOT NULL DEFAULT 0,
+
+                current_tki INTEGER NOT NULL DEFAULT 0,
+                current_tka INTEGER NOT NULL DEFAULT 0,
+
+                quarterly_revenue BIGINT NOT NULL DEFAULT 0,
+                annual_revenue BIGINT NOT NULL DEFAULT 0,
+
+                narrative_obstacles TEXT,
+                narrative_plans TEXT,
+
+                validation_status TEXT NOT NULL DEFAULT 'pending',
+                validation_alerts JSONB NOT NULL DEFAULT '[]',
+                validated_at TIMESTAMPTZ,
+                validated_by TEXT,
+
+                client_approved BOOLEAN NOT NULL DEFAULT FALSE,
+                client_approved_at TIMESTAMPTZ,
+
+                oss_submitted BOOLEAN NOT NULL DEFAULT FALSE,
+                oss_submitted_at TIMESTAMPTZ,
+                oss_submitted_by TEXT,
+                oss_receipt_number TEXT,
+                oss_receipt_file_url TEXT,
+
+                data_source TEXT NOT NULL DEFAULT 'manual',
+                has_ai_categorized_items BOOLEAN NOT NULL DEFAULT FALSE,
+                ai_categorized_count INTEGER NOT NULL DEFAULT 0,
+
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """,
+        ))
+        # system_settings: key/value store originally created by
+        # backend/migrations/migration_062_client_drive_subfolders.sql (old
+        # numbered series), which the modern runner (db/migrations_v2/*.sql)
+        # does not discover. migrations_v2/114_compliance_alerts.sql reads
+        # the table via a DO block guarded with an information_schema check,
+        # so migrations still apply cleanly on a fresh CI DB — but the
+        # compliance_alerts router tests (autotune gate) expect the table
+        # to exist for INSERT/UPDATE. Mirroring the legacy schema verbatim.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports tables ensured in DB")
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
@@ -179,6 +243,42 @@ def main() -> int:
 
     SQLModel.metadata.create_all(engine)
     print(f"[bootstrap] create_all done against {db_url.split('@')[-1]}")
+
+    # Prod-only columns added by hand over time that never made it into a
+    # migration file. The SQLModel `Client` class in
+    # app/modules/crm/models.py doesn't declare them, so create_all()
+    # doesn't include them either — but router code (CRM, drive poll,
+    # lkpm ready-pack, invoicing, portal) reads/writes them via raw SQL.
+    # Add them here so CI's fresh DB matches prod's shape.
+    #
+    # Grep sources:
+    #   rg -n "FROM clients|SELECT\\s*\\S+\\s*clients\\." apps/backend-rag/backend
+    #
+    # Columns not yet promoted to a migration file:
+    #   google_drive_folder_id  — drive root folder per client
+    #   drive_folder_id         — legacy drive folder id (portal + events)
+    #   drive_folder_url        — legacy drive folder url (documents)
+    #   deleted_at              — soft-delete marker (portal, several routers)
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS google_drive_folder_id VARCHAR(100)",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_id VARCHAR(100)",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS drive_folder_url TEXT",
+            "ALTER TABLE clients ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+            # SQLModel's Client declares created_at/updated_at with a
+            # Python-side default_factory=datetime.utcnow but no DB
+            # server_default, so create_all() emits NOT NULL columns with
+            # no DEFAULT. Legacy tests (several conftests + a few router
+            # integration tests) INSERT without touching these columns and
+            # crash with NotNullViolationError. Prod has a DEFAULT NOW()
+            # applied by an old hand-run ALTER; replicate it here so CI
+            # matches prod behaviour without having to patch every test.
+            "ALTER TABLE clients ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE clients ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
+
     return 0
 
 
