@@ -10,6 +10,7 @@ import {
   Trash2,
   DollarSign,
   SlidersHorizontal,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -261,6 +262,17 @@ export function ProcessTab({
                       #{practice.id}
                     </span>
                   </div>
+                  {practice.family_member_name && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-[var(--bz-accent)]">
+                      <User className="w-3 h-3" />
+                      <span className="truncate">
+                        for {practice.family_member_name}
+                        {practice.family_member_relationship
+                          ? ` (${practice.family_member_relationship})`
+                          : ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span

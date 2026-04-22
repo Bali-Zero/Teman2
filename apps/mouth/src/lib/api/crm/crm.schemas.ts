@@ -171,6 +171,7 @@ export const createPracticeSchema = z.object({
   internal_notes: emptyToUndefined,
   quoted_price: z.number().nonnegative("Price cannot be negative").optional(),
   start_date: optionalDate,
+  family_member_id: z.number().positive().optional(),
 });
 
 export type CreatePracticeInput = z.input<typeof createPracticeSchema>;

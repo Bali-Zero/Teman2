@@ -16,10 +16,11 @@ import {
   Calendar,
   ChevronDown,
   Tag,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import type { CreatePracticeParams, Client } from "@/lib/api/crm/crm.types";
+import type { CreatePracticeParams, Client, FamilyMember } from "@/lib/api/crm/crm.types";
 import * as partnersApi from "@/lib/api/partners/partners";
 import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
@@ -77,7 +78,11 @@ export default function NewPracticePage() {
     start_date: "",
     // CRIT-8 residual: partners use UUID strings now
     referrer_id: null as string | null,
+    family_member_id: "" as string, // "" = for main client; otherwise the family member id as string
   });
+
+  // Family members of the selected client (for dependent-KITAS etc.)
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
 
   // Client Search State
   const [clientSearch, setClientSearch] = useState("");
@@ -171,6 +176,39 @@ export default function NewPracticePage() {
         .catch((err) => logger.error("Failed to load preselected client", err));
     }
   }, [searchParams]);
+
+  // Load family members whenever the selected client changes. Reset the
+  // family_member_id selection as well, since a member from the previous
+  // client must never be carried over.
+  useEffect(() => {
+    const cid = formData.client_id;
+    if (!cid) {
+      setFamilyMembers([]);
+      setFormData((prev) => ({ ...prev, family_member_id: "" }));
+      return;
+    }
+    let cancelled = false;
+    api.crm
+      .getFamilyMembers(cid)
+      .then((members) => {
+        if (!cancelled) setFamilyMembers(members);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFamilyMembers([]);
+          logger.warn("Failed to load family members", {
+            component: "NewProcess",
+            action: "loadFamily",
+            itemId: String(cid),
+          });
+        }
+        void err;
+      });
+    setFormData((prev) => ({ ...prev, family_member_id: "" }));
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.client_id]);
 
   useEffect(() => {
     const searchClients = async () => {
@@ -280,6 +318,9 @@ export default function NewPracticePage() {
       client_id: formData.client_id,
       practice_type_code: selectedServiceCode,
       notes: formData.title,
+      family_member_id: formData.family_member_id
+        ? Number(formData.family_member_id)
+        : undefined,
     });
 
     if (!result.success) {
@@ -356,6 +397,9 @@ export default function NewPracticePage() {
           : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
+        ...(result.data.family_member_id
+          ? { family_member_id: result.data.family_member_id }
+          : {}),
       } as CreatePracticeParams;
 
       const createdPractice = await api.crm.createPractice(
@@ -666,6 +710,45 @@ export default function NewPracticePage() {
               </p>
             )}
           </div>
+
+          {/* For Family Member (optional) — only when the client has dependents */}
+          {familyMembers.length > 0 && (
+            <div className="space-y-2">
+              <label className={labelClass}>
+                For Family Member{" "}
+                <span className="text-[var(--foreground-muted)] font-normal">
+                  (optional)
+                </span>
+              </label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)] pointer-events-none" />
+                <select
+                  value={formData.family_member_id}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      family_member_id: e.target.value,
+                    }))
+                  }
+                  className={`${inputClass} appearance-none cursor-pointer pr-10`}
+                >
+                  <option value="">
+                    Main client{selectedClient ? ` (${selectedClient.full_name})` : ""}
+                  </option>
+                  {familyMembers.map((m) => (
+                    <option key={m.id} value={String(m.id)}>
+                      {m.full_name} ({m.relationship})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                Pick a dependent when this process is for a spouse or child
+                (e.g. dependent KITAS). Leave as main client otherwise.
+              </p>
+            </div>
+          )}
 
           {/* Quoted Price + Assigned To */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
