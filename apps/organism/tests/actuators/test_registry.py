@@ -30,6 +30,13 @@ async def test_registry_includes_consolidate_redundancy(fake_redis):
 
 
 @pytest.mark.asyncio
+async def test_registry_includes_cleanup_suite(fake_redis):
+    """W3.B — cleanup_cache / cleanup_branches / cleanup_zombie_plist wired."""
+    reg = build_actuator_registry(redis=fake_redis)
+    assert {"cleanup_cache", "cleanup_branches", "cleanup_zombie_plist"} <= set(reg.keys())
+
+
+@pytest.mark.asyncio
 async def test_registry_includes_propose_yaml_rule(fake_redis):
     """W4.A — propose_yaml_rule is wired (zero-arg, shells out to git/gh)."""
     reg = build_actuator_registry(redis=fake_redis)
