@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 IRREVERSIBLE_ACTUATORS = frozenset({
     "rollback_deploy",
     "propose_yaml_rule",
+    "consolidate_redundancy",  # W3.C — opens shared-infra PRs, Consiglio gate required
 })
 
 REQUIRED_AGREE_VOTES = 3  # out of 4 LLMs

@@ -9,6 +9,7 @@ from organism.actuators.restart_agent import RestartAgent
 from organism.actuators.cleanup_log import CleanupLog
 from organism.actuators.notify_telegram import NotifyTelegram
 from organism.actuators.quarantine import Quarantine
+from organism.actuators.consolidate_redundancy import ConsolidateRedundancy
 
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "CleanupLog",
     "NotifyTelegram",
     "Quarantine",
+    "ConsolidateRedundancy",
     "build_actuator_registry",
 ]
 
@@ -32,4 +34,5 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
         CleanupLog.name: CleanupLog(),
         NotifyTelegram.name: NotifyTelegram(),
         Quarantine.name: Quarantine(redis=redis),
+        ConsolidateRedundancy.name: ConsolidateRedundancy(),
     }
