@@ -600,16 +600,21 @@ VISA_TYPES = [
     },
     {
         "code": "D1",
-        "name": "Visit Visa Tourism",
+        "name": "Visit Visa Tourism (Multiple Entry)",
         "category": "Multiple Entry",
-        "duration": "See details",
-        "cost_visa": "Contact for Quote",
+        "duration": "1 / 2 / 5 Years",
+        "cost_visa": "IDR 6.000.000 (1 Year) / 8.000.000 (2 Years) / 14.000.000 (5 Years)",
         "requirements": [],
         "description": "",
         "metadata": {
             "source": "zantara_curated_2026",
-            "is_agency_product": False,
+            "is_agency_product": True,
             "name_id": "Visa Kunjungan Wisata",
+            "tiers": [
+                {"validity": "1 Year", "price_idr": 6000000},
+                {"validity": "2 Years", "price_idr": 8000000},
+                {"validity": "5 Years", "price_idr": 14000000},
+            ],
         },
     },
     {
