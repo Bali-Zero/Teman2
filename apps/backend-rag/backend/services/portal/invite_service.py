@@ -220,19 +220,18 @@ class InviteService:
                     user_id = existing_user["id"]
                 else:
                     # Create new team_member with role='client'
-                    # Note: team_members has both 'name' (required) and 'full_name' columns
+                    # Note: team_members has only 'full_name' column (formerly 'name')
                     user = await conn.fetchrow(
                         """
                         INSERT INTO team_members (
-                            name, email, full_name, role, pin_hash, active,
+                            full_name, email, role, pin_hash, active,
                             linked_client_id, portal_access
                         )
-                        VALUES ($1, $2, $3, 'client', $4, true, $5, true)
+                        VALUES ($1, $2, 'client', $3, true, $4, true)
                         RETURNING id
                         """,
-                        invitation["client_name"],  # name (required)
+                        invitation["client_name"],
                         invitation["email"],
-                        invitation["client_name"],  # full_name
                         pin_hash,
                         invitation["client_id"],
                     )

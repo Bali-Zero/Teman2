@@ -35,6 +35,7 @@ async def test_ensure_portal_profile_creates_record(mock_pool):
     conn.fetchval.assert_called_once()
     sql_call = conn.fetchval.call_args[0][0]
     assert "INSERT INTO team_members" in sql_call
+    assert "full_name" in sql_call
     assert "ON CONFLICT" in sql_call
 
 

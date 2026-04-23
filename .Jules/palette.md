@@ -5,3 +5,7 @@
 ## 2026-04-23 - CI-Safe Python Import Tests
 **Learning:** Subprocess-based import tests in Python need absolute `PYTHONPATH` to be reliable in CI. Performance thresholds for cold imports must be generous (e.g. 100ms) to accommodate slower runner hardware.
 **Action:** Use `os.path.abspath` for setting up test environments and increase timing thresholds in CI.
+
+## 2026-04-23 - Database Schema Consistency
+**Learning:** The `team_members` table uses `full_name` as the primary name column. Several services and tests were incorrectly attempting to use a `name` column, leading to `UndefinedColumnError`.
+**Action:** Always verify column names against the model definition or actual schema. Avoid assuming standard column names like `name` when `full_name` is used.

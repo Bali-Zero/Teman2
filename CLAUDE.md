@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 20 · **Packages:** 5
+**Apps:** 21 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -54,6 +54,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
+| `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus` |  |
 | `osint-nexus-ui` |  |
 | `team-agent` |  |

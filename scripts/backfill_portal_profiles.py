@@ -78,14 +78,14 @@ async def main() -> None:
                 result = await conn.fetchval(
                     """
                     INSERT INTO team_members (
-                        name, email, pin_hash, role,
+                        full_name, email, pin_hash, role,
                         linked_client_id, portal_access, active
                     )
                     VALUES ($1, $2, $3, 'client', $4, true, true)
                     ON CONFLICT (email) DO UPDATE
                         SET linked_client_id = EXCLUDED.linked_client_id,
                             portal_access = true,
-                            name = EXCLUDED.name
+                            full_name = EXCLUDED.full_name
                         WHERE team_members.role = 'client'
                     RETURNING (xmax = 0) AS is_insert
                     """,

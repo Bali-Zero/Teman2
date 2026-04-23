@@ -390,11 +390,11 @@ async def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[A
         _email = email or f"user-{short}@test.invalid"
         # team_members.id is the email-like string (VARCHAR)
         sid = _StrWithId(_email)
-        # name and pin_hash columns are NOT NULL in the real production team_members table
+        # full_name and pin_hash columns are NOT NULL in the real production team_members table
         _name = f"Test User {short}"
         _pin_hash = f"test-pin-hash-{short}"  # placeholder, not a real bcrypt hash
         await db_conn.execute(
-            "INSERT INTO team_members (id, name, email, pin_hash, role) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO team_members (id, full_name, email, pin_hash, role) VALUES ($1, $2, $3, $4, $5)",
             str(sid), _name, _email, _pin_hash, role,
         )
         _inserted_ids.append(str(sid))

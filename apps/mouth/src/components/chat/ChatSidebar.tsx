@@ -140,6 +140,7 @@ export function ChatSidebar({
                     </span>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
+                      onKeyDown={(e) => e.stopPropagation()}
                       className="p-1 hover:bg-white/10 focus-visible:bg-white/20 focus-visible:opacity-100 focus-visible:outline-none rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                       aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
                     >

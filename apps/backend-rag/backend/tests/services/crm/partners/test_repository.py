@@ -88,7 +88,7 @@ async def test_email_collision_with_internal_user_is_rejected(repo, db_conn):
     # removes this row automatically.
     internal_email = "internal-team@test.invalid"
     await db_conn.execute(
-        "INSERT INTO team_members (id, name, email, pin_hash, role) VALUES ($1, $2, $3, $4, 'team')",
+        "INSERT INTO team_members (id, full_name, email, pin_hash, role) VALUES ($1, $2, $3, $4, 'team')",
         internal_email, "Internal Team Test", internal_email, "test-pin-hash",
     )
     with pytest.raises(ValueError, match="email is already a team/admin user"):
