@@ -1,0 +1,154 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "SOTA Social Loop 90gg — WR2 editorial KPIs. 3 pillars (learn, lead, community) + posting heatmap + top posts. Backed by war_room_posts + m13_post_metrics via Postgres datasource.",
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Pillar LEARN — engagement rate 7d rolling",
+      "description": "Reach-normalized engagement for posts tagged pillar=learn. Red zone below baseline − 20%.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.likes + m.comments + m.saves)::float / NULLIF(m.reach,0)) AS engagement_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'learn'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.02 },
+              { "color": "green", "value": 0.04 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Pillar LEAD — DM/profile-visits 7d rolling",
+      "description": "Lead intent proxy: DMs + profile visits normalized by reach. Below baseline − 20% triggers /publisher off alert.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.dm_count + m.profile_visits)::float / NULLIF(m.reach,0)) AS lead_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'lead'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit" },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Pillar COMMUNITY — replies + saves 7d rolling",
+      "description": "Community depth proxy: replies + saves. Soft signal for WR2 cadence tuning.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.replies + m.saves)::float / NULLIF(m.reach,0)) AS community_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'community'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit" },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "heatmap",
+      "title": "Posting heatmap — WITA hour × day-of-week (30d)",
+      "description": "Cadence validation for 06_cadence_engine.json. Highlights hot hours (optimal: 07, 12, 19 WITA per plan).",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 9 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT to_char(p.published_at AT TIME ZONE 'Asia/Makassar', 'FMDay') AS day_of_week,\n       EXTRACT(HOUR FROM p.published_at AT TIME ZONE 'Asia/Makassar') AS hour_wita,\n       COUNT(*) AS post_count\nFROM war_room_posts p\nWHERE p.published_at > NOW() - INTERVAL '30 days'\nGROUP BY 1,2\nORDER BY 1,2"
+        }
+      ],
+      "options": {
+        "calculate": false,
+        "yAxis": { "axisLabel": "Hour (WITA)" }
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Top 10 posts last 7d (engagement absolute)",
+      "description": "Post leaderboard — used in M13 weekly report and Consiglio v1 monthly retrain baseline.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 19 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT p.post_external_id AS ig_id,\n       p.channel,\n       p.pillar,\n       p.published_at,\n       m.likes, m.comments, m.saves, m.reach,\n       (m.likes + m.comments + m.saves) AS engagement_abs\nFROM war_room_posts p\nJOIN LATERAL (\n  SELECT likes, comments, saves, reach\n  FROM m13_post_metrics\n  WHERE post_id = p.post_id\n  ORDER BY captured_at DESC\n  LIMIT 1\n) m ON TRUE\nWHERE p.published_at > NOW() - INTERVAL '7 days'\nORDER BY engagement_abs DESC\nLIMIT 10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "cellOptions": { "type": "auto" } } },
+        "overrides": []
+      },
+      "options": { "showHeader": true, "footer": { "show": false } }
+    }
+  ],
+  "refresh": "5m",
+  "schemaVersion": 39,
+  "tags": ["sota", "social", "wr2", "m13"],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "Postgres", "value": "nuzantara_postgres" },
+        "label": "Postgres datasource",
+        "name": "DS_POSTGRES",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-14d", "to": "now" },
+  "timepicker": {},
+  "timezone": "Asia/Makassar",
+  "title": "SOTA Social — Loop 90gg Editorial KPIs",
+  "uid": "sota-social-loop90",
+  "version": 1,
+  "weekStart": ""
+}
