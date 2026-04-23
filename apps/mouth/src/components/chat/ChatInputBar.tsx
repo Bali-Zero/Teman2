@@ -184,6 +184,7 @@ export function ChatInputBar({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={showImagePrompt ? 'Describe your image...' : 'Type your message...'}
+              aria-label={showImagePrompt ? 'Image description' : 'Chat message'}
               disabled={isLoading}
               rows={1}
               className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"

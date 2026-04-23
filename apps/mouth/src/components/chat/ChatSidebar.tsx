@@ -95,7 +95,8 @@ export function ChatSidebar({
           <div className="p-4">
             <button
               onClick={onNewChat}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-gray-300"
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-xl transition-colors text-gray-300"
+              aria-label="Start a new chat"
             >
               <Plus className="w-5 h-5" />
               <span>New Chat</span>
@@ -117,13 +118,21 @@ export function ChatSidebar({
                   <div
                     key={conv.id}
                     onClick={() => onConversationClick(conv.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onConversationClick(conv.id);
+                      }
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
                       currentConversationId === conv.id
                         ? 'sidebar-item-active text-white'
                         : 'text-gray-400'
                     }`}
                     role="button"
                     tabIndex={0}
+                    aria-current={currentConversationId === conv.id ? 'true' : undefined}
+                    aria-label={`Open conversation: ${conv.title || 'Untitled'}`}
                   >
                     <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
                     <span className="text-sm text-gray-400 truncate flex-1">
@@ -131,7 +140,8 @@ export function ChatSidebar({
                     </span>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
-                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="p-1 hover:bg-white/10 focus-visible:bg-white/20 focus-visible:opacity-100 focus-visible:outline-none rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                      aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
@@ -145,22 +155,22 @@ export function ChatSidebar({
           <div className="border-t border-white/5 p-4 space-y-1">
             <button
               onClick={onSearchDocsOpen}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-lg transition-colors"
             >
               <Search className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-400">Search Docs</span>
             </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors">
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-lg transition-colors">
               <Settings className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-400">Settings</span>
             </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors">
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-lg transition-colors">
               <HelpCircle className="w-4 h-4 text-gray-500" />
               <span className="text-sm text-gray-400">Help</span>
             </button>
             <button
               onClick={() => router.push('/dashboard')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400"
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 focus-visible:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 rounded-lg transition-colors text-blue-400"
             >
               <Home className="w-4 h-4" />
               <span className="text-sm">Dashboard</span>
