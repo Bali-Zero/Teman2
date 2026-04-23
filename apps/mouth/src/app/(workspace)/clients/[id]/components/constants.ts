@@ -46,6 +46,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
 export const VISA_DISPLAY_NAMES: Record<string, string> = {
   c1: "C1 Tourist Visa",
   c1_visa: "C1 Tourist Visa",
+  d1: "D1 Tourism (Multiple Entry)",
   d12: "D12 Business Visa",
   voa: "Visa on Arrival",
   e33e: "Retirement KITAS",
