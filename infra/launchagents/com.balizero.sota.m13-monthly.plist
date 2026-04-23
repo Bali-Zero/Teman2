@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.balizero.sota.m13-monthly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>-lc</string>
+      <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/m13_monthly_retrain.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Day</key>
+      <integer>1</integer>
+      <key>Hour</key>
+      <integer>4</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/sota_m13_monthly.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/sota_m13_monthly.error.log</string>
+
+    <key>ExitTimeOut</key>
+    <integer>10800</integer>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+  </dict>
+</plist>
