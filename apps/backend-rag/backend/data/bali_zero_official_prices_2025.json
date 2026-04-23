@@ -54,6 +54,27 @@
       }
     },
     "multiple_entry_visas": {
+      "D1 Tourism (1 Year)": {
+        "price": "6.000.000 IDR",
+        "duration": "",
+        "validity": "1 Year",
+        "notes": "",
+        "text": "# D1 Tourism (1 Year)\n**Category**: Multiple Entry Visas\n**Price**: 6.000.000 IDR\n**Validity**: 1 Year\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia"
+      },
+      "D1 Tourism (2 Years)": {
+        "price": "8.000.000 IDR",
+        "duration": "",
+        "validity": "2 Years",
+        "notes": "",
+        "text": "# D1 Tourism (2 Years)\n**Category**: Multiple Entry Visas\n**Price**: 8.000.000 IDR\n**Validity**: 2 Years\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia"
+      },
+      "D1 Tourism (5 Years)": {
+        "price": "14.000.000 IDR",
+        "duration": "",
+        "validity": "5 Years",
+        "notes": "",
+        "text": "# D1 Tourism (5 Years)\n**Category**: Multiple Entry Visas\n**Price**: 14.000.000 IDR\n**Validity**: 5 Years\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia"
+      },
       "D12 Business Investigation (1 Year)": {
         "price": "7.500.000 IDR",
         "duration": "",
