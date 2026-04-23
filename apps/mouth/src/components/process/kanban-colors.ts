@@ -29,25 +29,30 @@ export const COLUMN_COLORS: Record<CaseStatus, ColumnColorConfig> = {
     dotColor: "bg-slate-300",
   },
   waiting_documents: {
-    // Pastel amber — yellow-orange, softer than the previous deep orange
+    // Pastel red — was amber, but it collided with Sending Invoice (yellow).
+    // Red semantics also fit "action needed from client" → documents missing.
+    // Kept pastel (red-300/400) so it doesn't compete with saturated
+    // urgent/unpaid badges.
     label: "Waiting Documents",
-    gradientStart: "#fbbf24",
-    gradientEnd: "#f59e0b",
-    tintBg: "rgba(251,191,36, 0.05)",
-    tintBorder: "rgba(251,191,36, 0.12)",
-    badgeBg: "rgba(251,191,36, 0.18)",
-    textColor: "#fcd34d",
-    dotColor: "bg-amber-300",
+    gradientStart: "#fca5a5",
+    gradientEnd: "#f87171",
+    tintBg: "rgba(252,165,165, 0.05)",
+    tintBorder: "rgba(252,165,165, 0.12)",
+    badgeBg: "rgba(252,165,165, 0.18)",
+    textColor: "#fca5a5",
+    dotColor: "bg-red-300",
   },
   sending_invoice: {
+    // Pastel yellow — softened from the previous harsh yellow-500 to a
+    // creamier yellow-300 so it pairs with the rest of the pastel palette.
     label: "Sending Invoice",
-    gradientStart: "#facc15",
-    gradientEnd: "#eab308",
-    tintBg: "rgba(250,204,21, 0.03)",
-    tintBorder: "rgba(250,204,21, 0.07)",
-    badgeBg: "rgba(250,204,21, 0.12)",
-    textColor: "#facc15",
-    dotColor: "bg-yellow-400",
+    gradientStart: "#fde047",
+    gradientEnd: "#facc15",
+    tintBg: "rgba(253,224,71, 0.05)",
+    tintBorder: "rgba(253,224,71, 0.12)",
+    badgeBg: "rgba(253,224,71, 0.18)",
+    textColor: "#fde047",
+    dotColor: "bg-yellow-300",
   },
   on_process: {
     // Pastel blue — airier than the previous royal blue
