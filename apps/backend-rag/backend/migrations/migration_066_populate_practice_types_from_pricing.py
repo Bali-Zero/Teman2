@@ -37,6 +37,9 @@ SERVICES = [
     {"code": "ext_c1_tourism", "name": "C1 Tourism Extension", "category": "visa_extension", "base_price": 1700000, "duration": 30, "notes": "+30 days"},
 
     # === multiple_entry_visas ===
+    {"code": "visa_d1_tourism_1yr", "name": "D1 Tourism (1 Year)", "category": "multiple_entry_visa", "base_price": 6000000, "duration": 365, "notes": ""},
+    {"code": "visa_d1_tourism_2yr", "name": "D1 Tourism (2 Years)", "category": "multiple_entry_visa", "base_price": 8000000, "duration": 730, "notes": ""},
+    {"code": "visa_d1_tourism_5yr", "name": "D1 Tourism (5 Years)", "category": "multiple_entry_visa", "base_price": 14000000, "duration": 1825, "notes": ""},
     {"code": "visa_d12_business_1yr", "name": "D12 Business Investigation (1 Year)", "category": "multiple_entry_visa", "base_price": 7500000, "duration": 365, "notes": ""},
     {"code": "visa_d12_business_2yr", "name": "D12 Business Investigation (2 Years)", "category": "multiple_entry_visa", "base_price": 10000000, "duration": 730, "notes": ""},
 
