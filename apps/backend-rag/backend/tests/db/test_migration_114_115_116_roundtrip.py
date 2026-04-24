@@ -266,13 +266,14 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             exists = await _table_exists(conn, tbl)
             assert exists, f"{tbl} missing after apply_all_pending()"
 
-        # Cleanup so other tests are unaffected.
-        for sql in (
-            "DROP TABLE IF EXISTS intel_validator_log CASCADE",
-            "DROP TABLE IF EXISTS alert_outcomes CASCADE",
-            "DROP TABLE IF EXISTS compliance_alerts CASCADE",
-        ):
-            await conn.execute(sql)
+        # Cleanup: only reset the migration bookkeeping so a re-run of this
+        # test can re-apply 114/115/116. Do NOT drop the three physical
+        # tables here — other suites in the same pytest session (compliance
+        # services tests, router tests, alert_feedback) rely on
+        # compliance_alerts / alert_outcomes / intel_validator_log being
+        # present. The _ensure_clean_slate + apply_all_pending round-trip
+        # above already proved the migrations are idempotent (CREATE TABLE
+        # IF NOT EXISTS), so leaving the tables in place is safe.
         await conn.execute(
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
         )

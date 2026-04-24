@@ -164,9 +164,16 @@ CREATE TEMP TABLE IF NOT EXISTS practices (
     service_type       TEXT
 );
 
+-- system_settings is shared with backend/tests/services/compliance/test_alert_feedback.py
+-- and other tests — we must not DROP it on teardown (see _TEARDOWN_SQL).
+-- In CI it's created by ci_bootstrap_schema.py with this shape; on a bare
+-- nuzantara_dev we create it here if it's missing. Schema mirrors
+-- ci_bootstrap_schema.py exactly (key VARCHAR(100), value TEXT NOT NULL,
+-- updated_at TIMESTAMPTZ DEFAULT NOW()) so both environments converge.
 CREATE TABLE IF NOT EXISTS system_settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL DEFAULT '0'
+    key        VARCHAR(100) PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 INSERT INTO system_settings (key, value) VALUES
     ('partner_clawback_auto_writeoff_idr',   '0'),
@@ -326,7 +333,16 @@ DROP TABLE IF EXISTS partner_audit_log;
 DROP TABLE IF EXISTS partner_commissions;
 DROP TABLE IF EXISTS partner_referrals;
 DROP TABLE IF EXISTS partners;
-DROP TABLE IF EXISTS system_settings;
+-- NOTE: system_settings is NOT dropped — it's shared with the rest of the
+-- suite (CI bootstrap / dev DB). Clean only the partner-specific keys this
+-- conftest seeded so the row count doesn't drift between runs.
+DELETE FROM system_settings WHERE key IN (
+    'partner_clawback_auto_writeoff_idr',
+    'partner_accrual_cooling_off_days',
+    'partner_withholding_rate_pph21',
+    'partner_withholding_rate_pph23',
+    'partner_withholding_no_npwp_surcharge'
+);
 -- NOTE: team_members is NOT dropped here — it is a real pre-existing production
 -- table in the dev DB. Test rows are cleaned up by the user_factory fixture
 -- by tracking inserted IDs and deleting them in the fixture teardown.
