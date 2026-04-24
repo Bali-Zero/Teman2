@@ -59,7 +59,15 @@ def _post(platform: Platform = Platform.INSTAGRAM, ext: str | None = "ig-17") ->
 
 
 def test_requires_token(monkeypatch):
+    # MetaGraphSampler.__init__ accepts either IG_LONG_LIVED_TOKEN (preferred)
+    # or INSTAGRAM_ACCESS_TOKEN (fallback). Must clear both — another test
+    # module (backend/tests/unit/services/integrations/test_instagram_service.py:25)
+    # does `os.environ.setdefault("INSTAGRAM_ACCESS_TOKEN", ...)` at import
+    # time, which survives for the rest of the pytest session once that module
+    # loads. Only deleting IG_LONG_LIVED_TOKEN would leave the fallback wired
+    # up and no SamplerError would be raised.
     monkeypatch.delenv("IG_LONG_LIVED_TOKEN", raising=False)
+    monkeypatch.delenv("INSTAGRAM_ACCESS_TOKEN", raising=False)
     with pytest.raises(SamplerError):
         MetaGraphSampler()
 
