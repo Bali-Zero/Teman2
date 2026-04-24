@@ -151,12 +151,35 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     return count
 
 
+INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+
+
+def _strip_code_regions(content: str) -> str:
+    """Remove fenced code blocks (```...```) and inline backtick spans
+    (`...`) so example links inside code samples are not treated as real
+    markdown links. Cheap and good-enough for our audit — not a full parser.
+    """
+    out: List[str] = []
+    in_fence = False
+    for line in content.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            # Strip inline `code` spans within the line.
+            out.append(INLINE_CODE_RE.sub("", line))
+    return "\n".join(out)
+
+
 def compute_broken_links(repo: Path, doc: Path) -> int:
-    """Count markdown links to local files that do not exist. URLs/anchors skipped."""
+    """Count markdown links to local files that do not exist. URLs/anchors skipped.
+    Links inside fenced code blocks are ignored (they are examples, not real).
+    """
     try:
-        content = doc.read_text(encoding="utf-8", errors="ignore")
+        raw = doc.read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return 0
+    content = _strip_code_regions(raw)
     broken = 0
     for match in LINK_RE.finditer(content):
         target = match.group(1).strip()

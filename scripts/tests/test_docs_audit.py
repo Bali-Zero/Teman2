@@ -270,6 +270,32 @@ def test_git_mtime_beats_stat_mtime(tmp_path):
     assert "orphan" in files["docs/ORPHAN_OLD.md"]["action"]
 
 
+def test_broken_link_inside_code_fence_is_ignored(aged_fixture):
+    """Links inside ``` fenced code blocks AND inline `...` spans are examples,
+    not real markdown links. They should NOT count as broken.
+    """
+    doc = aged_fixture / "docs" / "LIVE_DOC.md"
+    doc.write_text(
+        "# Live\n\n"
+        "Real: [missing](real-missing.md)\n\n"
+        "Example in fenced block:\n"
+        "```markdown\n"
+        "[fake](fake-inside-fence.md)\n"
+        "```\n\n"
+        "Example inline backticks: `[inline](inline-fake.md)` — should be skipped.\n"
+    )
+    result = _run_audit(
+        aged_fixture,
+        "--whitelist", "docs/WHITELIST_KEEPER.md",
+        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+        "--json",
+    )
+    stats = json.loads(result.stdout)
+    files = {f["path"]: f for f in stats["files"]}
+    # Only the real one outside code regions should count → broken == 1
+    assert files["docs/LIVE_DOC.md"]["broken"] == 1
+
+
 def test_stat_fallback_for_untracked_files(tmp_path):
     """If a file is not in git history (untracked), fall back to os.stat().
     An untracked file with recent os.stat() mtime should be classified based
