@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 """Sunday 06:00 WITA cron — aggregate week, retrain if needed, Telegram digest.
+
+Invoked by `com.balizero.sota.m13-weekly.plist` through
+`scripts/wr2-cron-wrapper.sh backend.services.sota_loop.m13_weekly`.
 
 Outputs:
 - research/sota-social-2026-v1/weekly_report_YYYY-MM-DD.md
@@ -19,9 +21,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-_REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
-
 import asyncpg
 
 from backend.services.measurer.m13_feedback_loop import M13FeedbackLoop
@@ -31,9 +30,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sota.m13.weekly")
 
-RESEARCH = _REPO / "research" / "sota-social-2026-v1"
-KPI_CSV = RESEARCH / "kpi_timeline.csv"
-RETRAIN_LOG = RESEARCH / "retrain_log.jsonl"
+
+def _repo_root() -> Path:
+    """Resolve monorepo root — set by wr2-cron-wrapper.sh as NUZANTARA_REPO_ROOT."""
+    env = os.environ.get("NUZANTARA_REPO_ROOT")
+    if env:
+        return Path(env)
+    # Fallback: from backend/services/sota_loop/m13_weekly.py go 4 up.
+    return Path(__file__).resolve().parents[4]
 
 
 async def kill_switch_on(conn) -> bool:
@@ -44,6 +48,11 @@ async def kill_switch_on(conn) -> bool:
 
 
 async def main() -> int:
+    repo = _repo_root()
+    research = repo / "research" / "sota-social-2026-v1"
+    kpi_csv = research / "kpi_timeline.csv"
+    retrain_log = research / "retrain_log.jsonl"
+
     dsn = os.environ["DATABASE_URL"]
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=3)
     try:
@@ -65,9 +74,9 @@ async def main() -> int:
                 )
 
         today = datetime.now(timezone.utc).date().isoformat()
-        KPI_CSV.parent.mkdir(parents=True, exist_ok=True)
-        new_file = not KPI_CSV.exists()
-        with KPI_CSV.open("a", newline="") as f:
+        kpi_csv.parent.mkdir(parents=True, exist_ok=True)
+        new_file = not kpi_csv.exists()
+        with kpi_csv.open("a", newline="") as f:
             w = csv.writer(f)
             if new_file:
                 w.writerow(["date"] + [f"{c}_{p}" for c in channels for p in pillars])
@@ -89,7 +98,7 @@ async def main() -> int:
             result = subprocess.run(
                 [
                     "python",
-                    str(_REPO / "scripts" / "sota_consiglio_playbook.py"),
+                    str(repo / "scripts" / "sota_consiglio_playbook.py"),
                     "--wave=final",
                 ],
                 capture_output=True,
@@ -100,7 +109,7 @@ async def main() -> int:
             retrain_result = (
                 "OK" if result.returncode == 0 else f"FAIL rc={result.returncode}"
             )
-            with RETRAIN_LOG.open("a") as f:
+            with retrain_log.open("a") as f:
                 f.write(
                     json.dumps(
                         {
@@ -113,7 +122,7 @@ async def main() -> int:
                     + "\n"
                 )
 
-        report_path = RESEARCH / f"weekly_report_{today}.md"
+        report_path = research / f"weekly_report_{today}.md"
         md_lines = [
             f"# SOTA Weekly Report — {today}\n",
             "\n## Deltas vs baseline (per channel × pillar)\n",
