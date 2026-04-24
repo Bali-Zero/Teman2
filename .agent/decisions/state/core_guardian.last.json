@@ -1,8 +1,0 @@
-{
-  "status": "reset",
-  "timestamp": "2026-04-10T00:00:00+00:00",
-  "note": "Manual reset after path unification. Next run will establish new baseline.",
-  "passed": 0,
-  "failed": 0,
-  "errors": 0
-}
