@@ -320,6 +320,38 @@ launchctl list com.nuzantara.mio-job  # verifica: LastExitStatus = 0
 
 ---
 
+## 15. Nuova / spostamento documentazione (`docs/`)
+
+> L'inventory `docs/DOCS_INVENTORY.md` è la fonte di verità per lo stato dei
+> ~570 file sotto `docs/**`. È **auto-generato**: non scriverlo a mano.
+
+**Quando aggiungi un nuovo doc:**
+
+1. [ ] Hai scelto la subdir giusta sotto `docs/`? (Se non esiste, è accettabile creare.)
+2. [ ] Almeno un doc esistente o un libro sacro (CLAUDE/INDEX/SYMBIOSIS/VADEMECUM) lo linka? Altrimenti finirà candidato orphan dopo 90 giorni.
+3. [ ] Hai rigenerato l'inventory? Una delle due:
+   - **Locale ora:** `./scripts/docs_guardian.sh` (aggiorna `docs/DOCS_INVENTORY.md`)
+   - **Lascialo al weekly cron:** ok, ma il CI check `Docs Guardian` sulla tua PR fallirà finché non lo rigeneri e committi.
+
+**Quando sposti / rinomini un doc:**
+
+1. [ ] Usa `git mv` (non `rm` + add) per preservare la history.
+2. [ ] Grep dei riferimenti inbound: `rg -l "<old-name>.md"` e aggiorna tutti i link nello stesso commit.
+3. [ ] Rigenera l'inventory come sopra.
+
+**Quando archivi un doc (morte senza referenze):**
+
+1. [ ] `git mv docs/<file>.md docs/archive/YYYY-MM-<slug>/` (mai `git rm` — reversibile con `git mv` opposto).
+2. [ ] Verifica nessuna referenza in entrata da sacred books (`grep -l <file> CLAUDE.md INDEX.md SYMBIOSIS.md VADEMECUM.md`).
+
+**Mai modificare a mano:**
+
+- `docs/DOCS_INVENTORY.md` — rigenerato da `scripts/docs_audit.py`.
+- `docs/AUTOMATIONS_REFERENCE.md` — rigenerato nightly 23:15 WITA da `scripts/generate_automations_reference.py`.
+- Blocchi `<!-- DOCSYNC:KEY_START -->` — gestiti da `scripts/docs_sync.py`.
+
+---
+
 ## Domande universali — il test finale
 
 Prima di ogni PR, commit, o deploy, rispondi a queste 5:
