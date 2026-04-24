@@ -1,6 +1,6 @@
 # Test Gaps — Wave 1
 
-**Source of truth:** `STATE_MACHINE.md` (this directory).
+**Source of truth:** `2026-04-22-orchestrator-state-machine.md` (this directory).
 **Baseline:** `apps/backend-rag/backend/tests/unit/services/rag/agentic/` — the following files collectively own the coverage:
 
 | File | Scope | Passing tests found |
@@ -10,7 +10,7 @@
 | `test_reasoning.py`, `test_reasoning_comprehensive.py`, `test_reasoning_coverage.py` | inner ReAct loop + evidence + stubs | — |
 | `test_abstain_bypass_policy.py` | policy helpers (detect_*) | — |
 
-Existing tests were enumerated by `grep -n '^class\|def test_'`. The gap audit below walks STATE_MACHINE.md transition IDs and marks each as covered / partial / missing.
+Existing tests were enumerated by `grep -n '^class\|def test_'`. The gap audit below walks 2026-04-22-orchestrator-state-machine.md transition IDs and marks each as covered / partial / missing.
 
 ---
 
@@ -19,7 +19,7 @@ Existing tests were enumerated by `grep -n '^class\|def test_'`. The gap audit b
 | ID | Transition | Status | Existing test(s) | Gap |
 |----|------------|--------|------------------|-----|
 | O1 | PrepareContext → QueryPlanner | covered | `test_entity_extraction_with_entities`, `test_context_load_exception` | — |
-| O2 | QueryPlanner → GatesCheck | **missing** | — | Neither shadow nor active mode is exercised. Whether `_USE_QUERY_PLANNER`, `_ENABLE_CRAG_ROUTER`, `_ENABLE_HYDE` flip behaviour is untested. (NB: `crag_decision` is currently dead code — see STATE_MACHINE §U2.) |
+| O2 | QueryPlanner → GatesCheck | **missing** | — | Neither shadow nor active mode is exercised. Whether `_USE_QUERY_PLANNER`, `_ENABLE_CRAG_ROUTER`, `_ENABLE_HYDE` flip behaviour is untested. (NB: `crag_decision` is currently dead code — see 2026-04-22-orchestrator-state-machine.md §U2.) |
 | O3 | GatesCheck → GateReturn | covered | `test_prompt_injection_gate`, `test_greeting_gate`, `test_casual_response_gate`, `test_identity_gate`, `test_clarification_gate`, `test_out_of_domain_gate` | — |
 | O4 | GatesCheck → FAQCacheCheck | covered implicitly | `test_cache_hit`, `test_clarification_gate_low_confidence` | — |
 | O5 | FAQCacheCheck → FAQReturn | **partial** | `test_orchestrator_core_coverage.py::TestCheckFaqCache::test_faq_cache_hit` exists but is *unit* on `check_faq_cache`, not an end-to-end `process_query_core` assertion. | No end-to-end test asserts `CoreResult.model_used == "faq_cache"` from `process_query_core`. |
@@ -47,7 +47,7 @@ Existing tests were enumerated by `grep -n '^class\|def test_'`. The gap audit b
 | R1 | LoopEntry → StepIncrement | covered | `test_reasoning_loop_simple`, `test_reasoning_loop_with_tools` | — |
 | R2 | LoopEntry → exit (max_steps) | **partial** | `test_max_steps_reached` (tests natural exit with `max_steps=1` + no tool call → final answer set). | **Missing** explicit test: LLM keeps emitting tool calls past `max_steps` → loop exits, fallback path generates final_answer. Intent-type variance not covered. |
 | R3 | SendMessage ok | covered | all happy-path tests | — |
-| R4 | SendMessage raises (step 1) | **partial** | `test_llm_error_breaks_loop` covers ResourceExhausted on step 1 — asserts `current_step==1` but does NOT assert the downstream `final_answer` resolution. | **Missing:** assert final_answer is set via fallback (stub / Tier 1 / abstain) after step-1 raise. See STATE_MACHINE §U1. |
+| R4 | SendMessage raises (step 1) | **partial** | `test_llm_error_breaks_loop` covers ResourceExhausted on step 1 — asserts `current_step==1` but does NOT assert the downstream `final_answer` resolution. | **Missing:** assert final_answer is set via fallback (stub / Tier 1 / abstain) after step-1 raise. See 2026-04-22-orchestrator-state-machine.md §U1. |
 | R4b | SendMessage raises (step 2+) | **missing** | — | Step 2 raise after successful step 1 tool call — does the loop break cleanly? Partial state preserved? |
 | R7 | HasToolCalls → ProcessResults | covered partially | `test_reasoning_loop_with_tools` (single tool) | **Missing:** parallel N>1 tool calls — correct `step_number` assignment (`current_step + i`), correct `current_step += len(tool_calls) - 1` bump (invariant I-R7). |
 | R8 partial | Tool execution raises internally | **missing** | — | `_exec_tool_wrapper` captures exception → observation="Error: ...". Loop continues. Invariant I-R8 not tested. |

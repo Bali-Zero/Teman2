@@ -2,7 +2,7 @@
 
 **Scope:** `backend/services/rag/agentic/pipeline.py` (408 LOC).
 **Generated:** 2026-04-22, session/orchestrator-streaming.
-**Method:** Manual read of `ResponsePipeline.process` + each `PipelineStage` subclass. Referenced by `STATE_MACHINE.md` §2.1 state `PipelineVerify` (sync, post-loop) and §5.1 state `StreamPipelineVerify` (streaming, post-loop). This doc opens the "verify → clean → citations → format" black box.
+**Method:** Manual read of `ResponsePipeline.process` + each `PipelineStage` subclass. Referenced by `docs/audits/2026-04-22-orchestrator-state-machine.md` §2.1 state `PipelineVerify` (sync, post-loop) and §5.1 state `StreamPipelineVerify` (streaming, post-loop). This doc opens the "verify → clean → citations → format" black box.
 
 In both sync and streaming state machines, `response_pipeline.process(pipeline_data)` is called **once** after the ReAct loop finishes with a non-empty `final_answer`. Its contract: a dict in, a mutated dict out; fields are added, the `response` string may be rewritten, `citations` may be injected. The call site swallows `ValueError | RuntimeError | KeyError` and falls back to `post_process_response`.
 

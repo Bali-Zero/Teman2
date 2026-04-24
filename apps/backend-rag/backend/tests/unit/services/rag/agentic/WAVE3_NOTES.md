@@ -10,25 +10,25 @@
 
 | Part | Area | Doc deliverable | Tests added | Source LOC changed |
 |------|------|-----------------|-------------|--------------------|
-| P1 | `execute_react_loop_stream` state machine | `STATE_MACHINE.md` §5 (new) | 15 stream regression | 0 |
+| P1 | `execute_react_loop_stream` state machine | `docs/audits/2026-04-22-orchestrator-state-machine.md` §5 (new) | 15 stream regression | 0 |
 | P2 | `QueryGates.run_all_gates` 6 sub-gates | `QUERY_GATES.md` (new, subdir) | 12 composite | 0 |
 | P3 | `ResponsePipeline.process` 4 stages | `RESPONSE_PIPELINE.md` (new, subdir) | 9 stage | 0 |
-| P4 | O13 NLM content merge closure | (covered in STATE_MACHINE.md) | 4 merge | 0 |
+| P4 | O13 NLM content merge closure | (covered in docs/audits/2026-04-22-orchestrator-state-machine.md) | 4 merge | 0 |
 | **Total** | | **3 new docs + 1 STATE_MACHINE update** | **40 tests** | **0 production LOC** |
 
 Target was 22–34 tests: **delivered 40 tests**. All 40 pass; wave 1 + 2 + 3 cross-regression = 107 pass / 0 fail.
 
-No production code was modified: Wave 3 is **documentation + regression tests only**. Wave 4 candidates (see below) include deliberate source changes to fix drift flagged in §5.4 of STATE_MACHINE.md.
+No production code was modified: Wave 3 is **documentation + regression tests only**. Wave 4 candidates (see below) include deliberate source changes to fix drift flagged in §5.4 of docs/audits/2026-04-22-orchestrator-state-machine.md.
 
 ---
 
 ## Part 1 — Streaming ReAct loop state machine (P1)
 
-**File delivered:** update to `STATE_MACHINE.md` §5 ("Streaming ReAct loop").
+**File delivered:** update to `docs/audits/2026-04-22-orchestrator-state-machine.md` §5 ("Streaming ReAct loop").
 
 Wave 1 had diagrammed only `execute_react_loop` (sync) fully; `execute_react_loop_stream` appeared as a single divergence flag (§U5). Wave 2 unified the shared flipper pair via `apply_shared_trusted_flippers`. Wave 3 now fully maps the streaming path.
 
-### New sections in STATE_MACHINE.md
+### New sections in docs/audits/2026-04-22-orchestrator-state-machine.md
 
 - **§5.1 Mermaid stateDiagram-v2** — full streaming loop including yield protocol, single-tool-per-step semantics, CRM early-exit, context-marker flippers, token chunking, stub filter, pipeline fallback.
 - **§5.2 Transitions table S1..S29** — each transition keyed to its sync counterpart in §2 or marked "new". 29 stream-only or diverging transitions identified.

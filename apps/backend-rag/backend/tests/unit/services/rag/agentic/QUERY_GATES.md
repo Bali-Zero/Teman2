@@ -2,9 +2,9 @@
 
 **Scope:** `backend/services/rag/agentic/query_gates.py` (340 LOC).
 **Generated:** 2026-04-22, session/orchestrator-streaming.
-**Method:** Manual read of `QueryGates.run_all_gates` + each per-gate helper. Referenced by `STATE_MACHINE.md` §4 (outer state `GatesCheck`) and by `OrchestratorCore.process_query_core` via `self.query_gates.run_all_gates(...)`.
+**Method:** Manual read of `QueryGates.run_all_gates` + each per-gate helper. Referenced by `docs/audits/2026-04-22-orchestrator-state-machine.md` §4 (outer state `GatesCheck`) and by `OrchestratorCore.process_query_core` via `self.query_gates.run_all_gates(...)`.
 
-In the outer state machine (`STATE_MACHINE.md` §1), `GatesCheck` is represented as a single state. Opening that black box is the goal of this Wave 3 document: six concrete sub-gates, checked sequentially, short-circuiting on the first triggered result.
+In the outer state machine (`docs/audits/2026-04-22-orchestrator-state-machine.md` §1), `GatesCheck` is represented as a single state. Opening that black box is the goal of this Wave 3 document: six concrete sub-gates, checked sequentially, short-circuiting on the first triggered result.
 
 ---
 

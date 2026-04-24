@@ -2,7 +2,7 @@
 Wave 3 regression tests for ReasoningEngine.execute_react_loop_stream.
 
 Scope: streaming ReAct loop (`ReasoningEngine.execute_react_loop_stream`).
-Focus: transitions S1..S29 and invariants I-S1..I-S9 from STATE_MACHINE.md §5.
+Focus: transitions S1..S29 and invariants I-S1..I-S9 from docs/audits/2026-04-22-orchestrator-state-machine.md §5.
 
 Each test is keyed to a transition ID (S*) or streaming invariant ID (I-S*)
 so future Waves can cross-check coverage. Wave 2 closed U5 via
