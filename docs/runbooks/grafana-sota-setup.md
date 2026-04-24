@@ -18,10 +18,15 @@ One-time setup for the `SOTA Social — Loop 90gg Editorial KPIs` dashboard
 CREATE ROLE grafana_ro WITH LOGIN PASSWORD '<strong-random>';
 GRANT CONNECT ON DATABASE nuzantara TO grafana_ro;
 GRANT USAGE ON SCHEMA public TO grafana_ro;
-GRANT SELECT ON war_room_posts, m13_post_metrics TO grafana_ro;
+GRANT SELECT ON war_room_posts, post_metrics_history, m13_retrain_log TO grafana_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT ON TABLES TO grafana_ro;
 ```
+
+The dashboard reads from the EAV schema introduced by migration
+`128_m13_feedback.sql` (one row per metric per horizon), not from a
+wide-column `m13_post_metrics` table. Pivot happens in the top-10 panel
+via a CTE (`DISTINCT ON (post_id, metric_name) ... ORDER BY collected_at DESC`).
 
 Store the password in `~/.nuzantara-secrets.env` as
 `GRAFANA_PG_RO_PASSWORD=...` — the Grafana provisioning file below reads it
@@ -82,16 +87,22 @@ this way are read-only in the UI (edits must go through git).
 
 | Panel | Source tables | What it answers |
 |---|---|---|
-| LEARN rate 7d | `m13_post_metrics + war_room_posts WHERE pillar='learn'` | Is education content still engaging? |
-| LEAD rate 7d | same, `pillar='lead'` | Is the funnel still converting attention → DM/profile visit? |
-| COMMUNITY rate 7d | same, `pillar='community'` | Is depth (replies + saves) holding? |
+| Audience — saves @ 168h | `post_metrics_history` WHERE `metric_name='saves' AND horizon_hours=168` | Proxy for audience-building. M13 pillar→metric mapping: audience → saves. |
+| Authority — reach @ 72h | same, `metric_name='reach' AND horizon_hours=72` | Proxy for authority. M13 mapping: authority → reach. |
+| Lead — click_through @ 24h | same, `metric_name='click_through' AND horizon_hours=24` | Proxy for lead. M13 mapping: lead → click_through. |
 | Posting heatmap 30d | `war_room_posts.published_at` | Validates `06_cadence_engine.json` — are we posting at 07/12/19 WITA? |
-| Top 10 last 7d | both, `LATERAL` latest metrics | Leaderboard — cross-check with M13 weekly report. |
+| Top 10 last 7d | CTE pivots latest likes/comments/saves/reach per post, sums engagement | Leaderboard — cross-check with M13 weekly report. |
 
-Thresholds on LEARN panel follow `10_m13_measurer_config.md`:
-- green ≥ 4%
-- yellow 2–4%
-- red < 2% (same band used by `scripts/m13_weekly_report.py` breach markers)
+Thresholds on Audience panel are placeholders (5 / 15 saves) — calibrate
+after the first 7 days of data by reading the 30d median and setting
+yellow ≈ median, green ≈ p75. The band drives color only; alerting is
+owned by `scripts/m13_weekly_report.py` which also writes `[BREACH]` /
+`[WARN]` / `[OK]` markers to the weekly report.
+
+Pillar→metric mapping comes from
+`backend/services/measurer/m13_feedback_loop.py::compute_delta_vs_baseline`
+(`metric_map = {"audience": "saves", "authority": "reach", "lead": "click_through"}`).
+If that mapping changes, update the panel SQL too.
 
 ## Kill-switch coordination
 
@@ -104,12 +115,15 @@ Top-10 panel to identify which post triggered the breach.
 ## Troubleshooting
 
 - **All panels empty at first import** — Loop must be running for at
-  least 24h to populate `m13_post_metrics` (populated every 6h by
+  least 24h to populate `post_metrics_history` (written every 6h by
   `com.balizero.sota.m13-collect` launchagent).
 - **Heatmap only shows a few cells** — Expected during Loop day 1–7.
   The 30-day window needs a month of data for full saturation.
-- **LATERAL query slow on top-10** — Add index
-  `CREATE INDEX IF NOT EXISTS ix_m13_pm_post_captured ON m13_post_metrics(post_id, captured_at DESC)`.
+- **Top 10 CTE slow** — migration 128 already creates
+  `ix_post_metrics_history_post_horizon` on `(post_id, horizon_hours, collected_at DESC)`
+  which the `DISTINCT ON (post_id, metric_name) ORDER BY post_id, metric_name, collected_at DESC`
+  can use. If the table grows beyond ~1M rows, add
+  `CREATE INDEX IF NOT EXISTS ix_post_metrics_history_name_collected ON post_metrics_history(metric_name, collected_at DESC)`.
 - **Datasource shows "unauthorized"** — re-check `grafana_ro` GRANTs
   (Step 1) and `$GRAFANA_PG_RO_PASSWORD` env var presence on the
   grafana-server process.
@@ -121,4 +135,4 @@ Top-10 panel to identify which post triggered the breach.
 - [ ] Datasource provisioned, uid = `nuzantara_postgres`.
 - [ ] Dashboard imported, visible under folder `SOTA`.
 - [ ] Refresh = 5m, Timezone = Asia/Makassar.
-- [ ] Index `ix_m13_pm_post_captured` present (or ignored if table < 10k rows).
+- [ ] Index `ix_post_metrics_history_post_horizon` present (created by migration 128).
