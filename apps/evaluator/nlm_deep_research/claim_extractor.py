@@ -212,7 +212,7 @@ def extract_claims_from_response(
         if sources_metadata:
             for sid in source_ids:
                 src = sources_metadata.get(sid, {})
-                tier = src.get("tier", 2)
+                tier = src.get("tier") or 2  # handle explicit None in JSON (fix 2026-04-25)
                 highest_tier = min(highest_tier, tier)
 
         confidence = compute_confidence(
