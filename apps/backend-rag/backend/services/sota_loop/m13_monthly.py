@@ -1,5 +1,7 @@
-#!/usr/bin/env python3
 """1st of month 04:30 WITA — full monthly retrain.
+
+Invoked by `com.balizero.sota.m13-monthly.plist` through
+`scripts/wr2-cron-wrapper.sh backend.services.sota_loop.m13_monthly`.
 
 Re-runs: baseline snapshot, competitor scraping (if CSV ready),
 persona inference, Consiglio. Archives 09_wr2_weights_YYYY-MM.json.
@@ -14,14 +16,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-_REPO = Path(__file__).resolve().parent.parent
-
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
 )
 logger = logging.getLogger("sota.m13.monthly")
 
-RESEARCH = _REPO / "research" / "sota-social-2026-v1"
+
+def _repo_root() -> Path:
+    env = os.environ.get("NUZANTARA_REPO_ROOT")
+    if env:
+        return Path(env)
+    return Path(__file__).resolve().parents[4]
 
 
 def run(cmd: list[str], *, timeout: int = 1800) -> int:
@@ -35,6 +40,9 @@ def run(cmd: list[str], *, timeout: int = 1800) -> int:
 
 
 def main() -> int:
+    repo = _repo_root()
+    research = repo / "research" / "sota-social-2026-v1"
+
     dsn = os.environ["DATABASE_URL"]
     result = subprocess.run(
         [
@@ -54,13 +62,13 @@ def main() -> int:
     month = datetime.now(timezone.utc).strftime("%Y-%m")
 
     # Step 1: re-fetch Ahrefs snapshot (subset of baseline)
-    run(["python", str(_REPO / "scripts" / "sota_build_baseline.py")])
+    run(["python", str(repo / "scripts" / "sota_build_baseline.py")])
 
     # Step 2: re-ingest competitor corpus IF new CSV available AND ingest
     # script exists. Task 13 (sota_ingest_competitors.py) was deferred from
     # Fase 0 — monthly cron should not crash if it's still missing.
-    csv_path = RESEARCH / "competitor_raw.csv"
-    ingest_script = _REPO / "scripts" / "sota_ingest_competitors.py"
+    csv_path = research / "competitor_raw.csv"
+    ingest_script = repo / "scripts" / "sota_ingest_competitors.py"
     if csv_path.is_file():
         mtime = datetime.fromtimestamp(csv_path.stat().st_mtime, tz=timezone.utc)
         age_days = (datetime.now(timezone.utc) - mtime).days
@@ -79,7 +87,7 @@ def main() -> int:
     run(
         [
             "python",
-            str(_REPO / "scripts" / "sota_infer_personas.py"),
+            str(repo / "scripts" / "sota_infer_personas.py"),
             "--wave=both",
         ]
     )
@@ -88,23 +96,23 @@ def main() -> int:
     rc = run(
         [
             "python",
-            str(_REPO / "scripts" / "sota_consiglio_playbook.py"),
+            str(repo / "scripts" / "sota_consiglio_playbook.py"),
             "--wave=final",
         ]
     )
 
     # Step 5: archive WR2 weights for this month
-    weights_path = RESEARCH / "09_wr2_weights.json"
+    weights_path = research / "09_wr2_weights.json"
     if weights_path.is_file():
         new_weights = json.loads(weights_path.read_text())
-        archive_path = RESEARCH / f"09_wr2_weights_{month}.json"
+        archive_path = research / f"09_wr2_weights_{month}.json"
         archive_path.write_text(
             json.dumps(new_weights, indent=2), encoding="utf-8"
         )
         logger.info("archived weights to %s", archive_path)
 
     # Write monthly report
-    report = RESEARCH / f"monthly_report_{month}.md"
+    report = research / f"monthly_report_{month}.md"
     report.write_text(
         f"# SOTA Monthly Report {month}\n\n"
         f"Run at: {datetime.now(timezone.utc).isoformat()}\n\n"
