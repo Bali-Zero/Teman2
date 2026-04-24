@@ -451,6 +451,6 @@ with log_operation(logger, "process_query", user_id=123) as ctx:
 
 **Documentazione correlata:**
 
-- [ALERTS_RUNBOOK.md](ALERTS_RUNBOOK.md) - Runbook per gestire alert
-- [LOCK_MONITORING_GUIDE.md](LOCK_MONITORING_GUIDE.md) - Guida race conditions
-- [DEBUG_GUIDE.md](DEBUG_GUIDE.md) - Debug endpoints API
+- ALERTS_RUNBOOK.md _(doc removed)_ - Runbook per gestire alert
+- LOCK_MONITORING_GUIDE.md _(doc removed)_ - Guida race conditions
+- DEBUG_GUIDE.md _(doc removed)_ - Debug endpoints API

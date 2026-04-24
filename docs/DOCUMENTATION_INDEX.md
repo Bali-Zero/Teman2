@@ -11,7 +11,7 @@ New to the project? Read these in order:
 
 1. **[AI_ONBOARDING.md](AI_ONBOARDING.md)** - Quick-start for AI assistants
 2. **[AI_HANDOVER_PROTOCOL.md](ai/AI_HANDOVER_PROTOCOL.md)** - System prompt / project brain
-3. **[SYSTEM_MAP_4D.md](SYSTEM_MAP_4D.md)** - Architecture overview
+3. **[SYSTEM_MAP_4D.md](archive/system-map-history/SYSTEM_MAP_4D.md)** - Architecture overview (archived)
 4. **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - This file
 
 ---
@@ -67,14 +67,14 @@ docs/
 | **Onboarding**          | [AI_ONBOARDING.md](AI_ONBOARDING.md)                              |
 | **Code Standards**      | [DEVELOPMENT_GUIDELINES.md](DEVELOPMENT_GUIDELINES.md)            |
 | **Project Structure**   | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md)                      |
-| **System Overview**     | [SYSTEM_MAP_4D.md](SYSTEM_MAP_4D.md)                              |
+| **System Overview**     | [SYSTEM_MAP_4D.md](archive/system-map-history/SYSTEM_MAP_4D.md) (archived) |
 | **Living Architecture** | [LIVING_ARCHITECTURE.md](LIVING_ARCHITECTURE.md) (auto-generated) |
 
 ### 🗄️ Database
 
 | Topic                  | Document                                                   |
 | ---------------------- | ---------------------------------------------------------- |
-| **DB Architecture V2** | [DATABASE_ARCHITECTURE_V2.md](DATABASE_ARCHITECTURE_V2.md) |
+| **DB Architecture V2** | DATABASE_ARCHITECTURE_V2.md _(doc removed)_ |
 | **DB Guide**           | [DATABASE_V2_GUIDE.md](DATABASE_V2_GUIDE.md)               |
 
 ### 👥 CRM System
@@ -99,32 +99,32 @@ docs/
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
 | **System Prompt**      | [ai/AI_HANDOVER_PROTOCOL.md](ai/AI_HANDOVER_PROTOCOL.md)                                         |
 | **KG Assessment**      | [KG_VALUE_ASSESSMENT_2026_01_18.md](KG_VALUE_ASSESSMENT_2026_01_18.md)                           |
-| **Architecture Brief** | [../BRIEF_KB_ARCHITECTURE_REASONING.md](../BRIEF_KB_ARCHITECTURE_REASONING.md)                   |
-| **KG Strategy**        | [architecture/SUPER_KNOWLEDGE_GRAPH_STRATEGY.md](architecture/SUPER_KNOWLEDGE_GRAPH_STRATEGY.md) |
+| **Architecture Brief** | BRIEF_KB_ARCHITECTURE_REASONING.md _(doc removed)_                   |
+| **KG Strategy**        | architecture/SUPER_KNOWLEDGE_GRAPH_STRATEGY.md _(doc removed)_ |
 
 ### ✨ Features
 
 | Topic                | Document                                                                 |
 | -------------------- | ------------------------------------------------------------------------ |
 | **KBLI Explorer**    | [features/KBLI_NOTEBOOK_EXPLORER.md](features/KBLI_NOTEBOOK_EXPLORER.md) |
-| **Article Composer** | [ARTICLE_COMPOSER_API.md](ARTICLE_COMPOSER_API.md)                       |
+| **Article Composer** | ARTICLE_COMPOSER_API.md _(doc removed)_                       |
 | **Intel Scraper**    | [INTEL_ROUTER_API.md](INTEL_ROUTER_API.md)                               |
 
 ### 🔐 Security & CDN
 
 | Topic                          | Document                                                                                    |
 | ------------------------------ | ------------------------------------------------------------------------------------------- |
-| **CloudFlare CDN Plan**        | [CLOUDFLARE_IMPLEMENTATION_PLAN.md](CLOUDFLARE_IMPLEMENTATION_PLAN.md) - Complete CDN setup |
-| **CloudFlare CDN Quick Start** | [CLOUDFLARE_CDN_SETUP.md](CLOUDFLARE_CDN_SETUP.md)                                          |
-| **CloudFlare DNS Setup**       | [CLOUDFLARE_DNS_SETUP.md](CLOUDFLARE_DNS_SETUP.md)                                          |
-| **CloudFlare DNS Status**      | [CLOUDFLARE_DNS_SETUP_COMPLETE.md](CLOUDFLARE_DNS_SETUP_COMPLETE.md)                        |
+| **CloudFlare CDN Plan**        | CLOUDFLARE_IMPLEMENTATION_PLAN.md _(doc removed)_ |
+| **CloudFlare CDN Quick Start** | CLOUDFLARE_CDN_SETUP.md _(doc removed)_            |
+| **CloudFlare DNS Setup**       | CLOUDFLARE_DNS_SETUP.md _(doc removed)_            |
+| **CloudFlare DNS Status**      | CLOUDFLARE_DNS_SETUP_COMPLETE.md _(doc removed)_   |
 | **Public Endpoints Audit**     | [security/PUBLIC_ENDPOINTS_SECURITY_AUDIT.md](security/PUBLIC_ENDPOINTS_SECURITY_AUDIT.md)  |
 
 ---
 
 ## 📊 SYSTEM STATISTICS
 
-From [SYSTEM_MAP_4D.md](SYSTEM_MAP_4D.md) (auto-updated):
+From [SYSTEM_MAP_4D.md](archive/system-map-history/SYSTEM_MAP_4D.md) (archived):
 
 | Metric             | Value                      |
 | ------------------ | -------------------------- |
