@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 20 · **Packages:** 5
+**Apps:** 26 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -54,6 +54,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `nuzantara-mcp` | Primary MCP server for Zantara AI assistant. FastMCP, stdio transport. |
 | `nuzantara-mcp-advanced` | Advanced MCP (Model Context Protocol) server for Nuzantara operations, deployment, and diagnostics. |
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
+| `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus` |  |
 | `osint-nexus-ui` |  |
 | `team-agent` |  |
@@ -66,7 +67,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 253 routers, 489 services, 824 test files
+- **Backend:** Python 3.11+, FastAPI, 135 routers, 489 services, 2558 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -221,13 +222,13 @@ apps/backend-rag/
 │   │   ├── setup/          # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py         # Entrypoint (alias for main_cloud.py)
-│   ├── services/           # Core business logic (244 services)
+│   ├── services/           # Core business logic (489 services)
 │   ├── channels/           # 7 channels (whatsapp, telegram, instagram, twitter, web, gchat, slack)
 │   ├── core/               # Config, security, logging
 │   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
 │   ├── prompts/            # ⭐ Prompt SSOT (zantara_core.py)
-│   └── migrations/         # Alembic (up to 060)
-├── tests/                  # 385 test files
+│   └── migrations/         # Custom migration system (migration_NNN_*.py, 108 migrations; runner: backend/db/migration_manager.py)
+├── tests/                  # 2558 test files
 ├── .venv/                  # ⚠️ ALWAYS .venv, not venv
 └── fly.toml
 ```
@@ -482,5 +483,5 @@ sources: <n>
 
 ---
 
-**Last Updated:** 2026-04-21
+**Last Updated:** 2026-04-24
 **Maintained by:** Bali Zero AI Team
