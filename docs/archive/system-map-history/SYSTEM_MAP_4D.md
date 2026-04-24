@@ -506,7 +506,8 @@ cd apps/backend-rag && pytest        # Run all tests
 ./sentinel                           # Quality control
 
 # Documentation
-python apps/core/scribe.py           # Regenerate docs
+# NOTE 2026-04-25: apps/core/scribe.py removed in commit 0c60050e8
+# (dormant-systems cleanup). Scribe function no longer available as a CLI.
 ```
 
 ---
