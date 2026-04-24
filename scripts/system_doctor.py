@@ -153,8 +153,21 @@ class DoctorReport:
 
 # --- Collectors ---
 
+def _run_pro_cmd(cmd: str, timeout: int = 15) -> subprocess.CompletedProcess:
+    """Run a shell command locally on Pro.
+
+    This used to SSH from Air to Pro; now that system_doctor runs on Pro
+    itself (Phase 1 Air retirement, 2026-04-24), commands execute locally
+    via bash -c to preserve the single-string command contract callers use.
+    """
+    return subprocess.run(
+        ["bash", "-c", cmd],
+        capture_output=True, text=True, timeout=timeout,
+    )
+
+
 def collect_pro_crons() -> list[SystemCheck]:
-    """Single SSH to Pro, read all 5 log tails."""
+    """Read all 5 log tails locally on Pro."""
     checks = []
     separator = "===DOCTOR_SEP==="
     cmd_parts = []
@@ -162,14 +175,11 @@ def collect_pro_crons() -> list[SystemCheck]:
         cmd_parts.append(f"tail -3 {log_path} 2>/dev/null || echo 'FILE_NOT_FOUND'")
     cmd = f"; echo '{separator}'; ".join(cmd_parts)
 
-    log("SSH to Pro for 5 log tails...")
+    log("Reading 5 log tails locally...")
     try:
-        result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro", cmd],
-            capture_output=True, text=True, timeout=15,
-        )
+        result = _run_pro_cmd(cmd, timeout=15)
         if result.returncode != 0:
-            log(f"SSH failed: {result.stderr[:200]}")
+            log(f"Local exec failed: {result.stderr[:200]}")
             for sys_id, name in [
                 ("pro-fly-health", "Fly Health Check"),
                 ("pro-pg-backup", "PostgreSQL Backup"),
@@ -853,13 +863,12 @@ def collect_llm_api_health() -> list[SystemCheck]:
             status="warning", message=f"Cannot check: {type(e).__name__}",
         ))
 
-    # 2. Check LLM circuit breaker state via Fly logs (SSH to Pro which has fly auth)
-    log("Checking LLM API via Fly logs (SSH Pro)...")
+    # 2. Check LLM circuit breaker state via Fly logs (local Pro has fly auth)
+    log("Checking LLM API via Fly logs...")
     try:
-        result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
-             "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -200"],
-            capture_output=True, text=True, timeout=20,
+        result = _run_pro_cmd(
+            "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -200",
+            timeout=20,
         )
         if result.returncode == 0:
             lines = result.stdout.splitlines()
@@ -914,11 +923,10 @@ def collect_llm_cost() -> list[SystemCheck]:
     checks = []
     log("Checking LLM cost metrics...")
     try:
-        # Metrics endpoint is admin-protected, use fly ssh to query locally
-        result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
-             "fly ssh console --app nuzantara-rag -C 'curl -s http://localhost:8080/metrics' 2>/dev/null"],
-            capture_output=True, text=True, timeout=25,
+        # Metrics endpoint is admin-protected, use fly ssh to query inside the container
+        result = _run_pro_cmd(
+            "fly ssh console --app nuzantara-rag -C 'curl -s http://localhost:8080/metrics' 2>/dev/null",
+            timeout=25,
         )
         if result.returncode == 0 and result.stdout:
             # Parse Prometheus text format for LLM cost
@@ -1050,10 +1058,9 @@ def collect_error_patterns() -> list[SystemCheck]:
     log("Analyzing error patterns in Fly logs...")
 
     try:
-        result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
-             "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -500"],
-            capture_output=True, text=True, timeout=25,
+        result = _run_pro_cmd(
+            "fly logs --app nuzantara-rag --no-tail 2>/dev/null | tail -500",
+            timeout=25,
         )
         if result.returncode != 0 or not result.stdout.strip():
             checks.append(SystemCheck(
@@ -1137,10 +1144,7 @@ def collect_import_chain() -> list[SystemCheck]:
         'python -c "from backend.app.dependencies import get_current_user; print(\'OK\')" 2>&1'
     )
     try:
-        result = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro", cmd],
-            capture_output=True, text=True, timeout=20,
-        )
+        result = _run_pro_cmd(cmd, timeout=20)
         output = result.stdout.strip()
         if "OK" in output and result.returncode == 0:
             return [SystemCheck(
