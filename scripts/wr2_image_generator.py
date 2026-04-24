@@ -168,21 +168,34 @@ async def _gen_one_image(
     image_prompt: str,
     timeout_s: int = TIMEOUT_PER_SLIDE,
 ) -> tuple[bytes | None, str | None]:
-    """Generate a single image in a fresh tab. Returns (bytes, error_msg)."""
+    """Generate a single image in a fresh tab. Returns (bytes, error_msg).
+
+    Detection (verified 2026-04-24 via DOM inspection of live Gemini):
+      - Generated image is <img class="image animate loaded">
+      - src is a blob: URL (blob:https://gemini.google.com/<uuid>)
+      - alt == ", AI generated"
+      - parent is <button class="image-button">
+      - Download full-res via aria-label="Download full-sized image" button
+    """
     page = await context.new_page()
     try:
         await page.goto(GEMINI_URL, timeout=60000, wait_until="load")
         await page.wait_for_selector(SEL_INPUT, timeout=30000)
 
-        # Enable Nano Banana 2 Pro — newest model typically selected by default;
-        # if multiple models are exposed, attempt to pick "2.5 Pro" via selector.
-        # If the selector doesn't exist, proceed with default model.
+        # Route to image-gen mode via the explicit "Create image" tool button
+        # (revealed in the compose toolbar). This forces the correct model
+        # pathway. If not visible, fall back to default model selection.
         try:
-            # Best-effort model switch (UI may not always expose a selector)
-            await page.get_by_role("button", name="Model").click(timeout=3000)
-            await page.get_by_text("2.5 Pro", exact=False).click(timeout=3000)
+            await page.locator("button[aria-label*='Create image' i]").first.click(timeout=5000)
+            await asyncio.sleep(1.5)
+            logger.debug("Clicked 'Create image' tool button")
         except Exception:
-            logger.debug("Model switcher not found or 2.5 Pro already active")
+            # Fallback to model switcher (older UI)
+            try:
+                await page.get_by_role("button", name="Model").click(timeout=3000)
+                await page.get_by_text("2.5 Pro", exact=False).click(timeout=3000)
+            except Exception:
+                logger.debug("No 'Create image' button and no model switcher — using default")
 
         # Type prompt
         final_prompt = _compose_final_prompt(image_prompt)
@@ -195,20 +208,22 @@ async def _gen_one_image(
         start = time.time()
         img_bytes: bytes | None = None
         last_err: str | None = None
+        found_img_el = None
         while time.time() - start < timeout_s:
             await asyncio.sleep(3)
-            imgs = await page.locator("img").all()
-            for img in imgs:
+            # Primary selector: Gemini's stable generated-image class
+            gen = page.locator("img.image.loaded, img[alt*='AI generated']")
+            count = await gen.count()
+            for i in range(count):
+                img = gen.nth(i)
                 try:
                     src = await img.get_attribute("src") or ""
                     alt = await img.get_attribute("alt") or ""
                 except Exception:
                     continue
-                if not src or src.startswith("data:"):
+                if not src:
                     continue
                 if "/ogw/" in src or alt.lower() == "profile picture":
-                    continue
-                if "googleusercontent" not in src:
                     continue
                 # Get natural dimensions — reject tiny icons
                 try:
@@ -218,22 +233,54 @@ async def _gen_one_image(
                     w, h = 0, 0
                 if (w or 0) < 200 or (h or 0) < 200:
                     continue
-                # Found a real generated image — fetch bytes
-                try:
-                    response = await page.request.get(src)
-                    if response.status == 200:
-                        img_bytes = await response.body()
-                        break
-                    last_err = f"fetch src HTTP {response.status}"
-                except Exception as e:
-                    last_err = f"fetch exception: {e}"
-            if img_bytes:
+                found_img_el = img
                 break
-        if not img_bytes:
+            if found_img_el:
+                break
+        if not found_img_el:
             return None, last_err or f"timeout {timeout_s}s — no image appeared"
+
+        # Two-pronged fetch: (1) blob URL can't be http-fetched, so we use
+        # browser-side fetch()->arrayBuffer; (2) fallback to click Download
+        # button + intercept page download event.
+        try:
+            b64 = await found_img_el.evaluate(
+                """async (img) => {
+                    const resp = await fetch(img.src);
+                    const blob = await resp.blob();
+                    const buf = await blob.arrayBuffer();
+                    const bytes = new Uint8Array(buf);
+                    let binary = '';
+                    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                    return btoa(binary);
+                }"""
+            )
+            import base64
+            img_bytes = base64.b64decode(b64)
+            logger.debug("Fetched image via in-page fetch (%d bytes)", len(img_bytes))
+        except Exception as e:
+            last_err = f"in-page fetch failed: {e}"
+            logger.warning("In-page fetch failed, trying Download button: %s", e)
+            try:
+                async with page.expect_download(timeout=30000) as dl_info:
+                    await page.locator("button[aria-label*='Download full-sized image' i]").first.click()
+                download = await dl_info.value
+                path = await download.path()
+                if path:
+                    from pathlib import Path as _P
+                    img_bytes = _P(path).read_bytes()
+                    logger.debug("Fetched image via Download button (%d bytes)", len(img_bytes))
+            except Exception as e2:
+                return None, f"{last_err}; download fallback also failed: {e2}"
+
+        if not img_bytes:
+            return None, last_err or "no bytes captured"
         return img_bytes, None
     finally:
         await page.close()
+
+
+MAX_RETRIES_PER_SLIDE = 2
 
 
 async def _gen_image_with_semaphore(
@@ -243,21 +290,49 @@ async def _gen_image_with_semaphore(
     image_prompt: str,
     draft_id: str,
 ) -> tuple[int, str | None, str | None]:
-    """Generate + upload one hero image. Returns (slide_number, url, error)."""
+    """Generate + upload one hero image. Returns (slide_number, url, error).
+
+    Retries up to MAX_RETRIES_PER_SLIDE times on failure (Gemini UI flakiness
+    is intermittent — page sometimes stalls while loading or the send button
+    vanishes briefly; a fresh tab usually succeeds).
+    """
     async with sem:
-        logger.info("[slide %d] generating image — prompt=%r", slide_number, image_prompt[:80])
-        t0 = time.time()
-        img_bytes, err = await _gen_one_image(context, slide_number, image_prompt)
-        dt = time.time() - t0
+        last_err: str | None = None
+        img_bytes: bytes | None = None
+        for attempt in range(1, MAX_RETRIES_PER_SLIDE + 1):
+            logger.info(
+                "[slide %d] generating image (attempt %d/%d) — prompt=%r",
+                slide_number,
+                attempt,
+                MAX_RETRIES_PER_SLIDE,
+                image_prompt[:80],
+            )
+            t0 = time.time()
+            try:
+                img_bytes, err = await _gen_one_image(context, slide_number, image_prompt)
+            except Exception as e:
+                img_bytes, err = None, f"unhandled exception: {e}"
+            dt = time.time() - t0
+            if img_bytes:
+                logger.info(
+                    "[slide %d] ok on attempt %d (%.1fs, %d bytes)",
+                    slide_number, attempt, dt, len(img_bytes),
+                )
+                break
+            last_err = err
+            logger.warning(
+                "[slide %d] attempt %d failed after %.1fs: %s",
+                slide_number, attempt, dt, err,
+            )
+            if attempt < MAX_RETRIES_PER_SLIDE:
+                # Cool-down between retries so Gemini doesn't rate-limit us
+                await asyncio.sleep(8)
+
         if not img_bytes:
-            logger.error("[slide %d] generation failed after %.1fs: %s", slide_number, dt, err)
-            return slide_number, None, err
-        logger.info(
-            "[slide %d] image generated in %.1fs (%d bytes), uploading to Tigris",
-            slide_number,
-            dt,
-            len(img_bytes),
-        )
+            logger.error("[slide %d] all attempts failed, last err=%s", slide_number, last_err)
+            return slide_number, None, last_err or "all retries failed"
+
+        logger.info("[slide %d] uploading to Tigris", slide_number)
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         key = f"warroom/{draft_id}/slide-{slide_number:02d}-{ts}.png"
         try:

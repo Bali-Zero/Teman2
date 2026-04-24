@@ -294,7 +294,10 @@ def check_slide(
             )
         )
 
-    # Rule 4: numeric hallucination — HARD if fact_pool exists
+    # Rule 4: numeric hallucination — HARD if fact_pool exists AND number
+    # missing both from pool AND from original article_summary (the extractor
+    # may miss numbers during LLM-based extraction; the summary is ultimate
+    # source of truth).
     if fact_pool_text:
         for num_match in RE_NUMBER.finditer(full_text):
             token = num_match.group(0)
@@ -303,13 +306,27 @@ def check_slide(
             # Year fallback
             if RE_YEAR.search(token) and RE_YEAR.search(fact_pool_text):
                 continue
+            # Fallback: original article summary (passed via closure)
+            summary_text = getattr(check_slide, "_summary_text", "") or ""
+            if summary_text and _number_in_pool(token, summary_text):
+                # Number present in source but missed by extractor — SOFT
+                result.add(
+                    Flag(
+                        severity="soft",
+                        slide_number=sn,
+                        rule="number_in_source_not_in_pool",
+                        offending_text=token,
+                        detail=f"figure '{token}' in article_summary but missed by fact_extractor",
+                    )
+                )
+                continue
             result.add(
                 Flag(
                     severity="hard",
                     slide_number=sn,
                     rule="number_not_in_pool",
                     offending_text=token,
-                    detail=f"figure '{token}' not in fact_pool — potential hallucination",
+                    detail=f"figure '{token}' not in fact_pool or source — potential hallucination",
                 )
             )
 
@@ -360,7 +377,11 @@ def check_slide(
         )
 
 
-def check_draft(slides: list[dict[str, Any]], fact_pools: dict[str, Any] | None) -> CheckResult:
+def check_draft(
+    slides: list[dict[str, Any]],
+    fact_pools: dict[str, Any] | None,
+    article_summary: str = "",
+) -> CheckResult:
     result = CheckResult()
     fact_pool_text = _pool_tokens_lower(
         (fact_pools or {}).get("fact_pool") or [],
@@ -370,8 +391,14 @@ def check_draft(slides: list[dict[str, Any]], fact_pools: dict[str, Any] | None)
         (fact_pools or {}).get("causal_pool") or [],
         ["cause", "effect", "source_sentence"],
     )
-    for slide in slides:
-        check_slide(slide, fact_pool_text, causal_pool_text, result)
+    # Attach summary as an attribute so check_slide can do fallback lookup
+    # without mutating its signature (keeps the unit test API stable).
+    check_slide._summary_text = (article_summary or "").lower()  # type: ignore[attr-defined]
+    try:
+        for slide in slides:
+            check_slide(slide, fact_pool_text, causal_pool_text, result)
+    finally:
+        check_slide._summary_text = ""  # type: ignore[attr-defined]
     return result
 
 
@@ -498,6 +525,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> str:
     brief_raw = row["brief_json"]
     brief = json.loads(brief_raw) if isinstance(brief_raw, str) else (brief_raw or {})
     fact_pools = brief.get("fact_pools")
+    article_summary = brief.get("article_summary") or ""
     council_raw = row["council_debate_json"]
     council = (
         json.loads(council_raw) if isinstance(council_raw, str) else (council_raw or {})
@@ -511,7 +539,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> str:
         await _mark_passed(conn, draft_id, council, CheckResult())
         return "skipped"
 
-    result = check_draft(slides, fact_pools)
+    result = check_draft(slides, fact_pools, article_summary=article_summary)
     logger.info(
         "Draft %s: %d hard / %d soft flags across %d slides",
         draft_id, result.hard_count, result.soft_count, len(slides),
