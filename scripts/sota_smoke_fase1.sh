@@ -27,6 +27,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND="${ROOT}/apps/backend-rag"
 VENV="${BACKEND}/.venv"
+# Fallback to the Pro repo venv if the worktree doesn't have its own
+# (worktree venvs are often symlinked to /Users/nuzantara/Desktop/nuzantara/.../.venv).
+if [[ ! -x "${VENV}/bin/python" ]] && [[ -x "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python" ]]; then
+  VENV="/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv"
+fi
 PY="${VENV}/bin/python"
 
 cd "${ROOT}"
@@ -90,23 +95,23 @@ _check_file "apps/backend-rag/backend/services/measurer/m13_feedback_loop.py"   
 _run_pytest "backend/tests/unit/services/measurer/test_m13_feedback_loop.py"       "T23 M13FeedbackLoop"
 
 # ── Task 24 — collect every 6h ──────────────────────────────────────────
-_check_exec "scripts/m13_collect_post_metrics.py"                                   "T24 collect script"
-_check_py_ast "scripts/m13_collect_post_metrics.py"
+_check_file "apps/backend-rag/backend/services/sota_loop/m13_collect.py"            "T24 collect module"
+_check_py_ast "apps/backend-rag/backend/services/sota_loop/m13_collect.py"
 _check_plist "infra/launchagents/com.balizero.sota.m13-collect.plist"
 
 # ── Task 25 — weekly report ─────────────────────────────────────────────
-_check_exec "scripts/m13_weekly_report.py"                                          "T25 weekly script"
-_check_py_ast "scripts/m13_weekly_report.py"
+_check_file "apps/backend-rag/backend/services/sota_loop/m13_weekly.py"             "T25 weekly module"
+_check_py_ast "apps/backend-rag/backend/services/sota_loop/m13_weekly.py"
 _check_plist "infra/launchagents/com.balizero.sota.m13-weekly.plist"
 
 # ── Task 26 — monthly retrain ───────────────────────────────────────────
-_check_exec "scripts/m13_monthly_retrain.py"                                        "T26 monthly script"
-_check_py_ast "scripts/m13_monthly_retrain.py"
+_check_file "apps/backend-rag/backend/services/sota_loop/m13_monthly.py"            "T26 monthly module"
+_check_py_ast "apps/backend-rag/backend/services/sota_loop/m13_monthly.py"
 _check_plist "infra/launchagents/com.balizero.sota.m13-monthly.plist"
 
 # ── Task 27 — checkpoint (30/60/90) ─────────────────────────────────────
-_check_exec "scripts/m13_checkpoint.py"                                             "T27 checkpoint script"
-_check_py_ast "scripts/m13_checkpoint.py"
+_check_file "apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py"         "T27 checkpoint module"
+_check_py_ast "apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py"
 _check_plist "infra/launchagents/com.balizero.sota.m13-checkpoint.plist"
 
 # ── Task 28 — EditorialConfig ───────────────────────────────────────────
