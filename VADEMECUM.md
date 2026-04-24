@@ -158,21 +158,33 @@ produzione perché l'LLM restituisce JSON con campo mancante e nessuno valida.
 
 ---
 
-## 7. Nuova migrazione Alembic
+## 7. Nuova migrazione DB
 
-> File in `apps/backend-rag/backend/migrations/versions/`.
+> File SQL in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.
+> Il backend NON usa Alembic — usa il custom runner `backend/db/migration_manager.py`.
+> Vedi `AUTONOMOUS_OPS.md` → "Schema-change discipline" per le regole hard.
 
 **Checklist:**
 
-1. [ ] Ha sia `upgrade()` che `downgrade()` — sempre, senza eccezioni
-2. [ ] È testata su un DB fresh E su un DB con dati esistenti
-3. [ ] Se aggiunge colonna NOT NULL → ha un default o una migrazione dati
-4. [ ] Chi dipende dal vecchio schema? (cerca in `backend/services/` prima)
-5. [ ] Il numero progressivo è corretto? (check `alembic current` prima)
-6. [ ] È passata da Codex sandbox? (`./scripts/ai-dispatch.sh codex-sandbox "test migration"`)
+1. [ ] File è SQL puro (non Python) in `migrations_v2/` con prefisso `NNN_` progressivo
+2. [ ] Ha sia la sezione forward (in cima) che la sezione rollback dopo il marker `-- === ROLLBACK ===` — sempre, senza eccezioni
+3. [ ] È testata su un DB fresh E su un DB con dati esistenti
+4. [ ] Se aggiunge colonna NOT NULL → ha un default o una migrazione dati nello stesso file
+5. [ ] Chi dipende dal vecchio schema? (cerca in `backend/services/` prima)
+6. [ ] Il numero progressivo è corretto? (`ls backend/db/migrations_v2/ | tail -3` prima di scegliere)
+7. [ ] `PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` passa pulito
+8. [ ] È passata da Codex sandbox? (`./scripts/ai-dispatch.sh codex-sandbox "test migration"`)
 
-**Scar documentato:** mai eseguire migration su prod senza averla testata su DB reale.
-Il mock non rivela problemi di lock su tabelle grandi.
+**Hard rules (vedi `AUTONOMOUS_OPS.md`):**
+
+- **MAI** `SQLModel.metadata.create_all()` per prod o CI (solo test scratch).
+- **MAI** nuovi `apps/backend-rag/backend/migrations/apply_migration_NNN.py` senza approvazione umana esplicita — vanno convertiti a SQL.
+- **MAI** rinominare o cancellare un file `migrations_v2/` già applicato in prod.
+
+**Scar documentati:**
+
+- Mai eseguire migration su prod senza averla testata su DB reale; il mock non rivela problemi di lock su tabelle grandi.
+- 2026-04-19: il runner eseguiva la sezione ROLLBACK come parte della transazione forward — risolto in `migration_base.split_migration_sql()`. Da allora il marker `-- === ROLLBACK ===` è obbligatorio per qualunque migration con DDL reversibile.
 
 ---
 
