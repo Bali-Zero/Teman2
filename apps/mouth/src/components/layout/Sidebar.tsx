@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Plus,
   X,
@@ -74,6 +75,20 @@ export function Sidebar({
   onClearHistory,
 }: SidebarProps) {
   const router = useRouter();
+
+  const confirmDelete = (
+    e: React.MouseEvent | React.KeyboardEvent,
+    id: number,
+  ) => {
+    e.stopPropagation();
+    toast.warning("Delete conversation?", {
+      description: "This action cannot be undone.",
+      action: {
+        label: "Delete",
+        onClick: () => onDeleteConversation(id),
+      },
+    });
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -163,16 +178,25 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <ul className="space-y-1">
               {conversations.map((conv) => (
-                <div
+                <li
                   key={conv.id}
-                  className={`group relative p-2 rounded-lg cursor-pointer transition-all ${
+                  role="button"
+                  tabIndex={0}
+                  aria-current={currentConversationId === conv.id ? "true" : undefined}
+                  className={`group relative p-2 rounded-lg cursor-pointer transition-all focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-inset outline-none ${
                     currentConversationId === conv.id
                       ? "bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
                       : "hover:bg-white/5 text-[var(--foreground)] border border-transparent"
                   }`}
                   onClick={() => onConversationClick(conv.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onConversationClick(conv.id);
+                    }
+                  }}
                 >
                   <div className="flex items-start gap-2">
                     <MessageSquare
@@ -194,11 +218,13 @@ export function Sidebar({
                     </div>
                   </div>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteConversation(conv.id);
+                    onClick={(e) => confirmDelete(e, conv.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        confirmDelete(e, conv.id);
+                      }
                     }}
-                    className={`absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
+                    className={`absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity ${
                       currentConversationId === conv.id
                         ? "hover:bg-[var(--accent)]/20 text-[var(--accent)]"
                         : "hover:bg-white/10 text-[var(--foreground-muted)]"
@@ -207,9 +233,9 @@ export function Sidebar({
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
 

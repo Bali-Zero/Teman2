@@ -1,0 +1,3 @@
+## 2026-03-28 - Sidebar Semantic List and Safety Pattern
+**Learning:** The sidebar used non-semantic `div` elements for the conversation list, which lacks screen reader context. Additionally, destructive actions like deletion were immediate, posing a risk of accidental data loss. Nested interactive elements (button inside role="button") should be handled with care using `e.stopPropagation()` on both click and keydown.
+**Action:** Always use `ul`/`li` for list structures. Implement confirmation toasts for destructive actions. Ensure `focus-within` and `focus` states make hidden actions visible for keyboard users.
