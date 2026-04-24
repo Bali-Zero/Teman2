@@ -186,8 +186,12 @@ class TestSaveConversationMemory:
     @pytest.mark.asyncio
     async def test_save_memory_lock_timeout(self, orchestrator):
         """Test lock timeout handling"""
+        # memory_handler keys locks by f"{user_id}::{session_id or '__nosession__'}";
+        # _save_conversation_memory doesn't pass session_id, so the effective
+        # key is "{user_id}::__nosession__". Pre-refactor the key was just
+        # user_id — leaving us with a stale lock the code never looked up.
         lock = asyncio.Lock()
-        orchestrator.memory_handler._memory_locks["user@test.com"] = lock
+        orchestrator.memory_handler._memory_locks["user@test.com::__nosession__"] = lock
 
         async def hold_lock():
             await lock.acquire()

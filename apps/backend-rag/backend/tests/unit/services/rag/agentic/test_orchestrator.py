@@ -2070,9 +2070,17 @@ class TestMemoryLockTimeout:
             # Set very short timeout to trigger timeout
             orch._lock_timeout = 0.001  # 1ms timeout
 
-            # Acquire lock for user to simulate contention
+            # Acquire lock for (user_id, session_id=None) to simulate contention.
+            # memory_handler.save_conversation_memory builds lock_key as
+            #   f"{user_id}::{session_id or '__nosession__'}"
+            # (memory_handler.py:145). _save_conversation_memory does not pass
+            # session_id, so the effective key is "{user_id}::__nosession__".
+            # Pre-refactor the key was just user_id — hence this test going
+            # stale and acquiring an unrelated lock (the code would then
+            # proceed past the acquire and crash on the AsyncMock return).
             user_id = "test@example.com"
-            lock = orch._memory_locks[user_id]
+            lock_key = f"{user_id}::__nosession__"
+            lock = orch._memory_locks[lock_key]
             await lock.acquire()
 
             # Try to save memory (will timeout waiting for lock)
@@ -2715,9 +2723,14 @@ class TestSaveConversationMemoryEdgeCases:
             orch = AgenticRAGOrchestrator(tools=tools, db_pool=mock_db_pool)
             orch._lock_timeout = 0.1  # Short timeout for testing
 
-            # Create a lock that's already acquired
+            # Create a lock that's already acquired.
+            # memory_handler.save_conversation_memory keys locks by
+            #   f"{user_id}::{session_id or '__nosession__'}"
+            # (see memory_handler.py:145); _save_conversation_memory doesn't
+            # pass session_id, so we must acquire the nosession-suffixed key.
             user_id = "test_user"
-            lock = orch._memory_locks[user_id]
+            lock_key = f"{user_id}::__nosession__"
+            lock = orch._memory_locks[lock_key]
             await lock.acquire()  # Acquire lock so next call will timeout
 
             # Try to save memory - should timeout gracefully
