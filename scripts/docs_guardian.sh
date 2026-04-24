@@ -60,8 +60,13 @@ CLUSTER_ARGS=(
 # Sync DOCSYNC markers; tolerate failure.
 python scripts/docs_sync.py --quiet || true
 
-# Collect stats (single JSON read; also triggers inventory write as side-effect)
-STATS=$(python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || echo '{}')
+# Collect stats (single JSON read). docs_audit.py exits 1 when delta is
+# detected — that's expected (we want to know about delta); capture stdout
+# regardless. Only fallback to '{}' on genuine catastrophic failure.
+STATS=$(python scripts/docs_audit.py --json --quiet "${WHITELIST_ARGS[@]}" "${CLUSTER_ARGS[@]}" 2>/dev/null || true)
+if [[ -z "${STATS:-}" ]]; then
+  STATS='{}'
+fi
 STATS_LINE=$(echo "$STATS" | python -c "
 import json, sys
 try:
