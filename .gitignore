@@ -20,7 +20,12 @@ __pycache__/
 uv.lock
 .venv/
 **/.venv/
-apps/backend-rag/data/
+# apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
+# apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
+# that tests import at collection time — CI needs them in the repo.
+# Ignore everything under data/ EXCEPT evaluation/, which we carve out.
+apps/backend-rag/data/*
+!apps/backend-rag/data/evaluation/
 # Prevent recursive apps structure
 apps/backend-rag/apps/
 check_ingest.py
