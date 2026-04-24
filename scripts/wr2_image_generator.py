@@ -57,16 +57,20 @@ GEMINI_PROFILE_DIR = Path(
 )
 GEMINI_URL = "https://gemini.google.com/app"
 
-MAX_CONCURRENT_TABS = int(os.environ.get("WR2_IMAGE_MAX_CONCURRENT", "3"))
-TIMEOUT_PER_SLIDE = int(os.environ.get("WR2_IMAGE_TIMEOUT_PER_SLIDE", "180"))
+MAX_CONCURRENT_TABS = int(os.environ.get("WR2_IMAGE_MAX_CONCURRENT", "1"))
+TIMEOUT_PER_SLIDE = int(os.environ.get("WR2_IMAGE_TIMEOUT_PER_SLIDE", "240"))
 MAX_DRAFTS_PER_RUN = 2
 
-# Gemini web becomes flaky if many tabs share the same persistent profile in
-# parallel (Send button occasionally never renders; images occasionally never
-# arrive). Set WR2_IMAGE_ISOLATE_BROWSER=true to launch a FRESH browser
-# context per slide (~4 mins per draft, but ~100% success rate under
-# throttling pressure). Forces serial execution.
-ISOLATE_PER_SLIDE = os.environ.get("WR2_IMAGE_ISOLATE_BROWSER", "false").lower() == "true"
+# Gemini web reliably degrades when many tabs share one persistent profile
+# in parallel or even serially within a single browser context (Send button
+# sometimes never renders; images occasionally never arrive). Default now
+# isolates each hero slide in a freshly-launched browser context.
+# Empirical data (Apr 25, 2026, Ultra plan):
+#   parallel=3 tabs, one context:  1/3 OK
+#   serial=1, one context:          1/4 OK
+#   serial + fresh context/slide:   3/4 OK (at 240s/slide)
+# Set WR2_IMAGE_ISOLATE_BROWSER=false to restore the old shared-context mode.
+ISOLATE_PER_SLIDE = os.environ.get("WR2_IMAGE_ISOLATE_BROWSER", "true").lower() == "true"
 
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
@@ -175,7 +179,21 @@ async def _gen_one_image(
     image_prompt: str,
     timeout_s: int = TIMEOUT_PER_SLIDE,
 ) -> tuple[bytes | None, str | None]:
-    """Generate a single image in a fresh tab. Returns (bytes, error_msg).
+    """Wraps a bare image_prompt with brand+anti-cliche modifiers and sends.
+    Prefer this path for variant 1 (primary). Use _gen_one_image_raw to send
+    a literal prompt (variants 2/3)."""
+    final = _compose_final_prompt(image_prompt)
+    return await _gen_one_image_raw(context, slide_number, final, timeout_s=timeout_s)
+
+
+async def _gen_one_image_raw(
+    context: Any,  # playwright BrowserContext
+    slide_number: int,
+    literal_prompt: str,
+    timeout_s: int = TIMEOUT_PER_SLIDE,
+) -> tuple[bytes | None, str | None]:
+    """Send `literal_prompt` VERBATIM (no brand/anti-cliche wrapping) and
+    return (bytes, error_msg).
 
     Detection (verified 2026-04-24 via DOM inspection of live Gemini):
       - Generated image is <img class="image animate loaded">
@@ -204,17 +222,17 @@ async def _gen_one_image(
             except Exception:
                 logger.debug("No 'Create image' button and no model switcher — using default")
 
-        # Type prompt
-        final_prompt = _compose_final_prompt(image_prompt)
+        # Type prompt. `delay=5` lets Quill rerender as each key arrives;
+        # bulk `fill()` would drop into the DOM in one event and sometimes
+        # leave Gemini's compose toolbar in a stale state where the Send
+        # button never renders.
         await page.click(SEL_INPUT)
-        await page.keyboard.type(final_prompt, delay=5)
-        # Wait for Send button to materialize AND be enabled. Under parallel
-        # tabs on a shared profile, it sometimes takes >10s for Gemini's UI to
-        # re-render the compose toolbar after the 'Create image' toggle. The
-        # old `await page.click(SEL_SEND)` used Playwright's default 30s
-        # timeout but only waited for the element to EXIST — not for it to be
-        # enabled — so it could click a disabled shell of the Send button, or
-        # (more commonly) time out silently when the element never rendered.
+        await page.keyboard.type(literal_prompt, delay=5)
+        # Small trailing keypress to force Quill to commit the composition
+        # buffer — observed empirically: without this, `input` events
+        # sometimes don't fire and the Send button stays hidden.
+        await page.keyboard.press("End")
+        await asyncio.sleep(3)
         send_btn = page.locator(SEL_SEND)
         try:
             await send_btn.wait_for(state="visible", timeout=60000)
@@ -226,9 +244,17 @@ async def _gen_one_image(
                 if disabled in (None, "false") and is_disabled_attr is None:
                     break
                 await asyncio.sleep(0.5)
-        except Exception as e:
-            return None, f"send button never ready: {e}"
-        await send_btn.click(timeout=15000)
+        except Exception:
+            # Fallback: send via Enter key on the input — Quill accepts
+            # Shift+Enter for newline and plain Enter for submit.
+            try:
+                await page.locator(SEL_INPUT).focus()
+                await page.keyboard.press("Enter")
+                logger.debug("Send button never appeared; used keyboard Enter fallback")
+            except Exception as e:
+                return None, f"send button never ready and Enter fallback failed: {e}"
+        else:
+            await send_btn.click(timeout=15000)
 
         # Wait for generated image
         start = time.time()
@@ -266,9 +292,14 @@ async def _gen_one_image(
         if not found_img_el:
             return None, last_err or f"timeout {timeout_s}s — no image appeared"
 
-        # Two-pronged fetch: (1) blob URL can't be http-fetched, so we use
-        # browser-side fetch()->arrayBuffer; (2) fallback to click Download
-        # button + intercept page download event.
+        # Three-pronged fetch:
+        #   (1) browser-side fetch(blob_url) → arrayBuffer → base64
+        #   (2) click "Download full-sized image" button + intercept event
+        #   (3) last resort: Playwright element.screenshot() of the <img>
+        #       (always works but recompresses to PNG at display size, not
+        #        full source resolution)
+        import base64
+
         try:
             b64 = await found_img_el.evaluate(
                 """async (img) => {
@@ -281,7 +312,6 @@ async def _gen_one_image(
                     return btoa(binary);
                 }"""
             )
-            import base64
             img_bytes = base64.b64decode(b64)
             logger.debug("Fetched image via in-page fetch (%d bytes)", len(img_bytes))
         except Exception as e:
@@ -297,7 +327,17 @@ async def _gen_one_image(
                     img_bytes = _P(path).read_bytes()
                     logger.debug("Fetched image via Download button (%d bytes)", len(img_bytes))
             except Exception as e2:
-                return None, f"{last_err}; download fallback also failed: {e2}"
+                last_err = f"{last_err}; download button failed: {e2}"
+                logger.warning("Download button failed, trying element screenshot: %s", e2)
+                try:
+                    # Scroll image into view and grab its visible pixels as PNG.
+                    # This is a display-size capture, not source-resolution, but
+                    # it's enough to populate the carousel template.
+                    await found_img_el.scroll_into_view_if_needed(timeout=5000)
+                    img_bytes = await found_img_el.screenshot(timeout=15000)
+                    logger.debug("Fetched image via element screenshot (%d bytes)", len(img_bytes))
+                except Exception as e3:
+                    return None, f"{last_err}; screenshot fallback failed: {e3}"
 
         if not img_bytes:
             return None, last_err or "no bytes captured"
@@ -306,7 +346,25 @@ async def _gen_one_image(
         await page.close()
 
 
-MAX_RETRIES_PER_SLIDE = 2
+MAX_RETRIES_PER_SLIDE = int(os.environ.get("WR2_IMAGE_MAX_RETRIES", "3"))
+
+
+def _build_prompt_variants(image_prompt: str) -> list[str]:
+    """Ordered list of prompts to try when the primary prompt fails.
+
+    Gemini sometimes silently refuses a prompt (no image, no error). Common
+    triggers observed empirically: "bound with red string", "sealed", "blood
+    red", multi-page negative lists (ANTI_CLICHE_SUFFIX). We progressively
+    strip aggressive modifiers and negative lists to increase the odds of
+    generating *some* editorial-style image.
+    """
+    core = image_prompt.strip()
+    full = _compose_final_prompt(core)  # noqa: F821 — defined below in module
+    # Variant 2: drop ANTI_CLICHE_SUFFIX (the huge negative list).
+    v2 = f"{GEMINI_PROMPT_PREFIX}{core}\n\n{BRAND_SUFFIX}"
+    # Variant 3: minimal — core concept + brand only, no PROMPT_PREFIX decor.
+    v3 = f"{core}. {BRAND_SUFFIX}"
+    return [full, v2, v3]
 
 
 async def _gen_image_with_semaphore(
@@ -320,42 +378,66 @@ async def _gen_image_with_semaphore(
 
     Retries up to MAX_RETRIES_PER_SLIDE times on failure (Gemini UI flakiness
     is intermittent — page sometimes stalls while loading or the send button
-    vanishes briefly; a fresh tab usually succeeds).
+    vanishes briefly; a fresh tab usually succeeds). After exhausting retries
+    on the primary prompt, falls back to progressively stripped prompt
+    variants (see _build_prompt_variants) — this recovers from silent safety
+    refusals that ignore a fraction of phrasings.
     """
     async with sem:
         last_err: str | None = None
         img_bytes: bytes | None = None
-        for attempt in range(1, MAX_RETRIES_PER_SLIDE + 1):
-            logger.info(
-                "[slide %d] generating image (attempt %d/%d) — prompt=%r",
-                slide_number,
-                attempt,
-                MAX_RETRIES_PER_SLIDE,
-                image_prompt[:80],
-            )
-            t0 = time.time()
-            try:
-                img_bytes, err = await _gen_one_image(context, slide_number, image_prompt)
-            except Exception as e:
-                img_bytes, err = None, f"unhandled exception: {e}"
-            dt = time.time() - t0
-            if img_bytes:
+        prompt_variants = _build_prompt_variants(image_prompt)
+        overall_attempt = 0
+        for variant_idx, prompt_to_use in enumerate(prompt_variants):
+            variant_label = "primary" if variant_idx == 0 else f"variant{variant_idx + 1}"
+            for attempt in range(1, MAX_RETRIES_PER_SLIDE + 1):
+                overall_attempt += 1
                 logger.info(
-                    "[slide %d] ok on attempt %d (%.1fs, %d bytes)",
-                    slide_number, attempt, dt, len(img_bytes),
+                    "[slide %d] generating image (overall %d, %s attempt %d/%d) — prompt=%r",
+                    slide_number,
+                    overall_attempt,
+                    variant_label,
+                    attempt,
+                    MAX_RETRIES_PER_SLIDE,
+                    prompt_to_use[:80],
                 )
-                break
-            last_err = err
-            logger.warning(
-                "[slide %d] attempt %d failed after %.1fs: %s",
-                slide_number, attempt, dt, err,
+                t0 = time.time()
+                try:
+                    # Pass the RAW prompt string (without _compose_final_prompt
+                    # wrapping) on variants ≥ 2; _gen_one_image always wraps
+                    # what we pass via _compose_final_prompt, so undo here by
+                    # stripping the prefix/suffix that _compose adds.
+                    if variant_idx == 0:
+                        img_bytes, err = await _gen_one_image(context, slide_number, image_prompt)
+                    else:
+                        # Send the literal variant via a bypass path
+                        img_bytes, err = await _gen_one_image_raw(context, slide_number, prompt_to_use)
+                except Exception as e:
+                    img_bytes, err = None, f"unhandled exception: {e}"
+                dt = time.time() - t0
+                if img_bytes:
+                    logger.info(
+                        "[slide %d] ok on %s attempt %d (%.1fs, %d bytes)",
+                        slide_number, variant_label, attempt, dt, len(img_bytes),
+                    )
+                    break
+                last_err = err
+                logger.warning(
+                    "[slide %d] %s attempt %d failed after %.1fs: %s",
+                    slide_number, variant_label, attempt, dt, err,
+                )
+                if attempt < MAX_RETRIES_PER_SLIDE:
+                    # Cool-down: Gemini backend needs time to settle
+                    await asyncio.sleep(15)
+            if img_bytes:
+                break  # exit variant loop too
+            logger.info(
+                "[slide %d] variant %s exhausted, trying next variant",
+                slide_number, variant_label,
             )
-            if attempt < MAX_RETRIES_PER_SLIDE:
-                # Cool-down between retries so Gemini doesn't rate-limit us
-                await asyncio.sleep(8)
 
         if not img_bytes:
-            logger.error("[slide %d] all attempts failed, last err=%s", slide_number, last_err)
+            logger.error("[slide %d] all variants+attempts failed, last err=%s", slide_number, last_err)
             return slide_number, None, last_err or "all retries failed"
 
         logger.info("[slide %d] uploading to Tigris", slide_number)

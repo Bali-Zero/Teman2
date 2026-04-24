@@ -71,7 +71,7 @@ RE_NUMBER = re.compile(
     r"""
     (?:(?<=\s)|^|[\$€£₹])           # boundary
     (?:
-        \d{1,3}(?:,\d{3})+            # 1,000,000 style
+        \d{1,3}(?:,\d{3})+            # 1,000,000 style — MUST be tried first (alternation left-to-right)
         | \d+(?:\.\d+)?[kmb]?          # 10, 10.5, 10k, 10m, 10b
     )
     \s?
@@ -84,7 +84,8 @@ RE_NUMBER = re.compile(
         | years?|months?|weeks?|days?
         | rupiah
     )?
-    (?=\s|[\.,;:]|$)                  # word-end
+    # Boundary: whitespace, punctuation incl slash (as in "1,000/day"), or end
+    (?=[\s/\-.,;:)]|$)
     """,
     re.IGNORECASE | re.VERBOSE,
 )
