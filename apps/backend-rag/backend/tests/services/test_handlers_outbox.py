@@ -43,7 +43,7 @@ async def test_on_client_changed_insert_writes_outbox(monkeypatch):
 
     insert_mock = AsyncMock(return_value=42)
     monkeypatch.setattr(
-        "backend.services.events.handlers.insert_outbox_event",
+        "backend.services.events.handlers._core.insert_outbox_event",
         insert_mock,
     )
 
@@ -74,7 +74,7 @@ async def test_on_client_changed_sector_update_writes_outbox(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=43)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -103,7 +103,7 @@ async def test_on_client_changed_update_without_sector_no_outbox(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=44)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -126,7 +126,7 @@ async def test_on_practice_status_changed_completed_writes_outbox(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=45)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -153,7 +153,7 @@ async def test_on_practice_status_changed_created_writes_outbox(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=46)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -180,7 +180,7 @@ async def test_on_compliance_alert_critical_within_7d_writes_outbox(monkeypatch)
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=47)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -210,7 +210,7 @@ async def test_on_compliance_alert_high_does_not_write(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=48)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -234,7 +234,7 @@ async def test_on_compliance_alert_critical_far_future_does_not_write(monkeypatc
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=49)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -258,7 +258,7 @@ async def test_outbox_write_failure_does_not_raise(monkeypatch):
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(side_effect=RuntimeError("DB down"))
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -275,7 +275,7 @@ async def test_on_compliance_alert_critical_zero_days_writes_outbox(monkeypatch)
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=50)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)
@@ -302,7 +302,7 @@ async def test_on_compliance_alert_critical_no_days_field_does_not_write(monkeyp
     from backend.services.events import handlers as h
 
     insert_mock = AsyncMock(return_value=51)
-    monkeypatch.setattr("backend.services.events.handlers.insert_outbox_event", insert_mock)
+    monkeypatch.setattr("backend.services.events.handlers._core.insert_outbox_event", insert_mock)
 
     bus_stub, fake_pool, _ = _build_bus_and_pool()
     h.register_handlers(bus_stub, fake_pool)

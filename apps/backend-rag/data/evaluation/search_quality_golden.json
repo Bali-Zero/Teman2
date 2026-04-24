@@ -1,0 +1,407 @@
+{
+  "version": "1.0.0",
+  "description": "Golden queries for search quality evaluation across Bali Zero domains",
+  "created": "2026-04-14",
+  "queries": [
+    {
+      "id": "visa_01",
+      "query": "What documents do I need for a KITAS work permit?",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["KITAS", "work permit", "RPTKA", "IMTA", "sponsor"],
+      "relevance_labels": {"KITAS": 3, "work permit": 3, "requirements": 2, "documents": 2}
+    },
+    {
+      "id": "visa_02",
+      "query": "Quanto costa il KITAP e quanto dura?",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["KITAP", "permanent", "stay", "biaya", "validity"],
+      "relevance_labels": {"KITAP": 3, "permanent stay": 3, "duration": 2}
+    },
+    {
+      "id": "visa_03",
+      "query": "B211A visa requirements for digital nomad in Bali",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["B211", "B211A", "social visa", "digital nomad", "remote"],
+      "relevance_labels": {"B211": 3, "digital nomad": 2, "requirements": 2}
+    },
+    {
+      "id": "visa_04",
+      "query": "Syarat perpanjangan visa on arrival Indonesia",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["VOA", "visa on arrival", "perpanjangan", "extension", "30 days"],
+      "relevance_labels": {"VOA": 3, "extension": 3, "perpanjangan": 2}
+    },
+    {
+      "id": "visa_05",
+      "query": "Come funziona lo sponsor per il KITAS lavorativo?",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["sponsor", "KITAS", "company", "RPTKA", "employer"],
+      "relevance_labels": {"sponsor": 3, "KITAS": 3, "company": 2}
+    },
+    {
+      "id": "visa_06",
+      "query": "Difference between KITAS and KITAP",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["KITAS", "KITAP", "limited stay", "permanent stay"],
+      "relevance_labels": {"KITAS": 3, "KITAP": 3, "comparison": 2}
+    },
+    {
+      "id": "visa_07",
+      "query": "Proses RPTKA untuk tenaga kerja asing di Indonesia",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["RPTKA", "tenaga kerja asing", "TKA", "Kemenaker"],
+      "relevance_labels": {"RPTKA": 3, "TKA": 3, "process": 2}
+    },
+    {
+      "id": "visa_08",
+      "query": "E-visa application process Indonesia 2025",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["e-visa", "electronic", "application", "online", "molina"],
+      "relevance_labels": {"e-visa": 3, "application": 2, "online": 2}
+    },
+    {
+      "id": "visa_09",
+      "query": "Visa retirement Indonesia over 55 requirements",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["retirement", "KITAP", "pension", "55", "age"],
+      "relevance_labels": {"retirement": 3, "KITAP": 2, "age requirement": 2}
+    },
+    {
+      "id": "visa_10",
+      "query": "IMTA permit foreign worker Indonesia procedure",
+      "domain": "visa",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["IMTA", "foreign worker", "permit", "Kemenaker", "procedure"],
+      "relevance_labels": {"IMTA": 3, "procedure": 2, "foreign worker": 2}
+    },
+    {
+      "id": "company_01",
+      "query": "Steps to set up a PT PMA in Bali",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PT PMA", "foreign investment", "establishment", "akta", "notary"],
+      "relevance_labels": {"PT PMA": 3, "setup": 3, "steps": 2}
+    },
+    {
+      "id": "company_02",
+      "query": "Quanto capitale minimo per aprire una PT PMA in Indonesia?",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PT PMA", "capital", "minimum", "10 billion", "investment"],
+      "relevance_labels": {"PT PMA": 3, "capital minimum": 3, "investment": 2}
+    },
+    {
+      "id": "company_03",
+      "query": "NIB registration through OSS system",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["NIB", "OSS", "registration", "Nomor Induk Berusaha"],
+      "relevance_labels": {"NIB": 3, "OSS": 3, "registration": 2}
+    },
+    {
+      "id": "company_04",
+      "query": "KBLI codes for restaurant business in Indonesia",
+      "domain": "company",
+      "expected_collection": "kbli_2025_final",
+      "expected_top_result_keywords": ["KBLI", "restaurant", "56101", "food", "beverage"],
+      "relevance_labels": {"KBLI": 3, "restaurant": 3, "food service": 2}
+    },
+    {
+      "id": "company_05",
+      "query": "Difference between PT PMA and PT lokal",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PT PMA", "PT PMDN", "foreign", "domestic", "difference"],
+      "relevance_labels": {"PT PMA": 3, "PT PMDN": 3, "comparison": 2}
+    },
+    {
+      "id": "company_06",
+      "query": "Bagaimana cara mendaftar OSS untuk izin usaha?",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["OSS", "izin usaha", "pendaftaran", "NIB", "business license"],
+      "relevance_labels": {"OSS": 3, "izin usaha": 3, "registration": 2}
+    },
+    {
+      "id": "company_07",
+      "query": "Notary requirements for company establishment Indonesia",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["notary", "akta", "pendirian", "establishment", "deed"],
+      "relevance_labels": {"notary": 3, "akta pendirian": 3, "deed": 2}
+    },
+    {
+      "id": "company_08",
+      "query": "KBLI 62010 apa itu dan persyaratannya?",
+      "domain": "company",
+      "expected_collection": "kbli_2025_final",
+      "expected_top_result_keywords": ["62010", "software", "programming", "IT", "KBLI"],
+      "relevance_labels": {"62010": 3, "software": 3, "KBLI": 2}
+    },
+    {
+      "id": "company_09",
+      "query": "How to change company directors in a PMA",
+      "domain": "company",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["director", "change", "RUPS", "akta", "amendment"],
+      "relevance_labels": {"director change": 3, "RUPS": 2, "amendment": 2}
+    },
+    {
+      "id": "company_10",
+      "query": "Risiko usaha berdasarkan OSS untuk KBLI",
+      "domain": "company",
+      "expected_collection": "kbli_2025_final",
+      "expected_top_result_keywords": ["risiko", "OSS", "KBLI", "risk level", "low risk", "medium risk"],
+      "relevance_labels": {"risk level": 3, "KBLI": 3, "OSS": 2}
+    },
+    {
+      "id": "tax_01",
+      "query": "PPh 21 calculation for foreign employee in Indonesia",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["PPh 21", "employee", "income tax", "calculation", "withholding"],
+      "relevance_labels": {"PPh 21": 3, "calculation": 3, "foreign employee": 2}
+    },
+    {
+      "id": "tax_02",
+      "query": "Come funziona la PPN in Indonesia? Aliquota attuale?",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["PPN", "VAT", "value added tax", "rate", "11%"],
+      "relevance_labels": {"PPN": 3, "rate": 3, "VAT": 2}
+    },
+    {
+      "id": "tax_03",
+      "query": "NPWP registration requirements for foreigners",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["NPWP", "tax ID", "registration", "foreigner", "requirements"],
+      "relevance_labels": {"NPWP": 3, "registration": 3, "foreigner": 2}
+    },
+    {
+      "id": "tax_04",
+      "query": "SPT annual tax return deadline Indonesia",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["SPT", "tax return", "annual", "deadline", "March"],
+      "relevance_labels": {"SPT": 3, "deadline": 3, "annual": 2}
+    },
+    {
+      "id": "tax_05",
+      "query": "Tax treaty between Indonesia and Italy",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["tax treaty", "double taxation", "Italy", "P3B", "avoidance"],
+      "relevance_labels": {"tax treaty": 3, "Italy": 2, "double taxation": 2}
+    },
+    {
+      "id": "tax_06",
+      "query": "PPh final 0.5% untuk UMKM cara hitungnya",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["PPh final", "0.5%", "UMKM", "PP 55", "micro business"],
+      "relevance_labels": {"PPh final": 3, "UMKM": 3, "0.5%": 2}
+    },
+    {
+      "id": "tax_07",
+      "query": "Transfer pricing rules Indonesia PMA companies",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["transfer pricing", "PMA", "arm's length", "related party", "documentation"],
+      "relevance_labels": {"transfer pricing": 3, "PMA": 2, "documentation": 2}
+    },
+    {
+      "id": "tax_08",
+      "query": "PBB property tax Bali calculation",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["PBB", "property tax", "land", "building", "NJOP"],
+      "relevance_labels": {"PBB": 3, "property tax": 3, "NJOP": 2}
+    },
+    {
+      "id": "tax_09",
+      "query": "Bea materai stamp duty Indonesia amount",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["bea materai", "stamp duty", "10000", "Rp", "document"],
+      "relevance_labels": {"bea materai": 3, "stamp duty": 3, "amount": 2}
+    },
+    {
+      "id": "tax_10",
+      "query": "Obblighi fiscali per una PT PMA a Bali",
+      "domain": "tax",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["tax obligations", "PT PMA", "PPh", "PPN", "NPWP"],
+      "relevance_labels": {"tax obligations": 3, "PT PMA": 3, "PPh": 2}
+    },
+    {
+      "id": "property_01",
+      "query": "Can foreigners buy freehold property in Bali?",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["freehold", "foreigner", "hak milik", "restriction", "nominee"],
+      "relevance_labels": {"freehold": 3, "foreigner": 3, "restriction": 2}
+    },
+    {
+      "id": "property_02",
+      "query": "Hak pakai vs hak guna bangunan for foreigners",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["hak pakai", "HGB", "right to use", "right to build", "foreigner"],
+      "relevance_labels": {"hak pakai": 3, "HGB": 3, "comparison": 2}
+    },
+    {
+      "id": "property_03",
+      "query": "Come comprare una villa a Bali da straniero?",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["villa", "purchase", "foreigner", "leasehold", "hak pakai"],
+      "relevance_labels": {"villa": 2, "foreigner purchase": 3, "leasehold": 2}
+    },
+    {
+      "id": "property_04",
+      "query": "IMB building permit requirements Bali",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["IMB", "PBG", "building permit", "construction", "requirements"],
+      "relevance_labels": {"IMB": 3, "building permit": 3, "requirements": 2}
+    },
+    {
+      "id": "property_05",
+      "query": "Leasehold agreement structure Indonesia property",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["leasehold", "sewa", "contract", "duration", "renewal"],
+      "relevance_labels": {"leasehold": 3, "agreement": 3, "structure": 2}
+    },
+    {
+      "id": "property_06",
+      "query": "Notary fees for property transaction in Bali",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["notary", "PPAT", "fee", "property", "transaction"],
+      "relevance_labels": {"notary": 3, "fee": 3, "property": 2}
+    },
+    {
+      "id": "property_07",
+      "query": "PBG persetujuan bangunan gedung menggantikan IMB",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PBG", "IMB", "building approval", "replacement", "regulation"],
+      "relevance_labels": {"PBG": 3, "IMB": 3, "replacement": 2}
+    },
+    {
+      "id": "property_08",
+      "query": "Strata title apartment ownership Indonesia foreigners",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["strata title", "apartment", "hak milik sarusun", "foreigner", "ownership"],
+      "relevance_labels": {"strata title": 3, "apartment": 2, "foreigner": 2}
+    },
+    {
+      "id": "property_09",
+      "query": "Zona hijau biru kuning peruntukan lahan Bali",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["zoning", "green zone", "blue zone", "yellow zone", "land use"],
+      "relevance_labels": {"zoning": 3, "land use": 3, "Bali": 2}
+    },
+    {
+      "id": "property_10",
+      "query": "BPHTB land transfer tax calculation Bali",
+      "domain": "property",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["BPHTB", "transfer tax", "land", "calculation", "5%"],
+      "relevance_labels": {"BPHTB": 3, "transfer tax": 3, "calculation": 2}
+    },
+    {
+      "id": "regulation_01",
+      "query": "UU Cipta Kerja perubahan perizinan usaha",
+      "domain": "regulation",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["UU Cipta Kerja", "omnibus", "perizinan", "OSS", "business license"],
+      "relevance_labels": {"UU Cipta Kerja": 3, "perizinan": 3, "reform": 2}
+    },
+    {
+      "id": "regulation_02",
+      "query": "PP 35 Tahun 2021 PKWT temporary employment rules",
+      "domain": "regulation",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PP 35", "2021", "PKWT", "temporary", "employment"],
+      "relevance_labels": {"PP 35": 3, "PKWT": 3, "temporary employment": 2}
+    },
+    {
+      "id": "regulation_03",
+      "query": "Permenaker tentang tenaga kerja asing 2021",
+      "domain": "regulation",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["Permenaker", "TKA", "foreign worker", "2021", "regulation"],
+      "relevance_labels": {"Permenaker": 3, "TKA": 3, "2021": 2}
+    },
+    {
+      "id": "regulation_04",
+      "query": "Surat Edaran Kemenaker recruitment TKA procedures",
+      "domain": "regulation",
+      "expected_collection": "immigration_circulars",
+      "expected_top_result_keywords": ["surat edaran", "circular", "Kemenaker", "TKA", "procedure"],
+      "relevance_labels": {"surat edaran": 3, "TKA": 3, "procedure": 2}
+    },
+    {
+      "id": "regulation_05",
+      "query": "UU 25 Tahun 2007 penanaman modal asing",
+      "domain": "regulation",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["UU 25", "2007", "penanaman modal", "investment", "foreign"],
+      "relevance_labels": {"UU 25/2007": 3, "investment law": 3, "PMA": 2}
+    },
+    {
+      "id": "cross_01",
+      "query": "Tax implications of hiring foreign workers with KITAS in Bali",
+      "domain": "cross_domain",
+      "expected_collection": "tax_genius",
+      "expected_top_result_keywords": ["KITAS", "PPh 21", "foreign worker", "tax", "withholding"],
+      "relevance_labels": {"KITAS": 2, "PPh 21": 3, "foreign worker": 2, "tax": 3}
+    },
+    {
+      "id": "cross_02",
+      "query": "Posso comprare proprietà con PT PMA? Che tasse pago?",
+      "domain": "cross_domain",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["PT PMA", "property", "purchase", "tax", "BPHTB", "hak pakai"],
+      "relevance_labels": {"PT PMA": 3, "property": 3, "tax": 2}
+    },
+    {
+      "id": "cross_03",
+      "query": "Company setup for property investment in Bali KBLI codes",
+      "domain": "cross_domain",
+      "expected_collection": "kbli_2025_final",
+      "expected_top_result_keywords": ["KBLI", "property", "investment", "real estate", "company"],
+      "relevance_labels": {"KBLI": 3, "property investment": 3, "company": 2}
+    },
+    {
+      "id": "cross_04",
+      "query": "Visa and work permit for opening a restaurant in Bali",
+      "domain": "cross_domain",
+      "expected_collection": "visa_oracle",
+      "expected_top_result_keywords": ["visa", "work permit", "KITAS", "restaurant", "business"],
+      "relevance_labels": {"visa": 3, "work permit": 3, "restaurant business": 2}
+    },
+    {
+      "id": "cross_05",
+      "query": "Bagaimana mendirikan CV di Bali dan kewajiban pajaknya?",
+      "domain": "cross_domain",
+      "expected_collection": "legal_unified",
+      "expected_top_result_keywords": ["CV", "establishment", "tax obligations", "PPh", "NPWP"],
+      "relevance_labels": {"CV": 3, "tax obligations": 3, "establishment": 2}
+    }
+  ]
+}
