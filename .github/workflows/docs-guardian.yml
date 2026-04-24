@@ -1,0 +1,33 @@
+name: Docs Guardian
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "scripts/docs_audit.py"
+      - "scripts/docs_guardian.sh"
+      - ".github/workflows/docs-guardian.yml"
+
+jobs:
+  inventory-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for `git log -1 --format=%ct` mtime derivation
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify inventory is up-to-date
+        run: |
+          python scripts/docs_audit.py --check \
+            --whitelist "docs/ARCHITECTURE_DECISION_RECORDS.md" \
+            --whitelist "docs/API_REFERENCE.md" \
+            --whitelist "AUTONOMOUS_OPS.md" \
+            --whitelist "docs/PRO_AIR_CONNECTION.md" \
+            --cluster "automation-autonomy:docs/archive/autonomy-history/AUTOMATION_AUTONOMY_PLAN_v3_1.md,docs/archive/autonomy-history/AUTOMATION_AUTONOMY_SYSTEM_V3_2.md,docs/AUTOMATION_AUTONOMY_SYSTEM_V3_3.md,docs/archive/autonomy-history/AUTOMATION_AUTONOMY_NB1_SUBMISSION.md:docs/AUTOMATION_AUTONOMY_SYSTEM_V3_3.md" \
+            --cluster "automations-catalog:docs/archive/ACTIVE_AUTOMATIONS.md,docs/archive/AUTOMATION_MODEL_MAP.md,docs/AUTOMATIONS.md:docs/AUTOMATIONS.md" \
+            --cluster "system-map:docs/archive/system-map-history/SYSTEM_MAP_4D.md,docs/archive/system-map-history/SYSTEM_OVERVIEW.md,docs/archive/system-map-history/CODEBASE_THEMATIC_AREAS.md,docs/LIVING_ARCHITECTURE.md:docs/LIVING_ARCHITECTURE.md" \
+            --cluster "system-audit:docs/archive/SYSTEM_AUDIT_2026-04-03.md,docs/SYSTEM_AUDIT_FINAL_2026-04-03.md:docs/SYSTEM_AUDIT_FINAL_2026-04-03.md"
