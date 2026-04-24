@@ -16,20 +16,20 @@
 - [04-SECURITY-FIREWALL.md](04-SECURITY-FIREWALL.md) — OSINT blindato, stream separation, access control
 
 ### Sistemi
-- [10-HARVESTER.md](10-HARVESTER.md) — Fonti, scrapers, API search, ingestion
+- 10-HARVESTER.md _(not yet written)_ — Fonti, scrapers, API search, ingestion
 - [11-NLM-BRAIN.md](11-NLM-BRAIN.md) — NotebookLM come cervello analitico, notebook domain, deep research
-- [12-COGNITIVE-WORKERS.md](12-COGNITIVE-WORKERS.md) — Dedup, classify, score, NER, embed, diff
-- [13-KNOWLEDGE-GRAPH.md](13-KNOWLEDGE-GRAPH.md) — KG linker, Neo4j, Qdrant, PostgreSQL
-- [14-ANALYST-AGENTS.md](14-ANALYST-AGENTS.md) — Briefing, alert, dossier, anomaly, digest
+- 12-COGNITIVE-WORKERS.md _(not yet written)_ — Dedup, classify, score, NER, embed, diff
+- 13-KNOWLEDGE-GRAPH.md _(not yet written)_ — KG linker, Neo4j, Qdrant, PostgreSQL
+- 14-ANALYST-AGENTS.md _(not yet written)_ — Briefing, alert, dossier, anomaly, digest
 
 ### Target & Distribuzione
 - [20-TARGETS.md](20-TARGETS.md) — Chi riceve cosa, intelligence products, consumatori
 - [21-CHANNEL-STRATEGY.md](21-CHANNEL-STRATEGY.md) — 7 canali, agent per canale, format, lingua
-- [22-OSINT-ENRICHMENT.md](22-OSINT-ENRICHMENT.md) — One-way feed verso OSINT Nexus (blindato)
+- 22-OSINT-ENRICHMENT.md _(not yet written)_ — One-way feed verso OSINT Nexus (blindato)
 
 ### Autonomia
 - [30-AUTONOMY-LEVELS.md](30-AUTONOMY-LEVELS.md) — L1-L4, decisioni autonome, escalation
-- [31-SELF-EXPANSION.md](31-SELF-EXPANSION.md) — Auto-discovery fonti, NB creation, source health
+- 31-SELF-EXPANSION.md _(not yet written)_ — Auto-discovery fonti, NB creation, source health
 
 ### Risorse Esterne
 - [40-EXTERNAL-TOOLS.md](40-EXTERNAL-TOOLS.md) — Pasal.id, peraturan.go.id FAISS, Tavily, Exa Deep

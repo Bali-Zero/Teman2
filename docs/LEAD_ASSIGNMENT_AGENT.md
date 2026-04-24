@@ -426,7 +426,7 @@ WHERE event_object_table = 'clients';
 **Related Documentation:**
 
 - [CRM_COMPLETE.md](./CRM_COMPLETE.md) - CRM system documentation
-- [AUTO_CRM_FLOW.md](./AUTO_CRM_FLOW.md) - AUTO CRM extraction flow (if exists)
+- AUTO_CRM_FLOW.md _(doc removed)_ - AUTO CRM extraction flow
 - [CLAUDE.md](../apps/backend-rag/CLAUDE.md) - Session notes
 
 ---
