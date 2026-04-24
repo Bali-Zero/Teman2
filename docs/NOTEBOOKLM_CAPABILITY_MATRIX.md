@@ -1,9 +1,14 @@
 # NotebookLM Capability Matrix — What We Can Actually Do
 
-**Date:** 2026-03-24
-**MCP Server:** `notebooklm-mcp-cli` v0.5.3 (update available: v0.5.5)
+**Date:** 2026-03-24 · **Stale-check:** 2026-04-25 (outdated references flagged below)
+**MCP Server:** `notebooklm-mcp-cli` v0.5.14 (was 0.5.3 at write time)
 **Account:** antonellosiano@gmail.com
-**Notebooks:** 57 total (50 owned, 7 shared)
+**Notebooks:** 51 notebook al 2026-04-25 (era 57 a marzo)
+
+> ⚠️ **Riferimenti obsoleti in questo doc** (non rimossi, ma flaggati):
+> - Menzioni di `Federation v3`, `a2a_service.py`, `apps/federation/*`, porta 8087 → **il PoC A2A è stato smantellato** dal commit `0c60050e8` (25 aprile 2026). Quei componenti non sono più in produzione.
+> - Il resto del matrix (capability NotebookLM stesso, tool MCP, modes) **rimane valido**: quelle sono caratteristiche di NotebookLM, non del nostro wrapper rimosso.
+> - Audit aggiornato: `research/nlm-elevation/` (2026-04-25).
 
 ---
 
