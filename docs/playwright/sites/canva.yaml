@@ -1,0 +1,173 @@
+# Canva — Playwright site profile
+# Machine-readable source of truth. Injected into LLM context on demand.
+site: canva
+display_name: Canva
+verified: 2026-04-24
+verified_by: claude-opus-4-7
+account_hint: "Canva Pro, Antonello personal (Google OAuth via antonellosiano@gmail.com)"
+
+profile_dir: ~/.nuzantara/playwright-profiles/canva
+# Persistent context required (not storage_state) — Canva uses Google OAuth,
+# Google flags cookie-only replays.
+
+urls:
+  home: https://www.canva.com/
+  login: https://www.canva.com/login
+  magic_media: https://www.canva.com/ai-image-generator/  # landing page w/ generator widget
+  editor_template: "https://www.canva.com/design/{design_id}/edit"  # fill design_id
+  editor_view:     "https://www.canva.com/design/{design_id}/view"
+
+url_patterns_match:  # used by context-injector to decide when to inject this playbook
+  - "canva.com"
+  - "/design/"
+  - "/ai-image-generator/"
+
+locale:
+  default_redirect: it_it  # Canva detects browser locale and redirects
+  force_en: "Append ?lp=1&locale=en to force EN"
+
+login:
+  method: google_oauth  # only OAuth Google in this account
+  expected_duration_seconds: 30
+  first_time_procedure: |
+    1. Run: python3 scripts/playwright/playwright_login.py canva
+    2. Browser opens on canva.com/login
+    3. Click "Continue with Google"
+    4. Pick antonellosiano@gmail.com
+    5. Approve OAuth scopes
+    6. Wait for redirect to canva.com dashboard
+    7. Press Enter in terminal to save profile
+  expired_signal: "Redirect to /login or OAuth popup on navigate to /design/*"
+  recovery: "rm -rf ~/.nuzantara/playwright-profiles/canva && python3 scripts/playwright/playwright_login.py canva"
+
+selectors:
+  # Magic Media / AI image generator — TO BE VERIFIED inside logged-in editor (public page differs)
+  magic_media_prompt: "TBD — verify inside editor (Magic Media in side panel)"
+  magic_media_generate: "TBD"
+  magic_media_result: "TBD"
+
+  # Editor
+  editor_loaded_signal: "[data-testid='editor-toolbar'], [aria-label*='Editing']"
+  text_element_by_content: "text='{content}'"  # Playwright text locator
+  share_button: "button:has-text('Share'), button:has-text('Condividi')"
+  download_menu: "button:has-text('Download'), button:has-text('Scarica')"
+  download_format_png: "[role='menuitem']:has-text('PNG')"
+  download_format_pdf: "[role='menuitem']:has-text('PDF')"
+  download_submit: "button:has-text('Download'):not(:has-text('Download?'))"
+
+flows:
+  generate_image_via_magic_media:
+    entry: urls.editor_template  # requires an open design first
+    steps:
+      - goto: "{editor_template}"
+      - wait_for_selector: editor_loaded_signal
+        timeout: 30000
+      - open_side_panel: "Magic Media"  # method TBD
+      - type_prompt: "{prompt}"
+      - click: magic_media_generate
+      - wait_for_results: magic_media_result
+        timeout: 60000
+      - select_first_image: true
+      - dismiss_modals: "Escape"
+    output: "Image placed in current design at cursor position"
+
+  download_design:
+    entry: urls.editor_template
+    steps:
+      - goto: "{editor_template}"
+      - wait_for_selector: editor_loaded_signal
+      - click: share_button
+      - click: download_menu
+      - click: "download_format_{format}"  # png | pdf
+      - click: download_submit
+      - await_download: true
+    output_path: "{download_dir}/{filename}"
+
+  edit_template_text:
+    entry: urls.editor_template
+    steps:
+      - goto: "{editor_template}"
+      - wait_for_selector: editor_loaded_signal
+      - for_each_slide:
+          - click_page: "{page_index}"
+          - for_each_text_op:
+              - double_click: text_element_by_content with content={old_text}
+              - press: "Meta+A"
+              - type: "{new_text}"
+
+gotchas:
+  - id: locale_redirect
+    desc: "Canva redirects to /it_it on first navigate even when profile is EN. Pre-set profile locale or use ?locale=en."
+  - id: modal_on_load
+    desc: "Cold editor load sometimes shows 'What would you like to create?' modal. Escape key dismisses it."
+  - id: magic_media_quota
+    desc: "Canva Pro has a daily Imagen quota (~100 images). Hitting it shows a paywall modal, not a generic error."
+  - id: element_id_rotation
+    desc: "merge-designs API rotates element_ids on clone. Edit template IN-PLACE first, duplicate after. See skill canva-apply."
+  - id: viewport_width
+    desc: "Canva serves mobile UI below 1024px. Always set viewport width >=1440."
+  - id: oauth_popup_new_tab
+    desc: "Login opens Google OAuth in a NEW TAB (tab index 1). Switch to it before filling creds."
+
+known_bad_urls:
+  - "https://www.canva.com/create/images/"  # 404 (deprecated 2026)
+
+flags:
+  magic_media_inside_editor_only: true
+  # Magic Media standalone page exists but full-featured version is only inside a design
+
+  cloudflare_blocks_playwright_chromium: true
+  # Canva's Cloudflare Bot Management blocks Playwright even with stealth plugin.
+  # Confirmed 2026-04-24: "Just a moment..." challenge never resolves, "RayID" page shown.
+  # Workaround: CDP attach to real Chrome (see access_method below).
+
+access_method:
+  # Real Chrome with --remote-debugging-port bypasses Cloudflare.
+  # Playwright CDP attach instead of launch.
+  launcher: scripts/playwright/chrome-debug-launch.sh
+  port: 9222
+  attach_from_python: |
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        browser = p.chromium.connect_over_cdp('http://localhost:9222')
+        ctx = browser.contexts[0]
+        page = ctx.pages[0] if ctx.pages else ctx.new_page()
+
+brand:
+  # Confirmed 2026-04-24 via @font-face URL inspection in logged-in Brand panel
+  # (Canva obfuscates font-family in DOM; real names come from the woff2 URL).
+  # Bali Zero registered brand kit on the account zero@balizero.com.
+  title_font: League Spartan
+  subtitle_font: League Spartan
+  subheading_font: Montserrat
+  body_font_italic: Canva Sans Italic
+  fallback: Canva Sans
+  # Do NOT use Playfair Display or Work Sans — earlier guess, wrong.
+  # When generating NEW design assets (image prompts, AI mockups), tell the
+  # model to use League Spartan for headlines and Montserrat for body.
+  font_face_urls_reference:
+    league_spartan: "https://font-public.canva.com/YACgEcnJpjs/0/LeagueSpartan..."
+    montserrat: "https://font-public.canva.com/YAFdtQi73Xs/0/Montserrat-Regular..."
+    canva_sans_italic: "https://font-public.canva.com/YAFdJjTk5UU/0/CanvaSans-RegularItalic..."
+  # How to re-verify in future:
+  #  1. Attach Playwright via CDP to logged-in Canva editor
+  #  2. Click 'Brand' in side panel
+  #  3. Iterate document.styleSheets, find @font-face rules, parse woff2 URLs
+
+limits:
+  daily_magic_media_images: 100  # approximate, Pro tier 2026-04
+  max_design_size_mb: null
+
+contacts:
+  design_team_support: "Antonello (no external contact)"
+
+screenshots_reference:
+  # Populate with paths to reference PNGs when selectors verified
+  editor_loaded: null
+  magic_media_panel: null
+  download_modal: null
+
+last_notes: |
+  Claude MCP Playwright (ephemeral profile) hit login prompt on /ai-image-generator
+  → Canva's generator widget requires auth. Full discovery of logged-in selectors
+  deferred to first run of playwright_login.py canva + interactive exploration.

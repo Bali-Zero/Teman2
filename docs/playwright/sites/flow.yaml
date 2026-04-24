@@ -1,0 +1,78 @@
+# Flow — Playwright site profile
+site: flow
+display_name: Google Flow (Imagen + Veo)
+verified: 2026-04-24
+verified_by: claude-opus-4-7
+account_hint: "antonellosiano@gmail.com (same Google as Gemini, requires AI Pro/Ultra for Flow access)"
+
+profile_dir: ~/.nuzantara/playwright-profiles/flow
+
+urls:
+  landing: https://labs.google/fx/tools/flow       # marketing page (public, no app)
+  app_entry: null  # Real app URL resolved only after clicking 'Create with Flow' on landing; TBD
+  faq: https://labs.google/fx/tools/flow/faq
+  subscription: https://one.google.com/ai
+
+url_patterns_match:
+  - "labs.google/fx/tools/flow"
+  - "labs.google/flow"
+
+login:
+  method: google_direct
+  requires_subscription: "Google AI Pro or Ultra subscription"
+  first_time_procedure: |
+    1. Run: python3 scripts/playwright/playwright_login.py flow
+    2. Browser opens on labs.google/fx/tools/flow
+    3. Click "Create with Flow" button → redirects to Google OAuth
+    4. Script auto-fills email + password
+    5. Complete 2FA, accept Labs terms
+    6. Wait for Flow editor to load
+    7. Press Enter in terminal
+  expired_signal: "Redirect to accounts.google.com or 'Get Started' CTA visible instead of editor"
+  recovery: "rm -rf ~/.nuzantara/playwright-profiles/flow && python3 scripts/playwright/playwright_login.py flow"
+
+selectors:
+  # LANDING (public, pre-login)
+  create_with_flow_button: "button:has-text('Create with Flow'), a:has-text('Create with Flow')"
+  get_started_cta: "button:has-text('Get Started'), a:has-text('Get Started')"
+
+  # APP (logged-in editor) — TBD after first login
+  prompt_input: "TBD"
+  model_selector: "TBD"  # Imagen 4 vs Veo toggle
+  generate_button: "TBD"
+  result_canvas: "TBD"
+  download_button: "TBD"
+
+flows:
+  generate_image_imagen4:
+    entry: urls.app_entry  # TBD
+    steps:
+      - goto: "{app_entry}"
+      - ensure_model: "Imagen 4"
+      - type_prompt: "{prompt}"
+      - click: generate_button
+      - wait_for_result: result_canvas
+        timeout: 120000
+      - click: download_button
+      - save_as: "{output_path}"
+
+gotchas:
+  - id: ui_in_beta
+    desc: "Flow UI redesigns monthly. Verify selectors <7d old before trusting."
+  - id: subscription_gate
+    desc: "No subscription = no access. Script should detect 'Get Started' CTA and fail fast instead of looping."
+  - id: image_vs_video_toggle
+    desc: "Flow supports both Imagen (image) and Veo (video). Default may be Veo. Verify model before generating."
+  - id: quota_visible
+    desc: "Top-right corner shows remaining generations. Scrape it pre-flight; abort if zero."
+  - id: render_queue
+    desc: "Veo renders can take 3-8 min. Imagen usually <60s. Adjust timeout per model."
+
+flags:
+  subscription_required: true
+  image_and_video_capable: true
+
+screenshots_reference:
+  landing_page: null
+  logged_in_editor: null
+  model_selector_open: null

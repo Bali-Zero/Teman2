@@ -1,0 +1,95 @@
+# Gemini app — Playwright site profile
+site: gemini
+display_name: Google Gemini
+verified: 2026-04-24
+verified_by: claude-opus-4-7
+account_hint: "antonellosiano@gmail.com (personal Google, AI Pro/Ultra — plan TBD)"
+
+profile_dir: ~/.nuzantara/playwright-profiles/gemini
+
+urls:
+  app: https://gemini.google.com/app
+  login_redirect: https://accounts.google.com/  # Google's auth flow
+  # Direct Imagen URL exists inside app; not navigable as standalone URL
+
+url_patterns_match:
+  - "gemini.google.com"
+  - "labs.google/fx/tools"  # Gemini-adjacent
+
+locale:
+  default: follows account — expect IT if account locale is IT
+  force_en: "https://gemini.google.com/app?hl=en"
+
+login:
+  method: google_direct
+  first_time_procedure: |
+    1. Run: python3 scripts/playwright/playwright_login.py gemini
+    2. Browser opens on gemini.google.com/app, redirects to accounts.google.com
+    3. Script auto-fills email + password from ~/.nuzantara/playwright-credentials.env
+    4. Complete 2FA on your phone
+    5. Wait for redirect back to gemini.google.com/app
+    6. Press Enter in terminal to save
+  expired_signal: "Redirect to accounts.google.com on /app navigate"
+  recovery: "rm -rf ~/.nuzantara/playwright-profiles/gemini && python3 scripts/playwright/playwright_login.py gemini"
+
+selectors:
+  # LOGGED-OUT (Google OAuth screens) — handled by playwright_login.py
+  google_email_input: "input[type='email']"
+  google_email_next: "#identifierNext, button:has-text('Next'), button:has-text('Avanti')"
+  google_password_input: "input[type='password']"
+  google_password_next: "#passwordNext, button:has-text('Next'), button:has-text('Avanti')"
+
+  # LOGGED-IN — VERIFIED 2026-04-24 (en-GB locale, profile /gemini)
+  input_textarea: "div.ql-editor[contenteditable='true'][aria-label='Enter a prompt for Gemini']"
+  # Parent is <rich-textarea class='text-input-field_textarea'> if you prefer that handle
+  send_button: "button[aria-label='Send message']"
+  show_thinking_trigger: "text='Show thinking'"  # appears during generation; absence may = done or text-only response
+  # Generated image heuristic (verified 2026-04-24 via real image gen run):
+  #  - <img> inside response area, NOT with src starting 'https://lh3.googleusercontent.com/ogw/' (avatar)
+  #  - NOT with alt='profile picture'
+  #  - src often on different googleusercontent CDN path
+  response_image_xpath: |
+    //img[
+      not(contains(@src, '/ogw/')) and
+      not(@alt='profile picture') and
+      (@width > 200 or not(@width))
+    ]
+  # Approach for download: hover image → click triple-dot / download overlay (TBD on next run)
+
+flows:
+  generate_image:
+    entry: urls.app
+    steps:
+      - goto: "{app}"
+      - wait_for_selector: input_textarea
+        timeout: 30000
+      - type_prompt: "Please generate an image of: {prompt}"
+        # Prefix forces Imagen routing on ambiguous inputs
+      - press_or_click: send_button
+      - wait_for_image: response_image
+        timeout: 90000
+      - hover: response_image  # reveals download button
+      - click: image_download
+      - save_as: "{output_path}"
+
+gotchas:
+  - id: google_detects_headless
+    desc: "Plain headless=True gets flagged within 5-10s. Use headed + off-screen OR persistent_context with fingerprint flags."
+  - id: italian_ui
+    desc: "If account is IT, UI is in Italian. Buttons are 'Invia' not 'Send'. Selectors above handle both."
+  - id: imagen_not_always_triggered
+    desc: "Plain prompts may return text. Prefix with 'Please generate an image of:' to force Imagen."
+  - id: passkey_challenge
+    desc: "New device triggers passkey prompt; script handles fallback to password, but Google may insist on passkey for high-risk sites. Use device approval on phone."
+  - id: quota_silent
+    desc: "No visible quota indicator. Rate limit appears as 'temporarily unavailable' message. Retry after ~1h."
+  - id: context_window_image_drift
+    desc: "Long conversations cause Gemini to 'forget' image-gen routing. Start fresh chat per generation."
+
+flags:
+  must_start_new_chat_per_image: true
+  image_generation_opt_in_required: "May require account-level opt-in for Imagen. Verify by testing manually first time."
+
+screenshots_reference:
+  logged_in_home: null
+  image_response: null
