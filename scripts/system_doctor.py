@@ -65,6 +65,7 @@ PRO_LOGS = {
     "pro-drive-poll": "/tmp/cron-drive-poll.log",
     "pro-kg-builder": "/tmp/cron-kg-builder.log",
     "pro-conversation-trainer": "/tmp/cron-conversation-trainer.log",
+    "pro-docs-guardian": str(Path.home() / "logs" / "docs-guardian.log"),
 }
 
 AIR_LOGS = {
@@ -101,6 +102,7 @@ STALENESS = {
     "pro-kg-builder": 8, "pro-conversation-trainer": 12,
     "air-ollama": 36, "air-auto-test": 36, "air-sentinel": 36,
     "air-kb-ingest": 36, "air-judgement-day": 192,  # weekly
+    "pro-docs-guardian": 168,  # weekly Sun 05:00 WITA; stale if >420h (~17d)
 }
 
 VERBOSE = False

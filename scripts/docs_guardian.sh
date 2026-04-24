@@ -278,7 +278,28 @@ PR_BODY_FILE=$(mktemp)
     echo "$ORPHAN_LIST"
     echo '```'
     echo
-    echo "Each move is reversible via \`git mv docs/archive/<YYYY-MM>-orphans/<file>.md docs/<file>.md\`."
+    echo "### Rollback (copy-paste to undo all L1 moves)"
+    echo
+    echo '```bash'
+    echo "# Run from repo root on branch $BRANCH before merging this PR."
+    ARCHIVE_DIR="docs/archive/$(date +%Y-%m)-orphans"
+    while IFS= read -r orphan_path; do
+      [[ -z "$orphan_path" ]] && continue
+      orphan_base=$(basename "$orphan_path")
+      echo "git mv $ARCHIVE_DIR/$orphan_base $orphan_path"
+    done <<< "$ORPHAN_LIST"
+    echo '```'
+    echo
+  fi
+  if [[ "$L25_COMMITTED" == "1" ]]; then
+    echo "### L2.5 Rollback (undo all Claude auto-fixes)"
+    echo
+    echo '```bash'
+    echo "# The L2.5 fix commit can be reverted wholesale; each fix is per-link."
+    echo "git revert --no-commit <L2.5-commit-sha>   # shown above"
+    echo "# Or reset the branch to pre-L2.5 state:"
+    echo "git reset --hard HEAD~1   # if L2.5 commit is HEAD"
+    echo '```'
     echo
   fi
   if [[ "$BROKEN" != "0" ]]; then
