@@ -261,7 +261,15 @@ class TestHandlerRegistration:
         assert "practice.status_changed" in bus._subscribers
         assert "compliance.alert" in bus._subscribers
         assert len(bus._subscribers["client.changed"]) == 1
-        assert len(bus._subscribers["practice.status_changed"]) == 1
+        # practice.status_changed has TWO subscribers: the core handler in
+        # handlers/_core.py (invalidates cache + checks client expiry) AND
+        # the partners module's handle_practice_status_changed (added by
+        # crm/partners/events.py::register_partner_handlers, wired in at
+        # the end of core.register_handlers). Before the handlers.py →
+        # handlers/_core.py move, register_handlers was silently unreachable
+        # (package shadowed module), so this test never exercised the real
+        # subscription count and the 1-subscriber expectation went stale.
+        assert len(bus._subscribers["practice.status_changed"]) == 2
         assert len(bus._subscribers["compliance.alert"]) == 1
 
     @pytest.mark.asyncio
@@ -315,7 +323,10 @@ class TestHandlerRegistration:
 
             await asyncio.sleep(0.05)
 
-            assert trace.handler_count == 1
+            # 2 subscribers: core _check_client_expiry_on_completion handler
+            # + partners.events.handle_practice_status_changed (wired via
+            # register_partner_handlers at the tail of register_handlers).
+            assert trace.handler_count == 2
             assert trace.errors == []
 
     @pytest.mark.asyncio
