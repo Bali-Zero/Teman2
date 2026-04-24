@@ -7,6 +7,10 @@ Rules (first match wins):
   3. STALE if broken_links > 0 OR DOCSYNC drift OR member of a duplicate cluster
   4. LIVE otherwise
 
+Mtime is derived from `git log` (last commit touching the file), not from
+`os.stat().st_mtime`, because filesystem mtime is reset by git checkout and
+CI `actions/checkout`. Untracked files fall back to stat.
+
 See docs/superpowers/specs/2026-04-24-docs-hygiene-design.md for the full spec.
 """
 from __future__ import annotations
@@ -174,6 +178,32 @@ def compute_broken_links(repo: Path, doc: Path) -> int:
     return broken
 
 
+def compute_mtime_days(repo: Path, doc: Path) -> int:
+    """Age of `doc` in days, preferring git history over os.stat().
+
+    Filesystem mtime is reset by `git checkout`, `git worktree add`, and CI
+    `actions/checkout` — so `os.stat().st_mtime` lies inside a worktree. Use
+    `git log -1 --format=%ct` on the file for the true semantic age. Fall back
+    to `os.stat()` when the file is untracked (new, uncommitted) or git is
+    absent.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo), "log", "-1", "--format=%ct", "--", str(doc.relative_to(repo))],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        stdout = result.stdout.strip()
+        if result.returncode == 0 and stdout:
+            commit_ts = int(stdout)
+            return int((time.time() - commit_ts) / 86400)
+    except (subprocess.SubprocessError, ValueError, OSError):
+        pass
+    # Fallback for untracked files or when git is unavailable.
+    return int((time.time() - doc.stat().st_mtime) / 86400)
+
+
 def compute_drift(doc: Path, expected_keys: Dict[str, str]) -> bool:
     """True if doc contains a DOCSYNC block whose enclosed value != expected_keys[key]."""
     if not expected_keys:
@@ -206,8 +236,7 @@ def classify(
         row.status = "ARCHIVED"
         return row
 
-    mtime = doc.stat().st_mtime
-    row.mtime_days = int((time.time() - mtime) / 86400)
+    row.mtime_days = compute_mtime_days(repo, doc)
     row.refs_in = compute_refs_in(repo, doc)
     row.broken = compute_broken_links(repo, doc)
     row.drift = compute_drift(doc, expected_keys)
