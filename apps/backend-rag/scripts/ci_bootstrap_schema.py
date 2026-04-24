@@ -206,7 +206,44 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
+        # notification_log: created by backend/migrations/migration_111_notification_log.py
+        # notification_prefs: created by backend/migrations/migration_110_notification_prefs.py
+        # Both are old-style Python migrations; the modern runner only discovers
+        # backend/db/migrations_v2/*.sql so migrations 110 and 111 never run in
+        # CI. alert_dispatcher (backend/services/compliance/alert_dispatcher.py)
+        # reads notification_prefs and INSERTs into notification_log for every
+        # dispatch — without the tables, test_alert_dispatcher.py fails with
+        # UndefinedTableError. Schemas mirrored from the Python migrations
+        # verbatim.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS notification_log (
+                id      BIGSERIAL PRIMARY KEY,
+                user_id UUID NOT NULL,
+                channel VARCHAR(20) NOT NULL,
+                ref     VARCHAR(128) NOT NULL,
+                sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )
+            """,
+        ))
+        conn.execute(text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_notification_log_lookup
+                ON notification_log (user_id, channel, ref, sent_at DESC)
+            """,
+        ))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS notification_prefs (
+                user_id       UUID PRIMARY KEY,
+                email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                wa_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
+                wa_phone      VARCHAR(20),
+                updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings + notification_log + notification_prefs tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
