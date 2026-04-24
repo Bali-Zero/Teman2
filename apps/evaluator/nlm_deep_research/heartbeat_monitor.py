@@ -534,6 +534,179 @@ def send_daily_digest(
 
 
 # ---------------------------------------------------------------------------
+# Truth dashboard — cross 3 signals (S0.5 2026-04-25)
+# ---------------------------------------------------------------------------
+
+
+def truth_dashboard(
+    registry: Optional[dict[str, dict[str, Any]]] = None,
+    state_dir: Optional[Path] = None,
+    logs_dir: Optional[Path] = None,
+    today: Optional[datetime] = None,
+) -> list[dict[str, Any]]:
+    """Cross 3 independent signals per pipeline to detect silent failures.
+
+    Designed to catch the "self-repair cieco" pattern (2026-04-19 lesson)
+    where ``mtime`` of gateway-written ``.last.json`` is fresh but the
+    internal ``ts`` is stale. Reports each signal independently so that
+    disagreement between them flags a compromised pipeline.
+
+    Three signals per pipeline:
+
+    1. **arch9**: ``heartbeat_{name}.json`` written by ``record_success()``.
+       Ground truth — only set when the pipeline actually completed.
+    2. **log**: today's log file ``logs/{name}_YYYYMMDD.log`` size > 0.
+       Proves ``run_nbN_pipeline.sh`` actually invoked Python.
+    3. **gateway**: what ``nlm_{name}.last.json`` (openclaw-gateway
+       projection) claims. May be stale; shown for contrast.
+
+    Args:
+        registry: Pipeline registry (defaults to on-disk).
+        state_dir: Override for ``~/.agent/decisions/state/``.
+        logs_dir: Override for ``apps/evaluator/nlm_deep_research/logs/``.
+        today: Override "today" for testing (defaults to WITA now).
+
+    Returns:
+        List of dicts with keys: ``pipeline``, ``arch9`` (dict), ``log``
+        (dict), ``gateway`` (dict), ``verdict`` (str).
+    """
+    reg = registry if registry is not None else load_registry()
+    sdir = state_dir or STATE_DIR
+    ldir = logs_dir or (
+        Path(__file__).resolve().parent / "logs"
+    )
+    now = today or datetime.now(tz=WITA)
+    today_stamp = now.strftime("%Y%m%d")
+
+    rows: list[dict[str, Any]] = []
+    for pipeline_name in reg:
+        # Signal 1: ARCH-9 heartbeat
+        hb = _read_heartbeat_state(pipeline_name, sdir)
+        arch9_present = hb is not None
+        arch9_age_h: Optional[float] = None
+        if arch9_present:
+            last_success = hb.get("last_success")  # type: ignore[union-attr]
+            if last_success:
+                try:
+                    ts = datetime.fromisoformat(last_success)
+                    arch9_age_h = round((now - ts).total_seconds() / 3600, 1)
+                except (ValueError, TypeError):
+                    arch9_age_h = None
+
+        # Signal 2: today's log file exists + non-empty
+        log_candidates = list(ldir.glob(f"{pipeline_name}_{today_stamp}.log"))
+        # Fallback: short name variants (nb2_pipeline → nb2 prefix)
+        if not log_candidates:
+            short = pipeline_name.split("_")[0]  # nb2_pipeline → nb2
+            log_candidates = list(ldir.glob(f"{short}_*_{today_stamp}.log"))
+            if not log_candidates:
+                log_candidates = list(ldir.glob(f"{short}_{today_stamp}.log"))
+        log_exists = bool(log_candidates)
+        log_size = log_candidates[0].stat().st_size if log_exists else 0
+
+        # Signal 3: gateway .last.json projection.
+        # Gateway naming convention differs: ARCH-9 uses {name}_pipeline,
+        # gateway uses nlm_{nbN}_{domain_suffix} (e.g. nlm_nb3_company_setup).
+        # Match by {nbN} prefix when the exact name is missing.
+        gateway_file = sdir / f"nlm_{pipeline_name}.last.json"
+        if not gateway_file.exists():
+            # Try stripping _pipeline suffix
+            alt = sdir / f"nlm_{pipeline_name.replace('_pipeline', '')}.last.json"
+            if alt.exists():
+                gateway_file = alt
+            else:
+                # Fuzzy match by nbN prefix (nb3_pipeline → nlm_nb3_*)
+                short = pipeline_name.split("_")[0]  # nb3_pipeline → nb3
+                if short.startswith("nb"):
+                    candidates = sorted(sdir.glob(f"nlm_{short}_*.last.json"))
+                    if candidates:
+                        gateway_file = candidates[0]
+        gateway_data: Optional[dict] = None
+        gateway_age_h: Optional[float] = None
+        if gateway_file.exists():
+            try:
+                gateway_data = json.loads(gateway_file.read_text())
+                gateway_ts = gateway_data.get("ts")
+                if isinstance(gateway_ts, (int, float)) and gateway_ts > 0:
+                    gateway_age_h = round(
+                        (now.timestamp() - gateway_ts) / 3600, 1
+                    )
+            except (OSError, json.JSONDecodeError):
+                pass
+
+        # Verdict: combine the 3 signals.
+        # - all green (arch9 fresh + log today + gateway fresh): OK
+        # - arch9 fresh but gateway stale: gateway projection lies, real state OK
+        # - log today but arch9 missing: script ran but didn't record success → incomplete
+        # - nothing today: pipeline dead
+        max_age = reg[pipeline_name].get("max_age_hours", 24)
+        arch9_fresh = arch9_age_h is not None and arch9_age_h <= max_age
+        gateway_fresh = gateway_age_h is not None and gateway_age_h <= max_age
+
+        if arch9_fresh and log_exists:
+            verdict = "OK"
+        elif arch9_fresh and not log_exists:
+            verdict = "HEARTBEAT_ONLY"  # heartbeat recorded but no log today (maybe just resumed)
+        elif log_exists and not arch9_fresh:
+            verdict = "LOG_NO_HEARTBEAT"  # script running but not completing successfully
+        elif gateway_fresh and not arch9_fresh and not log_exists:
+            verdict = "GATEWAY_LIES"  # classic self-repair-blind pattern
+        elif not arch9_present and not log_exists:
+            verdict = "DEAD"
+        else:
+            verdict = "DEGRADED"
+
+        rows.append({
+            "pipeline": pipeline_name,
+            "arch9": {
+                "present": arch9_present,
+                "age_h": arch9_age_h,
+                "fresh": arch9_fresh,
+            },
+            "log": {
+                "exists_today": log_exists,
+                "size_bytes": log_size,
+            },
+            "gateway": {
+                "present": gateway_data is not None,
+                "age_h": gateway_age_h,
+                "fresh": gateway_fresh,
+                "status": (gateway_data or {}).get("status"),
+            },
+            "max_age_hours": max_age,
+            "verdict": verdict,
+        })
+
+    return rows
+
+
+def print_truth_dashboard(rows: list[dict[str, Any]]) -> None:
+    """Pretty-print truth_dashboard output as a 1-comando 9-row table."""
+    verdict_emoji = {
+        "OK": "✅",
+        "HEARTBEAT_ONLY": "ℹ️",
+        "LOG_NO_HEARTBEAT": "⚠️",
+        "GATEWAY_LIES": "\U0001f534",
+        "DEGRADED": "\U0001f7e1",
+        "DEAD": "\U0001f480",
+    }
+    # Header
+    print(f"{'pipeline':<30} {'arch9':<10} {'log_today':<12} {'gateway':<10} {'verdict'}")
+    print("-" * 80)
+    for r in rows:
+        a = r["arch9"]
+        arch9_str = f"{a['age_h']}h" if a["age_h"] is not None else "-"
+        log_str = f"{r['log']['size_bytes']}B" if r["log"]["exists_today"] else "✗"
+        g = r["gateway"]
+        gw_str = f"{g['age_h']}h" if g["age_h"] is not None else "-"
+        emoji = verdict_emoji.get(r["verdict"], "?")
+        print(
+            f"{r['pipeline']:<30} {arch9_str:<10} {log_str:<12} "
+            f"{gw_str:<10} {emoji} {r['verdict']}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -565,6 +738,11 @@ def main() -> None:
         help="Send daily digest of all pipeline statuses",
     )
     parser.add_argument(
+        "--truth",
+        action="store_true",
+        help="Cross-check 3 signals (ARCH-9 heartbeat, today's log, gateway projection) to detect silent failures",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print instead of sending Telegram messages",
@@ -581,7 +759,7 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
-    if not any([args.record, args.check, args.digest]):
+    if not any([args.record, args.check, args.digest, args.truth]):
         parser.print_help()
         sys.exit(1)
 
@@ -600,6 +778,10 @@ def main() -> None:
     if args.digest:
         statuses = check_all_heartbeats()
         send_daily_digest(statuses, dry_run=args.dry_run)
+
+    if args.truth:
+        rows = truth_dashboard()
+        print_truth_dashboard(rows)
 
 
 if __name__ == "__main__":
