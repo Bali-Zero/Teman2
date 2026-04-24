@@ -4,9 +4,24 @@ Each domain has:
 - notebook_id: operational notebook (NB-Xb) — T2+T3 verified guides
 - primary_notebook_id: oracle notebook (NB-Xa) — T0+T1 law only (None until created)
 - keywords: used by resolve_notebook() to route queries
+
+Stale-ingestion gate (S1.3, 2026-04-25): resolve_notebook() can refuse to
+return a notebook_id when its most recent ingestion canary verification
+(written by apps.evaluator.nlm_deep_research.freshness_monitor.verify_ingestion_uuid)
+is failing or missing within the configured staleness window. The caller
+in nlm_orchestrator falls back to Qdrant-only when this happens.
 """
 
 from __future__ import annotations
+
+import json
+import logging
+import os
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 NLM_NOTEBOOKS: dict[str, dict] = {
     "immigration": {
@@ -120,6 +135,141 @@ _PRIMARY_LAW_KEYWORDS = frozenset(
 )
 
 
+# ── Stale-ingestion gate (S1.3) ──────────────────────────────────────────────
+
+_DEFAULT_FRESHNESS_STATE_PATH = (
+    Path(__file__).resolve().parents[5]
+    / "apps" / "evaluator" / "nlm_deep_research" / "freshness_monitor_state.json"
+)
+_DEFAULT_MAX_STALE_HOURS = 24
+
+
+def _resolve_state_path() -> Path:
+    """State file path is resolvable from env var or repo default.
+
+    The freshness_monitor lives under ``apps/evaluator``; the backend-rag
+    process either runs from the same monorepo (Pro Mac local) or from a
+    Docker image that mounts/copies the state file. Allow override via
+    ``NLM_FRESHNESS_STATE_FILE`` env var so tests and Fly.io deploys can
+    pin a path explicitly.
+    """
+    env = os.environ.get("NLM_FRESHNESS_STATE_FILE")
+    if env:
+        return Path(env)
+    return _DEFAULT_FRESHNESS_STATE_PATH
+
+
+def _max_stale_hours() -> int:
+    raw = os.environ.get("NLM_MAX_STALE_HOURS")
+    if not raw:
+        return _DEFAULT_MAX_STALE_HOURS
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return _DEFAULT_MAX_STALE_HOURS
+
+
+def check_ingestion_freshness(
+    notebook_id: str,
+    *,
+    max_stale_hours: Optional[int] = None,
+    state_path: Optional[Path] = None,
+) -> dict[str, object]:
+    """Inspect the most recent ingestion canary for a notebook.
+
+    Reads ``freshness_monitor_state.json`` and returns a verdict suitable
+    for gating oracle queries.
+
+    Args:
+        notebook_id: NLM notebook UUID.
+        max_stale_hours: Override threshold (default 24, env override
+            ``NLM_MAX_STALE_HOURS``).
+        state_path: Override state file path (test injection).
+
+    Returns:
+        Dict with keys:
+          - ``status`` — "fresh", "stale", "never_verified"
+          - ``last_status`` — "ok", "stale", "error", or None
+          - ``age_hours`` — float or None
+          - ``last_uuid`` — last canary UUID or None
+          - ``reason`` — short string, present when not fresh
+
+    The function never raises on disk errors — a missing/corrupt state
+    file is treated as ``never_verified`` so oracle behavior degrades
+    gracefully (caller may decide whether to fail-open or fail-closed).
+    """
+    threshold = max_stale_hours if max_stale_hours is not None else _max_stale_hours()
+    path = state_path or _resolve_state_path()
+
+    verdict: dict[str, object] = {
+        "status": "never_verified",
+        "last_status": None,
+        "age_hours": None,
+        "last_uuid": None,
+    }
+
+    try:
+        raw = path.read_text()
+    except FileNotFoundError:
+        verdict["reason"] = f"freshness state file not found: {path}"
+        return verdict
+    except OSError as exc:
+        logger.warning("freshness state unreadable (%s): %s", path, exc)
+        verdict["reason"] = f"state file unreadable: {exc}"
+        return verdict
+
+    try:
+        state = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.warning("freshness state malformed: %s", exc)
+        verdict["reason"] = "state file malformed"
+        return verdict
+
+    verifications = state.get("ingestion_verifications") or {}
+    entry = verifications.get(notebook_id)
+    if not entry:
+        verdict["reason"] = "no canary verification on record"
+        return verdict
+
+    last = entry.get("last") or {}
+    started_at = last.get("started_at")
+    last_status = last.get("status")
+    verdict["last_status"] = last_status
+    verdict["last_uuid"] = last.get("uuid")
+
+    if not started_at:
+        verdict["reason"] = "last verification has no timestamp"
+        return verdict
+
+    try:
+        ts = datetime.fromisoformat(started_at)
+    except (TypeError, ValueError):
+        verdict["reason"] = f"timestamp not parseable: {started_at}"
+        return verdict
+
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+
+    age = datetime.now(tz=timezone.utc) - ts
+    age_hours = age.total_seconds() / 3600
+    verdict["age_hours"] = round(age_hours, 2)
+
+    if last_status != "ok":
+        verdict["status"] = "stale"
+        verdict["reason"] = f"last canary status={last_status}"
+        return verdict
+
+    if age_hours > threshold:
+        verdict["status"] = "stale"
+        verdict["reason"] = (
+            f"last canary {age_hours:.1f}h ago > threshold {threshold}h"
+        )
+        return verdict
+
+    verdict["status"] = "fresh"
+    return verdict
+
+
 def resolve_multi_notebook(
     query: str,
     threshold: int = 1,
@@ -167,7 +317,12 @@ def resolve_multi_notebook(
     ]
 
 
-def resolve_notebook(query: str) -> dict[str, object] | None:
+def resolve_notebook(
+    query: str,
+    *,
+    enforce_freshness: bool | None = None,
+    max_stale_hours: Optional[int] = None,
+) -> dict[str, object] | None:
     """Resolve a user query to the best-matching NLM notebook.
 
     When a primary notebook exists for the domain, returns it for
@@ -176,10 +331,21 @@ def resolve_notebook(query: str) -> dict[str, object] | None:
 
     Args:
         query: Free-text user query.
+        enforce_freshness: If True, gate the result on ingestion canary
+            freshness (S1.3). When the chosen notebook has no recent
+            successful canary, return ``None`` (the caller falls back to
+            Qdrant-only retrieval). Defaults to the env var
+            ``NLM_ENFORCE_FRESHNESS`` (any truthy value enables it),
+            else False — backward compatible no-op.
+        max_stale_hours: Override the freshness threshold (default 24h,
+            env ``NLM_MAX_STALE_HOURS``).
 
     Returns:
-        A dict with keys ``domain``, ``notebook_id``, ``label``, ``keywords``
-        for the best match, or ``None`` if nothing matches.
+        A dict with keys ``domain``, ``notebook_id``, ``label``,
+        ``keywords``, ``primary_notebook_id``, plus ``freshness`` (the
+        verdict from check_ingestion_freshness) when that check is
+        actually performed. Returns ``None`` if no domain matches OR
+        when enforce_freshness is on and the chosen notebook is stale.
     """
     if not query:
         return None
@@ -203,10 +369,33 @@ def resolve_notebook(query: str) -> dict[str, object] | None:
     primary = data.get("primary_notebook_id")
     active_id = primary if (wants_primary and primary) else data["notebook_id"]
 
-    return {
+    # Resolve enforce_freshness: explicit arg > env var > False (legacy default)
+    if enforce_freshness is None:
+        enforce_freshness = os.environ.get("NLM_ENFORCE_FRESHNESS", "").lower() in (
+            "1", "true", "yes", "on",
+        )
+
+    result: dict[str, object] = {
         "domain": best_domain,
         "notebook_id": active_id,
         "primary_notebook_id": data.get("primary_notebook_id"),
         "label": data["label"],
         "keywords": frozenset(data["keywords"]),
     }
+
+    if enforce_freshness:
+        verdict = check_ingestion_freshness(
+            active_id,  # type: ignore[arg-type]
+            max_stale_hours=max_stale_hours,
+        )
+        result["freshness"] = verdict
+        if verdict["status"] != "fresh":
+            logger.info(
+                "NLM oracle gate: refusing notebook %s (%s) — %s",
+                active_id,
+                best_domain,
+                verdict.get("reason"),
+            )
+            return None
+
+    return result
