@@ -3,10 +3,10 @@ Wave 1 regression tests for OrchestratorCore / ReasoningEngine state machine.
 
 Scope: inner state machine (`ReasoningEngine.execute_react_loop`).
 Focus: loop termination, tool failure isolation, confidence gating transitions
-and invariants identified in STATE_MACHINE.md (§2) and TEST_GAPS.md (§4).
+and invariants identified in docs/audits/2026-04-22-orchestrator-state-machine.md (§2) and docs/audits/2026-04-22-orchestrator-test-gaps.md (§4).
 
 Each test is keyed to a transition ID (R*) or invariant ID (I-R*) from
-STATE_MACHINE.md so future Waves can cross-check coverage.
+docs/audits/2026-04-22-orchestrator-state-machine.md so future Waves can cross-check coverage.
 
 Fixture style mirrors test_reasoning_coverage.py: autouse patches on
 tracing + metrics, patches on module-level helpers

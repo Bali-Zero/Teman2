@@ -9,7 +9,7 @@ Scope: `OrchestratorCore.process_query_core` NLM merge block
 - Timeout during `await asyncio.wait_for(nlm_task, timeout=3.0)`.
 - Cached NLM result bypasses the timeout path.
 
-Each test is keyed to the O13 transition subset from STATE_MACHINE.md §1.2.
+Each test is keyed to the O13 transition subset from docs/audits/2026-04-22-orchestrator-state-machine.md §1.2.
 """
 
 from __future__ import annotations
