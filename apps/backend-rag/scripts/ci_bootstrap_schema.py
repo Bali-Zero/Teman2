@@ -279,6 +279,43 @@ def main() -> int:
             conn.execute(text(stmt))
     print("[bootstrap] clients prod-only columns ensured (drive + deleted_at + timestamp defaults)")
 
+    # team_members prod-only divergence.
+    #
+    # The SQLModel `User` in `backend/app/modules/identity/models.py` maps the
+    # Python attribute `name` to DB column `full_name` via `sa_column`. Against
+    # a freshly-bootstrapped CI schema (SQLModel.metadata.create_all()) only
+    # `full_name` exists and is NOT NULL. Prod/dev DBs however have the inverse
+    # historical shape: a legacy `name` column (NOT NULL, no default, left
+    # over from the pre-CATA-5 Node.js schema) alongside a nullable `full_name`.
+    # The partner test factories (tests/services/crm/partners/conftest.py,
+    # tests/services/crm/partners/test_repository.py) INSERT with `name` only
+    # and rely on prod DEFAULTs on timestamp/bool columns and on a nullable
+    # `full_name`. Rather than patch every INSERT site, mirror the prod shape
+    # here.
+    #
+    # Operations:
+    #   name                     — ADD legacy column so test INSERTs that
+    #                              reference it resolve (prod has it NOT NULL,
+    #                              we leave it nullable in CI because test rows
+    #                              always provide it anyway)
+    #   full_name                — drop NOT NULL to mirror prod nullability
+    #   personalized_response    — SQLModel Python-default only; add DB default
+    #   failed_attempts          — SQLModel Python-default only; add DB default
+    #   active                   — SQLModel Python-default only; add DB default
+    #   created_at / updated_at  — SQLModel default_factory; add DB default
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE team_members ADD COLUMN IF NOT EXISTS name VARCHAR(255)",
+            "ALTER TABLE team_members ALTER COLUMN full_name DROP NOT NULL",
+            "ALTER TABLE team_members ALTER COLUMN personalized_response SET DEFAULT FALSE",
+            "ALTER TABLE team_members ALTER COLUMN failed_attempts SET DEFAULT 0",
+            "ALTER TABLE team_members ALTER COLUMN active SET DEFAULT TRUE",
+            "ALTER TABLE team_members ALTER COLUMN created_at SET DEFAULT NOW()",
+            "ALTER TABLE team_members ALTER COLUMN updated_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] team_members prod-only columns + defaults ensured")
+
     return 0
 
 
