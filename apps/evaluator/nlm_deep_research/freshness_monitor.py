@@ -397,7 +397,177 @@ def get_status() -> dict[str, Any]:
         "scan_count": state.get("scan_count", 0),
         "remediations_triggered": state.get("remediations_triggered", 0),
         "changes_detected": state.get("changes_detected", {}),
+        "ingestion_verifications": state.get("ingestion_verifications", {}),
     }
+
+
+# ── Ingestion verification (Sprint 1 — UUID injection test) ──────────────────
+#
+# Purpose: prove that a notebook is alive end-to-end (upload + index + query).
+# Gateway mtime lies; source count can grow without query working; NLM chat
+# can be silently 5xx. The only honest signal is: upload a string with an
+# unambiguous UUID, wait for indexing, then query for that UUID. If the
+# answer contains the UUID, ingestion path is green. If not, the notebook is
+# STALE and the oracle gate must refuse to serve it (see S1.3 in plan v2).
+
+
+def verify_ingestion_uuid(
+    notebook_id: str,
+    *,
+    poll_seconds: float = 40.0,
+    query_timeout_s: int = 90,
+    cleanup: bool = True,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Inject a UUID-tagged text source, query for it, report whether found.
+
+    Args:
+        notebook_id: NotebookLM UUID.
+        poll_seconds: How long to wait after upload before querying (NLM
+            indexing typically completes within 20-60s).
+        query_timeout_s: CLI timeout passed to ``nlm notebook query``.
+        cleanup: Delete the test source after the check. False is useful
+            when the caller wants to retain audit trail.
+        dry_run: Skip actual CLI calls. Return a stub payload.
+
+    Returns:
+        Dict with keys: ``status`` (ok|stale|error), ``uuid``,
+        ``source_id`` (if upload succeeded), ``query_answer_excerpt``,
+        ``age_seconds``, ``error`` (if any).
+
+    The returned payload is also persisted to ``freshness_monitor_state.json``
+    under ``ingestion_verifications[notebook_id]`` so operators can inspect
+    historical results across runs.
+    """
+    import uuid as _uuid
+
+    marker = _uuid.uuid4().hex[:12]
+    canary = (
+        f"INGESTION-CANARY-{marker}\n\n"
+        f"Injected by freshness_monitor.verify_ingestion_uuid at "
+        f"{_now_iso()} to verify end-to-end ingestion of notebook "
+        f"{notebook_id}. Query marker: {marker}."
+    )
+    result: dict[str, Any] = {
+        "notebook_id": notebook_id,
+        "uuid": marker,
+        "started_at": _now_iso(),
+        "status": "error",
+        "source_id": None,
+        "query_answer_excerpt": None,
+        "age_seconds": None,
+        "error": None,
+    }
+
+    if dry_run:
+        result["status"] = "ok"
+        result["error"] = "dry_run"
+        return result
+
+    started = time.monotonic()
+
+    # Step 1: upload canary source via `nlm source add --text`.
+    try:
+        add_proc = subprocess.run(
+            ["nlm", "source", "add", notebook_id,
+             "--text", canary,
+             "--title", f"ingestion-canary-{marker}",
+             "--wait"],
+            capture_output=True, text=True, timeout=180,
+        )
+        if add_proc.returncode != 0:
+            result["error"] = f"source add failed: {add_proc.stderr.strip()[:200]}"
+            _persist_verification(notebook_id, result)
+            return result
+
+        # Extract source_id from output. CLI prints "Source ID: <id>".
+        stdout = add_proc.stdout
+        source_id = None
+        for line in stdout.splitlines():
+            if "source" in line.lower() and "id" in line.lower() and ":" in line:
+                source_id = line.split(":", 1)[1].strip()
+                break
+        result["source_id"] = source_id
+    except subprocess.TimeoutExpired:
+        result["error"] = "source add timed out after 180s"
+        _persist_verification(notebook_id, result)
+        return result
+    except Exception as exc:
+        result["error"] = f"source add exception: {exc}"
+        _persist_verification(notebook_id, result)
+        return result
+
+    # Step 2: wait for indexing. `--wait` should already handle this, but
+    # NLM sometimes reports "ready" before full retrieval index is built.
+    time.sleep(poll_seconds)
+
+    # Step 3: query and look for the marker in the answer.
+    try:
+        query_proc = subprocess.run(
+            ["nlm", "notebook", "query", notebook_id,
+             f"Inside the canary source is a 12-character hex marker. "
+             f"Repeat that marker back to me exactly as it appears after "
+             f"'Query marker:'.",
+             "--timeout", str(query_timeout_s)],
+            capture_output=True, text=True, timeout=query_timeout_s + 20,
+        )
+        stdout = query_proc.stdout or ""
+        if query_proc.returncode != 0:
+            result["error"] = f"query failed: {query_proc.stderr.strip()[:200]}"
+            _persist_verification(notebook_id, result)
+            return result
+
+        result["query_answer_excerpt"] = stdout[:800]
+        if marker in stdout:
+            result["status"] = "ok"
+        else:
+            result["status"] = "stale"
+            result["error"] = "marker not found in answer (indexing incomplete or retrieval broken)"
+    except subprocess.TimeoutExpired:
+        result["error"] = f"query timed out after {query_timeout_s}s"
+        _persist_verification(notebook_id, result)
+        return result
+    except Exception as exc:
+        result["error"] = f"query exception: {exc}"
+        _persist_verification(notebook_id, result)
+        return result
+    finally:
+        result["age_seconds"] = round(time.monotonic() - started, 1)
+
+    # Step 4: cleanup (best-effort, do not fail the test if delete fails).
+    if cleanup and result.get("source_id"):
+        try:
+            subprocess.run(
+                ["nlm", "source", "delete", notebook_id, result["source_id"]],
+                capture_output=True, text=True, timeout=60,
+            )
+        except Exception as exc:
+            logger.warning("canary cleanup failed for %s: %s", result["source_id"], exc)
+
+    _persist_verification(notebook_id, result)
+    return result
+
+
+def _persist_verification(notebook_id: str, result: dict[str, Any]) -> None:
+    """Store verification result in freshness_monitor_state.json.
+
+    Keeps the most recent result per notebook_id and appends to a rolling
+    history (max 20 entries per notebook) for trend analysis.
+    """
+    state = _load_state()
+    verifications = state.setdefault("ingestion_verifications", {})
+    entry = verifications.setdefault(notebook_id, {"last": None, "history": []})
+    entry["last"] = result
+    history = entry["history"]
+    history.append({
+        "ts": result.get("started_at"),
+        "status": result.get("status"),
+        "uuid": result.get("uuid"),
+        "age_seconds": result.get("age_seconds"),
+        "error": result.get("error"),
+    })
+    entry["history"] = history[-20:]  # trim rolling window
+    _save_state(state)
 
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
@@ -417,8 +587,14 @@ def main() -> None:
                        help="Trigger NLM research for STALE/GAP topics from coverage matrix")
     group.add_argument("--status", action="store_true",
                        help="Show freshness monitor state")
+    group.add_argument(
+        "--verify-ingestion", metavar="NOTEBOOK_ID",
+        help="Inject UUID canary, query, check ingestion alive (Sprint 1 S1.2)",
+    )
     parser.add_argument("--dry-run", action="store_true",
                         help="Preview only, do not query Gemini or trigger NLM research")
+    parser.add_argument("--no-cleanup", action="store_true",
+                        help="(with --verify-ingestion) keep canary source on NB after check")
 
     args = parser.parse_args()
 
@@ -453,6 +629,26 @@ def main() -> None:
         if result["errors"]:
             print(f"  Errors: {result['errors']}")
         sys.exit(0 if result["status"] in ("ok", "partial", "skipped") else 1)
+
+    elif args.verify_ingestion:
+        result = verify_ingestion_uuid(
+            args.verify_ingestion,
+            dry_run=args.dry_run,
+            cleanup=not args.no_cleanup,
+        )
+        status = result.get("status", "error")
+        print(f"\nIngestion verification: {status.upper()}")
+        print(f"  Notebook:  {result['notebook_id']}")
+        print(f"  UUID:      {result['uuid']}")
+        print(f"  Age:       {result.get('age_seconds')}s")
+        if result.get("source_id"):
+            print(f"  Source ID: {result['source_id']}")
+        if result.get("error"):
+            print(f"  Error:     {result['error']}")
+        if result.get("query_answer_excerpt"):
+            excerpt = result["query_answer_excerpt"].replace("\n", " ")
+            print(f"  Answer:    {excerpt[:200]}...")
+        sys.exit(0 if status == "ok" else 1)
 
 
 if __name__ == "__main__":
