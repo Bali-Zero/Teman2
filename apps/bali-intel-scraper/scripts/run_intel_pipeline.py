@@ -1255,12 +1255,18 @@ IMPORTANT:
 
         self.log(f'Generating images for {len(published)} T1/featured articles (of {len(all_enriched)} enriched)')
 
-        # Fireworks.ai Flux.1 Dev (primary) → Pollinations.ai (fallback)
-        script = self.script_dir / 'fireworks_image_generator.py'
+        # Gemini app + Nano Banana 2 Pro via Playwright (free via AI Ultra subscription).
+        # Falls back to fireworks_image_generator.py (paid Flux.1) if the Gemini
+        # script is missing — preserves the legacy hot path.
+        script = self.script_dir / 'gemini_image_generator.py'
         if not script.exists():
-            self.log('fireworks_image_generator.py not found — skipping images', 'WARN')
+            # Legacy fallback: Fireworks.ai Flux.1 Dev (paid ~$0.014/img)
+            script = self.script_dir / 'fireworks_image_generator.py'
+        if not script.exists():
+            self.log('No image generator found (gemini/fireworks) — skipping images', 'WARN')
             self.update_step_status('8_images', 'skipped', {'reason': 'script_missing'})
             return True
+        self.log(f'Image generator: {script.name}')
 
         # Save current state so the image generator can read articles
         self.save_state()

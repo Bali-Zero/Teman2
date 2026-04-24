@@ -3,10 +3,14 @@
 Post-publish webhook server — ascolta su :7788
 Quando riceve POST /trigger?slug=XXX&category=YYY, lancia:
   1. translate_articles.py (traduzioni)
-  2. fireworks_image_generator.py per lo slug specifico (via Fireworks.ai Flux)
+  2. gemini_image_generator.py per lo slug specifico (via Gemini app + Playwright)
 
 Girato da: launchd com.balizero.post-publish-webhook (sempre attivo)
 Chiamato da: backend Fly.io dopo ogni publish dalla news-room
+
+Nota: il webhook era storicamente bound a fireworks_image_generator.py che
+richiede state_file.json — chiamata senza arg = no-op. Il path canonical
+per le immagini resta la pipeline nightly `run_intel_pipeline.py` step 8.
 """
 import json
 import os
@@ -49,15 +53,23 @@ def run_translate():
 
 
 def run_image(slug: str, category: str):
-    """Run Fireworks image generator for a specific slug."""
+    """Run Gemini image generator for a specific slug.
+
+    Falls back to fireworks_image_generator.py if the Gemini script is not
+    present (legacy path). Both scripts currently expect a state_file — the
+    webhook's single-slug trigger is a no-op for generation but still logs
+    the attempt. Use run_intel_pipeline.py for actual image generation.
+    """
     log(f"▶ Avvio immagine per {category}/{slug}")
-    # Pass slug/category via env vars
+    gemini_script = SCRIPT_DIR / "gemini_image_generator.py"
+    fireworks_script = SCRIPT_DIR / "fireworks_image_generator.py"
+    script = gemini_script if gemini_script.exists() else fireworks_script
     env = {**os.environ, "TARGET_SLUG": slug, "TARGET_CATEGORY": category}
     result = subprocess.run(
-        [str(VENV_PYTHON), str(SCRIPT_DIR / "fireworks_image_generator.py")],
+        [str(VENV_PYTHON), str(script)],
         capture_output=True, text=True, timeout=10 * 60, env=env
     )
-    log(f"{'✅' if result.returncode == 0 else '❌'} immagine {slug} exit={result.returncode}")
+    log(f"{'✅' if result.returncode == 0 else '❌'} immagine {slug} via {script.name} exit={result.returncode}")
 
 
 class WebhookHandler(BaseHTTPRequestHandler):

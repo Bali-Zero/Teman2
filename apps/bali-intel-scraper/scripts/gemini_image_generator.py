@@ -29,6 +29,14 @@ from playwright.async_api import async_playwright, Page, BrowserContext
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 IMAGES_DIR = PROJECT_ROOT / "data" / "images"
+# Primary profile (persistent, shared with WR2 image generator)
+# Lives at ~/.nuzantara/playwright-profiles/gemini — logged in once via
+# `bash scripts/playwright/login-all.sh gemini`, reused forever until cookies
+# expire. This is the preferred path because it's the same profile tested in
+# docs/playwright/sites/gemini.yaml.
+PERSISTENT_PROFILE_DIR = Path.home() / ".nuzantara" / "playwright-profiles" / "gemini"
+# Legacy fallback: snapshot the system Chrome Default profile at run-time.
+# Kept for backwards compatibility when the persistent profile doesn't exist.
 CHROME_PROFILE_DIR = PROJECT_ROOT / "data" / ".chrome-profile"
 IMAGES_DIR.mkdir(exist_ok=True, parents=True)
 
@@ -431,6 +439,30 @@ async def generate_image_for_article(
             logger.error("Fix: run with --refresh-profile to recopy fresh cookies")
             return None
 
+        # Best-effort: switch to Nano Banana 2 Pro (best image-gen quality on the
+        # Gemini 2.5 Pro model). UI selector varies — try model switcher button
+        # first, then look for the Nano Banana option. If the switcher isn't
+        # present (A/B variant, older UI), proceed with whatever is selected.
+        try:
+            model_btn = await page.query_selector("button[aria-label*='model' i], button[aria-label*='Model'], button:has-text('Model')")
+            if model_btn:
+                await model_btn.click()
+                await page.wait_for_timeout(800)
+                # Look for Nano Banana 2 Pro option (order of preference)
+                for option_text in ("Nano Banana 2 Pro", "Nano Banana", "2.5 Pro"):
+                    opt = await page.query_selector(f"text='{option_text}'")
+                    if opt:
+                        await opt.click()
+                        logger.info(f"Selected model: {option_text}")
+                        await page.wait_for_timeout(1500)
+                        break
+                else:
+                    logger.debug("No Nano Banana / 2.5 Pro option found — using default")
+                    # Dismiss any open menu
+                    await page.keyboard.press("Escape")
+        except Exception as e:
+            logger.debug(f"Model switch skipped: {e}")
+
         # Find and fill the textarea
         textarea = await page.wait_for_selector(SELECTOR_TEXTAREA, timeout=15000)
         if not textarea:
@@ -536,8 +568,16 @@ async def run(
         except Exception as e:
             logger.warning(f"CDP not available ({e}) — falling back to Playwright persistent context")
             use_cdp = False
-            # Copy / reuse Chrome profile so Google cookies are present
-            profile_dir = ensure_chrome_profile(force_refresh=refresh_profile)
+            # Preference order:
+            # 1. Our persistent Gemini profile (~/.nuzantara/playwright-profiles/gemini),
+            #    already logged-in via scripts/playwright/login-all.sh gemini.
+            # 2. Legacy: copy of system Chrome Default profile.
+            if PERSISTENT_PROFILE_DIR.exists() and not refresh_profile:
+                profile_dir = PERSISTENT_PROFILE_DIR
+                logger.info(f"Using persistent Gemini profile: {profile_dir}")
+            else:
+                logger.info("Persistent profile missing or refresh forced — falling back to system-Chrome snapshot")
+                profile_dir = ensure_chrome_profile(force_refresh=refresh_profile)
             context = await p.chromium.launch_persistent_context(
                 str(profile_dir),
                 headless=headless,

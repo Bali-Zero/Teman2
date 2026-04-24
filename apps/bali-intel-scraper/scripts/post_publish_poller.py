@@ -339,28 +339,53 @@ def run_image(slug: str, category: str, title: str | None = None, article_id: st
         img_path = Path(tmpdir) / f"{slug}.jpg"
         generated = False
 
-        # 1. Fireworks.ai Flux Dev
-        fireworks_key = os.environ.get("FIREWORKS_API_KEY", "")
-        if fireworks_key:
-            log("    Fireworks.ai Flux Dev")
-            fw_payload = json.dumps({"prompt": prompt, "width": 1344, "height": 768, "steps": 28, "cfg_scale": 3.5}).encode()
-            fw_req = urllib.request.Request(
-                "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image",
-                data=fw_payload,
-                headers={"Authorization": f"Bearer {fireworks_key}", "Content-Type": "application/json", "Accept": "image/jpeg"},
-                method="POST",
-            )
+        # 1. Gemini app (Nano Banana 2 Pro) via Playwright + logged-in profile.
+        # No paid API key — uses the persistent profile at
+        # ~/.nuzantara/playwright-profiles/gemini (AI Ultra subscription).
+        gemini_script = SCRIPT_DIR / "gemini_image_generator.py"
+        venv_py = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
+        if gemini_script.exists() and venv_py.exists():
             try:
-                with urllib.request.urlopen(fw_req, timeout=90) as fw_resp:
-                    img_bytes = fw_resp.read()
-                    if len(img_bytes) > 5000:
-                        img_path.write_bytes(img_bytes)
-                        generated = True
-                        log(f"    ✅ {len(img_bytes)} bytes")
-            except Exception as e:
-                log(f"    Fireworks error: {e}")
+                # Build a temporary state_file with a single article so we can
+                # reuse the batch generator without bespoke code here.
+                state = {
+                    "articles": [{
+                        "id": f"post_publish_{slug}",
+                        "title": title,
+                        "category": category,
+                        "tier": "T1",
+                        "featured": True,
+                        "enrichment": {"headline": title, "the_facts": prompt},
+                    }],
+                }
+                state_path = Path(tmpdir) / "state.json"
+                state_path.write_text(json.dumps(state, ensure_ascii=False))
 
-        # 2. Pollinations fallback
+                log("    Gemini app (Nano Banana 2 Pro) via Playwright")
+                gres = subprocess.run(
+                    [str(venv_py), str(gemini_script), str(state_path), "--limit", "1", "--headless"],
+                    capture_output=True, text=True, timeout=8 * 60,
+                    cwd=str(SCRIPT_DIR),
+                )
+                if gres.returncode == 0:
+                    updated = json.loads(state_path.read_text())
+                    art = (updated.get("articles") or [{}])[0]
+                    src_path = art.get("image_path")
+                    if src_path and Path(src_path).exists() and Path(src_path).stat().st_size > 5000:
+                        # Gemini writes PNG; the poller expects JPG but GitHub
+                        # accepts either; keep the extension consistent with
+                        # downstream consumers by copying as-is.
+                        img_path.write_bytes(Path(src_path).read_bytes())
+                        generated = True
+                        log(f"    ✅ Gemini {img_path.stat().st_size} bytes")
+                    else:
+                        log(f"    Gemini: state returned but image_path missing/empty")
+                else:
+                    log(f"    Gemini error (exit {gres.returncode}): {gres.stderr[-200:]}")
+            except Exception as e:
+                log(f"    Gemini exception: {e}")
+
+        # 2. Pollinations fallback (free, no auth)
         if not generated:
             log("    Pollinations.ai fallback")
             encoded_prompt = urllib.parse.quote(prompt)
