@@ -109,7 +109,7 @@
 ### renderMiniMarkdown
 
 - Rendering sicuro (escape HTML)
-- Supporta: **Bold**, [Link](url), newlines
+- Supporta: **Bold**, Link, newlines
 - Ritorna `{ __html: string }` per `dangerouslySetInnerHTML`
 
 ### fileToBase64
