@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
 """Every-6h cron — pull metrics for every post published in last 168h.
 
-Triggered by infra/launchagents/com.balizero.sota.m13-collect.plist.
+Invoked by `com.balizero.sota.m13-collect.plist` through
+`scripts/wr2-cron-wrapper.sh backend.services.sota_loop.m13_collect`.
 Kill switch: system_settings.sota_m13_collect_enabled = 'true'.
 """
 from __future__ import annotations
@@ -11,10 +11,6 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-
-_REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_REPO / "apps" / "backend-rag"))
 
 import asyncpg
 
