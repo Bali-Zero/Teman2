@@ -228,15 +228,26 @@ def apply_fix(repo: Path, bl: BrokenLink, decision: dict) -> bool:
         new_path = decision.get("new_path", "").strip()
         if not new_path:
             return False
-        # Verify target exists
-        candidate = (file_path.parent / new_path).resolve()
-        try:
-            candidate.relative_to(repo.resolve())
-        except ValueError:
+        # Claude is instructed to emit repo-relative paths (the prompt says
+        # "Docs live under `docs/**/*.md`"). Try repo-relative first; if that
+        # doesn't exist, fall back to file-parent-relative (tolerant of prompt
+        # drift).
+        candidate_repo_rel = (repo / new_path).resolve()
+        candidate_file_rel = (file_path.parent / new_path).resolve()
+        resolved: Optional[Path] = None
+        for cand in (candidate_repo_rel, candidate_file_rel):
+            try:
+                cand.relative_to(repo.resolve())
+            except ValueError:
+                continue
+            if cand.exists():
+                resolved = cand
+                break
+        if resolved is None:
             return False
-        if not candidate.exists():
-            return False
-        replacement = f"[{bl.link_text}]({new_path})"
+        # The link in the markdown must be expressed relative to the file's parent.
+        rewritten_target = os.path.relpath(resolved, file_path.parent)
+        replacement = f"[{bl.link_text}]({rewritten_target})"
         new_line = link_pattern.sub(replacement, original_line, count=1)
     elif action == "REMOVE_LINK":
         # Replace `[text](target)` with just `text`
