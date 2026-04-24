@@ -61,6 +61,13 @@ MAX_CONCURRENT_TABS = int(os.environ.get("WR2_IMAGE_MAX_CONCURRENT", "3"))
 TIMEOUT_PER_SLIDE = int(os.environ.get("WR2_IMAGE_TIMEOUT_PER_SLIDE", "180"))
 MAX_DRAFTS_PER_RUN = 2
 
+# Gemini web becomes flaky if many tabs share the same persistent profile in
+# parallel (Send button occasionally never renders; images occasionally never
+# arrive). Set WR2_IMAGE_ISOLATE_BROWSER=true to launch a FRESH browser
+# context per slide (~4 mins per draft, but ~100% success rate under
+# throttling pressure). Forces serial execution.
+ISOLATE_PER_SLIDE = os.environ.get("WR2_IMAGE_ISOLATE_BROWSER", "false").lower() == "true"
+
 TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
 TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
@@ -201,8 +208,27 @@ async def _gen_one_image(
         final_prompt = _compose_final_prompt(image_prompt)
         await page.click(SEL_INPUT)
         await page.keyboard.type(final_prompt, delay=5)
-        await asyncio.sleep(1)
-        await page.click(SEL_SEND)
+        # Wait for Send button to materialize AND be enabled. Under parallel
+        # tabs on a shared profile, it sometimes takes >10s for Gemini's UI to
+        # re-render the compose toolbar after the 'Create image' toggle. The
+        # old `await page.click(SEL_SEND)` used Playwright's default 30s
+        # timeout but only waited for the element to EXIST — not for it to be
+        # enabled — so it could click a disabled shell of the Send button, or
+        # (more commonly) time out silently when the element never rendered.
+        send_btn = page.locator(SEL_SEND)
+        try:
+            await send_btn.wait_for(state="visible", timeout=60000)
+            # Some Gemini builds keep the Send button present but disabled
+            # until the text is committed. Poll until enabled (or timeout).
+            for _ in range(30):
+                disabled = await send_btn.get_attribute("aria-disabled")
+                is_disabled_attr = await send_btn.get_attribute("disabled")
+                if disabled in (None, "false") and is_disabled_attr is None:
+                    break
+                await asyncio.sleep(0.5)
+        except Exception as e:
+            return None, f"send button never ready: {e}"
+        await send_btn.click(timeout=15000)
 
         # Wait for generated image
         start = time.time()
@@ -447,24 +473,55 @@ async def _process_one(
     # Launch Playwright with the gemini profile
     from playwright.async_api import async_playwright
 
-    async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=str(GEMINI_PROFILE_DIR),
-            headless=True,
-            viewport={"width": 1440, "height": 900},
-            args=["--disable-blink-features=AutomationControlled"],
-        )
-        try:
-            sem = asyncio.Semaphore(MAX_CONCURRENT_TABS)
-            tasks = [
-                _gen_image_with_semaphore(
-                    sem, context, s["slide_number"], s.get("image_prompt") or "", str(draft_id)
+    results: list[Any] = []
+    if ISOLATE_PER_SLIDE:
+        # Serial with fresh browser context per slide — slowest but most robust
+        # (eliminates cross-slide state bleed through Gemini's persistent
+        # session). Pair with a small inter-slide cooldown to give any
+        # server-side rate-limit a chance to clear.
+        logger.info("ISOLATE_PER_SLIDE=true — fresh browser per hero slide")
+        async with async_playwright() as p:
+            for idx, s in enumerate(hero_slides):
+                context = await p.chromium.launch_persistent_context(
+                    user_data_dir=str(GEMINI_PROFILE_DIR),
+                    headless=True,
+                    viewport={"width": 1440, "height": 900},
+                    args=["--disable-blink-features=AutomationControlled"],
                 )
-                for s in hero_slides
-            ]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-        finally:
-            await context.close()
+                try:
+                    sem = asyncio.Semaphore(1)
+                    r = await _gen_image_with_semaphore(
+                        sem,
+                        context,
+                        s["slide_number"],
+                        s.get("image_prompt") or "",
+                        str(draft_id),
+                    )
+                    results.append(r)
+                finally:
+                    await context.close()
+                # Inter-slide cooldown except after last
+                if idx < len(hero_slides) - 1:
+                    await asyncio.sleep(5)
+    else:
+        async with async_playwright() as p:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=str(GEMINI_PROFILE_DIR),
+                headless=True,
+                viewport={"width": 1440, "height": 900},
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            try:
+                sem = asyncio.Semaphore(MAX_CONCURRENT_TABS)
+                tasks = [
+                    _gen_image_with_semaphore(
+                        sem, context, s["slide_number"], s.get("image_prompt") or "", str(draft_id)
+                    )
+                    for s in hero_slides
+                ]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+            finally:
+                await context.close()
 
     # Stitch URLs back into slides
     url_by_slide: dict[int, str] = {}

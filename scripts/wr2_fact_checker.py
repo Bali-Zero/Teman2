@@ -116,9 +116,9 @@ RE_HEDGE = re.compile(
 
 # Opinion markers that distinguish editorial from fact
 RE_OPINION_MARKER = re.compile(
-    r"\b(?:in our view|bali zero'?s take|from our seat|our read:?|"
-    r"what this means for you|we argue that|our reading is|"
-    r"in practice|bali zero believes)\b",
+    r"\b(?:in our view|bali zero'?s (?:take|read|view|take)|from our seat|"
+    r"our (?:read|take|view):?|what this means for you|we argue that|"
+    r"our reading is|in practice|bali zero believes|our read:)\b",
     re.IGNORECASE,
 )
 
@@ -216,11 +216,65 @@ def _pool_tokens_lower(pool: list[dict[str, Any]], fields: list[str]) -> str:
     return " ".join(parts).lower()
 
 
+def _format_shifted(digits: str, shift: int, suffix: str) -> str:
+    """Treat digits as a number, shift decimal left by `shift`, append suffix.
+
+    Examples:
+        _format_shifted("3500000", 6, "m") -> "3.5m"
+        _format_shifted("2000000", 6, "m") -> "2m"
+        _format_shifted("15000000000", 9, "b") -> "15b"
+    """
+    n = len(digits)
+    if n <= shift:
+        # Not enough digits to shift — leave as-is
+        return digits
+    lead = digits[: n - shift]
+    tail = digits[n - shift :].rstrip("0")
+    if not tail:
+        return f"{lead}{suffix}"
+    # Keep up to 2 decimals, drop trailing zeros
+    return f"{lead}.{tail[:2]}{suffix}"
+
+
 def _normalize_num(s: str) -> str:
-    """Strip punctuation, spaces, make 'usd 2m' == 'USD 2 million'."""
+    """Canonical form for number-string comparison.
+
+    Rules (applied in order, matter):
+    1. lowercase + drop whitespace/commas
+    2. word-form → letter-form: million/mn→m, billion/bn→b, thousand/k→k
+    3. collapse full-digit amounts with trailing zero blocks to the same
+       abbreviation used in slides (so pool "IDR 3,500,000" and slide
+       "IDR 3.5M" both end up as "idr3.5m")
+    4. percent → %
+    """
     s = s.lower().strip()
     s = re.sub(r"[\s,]", "", s)
+    # Longest alternatives first (avoid 'million' being partially consumed by 'mn').
     s = s.replace("million", "m").replace("billion", "b").replace("thousand", "k")
+    s = re.sub(r"(?<=\d)bn\b", "b", s)
+    s = re.sub(r"(?<=\d)mn\b", "m", s)
+    # Full-digit → abbreviated: normalize monetary/count figures so
+    # '3,500,000' (pool) and '3.5M' (slide) end up the same. Magnitude is
+    # driven by total digit length, not trailing zero count:
+    #   7-9 digits → millions (M)     e.g. 3500000 → 3.5m
+    #   10-12 digits → billions (B)   e.g. 15000000000 → 15b
+    #   4-6 digits → thousands (K)    e.g. 1500 → 1.5k
+    def _collapse(match: re.Match[str]) -> str:
+        digits = match.group(0)
+        n = len(digits)
+        # Skip year-like small numbers
+        if n < 4:
+            return digits
+        if 10 <= n <= 12:
+            # Billions: shift 9 decimals in
+            return _format_shifted(digits, 9, "b")
+        if 7 <= n <= 9:
+            return _format_shifted(digits, 6, "m")
+        if 4 <= n <= 6:
+            return _format_shifted(digits, 3, "k")
+        return digits
+
+    s = re.sub(r"\d{4,}", _collapse, s)
     s = s.replace("percent", "%")
     return s
 
@@ -232,6 +286,30 @@ def _number_in_pool(token: str, pool_text: str) -> bool:
     if len(norm) < 2:
         return True
     return norm in _normalize_num(pool_text)
+
+
+_RE_TIME_SPAN_TOKEN = re.compile(
+    r"^\d+(?:\.\d+)?\s?(?:weeks?|days?|months?|years?)\b",
+    re.IGNORECASE,
+)
+
+# Pool is considered to have "date material" if it mentions ≥ 2 month names or
+# at least one full month-day-year pattern. We match month names case-insensitively.
+_RE_MONTH_NAME = re.compile(
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+    r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_time_span_token(token: str) -> bool:
+    return bool(_RE_TIME_SPAN_TOKEN.match(token.strip()))
+
+
+def _pool_has_date_material(pool_text: str) -> bool:
+    months = _RE_MONTH_NAME.findall(pool_text)
+    # Require ≥ 2 month mentions for a "span" to be plausibly derivable.
+    return len(months) >= 2
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -317,6 +395,37 @@ def check_slide(
                         rule="number_in_source_not_in_pool",
                         offending_text=token,
                         detail=f"figure '{token}' in article_summary but missed by fact_extractor",
+                    )
+                )
+                continue
+            # Time-unit duration (weeks/days/months/years) is often a derivation
+            # from two dates that ARE in the pool (e.g. "10 weeks" from Apr 20 → Jul 1).
+            # Downgrade to SOFT when the pool has enough date material to support
+            # the derivation — we don't validate the arithmetic, we just trust it.
+            if _is_time_span_token(token) and _pool_has_date_material(fact_pool_text):
+                result.add(
+                    Flag(
+                        severity="soft",
+                        slide_number=sn,
+                        rule="time_span_derived",
+                        offending_text=token,
+                        detail=f"duration '{token}' likely derived from dates in pool — verify arithmetic",
+                    )
+                )
+                continue
+            # Editorial derivations in an opinion slide: if the slide carries an
+            # explicit opinion marker ("Bali Zero's read:", "In our view", etc.)
+            # we treat out-of-pool numbers as deliberate Bali Zero commentary
+            # (ratios, deltas, thresholds derived from pool numbers), not
+            # hallucinations. Still surface as SOFT so a human can eyeball.
+            if RE_OPINION_MARKER.search(full_text):
+                result.add(
+                    Flag(
+                        severity="soft",
+                        slide_number=sn,
+                        rule="editorial_derivation",
+                        offending_text=token,
+                        detail=f"figure '{token}' in opinion slide (marked with editorial flag) — verify arithmetic",
                     )
                 )
                 continue
