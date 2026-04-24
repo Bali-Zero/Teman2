@@ -1,0 +1,4142 @@
+{
+  "sample_size": 294,
+  "channels_count": 14,
+  "objectives_count": 3,
+  "registers_count": 7,
+  "stub_format_distribution": {
+    "carousel": 7,
+    "reel": 14,
+    "carousel_native": 14,
+    "long_post": 7,
+    "reel_short": 21,
+    "thread": 42,
+    "long_video": 21,
+    "short_video": 21,
+    "broadcast_post": 21,
+    "broadcast_card": 21,
+    "long_form": 21,
+    "long_article": 21,
+    "audio_episode": 21,
+    "note_post": 21,
+    "qa_answer": 21
+  },
+  "avg_confidence": 0.3,
+  "cells": [
+    {
+      "cell_key": "instagram:lead:pedagogico",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:analitico",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:tecnico",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:rituale",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:poetico",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:ironico",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:lead:militante",
+      "channel": "instagram",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "carousel",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:pedagogico",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:analitico",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:tecnico",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:rituale",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:poetico",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:ironico",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:authority:militante",
+      "channel": "instagram",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:pedagogico",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:analitico",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:tecnico",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:rituale",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:poetico",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:ironico",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "instagram:audience:militante",
+      "channel": "instagram",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "reel",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:pedagogico",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:analitico",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:tecnico",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:rituale",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:poetico",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:ironico",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:lead:militante",
+      "channel": "linkedin",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:pedagogico",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:analitico",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:tecnico",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:rituale",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:poetico",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:ironico",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:authority:militante",
+      "channel": "linkedin",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "long_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:pedagogico",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:analitico",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:tecnico",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:rituale",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:poetico",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:ironico",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "linkedin:audience:militante",
+      "channel": "linkedin",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "carousel_native",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:pedagogico",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:analitico",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:tecnico",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:rituale",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:poetico",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:ironico",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:lead:militante",
+      "channel": "tiktok",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "reel_short",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:pedagogico",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:analitico",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:tecnico",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:rituale",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:poetico",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:ironico",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:authority:militante",
+      "channel": "tiktok",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:pedagogico",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:analitico",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:tecnico",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:rituale",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:poetico",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:ironico",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "tiktok:audience:militante",
+      "channel": "tiktok",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "reel_short",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:pedagogico",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:analitico",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:tecnico",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:rituale",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:poetico",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:ironico",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:lead:militante",
+      "channel": "threads",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:pedagogico",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:analitico",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:tecnico",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:rituale",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:poetico",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:ironico",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:authority:militante",
+      "channel": "threads",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:pedagogico",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:analitico",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:tecnico",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:rituale",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:poetico",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:ironico",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "threads:audience:militante",
+      "channel": "threads",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:pedagogico",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:analitico",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:tecnico",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:rituale",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:poetico",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:ironico",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:lead:militante",
+      "channel": "x_twitter",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:pedagogico",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:analitico",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:tecnico",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:rituale",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:poetico",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:ironico",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:authority:militante",
+      "channel": "x_twitter",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:pedagogico",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:analitico",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:tecnico",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:rituale",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:poetico",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:ironico",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "x_twitter:audience:militante",
+      "channel": "x_twitter",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "thread",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:pedagogico",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:analitico",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:tecnico",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:rituale",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:poetico",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:ironico",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:lead:militante",
+      "channel": "youtube_long",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "long_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:pedagogico",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:analitico",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:tecnico",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:rituale",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:poetico",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:ironico",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:authority:militante",
+      "channel": "youtube_long",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:pedagogico",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:analitico",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:tecnico",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:rituale",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:poetico",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:ironico",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_long:audience:militante",
+      "channel": "youtube_long",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "long_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:pedagogico",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:analitico",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:tecnico",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:rituale",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:poetico",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:ironico",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:lead:militante",
+      "channel": "youtube_shorts",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "short_video",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:pedagogico",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:analitico",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:tecnico",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:rituale",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:poetico",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:ironico",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:authority:militante",
+      "channel": "youtube_shorts",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:pedagogico",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:analitico",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:tecnico",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:rituale",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:poetico",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:ironico",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "youtube_shorts:audience:militante",
+      "channel": "youtube_shorts",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "short_video",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:pedagogico",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:analitico",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:tecnico",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:rituale",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:poetico",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:ironico",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:lead:militante",
+      "channel": "telegram",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:pedagogico",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:analitico",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:tecnico",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:rituale",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:poetico",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:ironico",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:authority:militante",
+      "channel": "telegram",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:pedagogico",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:analitico",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:tecnico",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:rituale",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:poetico",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:ironico",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "telegram:audience:militante",
+      "channel": "telegram",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "broadcast_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:pedagogico",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:analitico",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:tecnico",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:rituale",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:poetico",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:ironico",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:lead:militante",
+      "channel": "whatsapp",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:pedagogico",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:analitico",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:tecnico",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:rituale",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:poetico",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:ironico",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:authority:militante",
+      "channel": "whatsapp",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:pedagogico",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:analitico",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:tecnico",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:rituale",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:poetico",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:ironico",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "whatsapp:audience:militante",
+      "channel": "whatsapp",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "broadcast_card",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:pedagogico",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:analitico",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:tecnico",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:rituale",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:poetico",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:ironico",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:lead:militante",
+      "channel": "newsletter",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "long_form",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:pedagogico",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:analitico",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:tecnico",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:rituale",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:poetico",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:ironico",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:authority:militante",
+      "channel": "newsletter",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:pedagogico",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:analitico",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:tecnico",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:rituale",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:poetico",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:ironico",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "newsletter:audience:militante",
+      "channel": "newsletter",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "long_form",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:pedagogico",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:analitico",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:tecnico",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:rituale",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:poetico",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:ironico",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:lead:militante",
+      "channel": "blog_seo",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "long_article",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:pedagogico",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:analitico",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:tecnico",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:rituale",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:poetico",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:ironico",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:authority:militante",
+      "channel": "blog_seo",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:pedagogico",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:analitico",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:tecnico",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:rituale",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:poetico",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:ironico",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "blog_seo:audience:militante",
+      "channel": "blog_seo",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "long_article",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:pedagogico",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:analitico",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:tecnico",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:rituale",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:poetico",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:ironico",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:lead:militante",
+      "channel": "podcast",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:pedagogico",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:analitico",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:tecnico",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:rituale",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:poetico",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:ironico",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:authority:militante",
+      "channel": "podcast",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:pedagogico",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:analitico",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:tecnico",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:rituale",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:poetico",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:ironico",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "podcast:audience:militante",
+      "channel": "podcast",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "audio_episode",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:pedagogico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:analitico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:tecnico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:rituale",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:poetico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:ironico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:lead:militante",
+      "channel": "xiaohongshu_weibo",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "note_post",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:pedagogico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:analitico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:tecnico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:rituale",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:poetico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:ironico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:authority:militante",
+      "channel": "xiaohongshu_weibo",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:pedagogico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:analitico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:tecnico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:rituale",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:poetico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:ironico",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "xiaohongshu_weibo:audience:militante",
+      "channel": "xiaohongshu_weibo",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "note_post",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:pedagogico",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "pedagogico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:analitico",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "analitico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:tecnico",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "tecnico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:rituale",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "rituale",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:poetico",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "poetico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:ironico",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "ironico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:lead:militante",
+      "channel": "quora_reddit",
+      "objective": "lead",
+      "register": "militante",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "question",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:pedagogico",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "pedagogico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:analitico",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "analitico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:tecnico",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "tecnico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:rituale",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "rituale",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:poetico",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "poetico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:ironico",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "ironico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:authority:militante",
+      "channel": "quora_reddit",
+      "objective": "authority",
+      "register": "militante",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:pedagogico",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "pedagogico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:analitico",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "analitico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:tecnico",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "tecnico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:rituale",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "rituale",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:poetico",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "poetico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:ironico",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "ironico",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    },
+    {
+      "cell_key": "quora_reddit:audience:militante",
+      "channel": "quora_reddit",
+      "objective": "audience",
+      "register": "militante",
+      "recommended_format": "qa_answer",
+      "hook_pattern": "stat",
+      "cadence_note": "see 06_cadence_engine.json",
+      "expected_engagement_rate_range": [
+        0.01,
+        0.05
+      ],
+      "confidence": 0.3
+    }
+  ]
+}
