@@ -54,9 +54,12 @@ async def main() -> int:
              ORDER BY key
             """
         )
-        print("=== SOTA kill-switches ===")
+        # One-shot CLI helper (see `if __name__ == "__main__"` below) —
+        # output is meant for the human operator running the wrapper, not
+        # for structured logs. Hence print(), suppressed from Golden Rule #8.
+        print("=== SOTA kill-switches ===")  # noqa: T201
         for r in rows:
-            print(f"  {r['key']:42s} = {r['value']:6s}  ({r['updated_at']})")
+            print(f"  {r['key']:42s} = {r['value']:6s}  ({r['updated_at']})")  # noqa: T201
     finally:
         await conn.close()
     return 0
