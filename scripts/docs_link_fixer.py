@@ -201,6 +201,36 @@ def ask_claude(bl: BrokenLink, context: str, timeout: int) -> Optional[dict]:
     return decision
 
 
+def _stems_compatible(old_stem: str, new_stem: str, threshold: float = 0.5) -> bool:
+    """Quick sanity check that the proposed target filename is plausibly the
+    same file as the broken one (moved/renamed), not a different doc.
+
+    Strategy: SequenceMatcher ratio OR significant token overlap. Lenient by
+    design — the goal is to catch egregious hallucinations (AUTOMATION_AUTONOMY
+    → SYSTEM_MAP), not to police every rename.
+    """
+    import difflib
+
+    if old_stem == new_stem:
+        return True
+    # Direct substring match in either direction (rename prefix/suffix)
+    if old_stem in new_stem or new_stem in old_stem:
+        return True
+    # Sequence ratio on the raw stems
+    ratio = difflib.SequenceMatcher(None, old_stem, new_stem).ratio()
+    if ratio >= threshold:
+        return True
+    # Token overlap (split on _ and -, ignore tiny tokens)
+    def toks(s: str) -> set:
+        return {t for t in re.split(r"[_\-\s]+", s) if len(t) >= 3}
+    old_t, new_t = toks(old_stem), toks(new_stem)
+    if old_t and new_t:
+        overlap = len(old_t & new_t) / max(len(old_t), len(new_t))
+        if overlap >= threshold:
+            return True
+    return False
+
+
 def apply_fix(repo: Path, bl: BrokenLink, decision: dict) -> bool:
     """Apply the decision in-place. Returns True if file modified, False otherwise."""
     action = decision.get("action")
@@ -245,6 +275,19 @@ def apply_fix(repo: Path, bl: BrokenLink, decision: dict) -> bool:
                 break
         if resolved is None:
             return False
+
+        # Semantic sanity guard: filename similarity between original target
+        # basename and new-path basename. Claude occasionally hallucinates a
+        # path that exists but is semantically wrong (e.g. AUTOMATION_AUTONOMY
+        # pointed at SYSTEM_MAP_4D). Require Jaccard-ish overlap of stems.
+        old_stem = Path(bl.link_target.split("#", 1)[0].split("?", 1)[0]).stem.lower()
+        new_stem = resolved.stem.lower()
+        if old_stem and new_stem and not _stems_compatible(old_stem, new_stem):
+            sys.stderr.write(
+                f"reject UPDATE_PATH: stem mismatch old='{old_stem}' new='{new_stem}'\n"
+            )
+            return False
+
         # The link in the markdown must be expressed relative to the file's parent.
         rewritten_target = os.path.relpath(resolved, file_path.parent)
         replacement = f"[{bl.link_text}]({rewritten_target})"
