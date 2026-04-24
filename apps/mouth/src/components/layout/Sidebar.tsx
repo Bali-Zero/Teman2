@@ -219,11 +219,6 @@ export function Sidebar({
                   </div>
                   <button
                     onClick={(e) => confirmDelete(e, conv.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        confirmDelete(e, conv.id);
-                      }
-                    }}
                     className={`absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity ${
                       currentConversationId === conv.id
                         ? "hover:bg-[var(--accent)]/20 text-[var(--accent)]"
