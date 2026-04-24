@@ -1,6 +1,11 @@
 # Scribe Auto-Documentation Cron Job
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-18 · **Status:** ⚠️ ARCHIVED 2026-04-25
+
+> Scribe (`apps/core/scribe.py`) è stato **rimosso** dal commit `0c60050e8`
+> (massive repo cleanup — dormant systems). Questo doc descrive un sistema
+> non più attivo. Per la generazione documentazione attuale vedi
+> `scripts/docs_sync.py` (DOCSYNC markers).
 
 ## Overview
 
