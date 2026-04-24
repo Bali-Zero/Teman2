@@ -1001,6 +1001,11 @@
       "system": "Sentinel",
       "produces": "Coverage metrics, regression alerts",
       "consumes": "pytest, coverage history file"
+    },
+    "docs_guardian.sh": {
+      "description": "Weekly docs hygiene: regenerates DOCS_INVENTORY.md (classify LIVE/STALE/ARCHIVED), detects DOCSYNC drift / broken links / orphans. Sends Telegram alert only on delta. Schedule: Sun 05:00 WITA.",
+      "produces": "docs/DOCS_INVENTORY.md (refreshed), Telegram alert on delta",
+      "consumes": "docs/**/*.md, CLAUDE.md, INDEX.md, SYMBIOSIS.md, VADEMECUM.md, apps/*/README.md"
     }
   },
   "nlm_pipelines": {
