@@ -1,40 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-  <dict>
+<dict>
     <key>Label</key>
     <string>com.balizero.sota.m13-monthly</string>
-
     <key>ProgramArguments</key>
     <array>
-      <string>/bin/zsh</string>
-      <string>-lc</string>
-      <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/m13_monthly_retrain.py</string>
+        <string>/Users/nuzantara/.openclaw/bin/wr2/wr2-cron-wrapper.sh</string>
+        <string>backend.services.sota_loop.m13_monthly</string>
     </array>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
-
     <key>StartCalendarInterval</key>
     <dict>
-      <key>Day</key>
-      <integer>1</integer>
-      <key>Hour</key>
-      <integer>4</integer>
-      <key>Minute</key>
-      <integer>30</integer>
+        <key>Day</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>30</integer>
     </dict>
-
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
     <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/sota_m13_monthly.log</string>
-
+    <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/sota-m13-monthly.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/sota_m13_monthly.error.log</string>
-
+    <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/sota-m13-monthly.error.log</string>
     <key>ExitTimeOut</key>
     <integer>10800</integer>
-
     <key>ProcessType</key>
     <string>Background</string>
-  </dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
 </plist>
