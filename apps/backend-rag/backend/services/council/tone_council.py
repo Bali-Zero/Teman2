@@ -87,10 +87,12 @@ class ToneCouncilResult:
     runner_outputs: dict[str, list[RunnerResult]] = field(default_factory=dict)
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: datetime | None = None
+    persona_slug: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "topic": self.topic,
+            "persona_slug": self.persona_slug,
             "chosen_register": self.decision.chosen_register,
             "rationale": self.decision.rationale,
             "rejected_registers": self.decision.rejected_registers,
@@ -190,6 +192,7 @@ class ToneCouncil:
         registers_last_14d: dict[str, int] | None = None,
         recent_scars: list[str] | None = None,
         self_reflections: dict[str, str] | None = None,
+        persona_slug: str | None = None,
     ) -> ToneCouncilResult:
         # Langfuse POC: wrap deliberation in a parent span so each LLM call
         # (Claude / Gemini / DeepSeek / judge) shows up as a child. No-op
@@ -205,6 +208,7 @@ class ToneCouncil:
                 registers_last_14d=registers_last_14d,
                 recent_scars=recent_scars,
                 self_reflections=self_reflections,
+                persona_slug=persona_slug,
                 _lf_span=_lf_span,
             )
 
@@ -216,6 +220,7 @@ class ToneCouncil:
         registers_last_14d: dict[str, int] | None = None,
         recent_scars: list[str] | None = None,
         self_reflections: dict[str, str] | None = None,
+        persona_slug: str | None = None,
         _lf_span: Any = None,
     ) -> ToneCouncilResult:
         started = datetime.now(timezone.utc)
@@ -279,6 +284,7 @@ class ToneCouncil:
             runner_outputs=runner_outputs,
             started_at=started,
             finished_at=datetime.now(timezone.utc),
+            persona_slug=persona_slug,
         )
 
         if _lf_span is not None:
