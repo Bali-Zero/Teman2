@@ -222,13 +222,13 @@ apps/backend-rag/
 │   │   ├── setup/          # app_factory, router_registration, service_initializer
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py         # Entrypoint (alias for main_cloud.py)
-│   ├── services/           # Core business logic (489 services)
+│   ├── services/           # Core business logic (502 services — scripts/docs_sync.py canonical count)
 │   ├── channels/           # 7 channels (whatsapp, telegram, instagram, twitter, web, gchat, slack)
 │   ├── core/               # Config, security, logging
 │   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
 │   ├── prompts/            # ⭐ Prompt SSOT (zantara_core.py)
 │   └── migrations/         # Custom migration system (migration_NNN_*.py, 108 migrations; runner: backend/db/migration_manager.py)
-├── tests/                  # 2558 test files
+├── tests/                  # 837 test files (backend/tests only — `apps/backend-rag/tests/` adds more)
 ├── .venv/                  # ⚠️ ALWAYS .venv, not venv
 └── fly.toml
 ```
