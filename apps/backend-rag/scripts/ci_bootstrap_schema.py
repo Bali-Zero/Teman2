@@ -189,6 +189,41 @@ def main() -> int:
             )
             """,
         ))
+        # lkpm_reports prod divergence.
+        #
+        # 1. company_id — added by backend/migrations/migration_100a_lkpm_company_id.py
+        #    (old-style Python migration not seen by the v2 runner). Production
+        #    lkpm_ready_pack code joins lkpm_reports r ↔ lkpm_client_config cfg
+        #    on COALESCE(r.company_id, 0) = COALESCE(cfg.company_id, 0), so the
+        #    column has to exist on r even when NULL.
+        # 2. realized_*/cumulative_* NULLability — the bootstrap CREATE above
+        #    mirrors migration_063 which declared them NOT NULL DEFAULT 0, but
+        #    prod/dev DBs relaxed them to nullable (the NOT NULL was dropped
+        #    by a subsequent hand-run ALTER that never became a tracked
+        #    migration). test_lkpm_ready_pack_automation intentionally
+        #    INSERTs NULLs to exercise the validator; must match prod.
+        for stmt in (
+            "ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS company_id INTEGER",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_equipment_domestic DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_equipment_import   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_building_domestic  DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_building_import    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_vehicle_domestic   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_vehicle_import     DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_land               DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_working_capital    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_other              DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_equipment_domestic DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_equipment_import   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_building_domestic  DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_building_import    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_vehicle_domestic   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_vehicle_import     DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_land               DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_working_capital    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_other              DROP NOT NULL",
+        ):
+            conn.execute(text(stmt))
         # system_settings: key/value store originally created by
         # backend/migrations/migration_062_client_drive_subfolders.sql (old
         # numbered series), which the modern runner (db/migrations_v2/*.sql)
