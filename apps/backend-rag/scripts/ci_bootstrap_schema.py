@@ -189,6 +189,41 @@ def main() -> int:
             )
             """,
         ))
+        # lkpm_reports prod divergence.
+        #
+        # 1. company_id — added by backend/migrations/migration_100a_lkpm_company_id.py
+        #    (old-style Python migration not seen by the v2 runner). Production
+        #    lkpm_ready_pack code joins lkpm_reports r ↔ lkpm_client_config cfg
+        #    on COALESCE(r.company_id, 0) = COALESCE(cfg.company_id, 0), so the
+        #    column has to exist on r even when NULL.
+        # 2. realized_*/cumulative_* NULLability — the bootstrap CREATE above
+        #    mirrors migration_063 which declared them NOT NULL DEFAULT 0, but
+        #    prod/dev DBs relaxed them to nullable (the NOT NULL was dropped
+        #    by a subsequent hand-run ALTER that never became a tracked
+        #    migration). test_lkpm_ready_pack_automation intentionally
+        #    INSERTs NULLs to exercise the validator; must match prod.
+        for stmt in (
+            "ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS company_id INTEGER",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_equipment_domestic DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_equipment_import   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_building_domestic  DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_building_import    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_vehicle_domestic   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_vehicle_import     DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_land               DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_working_capital    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN realized_other              DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_equipment_domestic DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_equipment_import   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_building_domestic  DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_building_import    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_vehicle_domestic   DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_vehicle_import     DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_land               DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_working_capital    DROP NOT NULL",
+            "ALTER TABLE lkpm_reports ALTER COLUMN cumulative_other              DROP NOT NULL",
+        ):
+            conn.execute(text(stmt))
         # system_settings: key/value store originally created by
         # backend/migrations/migration_062_client_drive_subfolders.sql (old
         # numbered series), which the modern runner (db/migrations_v2/*.sql)
@@ -206,7 +241,44 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings tables ensured in DB")
+        # notification_log: created by backend/migrations/migration_111_notification_log.py
+        # notification_prefs: created by backend/migrations/migration_110_notification_prefs.py
+        # Both are old-style Python migrations; the modern runner only discovers
+        # backend/db/migrations_v2/*.sql so migrations 110 and 111 never run in
+        # CI. alert_dispatcher (backend/services/compliance/alert_dispatcher.py)
+        # reads notification_prefs and INSERTs into notification_log for every
+        # dispatch — without the tables, test_alert_dispatcher.py fails with
+        # UndefinedTableError. Schemas mirrored from the Python migrations
+        # verbatim.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS notification_log (
+                id      BIGSERIAL PRIMARY KEY,
+                user_id UUID NOT NULL,
+                channel VARCHAR(20) NOT NULL,
+                ref     VARCHAR(128) NOT NULL,
+                sent_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )
+            """,
+        ))
+        conn.execute(text(
+            """
+            CREATE INDEX IF NOT EXISTS idx_notification_log_lookup
+                ON notification_log (user_id, channel, ref, sent_at DESC)
+            """,
+        ))
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS notification_prefs (
+                user_id       UUID PRIMARY KEY,
+                email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+                wa_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
+                wa_phone      VARCHAR(20),
+                updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+            """,
+        ))
+    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings + notification_log + notification_prefs tables ensured in DB")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
