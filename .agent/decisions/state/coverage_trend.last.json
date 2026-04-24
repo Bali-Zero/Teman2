@@ -1,6 +1,0 @@
-{
-  "status": "reset",
-  "timestamp": "2026-04-10T00:00:00+00:00",
-  "note": "Manual reset after test tree unification. Coverage baseline: 59.30% (backend/tests/).",
-  "detail": "59.30%"
-}
