@@ -292,6 +292,9 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Query Analytics ──
     RouterEntry(name="query_analytics", process_groups=_API, tags=("analytics",)),
 
+    # ── Research Control (SOTA kill-switches) ──
+    RouterEntry(name="research_control", process_groups=_API, tags=("sota", "kill-switch")),
+
     # ── Session ──
     RouterEntry(name="session", process_groups=_API, tags=("core",)),
 
