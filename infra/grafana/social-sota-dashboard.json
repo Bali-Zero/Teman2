@@ -12,93 +12,83 @@
       }
     ]
   },
-  "description": "SOTA Social Loop 90gg — WR2 editorial KPIs. 3 pillars (learn, lead, community) + posting heatmap + top posts. Backed by war_room_posts + m13_post_metrics via Postgres datasource.",
+  "description": "SOTA Social Loop 90gg — WR2 editorial KPIs. 3 pillar proxies (audience/authority/lead) + posting heatmap + top posts. Schema: war_room_posts (id, platform, post_external_id, published_at) + post_metrics_history (post_id, horizon_hours, metric_name, metric_value, source) — migration 128_m13_feedback.sql. See docs/runbooks/grafana-sota-setup.md.",
   "editable": true,
   "graphTooltip": 1,
   "panels": [
     {
       "id": 1,
       "type": "timeseries",
-      "title": "Pillar LEARN — engagement rate 7d rolling",
-      "description": "Reach-normalized engagement for posts tagged pillar=learn. Red zone below baseline − 20%.",
+      "title": "Audience pillar — saves @ 168h (7d rolling avg)",
+      "description": "Average saves per post at 168h horizon. Proxy for audience-building per m13_feedback_loop.compute_delta_vs_baseline (pillar=audience → metric=saves).",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
       "targets": [
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.likes + m.comments + m.saves)::float / NULLIF(m.reach,0)) AS engagement_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'learn'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT date_trunc('day', pmh.collected_at) AS time,\n       AVG(pmh.metric_value) AS avg_saves\nFROM post_metrics_history pmh\nJOIN war_room_posts wrp ON wrp.id = pmh.post_id\nWHERE pmh.metric_name = 'saves'\n  AND pmh.horizon_hours = 168\n  AND pmh.collected_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "short",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               { "color": "red", "value": null },
-              { "color": "yellow", "value": 0.02 },
-              { "color": "green", "value": 0.04 }
+              { "color": "yellow", "value": 5 },
+              { "color": "green", "value": 15 }
             ]
           }
         },
         "overrides": []
-      },
-      "options": {
-        "legend": { "displayMode": "list", "placement": "bottom" },
-        "tooltip": { "mode": "single" }
       }
     },
     {
       "id": 2,
       "type": "timeseries",
-      "title": "Pillar LEAD — DM/profile-visits 7d rolling",
-      "description": "Lead intent proxy: DMs + profile visits normalized by reach. Below baseline − 20% triggers /publisher off alert.",
+      "title": "Authority pillar — reach @ 72h (7d rolling avg)",
+      "description": "Average reach at 72h. Proxy for authority per m13_feedback_loop (pillar=authority → metric=reach).",
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
       "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
       "targets": [
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.dm_count + m.profile_visits)::float / NULLIF(m.reach,0)) AS lead_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'lead'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT date_trunc('day', pmh.collected_at) AS time,\n       AVG(pmh.metric_value) AS avg_reach\nFROM post_metrics_history pmh\nJOIN war_room_posts wrp ON wrp.id = pmh.post_id\nWHERE pmh.metric_name = 'reach'\n  AND pmh.horizon_hours = 72\n  AND pmh.collected_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
         }
       ],
-      "fieldConfig": {
-        "defaults": { "unit": "percentunit" },
-        "overrides": []
-      }
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
     },
     {
       "id": 3,
       "type": "timeseries",
-      "title": "Pillar COMMUNITY — replies + saves 7d rolling",
-      "description": "Community depth proxy: replies + saves. Soft signal for WR2 cadence tuning.",
+      "title": "Lead pillar — click_through @ 24h (7d rolling avg)",
+      "description": "Average click_through at 24h. Proxy for lead per m13_feedback_loop (pillar=lead → metric=click_through).",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
       "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
       "targets": [
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT date_trunc('day', m.captured_at) AS time,\n       AVG((m.replies + m.saves)::float / NULLIF(m.reach,0)) AS community_rate\nFROM m13_post_metrics m\nJOIN war_room_posts p ON p.post_id = m.post_id\nWHERE p.pillar = 'community'\n  AND m.captured_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
+          "rawSql": "SELECT date_trunc('day', pmh.collected_at) AS time,\n       AVG(pmh.metric_value) AS avg_click_through\nFROM post_metrics_history pmh\nJOIN war_room_posts wrp ON wrp.id = pmh.post_id\nWHERE pmh.metric_name = 'click_through'\n  AND pmh.horizon_hours = 24\n  AND pmh.collected_at > NOW() - INTERVAL '14 days'\nGROUP BY 1\nORDER BY 1"
         }
       ],
-      "fieldConfig": {
-        "defaults": { "unit": "percentunit" },
-        "overrides": []
-      }
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] }
     },
     {
       "id": 4,
       "type": "heatmap",
       "title": "Posting heatmap — WITA hour × day-of-week (30d)",
-      "description": "Cadence validation for 06_cadence_engine.json. Highlights hot hours (optimal: 07, 12, 19 WITA per plan).",
+      "description": "Cadence validation vs 06_cadence_engine.json hypothesis (07/12/19 WITA optimal). Reads war_room_posts.published_at.",
       "gridPos": { "h": 10, "w": 12, "x": 12, "y": 9 },
       "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
       "targets": [
         {
           "refId": "A",
           "format": "table",
-          "rawSql": "SELECT to_char(p.published_at AT TIME ZONE 'Asia/Makassar', 'FMDay') AS day_of_week,\n       EXTRACT(HOUR FROM p.published_at AT TIME ZONE 'Asia/Makassar') AS hour_wita,\n       COUNT(*) AS post_count\nFROM war_room_posts p\nWHERE p.published_at > NOW() - INTERVAL '30 days'\nGROUP BY 1,2\nORDER BY 1,2"
+          "rawSql": "SELECT to_char(wrp.published_at AT TIME ZONE 'Asia/Makassar', 'FMDay') AS day_of_week,\n       EXTRACT(HOUR FROM wrp.published_at AT TIME ZONE 'Asia/Makassar')::int AS hour_wita,\n       COUNT(*) AS post_count\nFROM war_room_posts wrp\nWHERE wrp.published_at > NOW() - INTERVAL '30 days'\nGROUP BY 1,2\nORDER BY 1,2"
         }
       ],
       "options": {
@@ -109,15 +99,15 @@
     {
       "id": 5,
       "type": "table",
-      "title": "Top 10 posts last 7d (engagement absolute)",
-      "description": "Post leaderboard — used in M13 weekly report and Consiglio v1 monthly retrain baseline.",
+      "title": "Top 10 posts last 7d — latest likes+comments (engagement abs)",
+      "description": "Post leaderboard. For each post, pivot the latest likes/comments from post_metrics_history and sum. Used in M13 weekly report context.",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 19 },
       "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
       "targets": [
         {
           "refId": "A",
           "format": "table",
-          "rawSql": "SELECT p.post_external_id AS ig_id,\n       p.channel,\n       p.pillar,\n       p.published_at,\n       m.likes, m.comments, m.saves, m.reach,\n       (m.likes + m.comments + m.saves) AS engagement_abs\nFROM war_room_posts p\nJOIN LATERAL (\n  SELECT likes, comments, saves, reach\n  FROM m13_post_metrics\n  WHERE post_id = p.post_id\n  ORDER BY captured_at DESC\n  LIMIT 1\n) m ON TRUE\nWHERE p.published_at > NOW() - INTERVAL '7 days'\nORDER BY engagement_abs DESC\nLIMIT 10"
+          "rawSql": "WITH latest AS (\n  SELECT DISTINCT ON (post_id, metric_name)\n         post_id, metric_name, metric_value, collected_at\n    FROM post_metrics_history\n   WHERE metric_name IN ('likes','comments','saves','reach')\n   ORDER BY post_id, metric_name, collected_at DESC\n),\npivot AS (\n  SELECT post_id,\n         MAX(CASE WHEN metric_name='likes'    THEN metric_value END) AS likes,\n         MAX(CASE WHEN metric_name='comments' THEN metric_value END) AS comments,\n         MAX(CASE WHEN metric_name='saves'    THEN metric_value END) AS saves,\n         MAX(CASE WHEN metric_name='reach'    THEN metric_value END) AS reach\n    FROM latest\n   GROUP BY post_id\n)\nSELECT wrp.post_external_id AS ig_id,\n       wrp.platform,\n       wrp.published_at,\n       p.likes, p.comments, p.saves, p.reach,\n       COALESCE(p.likes,0) + COALESCE(p.comments,0) + COALESCE(p.saves,0) AS engagement_abs\nFROM war_room_posts wrp\nJOIN pivot p ON p.post_id = wrp.id\nWHERE wrp.published_at > NOW() - INTERVAL '7 days'\nORDER BY engagement_abs DESC NULLS LAST\nLIMIT 10"
         }
       ],
       "fieldConfig": {
@@ -149,6 +139,6 @@
   "timezone": "Asia/Makassar",
   "title": "SOTA Social — Loop 90gg Editorial KPIs",
   "uid": "sota-social-loop90",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
