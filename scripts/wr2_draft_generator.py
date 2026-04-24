@@ -119,6 +119,92 @@ TONE REGISTERS (pick ONE of the 7 based on content):
 
 Keep the register key itself in its Italian slug (e.g. "analitico") for compatibility with the backend WR2 tone validator. The slide CONTENT is English.
 
+════════════════════════════════════════════════════════════════════════
+EDITORIAL VOICE — the 10 rules (moderate, opinionated, factual)
+════════════════════════════════════════════════════════════════════════
+
+You are NOT a neutral news aggregator. You write from Bali Zero's seat: an
+agency that has watched 5000+ expats navigate Indonesia. Your voice is
+**informed skepticism** or **pragmatic endorsement**, never advocacy or
+activism. Moderate opinion, never extreme.
+
+Rule 1 — OPINION EXPLICITLY MARKED at sentence level.
+  Use prefixes: "In our view,", "Bali Zero's take:", "From our seat,",
+  "Our read:", "What this means for you:". Never opinion disguised as fact.
+
+Rule 2 — EVERY LEGAL/FACTUAL CLAIM NEEDS AN INLINE CITATION.
+  Format: [Source: UU 7/2021 Pasal 3] or [Source: article URL short-form].
+  No source → no claim. Bali Zero's "No source, no claim" rule.
+
+Rule 3 — NEVER INVENT NUMBERS, DATES, PERCENTAGES.
+  If a figure is not in the article summary provided, do NOT write it.
+  No "roughly", no "around N", no "most expats" without a source.
+
+Rule 4 — NEVER INVENT CAUSALITY.
+  Avoid "because X, Y happened" / "this led to" / "therefore" UNLESS the
+  source explicitly states the causal link. Otherwise hedge: "some observers
+  suggest", "this appears correlated with", "worth watching whether".
+
+Rule 5 — NO POLITICAL JUDGEMENT on Indonesian government, Presiden Prabowo,
+  ministries, or local Bali authorities. EVER. You report facts and
+  interpret operational impact for expats; you do NOT judge policy-makers.
+  (Absolute Bali Zero red line, non-negotiable.)
+
+Rule 6 — OPINION LIVES IN CLIENT-CENTRIC FRAMING.
+  The editorial angle manifests in choosing WHAT matters for an expat
+  operationally — not in criticizing who wrote the law. Frame through
+  concrete scenarios: "For an expat setting up a PT PMA in Seminyak, this
+  now means X." "A retiree on a KITAS lanjutan should note Y."
+
+Rule 7 — NO STRAWMAN. If you reference an opposing view or official
+  rationale, quote it verbatim from the source before you respond to it.
+  If you can't quote the other side, you can't critique it.
+
+Rule 8 — NO COMPARISONS that denigrate competitors.
+  Bali Zero's brand speaks through results, not through criticism of others.
+  Do NOT write "unlike [competitor X], Bali Zero…" or similar. You may use
+  indirect, non-named context ("some agencies still use manual methods")
+  only when strictly contextual.
+
+Rule 9 — NO GUARANTEES of outcomes or timelines.
+  Indonesian administrative processes fluctuate. Avoid "you'll get your
+  KITAS in 30 days" — use "typical processing is 4-8 weeks depending on
+  documentation and office load".
+
+Rule 10 — FACT vs OPINION SLIDE structural separation.
+  In explainer+deep carousels, dedicate ONE slide (typically slide 2 or 3)
+  to "Facts (sourced)" vs "Our take". Reader sees clearly where reporting
+  ends and editorial interpretation begins.
+
+MANDATORY STRUCTURE — every carousel ships a final CTA slide containing
+this disclaimer (abridged for Instagram, do not invent new wording):
+  "This is general information, not legal or tax advice. For your specific
+  case, talk to our team → link in bio."
+
+════════════════════════════════════════════════════════════════════════
+THE ANGLE (editorial position)
+════════════════════════════════════════════════════════════════════════
+
+Before writing slides, produce an editorial_angle: 1-2 sentences stating
+Bali Zero's position on THIS specific topic. The angle must:
+  - Be grounded in the article facts (not invented)
+  - Be moderate (informed skepticism OR pragmatic endorsement)
+  - Be client-centric (what this means for an expat, operationally)
+  - Never touch political judgement
+
+Examples of GOOD angles:
+  - "The new minimum investment threshold filters out short-term speculators —
+     good for expats building long-horizon businesses, a friction for
+     first-time explorers testing the market."
+  - "The change is procedurally heavier but removes an old gray area; expats
+     who were already compliant gain clarity, those who were borderline
+     now have to formalize."
+
+Examples of BAD angles (do NOT write):
+  - "The government is wrong to raise the threshold." (political judgement)
+  - "70% of expats will leave Indonesia because of this." (invented stat)
+  - "This is the end of digital nomadism in Bali." (sensationalist, no basis)
+
 HERO SLIDES (AI-generated images) — exactly 5 slides get unique AI images:
 - Slide 1 (cover) — scroll-stopper hook
 - Slide 3 — the "stakes / problem / what's at risk"
@@ -156,6 +242,7 @@ Structure:
   "tier_reason": "one-line justification for tier choice based on topic depth",
   "register": "analitico",
   "register_reason": "one-line justification for the register choice",
+  "editorial_angle": "1-2 sentences stating Bali Zero's moderate, client-centric position on THIS topic (see EDITORIAL VOICE above). Never political, never invented stats.",
   "slides": [
     {
       "slide_number": 1,
@@ -191,9 +278,52 @@ Structure:
 """
 
 
-def _build_draft_prompt(topic: str, summary: str, source_url: str) -> str:
-    return f"""{SYSTEM_INSTRUCTIONS}
+def _build_draft_prompt(
+    topic: str,
+    summary: str,
+    source_url: str,
+    fact_pools: dict[str, Any] | None = None,
+) -> str:
+    """Build the Claude prompt.
 
+    If `fact_pools` is provided (output of wr2_fact_extractor), the
+    extracted claims are injected as the authoritative allowed fact set —
+    downstream fact-check will reject slides that introduce numeric/causal/
+    attributed claims absent from these pools.
+    """
+    fact_block = ""
+    if fact_pools:
+        facts = fact_pools.get("fact_pool") or []
+        causals = fact_pools.get("causal_pool") or []
+        quotes = fact_pools.get("quotes_pool") or []
+        if facts or causals or quotes:
+            fact_block = f"""
+
+════════════════════════════════════════════════════════════════════════
+FACT POOL — these are the ONLY claims you may cite as facts
+════════════════════════════════════════════════════════════════════════
+
+You MAY NOT introduce any numeric claim, causal link, or attributed quote
+that is absent from the pools below. If a slide needs a number/date/quote,
+it MUST be traceable to one of these entries. If the pool lacks what you
+want to say, either (a) omit the claim or (b) hedge with "some observers
+suggest" without a specific figure.
+
+FACTS ({len(facts)}):
+{json.dumps(facts, indent=2, ensure_ascii=False)[:2500]}
+
+CAUSAL LINKS EXPLICITLY STATED ({len(causals)}):
+{json.dumps(causals, indent=2, ensure_ascii=False)[:1500]}
+
+ATTRIBUTED QUOTES ({len(quotes)}):
+{json.dumps(quotes, indent=2, ensure_ascii=False)[:1500]}
+
+If causal_pool is empty, you MUST NOT use "because/so/therefore/led to" —
+use hedged language ("some observers suggest", "this appears correlated").
+"""
+
+    return f"""{SYSTEM_INSTRUCTIONS}
+{fact_block}
 ---
 
 ARTICLE TO TURN INTO A CAROUSEL:
@@ -227,8 +357,13 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text)
 
 
-async def claude_compose_slides(topic: str, summary: str, source_url: str) -> dict[str, Any]:
-    prompt = _build_draft_prompt(topic, summary, source_url)
+async def claude_compose_slides(
+    topic: str,
+    summary: str,
+    source_url: str,
+    fact_pools: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    prompt = _build_draft_prompt(topic, summary, source_url, fact_pools=fact_pools)
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
     resp = await complete_async(
@@ -348,11 +483,13 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, str, list[dict[str, 
 
 
 async def _fetch_briefed_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # Accept both 'briefed_facted' (new, fact_pool attached) and 'briefed'
+    # (legacy fallback when wr2_fact_extractor is disabled or skipped).
     return await conn.fetch(
         """
         SELECT id, topic, brief_json
           FROM war_room_drafts
-         WHERE status = 'briefed'
+         WHERE status IN ('briefed_facted', 'briefed')
          ORDER BY created_at ASC
          LIMIT $1
         """,
@@ -414,11 +551,22 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     brief = json.loads(brief_raw) if isinstance(brief_raw, str) else (brief_raw or {})
     summary = brief.get("article_summary") or ""
     source_url = brief.get("source_url") or ""
+    fact_pools = brief.get("fact_pools")  # populated by wr2_fact_extractor if it ran
 
-    logger.info("─── processing draft %s ─── topic=%r", draft_id, topic[:80])
+    logger.info(
+        "─── processing draft %s ─── topic=%r fact_pools=%s",
+        draft_id,
+        topic[:80],
+        "yes" if fact_pools else "no (legacy path)",
+    )
 
     try:
-        parsed = await claude_compose_slides(topic=topic, summary=summary, source_url=source_url)
+        parsed = await claude_compose_slides(
+            topic=topic,
+            summary=summary,
+            source_url=source_url,
+            fact_pools=fact_pools,
+        )
     except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
         logger.error("Claude OAuth failed: %s", e)
         await _mark_rejected(conn, draft_id, f"claude_failed: {e}")
@@ -449,6 +597,7 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "content_tier": content_tier,
         "tier_reason": parsed.get("tier_reason", ""),
         "register_reason": parsed.get("register_reason", ""),
+        "editorial_angle": (parsed.get("editorial_angle") or "").strip()[:500],
         "hero_slide_indices": [s["slide_number"] for s in slides if s["is_hero_image"]],
         "composed_at": datetime.now(timezone.utc).isoformat(),
     }

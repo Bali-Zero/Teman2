@@ -274,11 +274,15 @@ async def _gen_image_with_semaphore(
 
 
 async def _fetch_pending(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # Accept 'drafts_checked' (post fact_checker, new normal path) and
+    # 'drafts' (legacy path when fact_checker is disabled). Rejected
+    # 'fact_check_failed' drafts are NOT picked up — they wait for human
+    # intervention.
     return await conn.fetch(
         """
         SELECT id, topic, slides_json, council_debate_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status IN ('drafts_checked', 'drafts')
          ORDER BY created_at ASC
          LIMIT $1
         """,
