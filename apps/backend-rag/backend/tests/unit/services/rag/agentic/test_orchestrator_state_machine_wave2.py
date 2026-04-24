@@ -7,7 +7,7 @@ SpecializedServiceRouter fast-path, NLM task lifecycle (create, cautious merge,
 cancellation), QueryPlanner active mode, KGAutoExpansion gate, and ReAct loop
 error propagation.
 
-Each test is keyed to a transition ID (O*) from STATE_MACHINE.md / TEST_GAPS.md
+Each test is keyed to a transition ID (O*) from docs/audits/2026-04-22-orchestrator-state-machine.md / docs/audits/2026-04-22-orchestrator-test-gaps.md
 so future Waves can cross-check coverage.
 
 Fixture strategy: we reuse the `orchestrator_setup` pattern from
@@ -673,7 +673,7 @@ class TestKGAutoExpansionGate:
 
 @pytest.mark.asyncio
 class TestTier1RegenExceptionContract:
-    """U1 (STATE_MACHINE.md §3): the Tier1 regen `except` tuple is intentionally
+    """U1 (docs/audits/2026-04-22-orchestrator-state-machine.md §3): the Tier1 regen `except` tuple is intentionally
     narrow (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError,
     ValueError, RuntimeError). Types outside this tuple are expected to
     propagate to the caller (execute_react_loop's surrounding catch in

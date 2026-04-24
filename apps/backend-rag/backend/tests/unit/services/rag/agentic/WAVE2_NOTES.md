@@ -2,7 +2,7 @@
 
 **Branch:** `session/orchestrator-outer`
 **Baseline:** commit `f26edf748` (Wave 1) + `dfeb0e1bb` (U2/U4 fix)
-**Scope:** 9 outer pipeline gaps (O2, O9, O10, O11, O13p, O16-sync, O20, O21, O24) + U1/U3/U5/U6 from STATE_MACHINE.md.
+**Scope:** 9 outer pipeline gaps (O2, O9, O10, O11, O13p, O16-sync, O20, O21, O24) + U1/U3/U5/U6 from docs/audits/2026-04-22-orchestrator-state-machine.md.
 
 ---
 
@@ -190,7 +190,7 @@ response) while making a misbehaving NLM provider diagnosable with
 
 Kept the `state.current_step += len(tool_calls) - 1` as-is. Added a multi-line
 comment above the statement that:
-- Calls out the §U6 flag in STATE_MACHINE.md.
+- Calls out the §U6 flag in docs/audits/2026-04-22-orchestrator-state-machine.md.
 - Explains the budget-enforcement intent (5 parallel tools = 5 units consumed
   even if all run in one physical iteration).
 - Restates I-R7 (each parallel tool produces its own AgentStep) as the

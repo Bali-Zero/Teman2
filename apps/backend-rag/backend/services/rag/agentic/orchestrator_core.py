@@ -1024,7 +1024,7 @@ class OrchestratorCore:
                 # Expected outcome of cancel() — normal path.
                 pass
             except Exception as exc:  # noqa: BLE001 — see §U3
-                # §U3 (STATE_MACHINE.md): the speculative NLM task runs
+                # §U3 (docs/audits/2026-04-22-orchestrator-state-machine.md): the speculative NLM task runs
                 # outside the main critical path; any error it raises is
                 # surfaced here but must not block the response. Log at
                 # DEBUG level so ops can still diagnose a misbehaving

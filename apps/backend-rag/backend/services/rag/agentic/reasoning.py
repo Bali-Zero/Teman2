@@ -401,7 +401,7 @@ class ReasoningEngine:
                             )
 
                         # Update step counter if we ran multiple tools.
-                        # §U6 (STATE_MACHINE.md): `current_step` is incremented
+                        # §U6 (docs/audits/2026-04-22-orchestrator-state-machine.md): `current_step` is incremented
                         # by `len(tool_calls) - 1` *in addition to* the per-iteration
                         # `+= 1` at the top of the loop. This models parallel tool
                         # calls as consuming proportional budget — if max_steps=3
@@ -574,7 +574,7 @@ class ReasoningEngine:
                 )
                 final_prompt = build_tier1_prompt(query, state.context_gathered)
                 tier1_start_time = time.time()
-                # Tier1 regen exception contract (§U1 in STATE_MACHINE.md):
+                # Tier1 regen exception contract (§U1 in docs/audits/2026-04-22-orchestrator-state-machine.md):
                 # We catch the LLM-level error family only. Anything outside
                 # this tuple (e.g. TypeError, ConnectionError from an unusual
                 # transport bug) is deliberately let through to the outer
