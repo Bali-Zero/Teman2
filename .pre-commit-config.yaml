@@ -85,3 +85,11 @@ repos:
         entry: scripts/hooks/check_protected_files.sh
         pass_filenames: false
         always_run: true
+
+      - id: root-guard
+        name: "Root whitelist (prevent scratch accumulation)"
+        entry: python scripts/root_guard.py
+        language: system
+        # Only runs against files added/modified at repo root (no slash in path).
+        # The script accepts file paths as argv and exits 1 if any is not whitelisted.
+        files: ^[^/]+$
