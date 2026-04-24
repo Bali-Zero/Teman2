@@ -1,0 +1,16 @@
+name: cron - practice auto-create (daily 07:30 WITA)
+on:
+  schedule:
+    - cron: '30 23 * * *'  # 23:30 UTC = 07:30 WITA next day
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/admin/practice/auto-create
+        run: |
+          curl -fsS -X POST https://nuzantara-rag.fly.dev/api/admin/practice/auto-create \
+            -H "X-API-Key: ${{ secrets.NUZANTARA_API_KEY }}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'
