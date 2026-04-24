@@ -1,0 +1,16 @@
+name: cron - notifiers email-health (every 30 min)
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/notifiers/email-health
+        run: |
+          curl -fsS -X POST https://nuzantara-rag.fly.dev/api/cron/notifiers/email-health \
+            -H "X-API-Key: ${{ secrets.NUZANTARA_API_KEY }}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'

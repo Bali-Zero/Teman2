@@ -1,0 +1,16 @@
+name: cron - notifiers lkpm-deadlines (daily 23:00 WITA)
+on:
+  schedule:
+    - cron: '0 15 * * *'   # 15:00 UTC = 23:00 WITA same day
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/cron/notifiers/lkpm-deadlines
+        run: |
+          curl -fsS -X POST https://nuzantara-rag.fly.dev/api/cron/notifiers/lkpm-deadlines \
+            -H "X-API-Key: ${{ secrets.NUZANTARA_API_KEY }}" \
+            -w '\nHTTP %{http_code} in %{time_total}s\n'
