@@ -1006,6 +1006,11 @@
       "description": "Weekly docs hygiene: regenerates DOCS_INVENTORY.md (classify LIVE/STALE/ARCHIVED), detects DOCSYNC drift / broken links / orphans. Sends Telegram alert only on delta. Schedule: Sun 05:00 WITA.",
       "produces": "docs/DOCS_INVENTORY.md (refreshed), Telegram alert on delta",
       "consumes": "docs/**/*.md, CLAUDE.md, INDEX.md, SYMBIOSIS.md, VADEMECUM.md, apps/*/README.md"
+    },
+    "docs_history_analyzer.py": {
+      "description": "Monthly docs/** trend analysis: git log mining → DOCS_TRENDS.md. Surfaces quiet-live orphan candidates before 90d threshold. Orthogonal to weekly docs-guardian (state) vs this (evolution). Schedule: 1st of month 06:00 WITA.",
+      "produces": "docs/DOCS_TRENDS.md",
+      "consumes": "git log docs/**"
     }
   },
   "nlm_pipelines": {
