@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 26 · **Packages:** 5
+**Apps:** 21 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -67,7 +67,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 135 routers, 489 services, 2558 test files
+- **Backend:** Python 3.11+, FastAPI, 253 routers, 502 services, 837 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
