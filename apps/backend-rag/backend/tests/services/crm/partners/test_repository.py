@@ -83,12 +83,12 @@ async def test_email_unique_violation(repo):
 async def test_email_collision_with_internal_user_is_rejected(repo, db_conn):
     # CATA-5: team identity is in team_members(id VARCHAR), not users(id UUID).
     # team_members.id is the email-like string; we use the email as the id here.
-    # name and pin_hash columns are NOT NULL in the real production team_members table.
+    # full_name and pin_hash columns are NOT NULL in the real production team_members table.
     # Use @test.invalid domain so db_conn teardown cleanup (DELETE WHERE email LIKE '%@test.invalid')
     # removes this row automatically.
     internal_email = "internal-team@test.invalid"
     await db_conn.execute(
-        "INSERT INTO team_members (id, name, email, pin_hash, role) VALUES ($1, $2, $3, $4, 'team')",
+        "INSERT INTO team_members (id, full_name, email, pin_hash, role) VALUES ($1, $2, $3, $4, 'team')",
         internal_email, "Internal Team Test", internal_email, "test-pin-hash",
     )
     with pytest.raises(ValueError, match="email is already a team/admin user"):
