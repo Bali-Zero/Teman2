@@ -118,11 +118,16 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # WR2 pipeline: topic → briefed → (draft_generator) → drafts →
+    # (image_generator) → drafts_imaged → (canva_apply) → published.
+    # Accept both 'drafts_imaged' (normal) and 'drafts' (legacy/fallback when
+    # image_generator is disabled) so the pipeline keeps flowing even if
+    # the image step is skipped.
     return await conn.fetch(
         """
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status IN ('drafts_imaged', 'drafts')
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -298,10 +303,37 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "Driving Claude Desktop..."
     )
 
+    # Claude Desktop does NOT understand Claude Code slash-commands like
+    # "/canva-apply". Instead of sending the command, we inline the full
+    # skill body from ~/.claude/skills/canva-apply.md as a natural-language
+    # prompt. This guarantees Claude Desktop executes the intended 4-phase
+    # flow (edit master → duplicate → reset master → persist) using the
+    # template's original element_id mapping.
+    skill_path = Path.home() / ".claude" / "skills" / "canva-apply.md"
+    if not skill_path.is_file():
+        logger.error("Skill file missing: %s", skill_path)
+        return False
+    skill_body = skill_path.read_text(encoding="utf-8")
+    # Strip the frontmatter (Claude Desktop doesn't care about YAML meta)
+    if skill_body.startswith("---"):
+        parts = skill_body.split("---", 2)
+        if len(parts) >= 3:
+            skill_body = parts[2].lstrip()
+
+    command_text = (
+        "Please execute the Canva carousel apply flow described below. "
+        "The pending JSON already exists at the path below. Follow the steps "
+        "exactly — no TodoWrite, no confirmation prompts between MCP tool calls, "
+        "this is a pre-authorized maintenance operation.\n\n"
+        f"Pending file path: {CANVA_PENDING_PATH}\n\n"
+        "---\n\n"
+        + skill_body
+    )
+
     started_at = time.time()
     try:
         _launch_claude()
-        _focus_claude_and_send_command("/canva-apply")
+        _focus_claude_and_send_command(command_text)
     except Exception as e:
         logger.error("GUI automation failed: %s", e)
         _send_telegram(f"WR2 Canva apply GUI failed: {e}")

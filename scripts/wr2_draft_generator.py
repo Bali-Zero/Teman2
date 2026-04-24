@@ -1,25 +1,23 @@
 #!/usr/bin/env python3
-"""WR2 Draft Generator — Claude writes 11 English slides, Imagen generates cover only.
+"""WR2 Draft Generator — Claude writes variable-length English slides (5-13).
 
 Daily cron (05:15 WITA): picks drafts with status='briefed', calls Claude
-OAuth to compose the 11-slide JSON (English content, register in the 7
-Council tones), runs Imagen 4 Ultra for the cover only (body slides keep
-image_url=None and carry image_prompt for manual generation by the team),
-uploads the cover to Tigris, persists slides_json to the draft and flips
-status to 'drafts'.
+OAuth to compose the slides JSON (English content, register in the 7
+Council tones, length tier-driven: breaking 5-7 / explainer 8-10 / deep 11-13).
+Image generation is delegated to wr2_image_generator.py (Playwright + Gemini
+Nano Banana 2 Pro) — this script only marks which slides need images via
+the `is_hero_image` flag and writes image_prompt. Status flips to 'drafts'
+when slides are ready; wr2_image_generator then flips to 'drafts_imaged'.
 
 Env:
     DATABASE_URL           — localhost form
-    GOOGLE_API_KEY         — Imagen 4 Ultra
     CLAUDE_CODE_OAUTH_TOKEN[_{BACKUP,CRON}] — Claude Max plan
-    AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY — Tigris S3
     TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID  — optional
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
-import base64
 import json
 import logging
 import os
@@ -35,7 +33,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 import asyncpg  # noqa: E402
-import httpx  # noqa: E402
 
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
@@ -56,44 +53,9 @@ VALID_TONES = {
     "tecnico",
 }
 
-TIGRIS_ENDPOINT = "https://fly.storage.tigris.dev"
-TIGRIS_BUCKET = "nuzantara-warroom-images"
-TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
-
-# Inline 4-layer prompt builder (mirror of backend.services.visual.prompt_builder).
-# We copy instead of importing because backend.services.visual.__init__ triggers
-# Settings() which requires JWT_SECRET_KEY etc. — unacceptable for a cron entry.
-BRAND_SUFFIX: str = (
-    "Editorial style, high resolution, no stock imagery, "
-    "no handshakes, no generic passports, cinematic lighting"
-)
-_DEFAULT_STYLE_MODIFIERS: tuple[str, ...] = (
-    "macrografia editoriale",
-    "surrealista",
-    "stile Wired magazine",
-    "stile Bloomberg photography",
-)
-NEGATIVE_PROMPT: str = (
-    "hands holding objects, passport close-ups, generic handshake, "
-    "stock photo aesthetic, text overlays, watermark, logo, "
-    "deformed hands, extra fingers, distorted faces, illegible text"
-)
-
-
-def build_imagen_prompt(
-    scene_core: str,
-    *,
-    style_modifiers: tuple[str, ...] | None = None,
-    brand_suffix: str = BRAND_SUFFIX,
-    extra_hints: str | None = None,
-) -> str:
-    if not scene_core or not scene_core.strip():
-        raise ValueError("scene_core is required")
-    style = ", ".join(style_modifiers or _DEFAULT_STYLE_MODIFIERS)
-    parts = [scene_core.strip(), brand_suffix, style]
-    if extra_hints:
-        parts.append(extra_hints.strip())
-    return ". ".join(p for p in parts if p).strip()
+# Image generation moved to wr2_image_generator.py (Playwright + Gemini Nano
+# Banana 2 Pro via persistent profile ~/.nuzantara/playwright-profiles/gemini).
+# No more Imagen API calls from this script — it only composes text + prompts.
 
 
 def _configure_logging() -> None:
@@ -137,7 +99,14 @@ SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zer
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
 
-GOAL: produce the 11-slide structure of an Instagram carousel based on a news / regulation article.
+GOAL: produce a variable-length Instagram carousel (4:5 portrait) based on a news / regulation article, with tier-driven length and curated image prompts for 5 hero slides.
+
+LENGTH POLICY (choose ONE tier based on topic depth):
+- **breaking** (5-7 slides): single-fact news, visa alert, simple regulation change. Hook → fact → who-it-affects → immediate-action → CTA.
+- **explainer** (8-10 slides): how-to, step-by-step procedure, category overview. Hook → context → steps → pitfall → summary → CTA.
+- **deep** (11-13 slides): regulatory overhaul with implications, multi-layer analysis, before/after. Hook → context → old-vs-new → impacts → timeline → FAQ → summary → CTA.
+
+Default to **explainer (9 slides)** if unsure. Never fewer than 5 or more than 13.
 
 TONE REGISTERS (pick ONE of the 7 based on content):
 - rituale (ritual): symbolic events, cultural anniversaries, turning points
@@ -150,19 +119,41 @@ TONE REGISTERS (pick ONE of the 7 based on content):
 
 Keep the register key itself in its Italian slug (e.g. "analitico") for compatibility with the backend WR2 tone validator. The slide CONTENT is English.
 
+HERO SLIDES (AI-generated images) — exactly 5 slides get unique AI images:
+- Slide 1 (cover) — scroll-stopper hook
+- Slide 3 — the "stakes / problem / what's at risk"
+- Slide N/2 (rounded down) — pivot / core insight / data visualization metaphor
+- Slide N-2 — climax / solution / the "why it matters"
+- All other slides (including slide N, the CTA) = NO AI image, use template typography-as-art
+
+For each hero slide, produce an `image_prompt` that is a **purely visual scene description** (a physical metaphor, an object, a macro shot, an architectural detail — NOT a transcript of the slide text). Examples:
+- Tax penalty → "A heavy steel vault door slightly ajar in a dark underground room, single overhead light, deep shadows"
+- Visa delay → "Empty waiting room at dusk, rain-slicked window, a single folder on a metal desk, long exposure"
+- PT PMA setup → "Macro shot of an ink stamp hovering above a stack of ledger papers on dark marble"
+
+For non-hero slides: `image_prompt` can be empty string or null — they'll use Text-as-Art (massive League Spartan typography on pure charcoal #1a1a1a background).
+
 HARD RULES:
 - NEVER use tones "cinico" or "istituzionale_severo" (legacy WR1, FORBIDDEN)
 - Language: ENGLISH (international expat audience)
 - Headlines max 60 characters
 - Body max 280 characters
-- Slide 1 = cover (is_cover: true)
-- Slide 11 = CTA to Bali Zero
-- Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+- Slide 1 = cover (is_cover: true, is_hero_image: true)
+- Slide N (last) = CTA to Bali Zero, is_hero_image: false
+- Image prompts MUST follow these constraints:
+  * Editorial dark moody: low-key lighting, cinematic chiaroscuro, desaturated charcoal/slate/ochre
+  * 35mm film grain, editorial photography, Wired/Bloomberg/Monocle aesthetic
+  * NO people's faces (silhouette/shadow/turned-away only if any human)
+  * NO palm trees, laptops on beaches, digital nomad clichés, infinity pools, neon
+  * NO temples, Balinese dancers, religious offerings (cultural appropriation)
+  * YES brutalist architecture, dark wood, smoked glass, concrete textures, rain-slicked streets, macro shots of objects
 
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
 Structure:
 {
+  "content_tier": "breaking" | "explainer" | "deep",
+  "tier_reason": "one-line justification for tier choice based on topic depth",
   "register": "analitico",
   "register_reason": "one-line justification for the register choice",
   "slides": [
@@ -170,18 +161,30 @@ Structure:
       "slide_number": 1,
       "slide_type": "cover",
       "is_cover": true,
+      "is_hero_image": true,
       "headline": "...",
       "subhead": "...",
       "body": "...",
-      "image_prompt": "editorial scene, 1-2 sentences"
+      "image_prompt": "A physical visual scene, 1-2 sentences, no abstractions"
     },
-    // ... 10 more slides ...
     {
-      "slide_number": 11,
+      "slide_number": 2,
+      "slide_type": "body",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "...",
+      "body": "...",
+      "image_prompt": ""
+    },
+    // ... N more slides, exactly 4 more with is_hero_image:true (slides 3, N/2, N-2) ...
+    {
+      "slide_number": N,
       "slide_type": "cta",
       "is_cover": false,
+      "is_hero_image": false,
       "headline": "...",
-      "body": "Bali Zero — Link in bio for a consultation"
+      "body": "Bali Zero — Link in bio for a consultation",
+      "image_prompt": ""
     }
   ]
 }
@@ -204,7 +207,8 @@ Content (excerpt):
 
 ---
 
-Produce the full 11-slide JSON NOW. English content. No text outside the JSON object.
+Produce the full variable-length (5-13) slides JSON NOW. English content. No text outside the JSON object.
+Pick content_tier based on topic depth. Mark exactly 5 slides with is_hero_image:true (cover + slide 3 + slide N/2 + slide N-2 + … compensate if N < 7 so image_prompt slides are: 1, middle, N-1).
 """
 
 
@@ -239,112 +243,103 @@ async def claude_compose_slides(topic: str, summary: str, source_url: str) -> di
 
 
 # ─────────────────────────────────────────────────────────────────────────
-# Imagen cover + Tigris upload
-# ─────────────────────────────────────────────────────────────────────────
-
-
-def _upload_to_tigris(image_bytes: bytes, key: str, content_type: str = "image/png") -> str:
-    import boto3
-
-    s3 = boto3.client("s3", endpoint_url=TIGRIS_ENDPOINT, region_name="auto")
-    s3.put_object(
-        Bucket=TIGRIS_BUCKET,
-        Key=key,
-        Body=image_bytes,
-        ContentType=content_type,
-        ACL="public-read",
-    )
-    return f"{TIGRIS_PUBLIC_BASE}/{key}"
-
-
-async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | None, str | None]:
-    """Return (public_url, error_msg). Never raises."""
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return None, "GOOGLE_API_KEY/GEMINI_API_KEY not set"
-
-    prompt_final = build_imagen_prompt(scene_core=scene_core)
-    logger.info("Imagen cover prompt (%d chars): %s...", len(prompt_final), prompt_final[:120])
-
-    model_id = "imagen-4.0-ultra-generate-001"
-    url_api = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model_id}:predict?key={api_key}"
-    )
-    payload = {
-        "instances": [{"prompt": prompt_final, "negativePrompt": NEGATIVE_PROMPT}],
-        "parameters": {"sampleCount": 1, "aspectRatio": "1:1"},
-    }
-    t0 = time.perf_counter()
-    try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            resp = await client.post(url_api, json=payload)
-    except Exception as e:
-        return None, f"Imagen HTTP failed: {e}"
-    duration_ms = (time.perf_counter() - t0) * 1000
-
-    if resp.status_code != 200:
-        return None, f"Imagen HTTP {resp.status_code}: {resp.text[:300]}"
-
-    try:
-        data = resp.json()
-        b64 = data["predictions"][0]["bytesBase64Encoded"]
-        image_bytes = base64.b64decode(b64)
-    except Exception as e:
-        return None, f"Imagen response parse failed: {e}"
-
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    key = f"warroom/{draft_id}/cover-{ts}.png"
-    try:
-        url = _upload_to_tigris(image_bytes, key, "image/png")
-    except Exception as e:
-        return None, f"Tigris upload failed: {e}"
-
-    logger.info(
-        "Imagen cover %d bytes uploaded → %s (%.0fms)",
-        len(image_bytes),
-        url,
-        duration_ms,
-    )
-    return url, None
-
-
-# ─────────────────────────────────────────────────────────────────────────
 # Slide normalisation
 # ─────────────────────────────────────────────────────────────────────────
 
 
-def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+VALID_TIERS: tuple[str, ...] = ("breaking", "explainer", "deep")
+TIER_LENGTH_RANGE: dict[str, tuple[int, int]] = {
+    "breaking": (5, 7),
+    "explainer": (8, 10),
+    "deep": (11, 13),
+}
+HERO_SLIDES_COUNT = 5  # cover + 4 AI images interni
+
+
+def _compute_hero_indices(n_slides: int) -> set[int]:
+    """Return the 1-based slide indices that get AI-generated images.
+
+    Always: 1 (cover), 3, N/2, N-2. For short carousels (N<=6) collapse to
+    1, middle, N-1 so we never place a hero on the CTA slide.
+    """
+    if n_slides < 5:
+        return {1}
+    if n_slides <= 6:
+        return {1, n_slides // 2 + 1, n_slides - 1}
+    # Standard 7+: cover, stakes, mid, pre-CTA (dedup in case of overlap)
+    return {
+        1,
+        3,
+        max(3, n_slides // 2),
+        max(4, n_slides - 2),
+    }
+
+
+def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, str, list[dict[str, Any]]]:
+    """Return (register, content_tier, slides)."""
     register = (parsed.get("register") or "").strip().lower()
     if register not in VALID_TONES:
         raise ValueError(
             f"Claude returned invalid register={register!r} (allowed: {sorted(VALID_TONES)})",
         )
 
+    content_tier = (parsed.get("content_tier") or "explainer").strip().lower()
+    if content_tier not in VALID_TIERS:
+        logger.warning(
+            "Unknown content_tier=%r, defaulting to explainer",
+            content_tier,
+        )
+        content_tier = "explainer"
+
     slides = parsed.get("slides") or []
-    if len(slides) < 6 or len(slides) > 11:
-        raise ValueError(f"Expected 6-11 slides, got {len(slides)}")
+    n = len(slides)
+    lo, hi = TIER_LENGTH_RANGE[content_tier]
+    # Allow graceful drift beyond tier range, but clamp to global 5-13
+    if n < 5 or n > 13:
+        raise ValueError(f"Expected 5-13 slides, got {n}")
+    if n < lo or n > hi:
+        logger.info(
+            "Slide count %d drifts from tier %s range %d-%d (accepting)",
+            n,
+            content_tier,
+            lo,
+            hi,
+        )
+
+    hero_indices = _compute_hero_indices(n)
+    logger.info("Hero slide indices for N=%d: %s", n, sorted(hero_indices))
 
     normalised: list[dict[str, Any]] = []
     for i, raw in enumerate(slides, start=1):
+        is_cover = i == 1
+        is_hero = i in hero_indices
         slide = {
             "slide_number": i,
-            "slide_type": raw.get("slide_type", "body"),
-            "is_cover": bool(raw.get("is_cover", i == 1)),
+            "slide_type": raw.get("slide_type", "cover" if is_cover else ("cta" if i == n else "body")),
+            "is_cover": is_cover,
+            "is_hero_image": is_hero,
             "headline": (raw.get("headline") or "").strip()[:80],
             "subhead": (raw.get("subhead") or "").strip()[:120],
             "body": (raw.get("body") or "").strip()[:500],
-            "image_prompt": (raw.get("image_prompt") or "").strip()[:600],
-            "image_url": None,  # filled later for cover only
+            "image_prompt": (raw.get("image_prompt") or "").strip()[:600] if is_hero else "",
+            "image_url": None,  # filled by wr2_image_generator.py
         }
         normalised.append(slide)
 
-    if normalised:
-        normalised[0]["is_cover"] = True
-        for s in normalised[1:]:
-            s["is_cover"] = False
+    # Safety: if Claude gave no image_prompt to a hero slide, build a fallback
+    for slide in normalised:
+        if slide["is_hero_image"] and not slide["image_prompt"]:
+            # Fallback: derive from headline + brand modifiers
+            slide["image_prompt"] = (
+                f"A dark editorial scene representing: {slide['headline'][:80]}. "
+                "Macro shot or architectural detail, no human faces visible."
+            )
+            logger.warning(
+                "Hero slide %d lacked image_prompt — used headline fallback",
+                slide["slide_number"],
+            )
 
-    return register, normalised
+    return register, content_tier, normalised
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -435,49 +430,43 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         return False
 
     try:
-        register, slides = _normalise_slides(parsed)
+        register, content_tier, slides = _normalise_slides(parsed)
     except ValueError as e:
         logger.error("Normalisation failed: %s", e)
         await _mark_rejected(conn, draft_id, f"normalise_error: {e}")
         return False
 
+    hero_count = sum(1 for s in slides if s["is_hero_image"])
     logger.info(
-        "Slides composed: register=%s count=%d cover_prompt=%r",
+        "Slides composed: tier=%s register=%s count=%d heroes=%d",
+        content_tier,
         register,
         len(slides),
-        slides[0]["image_prompt"][:80],
+        hero_count,
     )
-
-    cover_url, cover_err = await generate_cover_image(
-        scene_core=slides[0]["image_prompt"],
-        draft_id=str(draft_id),
-    )
-    if cover_url:
-        slides[0]["image_url"] = cover_url
-    else:
-        logger.warning("Cover failed: %s", cover_err)
-        slides[0]["image_url"] = None
-        slides[0]["image_prompt_fallback"] = True
 
     council_meta = {
+        "content_tier": content_tier,
+        "tier_reason": parsed.get("tier_reason", ""),
         "register_reason": parsed.get("register_reason", ""),
-        "cover_url": cover_url,
-        "cover_error": cover_err,
+        "hero_slide_indices": [s["slide_number"] for s in slides if s["is_hero_image"]],
         "composed_at": datetime.now(timezone.utc).isoformat(),
     }
     await _persist_ready(conn, draft_id, register, slides, council_meta)
-    logger.info("Draft %s → status=drafts", draft_id)
+    logger.info(
+        "Draft %s → status=drafts (images pending, %d hero slides)",
+        draft_id,
+        hero_count,
+    )
 
-    cover_status = "OK (Imagen Ultra)" if cover_url else f"FAILED: {(cover_err or '')[:60]}"
-    body_count = len(slides) - 1
     _send_telegram(
-        "WR2 draft pronto per Canva\n"
+        "WR2 draft composed\n"
         f"Topic: {topic[:120]}\n"
+        f"Tier: {content_tier} ({len(slides)} slides)\n"
         f"Register: {register}\n"
-        f"Cover: {cover_status}\n"
-        f"Slide body ({body_count}): prompt inline, da generare a mano\n"
+        f"Hero images to generate: {hero_count}\n"
         f"Draft: {draft_id}\n"
-        "Canva Renderer ogni 5 min",
+        "Image Generator runs next",
     )
     return True
 

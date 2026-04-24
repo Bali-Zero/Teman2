@@ -167,7 +167,8 @@ async def _already_seen(conn: asyncpg.Connection, staging_id: str) -> bool:
     return bool(row)
 
 
-async def run(*, dry_run: bool = False, force: bool = False) -> int:
+async def run(*, dry_run: bool = False, force: bool = False, rank: int = 0) -> int:
+    """rank=0 picks top-1, rank=1 picks #2 (useful for testing with a fresh topic)."""
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.error("DATABASE_URL not set")
@@ -202,7 +203,12 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
             (item.get("title") or "")[:80],
         )
 
-    top_item, top_score, top_detail = scored[0]
+    if rank >= len(scored):
+        logger.error("rank=%d out of range (only %d items)", rank, len(scored))
+        return 1
+    top_item, top_score, top_detail = scored[rank]
+    if rank > 0:
+        logger.info("Using rank=%d (not top) for testing — picked #%d", rank, rank + 1)
     threshold = 0.0 if force else SCORE_THRESHOLD
     if top_score < threshold:
         logger.info("Top score %.1f below threshold %.1f — skip", top_score, threshold)
@@ -263,11 +269,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true", help="bypass score threshold")
+    parser.add_argument("--rank", type=int, default=0, help="0=top, 1=#2, 2=#3... (testing)")
     args = parser.parse_args()
 
     _configure_logging()
     try:
-        return asyncio.run(run(dry_run=args.dry_run, force=args.force))
+        return asyncio.run(run(dry_run=args.dry_run, force=args.force, rank=args.rank))
     except KeyboardInterrupt:
         return 130
     except Exception as e:
