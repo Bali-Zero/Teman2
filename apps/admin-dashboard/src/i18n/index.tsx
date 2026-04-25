@@ -12,11 +12,13 @@ const messages: Record<Locale, Record<string, unknown>> = {
 };
 
 type TranslationFn = (key: string, params?: Record<string, string>) => string;
+type TranslationArrayFn = (key: string) => string[];
 
 interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   t: TranslationFn;
+  tArray: TranslationArrayFn;
 }
 
 const I18nContext = React.createContext<I18nContextValue | null>(null);
@@ -24,14 +26,33 @@ const I18nContext = React.createContext<I18nContextValue | null>(null);
 function getNestedValue(
   obj: Record<string, unknown>,
   path: string,
-): string | undefined {
+): unknown {
   const parts = path.split(".");
   let current: unknown = obj;
   for (const part of parts) {
     if (current == null || typeof current !== "object") return undefined;
     current = (current as Record<string, unknown>)[part];
   }
-  return typeof current === "string" ? current : undefined;
+  return current;
+}
+
+function getStringValue(
+  obj: Record<string, unknown>,
+  path: string,
+): string | undefined {
+  const value = getNestedValue(obj, path);
+  return typeof value === "string" ? value : undefined;
+}
+
+function getArrayValue(
+  obj: Record<string, unknown>,
+  path: string,
+): string[] | undefined {
+  const value = getNestedValue(obj, path);
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return value as string[];
+  }
+  return undefined;
 }
 
 function interpolate(
@@ -65,17 +86,28 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const t: TranslationFn = React.useCallback(
     (key: string, params?: Record<string, string>) => {
       const value =
-        getNestedValue(messages[locale], key) ??
-        getNestedValue(messages[DEFAULT_LOCALE], key) ??
+        getStringValue(messages[locale], key) ??
+        getStringValue(messages[DEFAULT_LOCALE], key) ??
         key;
       return interpolate(value, params);
     },
     [locale],
   );
 
+  const tArray: TranslationArrayFn = React.useCallback(
+    (key: string) => {
+      return (
+        getArrayValue(messages[locale], key) ??
+        getArrayValue(messages[DEFAULT_LOCALE], key) ??
+        []
+      );
+    },
+    [locale],
+  );
+
   const value = React.useMemo(
-    () => ({ locale, setLocale, t }),
-    [locale, setLocale, t],
+    () => ({ locale, setLocale, t, tArray }),
+    [locale, setLocale, t, tArray],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
