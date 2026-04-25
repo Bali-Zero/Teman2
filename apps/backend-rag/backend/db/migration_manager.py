@@ -275,6 +275,14 @@ class MigrationManager:
         """
         return await migration.apply()
 
+    # Process-wide advisory lock id used to serialise concurrent migration
+    # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —
+    # a lock acquired on connection A must be released on the same
+    # connection A. Releasing on a different connection silently no-ops
+    # (the function returns false / NULL) and the original session keeps
+    # the lock until it terminates.
+    _APPLY_ALL_LOCK_ID = 73491
+
     async def apply_all_pending(self, dry_run: bool = False) -> dict:
         """
         Apply all pending migrations in order.
@@ -291,18 +299,47 @@ class MigrationManager:
         if not self.pool:
             await self.connect()
 
-        # Advisory lock to prevent concurrent migration runs (e.g. rolling deploys)
-        async with self.pool.acquire() as conn:
-            locked = await conn.fetchval("SELECT pg_try_advisory_lock(73491)")
+        # Hold a single dedicated connection for the entire run so the
+        # session-scoped `pg_advisory_lock` is acquired and released on the
+        # *same* session. Anything else (including individual migration
+        # `apply()` calls) keeps using fresh connections from the pool —
+        # they don't need to share this session because the lock only
+        # serialises the orchestrator, not the SQL it dispatches.
+        #
+        # We deliberately do NOT use `pg_advisory_xact_lock`: that variant
+        # auto-releases on transaction commit, but `apply_all_pending`
+        # spans many independent migrations (each with its own commit), so
+        # an xact-scoped lock would be released after the first migration
+        # and concurrent runners could interleave from migration #2 onward.
+        async with self.pool.acquire() as lock_conn:
+            try:
+                locked = await lock_conn.fetchval(
+                    "SELECT pg_try_advisory_lock($1)", self._APPLY_ALL_LOCK_ID,
+                )
+            except Exception as exc:
+                logger.error("Failed to acquire migration advisory lock: %s", exc)
+                raise
+
             if not locked:
                 logger.warning("Another migration process is running, skipping")
                 return {"applied": [], "skipped": [], "failed": []}
 
-        try:
-            return await self._apply_all_pending_locked(dry_run)
-        finally:
-            async with self.pool.acquire() as conn:
-                await conn.execute("SELECT pg_advisory_unlock(73491)")
+            try:
+                return await self._apply_all_pending_locked(dry_run)
+            finally:
+                # Same session — guaranteed to actually release. We swallow
+                # release errors because the connection is about to be
+                # returned to the pool either way; the lock dies with the
+                # session even if the explicit release fails.
+                try:
+                    await lock_conn.execute(
+                        "SELECT pg_advisory_unlock($1)", self._APPLY_ALL_LOCK_ID,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Advisory lock release raised %s — relying on session "
+                        "termination to free the lock", exc,
+                    )
 
     async def _apply_all_pending_locked(self, dry_run: bool = False) -> dict:
         """Internal: apply pending migrations while holding advisory lock."""
