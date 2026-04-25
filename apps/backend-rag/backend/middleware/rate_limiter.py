@@ -38,13 +38,40 @@ def _evict_stale_keys() -> None:
 
 class RateLimiter:
     """
-    Rate limiter with sliding window algorithm
+    Sliding-window rate limiter.
+
+    - Primary backend: Redis via `RedisManager` (distributed across replicas).
+    - Fallback: in-memory dict with stricter limits (half the configured
+      per-route limit) when Redis is unreachable or returns errors.
+    - Self-healing: after a Redis error flips `redis_available` to False,
+      subsequent requests try to reconnect on a cooldown (see
+      `_RECOVERY_COOLDOWN`). This way a transient Redis hiccup doesn't
+      leave the limiter permanently degraded.
+
+    Observability:
+    - `self.metrics` exposes running counters that the admin
+      `/api/admin/rate-limit/stats` endpoint reads.
     """
+
+    _RECOVERY_COOLDOWN = 10.0  # seconds between reconnect attempts
 
     def __init__(self) -> None:
         self.redis_available = False
         self.redis_client = None
+        self._last_recovery_attempt: float = 0.0
+        self._last_error: str | None = None
+        self.metrics: dict[str, int] = {
+            "redis_requests": 0,
+            "redis_errors": 0,
+            "memory_fallback_requests": 0,
+            "recovery_attempts": 0,
+            "recovery_successes": 0,
+        }
 
+        self._connect_from_manager()
+
+    def _connect_from_manager(self) -> None:
+        """(Re)acquire a sync Redis client from the central manager."""
         # Get sync Redis client from centralized RedisManager
         from backend.core.redis_manager import RedisManager
 
@@ -56,8 +83,24 @@ class RateLimiter:
             manager.register_component("rate_limiter", "active")
             logger.info("Rate limiter using Redis via RedisManager")
         else:
+            self.redis_client = None
+            self.redis_available = False
             manager.register_component("rate_limiter", "fallback_memory")
             logger.warning("Rate limiter using in-memory storage — no Redis available, rate limits not shared across workers")
+
+    def _try_recover(self) -> None:
+        """Attempt to reconnect to Redis if we've been in fallback mode."""
+        now = time.time()
+        if now - self._last_recovery_attempt < self._RECOVERY_COOLDOWN:
+            return
+        self._last_recovery_attempt = now
+        self.metrics["recovery_attempts"] += 1
+        was_unavailable = not self.redis_available
+        self._connect_from_manager()
+        if was_unavailable and self.redis_available:
+            self.metrics["recovery_successes"] += 1
+            self._last_error = None
+            logger.info("Rate limiter Redis connection recovered")
 
     def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
         """
@@ -74,9 +117,16 @@ class RateLimiter:
         current_time = int(time.time())
         window_start = current_time - window
 
+        # If we previously degraded to in-memory, try to reconnect on a
+        # cooldown so a transient Redis outage doesn't leave the limiter
+        # permanently unshared across workers.
+        if not self.redis_available:
+            self._try_recover()
+
         try:
             if self.redis_available and self.redis_client:
                 # Redis-backed sliding window
+                self.metrics["redis_requests"] += 1
                 pipe = self.redis_client.pipeline()
 
                 # Remove old entries
@@ -101,9 +151,11 @@ class RateLimiter:
                     "limit": limit,
                     "remaining": remaining,
                     "reset": current_time + window,
+                    "backend": "redis",
                 }
             else:
                 # In-memory fallback (with eviction guard)
+                self.metrics["memory_fallback_requests"] += 1
                 _evict_stale_keys()
                 if key not in _rate_limit_storage:
                     _rate_limit_storage[key] = []
@@ -123,11 +175,21 @@ class RateLimiter:
                     "limit": limit,
                     "remaining": remaining,
                     "reset": current_time + window,
+                    "backend": "memory",
                 }
 
         except Exception as e:
+            # Redis call raised mid-flight. Record the error and use the
+            # half-limit in-memory fallback for THIS request. We intentionally
+            # do NOT flip self.redis_available to False here — the existing
+            # behavior is to retry Redis on every call (per-request
+            # fail-safe). The `_try_recover` cooldown path above handles the
+            # other failure mode: Redis was down at boot and comes back.
+            self.metrics["redis_errors"] += 1
+            self._last_error = f"{type(e).__name__}: {e}"
             logger.warning(f"Rate limit Redis error, falling back to in-memory: {e}")
-            # Fail-safe: use in-memory with stricter limits (half the normal limit)
+            # Fail-safe: in-memory with half limit so a Redis outage doesn't
+            # multiply effective capacity by the number of replicas.
             safe_limit = max(1, limit // 2)
             if key not in _rate_limit_storage:
                 _rate_limit_storage[key] = []
@@ -137,7 +199,12 @@ class RateLimiter:
             if allowed:
                 _rate_limit_storage[key].append(current_time)
             remaining = max(0, safe_limit - count - 1)
-            return allowed, {"limit": safe_limit, "remaining": remaining, "reset": current_time + window}
+            return allowed, {
+                "limit": safe_limit,
+                "remaining": remaining,
+                "reset": current_time + window,
+                "backend": "memory_degraded",
+            }
 
 
 # Global rate limiter instance
@@ -262,4 +329,8 @@ def get_rate_limit_stats() -> dict:
         "backend": "redis" if rate_limiter.redis_available else "memory",
         "connected": rate_limiter.redis_available,
         "rate_limits_configured": len(RateLimitMiddleware.RATE_LIMITS),
+        "metrics": dict(rate_limiter.metrics),
+        "last_error": rate_limiter._last_error,
+        "in_memory_keys": len(_rate_limit_storage),
+        "recovery_cooldown_seconds": RateLimiter._RECOVERY_COOLDOWN,
     }
