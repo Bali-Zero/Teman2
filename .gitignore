@@ -6,6 +6,9 @@
 .cursor/
 .idea/
 
+# Lighthouse CI local reports
+.lighthouseci/
+
 # MCP config (contains API keys)
 .mcp.json
 

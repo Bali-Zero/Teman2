@@ -19,7 +19,8 @@
     "prepare": "husky",
     "generate:api": "openapi-typescript ../backend-rag/openapi.json -o src/lib/api/schema.d.ts",
     "gen:api-types": "npx openapi-typescript ../../apps/backend-rag/openapi.json -o src/lib/api/schema.d.ts",
-    "validate:openapi": "node ../../scripts/validate-openapi.cjs"
+    "validate:openapi": "node ../../scripts/validate-openapi.cjs",
+    "lighthouse": "node scripts/lighthouse-ci.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.118",
