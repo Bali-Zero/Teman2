@@ -254,5 +254,23 @@
       "living": "Vivre à Bali, culture, communauté, permis de conduire, santé et vie quotidienne.",
       "trends": "Économie numérique, industrie tech, nouvelles réglementations et analyses de marché."
     }
+  },
+  "commandPalette": {
+    "groups": {
+      "navigation": "Navigation",
+      "cases": "Dossiers",
+      "tax": "Fiscalité",
+      "analytics": "Analytique"
+    },
+    "actions": {
+      "goInbox": "Aller à la boîte de réception",
+      "goClients": "Clients",
+      "goProcess": "Dossiers",
+      "goPrime": "Ouvrir Prime 3D",
+      "createKitas": "Créer un dossier KITAS",
+      "createPtSetup": "Créer un dossier PT Setup",
+      "exportLkpm": "Exporter LKPM Q1",
+      "openAnalytics": "Funnel analytique"
+    }
   }
 }
