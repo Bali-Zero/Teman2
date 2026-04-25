@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import {
   articlesApi,
   ComposeRequest,
   EnrichedArticle,
   PublishRequest,
-} from '@/lib/api/articles.api';
-import { useToast } from '@/components/ui/toast';
-import { logger } from '@/lib/logger';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
-import { renderMiniMarkdown, fileToBase64 } from '@/lib/utils';
-import { safeMiniMarkdown } from '@/lib/utils/safe-html';
+} from "@/lib/api/articles.api";
+import { useToast } from "@/components/ui/toast";
+import { logger } from "@/lib/logger";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
+import { renderMiniMarkdown, fileToBase64 } from "@/lib/utils";
+import { safeMiniMarkdown } from "@/lib/utils/safe-html";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   Loader2,
   Sparkles,
@@ -31,43 +31,44 @@ import {
   Copy,
   Download,
   Send,
-} from 'lucide-react';
+} from "lucide-react";
 
 const CATEGORIES = [
-  { value: 'business', label: 'Business & Company' },
-  { value: 'visas', label: 'Visas & Visas' },
-  { value: 'tax', label: 'Taxes' },
-  { value: 'property', label: 'Property & Real Estate' },
-  { value: 'living', label: 'Living' },
-  { value: 'trends', label: 'Trends & Insights' },
-  { value: 'legal', label: 'Legal Updates' },
+  { value: "business", label: "Business & Company" },
+  { value: "visas", label: "Visas & Visas" },
+  { value: "tax", label: "Taxes" },
+  { value: "property", label: "Property & Real Estate" },
+  { value: "living", label: "Living" },
+  { value: "trends", label: "Trends & Insights" },
+  { value: "legal", label: "Legal Updates" },
 ];
 
 const POSITIONS = [
-  { value: 'normal', label: 'Normal Article' },
-  { value: 'secondary', label: 'Secondary Featured' },
-  { value: 'main_featured', label: 'Main Featured (Homepage Hero)' },
+  { value: "normal", label: "Normal Article" },
+  { value: "secondary", label: "Secondary Featured" },
+  { value: "main_featured", label: "Main Featured (Homepage Hero)" },
 ];
 
-const DRAFT_KEY = 'bz_composer_draft_v2';
+const DRAFT_KEY = "bz_composer_draft_v2";
 
 // Warm Depth glassmorphism reusable styles
-const cardClass = 'rounded-2xl border overflow-hidden';
+const cardClass = "rounded-2xl border overflow-hidden";
 const cardStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.03)',
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
-  borderColor: 'rgba(255,255,255,0.07)',
+  background: "rgba(255,255,255,0.03)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  borderColor: "rgba(255,255,255,0.07)",
 };
-const inputClass = 'w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all';
+const inputClass =
+  "w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all";
 const inputBaseStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)',
-  borderColor: 'rgba(255,255,255,0.07)',
-  color: 'var(--bz-text-1)',
+  background: "rgba(255,255,255,0.04)",
+  borderColor: "rgba(255,255,255,0.07)",
+  color: "var(--bz-text-1)",
 };
 const inputFocusStyle: React.CSSProperties = {
   ...inputBaseStyle,
-  borderColor: 'var(--bz-accent)',
+  borderColor: "var(--bz-accent)",
 };
 
 export default function ArticleComposerPage() {
@@ -79,11 +80,11 @@ export default function ArticleComposerPage() {
   const [publishConfigured, setPublishConfigured] = useState(false);
 
   // Form State
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('business');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [author, setAuthor] = useState('Marketing Team');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [category, setCategory] = useState("business");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [author, setAuthor] = useState("Marketing Team");
 
   // Media State
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -99,11 +100,15 @@ export default function ArticleComposerPage() {
   // Data State
   const [result, setResult] = useState<EnrichedArticle | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(null);
+  const [editedResult, setEditedResult] = useState<EnrichedArticle | null>(
+    null,
+  );
 
   // Publish State
-  const [position, setPosition] = useState<'normal' | 'secondary' | 'main_featured'>('normal');
-  const [customSlug, setCustomSlug] = useState('');
+  const [position, setPosition] = useState<
+    "normal" | "secondary" | "main_featured"
+  >("normal");
+  const [customSlug, setCustomSlug] = useState("");
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
 
   // Focus tracking for inputs
@@ -115,7 +120,7 @@ export default function ArticleComposerPage() {
   // --- LIFECYCLE ---
 
   useEffect(() => {
-    logger.componentMount('ArticleComposerPage');
+    logger.componentMount("ArticleComposerPage");
 
     const init = async () => {
       setStatusLoading(true);
@@ -127,7 +132,11 @@ export default function ArticleComposerPage() {
         setConfigured(composeStatus.configured);
         setPublishConfigured(publishStatus.configured);
       } catch (err) {
-        logger.error('API Check failed', { component: 'ArticleComposerPage' }, err as Error);
+        logger.error(
+          "API Check failed",
+          { component: "ArticleComposerPage" },
+          err as Error,
+        );
       } finally {
         setStatusLoading(false);
       }
@@ -147,9 +156,9 @@ export default function ArticleComposerPage() {
       }
     } catch (e) {
       logger.warn(
-        'Failed to load draft from localStorage',
-        { component: 'ArticleComposerPage' },
-        e as Error
+        "Failed to load draft from localStorage",
+        { component: "ArticleComposerPage" },
+        e as Error,
       );
     }
   }, []);
@@ -167,7 +176,7 @@ export default function ArticleComposerPage() {
               category,
               source: sourceUrl,
               author,
-            })
+            }),
           );
         } catch (e) {
           /* Silent fail quota exceeded */
@@ -181,7 +190,7 @@ export default function ArticleComposerPage() {
 
   const handleCompose = async () => {
     if (!title.trim() || !content.trim()) {
-      toast.error('Missing Data', 'Please enter both a title and content.');
+      toast.error("Missing Data", "Please enter both a title and content.");
       return;
     }
 
@@ -190,8 +199,8 @@ export default function ArticleComposerPage() {
     setResult(null);
 
     try {
-      logger.info('Starting article composition', {
-        component: 'ArticleComposerPage',
+      logger.info("Starting article composition", {
+        component: "ArticleComposerPage",
         metadata: { category },
       });
       const req: ComposeRequest = {
@@ -207,16 +216,23 @@ export default function ArticleComposerPage() {
       if (res.success && res.article) {
         setResult(res.article);
         setApiCost(res.api_cost_cents);
-        toast.success('Article Enriched!', `Cost: $${(res.api_cost_cents / 100).toFixed(4)}`);
+        toast.success(
+          "Article Enriched!",
+          `Cost: $${(res.api_cost_cents / 100).toFixed(4)}`,
+        );
         localStorage.removeItem(DRAFT_KEY);
       } else {
-        throw new Error(res.error || 'Unknown error');
+        throw new Error(res.error || "Unknown error");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const msg = err instanceof Error ? err.message : "Unknown error";
       setError(msg);
-      logger.error('Composition failed', { component: 'ArticleComposerPage' }, err as Error);
-      toast.error('Enrichment Failed', msg);
+      logger.error(
+        "Composition failed",
+        { component: "ArticleComposerPage" },
+        err as Error,
+      );
+      toast.error("Enrichment Failed", msg);
     } finally {
       setLoading(false);
     }
@@ -228,8 +244,8 @@ export default function ArticleComposerPage() {
     const articleToPublish = isEditing && editedResult ? editedResult : result;
 
     try {
-      logger.info('Publishing article', {
-        component: 'ArticleComposerPage',
+      logger.info("Publishing article", {
+        component: "ArticleComposerPage",
         metadata: { position },
       });
       const req: PublishRequest = {
@@ -244,15 +260,19 @@ export default function ArticleComposerPage() {
 
       const res = await articlesApi.publish(req);
       if (res.success) {
-        setPublishedUrl(res.article_url || '#');
-        toast.success('Published!', 'Article is live.');
+        setPublishedUrl(res.article_url || "#");
+        toast.success("Published!", "Article is live.");
       } else {
         throw new Error(res.error);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Publish failed';
-      logger.error('Publish failed', { component: 'ArticleComposerPage' }, err as Error);
-      toast.error('Publish Error', msg);
+      const msg = err instanceof Error ? err.message : "Publish failed";
+      logger.error(
+        "Publish failed",
+        { component: "ArticleComposerPage" },
+        err as Error,
+      );
+      toast.error("Publish Error", msg);
     } finally {
       setPublishing(false);
     }
@@ -262,8 +282,8 @@ export default function ArticleComposerPage() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Invalid File', 'Not an image.');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid File", "Not an image.");
       return;
     }
     setCoverImage(file);
@@ -276,7 +296,7 @@ export default function ArticleComposerPage() {
     e.stopPropagation();
     setCoverImage(null);
     setCoverPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Helper: Editing
@@ -291,7 +311,7 @@ export default function ArticleComposerPage() {
     if (editedResult) {
       setResult(editedResult);
       setIsEditing(false);
-      toast.success('Saved', 'Changes updated locally.');
+      toast.success("Saved", "Changes updated locally.");
     }
   };
 
@@ -303,7 +323,7 @@ export default function ArticleComposerPage() {
   const updateEditedField = (path: string, value: unknown) => {
     if (!editedResult) return;
     const newResult = JSON.parse(JSON.stringify(editedResult));
-    const parts = path.split('.');
+    const parts = path.split(".");
     let current = newResult;
     for (let i = 0; i < parts.length - 1; i++) {
       current = current[parts[i]];
@@ -317,19 +337,19 @@ export default function ArticleComposerPage() {
     const data = isEditing ? editedResult : result;
     if (!data) return;
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    toast.success('Copied', 'JSON copied to clipboard');
+    toast.success("Copied", "JSON copied to clipboard");
   };
 
   const handleExportJson = () => {
     const data = isEditing ? editedResult : result;
     if (!data) return;
     const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
+      type: "application/json",
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `article-${(data.headline || 'draft').slice(0, 30).replace(/\s+/g, '-')}.json`;
+    a.download = `article-${(data.headline || "draft").slice(0, 30).replace(/\s+/g, "-")}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -339,8 +359,14 @@ export default function ArticleComposerPage() {
   if (statusLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--bz-accent)' }} />
-        <p className="text-[12px] animate-pulse" style={{ color: 'var(--bz-text-2)' }}>
+        <Loader2
+          className="w-8 h-8 animate-spin"
+          style={{ color: "var(--bz-accent)" }}
+        />
+        <p
+          className="text-[12px] animate-pulse"
+          style={{ color: "var(--bz-text-2)" }}
+        >
           Initializing Intelligence Center...
         </p>
       </div>
@@ -357,25 +383,31 @@ export default function ArticleComposerPage() {
           {/* Left panel header */}
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+            style={{ borderColor: "rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center gap-2.5">
-              <FileText className="w-4 h-4" style={{ color: 'var(--bz-accent)' }} />
-              <span className="text-[13px] font-medium" style={{ color: 'var(--bz-text-1)' }}>
+              <FileText
+                className="w-4 h-4"
+                style={{ color: "var(--bz-accent)" }}
+              />
+              <span
+                className="text-[13px] font-medium"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 Raw Content
               </span>
             </div>
             <div className="flex items-center gap-2.5">
               <div
-                className={`h-2 w-2 rounded-full ${configured ? 'bg-emerald-500' : 'bg-red-500'}`}
+                className={`h-2 w-2 rounded-full ${configured ? "bg-emerald-500" : "bg-red-500"}`}
               />
               {apiCost > 0 && (
                 <span
                   className="rounded-full px-2 py-0.5 text-[10px] font-medium border"
                   style={{
-                    color: 'var(--bz-accent)',
-                    borderColor: 'rgba(212,132,90,0.3)',
-                    background: 'rgba(212,132,90,0.08)',
+                    color: "var(--bz-accent)",
+                    borderColor: "rgba(212,132,90,0.3)",
+                    background: "rgba(212,132,90,0.08)",
                   }}
                 >
                   ${(apiCost / 100).toFixed(4)}
@@ -387,50 +419,62 @@ export default function ArticleComposerPage() {
           <div className="flex flex-col gap-4 p-4">
             {/* Title */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
-                Article Title <span style={{ color: '#ef4444' }}>*</span>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                Article Title <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Es. New KITAS Rules..."
                 className={inputClass}
-                style={getInputStyle('title')}
-                onFocus={() => setFocusedInput('title')}
+                style={getInputStyle("title")}
+                onFocus={() => setFocusedInput("title")}
                 onBlur={() => setFocusedInput(null)}
               />
             </div>
 
             {/* Content */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
-                Raw Content <span style={{ color: '#ef4444' }}>*</span>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
+                Raw Content <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <AutoResizeTextarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Incolla contenuto..."
                 className={`${inputClass} min-h-[140px] resize-none`}
-                style={getInputStyle('content')}
-                onFocus={() => setFocusedInput('content')}
+                style={getInputStyle("content")}
+                onFocus={() => setFocusedInput("content")}
                 onBlur={() => setFocusedInput(null)}
               />
-              <div className="text-right text-[11px]" style={{ color: 'var(--bz-text-2)' }}>
+              <div
+                className="text-right text-[11px]"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 {content.length}/8000 chars
               </div>
             </div>
 
             {/* Category */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className={`${inputClass} appearance-none cursor-pointer`}
-                style={getInputStyle('category')}
-                onFocus={() => setFocusedInput('category')}
+                style={getInputStyle("category")}
+                onFocus={() => setFocusedInput("category")}
                 onBlur={() => setFocusedInput(null)}
               >
                 {CATEGORIES.map((c) => (
@@ -444,29 +488,35 @@ export default function ArticleComposerPage() {
             {/* Source URL + Author */}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
+                <label
+                  className="text-[11px] font-medium"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Source URL
                 </label>
                 <input
                   value={sourceUrl}
                   onChange={(e) => setSourceUrl(e.target.value)}
                   className={inputClass}
-                  style={getInputStyle('sourceUrl')}
-                  onFocus={() => setFocusedInput('sourceUrl')}
+                  style={getInputStyle("sourceUrl")}
+                  onFocus={() => setFocusedInput("sourceUrl")}
                   onBlur={() => setFocusedInput(null)}
                   placeholder="https://..."
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
+                <label
+                  className="text-[11px] font-medium"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Author
                 </label>
                 <input
                   value={author}
                   onChange={(e) => setAuthor(e.target.value)}
                   className={inputClass}
-                  style={getInputStyle('author')}
-                  onFocus={() => setFocusedInput('author')}
+                  style={getInputStyle("author")}
+                  onFocus={() => setFocusedInput("author")}
                   onBlur={() => setFocusedInput(null)}
                 />
               </div>
@@ -474,7 +524,10 @@ export default function ArticleComposerPage() {
 
             {/* Cover Image */}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
+              <label
+                className="text-[11px] font-medium"
+                style={{ color: "var(--bz-text-2)" }}
+              >
                 Cover Image (optional)
               </label>
               <input
@@ -488,21 +541,38 @@ export default function ArticleComposerPage() {
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-4 text-center transition-colors hover:bg-white/[0.02]"
-                  style={{ borderColor: 'rgba(255,255,255,0.1)' }}
+                  style={{ borderColor: "rgba(255,255,255,0.1)" }}
                 >
-                  <ImageIcon className="h-5 w-5" style={{ color: 'var(--bz-text-2)' }} />
-                  <div className="text-[11px]" style={{ color: 'var(--bz-text-2)' }}>
+                  <ImageIcon
+                    className="h-5 w-5"
+                    style={{ color: "var(--bz-text-2)" }}
+                  />
+                  <div
+                    className="text-[11px]"
+                    style={{ color: "var(--bz-text-2)" }}
+                  >
                     Click per caricare (1200x630)
                   </div>
                 </div>
               ) : (
                 <div
                   className="relative overflow-hidden rounded-xl border"
-                  style={{ borderColor: 'rgba(255,255,255,0.07)' }}
+                  style={{ borderColor: "rgba(255,255,255,0.07)" }}
                 >
-                  <img src={coverPreview} alt="Cover" className="h-[180px] w-full object-cover" />
+                  {/* eslint-disable-next-line @next/next/no-img-element --
+                      blob:/data: preview cannot use next/image; explicit
+                      dimensions prevent CLS on first paint. */}
+                  <img
+                    src={coverPreview}
+                    alt="Article cover preview"
+                    width={1200}
+                    height={630}
+                    className="h-[180px] w-full object-cover"
+                  />
                   <button
+                    type="button"
                     onClick={removeCoverImage}
+                    aria-label="Remove cover image"
                     className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/80 text-white hover:bg-red-900/80"
                   >
                     <X size={14} />
@@ -516,11 +586,11 @@ export default function ArticleComposerPage() {
               <div
                 className="rounded-xl border px-3 py-2.5 text-[12px]"
                 style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  borderColor: 'rgba(239,68,68,0.3)',
-                  color: '#fca5a5',
+                  background: "rgba(239,68,68,0.08)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  borderColor: "rgba(239,68,68,0.3)",
+                  color: "#fca5a5",
                 }}
               >
                 {error}
@@ -535,14 +605,21 @@ export default function ArticleComposerPage() {
               style={{
                 background:
                   loading || !configured
-                    ? 'rgba(255,255,255,0.06)'
-                    : 'linear-gradient(135deg, var(--bz-accent), #c06a3a)',
-                boxShadow: loading || !configured ? 'none' : '0 8px 24px rgba(212,132,90,0.35)',
-                color: loading || !configured ? 'var(--bz-text-2)' : '#fff',
+                    ? "rgba(255,255,255,0.06)"
+                    : "linear-gradient(135deg, var(--bz-accent), #c06a3a)",
+                boxShadow:
+                  loading || !configured
+                    ? "none"
+                    : "0 8px 24px rgba(212,132,90,0.35)",
+                color: loading || !configured ? "var(--bz-text-2)" : "#fff",
               }}
             >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-              {loading ? 'Enriching with Claude...' : 'Compose Executive Brief'}
+              {loading ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              {loading ? "Enriching with Claude..." : "Compose Executive Brief"}
             </button>
           </div>
         </div>
@@ -551,7 +628,7 @@ export default function ArticleComposerPage() {
       {/* ──── Vertical divider ──── */}
       <div
         className="hidden lg:block w-px self-stretch"
-        style={{ background: 'rgba(255,255,255,0.06)' }}
+        style={{ background: "rgba(255,255,255,0.06)" }}
       />
 
       {/* ──── RIGHT PANEL: Preview / Result ──── */}
@@ -560,11 +637,17 @@ export default function ArticleComposerPage() {
           {/* Right panel header */}
           <div
             className="flex items-center justify-between px-4 py-3 border-b"
-            style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+            style={{ borderColor: "rgba(255,255,255,0.06)" }}
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4" style={{ color: 'var(--bz-accent)' }} />
-              <span className="text-[13px] font-medium" style={{ color: 'var(--bz-text-1)' }}>
+              <Sparkles
+                className="w-4 h-4"
+                style={{ color: "var(--bz-accent)" }}
+              />
+              <span
+                className="text-[13px] font-medium"
+                style={{ color: "var(--bz-text-1)" }}
+              >
                 Executive Brief Preview
               </span>
             </div>
@@ -576,9 +659,9 @@ export default function ArticleComposerPage() {
                       onClick={saveEdits}
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all"
                       style={{
-                        color: 'var(--bz-accent)',
-                        border: '1px solid rgba(212,132,90,0.4)',
-                        background: 'rgba(212,132,90,0.1)',
+                        color: "var(--bz-accent)",
+                        border: "1px solid rgba(212,132,90,0.4)",
+                        background: "rgba(212,132,90,0.1)",
                       }}
                     >
                       <Save size={11} /> Save
@@ -587,9 +670,9 @@ export default function ArticleComposerPage() {
                       onClick={cancelEditing}
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all"
                       style={{
-                        color: '#fca5a5',
-                        border: '1px solid rgba(239,68,68,0.3)',
-                        background: 'rgba(239,68,68,0.08)',
+                        color: "#fca5a5",
+                        border: "1px solid rgba(239,68,68,0.3)",
+                        background: "rgba(239,68,68,0.08)",
                       }}
                     >
                       <X size={11} /> Cancel
@@ -600,8 +683,8 @@ export default function ArticleComposerPage() {
                     onClick={startEditing}
                     className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                     style={{
-                      color: 'var(--bz-text-2)',
-                      border: '1px solid rgba(255,255,255,0.07)',
+                      color: "var(--bz-text-2)",
+                      border: "1px solid rgba(255,255,255,0.07)",
                     }}
                   >
                     <Pencil size={11} /> Edit
@@ -616,18 +699,27 @@ export default function ArticleComposerPage() {
               /* Empty / placeholder state */
               <div
                 className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center"
-                style={{ borderColor: 'rgba(255,255,255,0.1)' }}
+                style={{ borderColor: "rgba(255,255,255,0.1)" }}
               >
                 <div
                   className="mb-4 rounded-full p-4"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                  style={{ background: "rgba(255,255,255,0.04)" }}
                 >
-                  <Sparkles className="h-8 w-8" style={{ color: 'var(--bz-text-2)' }} />
+                  <Sparkles
+                    className="h-8 w-8"
+                    style={{ color: "var(--bz-text-2)" }}
+                  />
                 </div>
-                <h3 className="text-[14px] font-medium" style={{ color: 'var(--bz-text-2)' }}>
+                <h3
+                  className="text-[14px] font-medium"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   AI Preview
                 </h3>
-                <p className="mt-1 max-w-xs text-[12px]" style={{ color: 'var(--bz-text-2)' }}>
+                <p
+                  className="mt-1 max-w-xs text-[12px]"
+                  style={{ color: "var(--bz-text-2)" }}
+                >
                   Fill in the raw content to generate the brief.
                 </p>
               </div>
@@ -637,11 +729,11 @@ export default function ArticleComposerPage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium mb-1"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     Headline & Summary
                   </div>
@@ -649,18 +741,22 @@ export default function ArticleComposerPage() {
                     <div className="flex flex-col gap-2">
                       <AutoResizeTextarea
                         value={activeArticle.headline}
-                        onChange={(e) => updateEditedField('headline', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("headline", e.target.value)
+                        }
                         className={`${inputClass} text-[16px] font-bold min-h-[50px] resize-none`}
-                        style={getInputStyle('headline')}
-                        onFocus={() => setFocusedInput('headline')}
+                        style={getInputStyle("headline")}
+                        onFocus={() => setFocusedInput("headline")}
                         onBlur={() => setFocusedInput(null)}
                       />
                       <AutoResizeTextarea
                         value={activeArticle.ai_summary}
-                        onChange={(e) => updateEditedField('ai_summary', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("ai_summary", e.target.value)
+                        }
                         className={`${inputClass} min-h-[70px] resize-none`}
-                        style={getInputStyle('ai_summary')}
-                        onFocus={() => setFocusedInput('ai_summary')}
+                        style={getInputStyle("ai_summary")}
+                        onFocus={() => setFocusedInput("ai_summary")}
                         onBlur={() => setFocusedInput(null)}
                       />
                     </div>
@@ -668,11 +764,14 @@ export default function ArticleComposerPage() {
                     <div>
                       <h2
                         className="text-[18px] font-semibold leading-[1.2]"
-                        style={{ color: 'var(--bz-text-1)' }}
+                        style={{ color: "var(--bz-text-1)" }}
                       >
                         {activeArticle.headline}
                       </h2>
-                      <p className="mt-1 text-[13px]" style={{ color: 'var(--bz-text-2)' }}>
+                      <p
+                        className="mt-1 text-[13px]"
+                        style={{ color: "var(--bz-text-2)" }}
+                      >
                         {activeArticle.ai_summary}
                       </p>
                     </div>
@@ -681,9 +780,9 @@ export default function ArticleComposerPage() {
                     <span
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        background: 'rgba(255,255,255,0.04)',
-                        color: 'var(--bz-text-2)',
+                        borderColor: "rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "var(--bz-text-2)",
                       }}
                     >
                       {activeArticle.category}
@@ -691,9 +790,9 @@ export default function ArticleComposerPage() {
                     <span
                       className="rounded-full border px-2 py-0.5 text-[11px]"
                       style={{
-                        borderColor: 'rgba(255,255,255,0.1)',
-                        background: 'rgba(255,255,255,0.04)',
-                        color: 'var(--bz-text-2)',
+                        borderColor: "rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.04)",
+                        color: "var(--bz-text-2)",
                       }}
                     >
                       Relevance: {activeArticle.relevance_score}/100
@@ -705,11 +804,11 @@ export default function ArticleComposerPage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     TL;DR
                   </div>
@@ -718,10 +817,15 @@ export default function ArticleComposerPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <select
                           value={activeArticle.tldr.should_worry}
-                          onChange={(e) => updateEditedField('tldr.should_worry', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField(
+                              "tldr.should_worry",
+                              e.target.value,
+                            )
+                          }
                           className={`${inputClass} appearance-none cursor-pointer`}
-                          style={getInputStyle('tldr_worry')}
-                          onFocus={() => setFocusedInput('tldr_worry')}
+                          style={getInputStyle("tldr_worry")}
+                          onFocus={() => setFocusedInput("tldr_worry")}
                           onBlur={() => setFocusedInput(null)}
                         >
                           <option>Yes</option>
@@ -730,10 +834,12 @@ export default function ArticleComposerPage() {
                         </select>
                         <select
                           value={activeArticle.tldr.risk_level}
-                          onChange={(e) => updateEditedField('tldr.risk_level', e.target.value)}
+                          onChange={(e) =>
+                            updateEditedField("tldr.risk_level", e.target.value)
+                          }
                           className={`${inputClass} appearance-none cursor-pointer`}
-                          style={getInputStyle('tldr_risk')}
-                          onFocus={() => setFocusedInput('tldr_risk')}
+                          style={getInputStyle("tldr_risk")}
+                          onFocus={() => setFocusedInput("tldr_risk")}
                           onBlur={() => setFocusedInput(null)}
                         >
                           <option>Low</option>
@@ -743,29 +849,35 @@ export default function ArticleComposerPage() {
                       </div>
                       <AutoResizeTextarea
                         value={activeArticle.tldr.what}
-                        onChange={(e) => updateEditedField('tldr.what', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.what", e.target.value)
+                        }
                         className={`${inputClass} min-h-[60px] resize-none`}
-                        style={getInputStyle('tldr_what')}
-                        onFocus={() => setFocusedInput('tldr_what')}
+                        style={getInputStyle("tldr_what")}
+                        onFocus={() => setFocusedInput("tldr_what")}
                         onBlur={() => setFocusedInput(null)}
                         placeholder="What"
                       />
                       <input
                         value={activeArticle.tldr.who}
-                        onChange={(e) => updateEditedField('tldr.who', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.who", e.target.value)
+                        }
                         className={inputClass}
-                        style={getInputStyle('tldr_who')}
-                        onFocus={() => setFocusedInput('tldr_who')}
+                        style={getInputStyle("tldr_who")}
+                        onFocus={() => setFocusedInput("tldr_who")}
                         onBlur={() => setFocusedInput(null)}
                         placeholder="Who"
                         aria-label="Who"
                       />
                       <input
                         value={activeArticle.tldr.when}
-                        onChange={(e) => updateEditedField('tldr.when', e.target.value)}
+                        onChange={(e) =>
+                          updateEditedField("tldr.when", e.target.value)
+                        }
                         className={inputClass}
-                        style={getInputStyle('tldr_when')}
-                        onFocus={() => setFocusedInput('tldr_when')}
+                        style={getInputStyle("tldr_when")}
+                        onFocus={() => setFocusedInput("tldr_when")}
                         onBlur={() => setFocusedInput(null)}
                         placeholder="When"
                         aria-label="When"
@@ -775,28 +887,32 @@ export default function ArticleComposerPage() {
                     <div className="text-[12px]">
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <span style={{ color: 'var(--bz-text-2)' }}>Worry: </span>
+                          <span style={{ color: "var(--bz-text-2)" }}>
+                            Worry:{" "}
+                          </span>
                           <span
                             className={
-                              activeArticle.tldr.should_worry === 'Yes'
-                                ? 'text-[#fecaca]'
-                                : activeArticle.tldr.should_worry === 'No'
-                                  ? 'text-[#bbf7d0]'
-                                  : 'text-[#fed7aa]'
+                              activeArticle.tldr.should_worry === "Yes"
+                                ? "text-[#fecaca]"
+                                : activeArticle.tldr.should_worry === "No"
+                                  ? "text-[#bbf7d0]"
+                                  : "text-[#fed7aa]"
                             }
                           >
                             {activeArticle.tldr.should_worry}
                           </span>
                         </div>
                         <div>
-                          <span style={{ color: 'var(--bz-text-2)' }}>Risk: </span>
+                          <span style={{ color: "var(--bz-text-2)" }}>
+                            Risk:{" "}
+                          </span>
                           <span
                             className={
-                              activeArticle.tldr.risk_level === 'High'
-                                ? 'text-[#fecaca]'
-                                : activeArticle.tldr.risk_level === 'Low'
-                                  ? 'text-[#bbf7d0]'
-                                  : 'text-[#fed7aa]'
+                              activeArticle.tldr.risk_level === "High"
+                                ? "text-[#fecaca]"
+                                : activeArticle.tldr.risk_level === "Low"
+                                  ? "text-[#bbf7d0]"
+                                  : "text-[#fed7aa]"
                             }
                           >
                             {activeArticle.tldr.risk_level}
@@ -805,15 +921,21 @@ export default function ArticleComposerPage() {
                       </div>
                       <div className="space-y-1 text-[13px]">
                         <div>
-                          <strong style={{ color: 'var(--bz-text-1)' }}>What:</strong>{' '}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            What:
+                          </strong>{" "}
                           {activeArticle.tldr.what}
                         </div>
                         <div>
-                          <strong style={{ color: 'var(--bz-text-1)' }}>Who:</strong>{' '}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            Who:
+                          </strong>{" "}
                           {activeArticle.tldr.who}
                         </div>
                         <div>
-                          <strong style={{ color: 'var(--bz-text-1)' }}>When:</strong>{' '}
+                          <strong style={{ color: "var(--bz-text-1)" }}>
+                            When:
+                          </strong>{" "}
                           {activeArticle.tldr.when}
                         </div>
                       </div>
@@ -825,28 +947,32 @@ export default function ArticleComposerPage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     The Facts
                   </div>
                   {isEditing ? (
                     <AutoResizeTextarea
                       value={activeArticle.facts}
-                      onChange={(e) => updateEditedField('facts', e.target.value)}
+                      onChange={(e) =>
+                        updateEditedField("facts", e.target.value)
+                      }
                       className={`${inputClass} min-h-[120px] resize-none`}
-                      style={getInputStyle('facts')}
-                      onFocus={() => setFocusedInput('facts')}
+                      style={getInputStyle("facts")}
+                      onFocus={() => setFocusedInput("facts")}
                       onBlur={() => setFocusedInput(null)}
                     />
                   ) : (
                     <div
                       className="text-[13px] leading-relaxed whitespace-pre-line"
-                      style={{ color: 'var(--bz-text-1)' }}
-                      dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(activeArticle.facts))}
+                      style={{ color: "var(--bz-text-1)" }}
+                      dangerouslySetInnerHTML={safeMiniMarkdown(
+                        renderMiniMarkdown(activeArticle.facts),
+                      )}
                     />
                   )}
                 </div>
@@ -855,42 +981,49 @@ export default function ArticleComposerPage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     Bali Zero Take
                   </div>
                   <div className="flex flex-col gap-3 text-[13px]">
-                    {['hidden_insight', 'our_analysis', 'our_advice'].map((key) => {
-                      const val = (activeArticle.bali_zero_take as any)[key];
-                      return (
-                        <div key={key}>
-                          <strong
-                            className="block mb-1 capitalize"
-                            style={{ color: 'var(--bz-text-1)' }}
-                          >
-                            {key.replace('_', ' ')}
-                          </strong>
-                          {isEditing ? (
-                            <AutoResizeTextarea
-                              value={val}
-                              onChange={(e) =>
-                                updateEditedField(`bali_zero_take.${key}`, e.target.value)
-                              }
-                              className={`${inputClass} min-h-[60px] resize-none`}
-                              style={getInputStyle(`bzt_${key}`)}
-                              onFocus={() => setFocusedInput(`bzt_${key}`)}
-                              onBlur={() => setFocusedInput(null)}
-                            />
-                          ) : (
-                            <div style={{ color: 'var(--bz-text-2)' }}>{val}</div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {["hidden_insight", "our_analysis", "our_advice"].map(
+                      (key) => {
+                        const val = (activeArticle.bali_zero_take as any)[key];
+                        return (
+                          <div key={key}>
+                            <strong
+                              className="block mb-1 capitalize"
+                              style={{ color: "var(--bz-text-1)" }}
+                            >
+                              {key.replace("_", " ")}
+                            </strong>
+                            {isEditing ? (
+                              <AutoResizeTextarea
+                                value={val}
+                                onChange={(e) =>
+                                  updateEditedField(
+                                    `bali_zero_take.${key}`,
+                                    e.target.value,
+                                  )
+                                }
+                                className={`${inputClass} min-h-[60px] resize-none`}
+                                style={getInputStyle(`bzt_${key}`)}
+                                onFocus={() => setFocusedInput(`bzt_${key}`)}
+                                onBlur={() => setFocusedInput(null)}
+                              />
+                            ) : (
+                              <div style={{ color: "var(--bz-text-2)" }}>
+                                {val}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
 
@@ -898,30 +1031,33 @@ export default function ArticleComposerPage() {
                 <div className="flex flex-col gap-2">
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     Next Steps
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[13px]">
-                    {['expat', 'investor'].map((type) => (
+                    {["expat", "investor"].map((type) => (
                       <div key={type}>
                         <div
                           className="font-medium mb-1 capitalize"
-                          style={{ color: 'var(--bz-text-1)' }}
+                          style={{ color: "var(--bz-text-1)" }}
                         >
                           For {type}s
                         </div>
                         {isEditing ? (
                           <AutoResizeTextarea
-                            value={activeArticle.next_steps[type as 'expat' | 'investor'].join(
-                              '\n'
-                            )}
+                            value={activeArticle.next_steps[
+                              type as "expat" | "investor"
+                            ].join("\n")}
                             onChange={(e) =>
-                              updateEditedField(`next_steps.${type}`, e.target.value.split('\n'))
+                              updateEditedField(
+                                `next_steps.${type}`,
+                                e.target.value.split("\n"),
+                              )
                             }
                             className={`${inputClass} min-h-[100px] resize-none`}
                             style={getInputStyle(`ns_${type}`)}
@@ -931,13 +1067,19 @@ export default function ArticleComposerPage() {
                           />
                         ) : (
                           <ul className="space-y-1">
-                            {activeArticle.next_steps[type as 'expat' | 'investor'].map((s, i) => (
+                            {activeArticle.next_steps[
+                              type as "expat" | "investor"
+                            ].map((s, i) => (
                               <li key={i} className="flex gap-2 items-start">
                                 <span
                                   className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                                  style={{ background: 'var(--bz-accent)' }}
+                                  style={{ background: "var(--bz-accent)" }}
                                 />
-                                <span dangerouslySetInnerHTML={safeMiniMarkdown(renderMiniMarkdown(s))} />
+                                <span
+                                  dangerouslySetInnerHTML={safeMiniMarkdown(
+                                    renderMiniMarkdown(s),
+                                  )}
+                                />
                               </li>
                             ))}
                           </ul>
@@ -950,31 +1092,31 @@ export default function ArticleComposerPage() {
                 {/* ── AI Tags ── */}
                 <div
                   className="mt-2 pt-3 border-t"
-                  style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
                 >
                   <div
                     className="flex items-center gap-1.5 text-[12px] font-medium mb-2"
-                    style={{ color: 'var(--bz-text-2)' }}
+                    style={{ color: "var(--bz-text-2)" }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--bz-accent)' }}
+                      style={{ background: "var(--bz-accent)" }}
                     />
                     AI Tags
                   </div>
                   {isEditing ? (
                     <input
-                      value={activeArticle.ai_tags.join(', ')}
+                      value={activeArticle.ai_tags.join(", ")}
                       aria-label="AI Tags"
                       onChange={(e) =>
                         updateEditedField(
-                          'ai_tags',
-                          e.target.value.split(',').map((s) => s.trim())
+                          "ai_tags",
+                          e.target.value.split(",").map((s) => s.trim()),
                         )
                       }
                       className={inputClass}
-                      style={getInputStyle('ai_tags')}
-                      onFocus={() => setFocusedInput('ai_tags')}
+                      style={getInputStyle("ai_tags")}
+                      onFocus={() => setFocusedInput("ai_tags")}
                       onBlur={() => setFocusedInput(null)}
                     />
                   ) : (
@@ -984,9 +1126,9 @@ export default function ArticleComposerPage() {
                           key={i}
                           className="rounded-full border px-2 py-0.5 text-[11px]"
                           style={{
-                            borderColor: 'rgba(255,255,255,0.1)',
-                            background: 'rgba(255,255,255,0.04)',
-                            color: 'var(--bz-text-2)',
+                            borderColor: "rgba(255,255,255,0.1)",
+                            background: "rgba(255,255,255,0.04)",
+                            color: "var(--bz-text-2)",
                           }}
                         >
                           #{tag}
@@ -1001,35 +1143,43 @@ export default function ArticleComposerPage() {
                   <div
                     className="rounded-xl border p-3.5 flex flex-col gap-3 mt-2"
                     style={{
-                      background: 'rgba(77,184,122,0.04)',
-                      borderColor: 'rgba(77,184,122,0.2)',
+                      background: "rgba(77,184,122,0.04)",
+                      borderColor: "rgba(77,184,122,0.2)",
                     }}
                   >
                     <div
                       className="flex items-center gap-1.5 text-[13px] font-medium"
-                      style={{ color: 'var(--bz-text-1)' }}
+                      style={{ color: "var(--bz-text-1)" }}
                     >
-                      <Globe size={14} style={{ color: 'var(--bz-green, #4db87a)' }} />
+                      <Globe
+                        size={14}
+                        style={{ color: "var(--bz-green, #4db87a)" }}
+                      />
                       <span>Publish to Site</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px]" style={{ color: 'var(--bz-text-2)' }}>
+                        <label
+                          className="text-[11px]"
+                          style={{ color: "var(--bz-text-2)" }}
+                        >
                           Position
                         </label>
                         <Select
                           value={position}
                           onValueChange={(v) =>
-                            setPosition(v as 'normal' | 'secondary' | 'main_featured')
+                            setPosition(
+                              v as "normal" | "secondary" | "main_featured",
+                            )
                           }
                           disabled={isEditing}
                         >
                           <SelectTrigger
                             className="h-8 text-[12px] rounded-xl"
                             style={{
-                              background: 'rgba(255,255,255,0.04)',
-                              borderColor: 'rgba(255,255,255,0.07)',
-                              color: 'var(--bz-text-2)',
+                              background: "rgba(255,255,255,0.04)",
+                              borderColor: "rgba(255,255,255,0.07)",
+                              color: "var(--bz-text-2)",
                             }}
                           >
                             <SelectValue />
@@ -1044,7 +1194,10 @@ export default function ArticleComposerPage() {
                         </Select>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[11px]" style={{ color: 'var(--bz-text-2)' }}>
+                        <label
+                          className="text-[11px]"
+                          style={{ color: "var(--bz-text-2)" }}
+                        >
                           Slug
                         </label>
                         <input
@@ -1052,8 +1205,8 @@ export default function ArticleComposerPage() {
                           onChange={(e) => setCustomSlug(e.target.value)}
                           disabled={isEditing}
                           className={inputClass}
-                          style={getInputStyle('slug')}
-                          onFocus={() => setFocusedInput('slug')}
+                          style={getInputStyle("slug")}
+                          onFocus={() => setFocusedInput("slug")}
                           onBlur={() => setFocusedInput(null)}
                           placeholder="auto-generated-slug"
                         />
@@ -1064,8 +1217,8 @@ export default function ArticleComposerPage() {
                       disabled={publishing || isEditing}
                       className="mt-1 w-full rounded-full py-1.5 text-[12px] font-medium transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
                       style={{
-                        background: 'var(--bz-green, #4db87a)',
-                        color: '#052e16',
+                        background: "var(--bz-green, #4db87a)",
+                        color: "#052e16",
                       }}
                     >
                       {publishing ? (
@@ -1073,16 +1226,18 @@ export default function ArticleComposerPage() {
                       ) : (
                         <Send size={12} />
                       )}
-                      {publishing ? 'Publishing...' : 'Publish Article'}
+                      {publishing ? "Publishing..." : "Publish Article"}
                     </button>
                     {publishedUrl && (
                       <div className="text-[11px]">
-                        <span style={{ color: 'var(--bz-text-2)' }}>Published: </span>
+                        <span style={{ color: "var(--bz-text-2)" }}>
+                          Published:{" "}
+                        </span>
                         <a
                           href={publishedUrl}
                           target="_blank"
                           className="underline break-all"
-                          style={{ color: 'var(--bz-green, #4db87a)' }}
+                          style={{ color: "var(--bz-green, #4db87a)" }}
                         >
                           {publishedUrl}
                         </a>
@@ -1098,8 +1253,8 @@ export default function ArticleComposerPage() {
                       onClick={handleCopyJson}
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                       style={{
-                        color: 'var(--bz-text-2)',
-                        border: '1px solid rgba(255,255,255,0.07)',
+                        color: "var(--bz-text-2)",
+                        border: "1px solid rgba(255,255,255,0.07)",
                       }}
                     >
                       <Copy size={11} /> Copy JSON
@@ -1108,8 +1263,8 @@ export default function ArticleComposerPage() {
                       onClick={handleExportJson}
                       className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all hover:bg-white/[0.04]"
                       style={{
-                        color: 'var(--bz-text-2)',
-                        border: '1px solid rgba(255,255,255,0.07)',
+                        color: "var(--bz-text-2)",
+                        border: "1px solid rgba(255,255,255,0.07)",
                       }}
                     >
                       <Download size={11} /> Export
