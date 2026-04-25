@@ -12,7 +12,7 @@ export function TeamRoleWidget({ metrics }: Props) {
         MY CASES
       </span>
       <span className="text-2xl font-black text-accent-sage leading-none">
-        {metrics.pratiche_assegnate}
+        {metrics.assigned_cases}
       </span>
       <span className="text-[10px] text-white/50">assigned cases</span>
       <div className="h-px bg-white/[0.06]" />
