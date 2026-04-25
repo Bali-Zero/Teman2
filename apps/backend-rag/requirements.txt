@@ -1,6 +1,6 @@
 # ZANTARA RAG Backend Dependencies v5.8 - SECURITY + PERFORMANCE UPDATE
 # Last updated: 2026-03-14
-# Major upgrades: certifi 2026.2.25, langchain-core 1.2.19, fastmcp 3.1.0, litellm 1.82.1, sse-starlette 3.3.2
+# Major upgrades: certifi 2026.2.25, langchain-core 1.2.19, fastmcp 2.1.0, litellm 1.83.7, sse-starlette 3.3.2
 # Previous: HTTPX 0.28+ MIGRATION (2025-12-29)
 
 # Core Framework
@@ -151,14 +151,14 @@ redis>=7.1.0  # Already present, used for caching
 
 # MCP (Model Context Protocol)
 mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility
-fastmcp>=3.1.0  # Updated 2026-03-14: new tool decorators + improved transport
+fastmcp==2.1.0  # Downgraded 2026-04-25 to resolve python-dotenv conflict with litellm 1.83.7
 python-json-logger>=2.0.0
 
 # Security & HTTP
 certifi>=2026.2.25  # Updated 2026-03-14: SSL certificates updated Feb 2026
 
 # LLM Routing
-litellm>=1.82.1  # Updated 2026-03-14: Gemini 2.5 + new provider fixes
+litellm>=1.83.7  # Updated 2026-04-25: Gemini 2.5 + new provider fixes + security fix
 
 # Build trigger 1771636448
 
