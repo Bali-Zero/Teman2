@@ -618,3 +618,7 @@ apps/mouth/public/assets/logo/_pre-fix-backup-*/
 /mobile-*.jpeg
 /test_view.png
 /visa-oracle-handoff-*.png
+
+# war-room: 245MB of pipeline output (zip exports, slide images, logs, __pycache__)
+# All files in apps/war-room/ are runtime artifacts — no source code lives here.
+apps/war-room/
