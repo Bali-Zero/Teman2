@@ -17,9 +17,9 @@
 
     <key>ProgramArguments</key>
     <array>
-      <string>/bin/zsh</string>
-      <string>-lc</string>
-      <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_apply.py</string>
+      <string>/bin/bash</string>
+      <string>-c</string>
+      <string>set -a; source ~/.nuzantara-secrets.env 2>/dev/null; export DATABASE_URL="${DATABASE_URL_LOCAL:-$DATABASE_URL}"; set +a; exec /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_apply.py</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -43,9 +43,9 @@
       <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 
-    <!-- Keep process light: max 10 min (same as Canva apply timeout) -->
+    <!-- Max 25 min (aligned with claude_invoker DEFAULT_TIMEOUT_SEC) -->
     <key>ExitTimeOut</key>
-    <integer>600</integer>
+    <integer>1500</integer>
 
     <!-- Allow manual stop from GUI / launchctl kickstart without permission issues -->
     <key>ProcessType</key>
