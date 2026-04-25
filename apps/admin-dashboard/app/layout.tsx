@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/optimization";
+import { I18nProvider } from "@/src/i18n";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,12 +20,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 ml-64 bg-background">
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </main>
-        </div>
+        <I18nProvider>
+          <div className="flex min-h-screen">
+            <Sidebar />
+            <main className="flex-1 ml-64 bg-background">
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </main>
+          </div>
+        </I18nProvider>
       </body>
     </html>
   );
