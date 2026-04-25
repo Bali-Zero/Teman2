@@ -11,6 +11,7 @@ import { useCallback, useState, useRef } from "react";
 import { useChatStreaming } from "./useChatStreaming";
 import { logger } from "@/lib/logger";
 import { chatMetrics } from "@/lib/metrics";
+import { useTranslation } from "@/i18n";
 import type { Source } from "@/types";
 import type { ChatMessage, ChatImage } from "@/app/chat/actions";
 import type { AgentStep } from "@/types";
@@ -74,6 +75,7 @@ export function useChatSend({
   onError,
   onStep,
 }: UseChatSendOptions): UseChatSendReturn {
+  const { t } = useTranslation();
   const { isStreaming, setIsStreaming, sendStreamingMessage } =
     useChatStreaming({
       sessionId,
@@ -126,7 +128,7 @@ export function useChatSend({
       const streamingStartTime = Date.now();
       chatMetrics.streamingStarted(sessionId);
 
-      setCurrentStatus("Inizializzazione...");
+      setCurrentStatus(t("chat.status.initializing"));
       setStreamingSteps([]);
       setIsStreaming(true);
 
@@ -165,7 +167,7 @@ export function useChatSend({
         );
       } catch (error) {
         onToast(
-          error instanceof Error ? error.message : "Errore di rete",
+          error instanceof Error ? error.message : t("chat.errors.network"),
           "error",
         );
       }
@@ -182,6 +184,7 @@ export function useChatSend({
       sessionId,
       setIsStreaming,
       showErrorToast,
+      t,
     ],
   );
 

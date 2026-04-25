@@ -274,22 +274,20 @@
       "sent": "Abbiamo ricevuto la tua richiesta. Il team ti contatterà."
     }
   },
-  "commandPalette": {
-    "groups": {
-      "navigation": "Navigazione",
-      "cases": "Pratiche",
-      "tax": "Tax",
-      "analytics": "Analytics"
+  "book": {
+    "stats": {
+      "clientsServed": "Clienti serviti",
+      "yearsOfHistory": "Anni di storia",
+      "kbliNavigatorCodes": "Codici KBLI Navigator",
+      "aiChannelsActive": "Canali AI attivi"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Inizializzazione..."
     },
-    "actions": {
-      "goInbox": "Vai a Inbox",
-      "goClients": "Clienti",
-      "goProcess": "Pratiche",
-      "goPrime": "Apri Prime 3D",
-      "createKitas": "Crea pratica KITAS",
-      "createPtSetup": "Crea pratica PT Setup",
-      "exportLkpm": "Esporta LKPM Q1",
-      "openAnalytics": "Analytics funnel"
+    "errors": {
+      "network": "Errore di rete"
     }
   }
 }

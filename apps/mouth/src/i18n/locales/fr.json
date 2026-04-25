@@ -255,22 +255,20 @@
       "trends": "Économie numérique, industrie tech, nouvelles réglementations et analyses de marché."
     }
   },
-  "commandPalette": {
-    "groups": {
-      "navigation": "Navigation",
-      "cases": "Dossiers",
-      "tax": "Fiscalité",
-      "analytics": "Analytique"
+  "book": {
+    "stats": {
+      "clientsServed": "Clients servis",
+      "yearsOfHistory": "Années d'histoire",
+      "kbliNavigatorCodes": "Codes KBLI Navigator",
+      "aiChannelsActive": "Canaux IA actifs"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Initialisation..."
     },
-    "actions": {
-      "goInbox": "Aller à la boîte de réception",
-      "goClients": "Clients",
-      "goProcess": "Dossiers",
-      "goPrime": "Ouvrir Prime 3D",
-      "createKitas": "Créer un dossier KITAS",
-      "createPtSetup": "Créer un dossier PT Setup",
-      "exportLkpm": "Exporter LKPM Q1",
-      "openAnalytics": "Funnel analytique"
+    "errors": {
+      "network": "Erreur réseau"
     }
   }
 }
