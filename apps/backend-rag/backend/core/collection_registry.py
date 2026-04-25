@@ -13,6 +13,11 @@ CANONICAL_LOGICAL_COLLECTIONS: Final[tuple[str, ...]] = (
     "training_conversations_hybrid",
     "immigration_circulars",
     "balizero_news",
+    # Sprint 2 Shadow Graphing (2026-04-25): NLM-extracted claims projected
+    # offline into Qdrant for sub-second runtime retrieval. Schema is
+    # NLMShadowChunk (NOT HierarchicalChunk) — kept fully separate so
+    # legal_unified / visa_oracle / etc. payloads stay rigid.
+    "nlm_shadow_hybrid",
 )
 
 LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
@@ -31,6 +36,8 @@ LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
     "tax_knowledge": "tax_genius_hybrid",
     "legal_updates": "legal_unified_hybrid_hybrid",
     "legal_intelligence": "legal_unified_hybrid_hybrid",
+    # Sprint 2 Shadow Graphing
+    "nlm_shadow_hybrid": "nlm_shadow_hybrid",
 }
 
 CANONICAL_COLLECTION_ALIASES: Final[dict[str, str]] = {
@@ -52,6 +59,7 @@ CANONICAL_COLLECTION_ALIASES: Final[dict[str, str]] = {
     "immigration_circulars": "immigration_circulars",
     "balizero_news": "balizero_news",
     "intel_authoritative_sources": "balizero_news",
+    "nlm_shadow_hybrid": "nlm_shadow_hybrid",
 }
 
 

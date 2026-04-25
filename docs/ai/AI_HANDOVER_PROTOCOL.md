@@ -172,9 +172,9 @@ Use these tools to diagnose and fix issues autonomously:
     - **Rule:** ALWAYS run this before asking the user for review.
     - **Logs:** `sentinel-results/sentinel-run-TIMESTAMP.log`
 
-2.  **Scribe (Documentation):**
-    - **Command:** `python apps/core/scribe.py`
-    - **Purpose:** Generates `docs/LIVING_ARCHITECTURE.md`. Use it to understand the codebase structure.
+2.  **Scribe (Documentation):** ⚠️ DEPRECATED 2026-04-25
+    - **Command:** ~~`python apps/core/scribe.py`~~ (removed in commit `0c60050e8`, dormant-systems cleanup)
+    - **Replacement:** codebase docs are now auto-regenerated via `scripts/docs_sync.py` (DOCSYNC markers in CLAUDE.md/README.md).
 
 3.  **Observability Stack** (Auto-start con `docker compose up`):
     - **Grafana:** `http://localhost:3001` (Dashboard auto-provisioned, `admin/changeme123`)
