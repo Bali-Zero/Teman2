@@ -31,6 +31,10 @@ from backend.services.naga.quality.convergence import check_convergence
 from backend.services.naga.quality.crag_light import crag_evaluate
 from backend.services.naga.quality.source_scorer import score_sources
 from backend.services.naga.readers.gemini_reader import gemini_bulk_read
+from backend.services.naga.readers.ollama_reader import (
+    OllamaFallbackDegraded,
+    ollama_bulk_read_hierarchical,
+)
 from backend.services.naga.search_agents.base import AgentResponse, SearchResult
 from backend.services.naga.search_agents.brave_agent import BraveSearchAgent
 from backend.services.naga.search_agents.domain_agent import IndonesiaDomainAgent
@@ -230,6 +234,7 @@ class NagaOrchestrator:
         convergence_decision: str = "ITERATE"
         iteration: int = 0
         max_iterations = tier_budget.max_iterations
+        fallback_reader: str = ""
 
         # ---- 4. Research loop -----------------------------------------
         while iteration < max_iterations:
@@ -305,9 +310,22 @@ class NagaOrchestrator:
                             session_id=session_id,
                         )
                     except Exception as exc:
-                        logger.error("Gemini bulk read failed: %s", exc)
-                        evidence_map = {}
-                        evidence_map_uri = ""
+                        logger.warning(
+                            "Gemini bulk read failed (%s), falling back to deepseek-r1:32b",
+                            type(exc).__name__,
+                        )
+                        try:
+                            evidence_map = await ollama_bulk_read_hierarchical(
+                                sources=sources_content,
+                                sub_questions=sub_questions,
+                            )
+                            evidence_map_uri = ""
+                            fallback_reader = "ollama_deepseek_r1_32b"
+                        except OllamaFallbackDegraded as fb_exc:
+                            logger.error(
+                                "Both Gemini and Ollama fallback failed: %s", fb_exc
+                            )
+                            raise
 
                 # Extract claims from new results
                 combined_content = "\n\n".join(r.content for r in new_results if r.content)
@@ -424,6 +442,8 @@ class NagaOrchestrator:
             # Internal (not serialized to API, used by persist)
             "_claims": all_claims,
         }
+        if fallback_reader:
+            state["fallback_reader"] = fallback_reader
 
         # ---- 7. Persist to PostgreSQL (non-blocking) ------------------
         db_pool = getattr(self._deps, "db_pool", None)
