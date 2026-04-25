@@ -274,22 +274,20 @@
       "sent": "Kami telah menerima permintaan Anda. Tim akan menghubungi Anda."
     }
   },
-  "commandPalette": {
-    "groups": {
-      "navigation": "Navigasi",
-      "cases": "Kasus",
-      "tax": "Pajak",
-      "analytics": "Analitik"
+  "book": {
+    "stats": {
+      "clientsServed": "Klien dilayani",
+      "yearsOfHistory": "Tahun pengalaman",
+      "kbliNavigatorCodes": "Kode KBLI Navigator",
+      "aiChannelsActive": "Channel AI aktif"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Memulai..."
     },
-    "actions": {
-      "goInbox": "Ke Kotak Masuk",
-      "goClients": "Klien",
-      "goProcess": "Kasus",
-      "goPrime": "Buka Prime 3D",
-      "createKitas": "Buat kasus KITAS",
-      "createPtSetup": "Buat kasus PT Setup",
-      "exportLkpm": "Ekspor LKPM Q1",
-      "openAnalytics": "Funnel analitik"
+    "errors": {
+      "network": "Kesalahan jaringan"
     }
   }
 }
