@@ -1,28 +1,22 @@
-"use client";
+'use client';
 
-import * as Tabs from "@radix-ui/react-tabs";
-import { useRouter, useSearchParams } from "next/navigation";
-import { AccountSettings } from "./AccountSettings";
-import { SecuritySettings } from "./SecuritySettings";
-import { NotificationSettings } from "./NotificationSettings";
-import { PrivacySettings } from "./PrivacySettings";
-import { LanguageSettings } from "./LanguageSettings";
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AccountSettings } from './AccountSettings';
+import { SecuritySettings } from './SecuritySettings';
+import { NotificationSettings } from './NotificationSettings';
+import { PrivacySettings } from './PrivacySettings';
+import { LanguageSettings } from './LanguageSettings';
 
-const TAB_IDS = [
-  "account",
-  "security",
-  "notifications",
-  "privacy",
-  "language",
-] as const;
+const TAB_IDS = ['account', 'security', 'notifications', 'privacy', 'language'] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 const LABELS: Record<TabId, string> = {
-  account: "Account",
-  security: "Security",
-  notifications: "Notifications",
-  privacy: "Privacy",
-  language: "Language",
+  account: 'Account',
+  security: 'Security',
+  notifications: 'Notifications',
+  privacy: 'Privacy',
+  language: 'Language',
 };
 
 /**
@@ -35,48 +29,49 @@ const LABELS: Record<TabId, string> = {
 export function SettingsTabs() {
   const router = useRouter();
   const sp = useSearchParams();
-  const raw = sp?.get("tab") ?? "account";
-  const active: TabId = (TAB_IDS as readonly string[]).includes(raw)
-    ? (raw as TabId)
-    : "account";
+  const raw = sp?.get('tab') ?? 'account';
+  const active: TabId = (TAB_IDS as readonly string[]).includes(raw) ? (raw as TabId) : 'account';
 
   const setTab = (t: string) => {
-    const params = new URLSearchParams(sp?.toString() ?? "");
-    params.set("tab", t);
+    const params = new URLSearchParams(sp?.toString() ?? '');
+    params.set('tab', t);
     router.replace(`/portal/settings?${params.toString()}`);
   };
 
   return (
-    <Tabs.Root value={active} onValueChange={setTab}>
-      <Tabs.List
+    <Tabs defaultValue="account" value={active} onValueChange={setTab}>
+      <TabsList
         aria-label="Settings sections"
+        role="tablist"
         className="flex flex-wrap gap-1 border-b border-white/10 mb-6"
       >
         {TAB_IDS.map((t) => (
-          <Tabs.Trigger
+          <TabsTrigger
             key={t}
             value={t}
+            role="tab"
+            aria-selected={active === t}
             className="px-4 py-2 text-sm text-[#c9a96e]/70 data-[state=active]:text-[#f0ece4] data-[state=active]:border-b-2 data-[state=active]:border-[#d4845a]"
           >
             {LABELS[t]}
-          </Tabs.Trigger>
+          </TabsTrigger>
         ))}
-      </Tabs.List>
-      <Tabs.Content value="account">
+      </TabsList>
+      <TabsContent value="account" role="tabpanel">
         <AccountSettings />
-      </Tabs.Content>
-      <Tabs.Content value="security">
+      </TabsContent>
+      <TabsContent value="security" role="tabpanel">
         <SecuritySettings />
-      </Tabs.Content>
-      <Tabs.Content value="notifications">
+      </TabsContent>
+      <TabsContent value="notifications" role="tabpanel">
         <NotificationSettings />
-      </Tabs.Content>
-      <Tabs.Content value="privacy">
+      </TabsContent>
+      <TabsContent value="privacy" role="tabpanel">
         <PrivacySettings />
-      </Tabs.Content>
-      <Tabs.Content value="language">
+      </TabsContent>
+      <TabsContent value="language" role="tabpanel">
         <LanguageSettings />
-      </Tabs.Content>
-    </Tabs.Root>
+      </TabsContent>
+    </Tabs>
   );
 }
