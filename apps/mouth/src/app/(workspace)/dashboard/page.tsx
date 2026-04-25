@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { LiveActivityFeed, RoleWidget, ZantaraPortalCard } from '@/components/dashboard';
 import { HeroLiveWindow } from '@/components/workspace/HeroLiveWindow';
-import type { PraticaPreview } from '@/components/dashboard/PratichePreview';
+import type { CasePreview } from '@/components/dashboard/CasesPreview';
 import { DashboardErrorBoundary } from '@/components/ErrorBoundary';
 import { TeamActivityPanel } from '@/components/dashboard/TeamActivityPanel';
 import type { TeamMemberStats, TeamOverview } from '@/components/dashboard/TeamActivityPanel';
@@ -166,7 +166,7 @@ function MetricItem({
 }
 
 // ── Pipeline row ───────────────────────────────────────────
-function PipelineRow({ p }: { p: PraticaPreview }) {
+function PipelineRow({ p }: { p: CasePreview }) {
   const cfg = STATUS_CONFIG[p.status];
   const isUrgent =
     p.daysRemaining !== undefined && p.daysRemaining <= 3 && p.status !== 'completed';

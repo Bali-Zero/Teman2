@@ -69,15 +69,15 @@ vi.mock("@/components/dashboard", () => ({
       </a>
     </div>
   ),
-  PratichePreview: ({
-    pratiche,
+  CasesPreview: ({
+    cases,
     isLoading,
   }: {
-    pratiche: unknown[];
+    cases: unknown[];
     isLoading: boolean;
   }) => (
-    <div data-testid="pratiche-preview">
-      {isLoading ? "Loading..." : `${pratiche.length} practices`}
+    <div data-testid="cases-preview">
+      {isLoading ? "Loading..." : `${cases.length} cases`}
     </div>
   ),
   WhatsAppPreview: ({
