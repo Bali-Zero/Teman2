@@ -118,11 +118,16 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # WR2 pipeline: topic → briefed → (draft_generator) → drafts →
+    # (image_generator) → drafts_imaged → (canva_apply) → published.
+    # Accept both 'drafts_imaged' (normal) and 'drafts' (legacy/fallback when
+    # image_generator is disabled) so the pipeline keeps flowing even if
+    # the image step is skipped.
     return await conn.fetch(
         """
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status IN ('drafts_imaged', 'drafts')
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -188,17 +193,48 @@ def _launch_claude() -> None:
 
 
 def _focus_claude_and_send_command(command: str) -> None:
-    """Bring Claude Desktop to front, open a new chat, paste command, press Enter."""
-    rc, _, err = _run_applescript(f'tell application "{CLAUDE_APP_NAME}" to activate')
+    """Bring Claude Desktop to front, open a new chat, paste command, press Enter.
+
+    Hardened (2026-04-25): pbcopy is confirmed before paste (prevents the
+    clipboard containing stale content like "/canva-apply"), frontmost is
+    forced + verified before every keystroke (prevents paste into wrong app
+    like iTerm2 or browser), and Cmd+V uses a longer delay before Enter so
+    Claude Desktop can register the full prompt before submission.
+    """
+    rc, _, err = _run_applescript(
+        f'''
+        tell application "{CLAUDE_APP_NAME}" to activate
+        delay 1
+        tell application "System Events"
+            tell process "{CLAUDE_APP_NAME}" to set frontmost to true
+        end tell
+        '''
+    )
     if rc != 0:
         raise RuntimeError(f"activate failed: {err}")
     time.sleep(1.5)
 
-    # Open a fresh chat
+    def _verify_frontmost() -> None:
+        rc_v, out, err_v = _run_applescript(
+            'tell application "System Events" to return name of first application process whose frontmost is true'
+        )
+        if rc_v != 0:
+            raise RuntimeError(f"frontmost check failed: {err_v}")
+        if out != CLAUDE_APP_NAME:
+            raise RuntimeError(
+                f"frontmost is {out!r}, expected {CLAUDE_APP_NAME!r} — "
+                "refusing to keystroke (would paste into wrong app). "
+                "Close whatever is stealing focus and re-trigger."
+            )
+
+    _verify_frontmost()
+
+    # Open a fresh chat — force frontmost inside the tell
     rc, _, err = _run_applescript(
         f'''
         tell application "System Events"
             tell process "{CLAUDE_APP_NAME}"
+                set frontmost to true
                 keystroke "n" using command down
             end tell
         end tell
@@ -207,15 +243,37 @@ def _focus_claude_and_send_command(command: str) -> None:
     if rc != 0:
         raise RuntimeError(f"Cmd+N failed: {err}")
     time.sleep(1.5)
+    _verify_frontmost()
 
-    # Stage command on clipboard, paste + Enter
+    # Stage command on clipboard and VERIFY the expected bytes landed.
+    # pbcopy has been observed to race under load, leaving stale content
+    # (e.g. a prior "/canva-apply" string) on the clipboard and causing
+    # the paste to submit an empty-ish prompt to Claude Desktop.
     subprocess.run(["pbcopy"], input=command.encode(), check=True)
+    expected_len = len(command)
+    # Give pasteboard a moment to settle, then read back via pbpaste
+    time.sleep(0.5)
+    pb_check = subprocess.run(["pbpaste"], capture_output=True, text=True, timeout=5)
+    actual_len = len(pb_check.stdout)
+    if actual_len < expected_len - 10:  # tolerate small trailing-newline drift
+        # One retry
+        subprocess.run(["pbcopy"], input=command.encode(), check=True)
+        time.sleep(1.0)
+        pb_check = subprocess.run(["pbpaste"], capture_output=True, text=True, timeout=5)
+        actual_len = len(pb_check.stdout)
+        if actual_len < expected_len - 10:
+            raise RuntimeError(
+                f"pbcopy failed to stage full command: expected {expected_len} bytes, "
+                f"clipboard has {actual_len}. Aborting to avoid sending truncated prompt."
+            )
+
     rc, _, err = _run_applescript(
         f'''
         tell application "System Events"
             tell process "{CLAUDE_APP_NAME}"
+                set frontmost to true
                 keystroke "v" using command down
-                delay 0.3
+                delay 0.8
                 key code 36
             end tell
         end tell
@@ -298,10 +356,37 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
         "Driving Claude Desktop..."
     )
 
+    # Claude Desktop does NOT understand Claude Code slash-commands like
+    # "/canva-apply". Instead of sending the command, we inline the full
+    # skill body from ~/.claude/skills/canva-apply.md as a natural-language
+    # prompt. This guarantees Claude Desktop executes the intended 4-phase
+    # flow (edit master → duplicate → reset master → persist) using the
+    # template's original element_id mapping.
+    skill_path = Path.home() / ".claude" / "skills" / "canva-apply.md"
+    if not skill_path.is_file():
+        logger.error("Skill file missing: %s", skill_path)
+        return False
+    skill_body = skill_path.read_text(encoding="utf-8")
+    # Strip the frontmatter (Claude Desktop doesn't care about YAML meta)
+    if skill_body.startswith("---"):
+        parts = skill_body.split("---", 2)
+        if len(parts) >= 3:
+            skill_body = parts[2].lstrip()
+
+    command_text = (
+        "Please execute the Canva carousel apply flow described below. "
+        "The pending JSON already exists at the path below. Follow the steps "
+        "exactly — no TodoWrite, no confirmation prompts between MCP tool calls, "
+        "this is a pre-authorized maintenance operation.\n\n"
+        f"Pending file path: {CANVA_PENDING_PATH}\n\n"
+        "---\n\n"
+        + skill_body
+    )
+
     started_at = time.time()
     try:
         _launch_claude()
-        _focus_claude_and_send_command("/canva-apply")
+        _focus_claude_and_send_command(command_text)
     except Exception as e:
         logger.error("GUI automation failed: %s", e)
         _send_telegram(f"WR2 Canva apply GUI failed: {e}")

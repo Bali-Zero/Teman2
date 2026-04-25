@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "version": "20260425",
+  "description": "CEP golden set — 50 queries (10 per domain) with expected key facts. Scoring is rubric-based via DeepSeek; an answer is HIT iff it covers all required_facts.",
+  "domains": {
+    "immigration": [
+      {
+        "id": "imm-01",
+        "query": "Quanto dura un KITAS E23 (lavoratore straniero) e quante volte è rinnovabile?",
+        "required_facts": ["KITAS E23 ha durata 1 anno", "rinnovabile"],
+        "tier": 1
+      },
+      {
+        "id": "imm-02",
+        "query": "Quali documenti servono per richiedere un Second Home Visa E33G?",
+        "required_facts": ["bank statement USD 130000", "passport", "investment proof"],
+        "tier": 1
+      },
+      {
+        "id": "imm-03",
+        "query": "Posso lavorare in Indonesia con un visto B211A?",
+        "required_facts": ["B211A non permette lavoro retribuito", "visa kunjungan"],
+        "tier": 1
+      },
+      {
+        "id": "imm-04",
+        "query": "Qual è la differenza tra KITAS e KITAP?",
+        "required_facts": ["KITAS temporaneo", "KITAP permanente"],
+        "tier": 2
+      },
+      {
+        "id": "imm-05",
+        "query": "Cosa devo fare se sono in overstay in Indonesia?",
+        "required_facts": ["denda harian Rp 1 juta", "deportasi possibile"],
+        "tier": 2
+      },
+      {
+        "id": "imm-06",
+        "query": "Cos'è il MERP e quando è richiesto?",
+        "required_facts": ["Multiple Exit Re-entry Permit", "ora abolito per E23/E33G"],
+        "tier": 1
+      },
+      {
+        "id": "imm-07",
+        "query": "Procedura RPTKA e DKP-TKA per assumere un lavoratore straniero",
+        "required_facts": ["RPTKA approvazione Kemenaker", "DKP-TKA contributo USD 100/mese"],
+        "tier": 1
+      },
+      {
+        "id": "imm-08",
+        "query": "Visa E28A Investor: requisiti minimi di investimento",
+        "required_facts": ["minimum investment IDR threshold", "PT PMA shareholder"],
+        "tier": 1
+      },
+      {
+        "id": "imm-09",
+        "query": "Si può convertire un visto turistico in KITAS senza uscire dall'Indonesia?",
+        "required_facts": ["onshore conversion permitted in some cases", "KITAS sponsor needed"],
+        "tier": 2
+      },
+      {
+        "id": "imm-10",
+        "query": "Bali Tourist Levy: importo e a chi si applica",
+        "required_facts": ["Rp 150000", "tutti i turisti stranieri", "Perda Bali 2/2025"],
+        "tier": 1
+      }
+    ],
+    "company": [
+      {
+        "id": "comp-01",
+        "query": "Capitale minimo per costituire una PT PMA in Indonesia",
+        "required_facts": ["IDR 10 miliardi paid-up", "IDR 10 miliardi total investment"],
+        "tier": 1
+      },
+      {
+        "id": "comp-02",
+        "query": "Codice KBLI per ristorante con cucina internazionale a Bali",
+        "required_facts": ["KBLI 56101", "rumah makan/restoran"],
+        "tier": 1
+      },
+      {
+        "id": "comp-03",
+        "query": "Differenza tra OSS RBA e OSS-NIB legacy",
+        "required_facts": ["RBA risk-based approach", "NIB Nomor Induk Berusaha"],
+        "tier": 2
+      },
+      {
+        "id": "comp-04",
+        "query": "Una PT PMA può essere posseduta al 100% da stranieri?",
+        "required_facts": ["sì per molti settori", "KBLI determina restrizione"],
+        "tier": 2
+      },
+      {
+        "id": "comp-05",
+        "query": "Lock-up period azioni PT PMA dopo costituzione",
+        "required_facts": ["12 mesi", "lock-up periodo iniziale"],
+        "tier": 2
+      },
+      {
+        "id": "comp-06",
+        "query": "LKPM: cos'è e con che frequenza va presentato",
+        "required_facts": ["Laporan Kegiatan Penanaman Modal", "trimestrale", "BKPM"],
+        "tier": 1
+      },
+      {
+        "id": "comp-07",
+        "query": "Procedura per cambiare il KBLI di una PT PMA esistente",
+        "required_facts": ["amend AKTA notarile", "OSS update", "AHU approval"],
+        "tier": 2
+      },
+      {
+        "id": "comp-08",
+        "query": "Differenza tra direktur e komisaris in una PT PMA",
+        "required_facts": ["direktur esecutivo", "komisaris di vigilanza"],
+        "tier": 1
+      },
+      {
+        "id": "comp-09",
+        "query": "Sertifikat halal: scadenza per PMA settore F&B",
+        "required_facts": ["Oktober 2024 deadline PMA passato", "UMK Oktober 2026"],
+        "tier": 2
+      },
+      {
+        "id": "comp-10",
+        "query": "PT PMA può aprire conto bancario in IDR e USD?",
+        "required_facts": ["sì", "richiede NPWP e NIB"],
+        "tier": 2
+      }
+    ],
+    "tax": [
+      {
+        "id": "tax-01",
+        "query": "Aliquota PPh 21 per dipendenti residenti",
+        "required_facts": ["progressive 5-35%", "tariff bracket annuale"],
+        "tier": 1
+      },
+      {
+        "id": "tax-02",
+        "query": "PPN standard rate Indonesia 2026",
+        "required_facts": ["12%"],
+        "tier": 1
+      },
+      {
+        "id": "tax-03",
+        "query": "CoreTax: cos'è e quando entra in vigore",
+        "required_facts": ["nuovo sistema DGT", "rollout 2026", "PMK 1/2026"],
+        "tier": 1
+      },
+      {
+        "id": "tax-04",
+        "query": "NPWP per uno straniero residente fiscale in Indonesia: come ottenerlo",
+        "required_facts": ["NPWP code 0", "registrazione DJP", "KITAS richiesto"],
+        "tier": 1
+      },
+      {
+        "id": "tax-05",
+        "query": "Withholding tax PPh 26 su royalties pagate a non residenti",
+        "required_facts": ["20% standard", "tax treaty può ridurre"],
+        "tier": 1
+      },
+      {
+        "id": "tax-06",
+        "query": "Quale SPT deve presentare una PT PMA annualmente",
+        "required_facts": ["SPT Tahunan PPh Badan", "form 1771"],
+        "tier": 1
+      },
+      {
+        "id": "tax-07",
+        "query": "BPJS Kesehatan e Ketenagakerjaan: contribuzione datore di lavoro",
+        "required_facts": ["BPJS Kesehatan 4% datore", "BPJS Ketenagakerjaan multiple programs"],
+        "tier": 2
+      },
+      {
+        "id": "tax-08",
+        "query": "Tax incentives per investimento in Bali zone speciali",
+        "required_facts": ["KEK Bali Sanur", "tax holiday possibile"],
+        "tier": 2
+      },
+      {
+        "id": "tax-09",
+        "query": "Un freelancer straniero con KITAS deve pagare le tasse in Indonesia?",
+        "required_facts": ["sì se >183 giorni", "tax resident worldwide income"],
+        "tier": 1
+      },
+      {
+        "id": "tax-10",
+        "query": "Imposte sulla vendita immobile in Indonesia",
+        "required_facts": ["PPh 2.5% venditore", "BPHTB 5% acquirente"],
+        "tier": 1
+      }
+    ],
+    "property": [
+      {
+        "id": "prop-01",
+        "query": "Stranieri possono acquistare terreni Hak Milik in Indonesia?",
+        "required_facts": ["no, Hak Milik solo cittadini indonesiani", "Hak Pakai possibile"],
+        "tier": 1
+      },
+      {
+        "id": "prop-02",
+        "query": "HGB: durata e rinnovabilità",
+        "required_facts": ["30 anni iniziali", "rinnovabile +20 +30"],
+        "tier": 1
+      },
+      {
+        "id": "prop-03",
+        "query": "Hak Pakai per stranieri con KITAS: requisiti",
+        "required_facts": ["KITAS valido", "passaporto", "valore minimo immobile"],
+        "tier": 1
+      },
+      {
+        "id": "prop-04",
+        "query": "Differenza tra leasehold e Hak Pakai per stranieri",
+        "required_facts": ["leasehold contratto privato", "Hak Pakai diritto reale"],
+        "tier": 2
+      },
+      {
+        "id": "prop-05",
+        "query": "Permesso di costruire PBG: documenti richiesti",
+        "required_facts": ["IMB sostituito da PBG", "RTBL conformità", "BAPL approval"],
+        "tier": 1
+      },
+      {
+        "id": "prop-06",
+        "query": "Moratoria edilizia Canggu/Berawa 2026",
+        "required_facts": ["moratoria PBG aree turistiche selezionate", "RDTR Bali"],
+        "tier": 2
+      },
+      {
+        "id": "prop-07",
+        "query": "Affitto villa a turisti via Airbnb: aspetti legali",
+        "required_facts": ["servono licenze hotel/pondok wisata", "tassazione redditi"],
+        "tier": 2
+      },
+      {
+        "id": "prop-08",
+        "query": "Nominee agreement per acquisto Hak Milik: rischi legali",
+        "required_facts": ["nullo per legge", "nessuna tutela giuridica"],
+        "tier": 1
+      },
+      {
+        "id": "prop-09",
+        "query": "Sertifikat Hak Milik vs Sertifikat Hak Guna Usaha",
+        "required_facts": ["SHM proprietà piena solo cittadini", "SHGU concessione agricola"],
+        "tier": 2
+      },
+      {
+        "id": "prop-10",
+        "query": "Tassa di trasferimento immobile in Bali",
+        "required_facts": ["BPHTB 5%", "PPh 2.5% venditore", "notarial fee"],
+        "tier": 1
+      }
+    ],
+    "operations": [
+      {
+        "id": "ops-01",
+        "query": "UMR Bali 2026: importo aggiornato",
+        "required_facts": ["UMR Bali increase YoY", "Pergub Bali"],
+        "tier": 1
+      },
+      {
+        "id": "ops-02",
+        "query": "Procedura licenziamento dipendente in PT PMA",
+        "required_facts": ["UU Cipta Kerja", "pesangon severance", "bipartit conciliation"],
+        "tier": 1
+      },
+      {
+        "id": "ops-03",
+        "query": "Maximum probation period dipendenti contratto PKWTT",
+        "required_facts": ["3 mesi maximum", "PKWTT permanent contract"],
+        "tier": 1
+      },
+      {
+        "id": "ops-04",
+        "query": "Foreign worker quota: come funziona la limitazione",
+        "required_facts": ["RPTKA define quota", "deve indicate posizione e durata"],
+        "tier": 2
+      },
+      {
+        "id": "ops-05",
+        "query": "Permesso di soggiorno tassativo per direktur straniero PT PMA",
+        "required_facts": ["KITAS lavoro E23", "obbligatorio per residenza fiscale"],
+        "tier": 1
+      },
+      {
+        "id": "ops-06",
+        "query": "Pesangon (severance): formula di calcolo base",
+        "required_facts": ["1 mese stipendio per anno servizio", "tabella UU Cipta Kerja"],
+        "tier": 1
+      },
+      {
+        "id": "ops-07",
+        "query": "BPJS Ketenagakerjaan: quante categorie di programmi",
+        "required_facts": ["JHT", "JKK", "JKM", "JP", "JKP"],
+        "tier": 2
+      },
+      {
+        "id": "ops-08",
+        "query": "PT PMA deve avere THR per dipendenti?",
+        "required_facts": ["sì, obbligatorio", "1 mese stipendio prima Lebaran/festa"],
+        "tier": 1
+      },
+      {
+        "id": "ops-09",
+        "query": "Differenza tra PKWT e PKWTT",
+        "required_facts": ["PKWT a tempo determinato", "PKWTT a tempo indeterminato"],
+        "tier": 1
+      },
+      {
+        "id": "ops-10",
+        "query": "Lavoro straordinario: limite massimo settimanale",
+        "required_facts": ["3 ore al giorno max", "14 ore alla settimana max"],
+        "tier": 2
+      }
+    ]
+  }
+}

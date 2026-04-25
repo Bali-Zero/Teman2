@@ -200,7 +200,22 @@ def _collect_openclaw_states(registry: dict) -> dict:
 
 
 def collect_state_files(registry: Optional[dict] = None) -> dict:
-    """Read local + Pro state files + OpenClaw bridge. Returns {job_id: state_dict}."""
+    """Read local + Pro state files + OpenClaw bridge. Returns {job_id: state_dict}.
+
+    Read precedence (lowest to highest — later writes override earlier):
+      1. OpenClaw gateway projection (jobs.json → synthesised state).
+      2. Local {job}.last.json files.
+      3. **ARCH-9 native heartbeat** ``heartbeat_{name}.json`` written by
+         ``apps.evaluator.nlm_deep_research.heartbeat_monitor.record_success``.
+         When present, it is the only source that reflects a real successful
+         run of an NLM pipeline — the gateway projection may lie (see
+         research/nlm-elevation/08-s02-dispatcher-diagnosis.md).
+
+    Rationale: gateway rewrites .last.json every 5min with lastRunAtMs from
+    jobs.json, which stays frozen when run_nbN_pipeline.sh doesn't notify
+    openclaw. ARCH-9 is only written on actual success, so it is the truth
+    source for any NLM pipeline that has a matching registry entry.
+    """
     if registry is None:
         registry = load_registry()
     states = {}
@@ -215,6 +230,52 @@ def collect_state_files(registry: Optional[dict] = None) -> dict:
             states[job_id] = json.loads(open(path).read())
         except Exception:
             pass
+
+    # ARCH-9 heartbeat — highest precedence for NLM pipelines.
+    # Map heartbeat_{name}.json → registry job_id based on pipeline naming.
+    for path in glob.glob(os.path.join(STATE_DIR, "heartbeat_*.json")):
+        try:
+            pipeline_name = os.path.basename(path).replace("heartbeat_", "").replace(".json", "")
+            hb = json.loads(open(path).read())
+            last_success = hb.get("last_success")
+            if not last_success:
+                continue
+            # Convert ISO timestamp to epoch seconds for Sentinel state format
+            try:
+                from datetime import datetime as _dt
+                ts = _dt.fromisoformat(last_success).timestamp()
+            except (ValueError, TypeError):
+                continue
+            # Match pipeline_name to registry job_id. Try direct and variants.
+            candidates = [
+                pipeline_name,                             # nb2_pipeline
+                f"nlm_{pipeline_name}",                    # nlm_nb2_pipeline
+                pipeline_name.replace("_pipeline", ""),    # nb2
+                f"nlm_{pipeline_name.replace('_pipeline', '')}",  # nlm_nb2
+            ]
+            # Fuzzy: find registry keys starting with nlm_{nbN}_ if pipeline is nbN_pipeline
+            short = pipeline_name.split("_")[0]
+            if short.startswith("nb"):
+                fuzzy = [k for k in registry if k.startswith(f"nlm_{short}_") or k.startswith(f"{short}_")]
+                candidates.extend(fuzzy)
+            matched = next((c for c in candidates if c in registry), None)
+            if not matched:
+                continue
+            # Only override if ARCH-9 heartbeat is newer than whatever we have
+            existing_ts = (states.get(matched) or {}).get("ts", 0) or 0
+            if ts >= existing_ts:
+                states[matched] = {
+                    "job": matched,
+                    "ts": ts,
+                    "status": "ok",
+                    "last_error": "",
+                    "retry_attempt": 0,
+                    "_source": "arch9_heartbeat",
+                    "_heartbeat_file": os.path.basename(path),
+                    "duration_seconds": hb.get("duration_seconds"),
+                }
+        except Exception as exc:
+            logger.debug("Failed to read ARCH-9 heartbeat %s: %s", path, exc)
 
     # Pro state files via SSH (skip if we are Pro)
     import socket
