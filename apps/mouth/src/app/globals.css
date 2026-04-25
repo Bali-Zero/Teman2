@@ -537,6 +537,43 @@ main,
 }
 
 @layer utilities {
+  /* WCAG 2.1 — visually-hidden helper (text only for AT). Keep clipping
+     pattern, not display:none, so screen readers still announce the node. */
+  .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  /* Workspace skip-link — appears on first Tab so keyboard users can jump
+     past the sidebar/header into <main id="main-content">. */
+  .bz-skip-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--bz-accent, #d4845a);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom-right-radius: 6px;
+    transform: translateY(-150%);
+    transition: transform 150ms ease;
+  }
+  .bz-skip-link:focus,
+  .bz-skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+  }
+
   .glass-panel-deep {
     @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
   }

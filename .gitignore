@@ -598,27 +598,5 @@ apps/backend-rag/scripts/output/
 apps/cell/data/.ai_intel_last_harvest
 apps/mouth/public/assets/logo/_pre-fix-backup-*/
 
-# Root-level junk / one-off scratches (prevent recurrence after cleanup).
-# PII scratch dir Nuzantara/ archived at ~/Desktop/nuzantara-archive/crm/
-# outside git. See commit message of the cleanup PR for history.
-/Nuzantara/
-/Oops.rej
-*.rej
-/api-news.txt
-/output.json
-/extract_info.py
-/apply_glass.cjs
-/tsconfig.tsbuildinfo
-/ingestion_t0_regulations.log
-/a/
-
-# Root screenshots / QA artifacts (never committed, keep local only)
-/article-*.png
-/homepage-*.png
-/mobile-*.jpeg
-/test_view.png
-/visa-oracle-handoff-*.png
-
-# war-room: 245MB of pipeline output (zip exports, slide images, logs, __pycache__)
-# All files in apps/war-room/ are runtime artifacts — no source code lives here.
-apps/war-room/
+# F1 baseline artifacts (large screenshots/JSON dumps)
+.artifacts/

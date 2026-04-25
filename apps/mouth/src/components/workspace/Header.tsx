@@ -13,6 +13,7 @@ interface HeaderProps {
   onMobileMenuToggle: () => void;
   isMobileMenuOpen: boolean;
   whatsappUnread?: number;
+  mobileMenuToggleRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -27,6 +28,7 @@ export function Header({
   onMobileMenuToggle,
   isMobileMenuOpen,
   whatsappUnread = 0,
+  mobileMenuToggleRef,
 }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -95,25 +97,28 @@ export function Header({
       <div className="flex items-center h-full px-5 gap-3">
         {/* Mobile menu */}
         <button
+          ref={mobileMenuToggleRef}
           onClick={onMobileMenuToggle}
           className="md:hidden p-1.5 rounded-lg transition-colors"
-          style={{ color: "var(--bz-text-2)" }}
+          style={{ color: "var(--bz-text-1)" }}
           aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="workspace-mobile-nav"
         >
           {isMobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
         </button>
 
-        {/* Greeting + Page context */}
+        {/* Greeting + Page context (presentational — real h1 lives in <main>) */}
         <div className="flex items-baseline gap-2 min-w-0">
-          <h1
+          <span
             className="text-[13px] font-medium truncate"
             style={{ color: "var(--bz-text-1)" }}
           >
             {userName ? `${userName}, ayo!` : getPageTitle()}
-          </h1>
+          </span>
           <span
             className="hidden lg:inline text-[11px] truncate"
-            style={{ color: "var(--bz-text-3)" }}
+            style={{ color: "var(--bz-text-1)" }}
           >
             We are writing the history!
           </span>
@@ -124,7 +129,7 @@ export function Header({
         {/* Date chip */}
         <span
           className="hidden sm:block text-[11px]"
-          style={{ color: "var(--bz-text-3)" }}
+          style={{ color: "var(--bz-text-2)" }}
         >
           {formatDate()}
         </span>
