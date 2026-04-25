@@ -10,11 +10,35 @@ No more reading .md files at runtime.
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING, Any
 
-from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE
+from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE as _TEMPLATE_V1
 
 logger = logging.getLogger(__name__)
+
+# Feature flag: ZANTARA_PROMPT_VERSION selects between v1 (current SSOT,
+# Italian-heavy examples) and v2 (multi-language refactor, populated by
+# PR-16b/17). Default is v1 — v2 is currently a transparent re-export of
+# v1 (see backend/prompts/zantara_core_v2.py), so flipping the flag is a
+# no-op until those PRs land.
+_PROMPT_VERSION = os.environ.get("ZANTARA_PROMPT_VERSION", "v1").lower()
+
+if _PROMPT_VERSION == "v2":
+    try:
+        from backend.prompts.zantara_core_v2 import (
+            ZANTARA_MASTER_TEMPLATE,
+        )
+        logger.info("PromptManager: using zantara_core_v2 (ZANTARA_PROMPT_VERSION=v2)")
+    except ImportError as exc:  # pragma: no cover — defensive fallback
+        logger.warning(
+            "PromptManager: ZANTARA_PROMPT_VERSION=v2 requested but "
+            "zantara_core_v2 import failed (%s) — falling back to v1.",
+            exc,
+        )
+        ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+else:
+    ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
 
 # ToneStyle is imported at runtime to avoid circular import
 # The TONE_PROMPTS dict uses string keys at module level, mapped to ToneStyle at runtime
