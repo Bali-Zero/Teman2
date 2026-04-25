@@ -110,7 +110,7 @@
 | `apps/backend-rag/backend/services/` | `backend_02_services.txt`       |
 | `apps/backend-rag/backend/core/`     | `backend_03_core_and_misc.txt`  |
 | `apps/mouth/src/`                    | `nuzantara_frontend_mouth.txt`  |
-| `apps/federation/`                   | `federation_*.txt`              |
+| ~~`apps/federation/`~~               | ~~`federation_*.txt`~~ — **PoC rimosso 2026-04-25 (commit 0c60050e8)** |
 | `apps/nuzantara-mcp/`                | `nuzantara_mcp_ecosystem.txt`   |
 | `docs/*.md`                          | Update individual doc sources   |
 

@@ -102,7 +102,7 @@ app = FastAPI(title="NLM HTTP Bridge", version="1.0.0", lifespan=lifespan)
 class NLMQueryRequest(BaseModel):
     notebook_id: str
     question: str
-    timeout: int = Field(default=60, ge=1, le=120)
+    timeout: int = Field(default=100, ge=1, le=180)
 
 
 class NLMCitation(BaseModel):

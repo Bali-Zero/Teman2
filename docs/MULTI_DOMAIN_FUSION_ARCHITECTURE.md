@@ -1,5 +1,13 @@
 # Multi-Domain Fusion Architecture: NotebookLM + Zantara
 
+> ⚠️ **STATUS: ARCHIVED / OUTDATED (2026-04-25)**
+>
+> Questo doc descrive un'architettura **parzialmente smantellata**. Il commit `0c60050e8` ("massive repo cleanup — untrack 739 files") ha rimosso `apps/federation/` come PoC A2A non più attivo (609 righe `a2a_service.py` cancellate). I riferimenti qui sotto a `apps/federation/*` (orchestrator.py, a2a_service.py porta 8087, nlm_auth_bridge.py) **non sono più codice eseguito**.
+>
+> **Cosa resta vivo**: `MultiAgentCoordinator` (backend/services/rag/multi_agent_coordinator.py), `AgenticRAGOrchestrator` (backend/services/rag/agentic/orchestrator.py), i 7 notebook NotebookLM, le MCP tools.
+>
+> Questo banner è stato aggiunto per evitare che NB-1 (codebase aggregator) continui a servire questo doc come "architettura attiva". Per lo stato reale aggiornato vedi `research/nlm-elevation/` (audit 2026-04-25).
+
 ## Problema
 
 Quando un cliente chiede _"Voglio aprire un ristorante a Bali come straniero -- che visa mi serve, quanto costa la company, e le tasse?"_, la query tocca 3+ domini (Immigration, Company+KBLI, Tax). Ogni dominio ha un notebook NotebookLM dedicato con fonti curate. Il sistema deve:
