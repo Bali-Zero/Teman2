@@ -32,6 +32,7 @@ Usage:
   python surgeon.py "Fix DTZ005" "backend/app/routers/foo.py" DTZ005 --dry-run
 """
 
+import ast
 import fcntl
 import json
 import logging
@@ -78,6 +79,8 @@ UNTOUCHABLE_FILES = [
     "backend/main.py", "backend/main_cloud.py",
     "backend/app/dependencies.py", "backend/app/core/config.py",
     "backend/prompts/zantara_core.py",
+    # prevent self-modification loops: surgeon must not rewrite itself.
+    "apps/evaluator/core_guardian/surgeon.py",
 ]
 
 UNTOUCHABLE_DIRS = [
@@ -506,6 +509,52 @@ def run_ruff_in_worktree(worktree_path: Path) -> str | None:
         return f"Ruff check failed: {e}"
 
 
+def _enforce_c901_radon(worktree_path: Path) -> str | None:
+    """After a C901 fix, verify that no modified function still has cc > 10.
+
+    Uses `radon cc --json` on the changed files. If radon is not installed
+    (FileNotFoundError), logs a warning and returns None (skip, not fail).
+    On any other failure, logs a warning and returns None."""
+    try:
+        files_result = subprocess.run(
+            ["git", "diff", "--name-only"],
+            cwd=str(worktree_path), capture_output=True, text=True, timeout=10,
+        )
+        changed = [f for f in files_result.stdout.strip().split("\n")
+                   if f.strip() and f.endswith(".py")]
+        if not changed:
+            return None
+
+        radon_result = subprocess.run(
+            ["radon", "cc", "--json", *changed],
+            cwd=str(worktree_path), capture_output=True, text=True, timeout=15,
+        )
+        if radon_result.returncode != 0 or not radon_result.stdout.strip():
+            logger.warning("radon returned no output (rc=%s)", radon_result.returncode)
+            return None
+
+        cc_data = json.loads(radon_result.stdout)
+        for _file_path, entries in cc_data.items():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                complexity = entry.get("complexity", 0)
+                if complexity > 10:
+                    name = entry.get("name", "<unknown>")
+                    logger.error("C901 regression: %s still has cc=%d", name, complexity)
+                    return f"radon check failed: {name} cc={complexity}"
+        return None
+    except FileNotFoundError:
+        logger.warning("radon not installed — skipping C901 complexity check")
+        return None
+    except (subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        logger.warning("radon check skipped due to error: %s", exc)
+        return None
+    except Exception as exc:
+        logger.warning("radon check skipped due to error: %s", exc)
+        return None
+
+
 # --- Merge Bot ---
 
 def merge_to_main(branch_name: str) -> str | None:
@@ -817,11 +866,116 @@ def _log_worktree_diff(worktree_path: Path) -> None:
 
 # --- Prompt Building ---
 
+def get_ruff_violations(file_path: Path, ruff_code: str) -> list[dict]:
+    """Return exact violation locations for ruff_code in file_path.
+
+    Runs `ruff check --select {ruff_code} --output-format json {file_path}`.
+    Each dict has keys {row, col, message}. Returns [] on any error."""
+    try:
+        result = subprocess.run(
+            ["ruff", "check", "--select", ruff_code, "--output-format", "json", str(file_path)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if not result.stdout.strip():
+            return []
+        data = json.loads(result.stdout)
+        return [
+            {
+                "row": v.get("location", {}).get("row"),
+                "col": v.get("location", {}).get("column"),
+                "message": v.get("message", ""),
+            }
+            for v in data
+        ]
+    except (subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
+        logger.warning("get_ruff_violations failed: %s", exc)
+        return []
+    except Exception as exc:
+        logger.warning("get_ruff_violations failed: %s", exc)
+        return []
+
+
+def _fallback_line_windows(file_path: Path, violations: list[dict]) -> str:
+    """Fallback: 10-line window around each violation row, deduplicated."""
+    try:
+        lines = file_path.read_text().split("\n")
+    except OSError:
+        return ""
+    out: list[str] = []
+    seen: set[tuple[int, int]] = set()
+    for v in violations:
+        row = v.get("row")
+        if row is None:
+            continue
+        start = max(1, row - 5)
+        end = min(len(lines), row + 5)
+        key = (start, end)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f"# fallback window lines {start}-{end}\n" + "\n".join(lines[start - 1:end]))
+    return "\n\n# ---\n\n".join(out)
+
+
+def extract_ast_context(file_path: Path, violations: list[dict]) -> str:
+    """For each violation row, find the innermost enclosing
+    FunctionDef/AsyncFunctionDef/ClassDef and return deduplicated snippets.
+
+    Falls back to 10-line windows on SyntaxError."""
+    if not violations:
+        return ""
+    try:
+        source = file_path.read_text()
+        tree = ast.parse(source)
+    except SyntaxError:
+        return _fallback_line_windows(file_path, violations)
+    except OSError:
+        return ""
+
+    lines = source.split("\n")
+    collected_spans: set[tuple[int, int]] = set()
+    snippets: list[str] = []
+
+    for v in violations:
+        row = v.get("row")
+        if row is None:
+            continue
+
+        best: ast.AST | None = None
+        best_span = (0, len(lines))
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                start = node.lineno
+                end = getattr(node, "end_lineno", None) or start + 20
+                if start <= row <= end and (end - start) < (best_span[1] - best_span[0]):
+                    best = node
+                    best_span = (start, end)
+
+        if best is None:
+            start = max(1, row - 5)
+            end = min(len(lines), row + 5)
+            name = f"<block lines {start}-{end}>"
+        else:
+            start, end = best_span
+            name = getattr(best, "name", f"<block lines {start}-{end}>")
+
+        span = (start, end)
+        if span in collected_spans:
+            continue
+        collected_spans.add(span)
+        snippet_lines = lines[start - 1:end]
+        snippets.append(f"# {name} (lines {start}-{end})\n" + "\n".join(snippet_lines))
+
+    return "\n\n# ---\n\n".join(snippets)
+
+
 def build_surgeon_prompt(
     task_description: str,
     target_file: str,
     ruff_code: str,
     failed_diff: str | None = None,
+    ast_context: str | None = None,
+    ruff_violations_json: str | None = None,
 ) -> str:
     """Costruisce il prompt per OpenClaw. Informativo, non enforcement."""
     untouchable_list = "\n".join(f"  - {f}" for f in UNTOUCHABLE_FILES + UNTOUCHABLE_DIRS)
@@ -850,6 +1004,26 @@ PREVIOUS ATTEMPT FAILED. Do NOT repeat this approach:
 {failed_diff[:2000]}
 ```
 Use a fundamentally different approach.
+"""
+
+    if ast_context or ruff_violations_json:
+        prompt += f"""
+
+RUFF VIOLATIONS (exact locations, JSON):
+{ruff_violations_json or "[]"}
+
+AST CONTEXT (functions/classes containing violations):
+```python
+{ast_context or "# none"}
+```
+
+Guidance by code:
+  - C901: split the function into helpers so each has cyclomatic complexity <= 10.
+    Keep public signature; extract private helpers prefixed _.
+  - TRY400: inside except blocks, replace logger.error(...) with logger.exception(...).
+    Do NOT remove the except — only change the log method.
+  - BLE001: replace bare `except Exception:` (or `except:`) with specific exception classes.
+    If unclear, catch (ValueError, TypeError, RuntimeError) and re-raise others.
 """
 
     return prompt
@@ -978,13 +1152,30 @@ def _surgeon_core(
                 save_state(state)
                 return {"success": True, "message": "File already clean, no fix needed", "run_id": run_id}
         else:
-            # Fallback: Claude Code CLI
-            prompt = build_surgeon_prompt(task_description, target_file, ruff_code, failed_diff)
+            # Fallback: Claude Code CLI.
+            # For UNSAFE codes (C901/TRY400/BLE001) enrich the prompt with
+            # exact ruff violations and AST context of the enclosing scope.
+            ast_ctx: str | None = None
+            violations_json: str | None = None
+            if ruff_code in UNSAFE_RUFF_CODES:
+                full_target_path = worktree_path / "apps" / "backend-rag" / target_file
+                violations = get_ruff_violations(full_target_path, ruff_code)
+                ast_ctx = extract_ast_context(full_target_path, violations)
+                violations_json = json.dumps(violations, indent=2)
+
+            prompt = build_surgeon_prompt(
+                task_description, target_file, ruff_code, failed_diff,
+                ast_context=ast_ctx,
+                ruff_violations_json=violations_json,
+            )
+
+            # UNSAFE refactors are more complex — bump budget.
+            budget = 1.5 if ruff_code in UNSAFE_RUFF_CODES else 1.0
 
             result = invoke_claude_code(
                 prompt=prompt,
                 cwd=worktree_path / "apps" / "backend-rag",
-                max_budget_usd=1.0,
+                max_budget_usd=budget,
             )
 
             if result is None or not result.get("ok"):
@@ -1026,6 +1217,14 @@ def _surgeon_core(
         if err:
             logger.warning(f"Ruff warning: {err}")
             # Non blocking per ora — il fix potrebbe ridurre violations globali
+
+        # 12b. C901: verify cyclomatic complexity with radon on modified files.
+        if ruff_code == "C901":
+            err = _enforce_c901_radon(worktree_path)
+            if err:
+                _record_failure(state, run_id, ruff_code, err)
+                cleanup_worktree(worktree_path, branch_name)
+                return _fail(run_id, err)
 
         # 13. Run pytest
         logger.info("Running pytest in worktree...")
