@@ -20,6 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from backend.app.auth.public_endpoints import PUBLIC_ENDPOINTS, find_entry
 from backend.app.core.config import settings
 from backend.app.services.api_key_auth import APIKeyAuth
 from backend.app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_csrf
@@ -94,160 +95,16 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         self.api_auth_enabled = settings.api_auth_enabled
         self.api_auth_bypass_db = settings.api_auth_bypass_db
 
-        # Define public endpoints that don't require authentication
-        # SECURITY POLICY: Only endpoints that MUST be public for legitimate business reasons
-        # Each endpoint has a documented business justification below
-        self.public_endpoints = [
-            # ========================================================================
-            # INFRASTRUCTURE & MONITORING ENDPOINTS
-            # ========================================================================
-            "/",  # BUSINESS: Root path for simple connectivity checks
-            "/health",  # BUSINESS: Health checks required by load balancers, monitoring systems
-            "/health/",  # BUSINESS: Alternative health check path (common pattern)
-            "/api/health",  # BUSINESS: Alternative health check path
-            # SECURITY: /docs, /openapi.json, /redoc, /metrics moved to _is_protected_infra_endpoint()
-            # They require admin API key in production, are unrestricted in dev/staging
-            # ========================================================================
-            # AUTHENTICATION ENDPOINTS (Must be public for initial login)
-            # ========================================================================
-            "/api/auth/team/login",  # BUSINESS: Team member login - must be public to allow initial authentication
-            "/api/auth/login",  # BUSINESS: User login endpoint - must be public to allow initial authentication
-            "/api/auth/csrf-token",  # BUSINESS: CSRF token generation - must be public for CSRF protection flow
-            # REMOVED: conversation endpoints require auth (security audit 2026-04-03)
-            # "/api/whatsapp/conversations",  # Now requires JWT/API key
-            # "/api/whatsapp/messages/",
-            # "/api/telegram/conversations",
-            # "/api/telegram/messages/",
-            # "/api/instagram/conversations",
-            # "/api/instagram/messages/",
-            "/api/workflow/",
-            # ========================================================================
-            # WEBHOOK ENDPOINTS (Verified by secret tokens/signatures)
-            # ========================================================================
-            "/webhook/whatsapp",  # BUSINESS: Meta WhatsApp webhook - verified by WHATSAPP_VERIFY_TOKEN
-            "/api/whatsapp/webhook",  # ALIAS: Meta WhatsApp webhook (legacy URL configured in Meta Dashboard)
-            "/webhook/instagram",  # BUSINESS: Meta Instagram webhook - verified by INSTAGRAM_VERIFY_TOKEN
-            "/webhook/twitter",  # BUSINESS: X/Twitter Account Activity webhook - verified by HMAC signature
-            "/api/telegram/webhook",  # BUSINESS: Telegram bot webhook (legacy path)
-            "/webhook/telegram",  # BUSINESS: Telegram bot webhook (multi-channel architecture)
-            "/api/webhook/telegram",  # BUSINESS: Telegram bot webhook (api-prefixed path)
-            # ========================================================================
-            # OAUTH CALLBACK ENDPOINTS (Public by OAuth 2.0 specification)
-            # ========================================================================
-            "/api/integrations/zoho/callback",  # BUSINESS: Zoho OAuth callback - required by OAuth 2.0 flow
-            "/api/integrations/google-drive/callback",  # BUSINESS: Google Drive OAuth callback - required by OAuth 2.0 flow
-            "/api/integrations/google-drive/system/status",  # BUSINESS: OAuth status check - REVIEW: Should require auth
-            "/api/admin/drive/health",  # BUSINESS: Drive health check - public status for diagnostics
-            # SECURITY: /api/admin/drive/poll, /backfill, /refresh, /service-account-status, /test-list-files
-            # moved to API key auth — these are write/admin operations that must not be public.
-            # Air cron must send X-API-Key header for /poll.
-            "/admin/google-drive/callback-system",  # BUSINESS: Admin OAuth callback (public per OAuth 2.0 spec)
-            "/admin/zoho/callback",  # BUSINESS: Admin Zoho OAuth callback (public per OAuth 2.0 spec)
-            # SECURITY: /admin/google-drive/auth-system and /admin/zoho/auth removed from public.
-            # OAuth initiation requires admin auth to prevent unauthorized OAuth flows.
-            # SECURITY: ALL /test/* endpoints REMOVED from public (2026-03-24 security audit).
-            # These allowed unauthenticated invoice triggers, client email updates, and practice listing.
-            # They now require API key or admin JWT auth.
-            # ========================================================================
-            # CLIENT PORTAL ENDPOINTS (Public for client self-service)
-            # ========================================================================
-            "/api/portal/invite/validate/",  # BUSINESS: Client invitation validation - token-based security
-            "/api/portal/invite/complete",  # BUSINESS: Client registration completion - token-based security
-            "/api/hr/late-reply/",  # BUSINESS: HR late check-in reply form - per-incident token-based security (secrets.compare_digest), GET form + POST submit, no PII collected. Token IS the auth.
-            # ========================================================================
-            # PUBLIC KNOWLEDGE BASE ENDPOINTS
-            # ========================================================================
-            "/api/knowledge/visa",  # BUSINESS: Public visa types knowledge base - informational content for website visitors
-            # "/api/agentic-rag/stream"  # REMOVED: F-7 security fix — requires auth,  # BUSINESS: AI Chat streaming - allowing access to fix 401 issues
-            # "/api/agentic-rag/query"  # REMOVED: F-7 security fix — requires auth,  # BUSINESS: Prime Intelligence AI chat - public anonymous access for map intelligence
-            "/api/oracle/health",  # BUSINESS: Oracle health check - public status endpoint
-            "/api/agent/health",  # BUSINESS: LangGraph agent layer health check - public status endpoint for monitoring
-            "/api/cell/metrics",  # BUSINESS: CELL ErrorRateSensor reads this internally — no user data exposed
-            "/api/v1/kbli-notebook/",  # BUSINESS: KBLI Explorer - public business classification search, inspect, and chat
-            "/api/webhook/chat",  # BUSINESS: Public AI chat webhook for website visitors
-            "/api/webhook/chat/history",  # BUSINESS: Public chat history retrieval for session persistence
-            # ========================================================================
-            # BLOG & MARKETING ENDPOINTS (Public for website visitors)
-            # ========================================================================
-            "/api/news",  # BUSINESS: Public news/intel feed - approved articles for balizero.com homepage and blog
-            "/api/blog/",  # BUSINESS: Public blog articles and content
-            "/api/vitals",  # BUSINESS: Frontend performance telemetry
-            "/api/blog/newsletter/subscribe",  # BUSINESS: Newsletter subscription - public marketing endpoint
-            "/api/blog/newsletter/confirm",  # BUSINESS: Newsletter confirmation - token-based verification
-            "/api/blog/newsletter/unsubscribe",  # BUSINESS: Newsletter unsubscribe - token-based verification (legal requirement)
-            "/api/blog/ask",  # BUSINESS: AskZantara widget on blog articles - public Q&A feature
-            # ========================================================================
-            # PREVIEW ENDPOINTS (Public for content preview)
-            # ========================================================================
-            "/preview/",  # BUSINESS: Article preview pages for Telegram approval - no indexing, public preview
-            "/api/dashboard/map/",  # BUSINESS: Streamlit dashboard — KBLI validation, client geo, risk zones, stats
-            # ========================================================================
-            # FUNNEL HUB — PRE-AUTH LEAD TRACKING (v2 L1 Funnel Hub)
-            # ========================================================================
-            "/api/funnel/session/touch",  # BUSINESS: Pre-auth lead cookie bz_session touch — anonymous UUID, no PII. Required for cross-funnel session attribution (visa/kbli/tax/property/home).
-            "/api/funnel/session/convert",  # BUSINESS: Lead→client conversion bridge (called by portal login flow). Takes session_id + client_id.
-            "/api/analytics/funnel-event",  # BUSINESS: 11 whitelisted funnel events (see packages/core/analytics/funnel-view.ts FUNNEL_EVENTS). No PII — session_id only.
-            # ========================================================================
-            # HOMEPAGE 4-APP (Visa Check + KBLI + Tax + Zoning) — public, no-PII
-            # ========================================================================
-            # Each app persists context in visa_checks/kbli_checks/etc. with a random
-            # hash as the public id. Lead capture stores the intent + wa.me URL with
-            # a 7-day TTL (see migration 119). No account, no PII stored beyond what
-            # the user types into the handoff form.
-            "/api/lead/capture",  # BUSINESS: 4-app homepage → WhatsApp handoff. POST only; returns wa.me URL.
-            "/api/visa/check/start",  # BUSINESS: Branch selector (Clock vs Match) for Visa Check app.
-            "/api/visa/clock",  # BUSINESS: Visa Clock submission + shareable /visa/clock/{hash} lookup.
-            "/api/visa/match",  # BUSINESS: Visa Match submission + shareable /visa/match/{hash} lookup.
-            "/api/funnel_email/unsubscribe/",  # BUSINESS: One-click email unsubscribe (token-based, CAN-SPAM compliant).
-            "/api/prime/zoning",  # BUSINESS: Prime Intelligence geospatial zoning API - public map intelligence layer
-            "/api/prime/zones-geojson",  # BUSINESS: Zone polygon GeoJSON for 3D map rendering (public)
-            "/api/prime/v2/resolve",  # PRIME NEXUS: Layer 1 spatial resolution (public zone data)
-            "/api/prime/v2/analyze",  # PRIME NEXUS: Layer 2 investment analysis (public, rate-limited)
-            "/api/prime/v2/density",  # PRIME NEXUS: Competitor density per zone (public)
-            "/api/prime/v2/predict",  # PRIME NEXUS: Zone trend prediction (public)
-            "/api/prime/v2/temporal",  # PRIME NEXUS: Temporal activity (public — zone-level only)
-            "/api/prime/v2/regulations",  # PRIME NEXUS: Regulation feed per zone (public)
-            "/api/prime/v2/proposal/",  # PRIME NEXUS: Public proposal view (token-based)
-            "/api/prime/v2/health",  # PRIME NEXUS: Health check
-            # ========================================================================
-            # VISA ORACLE ENDPOINTS (Public product — anonymous visa recommendations)
-            # ========================================================================
-            "/api/v1/visa-oracle/recommend",  # BUSINESS: Anonymous visa quiz recommendations — no user data, pure scoring logic
-            "/api/v1/visa-oracle/chat",  # BUSINESS: Anonymous visa Q&A chat — rate-limited by IP hash, no PII collected
-            "/api/v1/visa-oracle/handoff",  # BUSINESS: WhatsApp/Telegram handoff — builds deep-link URL + team notification
-            "/api/v1/visa-oracle/visa-types",  # BUSINESS: Visa types catalog — used by Next.js SSG at build time
-            # ========================================================================
-            # INTERNAL SERVICE ENDPOINTS - REMOVED FROM PUBLIC (Now require API key)
-            # ========================================================================
-            # SECURITY: These endpoints now require X-API-Key header authentication
-            # Protected via verify_internal_api_key dependency in routers:
-            # - /api/intel/scraper/submit - Requires API key (intel.py)
-            # - /api/intel/staging/approve/ - Requires API key (intel.py)
-            # - /api/legal/parent-documents - Requires API key (legal_ingest.py)
-            # - /api/audio/ - Requires API key (audio.py)
-            # - /preview/upload - Requires API key (preview.py)
-            # ========================================================================
-            # PHASE 1 ORGANISM BRIDGE (Pro<->Fly bidirectional nerve)
-            # ========================================================================
-            # SECURITY: /api/bridge/* uses dedicated X-Bridge-Auth header with
-            # hmac.compare_digest constant-time comparison against BRIDGE_API_KEY env
-            # var (see backend/app/routers/bridge.py:_check_auth). The router itself
-            # rejects unauthorized requests with 401 (Invalid bridge credentials) or
-            # 503 (Bridge auth not configured). Bypassing JWT/API-key middleware here
-            # is the explicit design — the bridge is M2M traffic from Pro local
-            # network, not user-facing.
-            "/api/bridge/",  # BUSINESS: Pro<->Fly bidirectional bridge (Phase 1 Sinapsi)
-        ]
-
-        # SECURITY: Removed TEMPORARY/FIX/DEBUG endpoints:
-        # - "/api/fix/users-auth" - REMOVED: No router implementation found
-        # - "/api/fix/check-user/" - REMOVED: No router implementation found
-        # - "/api/fix/test-login" - REMOVED: No router implementation found
-        # - "/api/debug/migrate" - REMOVED: Debug endpoint should require ADMIN_API_KEY
+        # Public endpoints live in `backend/app/auth/public_endpoints.py`.
+        # That registry is the single source of truth: every public route has
+        # a documented reason and a category, and a CI test enforces drift in
+        # both directions (registry ↔ mounted routes).
+        self.public_endpoints = PUBLIC_ENDPOINTS
 
         logger.info(
             f"HybridAuthMiddleware initialized - API Auth: {self.api_auth_enabled}, "
-            f"Bypass DB: {self.api_auth_bypass_db}, Public Endpoints: {len(self.public_endpoints)}",
+            f"Bypass DB: {self.api_auth_bypass_db}, "
+            f"Public Endpoints: {len(self.public_endpoints)}",
         )
 
     # Paths that require admin API key in production (docs, metrics)
@@ -303,17 +160,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         if self._is_protected_infra_endpoint(request):
             return True
 
-        # Root path: exact match only (avoid "/" matching every path via startswith)
-        if path in ("/", ""):
-            return True
-
-        is_public = any(path.startswith(ep) for ep in self.public_endpoints if ep not in ("/", ""))
+        entry = find_entry(path)
+        is_public = entry is not None
 
         # Debug log for KBLI endpoints
         if "kbli" in path.lower():
-            logger.info(f"🔍 KBLI endpoint check: path={path}, is_public={is_public}")
-            matching_endpoints = [ep for ep in self.public_endpoints if path.startswith(ep)]
-            logger.info(f"🔍 Matching public endpoints: {matching_endpoints}")
+            logger.info(
+                f"🔍 KBLI endpoint check: path={path}, is_public={is_public}, "
+                f"matched={entry.prefix if entry else None}",
+            )
 
         return is_public
 
@@ -348,6 +203,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             correlation_id = _get_correlation_id(request)
             client_ip = request.client.host if request.client else "unknown"
             user_agent = request.headers.get("user-agent", "unknown")
+            matched_entry = find_entry(path)
 
             logger.info(
                 "Public endpoint accessed",
@@ -359,6 +215,11 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     "user_agent": user_agent[:200],
                     "correlation_id": correlation_id,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "bypass_reason": matched_entry.reason if matched_entry else "infra",
+                    "bypass_category": (
+                        matched_entry.category.value if matched_entry else "infra"
+                    ),
+                    "bypass_prefix": matched_entry.prefix if matched_entry else None,
                 },
             )
 
