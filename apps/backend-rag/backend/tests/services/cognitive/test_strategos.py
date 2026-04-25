@@ -381,3 +381,76 @@ async def test_orchestrator_tracks_prompt_size(orchestrator_deps):
     result = await orch.run_once(week_of=date(2026, 4, 20))
     assert result.prompt_chars > 0
     assert result.context_chars >= 0
+
+
+# ── Orchestrator rerank wire-up (dormant) ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rerank_disabled_by_default(
+    orchestrator_deps, monkeypatch,
+):
+    """No env flag = no filter constructed = legacy behavior preserved."""
+    monkeypatch.delenv("STRATEGOS_RERANK_ENABLED", raising=False)
+    intel, cognitive, war_room = orchestrator_deps
+    orch = _make_orch(intel, cognitive, war_room, scripts=[_brief_json()])
+    assert orch.context_builder.dossier_filter is None
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rerank_flag_off_ignores_qdrant(
+    orchestrator_deps, monkeypatch,
+):
+    """STRATEGOS_RERANK_ENABLED=false: filter not built even if deps provided."""
+    monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "false")
+    intel, cognitive, war_room = orchestrator_deps
+    runner = MockRunner(scripts=[_brief_json()])
+    orch = StrategosOrchestrator(
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        war_room_repo=war_room,
+        runner=runner,
+        qdrant_client=object(),
+        embedder=object(),
+        rerank_collection="research_dossiers_v1",
+    )
+    assert orch.context_builder.dossier_filter is None
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rerank_flag_on_builds_filter(
+    orchestrator_deps, monkeypatch,
+):
+    """STRATEGOS_RERANK_ENABLED=true + all deps → filter attached to builder."""
+    monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "true")
+    intel, cognitive, war_room = orchestrator_deps
+    runner = MockRunner(scripts=[_brief_json()])
+
+    class _StubEmbedder:
+        async def embed(self, text):
+            return [0.1] * 1536
+
+    orch = StrategosOrchestrator(
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        war_room_repo=war_room,
+        runner=runner,
+        qdrant_client=object(),
+        embedder=_StubEmbedder(),
+        rerank_collection="research_dossiers_v1",
+    )
+    assert orch.context_builder.dossier_filter is not None
+    assert (
+        orch.context_builder.dossier_filter.collection == "research_dossiers_v1"
+    )
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_rerank_flag_on_but_missing_deps_skips_filter(
+    orchestrator_deps, monkeypatch,
+):
+    """Flag ON but qdrant/embedder not provided → no filter (safe degradation)."""
+    monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "true")
+    intel, cognitive, war_room = orchestrator_deps
+    orch = _make_orch(intel, cognitive, war_room, scripts=[_brief_json()])
+    assert orch.context_builder.dossier_filter is None
