@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CommandPalette, type CommandAction } from "@balizero/core";
+import { useTranslation } from "@/i18n";
 
 /**
  * Workspace-wide Cmd+K command palette for /kita.
- * Actions: navigation + practice-creation shortcuts + external (Prime).
+ * Actions: navigation + case-creation shortcuts + external (Prime).
  */
 export function KitaCommandPalette() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -29,54 +31,54 @@ export function KitaCommandPalette() {
     () => [
       {
         id: "go-inbox",
-        label: "Vai a Inbox",
-        group: "Navigazione",
+        label: t("commandPalette.actions.goInbox"),
+        group: t("commandPalette.groups.navigation"),
         run: () => router.push("/inbox"),
       },
       {
         id: "go-clients",
-        label: "Clienti",
-        group: "Navigazione",
+        label: t("commandPalette.actions.goClients"),
+        group: t("commandPalette.groups.navigation"),
         run: () => router.push("/clients"),
       },
       {
         id: "go-process",
-        label: "Pratiche",
-        group: "Navigazione",
+        label: t("commandPalette.actions.goProcess"),
+        group: t("commandPalette.groups.navigation"),
         run: () => router.push("/process"),
       },
       {
         id: "go-prime",
-        label: "Apri Prime 3D",
-        group: "Navigazione",
+        label: t("commandPalette.actions.goPrime"),
+        group: t("commandPalette.groups.navigation"),
         run: () => window.open("https://prime.balizero.com/", "_blank", "noopener"),
       },
       {
         id: "create-kitas",
-        label: "Crea pratica KITAS",
-        group: "Pratiche",
+        label: t("commandPalette.actions.createKitas"),
+        group: t("commandPalette.groups.cases"),
         run: () => router.push("/process/new?type=kitas"),
       },
       {
         id: "create-pt",
-        label: "Crea pratica PT Setup",
-        group: "Pratiche",
+        label: t("commandPalette.actions.createPtSetup"),
+        group: t("commandPalette.groups.cases"),
         run: () => router.push("/process/new?type=pt_setup"),
       },
       {
         id: "export-lkpm",
-        label: "Esporta LKPM Q1",
-        group: "Tax",
+        label: t("commandPalette.actions.exportLkpm"),
+        group: t("commandPalette.groups.tax"),
         run: () => router.push("/lkpm"),
       },
       {
         id: "open-analytics",
-        label: "Analytics funnel",
-        group: "Analytics",
+        label: t("commandPalette.actions.openAnalytics"),
+        group: t("commandPalette.groups.analytics"),
         run: () => router.push("/analytics/funnel"),
       },
     ],
-    [router],
+    [router, t],
   );
 
   return (
