@@ -254,5 +254,23 @@
       "living": "Жизнь на Бали, культура, сообщество, водительские права, здоровье.",
       "trends": "Цифровая экономика, технологии, новые правила и рыночная аналитика."
     }
+  },
+  "commandPalette": {
+    "groups": {
+      "navigation": "Навигация",
+      "cases": "Дела",
+      "tax": "Налоги",
+      "analytics": "Аналитика"
+    },
+    "actions": {
+      "goInbox": "Перейти во Входящие",
+      "goClients": "Клиенты",
+      "goProcess": "Дела",
+      "goPrime": "Открыть Prime 3D",
+      "createKitas": "Создать дело KITAS",
+      "createPtSetup": "Создать дело PT Setup",
+      "exportLkpm": "Экспорт LKPM Q1",
+      "openAnalytics": "Воронка аналитики"
+    }
   }
 }
