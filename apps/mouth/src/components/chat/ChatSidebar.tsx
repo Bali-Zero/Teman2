@@ -112,7 +112,7 @@ export function ChatSidebar({
             ) : conversations.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4">No conversations yet</p>
             ) : (
-              <ul className="space-y-1" role="list">
+              <ul className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
                   <li key={conv.id} className="group relative">
                     <button
