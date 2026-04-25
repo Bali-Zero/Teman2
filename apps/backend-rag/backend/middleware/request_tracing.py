@@ -13,6 +13,11 @@ from typing import Any
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from backend.middleware.correlation import (
+    reset_correlation_id,
+    set_correlation_id,
+)
+
 logger = logging.getLogger(__name__)
 
 # In-memory trace storage (LRU cache with max size)
@@ -53,13 +58,23 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
         Returns:
             Response with tracing headers
         """
-        # Get or generate correlation ID
-        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
-        request_id = getattr(request.state, "request_id", None) or correlation_id
+        # Correlation ID: inbound X-Request-Id (canonical), else X-Correlation-ID
+        # (back-compat), else fresh UUID. request_id mirrors correlation_id
+        # unless a prior middleware already seeded request.state.request_id
+        # (e.g., error_monitoring in a minimal test harness).
+        correlation_id = (
+            request.headers.get("X-Request-Id")
+            or request.headers.get("X-Correlation-ID")
+            or str(uuid.uuid4())
+        )
+        existing_request_id = getattr(request.state, "request_id", None)
+        request_id = existing_request_id or correlation_id
 
-        # Store correlation ID in request state
+        # Store in request state (legacy consumers) and in contextvar
+        # (for logger filters, downstream async code, service layers).
         request.state.correlation_id = correlation_id
         request.state.request_id = request_id
+        ctx_token = set_correlation_id(correlation_id)
 
         # Initialize trace
         trace_start = time.time()
@@ -109,6 +124,8 @@ class RequestTracingMiddleware(BaseHTTPMiddleware):
 
             # Re-raise exception
             raise
+        finally:
+            reset_correlation_id(ctx_token)
 
     def _store_trace(self, correlation_id: str, trace: dict[str, Any]) -> None:
         """
