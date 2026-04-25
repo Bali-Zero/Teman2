@@ -44,7 +44,7 @@ describe("TeamRoleWidget", () => {
     render(
       <TeamRoleWidget
         metrics={{
-          pratiche_assegnate: 7,
+          assigned_cases: 7,
           prossima_scadenza: "2026-03-20",
           doc_mancanti: 2,
           clienti_assegnati: 4,
@@ -59,7 +59,7 @@ describe("TeamRoleWidget", () => {
     render(
       <TeamRoleWidget
         metrics={{
-          pratiche_assegnate: 0,
+          assigned_cases: 0,
           prossima_scadenza: "2026-03-20",
           doc_mancanti: 0,
           clienti_assegnati: 0,
