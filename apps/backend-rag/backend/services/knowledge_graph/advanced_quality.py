@@ -9,6 +9,7 @@ Advanced improvements beyond basic filtering:
 5. Hierarchical relationship detection (Pasal → Ayat → Huruf)
 """
 
+import json
 import logging
 import os
 import re
@@ -431,6 +432,8 @@ class EnhancementStats:
     hierarchical_relations: int = 0
     domain_relations: int = 0
     semantic_links: int = 0
+    semantic_clusters_formed: int = 0
+    entities_clustered: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """To dict."""
@@ -440,6 +443,8 @@ class EnhancementStats:
             "hierarchical_relations": self.hierarchical_relations,
             "domain_relations": self.domain_relations,
             "semantic_links": self.semantic_links,
+            "semantic_clusters_formed": self.semantic_clusters_formed,
+            "entities_clustered": self.entities_clustered,
         }
 
 
@@ -449,6 +454,7 @@ async def enhance_kg_quality(
     detect_cross_refs: bool = True,
     detect_hierarchy: bool = True,
     apply_domain_rules: bool = True,
+    detect_orphan_communities: bool = False,
     dry_run: bool = True,
 ) -> EnhancementStats:
     """
@@ -460,6 +466,10 @@ async def enhance_kg_quality(
         detect_cross_refs: Detect cross-references
         detect_hierarchy: Detect hierarchical relationships
         apply_domain_rules: Apply domain-specific rules
+        detect_orphan_communities: Cluster remaining orphans via local
+            nomic-embed-text embeddings into synthetic SEMANTIC_CLUSTER
+            nodes. Fail-open: if Ollama is unreachable, stats reflect zero
+            clusters and no exception propagates.
         dry_run: If True, don't persist changes
 
     Returns:
@@ -592,6 +602,92 @@ async def enhance_kg_quality(
                     )
 
             logger.info(f"Inferred {stats.domain_relations} domain relationships")
+
+        # Step 4: Cluster remaining orphans by semantic similarity (local embeddings)
+        if detect_orphan_communities:
+            from backend.services.knowledge_graph.orphan_clustering import (
+                cluster_orphans_by_semantic_similarity,
+            )
+
+            orphan_records = await conn.fetch(
+                """
+                SELECT entity_id, entity_type, name, properties
+                FROM kg_nodes n
+                WHERE n.source_collection = $1
+                AND NOT EXISTS (
+                    SELECT 1 FROM kg_edges e
+                    WHERE e.source_entity_id = n.entity_id
+                       OR e.target_entity_id = n.entity_id
+                )
+            """,
+                collection,
+            )
+
+            orphan_list = [
+                {
+                    "id": row["entity_id"],
+                    "type": row["entity_type"],
+                    "name": row["name"],
+                    "properties": row["properties"],
+                }
+                for row in orphan_records
+            ]
+
+            try:
+                clusters = await cluster_orphans_by_semantic_similarity(orphan_list)
+            except Exception as exc:  # fail-open
+                logger.warning("Orphan clustering failed (Ollama down?): %s", exc)
+                clusters = []
+
+            stats.semantic_clusters_formed = len(clusters)
+            stats.entities_clustered = sum(len(c.member_ids) for c in clusters)
+
+            if not dry_run and clusters:
+                for c in clusters:
+                    cluster_props = json.dumps(
+                        {
+                            "centroid_dims": len(c.centroid_embedding),
+                            "avg_cos": c.avg_pairwise_cosine,
+                        },
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO kg_nodes (
+                            entity_id, entity_type, name, properties,
+                            source_collection, created_at
+                        ) VALUES ($1, 'SEMANTIC_CLUSTER', $2, $3, $4, NOW())
+                        ON CONFLICT (entity_id) DO NOTHING
+                    """,
+                        c.cluster_id,
+                        f"Cluster of {len(c.member_ids)} entities "
+                        f"(avg_cos={c.avg_pairwise_cosine:.2f})",
+                        cluster_props,
+                        collection,
+                    )
+                    for mid in c.member_ids:
+                        await conn.execute(
+                            """
+                            INSERT INTO kg_edges (
+                                relationship_id, source_entity_id, target_entity_id,
+                                relationship_type, properties, confidence,
+                                source_collection, created_at
+                            ) VALUES ($1, $2, $3, 'BELONGS_TO_SEMANTIC_CLUSTER',
+                                      $4, $5, $6, NOW())
+                            ON CONFLICT DO NOTHING
+                        """,
+                            f"{mid}_BELONGS_TO_{c.cluster_id}",
+                            mid,
+                            c.cluster_id,
+                            '{"inferred": true}',
+                            c.avg_pairwise_cosine,
+                            collection,
+                        )
+
+            logger.info(
+                "Formed %d semantic clusters covering %d orphans",
+                stats.semantic_clusters_formed,
+                stats.entities_clustered,
+            )
 
         # Final stats
         if not dry_run:
