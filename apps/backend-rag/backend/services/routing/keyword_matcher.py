@@ -88,6 +88,7 @@ KBLI_KEYWORDS = [
 
 TAX_KEYWORDS = [
     "tax",
+    "taxes",
     "pajak",
     "tax reporting",
     "withholding tax",
@@ -101,6 +102,17 @@ TAX_KEYWORDS = [
     "tax filing",
     "tax office",
     "direktorat jenderal pajak",
+    # Italian additions
+    "tasse",
+    "tassa",
+    "imposta",
+    "imposte",
+    "fiscale",
+    "iva",
+    "ritenuta",
+    "irpef",
+    "ires",
+    "dichiarazione fiscale",
 ]
 
 TAX_GENIUS_KEYWORDS = [
@@ -195,6 +207,22 @@ PROPERTY_KEYWORDS = [
     "title deed",
     "sertipikat",
     "ownership structure",
+    # English additions
+    "buying property",
+    "property purchase",
+    "buy a villa",
+    "buy land",
+    "real estate investment",
+    # Italian additions
+    "casa",
+    "terreno",
+    "proprietà",
+    "immobile",
+    "immobiliare",
+    "affitto",
+    "vendita",
+    "acquisto",
+    "investimento immobiliare",
 ]
 
 TEAM_KEYWORDS = [
