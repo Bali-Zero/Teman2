@@ -269,32 +269,44 @@ TOOL_DISPLAY_NAMES = {
 }
 
 
-def get_tool_display_name(tool_name: str, language: str = "it") -> str:
+def get_tool_display_name(tool_name: str, language: str = "en") -> str:
     """
     Get user-friendly display name for a tool.
 
     Args:
         tool_name: Internal tool name
-        language: Language code
+        language: Language code (default "en"; falls back to humanised tool_name
+                  when no localized label is registered)
 
     Returns:
         User-friendly tool name
     """
-    if language == "en":
-        # English mappings
-        english_names = {
-            "search_documents": "document search",
-            "search_knowledge_graph": "knowledge base search",
-            "get_user_memory": "user memory",
-            "get_collective_memory": "collective memory",
-            "calculator": "calculator",
-            "get_pricing": "pricing",
-            "get_team_insights": "team insights",
-            "get_burnout_signals": "burnout signals",
-            "get_compliance_info": "compliance info",
-            "generate_image": "image generation",
-            "transcribe_audio": "audio transcription",
-        }
-        return english_names.get(tool_name, tool_name.replace("_", " "))
+    if language == "it":
+        return TOOL_DISPLAY_NAMES.get(tool_name, tool_name.replace("_", " "))
 
-    return TOOL_DISPLAY_NAMES.get(tool_name, tool_name.replace("_", " "))
+    # English mappings — the canonical display set. Anything not listed here
+    # falls back to the underscore-cleaned tool name (good enough for any
+    # English-speaking surface).
+    english_names = {
+        "search_documents": "document search",
+        "search_knowledge_graph": "knowledge base search",
+        "get_user_memory": "user memory",
+        "get_collective_memory": "collective memory",
+        "calculator": "calculator",
+        "get_pricing": "pricing",
+        "get_team_insights": "team insights",
+        "get_burnout_signals": "burnout signals",
+        "get_compliance_info": "compliance info",
+        "generate_image": "image generation",
+        "transcribe_audio": "audio transcription",
+        "analyze_sentiment": "sentiment analysis",
+        "extract_entities": "entity extraction",
+        "get_current_time": "current time",
+        "get_weather": "weather",
+        "get_news": "news",
+        "translate_text": "translation",
+        "summarize_text": "summary",
+        "get_definition": "definition",
+        "convert_units": "unit conversion",
+    }
+    return english_names.get(tool_name, tool_name.replace("_", " "))
