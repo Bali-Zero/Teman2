@@ -82,7 +82,7 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
     return await conn.fetch(
         """
-        SELECT id, topic, register AS tone_register, slides_json
+        SELECT id, topic, tone_register, slides_json
           FROM war_room_drafts
          WHERE status = 'drafts'
            AND canva_edit_url IS NULL

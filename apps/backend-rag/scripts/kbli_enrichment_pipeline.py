@@ -487,92 +487,50 @@ def parse_llm_json(raw: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# CLI helpers — subscription-based, zero API cost
+# Anthropic API — fast classify via claude-haiku-4-5
+# ---------------------------------------------------------------------------
+
+def call_anthropic_classify(codes_block: str) -> str:
+    """
+    Classify a batch of KBLI codes via Anthropic API (claude-haiku-4-5-20251001).
+    Raises RuntimeError if ANTHROPIC_API_KEY not set.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("ANTHROPIC_API_KEY not set")
+
+    prompt = CLASSIFY_PROMPT_TEMPLATE.format(codes_block=codes_block)
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 4096,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    encoded = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=encoded,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read())
+        return result["content"][0]["text"].strip()
+
+
+# ---------------------------------------------------------------------------
+# Gemini CLI — gemini-3.1-pro-preview for content generation
 # ---------------------------------------------------------------------------
 
 GEMINI_CLI = "gemini"
 GEMINI_MODEL = "gemini-3.1-pro-preview"
-CLAUDE_CLI = "claude"
-CLAUDE_MODEL_CLASSIFY = "claude-haiku-4-5-20251001"
-
-
-_KBLI_RATE_LIMIT_RE = re.compile(
-    r"rate.?limit|too many requests|429|exhausted|quota|hit your limit|"
-    r"timeout after 90s|possibly rate limit|capacity|overloaded",
-    re.IGNORECASE,
-)
-_KBLI_EXHAUSTED: dict[str, str] = {}
-
-
-def _kbli_token_chain() -> list[tuple[str, str]]:
-    chain: list[tuple[str, str]] = []
-    for i in (1, 2, 3):
-        tok = os.environ.get(f"CLAUDE_CODE_OAUTH_TOKEN_{i}", "").strip()
-        if tok:
-            chain.append((f"token_{i}", tok))
-    legacy = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN", "").strip()
-    if legacy and not any(t == legacy for _, t in chain):
-        chain.append(("token_legacy", legacy))
-    chain.append(("keychain", ""))
-    return chain
-
-
-def call_claude_cli(prompt: str, timeout: int = 30) -> str:
-    """
-    Call Claude CLI (subscription, zero API cost) for classify.
-    Model: claude-haiku-4-5-20251001 — fast, structured JSON output.
-    Multi-account fallback: TOKEN_1→2→3→legacy→keychain.
-    Raises RuntimeError if not logged in or all tokens exhausted.
-    """
-    for label, token in _kbli_token_chain():
-        if label in _KBLI_EXHAUSTED:
-            continue
-
-        env = os.environ.copy()
-        if token:
-            env["CLAUDE_CODE_OAUTH_TOKEN"] = token
-        else:
-            env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
-
-        try:
-            result = subprocess.run(
-                [CLAUDE_CLI, "--model", CLAUDE_MODEL_CLASSIFY, "-p", prompt],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                env=env,
-            )
-        except subprocess.TimeoutExpired:
-            _KBLI_EXHAUSTED[label] = "timeout"
-            continue
-
-        combined = (result.stdout or "") + (result.stderr or "")
-        if result.returncode != 0 and _KBLI_RATE_LIMIT_RE.search(combined):
-            _KBLI_EXHAUSTED[label] = "rate_limit"
-            continue
-
-        if result.returncode != 0:
-            err = result.stderr[:300]
-            if "Not logged in" in err or "login" in err.lower():
-                raise RuntimeError("Claude CLI not logged in — run: claude /login")
-            raise RuntimeError(f"Claude CLI error ({label}, rc={result.returncode}): {err}")
-
-        # Strip CLI noise lines
-        lines = result.stdout.splitlines()
-        clean = "\n".join(
-            line for line in lines
-            if not line.startswith("Not logged") and not line.startswith("Using") and
-               not line.startswith("Loaded")
-        ).strip()
-        return clean
-
-    raise RuntimeError("All Claude tokens exhausted")
-
 
 def call_gemini_cli(system: str, user_prompt: str, timeout: int = 120) -> str:
     """
-    Call Gemini CLI (subscription, zero API cost) for content generation.
-    Model: gemini-3.1-pro-preview.
+    Call gemini CLI (subscription, zero API cost) with gemini-3.1-pro-preview.
+    Passes system+user as a single prompt. Returns raw text output.
     """
     full_prompt = f"{system}\n\n---\n\n{user_prompt}"
     result = subprocess.run(
@@ -582,14 +540,15 @@ def call_gemini_cli(system: str, user_prompt: str, timeout: int = 120) -> str:
         timeout=timeout,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Gemini CLI error (rc={result.returncode}): {result.stderr[:300]}")
+        raise RuntimeError(f"gemini CLI error (rc={result.returncode}): {result.stderr[:300]}")
+    # Strip CLI noise lines (Keychain errors, MCP logs) — keep only JSON
     lines = result.stdout.splitlines()
     clean = "\n".join(
-        line for line in lines
-        if not line.startswith("Keychain") and not line.startswith("Using") and
-           not line.startswith("Loaded") and not line.startswith("Server") and
-           not line.startswith("Scheduling") and not line.startswith("Executing") and
-           not line.startswith("MCP")
+        l for l in lines
+        if not l.startswith("Keychain") and not l.startswith("Using") and
+           not l.startswith("Loaded") and not l.startswith("Server") and
+           not l.startswith("Scheduling") and not l.startswith("Executing") and
+           not l.startswith("MCP")
     ).strip()
     return clean
 
@@ -601,21 +560,13 @@ def call_gemini_cli(system: str, user_prompt: str, timeout: int = 120) -> str:
 def classify_tiers(codes: list[dict], state: dict, dry_run: bool = False) -> dict[str, str]:
     """
     Classify codes into gold/silver/bronze.
-    Primary:  Claude CLI (subscription, zero cost) — batch 20, ~8s each.
-    Fallback: qwen3.5:9b via Ollama — batch 2, ~90s each (very slow).
+    Primary:  claude-haiku-4-5 via Anthropic API — batch 20, ~3-5s each.
+    Fallback: qwen3.5:9b via Ollama — batch 2, ~90s each.
     Saves results to state["processed"][code]["tier"].
     Returns {code: tier} mapping.
     """
-    # Detect Claude CLI availability
-    try:
-        test = subprocess.run(
-            [CLAUDE_CLI, "--version"], capture_output=True, text=True, timeout=5
-        )
-        claude_available = test.returncode == 0 and "Not logged in" not in test.stdout
-    except Exception:
-        claude_available = False
-
-    classifier = f"Claude CLI ({CLAUDE_MODEL_CLASSIFY})" if claude_available else f"{MODEL_CLASSIFY} (Ollama)"
+    use_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY", ""))
+    classifier = "claude-haiku-4-5 (Anthropic API)" if use_anthropic else f"{MODEL_CLASSIFY} (Ollama)"
     logger.info(f"Phase 2 — Classify: {len(codes)} codes using {classifier}")
     tier_map: dict[str, str] = {}
 
@@ -631,25 +582,28 @@ def classify_tiers(codes: list[dict], state: dict, dry_run: bool = False) -> dic
 
     logger.info(f"  Already classified: {len(tier_map)}, remaining: {len(to_classify)}")
 
-    batch_size = 20 if claude_available else 2
-    n_batches = (len(to_classify) + batch_size - 1) // batch_size
+    batch_size = 20 if use_anthropic else 2
+    timeout_s = 30 if use_anthropic else 360
 
+    n_batches = (len(to_classify) + batch_size - 1) // batch_size
     for i in range(0, len(to_classify), batch_size):
         batch = to_classify[i : i + batch_size]
         codes_block = "\n".join(
             f"- {c['kode_kbli_2025']}: {c['judul']} | PMA: {c.get('pma_status', '?')} | sector: {c.get('sektor_id', '?')}"
             for c in batch
         )
-        prompt = CLASSIFY_PROMPT_TEMPLATE.format(codes_block=codes_block)
 
         logger.info(
-            f"  Classify batch {i // batch_size + 1}/{n_batches} ({len(batch)} codes)..."
+            f"  Classify batch {i // batch_size + 1}/{n_batches}"
+            f" ({len(batch)} codes)..."
         )
         try:
-            if claude_available:
-                raw = call_claude_cli(prompt, timeout=30)
+            if use_anthropic:
+                raw = call_anthropic_classify(codes_block)
             else:
-                raw = call_ollama(MODEL_CLASSIFY, "", prompt, timeout=360)
+                prompt = CLASSIFY_PROMPT_TEMPLATE.format(codes_block=codes_block)
+                raw = call_ollama(MODEL_CLASSIFY, "", prompt, timeout=timeout_s)
+
             parsed = parse_llm_json(raw)
             for item in parsed:
                 kode = item.get("code", "")
@@ -686,37 +640,12 @@ def classify_tiers(codes: list[dict], state: dict, dry_run: bool = False) -> dic
 # Phase 3: Content Generation
 # ---------------------------------------------------------------------------
 
-def _generate_with_gemini_or_ollama(
-    batch: list[dict],
-    user_prompt: str,
-    system_prompt: str,
-    ollama_model: str,
-    ollama_timeout: int,
-    tier_label: str,
-) -> list[dict]:
-    """Try Gemini CLI first, fallback to Ollama. Returns parsed list."""
-    try:
-        raw = call_gemini_cli(system_prompt, user_prompt, timeout=120)
-        parsed = parse_llm_json(raw)
-        logger.info(f"    -> OK via gemini-3.1-pro-preview ({len(parsed)} results)")
-        return parsed
-    except Exception as e:
-        logger.warning(f"    -> Gemini failed ({e}), fallback Ollama...")
-        try:
-            raw = call_ollama(ollama_model, system_prompt, user_prompt, timeout=ollama_timeout)
-            parsed = parse_llm_json(raw)
-            logger.info(f"    -> OK via Ollama fallback ({len(parsed)} results)")
-            return parsed
-        except Exception as e2:
-            logger.warning(f"    -> FAILED both: {e2}")
-            return []
-
-
 def generate_content_gold(codes: list[dict], batch_size: int = 5) -> dict[str, dict]:
     """
     Generate 3 narrative fields for gold-tier codes.
     Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Gold: PMA-eligible, high-traffic — 800-1000 words guide.
+    Fallback: qwen3.5:27b via Ollama.
     """
     results: dict[str, dict] = {}
     total = len(codes)
@@ -734,25 +663,42 @@ def generate_content_gold(codes: list[dict], batch_size: int = 5) -> dict[str, d
             f"  [gold] Batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"
             f": {[c['kode_kbli_2025'] for c in batch]}"
         )
-        parsed = _generate_with_gemini_or_ollama(
-            batch, user_prompt, SYSTEM_PROMPT_3FIELDS, MODEL_GOLD, 600, "gold"
-        )
-        for item in parsed:
-            kode = item.get("code", "")
-            if kode:
-                results[kode] = {
-                    "whatItMeans": item.get("whatItMeans", ""),
-                    "baliContext": item.get("baliContext", ""),
-                    "zantaraOpener": item.get("zantaraOpener", ""),
-                }
+        try:
+            raw = call_gemini_cli(SYSTEM_PROMPT_3FIELDS, user_prompt, timeout=120)
+            parsed = parse_llm_json(raw)
+            for item in parsed:
+                kode = item.get("code", "")
+                if kode:
+                    results[kode] = {
+                        "whatItMeans": item.get("whatItMeans", ""),
+                        "baliContext": item.get("baliContext", ""),
+                        "zantaraOpener": item.get("zantaraOpener", ""),
+                    }
+            logger.info(f"    -> OK via gemini-3.1-pro-preview ({len(parsed)} results)")
+        except Exception as e:
+            logger.warning(f"    -> gemini failed ({e}), fallback Ollama...")
+            try:
+                raw = call_ollama(MODEL_GOLD, SYSTEM_PROMPT_3FIELDS, user_prompt, timeout=600)
+                parsed = parse_llm_json(raw)
+                for item in parsed:
+                    kode = item.get("code", "")
+                    if kode:
+                        results[kode] = {
+                            "whatItMeans": item.get("whatItMeans", ""),
+                            "baliContext": item.get("baliContext", ""),
+                            "zantaraOpener": item.get("zantaraOpener", ""),
+                        }
+                logger.info(f"    -> OK via Ollama fallback ({len(parsed)} results)")
+            except Exception as e2:
+                logger.warning(f"    -> FAILED both: {e2}")
     return results
 
 
 def generate_content_silver(codes: list[dict], batch_size: int = 8) -> dict[str, dict]:
     """
-    Generate 3 narrative fields for silver-tier codes.
-    Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: qwen3.5:9b Ollama.
+    Generate 3 narrative fields for silver-tier codes using gemini-3.1-pro-preview (CLI).
     Silver: 300-500 word summary.
+    Fallback: qwen3.5:9b via Ollama.
     """
     results: dict[str, dict] = {}
     total = len(codes)
@@ -770,17 +716,34 @@ def generate_content_silver(codes: list[dict], batch_size: int = 8) -> dict[str,
             f"  [silver] Batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"
             f": {[c['kode_kbli_2025'] for c in batch]}"
         )
-        parsed = _generate_with_gemini_or_ollama(
-            batch, user_prompt, SYSTEM_PROMPT_3FIELDS, MODEL_SILVER, 360, "silver"
-        )
-        for item in parsed:
-            kode = item.get("code", "")
-            if kode:
-                results[kode] = {
-                    "whatItMeans": item.get("whatItMeans", ""),
-                    "baliContext": item.get("baliContext", ""),
-                    "zantaraOpener": item.get("zantaraOpener", ""),
-                }
+        try:
+            raw = call_gemini_cli(SYSTEM_PROMPT_3FIELDS, user_prompt, timeout=120)
+            parsed = parse_llm_json(raw)
+            for item in parsed:
+                kode = item.get("code", "")
+                if kode:
+                    results[kode] = {
+                        "whatItMeans": item.get("whatItMeans", ""),
+                        "baliContext": item.get("baliContext", ""),
+                        "zantaraOpener": item.get("zantaraOpener", ""),
+                    }
+            logger.info(f"    -> OK via gemini-3.1-pro-preview ({len(parsed)} results)")
+        except Exception as e:
+            logger.warning(f"    -> gemini failed ({e}), fallback Ollama...")
+            try:
+                raw = call_ollama(MODEL_SILVER, SYSTEM_PROMPT_3FIELDS, user_prompt, timeout=360)
+                parsed = parse_llm_json(raw)
+                for item in parsed:
+                    kode = item.get("code", "")
+                    if kode:
+                        results[kode] = {
+                            "whatItMeans": item.get("whatItMeans", ""),
+                            "baliContext": item.get("baliContext", ""),
+                            "zantaraOpener": item.get("zantaraOpener", ""),
+                        }
+                logger.info(f"    -> OK via Ollama fallback ({len(parsed)} results)")
+            except Exception as e2:
+                logger.warning(f"    -> FAILED both: {e2}")
     return results
 
 
@@ -789,6 +752,7 @@ def generate_content_bronze(codes: list[dict], batch_size: int = 10) -> dict[str
     Generate minimal content (whatItMeans only) for bronze-tier codes.
     Primary: gemini-3.1-pro-preview CLI (subscription). Fallback: gemma4:26b Ollama.
     Bronze: 100-200 word basic description.
+    Fallback: gemma3:12b via Ollama.
     """
     results: dict[str, dict] = {}
     total = len(codes)
@@ -804,13 +768,26 @@ def generate_content_bronze(codes: list[dict], batch_size: int = 10) -> dict[str
             f"  [bronze] Batch {i // batch_size + 1}/{(total + batch_size - 1) // batch_size}"
             f": {[c['kode_kbli_2025'] for c in batch]}"
         )
-        parsed = _generate_with_gemini_or_ollama(
-            batch, user_prompt, SYSTEM_PROMPT_MINIMAL, MODEL_BRONZE, 240, "bronze"
-        )
-        for item in parsed:
-            kode = item.get("code", "")
-            if kode:
-                results[kode] = {"whatItMeans": item.get("whatItMeans", "")}
+        try:
+            raw = call_gemini_cli(SYSTEM_PROMPT_MINIMAL, user_prompt, timeout=120)
+            parsed = parse_llm_json(raw)
+            for item in parsed:
+                kode = item.get("code", "")
+                if kode:
+                    results[kode] = {"whatItMeans": item.get("whatItMeans", "")}
+            logger.info(f"    -> OK via gemini-3.1-pro-preview ({len(parsed)} results)")
+        except Exception as e:
+            logger.warning(f"    -> gemini failed ({e}), fallback Ollama...")
+            try:
+                raw = call_ollama(MODEL_BRONZE, SYSTEM_PROMPT_MINIMAL, user_prompt, timeout=240)
+                parsed = parse_llm_json(raw)
+                for item in parsed:
+                    kode = item.get("code", "")
+                    if kode:
+                        results[kode] = {"whatItMeans": item.get("whatItMeans", "")}
+                logger.info(f"    -> OK via Ollama fallback ({len(parsed)} results)")
+            except Exception as e2:
+                logger.warning(f"    -> FAILED both: {e2}")
     return results
 
 

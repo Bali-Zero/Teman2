@@ -22,7 +22,7 @@ import httpx
 # ── Configuration ──────────────────────────────────────────────────────────
 
 OLLAMA_URL = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:9b")
+MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:26b")
 ARTICLES_DIR = Path(__file__).resolve().parent.parent / "apps" / "mouth" / "src" / "content" / "articles"
 
 LANG_NAMES = {
@@ -226,7 +226,7 @@ def main():
     parser.add_argument("--skip-existing", action="store_true",
                         help="Skip articles that already have translations")
     parser.add_argument("--model", default=None,
-                        help="Override Ollama model (default: qwen3.5:9b)")
+                        help="Override Ollama model (default: gemma4:26b)")
     args = parser.parse_args()
 
     global MODEL
