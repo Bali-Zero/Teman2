@@ -17,6 +17,7 @@ Run weekly on Sunday 22:00 WITA (design §2 cadence).
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -27,6 +28,7 @@ from backend.services.cognitive.models import (
     WeeklyStrategicBriefCreate,
 )
 from backend.services.cognitive.repository import CognitiveRepository
+from backend.services.cognitive.strategos_dossier_filter import QdrantDossierFilter
 from backend.services.council.cli_runners import CLIRunner
 from backend.services.intel.dossier_repository import IntelRepository
 from backend.services.war_room.repository import WarRoomRepository
@@ -306,7 +308,17 @@ Regole:
 
 
 class StrategosOrchestrator:
-    """Weekly brief builder. Upserts on ``week_of``."""
+    """Weekly brief builder. Upserts on ``week_of``.
+
+    Dormant rerank wire-up (2026-04-22): the Qdrant RRF reranker from PR #182
+    is opt-in via the ``STRATEGOS_RERANK_ENABLED`` env flag AND the presence of
+    a ``qdrant_client`` + ``embedder`` pair. Default is off so legacy runs are
+    unchanged. The actual activation is blocked by a missing dossier→Qdrant
+    ingestion pipeline (``ZantaraRAGConsumer`` is defined but never wired
+    into the app lifespan; no Qdrant collection indexes ``research_dossiers``
+    today). Once that pipeline lands in a future epic, flipping the flag plus
+    passing live deps here enables the reranker with no further code changes.
+    """
 
     def __init__(
         self,
@@ -317,15 +329,24 @@ class StrategosOrchestrator:
         *,
         context_builder: StrategosContextBuilder | None = None,
         timeout_seconds: int = 180,
+        qdrant_client: Any = None,
+        embedder: Any = None,
+        rerank_collection: str | None = None,
     ) -> None:
         self.intel_repo = intel_repo
         self.cognitive_repo = cognitive_repo
         self.war_room_repo = war_room_repo
         self.runner = runner
+        dossier_filter = _maybe_build_dossier_filter(
+            qdrant_client=qdrant_client,
+            embedder=embedder,
+            collection=rerank_collection,
+        )
         self.context_builder = context_builder or StrategosContextBuilder(
             intel_repo=intel_repo,
             cognitive_repo=cognitive_repo,
             war_room_repo=war_room_repo,
+            dossier_filter=dossier_filter,
         )
         self.timeout = timeout_seconds
         self.logger = logger
@@ -437,3 +458,33 @@ def _coerce_list_of_dicts(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
     return [v for v in value if isinstance(v, dict)]
+
+
+def _maybe_build_dossier_filter(
+    *,
+    qdrant_client: Any,
+    embedder: Any,
+    collection: str | None,
+) -> QdrantDossierFilter | None:
+    """Construct the Qdrant RRF filter iff the flag + all deps are set.
+
+    Reads ``STRATEGOS_RERANK_ENABLED`` (default ``false``). Even with the flag
+    on, returns ``None`` when any of ``qdrant_client``, ``embedder``, or
+    ``collection`` is missing — safe degradation to legacy confidence-only
+    ordering, no hard crash.
+    """
+    flag = os.environ.get("STRATEGOS_RERANK_ENABLED", "false").strip().lower()
+    if flag not in {"1", "true", "yes", "on"}:
+        return None
+    if qdrant_client is None or embedder is None or not collection:
+        logger.warning(
+            "STRATEGOS_RERANK_ENABLED=%s but qdrant_client/embedder/"
+            "collection missing — reranker skipped",
+            flag,
+        )
+        return None
+    return QdrantDossierFilter(
+        qdrant_client=qdrant_client,
+        embedder=embedder,
+        collection=collection,
+    )
