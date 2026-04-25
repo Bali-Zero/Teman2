@@ -1,6 +1,6 @@
 export { StatsCard } from "./StatsCard";
-export { PratichePreview } from "./PratichePreview";
-export type { PraticaPreview } from "./PratichePreview";
+export { CasesPreview } from "./CasesPreview";
+export type { CasePreview } from "./CasesPreview";
 export { WhatsAppPreview } from "./WhatsAppPreview";
 export type { WhatsAppMessage } from "./WhatsAppPreview";
 export { FinancialRealityWidget } from "./FinancialRealityWidget";
