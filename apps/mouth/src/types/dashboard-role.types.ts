@@ -11,7 +11,7 @@ export interface ZeroMetrics {
 }
 
 export interface TeamMetrics {
-  pratiche_assegnate: number;
+  assigned_cases: number;
   prossima_scadenza: string | null;
   doc_mancanti: number;
   clienti_assegnati: number;

@@ -36,7 +36,7 @@ describe("useRoleMetrics", () => {
     const mockData = {
       role: "team",
       metrics: {
-        pratiche_assegnate: 5,
+        assigned_cases: 5,
         prossima_scadenza: null,
         doc_mancanti: 2,
         clienti_assegnati: 8,
