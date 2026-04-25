@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -220,11 +221,17 @@ def compute_mtime_days(repo: Path, doc: Path) -> int:
         stdout = result.stdout.strip()
         if result.returncode == 0 and stdout:
             commit_ts = int(stdout)
-            return int((time.time() - commit_ts) / 86400)
+            return (
+                datetime.now(tz=timezone.utc).date()
+                - datetime.fromtimestamp(commit_ts, tz=timezone.utc).date()
+            ).days
     except (subprocess.SubprocessError, ValueError, OSError):
         pass
     # Fallback for untracked files or when git is unavailable.
-    return int((time.time() - doc.stat().st_mtime) / 86400)
+    return (
+        datetime.now(tz=timezone.utc).date()
+        - datetime.fromtimestamp(doc.stat().st_mtime, tz=timezone.utc).date()
+    ).days
 
 
 def compute_drift(doc: Path, expected_keys: Dict[str, str]) -> bool:
