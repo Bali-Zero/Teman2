@@ -126,6 +126,7 @@ WHITELIST_DOTDIRS: set[str] = {
     ".husky",
     ".vscode",
     ".security",
+    ".Jules",
 }
 
 

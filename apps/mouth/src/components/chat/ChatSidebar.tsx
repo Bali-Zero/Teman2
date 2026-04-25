@@ -112,32 +112,33 @@ export function ChatSidebar({
             ) : conversations.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-4">No conversations yet</p>
             ) : (
-              <div className="space-y-1">
+              <ul className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => onConversationClick(conv.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left group cursor-pointer border border-transparent ${
-                      currentConversationId === conv.id
-                        ? 'sidebar-item-active text-white'
-                        : 'text-gray-400'
-                    }`}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-400 truncate flex-1">
-                      {conv.title || 'Untitled'}
-                    </span>
+                  <li key={conv.id} className="group relative">
+                    <button
+                      onClick={() => onConversationClick(conv.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left border border-transparent ${
+                        currentConversationId === conv.id
+                          ? 'sidebar-item-active text-white'
+                          : 'text-gray-400'
+                      }`}
+                      aria-current={currentConversationId === conv.id ? 'true' : undefined}
+                    >
+                      <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-400 truncate flex-1">
+                        {conv.title || 'Untitled'}
+                      </span>
+                    </button>
                     <button
                       onClick={(e) => onDeleteConversation(conv.id, e)}
-                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                      aria-label="Delete conversation"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
 
