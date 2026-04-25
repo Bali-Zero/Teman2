@@ -18,8 +18,10 @@ logger = logging.getLogger(__name__)
 # NLM CLI path — installed via: npm install -g notebooklm-mcp
 NLM_CLI = "nlm"
 
-# Default timeout for NLM queries (seconds)
-QUERY_TIMEOUT = 120
+# Default timeout for NLM queries (seconds).
+# Measured: warm queries 28-60s, complex cluster queries can reach 90-150s.
+# Bumped 120→180 on 2026-04-25 after NB-2 cluster A query hit 122s (exit 1 at 120s cap).
+QUERY_TIMEOUT = 180
 
 
 def nlm_query(
