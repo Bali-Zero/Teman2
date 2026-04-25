@@ -99,8 +99,23 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "page_index": page_index,
             })
 
-        # Body only if both slot exists AND slide carries body text
+        # Body — optionally extended with the image_prompt when the slide
+        # doesn't ship a generated image. The editor sees the prompt inline in
+        # Canva and can copy-paste it into their image generator of choice
+        # (Midjourney / DALL-E / Canva AI / Firefly). See wr2-carousel-pipeline
+        # design doc §7.
         body = (slide.get("body") or "").strip()
+        image_url = slide.get("image_url")
+        image_prompt = (slide.get("image_prompt") or "").strip()
+
+        if not image_url and image_prompt:
+            if slide.get("is_cover"):
+                # Cover without a generated image: mark as "to generate by hand"
+                marker = "\n\n🖼️⚠️ [COVER DA GENERARE A MANO]\n"
+            else:
+                marker = "\n\n📸 [PROMPT IMMAGINE]\n"
+            body = f"{body}{marker}{image_prompt}" if body else f"{marker.lstrip()}{image_prompt}"
+
         if body and body_eid:
             operations.append({
                 "type": "replace_text",
@@ -109,8 +124,7 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "page_index": page_index,
             })
 
-        # Image upload
-        image_url = slide.get("image_url")
+        # Image upload (only if an actual URL is provided)
         if image_url:
             image_eid = IMAGE_ELEMENT_IDS.get(page_index)
             op: dict[str, Any] = {
