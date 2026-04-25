@@ -38,7 +38,7 @@ class OllamaSensor:
         timeout: float = 5.0,
     ) -> None:
         self._url = ollama_url
-        self._required = required_models or ["qwen3.5:9b"]
+        self._required = required_models or ["qwen3.5:9b", "gemma4:26b"]
         self._timeout = timeout
 
     async def read(self) -> OllamaReading:
