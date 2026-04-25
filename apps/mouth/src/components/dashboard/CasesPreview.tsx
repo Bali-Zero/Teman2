@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface PraticaPreview {
+export interface CasePreview {
   id: number;
   title: string;
   client: string;
@@ -12,8 +12,8 @@ export interface PraticaPreview {
   completedAt?: string;
 }
 
-interface PratichePreviewProps {
-  pratiche: PraticaPreview[];
+interface CasesPreviewProps {
+  cases: CasePreview[];
   isLoading?: boolean;
 }
 
@@ -50,7 +50,7 @@ const statusConfig = {
   },
 };
 
-export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
+export function CasesPreview({ cases, isLoading }: CasesPreviewProps) {
   if (isLoading) {
     return (
       <div className="glass-card-warm p-5 rounded-xl">
@@ -86,28 +86,28 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
       </div>
 
       <div className="space-y-2">
-        {pratiche.length === 0 ? (
+        {cases.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-[var(--foreground-muted)]">
               No process assigned
             </p>
           </div>
         ) : (
-          pratiche.map((pratica) => {
-            const config = statusConfig[pratica.status];
+          cases.map((caseItem) => {
+            const config = statusConfig[caseItem.status];
             return (
               <Link
-                key={pratica.id}
-                href={`/process/${pratica.id}`}
+                key={caseItem.id}
+                href={`/process/${caseItem.id}`}
                 className="block p-3 rounded-lg border border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 transition-all"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                      {pratica.title}
+                      {caseItem.title}
                     </p>
                     <p className="text-xs text-[var(--foreground-muted)] truncate">
-                      {pratica.client}
+                      {caseItem.client}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -123,29 +123,29 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
                       />
                       {config.label}
                     </span>
-                    {pratica.status !== "completed" &&
-                      pratica.daysRemaining !== undefined && (
+                    {caseItem.status !== "completed" &&
+                      caseItem.daysRemaining !== undefined && (
                         <span
                           className={cn(
                             "text-xs flex items-center gap-1",
-                            pratica.daysRemaining <= 0
+                            caseItem.daysRemaining <= 0
                               ? "text-[var(--error)]"
-                              : pratica.daysRemaining <= 3
+                              : caseItem.daysRemaining <= 3
                                 ? "text-[var(--error)]"
-                                : pratica.daysRemaining <= 7
+                                : caseItem.daysRemaining <= 7
                                   ? "text-[var(--warning)]"
                                   : "text-[var(--foreground-muted)]",
                           )}
                         >
                           <Clock className="w-3 h-3" />
-                          {pratica.daysRemaining <= 0
+                          {caseItem.daysRemaining <= 0
                             ? "Expired"
-                            : `${pratica.daysRemaining}d`}
+                            : `${caseItem.daysRemaining}d`}
                         </span>
                       )}
-                    {pratica.status === "completed" && pratica.completedAt && (
+                    {caseItem.status === "completed" && caseItem.completedAt && (
                       <span className="text-xs text-[var(--foreground-muted)]">
-                        {pratica.completedAt}
+                        {caseItem.completedAt}
                       </span>
                     )}
                   </div>
