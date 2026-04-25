@@ -274,22 +274,20 @@
       "sent": "We received your request. Our team will contact you."
     }
   },
-  "commandPalette": {
-    "groups": {
-      "navigation": "Navigation",
-      "cases": "Cases",
-      "tax": "Tax",
-      "analytics": "Analytics"
+  "book": {
+    "stats": {
+      "clientsServed": "Clients served",
+      "yearsOfHistory": "Years of history",
+      "kbliNavigatorCodes": "KBLI Navigator codes",
+      "aiChannelsActive": "AI channels active"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Initializing..."
     },
-    "actions": {
-      "goInbox": "Go to Inbox",
-      "goClients": "Clients",
-      "goProcess": "Cases",
-      "goPrime": "Open Prime 3D",
-      "createKitas": "Create KITAS case",
-      "createPtSetup": "Create PT Setup case",
-      "exportLkpm": "Export LKPM Q1",
-      "openAnalytics": "Analytics funnel"
+    "errors": {
+      "network": "Network error"
     }
   }
 }

@@ -6,7 +6,7 @@ describe("DashboardStatCard", () => {
   const baseProps = {
     icon: "📁",
     value: 24,
-    label: "Pratiche Attive",
+    label: "Active Cases",
     trend: "▲ +3",
     colorVariant: "green" as const,
   };
@@ -18,7 +18,7 @@ describe("DashboardStatCard", () => {
 
   it("renders the label", () => {
     render(<DashboardStatCard {...baseProps} />);
-    expect(screen.getByText("Pratiche Attive")).toBeInTheDocument();
+    expect(screen.getByText("Active Cases")).toBeInTheDocument();
   });
 
   it("renders the trend text", () => {
