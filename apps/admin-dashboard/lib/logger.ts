@@ -48,6 +48,16 @@ export function createLogger(namespace: string) {
 }
 
 /**
+ * Aggregated logger object — stable surface for `import { logger } from "@/lib/logger"`.
+ * Used by API route handlers under `app/api/**` (kg, legal, postgres, qdrant, rag).
+ */
+export const logger = {
+  debug,
+  warn,
+  error,
+};
+
+/**
  * Strip console in production
  */
 export function stripConsoleInProduction(): void {
