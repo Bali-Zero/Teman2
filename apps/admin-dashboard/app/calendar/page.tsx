@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/src/i18n";
 
 interface CalendarEvent {
   id: string;
@@ -41,18 +42,16 @@ interface CalendarInfo {
 const TEAM_CALENDAR_ID =
   "ec0863e7c14ac6bf414ec23e2aab81960ecb26823c6a8f397c664fc64901d617@group.calendar.google.com";
 
-const WEEKDAYS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
-const WEEKDAYS_FULL = [
-  "Domenica",
-  "Lunedì",
-  "Martedì",
-  "Mercoledì",
-  "Giovedì",
-  "Venerdì",
-  "Sabato",
-];
+const LOCALE_TAGS: Record<string, string> = {
+  en: "en-US",
+  it: "it-IT",
+};
 
 export default function CalendarPage() {
+  const { t, tArray, locale } = useTranslation();
+  const localeTag = LOCALE_TAGS[locale] ?? "en-US";
+  const WEEKDAYS = tArray("admin.calendar.weekdaysShort");
+
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [calendars, setCalendars] = useState<CalendarInfo[]>([]);
   const [selectedCalendar, setSelectedCalendar] = useState(TEAM_CALENDAR_ID);
@@ -142,15 +141,18 @@ export default function CalendarPage() {
         });
         fetchEvents();
       } else {
-        alert("Errore: " + data.error);
+        alert(t("admin.calendar.actions.errorPrefix") + data.error);
       }
     } catch (err) {
-      alert("Errore: " + (err instanceof Error ? err.message : String(err)));
+      alert(
+        t("admin.calendar.actions.errorPrefix") +
+          (err instanceof Error ? err.message : String(err)),
+      );
     }
   };
 
   const deleteEvent = async (eventId: string) => {
-    if (!confirm("Eliminare questo evento?")) return;
+    if (!confirm(t("admin.calendar.actions.deleteEventConfirm"))) return;
     try {
       const res = await fetch(
         `/api/calendar/events?eventId=${eventId}&calendarId=${encodeURIComponent(selectedCalendar)}`,
@@ -164,7 +166,10 @@ export default function CalendarPage() {
         fetchEvents();
       }
     } catch (err) {
-      alert("Errore: " + (err instanceof Error ? err.message : String(err)));
+      alert(
+        t("admin.calendar.actions.errorPrefix") +
+          (err instanceof Error ? err.message : String(err)),
+      );
     }
   };
 
@@ -225,21 +230,21 @@ export default function CalendarPage() {
     selectedDate?.toDateString() === date.toDateString();
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString("it-IT", {
+    return new Date(dateStr).toLocaleTimeString(localeTag, {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
 
   const formatDateShort = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("it-IT", {
+    return new Date(dateStr).toLocaleDateString(localeTag, {
       day: "numeric",
       month: "short",
     });
   };
 
   const formatDateFull = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("it-IT", {
+    return new Date(dateStr).toLocaleDateString(localeTag, {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -274,10 +279,12 @@ export default function CalendarPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Calendario</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {t("admin.calendar.title")}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 {calendars.find((c) => c.id === selectedCalendar)?.name ||
-                  "Bali Zero Calendar"}
+                  t("admin.calendar.fallbackName")}
               </p>
             </div>
           </div>
@@ -332,7 +339,8 @@ export default function CalendarPage() {
             </Button>
 
             <Button size="sm" onClick={() => setShowCreateForm(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Nuovo
+              <Plus className="h-4 w-4 mr-2" />{" "}
+              {t("admin.calendar.newEventButton")}
             </Button>
           </div>
         </div>
@@ -375,19 +383,21 @@ export default function CalendarPage() {
                 <ChevronRight className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={goToToday}>
-                Oggi
+                {t("admin.calendar.today")}
               </Button>
             </div>
 
             <h2 className="text-lg font-semibold capitalize">
-              {currentMonth.toLocaleDateString("it-IT", {
+              {currentMonth.toLocaleDateString(localeTag, {
                 month: "long",
                 year: "numeric",
               })}
             </h2>
 
             <div className="text-sm text-muted-foreground">
-              {events.length} eventi
+              {t("admin.calendar.eventsCount", {
+                count: String(events.length),
+              })}
             </div>
           </div>
 
@@ -459,7 +469,9 @@ export default function CalendarPage() {
                         ))}
                         {dayEvents.length > 3 && (
                           <div className="text-xs text-muted-foreground px-1">
-                            +{dayEvents.length - 3} altri
+                            {t("admin.calendar.moreEvents", {
+                              count: String(dayEvents.length - 3),
+                            })}
                           </div>
                         )}
                       </div>
@@ -474,12 +486,12 @@ export default function CalendarPage() {
               {loading ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <RefreshCw className="h-5 w-5 animate-spin mr-2" />{" "}
-                  Caricamento...
+                  {t("admin.calendar.loading")}
                 </div>
               ) : events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <CalendarIcon className="h-16 w-16 mb-4 opacity-20" />
-                  <p>Nessun evento programmato</p>
+                  <p>{t("admin.calendar.noEventsScheduled")}</p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -529,7 +541,9 @@ export default function CalendarPage() {
           {showCreateForm ? (
             <div className="flex-1 overflow-auto p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold">Nuovo Evento</h3>
+                <h3 className="font-semibold">
+                  {t("admin.calendar.newEventTitle")}
+                </h3>
                 <button
                   onClick={() => setShowCreateForm(false)}
                   className="text-muted-foreground hover:text-foreground"
@@ -541,7 +555,7 @@ export default function CalendarPage() {
               <form onSubmit={createEvent} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
-                    Titolo
+                    {t("admin.calendar.fields.title")}
                   </label>
                   <input
                     type="text"
@@ -551,14 +565,14 @@ export default function CalendarPage() {
                       setNewEvent({ ...newEvent, summary: e.target.value })
                     }
                     className="w-full bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                    placeholder="Aggiungi titolo"
+                    placeholder={t("admin.calendar.placeholders.title")}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">
-                      Inizio
+                      {t("admin.calendar.fields.from")}
                     </label>
                     <input
                       type="datetime-local"
@@ -572,7 +586,7 @@ export default function CalendarPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">
-                      Fine
+                      {t("admin.calendar.fields.to")}
                     </label>
                     <input
                       type="datetime-local"
@@ -588,7 +602,7 @@ export default function CalendarPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
-                    Luogo
+                    {t("admin.calendar.fields.location")}
                   </label>
                   <input
                     type="text"
@@ -597,13 +611,13 @@ export default function CalendarPage() {
                       setNewEvent({ ...newEvent, location: e.target.value })
                     }
                     className="w-full bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                    placeholder="Aggiungi luogo"
+                    placeholder={t("admin.calendar.placeholders.location")}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
-                    Descrizione
+                    {t("admin.calendar.fields.description")}
                   </label>
                   <textarea
                     value={newEvent.description}
@@ -612,13 +626,13 @@ export default function CalendarPage() {
                     }
                     className="w-full bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none resize-none"
                     rows={3}
-                    placeholder="Aggiungi descrizione"
+                    placeholder={t("admin.calendar.placeholders.description")}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
-                    Partecipanti
+                    {t("admin.calendar.fields.attendees")}
                   </label>
                   <input
                     type="text"
@@ -627,7 +641,7 @@ export default function CalendarPage() {
                       setNewEvent({ ...newEvent, attendees: e.target.value })
                     }
                     className="w-full bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                    placeholder="email@esempio.com, altro@esempio.com"
+                    placeholder={t("admin.calendar.placeholders.attendees")}
                   />
                 </div>
 
@@ -641,7 +655,9 @@ export default function CalendarPage() {
                     className="w-4 h-4 rounded"
                   />
                   <Video className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">Aggiungi Google Meet</span>
+                  <span className="text-sm">
+                    {t("admin.calendar.addGoogleMeet")}
+                  </span>
                 </label>
 
                 <div className="flex gap-2 pt-4">
@@ -651,10 +667,10 @@ export default function CalendarPage() {
                     className="flex-1"
                     onClick={() => setShowCreateForm(false)}
                   >
-                    Annulla
+                    {t("admin.calendar.buttons.cancel")}
                   </Button>
                   <Button type="submit" className="flex-1">
-                    Salva
+                    {t("admin.calendar.buttons.save")}
                   </Button>
                 </div>
               </form>
@@ -716,7 +732,7 @@ export default function CalendarPage() {
                     className="flex items-center gap-3 text-green-700 hover:text-green-800 font-medium"
                   >
                     <Video className="h-5 w-5" />
-                    Partecipa con Google Meet
+                    {t("admin.calendar.joinGoogleMeet")}
                     <ExternalLink className="h-3 w-3 ml-auto" />
                   </a>
                 </div>
@@ -725,7 +741,7 @@ export default function CalendarPage() {
               {selectedEvent.description && (
                 <div className="p-6 border-b">
                   <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Descrizione
+                    {t("admin.calendar.fields.description")}
                   </h4>
                   <p className="text-sm whitespace-pre-wrap">
                     {selectedEvent.description}
@@ -738,7 +754,8 @@ export default function CalendarPage() {
                   <div className="p-6 border-b">
                     <h4 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
                       <Users className="h-4 w-4" />
-                      Partecipanti ({selectedEvent.attendees.length})
+                      {t("admin.calendar.fields.attendees")} (
+                      {selectedEvent.attendees.length})
                     </h4>
                     <div className="space-y-2">
                       {selectedEvent.attendees.map((email, i) => (
@@ -764,11 +781,15 @@ export default function CalendarPage() {
             </div>
           ) : (
             <div className="flex-1 overflow-auto p-6">
-              <h3 className="font-semibold mb-4">Prossimi Eventi</h3>
+              <h3 className="font-semibold mb-4">
+                {t("admin.calendar.upcomingEvents")}
+              </h3>
               {upcomingEvents.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
                   <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">Nessun evento in programma</p>
+                  <p className="text-sm">
+                    {t("admin.calendar.noEventsUpcoming")}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-2">
