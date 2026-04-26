@@ -284,3 +284,151 @@ class TestSourceQualityScoring:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
+
+# ── v3 quick-wins regression tests ──────────────────────────────────────────
+
+
+class TestSemanticAlignmentPenalty:
+    """v3 quick-win #1: Qdrant cosine sanity gate.
+
+    When retrieval returned sources but the BEST cosine is < 0.5 with the
+    query (Qdrant similarity), the keyword-based path was probably misled.
+    Penalize final score by 0.7× to avoid inflated verdicts.
+    """
+
+    def test_low_cosine_triggers_penalty(self):
+        # High keyword overlap (good semantic_relevance) but Qdrant cosine
+        # tells us the top chunk is not actually relevant — penalty applies.
+        query = "kitas working visa cost requirements"
+        context = ["KITAS working visa requires sponsor and minimum salary"]
+        sources_low_cos = [{"id": "s1", "score": 0.35, "content": "..."}]
+
+        score_low = calculate_evidence_score(sources_low_cos, context, query)
+
+        # Same setup but with high cosine — no penalty.
+        sources_high_cos = [{"id": "s1", "score": 0.75, "content": "..."}]
+        score_high = calculate_evidence_score(sources_high_cos, context, query)
+
+        # Penalty should drop the low-cosine score below the high-cosine one.
+        assert score_low < score_high, (
+            f"low-cosine score should be penalized: low={score_low} vs high={score_high}"
+        )
+
+    def test_no_penalty_when_score_already_below_015(self):
+        # Already low-confidence answers don't get further penalized — the
+        # gate is meant to clip false-positives, not amplify true-negatives.
+        query = "completely unrelated nonsense xyzzy"
+        context = ["irrelevant content"]
+        sources_low_cos = [{"id": "s1", "score": 0.30, "content": "..."}]
+
+        score = calculate_evidence_score(sources_low_cos, context, query)
+        # Whatever the legacy score is, it must remain low — no flips.
+        assert score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
+
+    def test_no_penalty_when_no_sources(self):
+        query = "kitas cost"
+        context = ["some context from another tool"]
+        score = calculate_evidence_score(None, context, query)
+        # Without sources we cannot compute the cosine; the legacy path runs.
+        # No crash, no penalty.
+        assert isinstance(score, float)
+
+
+class TestDomainAbstainThresholds:
+    """v3 quick-win #2: per-domain ABSTAIN thresholds via classify_query_domain
+    and get_abstain_threshold.
+    """
+
+    def test_classify_tax_queries(self):
+        from backend.services.rag.agentic.reasoning_utils import classify_query_domain
+
+        for q in (
+            "Kapan PT PMA harus mendaftar PKP untuk PPN?",
+            "How does PPh21 work for KITAS holders?",
+            "Quando devo pagare le tasse a Bali?",
+            "NPWP registration requirements",
+        ):
+            assert classify_query_domain(q) == "tax", q
+
+    def test_classify_visa_queries(self):
+        from backend.services.rag.agentic.reasoning_utils import classify_query_domain
+
+        for q in (
+            "Quanto costa il rinnovo del visto C1?",
+            "What KITAS types do you offer?",
+            "Saya mau tanya soal KITAS pensiun",
+            "How does E33G visa work?",
+        ):
+            assert classify_query_domain(q) == "visa", q
+
+    def test_classify_kbli_queries(self):
+        from backend.services.rag.agentic.reasoning_utils import classify_query_domain
+
+        for q in (
+            "Qual è il codice KBLI per ristorante?",
+            "What KBLI 2025 code do I need for villa rental?",
+            "Kode KBLI untuk konsultan IT",
+        ):
+            assert classify_query_domain(q) == "kbli", q
+
+    def test_classify_pricing_queries(self):
+        from backend.services.rag.agentic.reasoning_utils import classify_query_domain
+
+        # Note: queries that mention BOTH visa and pricing (e.g. "Quanto costa
+        # il rinnovo del visto C1?") classify as "visa" because visa keywords
+        # are checked first — visa-specific tooling is more important than
+        # pricing-generic when both apply.
+        for q in (
+            "Quanto costa aprire una società?",
+            "How much does a company setup cost?",
+            "Berapa biaya untuk PT PMA?",
+        ):
+            assert classify_query_domain(q) == "pricing", q
+
+    def test_classify_default_for_unrelated(self):
+        from backend.services.rag.agentic.reasoning_utils import classify_query_domain
+
+        for q in ("Ciao!", "Hello there!", "Halo!", "Thanks", "What is Bali?"):
+            assert classify_query_domain(q) == "default", q
+
+    def test_thresholds_default_values(self):
+        from backend.services.rag.agentic.reasoning_utils import get_abstain_threshold
+
+        assert get_abstain_threshold("Quando si paga il PPh21?") == 0.10  # tax
+        assert get_abstain_threshold("KITAS extension cost") == 0.12      # visa
+        assert get_abstain_threshold("Quanto costa una società?") == 0.15 # pricing
+        assert get_abstain_threshold("Kode KBLI restoran") == 0.20        # kbli
+        assert get_abstain_threshold("Hello!") == 0.15                    # default
+
+    def test_threshold_env_override(self, monkeypatch):
+        # User can tune via env var without redeploy
+        monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "tax:0.05,kbli:0.30")
+        # Need to rebuild the module-level dict; emulate by re-running
+        # _build_domain_thresholds and patching the cached one.
+        import backend.services.rag.agentic.reasoning_utils as mod
+        monkeypatch.setattr(mod, "_DOMAIN_THRESHOLDS", mod._build_domain_thresholds())
+
+        from backend.services.rag.agentic.reasoning_utils import get_abstain_threshold
+
+        assert get_abstain_threshold("PPh tax") == 0.05  # overridden
+        assert get_abstain_threshold("KBLI restoran") == 0.30  # overridden
+        # Unmodified domains keep defaults
+        assert get_abstain_threshold("KITAS cost") == 0.12
+
+    def test_malformed_env_override_logged_and_skipped(self, monkeypatch, caplog):
+        monkeypatch.setenv(
+            "DOMAIN_ABSTAIN_THRESHOLDS",
+            "tax:0.05,broken_no_value,kbli:notanumber,pricing:0.18",
+        )
+        import backend.services.rag.agentic.reasoning_utils as mod
+        with caplog.at_level("WARNING"):
+            thresholds = mod._build_domain_thresholds()
+
+        # Valid entries land
+        assert thresholds["tax"] == 0.05
+        assert thresholds["pricing"] == 0.18
+        # Malformed entries skipped, defaults preserved
+        assert thresholds["kbli"] == 0.20
+        # And we logged a warning about the bad entry
+        assert any("notanumber" in msg or "skipping" in msg.lower() for msg in caplog.messages)

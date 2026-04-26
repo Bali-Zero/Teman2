@@ -72,21 +72,39 @@ class OrchestratorResponseBuilder:
             CoreResult completo
         """
         from backend.app.core.constants import EvidenceScoreConstants
+        from backend.services.rag.agentic.reasoning_utils import (
+            get_abstain_threshold,
+        )
 
         timings.get("total", 0.0)
         verification_score = getattr(state, "verification_score", 0.0)
         evidence_score = getattr(state, "evidence_score", None) or 0.0
 
-        # Determine if this is an ABSTAIN response
-        abstain = evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
+        # Determine if this is an ABSTAIN response.
+        # v3 quick-win #2: per-domain threshold (tax/visa lower, KBLI higher)
+        # so over-rejection on Indonesian tax/visa queries goes away while
+        # KBLI false-positives (business-vocabulary collisions) get filtered
+        # out more aggressively. Falls back to the legacy global 0.15 when
+        # the domain classifier returns "default".
+        query_str = getattr(state, "query", "") or ""
+        abstain_threshold = get_abstain_threshold(query_str)
+        abstain = evidence_score < abstain_threshold
+
         abstain_reason = None
         if abstain:
             if evidence_score < 0.05:
                 abstain_reason = "no_relevant_context"
-            elif evidence_score < 0.15:
+            elif evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD:
                 abstain_reason = "low_confidence"
             else:
-                abstain_reason = "insufficient_evidence"
+                # New bucket: above legacy 0.15 but below domain-specific cutoff
+                abstain_reason = "below_domain_threshold"
+
+        if abstain_threshold != EvidenceScoreConstants.ABSTAIN_THRESHOLD:
+            logger.debug(
+                "abstain_gate: query=%r domain_threshold=%.2f score=%.2f abstain=%s",
+                query_str[:60], abstain_threshold, evidence_score, abstain,
+            )
 
         return CoreResult(
             answer=state.final_answer,
