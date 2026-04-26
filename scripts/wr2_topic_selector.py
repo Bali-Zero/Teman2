@@ -167,6 +167,20 @@ async def _already_seen(conn: asyncpg.Connection, staging_id: str) -> bool:
     return bool(row)
 
 
+async def _seen_staging_ids(
+    conn: asyncpg.Connection, staging_ids: list[str]
+) -> set[str]:
+    """Return the subset of staging_ids that already have a draft (bulk check)."""
+    if not staging_ids:
+        return set()
+    rows = await conn.fetch(
+        "SELECT brief_json->>'staging_id' AS sid FROM war_room_drafts "
+        "WHERE brief_json->>'staging_id' = ANY($1::text[])",
+        staging_ids,
+    )
+    return {r["sid"] for r in rows if r["sid"]}
+
+
 async def run(*, dry_run: bool = False, force: bool = False) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
@@ -202,26 +216,67 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
             (item.get("title") or "")[:80],
         )
 
-    top_item, top_score, top_detail = scored[0]
     threshold = 0.0 if force else SCORE_THRESHOLD
-    if top_score < threshold:
-        logger.info("Top score %.1f below threshold %.1f — skip", top_score, threshold)
+
+    # Bulk-check which of the top-N candidates already have a draft, then
+    # pick the highest-scoring one that's NOT a duplicate. Without this,
+    # the previous flow always picked scored[0] and bailed when it was
+    # deduplicated, leaving the entire pipeline idle for the day even
+    # though candidates #2..#N were untouched.
+    DEDUP_LOOKAHEAD = int(os.environ.get("WR2_TOPIC_DEDUP_LOOKAHEAD", "20"))
+    candidates = [t for t in scored[:DEDUP_LOOKAHEAD] if t[1] >= threshold]
+    if not candidates:
+        logger.info(
+            "No candidates above threshold %.1f among top-%d — skip",
+            threshold,
+            DEDUP_LOOKAHEAD,
+        )
         return 1
 
-    staging_id = top_item.get("id") or ""
-    title = top_item.get("title") or "(untitled)"
+    candidate_ids = [
+        (t[0].get("id") or "") for t in candidates if t[0].get("id")
+    ]
 
-    if dry_run:
-        logger.info("[DRY-RUN] Would create draft: %s (score=%.1f)", title, top_score)
-        logger.info("[DRY-RUN] brief_json preview: %s", json.dumps(top_detail, indent=2))
-        return 0
-
-    pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=30)
+    pool = await asyncpg.create_pool(
+        dsn=dsn, min_size=1, max_size=2, command_timeout=30
+    )
     try:
         async with pool.acquire() as conn:
-            if staging_id and await _already_seen(conn, staging_id):
-                logger.info("Staging item %s already has a draft — skip (dedup)", staging_id)
-                return 1
+            seen = await _seen_staging_ids(conn, candidate_ids)
+
+        chosen: tuple[dict[str, Any], float, dict[str, Any]] | None = None
+        for rank, (item, score, detail) in enumerate(candidates, start=1):
+            sid = item.get("id") or ""
+            if sid and sid in seen:
+                logger.info(
+                    "rank #%d %r (sid=%s) already has a draft — skip (dedup)",
+                    rank,
+                    (item.get("title") or "")[:80],
+                    sid,
+                )
+                continue
+            chosen = (item, score, detail)
+            if rank > 1:
+                logger.info(
+                    "Picked rank #%d after %d dedup skip(s)", rank, rank - 1
+                )
+            break
+
+        if chosen is None:
+            logger.info(
+                "All %d candidates already have a draft — nothing fresh to pick",
+                len(candidates),
+            )
+            return 1
+
+        top_item, top_score, top_detail = chosen
+        staging_id = top_item.get("id") or ""
+        title = top_item.get("title") or "(untitled)"
+
+        if dry_run:
+            logger.info("[DRY-RUN] Would create draft: %s (score=%.1f)", title, top_score)
+            logger.info("[DRY-RUN] brief_json preview: %s", json.dumps(top_detail, indent=2))
+            return 0
 
         brief_json: dict[str, Any] = {
             "staging_id": staging_id,
