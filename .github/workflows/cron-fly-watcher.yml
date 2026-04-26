@@ -1,0 +1,97 @@
+name: cron - fly watcher (every 15 min)
+
+# Migrated from Pro crontab `*/15 * * * * cron-agent-python/run.sh fly-watcher` (2026-04-26).
+# Snapshot of fly status for nuzantara-rag, nuzantara-postgres, nuzantara-qdrant.
+# Alerts if any app has machines NOT in expected state or unhealthy checks.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-fly-watcher
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Snapshot fly status (3 apps)
+        id: snap
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          REPORT=""
+          OVERALL_OK=1
+          for app in nuzantara-rag nuzantara-postgres nuzantara-qdrant; do
+            RAW=$(flyctl status --json -a "$app" 2>&1 || true)
+            SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
+          import json, os, sys
+          try:
+              d = json.loads(os.environ.get("RAW", ""))
+          except Exception:
+              print("PARSE_ERROR")
+              sys.exit(0)
+          machines = d.get("Machines", []) or []
+          total = len(machines)
+          started = sum(1 for m in machines if m.get("state") == "started")
+          stopped = sum(1 for m in machines if m.get("state") == "stopped")
+          bad_states = [m.get("state", "?") for m in machines if m.get("state") not in ("started", "stopped")]
+          unhealthy = 0
+          for m in machines:
+              for c in (m.get("checks") or []):
+                  if c.get("status") not in ("passing", None):
+                      unhealthy += 1
+          print(f"total={total}|started={started}|stopped={stopped}|bad={','.join(bad_states) or 'none'}|unhealthy={unhealthy}")
+          PY
+          )
+            echo "[$app] $SUMMARY"
+            REPORT="${REPORT}[$app] $SUMMARY"$'\n'
+            # nuzantara-qdrant may legitimately be stopped (auto_stop). nuzantara-rag and -postgres should always be started.
+            if echo "$SUMMARY" | grep -q "PARSE_ERROR"; then
+              OVERALL_OK=0
+              continue
+            fi
+            STARTED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^started= | cut -d= -f2)
+            TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
+            UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
+            if [ "$app" != "nuzantara-qdrant" ] && [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
+              OVERALL_OK=0
+            fi
+            if [ "${UNHEALTHY:-0}" -gt 0 ]; then
+              OVERALL_OK=0
+            fi
+          done
+          {
+            echo "report<<EOF"
+            echo "$REPORT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "ok=$OVERALL_OK" >> "$GITHUB_OUTPUT"
+          if [ "$OVERALL_OK" -ne 1 ]; then
+            echo "::warning::Fly fleet anomaly detected"
+            exit 1
+          fi
+
+      - name: Telegram alert on anomaly
+        if: failure()
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          REPORT: ${{ steps.snap.outputs.report }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          TEXT="⚠️ <b>fly-watcher</b> anomaly
+          ${REPORT:-no report}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true
