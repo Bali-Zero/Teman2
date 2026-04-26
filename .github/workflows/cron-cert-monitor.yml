@@ -1,0 +1,82 @@
+name: cron - cert monitor (daily 07:00 WITA)
+
+# Migrated from Pro crontab `0 7 * * * cert-monitor.sh` (2026-04-26).
+# Checks SSL cert expiry on 7 balizero.com subdomains + nuzantara-rag.fly.dev.
+# Alerts Telegram when any cert is < 30 days from expiry, or unreachable.
+
+on:
+  schedule:
+    - cron: '0 23 * * *' # 23:00 UTC = 07:00 WITA next day
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-cert-monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      THRESHOLD_DAYS: '30'
+    steps:
+      - name: Check certs
+        id: check
+        run: |
+          set -uo pipefail
+          DOMAINS=(
+            "balizero.com:443"
+            "kita.balizero.com:443"
+            "mail.balizero.com:443"
+            "calendar.balizero.com:443"
+            "drive.balizero.com:443"
+            "knowledge.balizero.com:443"
+            "nuzantara-rag.fly.dev:443"
+          )
+          ALERTS=""
+          for dp in "${DOMAINS[@]}"; do
+            host="${dp%%:*}"
+            end_date=$(echo | openssl s_client -servername "$host" -connect "$dp" 2>/dev/null \
+              | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//') || end_date=""
+            if [ -z "$end_date" ]; then
+              echo "[$host] cert check failed"
+              ALERTS="${ALERTS}⚠️ <b>${host}</b>: cert check failed"$'\n'
+              continue
+            fi
+            # GNU date (Ubuntu runner): -d parses arbitrary formats
+            end_epoch=$(date -d "$end_date" "+%s" 2>/dev/null) || end_epoch=""
+            if [ -z "$end_epoch" ]; then
+              echo "[$host] cert date unparseable: $end_date"
+              ALERTS="${ALERTS}⚠️ <b>${host}</b>: cert date unparseable"$'\n'
+              continue
+            fi
+            now_epoch=$(date "+%s")
+            days=$(( (end_epoch - now_epoch) / 86400 ))
+            echo "[$host] $days days left"
+            if [ "$days" -lt "$THRESHOLD_DAYS" ]; then
+              ALERTS="${ALERTS}🔴 <b>${host}</b>: expires in ${days} days"$'\n'
+            fi
+          done
+          {
+            echo "alerts<<EOF"
+            echo "$ALERTS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Telegram alert
+        if: steps.check.outputs.alerts != ''
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          ALERTS: ${{ steps.check.outputs.alerts }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          TEXT="🔒 <b>SSL Cert Monitor</b>
+          ${ALERTS}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true
