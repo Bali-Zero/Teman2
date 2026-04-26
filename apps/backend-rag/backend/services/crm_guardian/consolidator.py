@@ -15,7 +15,7 @@ from typing import Any
 
 import asyncpg
 
-from .base import (
+from backend.services.crm_guardian.base import (
     GuardianAction,
     GuardianEvent,
     GuardianRunContext,
