@@ -1,51 +1,56 @@
-import type { Metadata } from "next";
-import { NavShell } from "@balizero/core/components/NavShell";
-import { BZLogo } from "@balizero/core/components/BZLogo";
-import { MobileNav } from "../v2/_components/MobileNav";
-import { HomeSearchButton } from "../v2/_components/HomeSearchButton";
-import { HeroBlueprint } from "../v2/_components/HeroBlueprint";
-import { SocialProof } from "../v2/_components/SocialProof";
-import { FunnelFeature } from "../v2/_components/FunnelFeature";
-import { NewsHero } from "../v2/_components/NewsHero";
-import { TopicPills } from "../v2/_components/TopicPills";
-import { LatestNews } from "../v2/_components/LatestNews";
-import { Footer } from "../v2/_components/Footer";
-import { ZantaraFAB } from "../v2/_components/ZantaraFAB";
-import { getAllArticles } from "@/lib/blog/articles";
-import { buildWhatsAppLink } from "@/lib/whatsapp-utm";
-import { buildCombinedHomepageSchema } from "./_seo/funnel-schema";
-import homepageLayout from "@/content/homepage-layout.json";
+import type { Metadata } from 'next';
+import Script from 'next/script';
+import { NavShell } from '@balizero/core/components/NavShell';
+import { BZLogo } from '@balizero/core/components/BZLogo';
+import { MobileNav } from '../v2/_components/MobileNav';
+import { HomeSearchButton } from '../v2/_components/HomeSearchButton';
+import { HeroBlueprint } from '../v2/_components/HeroBlueprint';
+import { SocialProof } from '../v2/_components/SocialProof';
+import { FunnelFeature } from '../v2/_components/FunnelFeature';
+import { NewsHero } from '../v2/_components/NewsHero';
+import { TopicPills } from '../v2/_components/TopicPills';
+import { LatestNews } from '../v2/_components/LatestNews';
+import { Footer } from '../v2/_components/Footer';
+import { ZantaraFAB } from '../v2/_components/ZantaraFAB';
+import { ZantaraWidget } from '@/components/ZantaraWidget';
+import { HomepageStaticContent } from './HomepageStaticContent';
+import { KbliSearchBox } from './KbliSearchBox';
+import { LatestIntelligence } from './LatestIntelligence';
+import { getAllArticles } from '@/lib/blog/articles';
+import { buildWhatsAppLink } from '@/lib/whatsapp-utm';
+import { buildCombinedHomepageSchema } from './_seo/funnel-schema';
+import homepageLayout from '@/content/homepage-layout.json';
 
 // Force dynamic rendering so / always reflects the freshest MDX covers.
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 // How many cards to show in "Latest from Bali Zero". Auto-adapts grid.
 const LATEST_NEWS_COUNT = 5;
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+    absolute: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
   },
   description:
     "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients since 2020.",
   alternates: {
-    canonical: "https://balizero.com",
+    canonical: 'https://balizero.com',
   },
   openGraph: {
-    title: "Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia",
+    title: 'Bali Zero | #1 Visa & PT PMA Experts in Bali, Indonesia',
     description:
       "Indonesia's AI-powered visa agency. KITAS, KITAP, Golden Visa, PT PMA company setup, tax compliance. 24/7 AI assistant. Trusted by 5000+ clients.",
-    url: "https://balizero.com",
+    url: 'https://balizero.com',
   },
 };
 
 const NAV_ITEMS = [
-  { label: "Home", href: "#top" },
-  { label: "Visa", href: "#visa" },
-  { label: "Business", href: "#kbli" },
-  { label: "Tax", href: "#tax" },
-  { label: "Property", href: "#property" },
-  { label: "News", href: "#news" },
+  { label: 'Home', href: '#top' },
+  { label: 'Visa', href: '#visa' },
+  { label: 'Business', href: '#kbli' },
+  { label: 'Tax', href: '#tax' },
+  { label: 'Property', href: '#property' },
+  { label: 'News', href: '#news' },
 ];
 
 export default async function HomePage() {
@@ -53,20 +58,19 @@ export default async function HomePage() {
   const layout = homepageLayout as Record<string, string>;
 
   const heroSlugs = new Set(
-    ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
-      .map((k) => layout[k])
-      .filter(Boolean),
+    ['hero_main', 'hero_2', 'hero_3', 'hero_4', 'hero_5'].map((k) => layout[k]).filter(Boolean)
   );
-  const heroArticles = ["hero_main", "hero_2", "hero_3", "hero_4", "hero_5"]
+  const heroArticles = ['hero_main', 'hero_2', 'hero_3', 'hero_4', 'hero_5']
     .map((k) => articles.find((a) => a.slug === layout[k]))
     .filter(Boolean) as typeof articles;
-  const preferred = ["latest_1", "latest_2", "latest_3", "latest_4", "latest_5"]
+  const preferred = ['latest_1', 'latest_2', 'latest_3', 'latest_4', 'latest_5']
     .map((k) => articles.find((a) => a.slug === layout[k]))
     .filter(Boolean) as typeof articles;
   const fallback = articles.filter((a) => !heroSlugs.has(a.slug));
-  const latest = (
-    preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback
-  ).slice(0, LATEST_NEWS_COUNT);
+  const latest = (preferred.length >= LATEST_NEWS_COUNT ? preferred : fallback).slice(
+    0,
+    LATEST_NEWS_COUNT
+  );
 
   const homepageSchema = buildCombinedHomepageSchema();
 
@@ -74,9 +78,9 @@ export default async function HomePage() {
     <div
       id="top"
       style={{
-        background: "var(--surface-base)",
-        color: "var(--text-primary)",
-        minHeight: "100vh",
+        background: 'var(--surface-base)',
+        color: 'var(--text-primary)',
+        minHeight: '100vh',
       }}
     >
       <script
@@ -94,22 +98,22 @@ export default async function HomePage() {
               href="https://kita.balizero.com/"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
               style={{
-                background: "transparent",
-                color: "var(--text-secondary)",
-                textDecoration: "none",
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                textDecoration: 'none',
               }}
             >
               Login
             </a>
             <a
-              href={buildWhatsAppLink("home")}
+              href={buildWhatsAppLink('home')}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wide"
               style={{
-                background: "var(--accent-funnel)",
-                color: "var(--text-on-accent)",
-                textDecoration: "none",
+                background: 'var(--accent-funnel)',
+                color: 'var(--text-on-accent)',
+                textDecoration: 'none',
               }}
             >
               Get Started
@@ -775,7 +779,8 @@ body::after {
 `,
         }}
       />
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
 <!-- ════════ NAVBAR ════════ -->
 <nav>
   <a class="logo-wrap" href="/">
@@ -1138,7 +1143,8 @@ body::after {
     <a href="/news?category=visas&q=work+permit" class="topic-pill">Work Permits</a>
   </div>
 
-`} />
+`}
+      />
 
       {/* ── Latest Intelligence (client-side, always fresh) ── */}
       <LatestIntelligence />
@@ -1147,22 +1153,32 @@ body::after {
       <div className="kbli-section">
         <div className="kbli-left">
           <span className="kbli-badge">Featured Intelligence Tool</span>
-          <h2 className="kbli-title">KBLI 2025<br />Navigator</h2>
-          <p className="kbli-desc">Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk assessment, PMA status tracking, and AI-powered guidance.</p>
+          <h2 className="kbli-title">
+            KBLI 2025
+            <br />
+            Navigator
+          </h2>
+          <p className="kbli-desc">
+            Instant access to all 1,563 KBLI 2025 codes with intelligent search, 4-level risk
+            assessment, PMA status tracking, and AI-powered guidance.
+          </p>
           <div className="kbli-features">
             <span className="kbli-feat">Smart bilingual search</span>
             <span className="kbli-feat">4-level risk system</span>
             <span className="kbli-feat">PMA status tracking</span>
             <span className="kbli-feat">AI assistant</span>
           </div>
-          <a href="/kbli" className="kbli-btn">▶ Explore Navigator</a>
+          <a href="/kbli" className="kbli-btn">
+            ▶ Explore Navigator
+          </a>
         </div>
         <div className="kbli-right">
           <KbliSearchBox />
         </div>
       </div>
 
-      <HomepageStaticContent html={`
+      <HomepageStaticContent
+        html={`
   <!-- Services -->
   <div class="services-section">
     <div class="services-top">
@@ -1249,7 +1265,8 @@ body::after {
   </footer>
 </div>
 
-`} />
+`}
+      />
       <ZantaraWidget />
       <Script id="balizero-homepage-js" strategy="afterInteractive">{`
 // ════════ CAROUSEL ENGINE ════════
@@ -1310,6 +1327,6 @@ document.addEventListener('mousemove', function(e) {
   document.body.style.setProperty('--mouse-y', e.clientY + 'px');
 });
 `}</Script>
-    </>
+    </div>
   );
 }
