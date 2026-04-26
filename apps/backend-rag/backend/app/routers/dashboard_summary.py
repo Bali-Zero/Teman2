@@ -608,11 +608,7 @@ async def get_role_metrics(
                     user_id,
                 )
             metrics = {
-                # New EN field — preferred. Frontend will switch to this in PR-11b.
                 "assigned_cases": int(user_practices),
-                # Legacy IT field — kept for backwards-compat during rolling deploy.
-                # Will be removed in PR-11c after the frontend is fully migrated.
-                "pratiche_assegnate": int(user_practices),
                 "prossima_scadenza": next_deadline,
                 "doc_mancanti": 0,
                 "clienti_assegnati": int(user_practices),
@@ -691,7 +687,6 @@ async def get_role_metrics(
             },
             "team": {
                 "assigned_cases": 0,
-                "pratiche_assegnate": 0,  # legacy IT alias — see PR-11
                 "prossima_scadenza": None,
                 "doc_mancanti": 0,
                 "clienti_assegnati": 0,
