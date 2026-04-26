@@ -195,6 +195,60 @@ class TestTranslationVariants:
         # Should attempt translation
         assert isinstance(variants, list)
 
+    @pytest.mark.asyncio
+    async def test_llm_translate_uses_structured_output(self, expander):
+        """`_llm_translate` calls `client.generate_structured` and unpacks
+        the resulting Pydantic model into the variants set."""
+        from backend.services.rag.query_expansion import TranslationResult
+
+        mock_client = MagicMock()
+        mock_client.generate_structured = AsyncMock(
+            return_value=TranslationResult(
+                translations={"id": "panduan investasi asing", "en": "foreign investment guide"}
+            )
+        )
+
+        with patch.object(expander, "_get_genai_client", return_value=mock_client):
+            # Query that won't match the dictionary so the LLM path runs.
+            variants = await expander._llm_translate(
+                "what does Bali Zero do for foreign investors", ["id", "en"]
+            )
+
+        assert "panduan investasi asing" in variants
+        assert "foreign investment guide" in variants
+        # Confirm the schema-validated path was actually taken.
+        mock_client.generate_structured.assert_awaited_once()
+        kwargs = mock_client.generate_structured.await_args.kwargs
+        assert kwargs["response_schema"] is TranslationResult
+
+    @pytest.mark.asyncio
+    async def test_llm_translate_validation_failure_falls_back(self, expander):
+        """When `generate_structured` raises `LLMStructuredOutputError`,
+        `_llm_translate` swallows it and returns an empty variants set —
+        keeping the dictionary-only path of `translate_variants` intact."""
+        from backend.llm.genai_client import LLMStructuredOutputError
+
+        mock_client = MagicMock()
+        mock_client.generate_structured = AsyncMock(
+            side_effect=LLMStructuredOutputError("schema validation failed twice")
+        )
+
+        with patch.object(expander, "_get_genai_client", return_value=mock_client):
+            variants = await expander._llm_translate(
+                "what does Bali Zero do for foreign investors", ["id"]
+            )
+
+        assert variants == set()
+
+    @pytest.mark.asyncio
+    async def test_llm_translate_no_client_returns_empty(self, expander):
+        """If the genai client isn't configured (Air without GEMINI key),
+        `_llm_translate` returns an empty set without attempting any call."""
+        with patch.object(expander, "_get_genai_client", return_value=None):
+            variants = await expander._llm_translate("anything", ["id"])
+
+        assert variants == set()
+
 
 class TestFilterRelaxation:
     """Test filter removal/relaxation functionality."""
