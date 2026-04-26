@@ -119,6 +119,8 @@ googleapis-common-protos>=1.63.0  # Fix pkg_resources deprecation warning
 # Added 2026-04-21 in feat/observability-langfuse-poc (see apps/backend-rag/README.md)
 langfuse>=2.60.0,<4.0.0  # LLM observability, OTEL-based v2+
 openinference-instrumentation-anthropic>=0.1.14  # Auto-trace Anthropic calls
+openinference-instrumentation-google-genai>=0.1.16  # Auto-trace google-genai SDK (Gemini)
+openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
 
 # Data Processing
 datasets>=2.19.0

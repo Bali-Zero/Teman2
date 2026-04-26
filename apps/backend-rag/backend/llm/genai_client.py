@@ -38,6 +38,17 @@ from backend.llm.metrics_emitter import emit_llm_metric
 
 logger = logging.getLogger(__name__)
 
+
+class LLMStructuredOutputError(Exception):
+    """Raised by GenAIClient.generate_structured() when the model fails to
+    produce a Pydantic-valid response after the configured retries.
+
+    Callers may catch this and fall back to legacy non-structured paths;
+    `query_expansion._llm_translate` does so to keep the dictionary-only
+    expansion path alive when the LLM round-trips an unparseable result.
+    """
+
+
 # Try to import new SDK
 GENAI_AVAILABLE = False
 genai = None
@@ -397,6 +408,193 @@ class GenAIClient:
         finally:
             # Indestructible cost ledger (see
             # backend/services/observability/llm_cost_recorder.py).
+            try:
+                from backend.services.llm_clients.pricing import calculate_cost
+                from backend.services.observability import record_llm_call
+
+                cost_usd = calculate_cost(prompt_tokens, completion_tokens, model)
+                await record_llm_call(
+                    provider="gemini",
+                    model=model,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    cost_usd=cost_usd,
+                    success=success,
+                    latency_ms=round((time.perf_counter() - t0) * 1000),
+                    endpoint=endpoint,
+                    request_id=request_id,
+                    error_class=error_class,
+                )
+            except Exception as rec_exc:  # noqa: BLE001 — never break the caller
+                logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
+
+    async def generate_structured(
+        self,
+        contents: str | list,
+        response_schema: type,
+        model: str | None = None,
+        system_instruction: str | None = None,
+        max_output_tokens: int = 8192,
+        temperature: float = 0.4,
+        timeout_ms: int | None = None,
+        endpoint: str | None = None,
+        request_id: str | None = None,
+        max_retries: int = 1,
+    ):
+        """Generate a Pydantic-validated structured response.
+
+        Uses google-genai's native ``response_schema`` + ``response_mime_type``
+        to constrain the model to JSON matching ``response_schema``. Validates
+        the resulting text with ``response_schema.model_validate_json``; on a
+        ``pydantic.ValidationError`` retries up to ``max_retries`` times,
+        feeding the error back into the prompt (the same pattern that
+        ``instructor`` uses for OpenAI-compatible providers).
+
+        Observability: same Prometheus + Postgres + JSONL hooks as
+        :meth:`generate_content`, with an extra ``response_format=structured``
+        marker so we can distinguish the two paths in dashboards.
+
+        Args:
+            contents: User message (or list of messages).
+            response_schema: A Pydantic v2 ``BaseModel`` subclass.
+            model: Model name (defaults to ``gemini-2.0-flash-lite``).
+            system_instruction: Optional system prompt.
+            max_output_tokens: Cap on completion length.
+            temperature: Sampling temperature.
+            timeout_ms: Per-request timeout, falls back to ``DEFAULT_TIMEOUT_MS``.
+            endpoint: Caller identifier for cost attribution.
+            request_id: Optional HTTP correlation id.
+            max_retries: Validation retries on parse/validation failure
+                (1 retry = at most 2 LLM calls in total).
+
+        Returns:
+            An instance of ``response_schema`` populated from the model output.
+
+        Raises:
+            RuntimeError: if the underlying client is not available.
+            LLMStructuredOutputError: if the model fails to produce a
+                schema-valid response after ``max_retries`` retries.
+        """
+        # Lazy-import pydantic so this module stays importable in environments
+        # that don't yet have it (mirrors the SDK lazy-import pattern above).
+        from pydantic import BaseModel, ValidationError
+
+        if not isinstance(response_schema, type) or not issubclass(response_schema, BaseModel):
+            raise TypeError(
+                "response_schema must be a Pydantic BaseModel subclass; "
+                f"got {response_schema!r}"
+            )
+
+        if not self.is_available:
+            raise RuntimeError("GenAI client not available")
+        if types is None:
+            raise RuntimeError("google-genai SDK not loaded; cannot build config")
+
+        model = model or self.DEFAULT_MODEL
+
+        # Build a structured-output config. We can't reuse ``_get_config``
+        # because we need ``response_mime_type`` + ``response_schema`` which
+        # the helper doesn't expose; the rest of the kwargs mirror it.
+        config_kwargs: dict[str, Any] = {
+            "max_output_tokens": max_output_tokens,
+            "temperature": temperature,
+            "response_mime_type": "application/json",
+            "response_schema": response_schema,
+            "http_options": types.HttpOptions(
+                timeout=timeout_ms if timeout_ms is not None else self.DEFAULT_TIMEOUT_MS
+            ),
+        }
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
+        config = types.GenerateContentConfig(**config_kwargs)
+
+        attempt_prompt: str | list = contents
+        last_validation_err: ValidationError | None = None
+
+        t0 = time.perf_counter()
+        prompt_tokens = 0
+        completion_tokens = 0
+        success = False
+        error_class: str | None = None
+        try:
+            for attempt in range(max_retries + 1):
+                response = await self._client.aio.models.generate_content(
+                    model=model,
+                    contents=attempt_prompt,
+                    config=config,
+                )
+
+                # Always accumulate token usage: retries are paid attempts too.
+                prompt_tokens += getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                completion_tokens += (
+                    getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                )
+
+                raw_text = getattr(response, "text", None) or ""
+                try:
+                    parsed = response_schema.model_validate_json(raw_text)
+                    success = True
+                    latency_ms = round((time.perf_counter() - t0) * 1000)
+                    logger.info(
+                        "LLM structured call",
+                        extra={
+                            "provider": "gemini",
+                            "model": model,
+                            "schema": response_schema.__name__,
+                            "latency_ms": latency_ms,
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "attempts": attempt + 1,
+                        },
+                    )
+                    await emit_llm_metric(
+                        provider="gemini",
+                        model=model,
+                        latency_ms=latency_ms,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                    )
+                    return parsed
+                except ValidationError as ve:
+                    last_validation_err = ve
+                    # Append validation feedback to the next attempt so the
+                    # model knows what to fix (mirrors instructor's approach).
+                    if attempt < max_retries:
+                        feedback = (
+                            "Your previous response failed schema validation. "
+                            "Errors:\n"
+                            f"{ve}\n\n"
+                            "Return ONLY a valid JSON object that matches the "
+                            "declared schema."
+                        )
+                        attempt_prompt = (
+                            f"{contents}\n\n---\n{feedback}"
+                            if isinstance(contents, str)
+                            else [contents, {"role": "user", "parts": [{"text": feedback}]}]
+                        )
+
+            error_class = "LLMStructuredOutputError"
+            raise LLMStructuredOutputError(
+                f"Model failed to produce {response_schema.__name__}-valid JSON "
+                f"after {max_retries + 1} attempt(s): {last_validation_err}"
+            )
+        except LLMStructuredOutputError:
+            raise
+        except Exception as e:
+            error_class = type(e).__name__
+            logger.error(
+                "LLM structured call failed",
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "schema": response_schema.__name__,
+                    "error": str(e),
+                },
+            )
+            raise
+        finally:
+            # Mirror the cost-recorder pattern from generate_content() so the
+            # llm_cost_events ledger captures structured calls too.
             try:
                 from backend.services.llm_clients.pricing import calculate_cost
                 from backend.services.observability import record_llm_call

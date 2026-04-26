@@ -220,11 +220,38 @@ class IntelPipeline:
             else:
                 self.log('EXA_API_KEY not set, skipping Exa augmentation')
 
+            # intel_radar_findings augmentation (PR-1 §B)
+            # Reads canonical signals INSERTed by intel_radar.py (Pro hourly cron)
+            # after intel_radar_daily_digest marks them processed=true. Each
+            # picked row is marked scraper_picked=true so we never double-fetch.
+            radar_stats: dict[str, int] = {}
+            if os.environ.get('INTEL_RADAR_PERSIST_DB', 'false').lower() == 'true':
+                try:
+                    radar_articles, radar_marked = self._fetch_intel_radar_findings()
+                    existing_urls = {a.get('url', '') for a in articles}
+                    new_radar = [a for a in radar_articles if a.get('url') and a['url'] not in existing_urls]
+                    articles.extend(new_radar)
+                    radar_stats = {
+                        'radar_total': len(radar_articles),
+                        'radar_new': len(new_radar),
+                        'radar_dupes': len(radar_articles) - len(new_radar),
+                        'radar_marked_picked': radar_marked,
+                    }
+                    self.log(
+                        f'intel-radar added {len(new_radar)} unique articles '
+                        f'(picked {radar_marked} from intel_radar_findings, filtered '
+                        f'{len(radar_articles) - len(new_radar)} dupes)'
+                    )
+                except Exception as e:
+                    self.log(f'intel-radar augmentation failed (non-fatal): {e}', 'WARN')
+                    radar_stats = {'radar_error': str(e)}
+
             self.state['articles'] = articles
             self.update_step_status('1_scraping', 'completed', {
                 'articles': len(articles),
                 'sources':  scraper.stats.get('sources_processed', 0),
                 **exa_stats,
+                **radar_stats,
             })
             return True
         except Exception as e:
@@ -1832,6 +1859,105 @@ IMPORTANT:
 
         self.update_step_status('7_publishing', 'completed')
         return True
+
+    def _fetch_intel_radar_findings(self, limit: int = 50) -> tuple[List[Dict], int]:
+        """Fetch unprocessed-by-scraper findings from intel_radar_findings table.
+
+        Atomically picks up to ``limit`` rows where ``processed=true`` AND
+        ``scraper_picked=false``, marks them ``scraper_picked=true`` in the
+        same transaction, and returns them shaped like UnifiedScraper articles
+        so they merge cleanly with the existing pipeline downstream.
+
+        Returns:
+            (articles, marked) — articles list (may be empty) plus the count
+            of rows we just marked scraper_picked=true (== len(articles) on
+            the happy path; less only on partial DB write failure).
+
+        Schema mapping intel_radar_findings → article dict:
+            - canonical_url      → url
+            - source_domain      → source_name
+            - title              → title
+            - description        → content (description is short, the
+              enrichment step will fetch the full page if needed)
+            - query_tier         → category hint (L1/L2/L3 stored on the
+              article so downstream WR2 selector can read it)
+            - observed_at        → published_date (best proxy when the source
+              didn't return a publication date)
+
+        Failure modes (all non-fatal — caller treats this as augmentation):
+            - asyncpg not installed → returns ([], 0)
+            - DATABASE_URL unset    → returns ([], 0)
+            - DB unreachable        → returns ([], 0), error logged
+
+        The transaction guarantees we never double-pick: the SELECT FOR UPDATE
+        + UPDATE happens in one round-trip, so a concurrent scraper run on
+        another machine cannot race us.
+        """
+        try:
+            import asyncpg  # local import: only loaded when feature flag enabled
+        except ImportError:
+            self.log('asyncpg not installed; skipping intel-radar fetch', 'WARN')
+            return [], 0
+
+        dsn = os.environ.get('DATABASE_URL')
+        if not dsn:
+            self.log('DATABASE_URL not set; skipping intel-radar fetch', 'WARN')
+            return [], 0
+
+        import asyncio
+
+        async def _fetch_and_mark() -> tuple[List[Dict], int]:
+            conn = await asyncpg.connect(dsn, timeout=10)
+            try:
+                async with conn.transaction():
+                    rows = await conn.fetch(
+                        """
+                        SELECT id, query, query_tier, url, canonical_url,
+                               title, description, source_domain,
+                               published_at, observed_at, source
+                        FROM intel_radar_findings
+                        WHERE processed = TRUE AND scraper_picked = FALSE
+                        ORDER BY observed_at DESC
+                        LIMIT $1
+                        FOR UPDATE SKIP LOCKED
+                        """,
+                        limit,
+                    )
+                    if not rows:
+                        return [], 0
+                    ids = [r['id'] for r in rows]
+                    await conn.execute(
+                        """
+                        UPDATE intel_radar_findings
+                        SET scraper_picked = TRUE, scraper_picked_at = NOW()
+                        WHERE id = ANY($1::uuid[])
+                        """,
+                        ids,
+                    )
+                articles = [
+                    {
+                        'url': r['canonical_url'] or r['url'],
+                        'title': r['title'] or '',
+                        'content': r['description'] or '',
+                        'source_name': r['source_domain'] or 'intel-radar',
+                        'category': 'general',  # downstream qwen_filter assigns the real category
+                        'tier': 'T2',  # default tier; quality_gate will re-rank
+                        'published_date': (r['published_at'] or r['observed_at']).isoformat(),
+                        'intel_radar_query': r['query'],
+                        'intel_radar_query_tier': r['query_tier'],
+                        'intel_radar_source': r['source'],
+                    }
+                    for r in rows
+                ]
+                return articles, len(rows)
+            finally:
+                await conn.close()
+
+        try:
+            return asyncio.run(_fetch_and_mark())
+        except Exception as e:
+            self.log(f'intel_radar_findings fetch failed: {e}', 'WARN')
+            return [], 0
 
     def _mock_scraped_articles(self) -> List[Dict]:
         """Mock data for testing pipeline"""

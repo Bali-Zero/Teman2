@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import base64
 import json
 import logging
 import os
@@ -35,7 +34,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 import asyncpg  # noqa: E402
-import httpx  # noqa: E402
 
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,
@@ -188,7 +186,120 @@ Structure:
 """
 
 
-def _build_draft_prompt(topic: str, summary: str, source_url: str) -> str:
+def _build_enriched_brief(enrichment: dict[str, Any], live_reasons: list[str] | None) -> str:
+    """Render the structured enrichment object as a labeled brief for Claude.
+
+    The intel-scraper produces 1400-2000 words across these fields:
+      - thirty_second_brief: {what, why_it_matters, who, risk_level}
+      - the_facts: 3-5 paragraphs of pure journalism, 400-500 words
+      - bali_zero_take: 2-3 paragraphs editorial perspective, 150-200 words
+      - in_practice: practical implications, 150-200 words
+      - next_steps: concrete action items, 100-150 words
+      - faq: list of {question, answer} pairs
+
+    The legacy prompt path passed only `summary[:3500]` (≈ 25% of the
+    available material) and ignored every Bali-Zero-specific framing the
+    enricher produced. This builder turns the structured object into a
+    section-tagged ground-truth brief Claude can quote from directly.
+
+    Returns an empty string if enrichment has no usable fields, so the
+    caller can fall back to the legacy summary path cleanly.
+    """
+    parts: list[str] = []
+
+    brief30 = enrichment.get("thirty_second_brief") or {}
+    if isinstance(brief30, dict) and brief30:
+        what = brief30.get("what") or ""
+        why = brief30.get("why_it_matters") or ""
+        who = brief30.get("who") or ""
+        risk = brief30.get("risk_level") or ""
+        if what or why or who:
+            parts.append("### 30-second brief")
+            if what:
+                parts.append(f"What: {what}")
+            if why:
+                parts.append(f"Why it matters: {why}")
+            if who:
+                parts.append(f"Who is affected: {who}")
+            if risk:
+                parts.append(f"Risk level: {risk}")
+            parts.append("")
+
+    facts = enrichment.get("the_facts") or ""
+    if isinstance(facts, str) and facts.strip():
+        parts.append("### The facts (use these as ground truth)")
+        parts.append(facts.strip())
+        parts.append("")
+
+    take = enrichment.get("bali_zero_take") or ""
+    if isinstance(take, str) and take.strip():
+        parts.append("### Bali Zero editorial take")
+        parts.append(take.strip())
+        parts.append("")
+
+    practice = enrichment.get("in_practice") or ""
+    if isinstance(practice, str) and practice.strip():
+        parts.append("### In practice (for expats/investors)")
+        parts.append(practice.strip())
+        parts.append("")
+
+    next_steps = enrichment.get("next_steps") or ""
+    if isinstance(next_steps, str) and next_steps.strip():
+        parts.append("### Next steps")
+        parts.append(next_steps.strip())
+        parts.append("")
+
+    faq = enrichment.get("faq") or []
+    if isinstance(faq, list) and faq:
+        parts.append("### FAQ")
+        for entry in faq[:6]:  # cap at 6, more is noise
+            if not isinstance(entry, dict):
+                continue
+            q = entry.get("question") or ""
+            a = entry.get("answer") or ""
+            if q and a:
+                parts.append(f"Q: {q}")
+                parts.append(f"A: {a}")
+                parts.append("")
+
+    if live_reasons:
+        parts.append("### Live news signals (why this is timely)")
+        for reason in live_reasons[:3]:
+            parts.append(f"- {reason}")
+        parts.append("")
+
+    return "\n".join(parts).strip()
+
+
+def _build_draft_prompt(
+    topic: str,
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None = None,
+    live_reasons: list[str] | None = None,
+) -> str:
+    """Build the slide-composition prompt.
+
+    PR-1 §C: when an enrichment object is available we hand Claude the full
+    structured brief (1400-2000 words across the_facts, bali_zero_take,
+    in_practice, next_steps, faq) instead of a truncated paragraph. This
+    is gated by WR2_USE_FULL_ENRICHED_PROMPT so the legacy path stays
+    available for back-compat / rollback.
+
+    Falls back to summary[:3500] when:
+      - WR2_USE_FULL_ENRICHED_PROMPT != "true" (legacy mode), OR
+      - enrichment dict is empty / missing all expected fields.
+    """
+    use_full_enriched = os.environ.get("WR2_USE_FULL_ENRICHED_PROMPT", "false").lower() == "true"
+
+    body = ""
+    if use_full_enriched and enrichment:
+        body = _build_enriched_brief(enrichment, live_reasons)
+
+    if not body:
+        # Legacy path: truncated summary. Always available as fallback.
+        body = summary[:3500]
+
     return f"""{SYSTEM_INSTRUCTIONS}
 
 ---
@@ -199,8 +310,8 @@ Title: {topic}
 
 Source: {source_url or "n/a"}
 
-Content (excerpt):
-{summary[:3500]}
+Content:
+{body}
 
 ---
 
@@ -223,8 +334,17 @@ def _extract_json(text: str) -> dict[str, Any]:
     return json.loads(text)
 
 
-async def claude_compose_slides(topic: str, summary: str, source_url: str) -> dict[str, Any]:
-    prompt = _build_draft_prompt(topic, summary, source_url)
+async def claude_compose_slides(
+    topic: str,
+    summary: str,
+    source_url: str,
+    enrichment: dict[str, Any] | None = None,
+    live_reasons: list[str] | None = None,
+) -> dict[str, Any]:
+    prompt = _build_draft_prompt(
+        topic, summary, source_url,
+        enrichment=enrichment, live_reasons=live_reasons,
+    )
     logger.info("Calling Claude OAuth for slide composition (prompt %d chars)", len(prompt))
     t0 = time.perf_counter()
     resp = await complete_async(
@@ -463,11 +583,22 @@ async def _process_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     brief = json.loads(brief_raw) if isinstance(brief_raw, str) else (brief_raw or {})
     summary = brief.get("article_summary") or ""
     source_url = brief.get("source_url") or ""
+    enrichment = brief.get("enrichment") or None
+    live_reasons = brief.get("live_news_reasons") or []
+    if not isinstance(live_reasons, list):
+        live_reasons = []
 
-    logger.info("─── processing draft %s ─── topic=%r", draft_id, topic[:80])
+    logger.info(
+        "─── processing draft %s ─── topic=%r enrichment=%s live_score=%s",
+        draft_id, topic[:80],
+        bool(enrichment), brief.get("live_news_score"),
+    )
 
     try:
-        parsed = await claude_compose_slides(topic=topic, summary=summary, source_url=source_url)
+        parsed = await claude_compose_slides(
+            topic=topic, summary=summary, source_url=source_url,
+            enrichment=enrichment, live_reasons=live_reasons,
+        )
     except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:
         logger.error("Claude OAuth failed: %s", e)
         await _mark_rejected(conn, draft_id, f"claude_failed: {e}")

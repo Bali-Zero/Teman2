@@ -19,10 +19,33 @@ import re
 import time
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from backend.core.cache import CacheService, get_cache_service
-from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
+from backend.llm.genai_client import (
+    GENAI_AVAILABLE,
+    LLMStructuredOutputError,
+    get_genai_client,
+)
 
 logger = logging.getLogger(__name__)
+
+
+class TranslationResult(BaseModel):
+    """Schema for the LLM-driven translation step in `QueryExpander._llm_translate`.
+
+    The LLM is asked to return a mapping of language code → translated query.
+    Using a generic dict keeps the schema forward-compatible with new
+    languages (Spanish, French, etc.) without code changes.
+    """
+
+    translations: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Mapping of ISO-639-1 language code (e.g. 'id', 'en') to the "
+            "translated query string. Empty if translation is unavailable."
+        ),
+    )
 
 # Indonesian business terms dictionary for synonym expansion
 INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
@@ -399,7 +422,15 @@ Example output: ["variant 1", "variant 2"]"""
         return variants
 
     async def _llm_translate(self, query: str, languages: list[str]) -> set[str]:
-        """Translate using LLM (slower but more accurate)."""
+        """Translate using LLM (slower but more accurate).
+
+        Uses :meth:`backend.llm.genai_client.GenAIClient.generate_structured`
+        which constrains Gemini's output to a Pydantic-validated
+        :class:`TranslationResult`. On any failure (timeout, validation,
+        client unavailable) we fall back to the dictionary-only path —
+        same behaviour as the legacy implementation, just with cleaner
+        error surfacing and observability.
+        """
         variants: set[str] = set()
 
         client = self._get_genai_client()
@@ -410,44 +441,38 @@ Example output: ["variant 1", "variant 2"]"""
             [{"id": "Indonesian", "en": "English"}.get(lang, lang) for lang in languages],
         )
 
-        prompt = f"""Translate this query to {target_langs}.
-Keep it concise and natural for search queries.
-
-Query: "{query}"
-
-Return ONLY a JSON object with language codes as keys:
-{{"id": "indonesian translation", "en": "english translation"}}"""
+        # Note: no "Return ONLY a JSON object…" instruction here — the schema
+        # enforces JSON via google-genai's response_mime_type.
+        prompt = (
+            f'Translate this query to {target_langs}.\n'
+            f"Keep it concise and natural for search queries.\n\n"
+            f'Query: "{query}"\n\n'
+            f"Return a JSON object whose `translations` field maps each "
+            f"language code to its translated query "
+            f'(e.g. {{"translations": {{"id": "...", "en": "..."}}}}).'
+        )
 
         try:
-            import asyncio
-
             result = await asyncio.wait_for(
-                client.generate_content(
+                client.generate_structured(
                     contents=prompt,
+                    response_schema=TranslationResult,
                     model="gemini-2.0-flash-lite",
                     max_output_tokens=256,
+                    endpoint="query_expansion._llm_translate",
                 ),
                 timeout=self.llm_timeout_ms / 1000,
             )
 
-            if result and result.get("text"):
-                text = result["text"]
-                # Extract JSON
-                start = text.find("{")
-                end = text.rfind("}") + 1
-                if start != -1 and end > start:
-                    try:
-                        translations = json.loads(text[start:end])
-                        for lang in languages:
-                            if lang in translations:
-                                variants.add(translations[lang])
-                    except json.JSONDecodeError as e:
-                        logger.debug(f"Translation JSON parse skipped: {e}")
+            for lang in languages:
+                translated = result.translations.get(lang)
+                if translated:
+                    variants.add(translated)
 
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
-            logger.debug(f"LLM translation failed (parse/data): {e}")
+        except LLMStructuredOutputError as e:
+            logger.debug(f"LLM translation failed schema validation: {e}")
         except Exception as e:  # noqa: BLE001 — LLM translation is best-effort; dictionary path continues
             logger.debug(f"LLM translation failed (unexpected): {e}")
 

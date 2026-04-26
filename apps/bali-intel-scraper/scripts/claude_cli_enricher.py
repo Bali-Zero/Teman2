@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 from typing import Dict, Any
 import logging
 
@@ -58,6 +57,9 @@ OUTPUT FORMAT (strict JSON only, no markdown):
     {{"question": "...", "answer": "..."}},
     {{"question": "...", "answer": "..."}}
   ],
+  "live_news_score": 0,
+  "liveness_tier": "evergreen",
+  "live_news_reasons": [],
   "metadata": {{
     "suggested_slug": "url-friendly-slug-max-60-chars",
     "tags": ["tag1", "tag2", "tag3"],
@@ -66,12 +68,77 @@ OUTPUT FORMAT (strict JSON only, no markdown):
   }}
 }}
 
+LIVE NEWS SCORING (0-100):
+Compute live_news_score by summing these signals (max 100):
+- +40: A specific decree, regulation, or peraturan with an explicit publication date in the last 48h is cited (e.g. "Peraturan BKPM 5/2026 published 2026-04-23"). Only fire if BOTH the document name AND its date are present.
+- +30: A concrete event with a date is referenced (arrest, deportation, tax audit, BKPM raid, MoU signing). Specific named event, not generic "recent".
+- +30: An official figure or threshold was just released (PNBP fee change, BKPM threshold, BPS statistic, OJK rate). Must include the actual number.
+
+If none of the three apply: live_news_score = 0.
+
+Then derive liveness_tier from the score:
+- "breaking" if live_news_score >= 80
+- "developing" if 40 <= live_news_score < 80
+- "evergreen" if live_news_score < 40
+
+live_news_reasons: list of max 3 short strings (≤80 chars each) that explain WHY you assigned the score. Format examples:
+- "BKPM Reg 5/2026 published 2026-04-23"
+- "Deportation of 12 nationals at Ngurah Rai 2026-04-25"
+- "PNBP fee for D2 visa raised to IDR 5.5M (effective 2026-04-20)"
+If live_news_score is 0, return an empty list.
+
 RULES:
 - headline: never include the source name, make it punchy and specific
 - the_facts: journalism only, no Bali Zero branding, no "our clients"
 - bali_zero_take: this is where we add our expert spin
+- live_news_score: be conservative. If unsure, score lower. Routine guides ("How to apply for KITAS") are evergreen by definition.
+- live_news_reasons: only cite signals you can quote from the source content. Do not invent.
 - Output ONLY valid JSON, no explanations or markdown code blocks
 """
+
+
+def _normalize_live_news_fields(enriched: Dict[str, Any]) -> Dict[str, Any]:
+    """Clamp live_news_score, recompute liveness_tier from score, sanitize reasons.
+
+    Defensive normalization — the prompt instructs Claude to derive the tier
+    from the score, but model output occasionally drifts (e.g. score=85 but
+    tier="developing", or score returned as a string "high"). We trust the
+    score (with clamping) and recompute the tier deterministically; this also
+    means downstream WR2 selector code can rely on a strict invariant:
+    `tier == bucket(score)` always holds after enrichment.
+
+    Mutates and returns the same dict. Missing fields are filled with
+    safe defaults (score=0, tier="evergreen", reasons=[]) so downstream
+    code never has to handle KeyError.
+    """
+    raw_score = enriched.get('live_news_score', 0)
+    try:
+        score = int(round(float(raw_score)))
+    except (TypeError, ValueError):
+        score = 0
+    score = max(0, min(100, score))
+
+    if score >= 80:
+        tier = 'breaking'
+    elif score >= 40:
+        tier = 'developing'
+    else:
+        tier = 'evergreen'
+
+    raw_reasons = enriched.get('live_news_reasons', [])
+    if not isinstance(raw_reasons, list):
+        raw_reasons = []
+    reasons: list[str] = []
+    for r in raw_reasons[:3]:
+        if isinstance(r, str) and r.strip():
+            reasons.append(r.strip()[:200])
+    if score == 0:
+        reasons = []
+
+    enriched['live_news_score'] = score
+    enriched['liveness_tier'] = tier
+    enriched['live_news_reasons'] = reasons
+    return enriched
 
 
 def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
@@ -150,7 +217,13 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         if json_start >= 0 and json_end > json_start:
             json_str = output[json_start:json_end]
             enriched = json.loads(json_str)
-            
+
+            # Normalize live_news fields: clamp score, derive tier from score,
+            # cap reasons. Defensive — Claude follows the prompt 95% of the
+            # time but the other 5% lands the project on a slide that says
+            # "live_news_score: 250" or returns the tier as a paragraph.
+            enriched = _normalize_live_news_fields(enriched)
+
             logger.info("✅ Enrichment successful")
             return {
                 'success': True,
@@ -232,7 +305,7 @@ def batch_enrich_articles(articles: list[Dict[str, Any]], max_articles: int = No
             })
     
     logger.info(f"\n{'='*60}")
-    logger.info(f"BATCH COMPLETE")
+    logger.info("BATCH COMPLETE")
     logger.info(f"  Success: {success_count}/{len(articles)}")
     logger.info(f"  Errors:  {error_count}/{len(articles)}")
     logger.info(f"{'='*60}")

@@ -9,13 +9,8 @@
       "monitored_by": "Sentinel",
       "uses_llm": "none (deterministic fixers)",
       "llm_interface": "OpenClaw (coder)",
-      "tools_called": [
-        "ruff (subprocess)",
-        "git (branch/diff)"
-      ],
-      "apis_called": [
-        "Telegram Bot API"
-      ]
+      "tools_called": ["ruff (subprocess)", "git (branch/diff)"],
+      "apis_called": ["Telegram Bot API"]
     },
     "seo-guardian-observe": {
       "description": "SEO observation cycle: check backend+frontend health, read coverage state, submit unindexed URLs to Google Indexing API, check KBLI indexing.",
@@ -24,15 +19,8 @@
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
       "llm_interface": "OpenClaw (main)",
-      "tools_called": [
-        "curl (backend+frontend health)",
-        "seo_auto_fixer.py"
-      ],
-      "apis_called": [
-        "nuzantara-rag.fly.dev/health",
-        "balizero.com",
-        "Telegram Bot API"
-      ]
+      "tools_called": ["curl (backend+frontend health)", "seo_auto_fixer.py"],
+      "apis_called": ["nuzantara-rag.fly.dev/health", "balizero.com", "Telegram Bot API"]
     },
     "seo-guardian-weekly": {
       "description": "SEO weekly LEARN+REPORT via cron-agent LLM prompt (~/scripts/cron-agent-prompts/seo-guardian-weekly.txt). Legacy .py scripts removed 2026-04-20; responsibilities migrated to apps/evaluator/seo_cell/ (cell-core PulseLoop).",
@@ -135,9 +123,7 @@
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
       "llm_interface": "OpenClaw (coder)",
-      "tools_called": [
-        "curl"
-      ],
+      "tools_called": ["curl"],
       "apis_called": [
         "nuzantara-rag.fly.dev/health",
         "nuzantara-rag.fly.dev/api/admin/conversation-cleanup"
@@ -150,13 +136,8 @@
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
       "llm_interface": "OpenClaw (coder)",
-      "tools_called": [
-        "Google Indexing API",
-        "kbli_indexing_submit.py"
-      ],
-      "apis_called": [
-        "Google Indexing API (200/day)"
-      ]
+      "tools_called": ["Google Indexing API", "kbli_indexing_submit.py"],
+      "apis_called": ["Google Indexing API (200/day)"]
     },
     "weekly-review": {
       "description": "Weekly Monday review: business KPIs (revenue, clients, practices, compliance) + tech quality (ruff, coverage, deps, SEO, Fly costs). Unified Telegram report.",
@@ -202,9 +183,7 @@
         "apps/backend-rag/scripts/portal_deadline_watchdog.py",
         "WhatsAppService.send_message"
       ],
-      "apis_called": [
-        "Meta WhatsApp Cloud API"
-      ]
+      "apis_called": ["Meta WhatsApp Cloud API"]
     },
     "learning-pipeline": {
       "description": "Weekly learning: Phase 1 Conversation Trainer (extract patterns from recent chats), Phase 2 Knowledge Graph Builder (ingest entities+relationships).",
@@ -226,10 +205,7 @@
       "monitored_by": "Sentinel",
       "uses_llm": "claude-haiku-4-5 (L3 filter)",
       "llm_interface": "OpenClaw (main)",
-      "tools_called": [
-        "nlm CLI (source add)",
-        "httpx (RSS/web/Twitter fetch)"
-      ],
+      "tools_called": ["nlm CLI (source add)", "httpx (RSS/web/Twitter fetch)"],
       "apis_called": [
         "Anthropic API (Haiku classifier)",
         "Twitter API v2",
@@ -244,22 +220,15 @@
       "monitored_by": "Sentinel",
       "uses_llm": "qwen3.5:9b",
       "llm_interface": "OpenClaw (main)",
-      "tools_called": [
-        "nlm CLI (source list/delete/add)",
-        "git log"
-      ],
-      "apis_called": [
-        "Telegram Bot API"
-      ]
+      "tools_called": ["nlm CLI (source list/delete/add)", "git log"],
+      "apis_called": ["Telegram Bot API"]
     },
     "nlm-nb3-company-setup": {
       "description": "PLACEHOLDER — NB-3 Company Setup notebook refresh. Task empty, never configured.",
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task. Configure or decommission.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb4-tax-fiscal": {
@@ -267,9 +236,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task. Has separate cron (run_nb4_pipeline.sh) that runs independently.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb5-property": {
@@ -277,9 +244,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task. Has separate cron (run_nb5_pipeline.sh).",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb6-ops-compliance": {
@@ -287,9 +252,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb7-editorial": {
@@ -297,9 +260,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb8-expat-life": {
@@ -307,9 +268,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-nb10-team-guides": {
@@ -317,9 +276,7 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task.",
-      "tools_called": [
-        "nlm CLI (notebook_query, source_snapshot)"
-      ],
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
       "status": "fixed (payload.kind→agentTurn)"
     },
     "nlm-deep-research": {
@@ -338,12 +295,8 @@
       "produces": "—",
       "consumes": "—",
       "notes": "Skipped: empty task.",
-      "tools_called": [
-        "postgresql (CELL_DATABASE_URL)"
-      ],
-      "apis_called": [
-        "Telegram Bot API"
-      ],
+      "tools_called": ["postgresql (CELL_DATABASE_URL)"],
+      "apis_called": ["Telegram Bot API"],
       "status": "fixed (payload.kind→agentTurn)"
     }
   },
@@ -405,11 +358,18 @@
       "llm_interface": "OpenClaw (main)"
     },
     "nuz-intel-radar": {
-      "description": "Intel radar: monitor regulation changes and industry news relevant to Bali Zero services.",
-      "produces": "Intel alerts",
-      "consumes": "News feeds, regulation sites",
-      "uses_llm": "qwen3:4b",
-      "llm_interface": "OpenClaw (main)"
+      "description": "Intel radar (hourly, Pro): tier-rotated web search (L1/L2/L3 by hour-of-day WITA) for Bali Zero business intelligence. Persists to intel_radar_findings (Postgres) when INTEL_RADAR_PERSIST_DB=true; no Telegram (digest moved to nuz-intel-radar-daily-digest).",
+      "produces": "intel_radar_findings rows (canonical_url UNIQUE)",
+      "consumes": "Brave Search API, DuckDuckGo fallback",
+      "uses_llm": "none",
+      "llm_interface": "n/a"
+    },
+    "nuz-intel-radar-daily-digest": {
+      "description": "Intel radar daily digest (18:00 WITA, Pro): reads intel_radar_findings WHERE processed=false AND observed_at>NOW()-24h, sends 1 Telegram digest grouped by tier, marks processed=true, emits NOTIFY intel_radar_batch_ready for downstream scraper.",
+      "produces": "Telegram digest, intel_radar_findings.processed=true, NOTIFY intel_radar_batch_ready",
+      "consumes": "intel_radar_findings",
+      "uses_llm": "none",
+      "llm_interface": "n/a"
     },
     "nuz-normativa-daily": {
       "description": "Daily normativa check: scan Indonesian government sites for regulation changes affecting visa/tax/company services.",
@@ -484,9 +444,9 @@
       "schedule": "09:00 WITA"
     },
     "com.balizero.intel.nightly": {
-      "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only.",
-      "produces": "Scraped articles → backend",
-      "consumes": "Source config, scraper scripts",
+      "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only. Reads from intel_radar_findings (Postgres) when INTEL_RADAR_PERSIST_DB=true (PR-1 §B), then enriches each article with live_news_score (0-100) + liveness_tier (breaking/developing/evergreen) + live_news_reasons via Claude CLI.",
+      "produces": "Scraped articles → backend; intel_radar_findings.scraper_picked=true; live_news_score on each enriched article",
+      "consumes": "Source config, scraper scripts, intel_radar_findings (Postgres)",
       "schedule": "01:00 WITA (nightly)"
     },
     "com.balizero.renewal-alerts": {
@@ -702,10 +662,7 @@
       "consumes": "GET /api/bridge/events, Redis stream bridge:outbound",
       "uses_llm": "—",
       "llm_interface": "—",
-      "tools_called": [
-        "redis-cli (XADD/XREADGROUP/XACK)",
-        "curl (GET/POST)"
-      ],
+      "tools_called": ["redis-cli (XADD/XREADGROUP/XACK)", "curl (GET/POST)"],
       "apis_called": [
         "nuzantara-rag.fly.dev/api/bridge/events",
         "nuzantara-rag.fly.dev/api/bridge/ingest/*"
@@ -719,10 +676,7 @@
       "consumes": "Redis stream nexus:gaps",
       "uses_llm": "claude --print (via dispatched agents)",
       "llm_interface": "MetaChain CLI subprocess",
-      "tools_called": [
-        "redis-cli (XREADGROUP/XACK)",
-        "MetaChain run_with_lamarckian_feedback"
-      ],
+      "tools_called": ["redis-cli (XREADGROUP/XACK)", "MetaChain run_with_lamarckian_feedback"],
       "apis_called": [
         "antv.kpk.go.id (via lhkpn_harvester)",
         "peraturan.go.id (via regulation_watcher)"
@@ -1163,9 +1117,7 @@
         "InvoiceAutomationService",
         "CompletedProcessService"
       ],
-      "apis_called": [
-        "Brevo/Zoho Email API"
-      ],
+      "apis_called": ["Brevo/Zoho Email API"],
       "emails_sent": "M4 payment confirmation, M5 milestones (on_process, submitted, approved, completed)"
     },
     "x_monitor_run_loop": {
@@ -1361,10 +1313,7 @@
         "ServiceAccountDriveService.create_folder",
         "PredictiveComplianceEngine.scan"
       ],
-      "apis_called": [
-        "Google Drive API (service account)",
-        "PostgreSQL"
-      ]
+      "apis_called": ["Google Drive API (service account)", "PostgreSQL"]
     },
     "event_bus_practice_status_changed": {
       "description": "EventBus handler: reacts to PG NOTIFY practice_changed. Invalidates practice cache, stores cross-chain context, on completion runs expiry check + predictive compliance scan.",
@@ -1380,9 +1329,7 @@
         "PredictiveComplianceEngine.scan",
         "PricingService.get_pricing"
       ],
-      "apis_called": [
-        "PostgreSQL"
-      ]
+      "apis_called": ["PostgreSQL"]
     },
     "event_bus_compliance_alert": {
       "description": "EventBus handler: reacts to PG NOTIFY compliance_alert. Stores cross-chain context, sends Telegram alert for high/critical severity, logs CRM interaction.",
@@ -1393,13 +1340,8 @@
       "produces": "Telegram alerts, CRM interactions",
       "consumes": "PG trigger on compliance checks (migration_076)",
       "uses_llm": "none",
-      "tools_called": [
-        "AlertService.send_alert"
-      ],
-      "apis_called": [
-        "Telegram Bot API",
-        "PostgreSQL"
-      ]
+      "tools_called": ["AlertService.send_alert"],
+      "apis_called": ["Telegram Bot API", "PostgreSQL"]
     },
     "redis_reconnect_loop": {
       "description": "Redis manager auto-reconnect loop: persistent asyncio task that reconnects to Redis after disconnections with exponential backoff.",
@@ -1411,9 +1353,7 @@
       "consumes": "Redis connection state",
       "uses_llm": "none",
       "tools_called": [],
-      "apis_called": [
-        "Redis (exponential backoff: 30s→60s→120s→300s)"
-      ]
+      "apis_called": ["Redis (exponential backoff: 30s→60s→120s→300s)"]
     },
     "article_composer_cache_startup": {
       "description": "Article composer cache initialization on FastAPI startup event. Loads cache for article composition pipeline.",
@@ -1422,12 +1362,8 @@
       "type": "startup-hook",
       "schedule": "once (at startup)",
       "uses_llm": "none",
-      "tools_called": [
-        "cache_service.initialize"
-      ],
-      "apis_called": [
-        "Redis"
-      ]
+      "tools_called": ["cache_service.initialize"],
+      "apis_called": ["Redis"]
     },
     "bali_intel_task_queue": {
       "description": "Bali Intel Scraper distributed task queue: Celery-like async workers processing scraping, AI, cleanup, and report tasks. Multiple worker loops per instance.",
@@ -1438,15 +1374,8 @@
       "produces": "Processed scrape/AI/report tasks",
       "consumes": "Task queue submissions",
       "uses_llm": "OpenAI or Anthropic (configurable)",
-      "tools_called": [
-        "ScrapeTaskHandler",
-        "AITaskHandler",
-        "CleanupTaskHandler"
-      ],
-      "apis_called": [
-        "OpenAI Chat API",
-        "Anthropic Messages API"
-      ]
+      "tools_called": ["ScrapeTaskHandler", "AITaskHandler", "CleanupTaskHandler"],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
     },
     "bali_intel_proxy_health_check": {
       "description": "Bali Intel Scraper proxy manager health check loop: persistent asyncio task monitoring proxy pool health and rotating proxies.",
@@ -1456,9 +1385,7 @@
       "schedule": "continuo (while scraper running)",
       "uses_llm": "none",
       "tools_called": [],
-      "apis_called": [
-        "httpbin.org/ip (health check)"
-      ]
+      "apis_called": ["httpbin.org/ip (health check)"]
     },
     "bali_intel_browser_pool_cleanup": {
       "description": "Bali Intel Scraper browser pool cleanup loop: persistent asyncio task recycling stale browser contexts to prevent memory leaks.",
@@ -1467,9 +1394,7 @@
       "type": "backend-loop",
       "schedule": "continuo (while scraper running)",
       "uses_llm": "none",
-      "tools_called": [
-        "Playwright (browser contexts)"
-      ],
+      "tools_called": ["Playwright (browser contexts)"],
       "apis_called": []
     },
     "bali_intel_ai_batch_flush": {
@@ -1479,13 +1404,8 @@
       "type": "backend-loop",
       "schedule": "continuo (batch threshold/delay)",
       "uses_llm": "OpenAI or Anthropic (per provider)",
-      "tools_called": [
-        "AIBatchProcessor"
-      ],
-      "apis_called": [
-        "OpenAI Chat API",
-        "Anthropic Messages API"
-      ]
+      "tools_called": ["AIBatchProcessor"],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
     },
     "bali_intel_webhook_receiver": {
       "description": "Bali Intel Scraper webhook endpoint POST /api/v1/webhook/balizero: receives external scraping events/callbacks.",
@@ -1494,14 +1414,8 @@
       "type": "webhook",
       "schedule": "event-driven (incoming POST)",
       "uses_llm": "LLAMA (scoring) + Claude (validation/enrichment) + Gemini (images)",
-      "tools_called": [
-        "IntelPipeline.process_batch",
-        "GoogleNewsRSSFetcher"
-      ],
-      "apis_called": [
-        "balizero.com/api/news",
-        "Google News RSS"
-      ]
+      "tools_called": ["IntelPipeline.process_batch", "GoogleNewsRSSFetcher"],
+      "apis_called": ["balizero.com/api/news", "Google News RSS"]
     },
     "bg_crm_practice_email": {
       "description": "FastAPI BackgroundTask in crm_practices router: sends emails on practice status changes (M4/M5 milestone emails, confirmation emails).",
@@ -1516,11 +1430,7 @@
         "CompletedProcessService",
         "PortalNotificationService"
       ],
-      "apis_called": [
-        "Meta WhatsApp Cloud API",
-        "Brevo/Zoho Email API",
-        "Google Drive API"
-      ]
+      "apis_called": ["Meta WhatsApp Cloud API", "Brevo/Zoho Email API", "Google Drive API"]
     },
     "bg_crm_client_welcome": {
       "description": "FastAPI BackgroundTask in crm_clients router: sends welcome messages (WA + email) and schedules welcome email on new client creation.",
@@ -1534,11 +1444,7 @@
         "welcome_whatsapp_service",
         "PortalProfileService.ensure_portal_profile"
       ],
-      "apis_called": [
-        "Meta WhatsApp Cloud API",
-        "Google Drive API",
-        "Brevo Email API (queued)"
-      ]
+      "apis_called": ["Meta WhatsApp Cloud API", "Google Drive API", "Brevo Email API (queued)"]
     },
     "bg_whatsapp_async_processing": {
       "description": "FastAPI BackgroundTask in whatsapp_chat router: handles async message processing for WhatsApp conversations.",
@@ -1571,11 +1477,7 @@
         "auto_categorize_document",
         "PortalNotificationService"
       ],
-      "apis_called": [
-        "Ollama local (qwen2.5vl:7b)",
-        "Gemini API",
-        "Google Drive API"
-      ]
+      "apis_called": ["Ollama local (qwen2.5vl:7b)", "Gemini API", "Google Drive API"]
     }
   },
   "github_actions": {
@@ -1586,10 +1488,7 @@
       "type": "ci-workflow",
       "schedule": "on push/PR",
       "uses_llm": "none",
-      "tools_called": [
-        "actions/checkout@v4",
-        "actions/setup-python@v5"
-      ],
+      "tools_called": ["actions/checkout@v4", "actions/setup-python@v5"],
       "secrets_used": []
     },
     "gh_fly_deploy": {
@@ -1624,18 +1523,9 @@
       "type": "ci-workflow",
       "schedule": "Monday 09:00 UTC (cron: 0 9 * * 1)",
       "uses_llm": "none",
-      "tools_called": [
-        "superfly/flyctl-actions/setup-flyctl@v2"
-      ],
-      "apis_called": [
-        "Fly.io (auth whoami)",
-        "Telegram Bot API"
-      ],
-      "secrets_used": [
-        "FLY_API_TOKEN",
-        "TELEGRAM_BOT_TOKEN",
-        "TELEGRAM_OWNER_CHAT_ID"
-      ]
+      "tools_called": ["superfly/flyctl-actions/setup-flyctl@v2"],
+      "apis_called": ["Fly.io (auth whoami)", "Telegram Bot API"],
+      "secrets_used": ["FLY_API_TOKEN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_OWNER_CHAT_ID"]
     },
     "gh_intel_router_tests": {
       "description": "GitHub Action: runs intel router tests on push/PR. Validates bali-intel-scraper API endpoints.",
@@ -1665,13 +1555,8 @@
         "snyk/actions/docker@master",
         "github/codeql-action/*@v3"
       ],
-      "apis_called": [
-        "Snyk",
-        "GitHub CodeQL SARIF"
-      ],
-      "secrets_used": [
-        "SNYK_TOKEN"
-      ]
+      "apis_called": ["Snyk", "GitHub CodeQL SARIF"],
+      "secrets_used": ["SNYK_TOKEN"]
     },
     "gh_semgrep_sast": {
       "description": "GitHub Action: Bandit + ESLint SAST (Static Application Security Testing). Blocks PR on HIGH/CRITICAL findings.",
@@ -1680,10 +1565,7 @@
       "type": "ci-workflow",
       "schedule": "on push/PR",
       "uses_llm": "none",
-      "tools_called": [
-        "Bandit (Python SAST)",
-        "ESLint + eslint-plugin-security"
-      ],
+      "tools_called": ["Bandit (Python SAST)", "ESLint + eslint-plugin-security"],
       "secrets_used": [],
       "notes": "Filename says semgrep but actually runs Bandit+ESLint"
     },
@@ -1699,13 +1581,8 @@
         "sonarsource/sonarqube-quality-gate-action@master",
         "codecov/codecov-action@v4"
       ],
-      "apis_called": [
-        "SonarCloud",
-        "Codecov"
-      ],
-      "secrets_used": [
-        "SONAR_TOKEN"
-      ]
+      "apis_called": ["SonarCloud", "Codecov"],
+      "secrets_used": ["SONAR_TOKEN"]
     },
     "gh_tests": {
       "description": "GitHub Action: main test suite. Runs pytest backend tests on push/PR with coverage gate.",
@@ -1720,9 +1597,7 @@
         "actions/setup-node@v4",
         "codecov/codecov-action@v4"
       ],
-      "apis_called": [
-        "Codecov"
-      ],
+      "apis_called": ["Codecov"],
       "secrets_used": [
         "QDRANT_URL",
         "QDRANT_API_KEY",
@@ -2034,10 +1909,7 @@
         "regulation_watcher agent",
         "scraper_tools.check_regulation_source"
       ],
-      "apis_called": [
-        "ditjenimigrasi.go.id",
-        "kanwilbali.kemenkumham.go.id"
-      ],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
       "produces": "Regulation change alerts, stale entity alerts",
       "consumes": "Neo4j KG, government websites"
     },
@@ -2048,15 +1920,8 @@
       "type": "launchd-script",
       "schedule": "06:15 WITA daily (com.garuda.consumer.daily)",
       "uses_llm": "none",
-      "tools_called": [
-        "garuda-consumer.sh",
-        "OSINT-Nexus venv python",
-        "neo4j driver"
-      ],
-      "apis_called": [
-        "Neo4j (localhost)",
-        "Redis (garuda:raw stream)"
-      ],
+      "tools_called": ["garuda-consumer.sh", "OSINT-Nexus venv python", "neo4j driver"],
+      "apis_called": ["Neo4j (localhost)", "Redis (garuda:raw stream)"],
       "produces": "Neo4j nodes and edges from intelligence items",
       "consumes": "Redis garuda:raw stream"
     },
@@ -2067,15 +1932,8 @@
       "type": "launchd-script",
       "schedule": "07:00 + 18:00 WITA (com.garuda.gap-detector.twice-daily)",
       "uses_llm": "none",
-      "tools_called": [
-        "garuda-gap-detector.sh",
-        "OSINT-Nexus venv python",
-        "8 Cypher gap queries"
-      ],
-      "apis_called": [
-        "Neo4j (localhost)",
-        "Redis (nexus:gaps stream)"
-      ],
+      "tools_called": ["garuda-gap-detector.sh", "OSINT-Nexus venv python", "8 Cypher gap queries"],
+      "apis_called": ["Neo4j (localhost)", "Redis (nexus:gaps stream)"],
       "produces": "nexus:gaps stream tasks (missing attributes, relations, stale data)",
       "consumes": "Neo4j KG state"
     },
@@ -2085,11 +1943,7 @@
       "machine": "Pro",
       "type": "on-demand",
       "uses_llm": "none (dispatch only, agents use LLMs)",
-      "tools_called": [
-        "task_tools.py",
-        "Redis nexus:gaps stream",
-        "DISPATCH_TABLE routing"
-      ],
+      "tools_called": ["task_tools.py", "Redis nexus:gaps stream", "DISPATCH_TABLE routing"],
       "produces": "Dispatched agent tasks, audit log (task_dispatch.jsonl)",
       "consumes": "nexus:gaps stream from gap detector"
     },
@@ -2099,11 +1953,7 @@
       "machine": "Pro",
       "type": "pipeline-worker",
       "uses_llm": "none",
-      "tools_called": [
-        "Redis garuda:raw→garuda:enriched",
-        "SHA256 dedup",
-        "KB SQLite"
-      ],
+      "tools_called": ["Redis garuda:raw→garuda:enriched", "SHA256 dedup", "KB SQLite"],
       "produces": "garuda:enriched stream, KB entries",
       "consumes": "garuda:raw stream"
     },
@@ -2113,14 +1963,8 @@
       "machine": "Pro",
       "type": "pipeline-worker",
       "uses_llm": "Ollama (scoring model)",
-      "tools_called": [
-        "Redis garuda:enriched",
-        "Ollama local API"
-      ],
-      "apis_called": [
-        "Ollama localhost",
-        "Telegram Bot API (high-score alerts)"
-      ],
+      "tools_called": ["Redis garuda:enriched", "Ollama local API"],
+      "apis_called": ["Ollama localhost", "Telegram Bot API (high-score alerts)"],
       "produces": "Scored intelligence items, TG alerts for high-value items",
       "consumes": "garuda:enriched stream"
     },
@@ -2130,13 +1974,8 @@
       "machine": "Pro",
       "type": "pipeline-worker",
       "uses_llm": "none",
-      "tools_called": [
-        "nlm CLI (source add)",
-        "KB SQLite"
-      ],
-      "apis_called": [
-        "NotebookLM (via nlm CLI)"
-      ],
+      "tools_called": ["nlm CLI (source add)", "KB SQLite"],
+      "apis_called": ["NotebookLM (via nlm CLI)"],
       "produces": "NLM sources added to domain notebooks",
       "consumes": "KB harvested items"
     },
@@ -2153,10 +1992,7 @@
         "Redis garuda:digest",
         "tg_tools.py"
       ],
-      "apis_called": [
-        "Claude CLI (Anthropic subscription)",
-        "Telegram Bot API"
-      ],
+      "apis_called": ["Claude CLI (Anthropic subscription)", "Telegram Bot API"],
       "produces": "Intelligence digest, garuda:digest stream entry, TG briefing",
       "consumes": "KB data, garuda:enriched items"
     },
@@ -2166,14 +2002,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "Claude CLI",
-      "tools_called": [
-        "scraper_tools.check_regulation_source",
-        "feed_tools.py"
-      ],
-      "apis_called": [
-        "ditjenimigrasi.go.id",
-        "kanwilbali.kemenkumham.go.id"
-      ],
+      "tools_called": ["scraper_tools.check_regulation_source", "feed_tools.py"],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
       "produces": "Regulation change items → garuda:raw",
       "consumes": "Government regulation websites"
     },
@@ -2183,13 +2013,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "Claude CLI",
-      "tools_called": [
-        "scraper_tools.py",
-        "Twitter API v2"
-      ],
-      "apis_called": [
-        "Twitter API v2"
-      ],
+      "tools_called": ["scraper_tools.py", "Twitter API v2"],
+      "apis_called": ["Twitter API v2"],
       "produces": "Twitter intelligence items → garuda:raw",
       "consumes": "Twitter keyword streams"
     },
@@ -2199,13 +2024,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "none",
-      "tools_called": [
-        "arxiv_tools.py",
-        "arxiv_sensor.py"
-      ],
-      "apis_called": [
-        "arXiv API"
-      ],
+      "tools_called": ["arxiv_tools.py", "arxiv_sensor.py"],
+      "apis_called": ["arXiv API"],
       "produces": "Research papers → garuda:raw",
       "consumes": "arXiv feeds"
     },
@@ -2215,13 +2035,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "none",
-      "tools_called": [
-        "github_tools.py",
-        "github_sensor.py"
-      ],
-      "apis_called": [
-        "GitHub API"
-      ],
+      "tools_called": ["github_tools.py", "github_sensor.py"],
+      "apis_called": ["GitHub API"],
       "produces": "GitHub trends → garuda:raw",
       "consumes": "GitHub trending"
     },
@@ -2231,13 +2046,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "none",
-      "tools_called": [
-        "youtube_tools.py",
-        "youtube_sensor.py"
-      ],
-      "apis_called": [
-        "YouTube Data API"
-      ],
+      "tools_called": ["youtube_tools.py", "youtube_sensor.py"],
+      "apis_called": ["YouTube Data API"],
       "produces": "Video intelligence → garuda:raw",
       "consumes": "YouTube search/channels"
     },
@@ -2247,13 +2057,8 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "none",
-      "tools_called": [
-        "feed_tools.py",
-        "rss_sensor.py"
-      ],
-      "apis_called": [
-        "RSS feeds"
-      ],
+      "tools_called": ["feed_tools.py", "rss_sensor.py"],
+      "apis_called": ["RSS feeds"],
       "produces": "Newsletter items → garuda:raw",
       "consumes": "RSS/newsletter feeds"
     },
@@ -2263,12 +2068,7 @@
       "machine": "Pro",
       "type": "meta-agent",
       "uses_llm": "Claude CLI",
-      "tools_called": [
-        "meta_tools.py",
-        "lamarckian.py",
-        "reflection.py",
-        "Claude CLI --print"
-      ],
+      "tools_called": ["meta_tools.py", "lamarckian.py", "reflection.py", "Claude CLI --print"],
       "produces": "Agent GENOME mutations, performance reflections",
       "consumes": "Agent run logs, GENOME.md files"
     },
@@ -2278,9 +2078,7 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "none",
-      "tools_called": [
-        "scraper_tools.py (HTTP probes)"
-      ],
+      "tools_called": ["scraper_tools.py (HTTP probes)"],
       "produces": "Source health status, dead source alerts",
       "consumes": "Source registry"
     },
@@ -2290,11 +2088,7 @@
       "machine": "Pro",
       "type": "runtime",
       "uses_llm": "Claude CLI (reflection + mutation proposals)",
-      "tools_called": [
-        "lamarckian.py",
-        "reflection.py",
-        "CLIRuntime(model=claude)"
-      ],
+      "tools_called": ["lamarckian.py", "reflection.py", "CLIRuntime(model=claude)"],
       "produces": "Evolved GENOME.md files, KB reflection entries",
       "consumes": "Agent performance logs, current GENOMEs"
     },
@@ -2304,10 +2098,7 @@
       "machine": "Pro",
       "type": "runtime",
       "uses_llm": "Claude CLI (primary) → Gemini CLI (fallback)",
-      "tools_called": [
-        "subprocess: claude --print",
-        "subprocess: gemini --prompt"
-      ],
+      "tools_called": ["subprocess: claude --print", "subprocess: gemini --prompt"],
       "produces": "LLM responses for agents",
       "consumes": "Agent prompts"
     }
@@ -2320,15 +2111,8 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "none",
-      "tools_called": [
-        "GoogleNewsRSSFetcher",
-        "browser_pool.py",
-        "proxy_manager.py"
-      ],
-      "apis_called": [
-        "Google News RSS",
-        "600+ news/gov websites"
-      ],
+      "tools_called": ["GoogleNewsRSSFetcher", "browser_pool.py", "proxy_manager.py"],
+      "apis_called": ["Google News RSS", "600+ news/gov websites"],
       "produces": "Raw scraped articles",
       "consumes": "Source list (630+ URLs)"
     },
@@ -2338,9 +2122,7 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "LLAMA (local via Ollama)",
-      "tools_called": [
-        "AIEngine (LLAMA provider)"
-      ],
+      "tools_called": ["AIEngine (LLAMA provider)"],
       "produces": "Scored articles (1-5)",
       "consumes": "Raw scraped articles"
     },
@@ -2350,12 +2132,8 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "Claude (Anthropic API)",
-      "tools_called": [
-        "AIEngine (Anthropic provider)"
-      ],
-      "apis_called": [
-        "Anthropic Messages API"
-      ],
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
       "produces": "Validated articles",
       "consumes": "Scored articles (score >= threshold)"
     },
@@ -2365,12 +2143,8 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "Claude (Anthropic API, max context)",
-      "tools_called": [
-        "AIEngine (Anthropic provider)"
-      ],
-      "apis_called": [
-        "Anthropic Messages API"
-      ],
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
       "produces": "Enriched full articles (MDX format)",
       "consumes": "Validated articles"
     },
@@ -2380,9 +2154,7 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "Gemini (image generation)",
-      "apis_called": [
-        "Gemini API (image gen)"
-      ],
+      "apis_called": ["Gemini API (image gen)"],
       "produces": "Cover images for articles",
       "consumes": "Article metadata"
     },
@@ -2392,13 +2164,8 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "none",
-      "tools_called": [
-        "balizero.com/api/news (POST)"
-      ],
-      "apis_called": [
-        "balizero.com/api/news",
-        "Telegram Bot API (approval)"
-      ],
+      "tools_called": ["balizero.com/api/news (POST)"],
+      "apis_called": ["balizero.com/api/news", "Telegram Bot API (approval)"],
       "produces": "Published articles on balizero.com",
       "consumes": "Enriched articles + images"
     },
@@ -2409,10 +2176,7 @@
       "type": "launchd-orchestrator",
       "schedule": "01:00 WITA daily (com.balizero.intel.nightly)",
       "uses_llm": "LLAMA + Claude + Gemini (via pipeline stages)",
-      "tools_called": [
-        "OpenClaw gateway trigger",
-        "bali-intel-scraper pipeline"
-      ],
+      "tools_called": ["OpenClaw gateway trigger", "bali-intel-scraper pipeline"],
       "produces": "Published intel articles (~$0.06/article)",
       "consumes": "630+ sources"
     }
@@ -2424,11 +2188,7 @@
       "consumes": "antv.kpk.go.id HTTP, gap_consumer dispatch",
       "uses_llm": "claude --print (via MetaChain)",
       "llm_interface": "Claude CLI subprocess",
-      "tools_called": [
-        "scrape_lhkpn_search()",
-        "scrape_lhkpn_profile()",
-        "stream_publish()"
-      ]
+      "tools_called": ["scrape_lhkpn_search()", "scrape_lhkpn_profile()", "stream_publish()"]
     }
   }
 }
