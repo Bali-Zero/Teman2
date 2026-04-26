@@ -258,51 +258,95 @@ def _upload_to_tigris(image_bytes: bytes, key: str, content_type: str = "image/p
 
 
 async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | None, str | None]:
-    """Return (public_url, error_msg). Never raises."""
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return None, "GOOGLE_API_KEY/GEMINI_API_KEY not set"
+    """Return (public_url, error_msg). Never raises.
 
-    prompt_final = build_imagen_prompt(scene_core=scene_core)
-    logger.info("Imagen cover prompt (%d chars): %s...", len(prompt_final), prompt_final[:120])
+    Uses Gemini Nano Banana 2 Pro via Playwright (logged-in browser session,
+    no API spend). Mirrors the body-slide generator path in
+    wr2_image_generator. Strictly serial (one tab) to avoid the cross-tab
+    quality degradation observed on the persistent profile.
 
-    model_id = "imagen-4.0-ultra-generate-001"
-    url_api = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model_id}:predict?key={api_key}"
+    Falls back to a clear error tuple on any failure — caller decides whether
+    to abort the draft or proceed without cover.
+    """
+    # Lazy import: keeps wr2_image_generator's heavy Playwright dep out of the
+    # draft_generator critical path until cover time.
+    sys.path.insert(0, str(_REPO_ROOT / "scripts"))
+    try:
+        from wr2_image_generator import (  # noqa: E402
+            GEMINI_PROFILE_DIR,
+            _gen_one_image,
+            _score_image_alignment,
+            _upload_to_tigris as _img_upload_to_tigris,
+            VLM_MIN_SCORE,
+        )
+    except Exception as e:
+        return None, f"wr2_image_generator import failed: {e}"
+
+    from playwright.async_api import async_playwright  # noqa: E402
+
+    # The image_generator's _gen_one_image already wraps the prompt with
+    # BRAND_SUFFIX + ANTI_CLICHE_SUFFIX, which is exactly what the cover
+    # also wants — so we feed the bare scene_core (don't pre-build with
+    # build_imagen_prompt, which decorates for the Imagen API).
+    bare_prompt = scene_core.strip()
+    logger.info(
+        "Cover via Gemini Nano Banana — prompt (%d chars): %s...",
+        len(bare_prompt),
+        bare_prompt[:120],
     )
-    payload = {
-        "instances": [{"prompt": prompt_final, "negativePrompt": NEGATIVE_PROMPT}],
-        "parameters": {"sampleCount": 1, "aspectRatio": "1:1"},
-    }
+
     t0 = time.perf_counter()
+    img_bytes: bytes | None = None
+    last_err: str | None = None
+
+    # Strictly serial: ONE fresh browser context, ONE tab. Empirical: parallel
+    # tabs on the persistent Gemini profile silently degrade output (page
+    # returns stock-style content unrelated to the prompt). Cover is the
+    # most-important image of the carousel — never speculate on quality.
     try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            resp = await client.post(url_api, json=payload)
+        async with async_playwright() as p:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=str(GEMINI_PROFILE_DIR),
+                headless=True,
+                viewport={"width": 1440, "height": 900},
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            try:
+                # Cover slide_number == 0 sentinel for log readability.
+                img_bytes, last_err = await _gen_one_image(context, 0, bare_prompt)
+            finally:
+                await context.close()
     except Exception as e:
-        return None, f"Imagen HTTP failed: {e}"
+        return None, f"Playwright cover gen failed: {e}"
+
+    if not img_bytes:
+        return None, f"cover gen returned no bytes: {last_err or 'unknown'}"
+
+    # Reuse the same VLM alignment gate the body slides go through.
+    try:
+        score, why = await _score_image_alignment(img_bytes, bare_prompt, 0)
+        if score < VLM_MIN_SCORE:
+            logger.warning(
+                "Cover image rejected by VLM (score=%.2f < %.2f): %s",
+                score,
+                VLM_MIN_SCORE,
+                why,
+            )
+            return None, f"VLM rejected cover (score={score:.2f}): {why}"
+    except Exception as e:
+        logger.warning("Cover VLM scoring failed: %s — accepting image", e)
+
     duration_ms = (time.perf_counter() - t0) * 1000
-
-    if resp.status_code != 200:
-        return None, f"Imagen HTTP {resp.status_code}: {resp.text[:300]}"
-
-    try:
-        data = resp.json()
-        b64 = data["predictions"][0]["bytesBase64Encoded"]
-        image_bytes = base64.b64decode(b64)
-    except Exception as e:
-        return None, f"Imagen response parse failed: {e}"
-
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     key = f"warroom/{draft_id}/cover-{ts}.png"
     try:
-        url = _upload_to_tigris(image_bytes, key, "image/png")
+        url = _img_upload_to_tigris(img_bytes, key, "image/png")
     except Exception as e:
         return None, f"Tigris upload failed: {e}"
 
     logger.info(
-        "Imagen cover %d bytes uploaded → %s (%.0fms)",
-        len(image_bytes),
+        "Cover %d bytes uploaded → %s (%.0fms)",
+        len(img_bytes),
         url,
         duration_ms,
     )
