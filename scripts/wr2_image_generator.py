@@ -663,37 +663,15 @@ async def _process_one(
     from playwright.async_api import async_playwright
 
     results: list[Any] = []
-    if ISOLATE_PER_SLIDE:
-        # Serial with fresh browser context per slide — slowest but most robust
-        # (eliminates cross-slide state bleed through Gemini's persistent
-        # session). Pair with a small inter-slide cooldown to give any
-        # server-side rate-limit a chance to clear.
-        logger.info("ISOLATE_PER_SLIDE=true — fresh browser per hero slide")
-        async with async_playwright() as p:
-            for idx, s in enumerate(hero_slides):
-                context = await p.chromium.launch_persistent_context(
-                    user_data_dir=str(GEMINI_PROFILE_DIR),
-                    headless=True,
-                    viewport={"width": 1440, "height": 900},
-                    args=["--disable-blink-features=AutomationControlled"],
-                )
-                try:
-                    sem = asyncio.Semaphore(1)
-                    r = await _gen_image_with_semaphore(
-                        sem,
-                        context,
-                        s["slide_number"],
-                        s.get("image_prompt") or "",
-                        str(draft_id),
-                    )
-                    results.append(r)
-                finally:
-                    await context.close()
-                # Inter-slide cooldown except after last
-                if idx < len(hero_slides) - 1:
-                    await asyncio.sleep(5)
-    else:
-        async with async_playwright() as p:
+    # Strictly serial: fresh browser context per slide, one tab at a time.
+    # Empirical (Apr 25-26 2026, Ultra plan): parallel tabs on the persistent
+    # Gemini profile silently degrade output (returns stock-style content
+    # unrelated to the prompt). Hero images are too important to speculate on.
+    # The old shared-context branch (WR2_IMAGE_ISOLATE_BROWSER=false) is
+    # removed; ISOLATE_PER_SLIDE is now a no-op kept for backwards-compat.
+    logger.info("Serial mode — one fresh browser context per hero slide")
+    async with async_playwright() as p:
+        for idx, s in enumerate(hero_slides):
             context = await p.chromium.launch_persistent_context(
                 user_data_dir=str(GEMINI_PROFILE_DIR),
                 headless=True,
@@ -701,16 +679,21 @@ async def _process_one(
                 args=["--disable-blink-features=AutomationControlled"],
             )
             try:
-                sem = asyncio.Semaphore(MAX_CONCURRENT_TABS)
-                tasks = [
-                    _gen_image_with_semaphore(
-                        sem, context, s["slide_number"], s.get("image_prompt") or "", str(draft_id)
-                    )
-                    for s in hero_slides
-                ]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
+                sem = asyncio.Semaphore(1)
+                r = await _gen_image_with_semaphore(
+                    sem,
+                    context,
+                    s["slide_number"],
+                    s.get("image_prompt") or "",
+                    str(draft_id),
+                )
+                results.append(r)
             finally:
                 await context.close()
+            # Inter-slide cooldown except after last (lets server-side
+            # rate-limits clear before the next tab).
+            if idx < len(hero_slides) - 1:
+                await asyncio.sleep(5)
 
     # Stitch URLs back into slides
     url_by_slide: dict[int, str] = {}
