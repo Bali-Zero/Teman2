@@ -86,14 +86,25 @@ TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 # from a search/seed pool instead. We can't change Gemini, but we can refuse
 # the image post-download and retry a fresh tab.
 #
-# We use the local Ollama qwen2.5vl:7b VLM (already on Pro, 6 GB) to score
-# alignment. Threshold WR2_IMAGE_MIN_ALIGN_SCORE (default 0.5) blocks
-# obviously-off images while tolerating editorial reinterpretations.
+# We use a local Ollama VLM to score alignment. Default: gemma4:26b
+# (MoE, 16 GB Q4, vision+thinking, 262k context). Faster and more
+# discriminative than qwen2.5vl:7b on this task.
+#
+# Side-by-side benchmark (Pro M4 Pro 48GB, 2026-04-26):
+#                   WRONG-case   CORRECT-case   avg latency
+#   qwen2.5vl:7b    0.0  (36s)    0.95  (6s)    21s
+#   gemma4:26b      0.0  (10s)    1.00  (9s)     9s
+#
+# Both block the WRONG case at threshold 0.5; gemma4 is ~2× faster on
+# average and gives a tighter score on CORRECT cases.
+#
+# Threshold WR2_IMAGE_MIN_ALIGN_SCORE (default 0.5) blocks obviously-off
+# images while tolerating editorial reinterpretations.
 VLM_VALIDATION_ENABLED = (
     os.environ.get("WR2_IMAGE_VLM_VALIDATION", "true").lower() == "true"
 )
 VLM_OLLAMA_URL = os.environ.get("WR2_IMAGE_VLM_URL", "http://127.0.0.1:11434")
-VLM_MODEL = os.environ.get("WR2_IMAGE_VLM_MODEL", "qwen2.5vl:7b")
+VLM_MODEL = os.environ.get("WR2_IMAGE_VLM_MODEL", "gemma4:26b")
 VLM_MIN_SCORE = float(os.environ.get("WR2_IMAGE_MIN_ALIGN_SCORE", "0.5"))
 VLM_TIMEOUT_SEC = int(os.environ.get("WR2_IMAGE_VLM_TIMEOUT", "60"))
 
