@@ -6,6 +6,7 @@ Contains: domain detection, evidence scoring, tool validation, team query detect
 """
 
 import logging
+import os
 import re
 from typing import Any
 
@@ -511,7 +512,127 @@ def calculate_evidence_score(
         # But cap at 1.0 and weight source quality lower
         final_score = semantic_relevance + source_quality_score * 0.5
 
+    # ========== SEMANTIC ALIGNMENT PENALTY (v3 quick-win #1) ==========
+    # Use Qdrant's per-source cosine similarity as a sanity gate. If retrieval
+    # returned sources but the BEST one has cosine < 0.5 with the query, the
+    # keyword-overlap path was probably misled (e.g. KITAS query → KBLI docs
+    # share the word "business" but are semantically unrelated). Penalize
+    # final score by 0.7× — does not create false negatives because a truly
+    # weak retrieval already had low source_quality_score; this just prevents
+    # the keyword-driven semantic_relevance from inflating the verdict.
+    #
+    # Source `score` is set by Qdrant (cosine similarity for our hybrid
+    # collections). Skip when sources are absent or top_score is missing.
+    if sources:
+        top_source_cosine = max(
+            (s.get("score", 0.0) for s in sources if isinstance(s, dict)),
+            default=0.0,
+        )
+        if 0 < top_source_cosine < 0.5 and final_score > 0.15:
+            penalized = round(final_score * 0.7, 2)
+            logger.info(
+                "evidence_score: semantic-alignment penalty applied "
+                "(top_cosine=%.2f, %.2f → %.2f)",
+                top_source_cosine, final_score, penalized,
+            )
+            final_score = penalized
+
     return round(min(final_score, 1.0), 2)
+
+
+# ============================================================================
+# Domain-aware ABSTAIN thresholds (v3 quick-win #2)
+# ============================================================================
+# A single global ABSTAIN_THRESHOLD (0.15) over-rejects on Indonesian-language
+# domains (tax, visa) where docs naturally have lower keyword overlap with
+# IT/EN queries, and under-rejects on KBLI where false-positive risk is
+# higher (many business-vocabulary collisions). Per-domain thresholds let
+# the gate breathe in the right direction.
+#
+# The ENV override DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20,default:0.15
+# is read at process start and merged on top of these defaults.
+
+DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT: dict[str, float] = {
+    "tax":     0.10,   # Indonesian tax docs, lower keyword overlap with IT/EN
+    "visa":    0.12,   # immigration docs are mostly Indonesian/English mix
+    "pricing": 0.15,   # baseline
+    "kbli":    0.20,   # higher bar — business vocabulary creates false positives
+    "default": 0.15,
+}
+
+
+def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
+    """Parse `DOMAIN_ABSTAIN_THRESHOLDS=tax:0.10,kbli:0.20` env var format."""
+    out: dict[str, float] = {}
+    for raw in (spec or "").split(","):
+        raw = raw.strip()
+        if not raw or ":" not in raw:
+            continue
+        key, _, val = raw.partition(":")
+        try:
+            out[key.strip().lower()] = float(val)
+        except ValueError:
+            logger.warning(
+                "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r", raw,
+            )
+    return out
+
+
+def _build_domain_thresholds() -> dict[str, float]:
+    merged = dict(DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT)
+    merged.update(
+        _parse_domain_threshold_overrides(
+            os.environ.get("DOMAIN_ABSTAIN_THRESHOLDS", ""),
+        ),
+    )
+    return merged
+
+
+_DOMAIN_THRESHOLDS = _build_domain_thresholds()
+
+
+def classify_query_domain(query: str) -> str:
+    """Lightweight domain classifier for ABSTAIN-threshold lookup.
+
+    Returns one of: tax, visa, pricing, kbli, default.
+
+    Intentionally a tiny heuristic — full intent classification happens
+    elsewhere; this is just the routing key for per-domain ABSTAIN tuning.
+    """
+    q = (query or "").lower()
+    if any(kw in q for kw in (
+        "tax", "tasse", "imposta", "pajak", "ppn", "pph", "npwp", "spt", "pkp",
+        "fiscal", "fiscale", "tarif pajak",
+    )):
+        return "tax"
+    if any(kw in q for kw in (
+        "visa", "visto", "kitas", "kitap", "imigrasi", "immigration",
+        "stay permit", "permesso di soggiorno", "rptka", "itk", "c1", "c2",
+        "d1", "d2", "e33g", "b211",
+    )):
+        return "visa"
+    if any(kw in q for kw in (
+        "kbli", "codice kbli", "kode kbli", "klasifikasi", "classification",
+        "kegiatan usaha", "business activity",
+    )):
+        return "kbli"
+    if any(kw in q for kw in (
+        "quanto costa", "price", "prezzo", "costo", "harga", "berapa biaya",
+        "cost", "pricing", "tariffa", "fee",
+    )):
+        return "pricing"
+    return "default"
+
+
+def get_abstain_threshold(query: str) -> float:
+    """Return the ABSTAIN threshold to apply for ``query``.
+
+    Falls back to the ``"default"`` entry, which itself defaults to 0.15
+    (matching the legacy global ``ABSTAIN_THRESHOLD`` from
+    ``EvidenceScoreConstants``).
+    """
+    domain = classify_query_domain(query)
+    return _DOMAIN_THRESHOLDS.get(domain, _DOMAIN_THRESHOLDS["default"])
 
 
 def detect_team_query(query: str) -> tuple[bool, str, str]:
