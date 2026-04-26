@@ -51,6 +51,15 @@ LEGACY_PROMOTION_FILES = (
     "137_team_members_legacy_columns_and_defaults.sql",
 )
 
+# Files that landed in the 129-137 number range but are NOT part of the
+# legacy-promotion batch. They have their own forward/rollback contracts
+# tested elsewhere (or none, if pre-dating the convention). Listed here
+# so test_files_match_directory_listing accepts them as expected.
+NON_LEGACY_FILES_IN_RANGE = (
+    "129_crm_guardian.sql",  # crm_guardian DDL (separate feature, has its own tests)
+    "130_crm_guardian_summary_queue.sql",  # follow-up to 129
+)
+
 
 _ROLLBACK_MARKER = re.compile(r"^--\s*===\s*ROLLBACK\s*===\s*$", re.MULTILINE | re.IGNORECASE)
 
@@ -187,7 +196,7 @@ def test_files_match_directory_listing() -> None:
         and 129 <= int(f.name[:3]) <= 137
     )
     # 131 is intentionally reserved for unify_migration_tracking
-    expected = sorted(LEGACY_PROMOTION_FILES)
+    expected = sorted(LEGACY_PROMOTION_FILES + NON_LEGACY_FILES_IN_RANGE)
     assert actual == expected, (
         f"unexpected files in 129–137 range\n"
         f"  expected: {expected}\n"
