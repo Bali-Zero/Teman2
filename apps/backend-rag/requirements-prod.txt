@@ -108,6 +108,15 @@ apscheduler==3.10.4
 setuptools>=78.1.1
 langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes
 
+# Langfuse + OpenInference instrumentation (PR #312, prod runtime — was
+# missing in requirements-prod.txt so observability silently no-op'd in
+# production even with LANGFUSE_*_KEY secrets set on Fly).
+# Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
+langfuse>=2.60.0,<4.0.0  # LLM observability, OTEL-based v2+
+openinference-instrumentation-anthropic>=0.1.14  # Anthropic SDK auto-trace
+openinference-instrumentation-google-genai>=0.1.16  # Auto-trace Gemini SDK
+openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+
 # Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
 # Skill, Metabolic, HGT). Editable install; path is resolved relative to the
 # working directory where `pip install -r` runs. In the Dockerfile that is
