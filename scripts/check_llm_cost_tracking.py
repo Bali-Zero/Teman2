@@ -33,6 +33,9 @@ WHITELIST_SUBSTRINGS: list[str] = [
     "/provider_registry.py",
     "/metrics_emitter.py",
     "/llm/adapters/",
+    # OTEL/Langfuse instrumentation config — references provider names
+    # for instrumentor wiring, never makes paid LLM calls itself.
+    "core/observability.py",
     # Ollama (local, zero cost):
     "ollama_client.py",
     "llm/providers/ollama.py",
