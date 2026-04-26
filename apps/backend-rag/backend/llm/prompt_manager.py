@@ -17,14 +17,35 @@ from backend.prompts.zantara_core import ZANTARA_MASTER_TEMPLATE as _TEMPLATE_V1
 
 logger = logging.getLogger(__name__)
 
-# Feature flag: ZANTARA_PROMPT_VERSION selects between v1 (current SSOT,
-# Italian-heavy examples) and v2 (multi-language refactor, populated by
-# PR-16b/17). Default is v1 — v2 is currently a transparent re-export of
-# v1 (see backend/prompts/zantara_core_v2.py), so flipping the flag is a
-# no-op until those PRs land.
+# Feature flag: ZANTARA_PROMPT_VERSION selects between
+# - v1: original SSOT (Italian-heavy inline examples)
+# - v2: multi-language business phrases via business_rules_i18n
+# - v3: v2 + concrete worked examples per domain (pricing/visa/tax/kbli/
+#       escalation/identity-lock in it/en/id) — short-circuits the
+#       abstract policy → concrete behaviour translation step
+# Default is v1. Each newer version falls back gracefully to the previous
+# one if its module import fails (defensive against partial deploys).
 _PROMPT_VERSION = os.environ.get("ZANTARA_PROMPT_VERSION", "v1").lower()
 
-if _PROMPT_VERSION == "v2":
+if _PROMPT_VERSION == "v3":
+    try:
+        from backend.prompts.zantara_core_v3 import (
+            ZANTARA_MASTER_TEMPLATE,
+        )
+        logger.info("PromptManager: using zantara_core_v3 (ZANTARA_PROMPT_VERSION=v3)")
+    except ImportError as exc:  # pragma: no cover — defensive fallback
+        logger.warning(
+            "PromptManager: ZANTARA_PROMPT_VERSION=v3 requested but "
+            "zantara_core_v3 import failed (%s) — falling back to v2.",
+            exc,
+        )
+        try:
+            from backend.prompts.zantara_core_v2 import (
+                ZANTARA_MASTER_TEMPLATE,
+            )
+        except ImportError:
+            ZANTARA_MASTER_TEMPLATE = _TEMPLATE_V1
+elif _PROMPT_VERSION == "v2":
     try:
         from backend.prompts.zantara_core_v2 import (
             ZANTARA_MASTER_TEMPLATE,
