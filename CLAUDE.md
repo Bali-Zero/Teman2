@@ -440,6 +440,7 @@ Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 | Ollama start/stop | 01:00/06:05  | `ollama_cron_window.sh`              |
 | Auto test         | 02:15        | `auto_test.sh`                       |
 | Sentinel          | 03:00        | `auto_sentinel.sh`                   |
+| Indexing Sweep    | 00:30        | `daily_indexing_cron.sh` (Phase 1: articles 200/day, Phase 2: KBLI 600/day → Telegram) |
 | KB Ingest         | 05:00        | `auto_kb_ingest.sh`                  |
 | RAG Canary        | \*/6h :30    | `rag_canary.py`                      |
 | System Doctor     | 08:00        | `system_doctor.py --notify-telegram` |
