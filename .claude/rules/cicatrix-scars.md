@@ -5,6 +5,56 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: Atlas migrate-lint paywalled in v0.38 — pivoted to Squawk (2026-04-26)
+
+_Discovered: 2026-04-26 during sprint 1 PR #306 CI run · Patched: same day via pivot to `sbdchd/squawk-action@v2`_
+
+**TRAUMA:** PR #306 sprint 1 originally adopted `ariga/atlas-action/migrate/lint@v1`
+to lint Postgres migrations at PR-check time. The action installed Atlas at
+`latest`, which on 2025-10-30 became v0.38 — the release that **moved
+`migrate lint` behind a paid Atlas Pro tier**. CI failed with:
+
+```
+Abort: Starting with v0.38, 'atlas migrate lint' is available only to Atlas Pro users.
+```
+
+The error surfaced in the very first PR run, not at planning time — the
+brainstorm artifacts (`docs/brainstorms/2026-04-26-oss-injections/03_atlas_*.md`)
+recommended Atlas without flagging the v0.38 paywall because it was newer
+than their training cutoff.
+
+**ANTIBODY:** Pivoted to **Squawk** (`sbdchd/squawk-action@v2`, MIT, OSS,
+~600K monthly downloads, Postgres-specific). Same value prop — destructive-op
+detection at PR-check time — without the paywall risk. Implementation in
+[`.github/workflows/migration-lint.yml`](../../.github/workflows/migration-lint.yml).
+
+The runtime rollback-marker validation in `migration_manager.py` (which caught
+PR #302) stays as-is and is **complementary** to Squawk: it validates the
+`-- === ROLLBACK ===` marker presence at deploy time; Squawk validates DDL
+safety at PR time. Two checks, two phases, two different bug classes.
+
+**GOTCHA:**
+
+- Atlas's older versions (≤v0.37) still have `migrate lint` for free, but
+  pinning a specific old version of an actively-developed CLI is a maintenance
+  trap — every minor release means re-evaluating whether to upgrade. Squawk
+  has no such pressure.
+- The Squawk ignore syntax is per-statement, not per-file:
+  `-- squawk-ignore: ban-drop-column` on the line immediately preceding the
+  offending statement. (Not `-- atlas:nolint` as some older docs say.)
+- Squawk uses GitHub annotations for violations, not job log lines. Read them
+  via `gh api repos/<org>/<repo>/check-runs/<job-id>/annotations` if you need
+  to script around them.
+- The `--latest 1` flag from the Atlas plan does not apply to Squawk — Squawk
+  always lints whatever files you pass it. Our workflow uses `git diff` to
+  compute the changed migrations against the PR base.
+
+Brainstorm artifacts (with the original Atlas reasoning, kept for posterity):
+`docs/brainstorms/2026-04-26-oss-injections/03_atlas_*.md`. Final design with
+Squawk: [`docs/oss-injections-2026-04-26.md`](../../docs/oss-injections-2026-04-26.md).
+
+---
+
 ### ✅ RESOLVED: Deploy crash before health check went unalerted (Air A3, 2026-04-18)
 
 _Discovered: 2026-04-18 audit (CRIT-3) · Patched: 2026-04-18 via `devops/deploy-rollback-hardening`_
