@@ -278,7 +278,33 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy user_profiles + conversations + lkpm_reports + system_settings + notification_log + notification_prefs tables ensured in DB")
+        # war_room_drafts: created by backend/migrations/migration_112_war_room_tables.py.
+        # Migration 127 (db/migrations_v2/127_war_room_canva_url.sql) ALTERs
+        # this table; without it CI fails with "relation war_room_drafts does
+        # not exist". The full set of war_room_* tables (posts, metrics, leads,
+        # rejections, missed_runs, costs) is created by migration 112 in prod;
+        # CI only needs `war_room_drafts` to satisfy the v2 ALTERs that follow.
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS war_room_drafts (
+                id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                topic                 TEXT NOT NULL,
+                register              TEXT,
+                status                TEXT NOT NULL DEFAULT 'briefed',
+                brief_json            JSONB,
+                research_json         JSONB,
+                council_debate_json   JSONB,
+                slides_json           JSONB,
+                drafts_json           JSONB,
+                rejection_reason      TEXT,
+                created_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at            TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                approved_by           TEXT,
+                approved_at           TIMESTAMP WITH TIME ZONE
+            )
+            """,
+        ))
+    print("[bootstrap] legacy tables ensured in DB (user_profiles, conversations, lkpm_reports, system_settings, notification_log, notification_prefs, war_room_drafts)")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise

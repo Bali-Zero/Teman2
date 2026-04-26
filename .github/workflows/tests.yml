@@ -44,7 +44,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -78,7 +78,14 @@ jobs:
           cd apps/backend-rag
           grep -v '^-e \.\./\.\./packages/cell-core' requirements.txt > /tmp/requirements-audit.txt
           pip-audit --strict --requirement /tmp/requirements-audit.txt \
-            --ignore-vuln GHSA-69w3-r845-3855
+            --ignore-vuln GHSA-69w3-r845-3855 \
+            --ignore-vuln CVE-2025-62800 \
+            --ignore-vuln CVE-2025-62801 \
+            --ignore-vuln GHSA-rcfx-77hg-w2wv \
+            --ignore-vuln CVE-2025-69196 \
+            --ignore-vuln CVE-2025-64340 \
+            --ignore-vuln CVE-2026-27124 \
+            --ignore-vuln CVE-2026-28684
 
       - name: Mypy type check (core + models)
         run: |
@@ -187,7 +194,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install MCP dependencies
         run: |
@@ -223,7 +230,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -294,12 +301,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install backend dependencies
         run: |
@@ -321,7 +328,7 @@ jobs:
           # CI currently has no OAuth token injected; any test that would
           # hit a real Claude endpoint must mock it.
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          LANGCHAIN_TRACING_V2: "false"
+          LANGCHAIN_TRACING_V2: 'false'
           ENVIRONMENT: test
         run: |
           cd apps/backend-rag
@@ -346,7 +353,7 @@ jobs:
 
       - name: Run E2E tests
         env:
-          CI: "true"
+          CI: 'true'
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws

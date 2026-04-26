@@ -1,12 +1,20 @@
 """Tests for EventBus — in-process pub/sub + handlers."""
 
 import asyncio
-import time
+import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
+
+try:
+    import asyncpg
+except ImportError:  # pragma: no cover
+    asyncpg = None  # type: ignore[assignment]
 
 import pytest
 
-from backend.services.events.event_bus import EventBus, PG_CHANNEL_MAP
+from backend.services.events.event_bus import PG_CHANNEL_MAP, EventBus
+
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
 
 @pytest.fixture
@@ -137,6 +145,8 @@ class TestPGChannelMap:
         assert "practice_changed" in PG_CHANNEL_MAP
         assert "client_changed" in PG_CHANNEL_MAP
         assert "compliance_alert" in PG_CHANNEL_MAP
+        assert "intel_event" in PG_CHANNEL_MAP
+        assert "lkpm_ingest_completed" in PG_CHANNEL_MAP
 
     def test_event_types_are_dotted(self) -> None:
         for event_type in PG_CHANNEL_MAP.values():
@@ -175,6 +185,105 @@ class TestPGNotificationRouting:
     async def test_unmapped_channel_logs_warning(self, bus: EventBus) -> None:
         # Unknown channel should be handled gracefully
         await bus._handle_pg_event("unknown_channel", '{"data": 1}')
+
+    @pytest.mark.asyncio
+    async def test_pg_compliance_alert_reaches_registered_handlers(self) -> None:
+        """PG ``compliance_alert`` channel must reach handlers registered on
+        the dotted event type ``compliance.alert`` and trigger cache
+        invalidation. Regression for the channel/event-type mismatch where
+        compliance handlers were keyed on ``compliance_alert_created`` and
+        therefore never fired from PG NOTIFY.
+        """
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+        mock_pool = MagicMock()
+
+        from backend.services.events.handlers import _recent_events, register_handlers
+
+        _recent_events.clear()
+        register_handlers(bus, mock_pool)
+
+        with patch(
+            "backend.core.cache.invalidate_cache",
+            new_callable=AsyncMock,
+        ) as mock_invalidate:
+            await bus._handle_pg_event(
+                "compliance_alert",
+                json.dumps(
+                    {
+                        "alert_id": "a1",
+                        "client_id": 5,
+                        "severity": "warning",
+                        "alert_type": "kitas_expiry",
+                        "message": "KITAS expires soon",
+                    }
+                ),
+            )
+
+            mock_invalidate.assert_any_await("zantara:compliance_alerts:5:*")
+            mock_invalidate.assert_any_await("zantara:compliance_metrics:*")
+
+
+class TestRealPGNotificationRouting:
+    """Integration-style EventBus routing through a real PostgreSQL NOTIFY.
+
+    Skipped unless ``TEST_DATABASE_URL`` is set and ``asyncpg`` is installed.
+    Locally: ``TEST_DATABASE_URL=postgresql:///postgres pytest ...``.
+    """
+
+    @pytest.mark.skipif(
+        asyncpg is None or not TEST_DATABASE_URL,
+        reason="TEST_DATABASE_URL not set or asyncpg missing",
+    )
+    @pytest.mark.asyncio
+    async def test_real_notify_dispatches_to_compliance_handler(self) -> None:
+        assert asyncpg is not None
+        assert TEST_DATABASE_URL is not None
+
+        received: list[dict[str, object]] = []
+        done = asyncio.Event()
+
+        async def handler(payload: dict[str, object]) -> None:
+            received.append(payload)
+            done.set()
+
+        bus = EventBus(db_dsn=TEST_DATABASE_URL, db_pool=None)
+        bus.subscribe("compliance.alert", handler)
+
+        notify_conn = None
+        try:
+            await bus.start()
+            for _ in range(30):
+                if bus._conn is not None:
+                    break
+                await asyncio.sleep(0.1)
+            else:
+                pytest.fail("EventBus did not open a PostgreSQL listener")
+
+            await asyncio.sleep(0.2)
+            notify_conn = await asyncpg.connect(TEST_DATABASE_URL)
+            await notify_conn.execute(
+                "SELECT pg_notify($1, $2)",
+                "compliance_alert",
+                json.dumps(
+                    {
+                        "alert_id": "real-notify-test",
+                        "client_id": 42,
+                        "severity": "critical",
+                    }
+                ),
+            )
+
+            await asyncio.wait_for(done.wait(), timeout=3.0)
+        finally:
+            if notify_conn is not None:
+                await notify_conn.close()
+            await bus.stop()
+
+        assert received
+        assert received[0]["_source"] == "pg_notify"
+        assert received[0]["_channel"] == "compliance_alert"
+        assert received[0]["_event_type"] == "compliance.alert"
+        assert received[0]["client_id"] == 42
 
 
 class TestDeduplication:
@@ -218,9 +327,9 @@ class TestChainContext:
 
     def test_context_prunes_old_entries(self) -> None:
         from backend.services.events.handlers import (
+            _CHAIN_CONTEXT_MAX,
             _chain_context,
             _store_context,
-            _CHAIN_CONTEXT_MAX,
         )
         _chain_context.clear()
 
@@ -252,7 +361,7 @@ class TestHandlerRegistration:
         bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
         mock_pool = MagicMock()
 
-        from backend.services.events.handlers import register_handlers, _recent_events
+        from backend.services.events.handlers import _recent_events, register_handlers
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
@@ -270,7 +379,13 @@ class TestHandlerRegistration:
         # (package shadowed module), so this test never exercised the real
         # subscription count and the 1-subscriber expectation went stale.
         assert len(bus._subscribers["practice.status_changed"]) == 2
-        assert len(bus._subscribers["compliance.alert"]) == 1
+        # 2 subscribers on compliance.alert: the core handler in handlers/_core.py
+        # (Telegram + outbox fanout) AND the cache-invalidation handler from
+        # compliance_handlers.HANDLERS (registered after the core wiring via
+        # compliance_handlers.HANDLERS).
+        assert len(bus._subscribers["compliance.alert"]) == 2
+        assert "intel.event" in bus._subscribers
+        assert "lkpm.ingest_completed" in bus._subscribers
 
     @pytest.mark.asyncio
     async def test_client_insert_triggers_background_tasks(self) -> None:
@@ -278,14 +393,14 @@ class TestHandlerRegistration:
         bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
         mock_pool = MagicMock()
 
-        from backend.services.events.handlers import register_handlers, _recent_events
+        from backend.services.events.handlers import _recent_events, register_handlers
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
         # Mock the background task functions
-        with patch("backend.services.events.handlers._create_drive_folder", new_callable=AsyncMock) as mock_drive, \
-             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock) as mock_log, \
+        with patch("backend.services.events.handlers._create_drive_folder", new_callable=AsyncMock), \
+             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock), \
              patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
 
             trace = await bus.emit("client.changed", {
@@ -306,12 +421,12 @@ class TestHandlerRegistration:
         bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
         mock_pool = MagicMock()
 
-        from backend.services.events.handlers import register_handlers, _recent_events
+        from backend.services.events.handlers import _recent_events, register_handlers
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
-        with patch("backend.services.events.handlers._check_client_expiry_on_completion", new_callable=AsyncMock) as mock_check, \
+        with patch("backend.services.events.handlers._check_client_expiry_on_completion", new_callable=AsyncMock), \
              patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
 
             trace = await bus.emit("practice.status_changed", {
@@ -335,12 +450,12 @@ class TestHandlerRegistration:
         bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
         mock_pool = MagicMock()
 
-        from backend.services.events.handlers import register_handlers, _recent_events
+        from backend.services.events.handlers import _recent_events, register_handlers
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
-        with patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock) as mock_tg, \
+        with patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock), \
              patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock):
 
             await bus.emit("compliance.alert", {
