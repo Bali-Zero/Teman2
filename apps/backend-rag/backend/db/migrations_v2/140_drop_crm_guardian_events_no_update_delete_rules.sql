@@ -59,10 +59,20 @@
 -- and have the FK be ON DELETE CASCADE with a session-local setting.
 -- That is out of scope for this fix.
 
+-- Squawk migration-lint requires lock_timeout/statement_timeout before
+-- potentially-slow ops. DROP RULE on a tiny audit table is effectively
+-- instant, but the linter has no way to know that — set the timeouts
+-- explicitly so we stay green and consistent with other migrations.
+SET lock_timeout = '5s';
+SET statement_timeout = '60s';
+
 DROP RULE IF EXISTS crm_guardian_events_no_update ON crm_guardian_events;
 DROP RULE IF EXISTS crm_guardian_events_no_delete ON crm_guardian_events;
 
 -- === ROLLBACK ===
+SET lock_timeout = '5s';
+SET statement_timeout = '60s';
+
 CREATE OR REPLACE RULE crm_guardian_events_no_update AS
     ON UPDATE TO crm_guardian_events DO INSTEAD NOTHING;
 CREATE OR REPLACE RULE crm_guardian_events_no_delete AS
