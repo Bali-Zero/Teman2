@@ -19,7 +19,12 @@ from backend.services.canva_renderer.pending_builder import (
 
 
 def _slides_fixture() -> list[dict]:
-    """Minimal 3-slide fixture mimicking Council+Visual output."""
+    """Minimal 5-slide fixture mimicking Council+Visual output.
+
+    `build_canva_pending` enforces a minimum of 5 slides (see
+    `pending_builder.py`); the ops-level tests only inspect 1–3 but
+    the payload-level tests need the full set.
+    """
     return [
         {
             "slide_number": 1,
@@ -41,6 +46,18 @@ def _slides_fixture() -> list[dict]:
             "headline": "WHERE THEY ARE OPERATING.",
             "body": "Canggu, Seminyak, Kerobokan, Ubud, Kuta, Benoa.",
             "image_url": None,  # not every slide has an image
+        },
+        {
+            "slide_number": 4,
+            "headline": "WHAT THIS MEANS FOR YOU.",
+            "body": "If your visa is expiring, act now.",
+            "image_url": None,
+        },
+        {
+            "slide_number": 5,
+            "headline": "WHAT TO DO NEXT.",
+            "body": "Book a consultation with Bali Zero today.",
+            "image_url": None,
         },
     ]
 
@@ -129,7 +146,7 @@ class TestBuildCanvaPending:
         assert payload["template_design_id"] == TEMPLATE_DESIGN_ID
         assert payload["topic"] == "Bali's New Immigration Task Force: Unseen Risks for Expats"
         assert payload["tone"] == "pedagogico"
-        assert payload["slides_count"] == 3
+        assert payload["slides_count"] == 5
         assert isinstance(payload["operations"], list)
         assert len(payload["operations"]) > 0
         assert payload["design_id"] is None  # not yet applied
@@ -170,6 +187,8 @@ class TestBuildCanvaPending:
             build_canva_pending(topic="x", tone="pedagogico", slides=[])
 
     def test_rejects_more_than_max_slides(self) -> None:
-        slides = [{"slide_number": i, "headline": f"s{i}"} for i in range(1, 13)]
-        with pytest.raises(ValueError, match="cannot exceed 11 slides"):
+        # MAX_SLIDES_REQUESTED is 13 in pending_builder.py; over that the
+        # draft generator is told it produced too many slides.
+        slides = [{"slide_number": i, "headline": f"s{i}"} for i in range(1, 15)]
+        with pytest.raises(ValueError, match="cannot exceed 13 slides"):
             build_canva_pending(topic="x", tone="pedagogico", slides=slides)
