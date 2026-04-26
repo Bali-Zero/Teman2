@@ -5,83 +5,53 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
-### ⚠️ STRUCTURAL: SQL v2 migrations apply on OLD image, not the freshly-built one (2026-04-26)
+### ✅ RESOLVED: Atlas migrate-lint paywalled in v0.38 — pivoted to Squawk (2026-04-26)
 
-_Discovered: 2026-04-26 deploy of PR #307 (migration 139 `intel_radar_findings`) · Workaround: `workflow_dispatch` re-trigger after merge_
+_Discovered: 2026-04-26 during sprint 1 PR #306 CI run · Patched: same day via pivot to `sbdchd/squawk-action@v2`_
 
-**TRAUMA:** `.github/workflows/fly-deploy.yml` runs jobs in this order:
-
-1. `pre-deploy-gate` (validation)
-2. `run-migrations` — `flyctl ssh console --app nuzantara-rag --command "python -m backend.db.migrate apply-all"`
-3. `deploy` — `flyctl deploy --strategy rolling`
-4. `run-python-migrations` (post-deploy, idempotent — but only for `apply_migration_NNN.py`, NOT SQL v2)
-5. `post-deploy-health`
-
-The `flyctl ssh console` in step 2 connects to the **currently running container** — i.e. the image from the PREVIOUS deploy. Any new file in `apps/backend-rag/backend/db/migrations_v2/NNN_*.sql` introduced by the same PR is NOT yet visible to the running app, because the build hasn't happened yet (step 3). The migration runner walks `migrations_v2/` on the OLD filesystem, doesn't find the new SQL file, applies 0 new migrations.
-
-The new SQL only lands in the image at step 3. By then, `run-migrations` has already finished. The workflow **never re-runs** the SQL v2 runner against the new image.
-
-**Concrete symptom from PR #307:**
+**TRAUMA:** PR #306 sprint 1 originally adopted `ariga/atlas-action/migrate/lint@v1`
+to lint Postgres migrations at PR-check time. The action installed Atlas at
+`latest`, which on 2025-10-30 became v0.38 — the release that **moved
+`migrate lint` behind a paid Atlas Pro tier**. CI failed with:
 
 ```
-Run DB migrations on Fly.io / Run DB migrations via flyctl console
-  ...
-  Migration 138_wr2_status_notify already applied, skipping
-  ✅ Applied: 26 migrations          ← was 26 before, still 26 after — no 139
-  - Migration 138                     ← stops at 138
+Abort: Starting with v0.38, 'atlas migrate lint' is available only to Atlas Pro users.
 ```
 
-Then on the manual `workflow_dispatch` re-trigger (run 24959168929), with the new image already serving:
+The error surfaced in the very first PR run, not at planning time — the
+brainstorm artifacts (`docs/brainstorms/2026-04-26-oss-injections/03_atlas_*.md`)
+recommended Atlas without flagging the v0.38 paywall because it was newer
+than their training cutoff.
 
-```
-Run DB migrations on Fly.io / Run DB migrations via flyctl console
-  ...
-  Applying migration 139_intel_radar_findings to nuzantara-postgres.flycast:5432/nuzantara_rag
-  ✅ Applied: 27 migrations          ← +1 = the new one
-  - Migration 139
-```
+**ANTIBODY:** Pivoted to **Squawk** (`sbdchd/squawk-action@v2`, MIT, OSS,
+~600K monthly downloads, Postgres-specific). Same value prop — destructive-op
+detection at PR-check time — without the paywall risk. Implementation in
+[`.github/workflows/migration-lint.yml`](../../.github/workflows/migration-lint.yml).
 
-The `run-python-migrations` post-deploy step exists for exactly this class of problem, but it only handles `backend/migrations/apply_migration_NNN.py` (Python wrappers), not SQL files in `migrations_v2/`. Two distinct migration systems with different deploy-time semantics.
-
-**ANTIBODY (workaround for now):**
-
-After merging a PR that adds a new `migrations_v2/NNN_*.sql` file:
-
-1. Wait for the auto-triggered fly-deploy (push event) to complete normally — image gets built and rolled out.
-2. Verify in the run logs that `Applied:` count is unchanged (proof the new SQL wasn't picked up).
-3. Manually re-trigger the workflow:
-
-   ```bash
-   gh workflow run "Deploy Backend to Fly.io" --ref main
-   ```
-
-4. Verify in the new run logs that the migration applied (`Applying migration NNN_*.sql ...` followed by an incremented `Applied:` count).
-5. Health check is automatic.
-
-**Permanent fix (TODO, separate PR):** add a step after `deploy` that re-runs the SQL v2 migration runner against the freshly-deployed image. Pseudo-code:
-
-```yaml
-run-sql-v2-migrations-post-deploy:
-  needs: deploy
-  steps:
-    - name: Wait for new image
-      run: <existing wait-loop>
-    - name: Re-run SQL v2 migrations on new image
-      run: |
-        flyctl ssh console --app nuzantara-rag \
-          --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'"
-```
-
-Idempotent (the runner skips already-applied migrations via `_schema_versions` table), so the no-op cost on deploys without new migrations is one extra `flyctl ssh` round-trip (~5-10s).
+The runtime rollback-marker validation in `migration_manager.py` (which caught
+PR #302) stays as-is and is **complementary** to Squawk: it validates the
+`-- === ROLLBACK ===` marker presence at deploy time; Squawk validates DDL
+safety at PR time. Two checks, two phases, two different bug classes.
 
 **GOTCHA:**
 
-- Path filter on the workflow (`paths: apps/backend-rag/**` + `.github/workflows/fly-deploy.yml`) means a PR that touches **only** `migrations_v2/` files outside backend-rag will NOT trigger any deploy at all — manual `workflow_dispatch` is the only path. (Not our case for §A — we also touched the test file under backend-rag, so the auto-deploy did fire.)
-- The `run-python-migrations` step's wait-loop checks for `apply_migration_119.py` as the "new image is live" sentinel. If 119 is ever removed from the codebase, that loop breaks silently. Defensive: pick a sentinel from a recent migration, not one that could be deprecated.
-- `python -m backend.db.migrate apply-all` is the same command both pre and post — only the container filesystem differs. Don't try to "fix" by adding `--force` or path overrides; the runner is correct, the deploy ordering is the issue.
-- This caveat does NOT affect Python-style migrations (`backend/migrations/apply_migration_NNN.py`) — those are handled by the existing `run-python-migrations` post-deploy job. SQL v2 is the gap.
+- Atlas's older versions (≤v0.37) still have `migrate lint` for free, but
+  pinning a specific old version of an actively-developed CLI is a maintenance
+  trap — every minor release means re-evaluating whether to upgrade. Squawk
+  has no such pressure.
+- The Squawk ignore syntax is per-statement, not per-file:
+  `-- squawk-ignore: ban-drop-column` on the line immediately preceding the
+  offending statement. (Not `-- atlas:nolint` as some older docs say.)
+- Squawk uses GitHub annotations for violations, not job log lines. Read them
+  via `gh api repos/<org>/<repo>/check-runs/<job-id>/annotations` if you need
+  to script around them.
+- The `--latest 1` flag from the Atlas plan does not apply to Squawk — Squawk
+  always lints whatever files you pass it. Our workflow uses `git diff` to
+  compute the changed migrations against the PR base.
 
-**Why we discovered it on PR #307 specifically:** prior SQL v2 migrations (e.g. 138 `wr2_status_notify`) had a follow-up commit on the same day that re-triggered the workflow on a new push, masking the issue. PR #307 was a clean single-deploy, exposing the gap.
+Brainstorm artifacts (with the original Atlas reasoning, kept for posterity):
+`docs/brainstorms/2026-04-26-oss-injections/03_atlas_*.md`. Final design with
+Squawk: [`docs/oss-injections-2026-04-26.md`](../../docs/oss-injections-2026-04-26.md).
 
 ---
 
