@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import asyncpg
 
@@ -149,13 +149,13 @@ class GuardianEvent:
     target_type: str
     target_id: str
     status: str              # 'success' | 'partial' | 'error' | 'dry_run' | 'skipped'
-    client_id: Optional[int] = None
-    before_state: Optional[dict[str, Any]] = None
-    after_state: Optional[dict[str, Any]] = None
+    client_id: int | None = None
+    before_state: dict[str, Any] | None = None
+    after_state: dict[str, Any] | None = None
     dry_run: bool = False
-    run_id: Optional[str] = None
-    notes: Optional[str] = None
-    error_message: Optional[str] = None
+    run_id: str | None = None
+    notes: str | None = None
+    error_message: str | None = None
 
 
 async def record_event(conn: asyncpg.Connection, event: GuardianEvent) -> None:
@@ -188,7 +188,7 @@ async def record_event(conn: asyncpg.Connection, event: GuardianEvent) -> None:
 # ============================================================
 # Drive service resolution
 # ============================================================
-def build_drive_service(prefer_user_oauth: bool = True):
+def build_drive_service(prefer_user_oauth: bool = True) -> Any:
     """Return a Drive v3 service client.
 
     With prefer_user_oauth=True (default): use the SYSTEM-user OAuth refresh
@@ -201,7 +201,6 @@ def build_drive_service(prefer_user_oauth: bool = True):
     for read-only enumeration of folders the user token can't see, or when
     called outside the backend app context).
     """
-    from googleapiclient.discovery import build
 
     if prefer_user_oauth:
         try:
@@ -224,10 +223,10 @@ def _build_oauth_user_drive():
     trigger `asyncio.run() cannot be called from a running event loop` — so we
     talk to Postgres via psycopg2 (sync) instead.
     """
-    import os
-    import psycopg2
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
+
     import httpx
+    import psycopg2
     from google.oauth2.credentials import Credentials
     from googleapiclient.discovery import build
 

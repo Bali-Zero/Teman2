@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 from typing import Dict, Any
 import logging
 
@@ -306,7 +305,7 @@ def batch_enrich_articles(articles: list[Dict[str, Any]], max_articles: int = No
             })
     
     logger.info(f"\n{'='*60}")
-    logger.info(f"BATCH COMPLETE")
+    logger.info("BATCH COMPLETE")
     logger.info(f"  Success: {success_count}/{len(articles)}")
     logger.info(f"  Errors:  {error_count}/{len(articles)}")
     logger.info(f"{'='*60}")

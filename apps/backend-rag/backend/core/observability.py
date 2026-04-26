@@ -96,7 +96,7 @@ def init_observability(
             return _CLIENT
 
         try:
-            from langfuse import Langfuse, get_client  # noqa: WPS433
+            from langfuse import Langfuse  # noqa: WPS433
         except Exception as exc:
             logger.warning("langfuse.import_failed error=%s", exc)
             return None

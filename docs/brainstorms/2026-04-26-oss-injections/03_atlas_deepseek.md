@@ -34,9 +34,9 @@ Your migrations include data backfills, extension installations, custom function
 
 ### D. Rollback Handling
 
-Atlas can detect a missing down migration (i.e., an empty `ROLLBACK` block or no down file). That's exactly the bug in PR #302. However, Atlas's *auto‑generated* down migration (via schema diff) is not a substitute for hand‑written rollbacks. Your experience shows that hand‑written rollbacks have saved you in two incidents – they handle data restoration and complex logic that automatic diffs cannot.
+Atlas can detect a missing down migration (i.e., an empty `ROLLBACK` block or no down file). That's exactly the bug in PR #302. However, Atlas's _auto‑generated_ down migration (via schema diff) is not a substitute for hand‑written rollbacks. Your experience shows that hand‑written rollbacks have saved you in two incidents – they handle data restoration and complex logic that automatic diffs cannot.
 
-Therefore, **keep your hand‑written approach** and use Atlas only to *validate that a non‑empty down migration exists*. This is a low‑risk, high‑value gate. If Atlas ever suggests auto‑generating a down, ignore it.
+Therefore, **keep your hand‑written approach** and use Atlas only to _validate that a non‑empty down migration exists_. This is a low‑risk, high‑value gate. If Atlas ever suggests auto‑generating a down, ignore it.
 
 ### E. The Rollback Debt Problem
 
@@ -63,6 +63,7 @@ Adopt Atlas **exclusively as a CI lint gate** with the following concrete steps:
 1. **Create a format adapter script** (`ci/split_migrations.sh`) that reads each `migration_NNN.sql`, extracts `UPGRADE` and `ROLLBACK` blocks, and writes a temporary directory with `NNN_up.sql` / `NNN_down.sql`. This script is invoked in the CI step before Atlas runs.
 
 2. **Add the Atlas lint Action** to the existing `pre-deploy-gate` workflow:
+
    ```yaml
    - name: Atlas Lint
      run: |
@@ -73,6 +74,7 @@ Adopt Atlas **exclusively as a CI lint gate** with the following concrete steps:
          --dev-url "docker://postgres/17/dev" \
          --latest 1   # only check the newest migration on each PR
    ```
+
    (Or use `ariga/atlas-action/migrate/lint@v1` with appropriate env setup.)
 
 3. **Baseline ignore old migrations** – create an `.atlaslint.yml` (or `atlas.hcl`) that ignores lint for migrations before a certain version (e.g., `< migration_100.sql`). This can be refined as old migrations are fixed.
@@ -90,7 +92,7 @@ After deployment, the first run will emit warnings only for new modifications. T
 1. **Recommendation: ADOPT-PARTIAL** (lint-only CI, NOT runtime replacement)
 2. **CI = lint, runtime = our code** — keep `migration_manager.py` untouched
 3. **Adapter script in CI** beats migrating 140 files to Atlas-native format
-4. **Keep hand-written rollbacks** — Atlas only validates *existence*, not auto-generation
+4. **Keep hand-written rollbacks** — Atlas only validates _existence_, not auto-generation
 5. **Baseline ignore old migrations** (`< migration_100`) — avoid retroactive cleanup
 6. **`--latest 1`** flag scopes lint to only the new migration on each PR
 7. **Trivial CI complexity** (~20 lines + YAML step) for high-value defense-in-depth

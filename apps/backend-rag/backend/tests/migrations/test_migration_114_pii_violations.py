@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.migrations.migration_114_pii_violations import apply, rollback
+from backend.migrations.migration_114a_pii_violations import apply, rollback
 
 
 class TestMigration114:

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import base64
 import json
 import logging
 import os
@@ -35,7 +34,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 import asyncpg  # noqa: E402
-import httpx  # noqa: E402
 
 from backend.llm.claude_oauth_client import (  # noqa: E402
     ClaudeOAuthError,

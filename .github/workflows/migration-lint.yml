@@ -18,8 +18,8 @@ name: Migration Lint (Squawk)
 on:
   pull_request:
     paths:
-      - "apps/backend-rag/backend/db/migrations_v2/**.sql"
-      - ".github/workflows/migration-lint.yml"
+      - 'apps/backend-rag/backend/db/migrations_v2/**.sql'
+      - '.github/workflows/migration-lint.yml'
   workflow_dispatch: {}
 
 concurrency:
@@ -65,7 +65,7 @@ jobs:
           version: latest
           fail-on-violations: true
           upload-to-github: true
-          pg-version: "15.0"
+          pg-version: '15.0'
 
       - name: Skip notice (no migrations changed)
         if: steps.changed.outputs.files == ''
