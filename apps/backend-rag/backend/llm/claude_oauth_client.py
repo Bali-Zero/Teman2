@@ -24,10 +24,47 @@ import logging
 import os
 import re
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final
 
 logger = logging.getLogger(__name__)
+
+
+def _start_claude_cli_span(model_name: str, prompt_len_tokens: int) -> Any:
+    """Open an OTEL span for the upcoming `claude` CLI invocation.
+
+    This is the only LLM path in the codebase that's not patchable by an
+    OpenInference instrumentor (it shells out to a CLI). The span flows
+    to the same Langfuse project as everything else because the Langfuse
+    SDK registers itself as the global OTEL tracer provider during
+    `init_observability()`. When OTEL is not installed or no provider is
+    registered, this returns a `nullcontext` and emits nothing — the
+    function is purely additive.
+
+    Returns a context manager. Callers should:
+        with _start_claude_cli_span(...) as span:
+            ...subprocess work...
+            span.set_attribute("gen_ai.usage.output_tokens", N)  # if span
+    """
+    try:
+        from opentelemetry import trace
+
+        tracer = trace.get_tracer("nuzantara.claude_oauth")
+        return tracer.start_as_current_span(
+            "claude_cli.invoke",
+            attributes={
+                # OTEL gen_ai semantic conventions:
+                # https://opentelemetry.io/docs/specs/semconv/gen-ai/
+                "gen_ai.system": "claude-cli",
+                "gen_ai.operation.name": "chat",
+                "gen_ai.request.model": model_name,
+                # Estimated tokens (CLI doesn't report metadata).
+                "gen_ai.usage.input_tokens": prompt_len_tokens,
+            },
+        )
+    except Exception:  # noqa: BLE001 — OTEL must never break the host.
+        return nullcontext()
 
 
 DEFAULT_TIMEOUT_S: Final[int] = 120
@@ -146,6 +183,22 @@ async def complete_async(
     _recorder_success = False
     _recorder_error_class: str | None = None
 
+    # OTEL span wraps the whole retry loop so the dashboard sees one
+    # invocation per logical call (with attempts as an attribute), not
+    # one per token-fallback attempt — matches the granularity the
+    # other LLM clients emit through their auto-instrumentors.
+    # Started here, ended in the success-path `finally` and in the
+    # all-tokens-failed path below; both code paths set output_tokens
+    # and success attributes on _span before the manager exits.
+    # Note: in the unlikely path of `ClaudeOAuthNotAvailable` raised
+    # from `create_subprocess_exec`, the span context is leaked. The
+    # leak is harmless when OTEL is disabled (nullcontext) and
+    # surfaces as a long-running span when enabled — acceptable for
+    # Phase 0; a follow-up can migrate this to a proper async with.
+    _otel_span_ctx = _start_claude_cli_span(_recorder_model, _recorder_input_tokens)
+    _span = _otel_span_ctx.__enter__()
+    _span_set: Any = _span if hasattr(_span, "set_attribute") else None
+
     for attempt, (token, label) in enumerate(tokens, start=1):
         cmd: list[str] = [
             "claude",
@@ -206,6 +259,10 @@ async def complete_async(
         logger.info("claude -p success via %s (%.2fs, attempt %d)", label, elapsed, attempt)
         _recorder_output_tokens = max(1, len(output) // 4)
         _recorder_success = True
+        if _span_set is not None:
+            _span_set.set_attribute("gen_ai.usage.output_tokens", _recorder_output_tokens)
+            _span_set.set_attribute("nuzantara.claude_oauth.token_label", label)
+            _span_set.set_attribute("nuzantara.claude_oauth.attempts", attempt)
         try:
             return ClaudeOAuthResponse(
                 text=output,
@@ -214,6 +271,7 @@ async def complete_async(
                 attempts=attempt,
             )
         finally:
+            _otel_span_ctx.__exit__(None, None, None)
             await _record_claude_oauth_call(
                 model=_recorder_model,
                 input_tokens=_recorder_input_tokens,
@@ -229,6 +287,16 @@ async def complete_async(
         f"All {len(tokens)} OAuth attempts failed. Last error: {last_error}",
     )
     _recorder_error_class = type(err).__name__
+    if _span_set is not None:
+        try:
+            from opentelemetry.trace import Status, StatusCode
+
+            _span_set.set_attribute("nuzantara.claude_oauth.attempts", len(tokens))
+            _span_set.set_attribute("error.message", last_error[:200])
+            _span_set.set_status(Status(StatusCode.ERROR, "all OAuth tokens failed"))
+        except Exception:  # noqa: BLE001 — never let OTEL break the host.
+            pass
+    _otel_span_ctx.__exit__(type(err), err, err.__traceback__)
     await _record_claude_oauth_call(
         model=_recorder_model,
         input_tokens=_recorder_input_tokens,
