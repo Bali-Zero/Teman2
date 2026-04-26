@@ -48,3 +48,12 @@ CREATE TRIGGER wr2_status_change_trg
 
 COMMENT ON FUNCTION wr2_status_change_notify() IS
     'Emits NOTIFY wr2_status_change with JSON payload {draft_id, old_status, new_status, changed_at}. Consumed by wr2_supervisor.py to event-drive the WR2 carousel pipeline. See docs/wr2/SUPERVISOR.md.';
+
+-- === ROLLBACK ===
+-- Reverts the trigger and the function. Safe to run on any DB state because
+-- both DROP statements use IF EXISTS — no error if the migration was never
+-- applied. Rolling back simply removes the NOTIFY emission; consumers
+-- (wr2_supervisor.py) would receive no events but tolerate that gracefully
+-- (they fall back to cron-style polling on their next loop).
+DROP TRIGGER IF EXISTS wr2_status_change_trg ON war_room_drafts;
+DROP FUNCTION IF EXISTS wr2_status_change_notify();
