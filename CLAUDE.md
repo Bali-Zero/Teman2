@@ -350,6 +350,14 @@ fly deploy --strategy rolling  # 4. Deploy
 
 Core Guardian V3 runs every 3h fixing lint issues in worktree. Do NOT interfere.
 
+**Migration PRs**: any PR touching `apps/backend-rag/backend/db/migrations_v2/*.sql`
+also runs **Squawk migration lint** (`.github/workflows/migration-lint.yml`,
+PR #306) at PR-check time, ~90s after push. It catches dangerous Postgres
+operations (DROP COLUMN, ALTER without DEFAULT, non-CONCURRENT index, etc.)
+before the pre-deploy gate even runs. To bypass on a legitimate destructive
+change: `-- squawk-ignore: <rule-name>` on the offending statement. Full
+reference: [`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.md).
+
 ## 12. AI Dispatch System
 
 > `./scripts/ai-dispatch.sh help` for full commands. Details: `docs/AI_DISPATCH_REFERENCE.md`
@@ -428,6 +436,61 @@ await invalidate_cache("zantara:namespace:*")  # REQUIRED after every mutation
 ```
 
 Namespaces: `zantara:crm_clients_stats:*`, `zantara:crm_practices:*`
+
+### LLM Structured Output Pattern (PR #311)
+
+For any LLM call expected to return **structured data** (list, dict, enum,
+yes/no), use `client.generate_structured()` instead of prompt-engineered JSON
++ `try/except json.loads`. Pydantic v2 validates the response; on
+`ValidationError` the call retries once with the parser feedback in the
+prompt. Catches silent JSON-decode failures that previously fell through to
+fallback heuristics.
+
+```python
+from pydantic import BaseModel
+from backend.llm.genai_client import get_genai_client, LLMStructuredOutputError
+
+class GraderVerdict(BaseModel):
+    reasoning: str  # ALWAYS first — forces think-before-commit
+    relevant: bool
+    confidence: float
+
+client = get_genai_client()
+try:
+    verdict = await client.generate_structured(
+        contents=prompt, response_schema=GraderVerdict, endpoint="rag.grader.X"
+    )
+except LLMStructuredOutputError:
+    # Schema failed twice — fall back to your default heuristic.
+    ...
+```
+
+OUT of scope today: KG entity extraction (deeply nested, qwen3.5 fails),
+Claude OAuth CLI (no SDK to wrap). Reference:
+[`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.md).
+
+### Observability Env Vars (PR #312)
+
+When `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` are unset, observability is
+**dormant** (~1ms no-op per call). To activate on Fly:
+
+```bash
+fly secrets set -a nuzantara-rag \
+  LANGFUSE_PUBLIC_KEY="<your-pk>" LANGFUSE_SECRET_KEY="<your-sk>" \
+  LANGFUSE_HOST="https://us.cloud.langfuse.com"
+```
+
+Defaults are **PII-hidden** (`hide_input_messages`/`hide_output_messages` ON
+because Bali Zero queries contain NPWP/NIB/passport/names — UU PDP scope).
+Opt-in for debugging: `LANGFUSE_TRACE_LLM_MESSAGES=true`.
+
+Per-provider kill-switch (no redeploy, takes effect on next restart):
+- `LANGFUSE_INSTRUMENT_GOOGLE_GENAI=false` — disable Gemini auto-trace
+- `LANGFUSE_INSTRUMENT_OPENAI=false` — disable DeepSeek/Ollama auto-trace
+- `LANGFUSE_INSTRUMENT_ANTHROPIC=false` — disable Anthropic auto-trace
+- `LANGFUSE_ENABLED=false` — disable everything (full kill-switch)
+
+Reference: [`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.md).
 
 ### KG Subgraph Status
 
