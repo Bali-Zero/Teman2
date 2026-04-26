@@ -1,0 +1,73 @@
+name: Migration Lint (Squawk)
+
+# Lint database migrations using sbdchd/squawk. Catches dangerous Postgres
+# operations (DROP without IF EXISTS, ALTER without CONCURRENTLY on indexes,
+# adding NOT NULL columns without DEFAULT, etc.) at PR-check time rather
+# than at the pre-deploy gate.
+#
+# Why Squawk and not Atlas: ariga/atlas v0.38 (Oct 2025) moved `migrate
+# lint` behind a paid tier (Atlas Pro). Squawk is the established OSS
+# alternative — Postgres-specific, ~600K monthly downloads, MIT license.
+#
+# What this DOES NOT replace: the runtime rollback-marker validation in
+# apps/backend-rag/backend/db/migration_manager.py. That gate (caught
+# PR #302) stays as-is. Squawk adds a complementary destructive-op gate
+# at PR-check time, ~2 hours earlier than the pre-deploy gate would catch
+# the same class of issues.
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/backend/db/migrations_v2/**.sql"
+      - ".github/workflows/migration-lint.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: migration-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect added/modified migrations on this PR
+        id: changed
+        run: |
+          # Diff against the PR base (origin/main by default for pull_request).
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          files=$(git diff --name-only --diff-filter=AM "$base...$head" -- \
+                  'apps/backend-rag/backend/db/migrations_v2/*.sql' || true)
+          echo "Changed migration files:"
+          echo "$files"
+          # Output for downstream step. If no migrations changed, skip lint.
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Lint changed migrations
+        if: steps.changed.outputs.files != ''
+        uses: sbdchd/squawk-action@v2
+        with:
+          files: ${{ steps.changed.outputs.files }}
+          version: latest
+          fail-on-violations: true
+          upload-to-github: true
+          pg-version: "15.0"
+
+      - name: Skip notice (no migrations changed)
+        if: steps.changed.outputs.files == ''
+        run: |
+          echo "No migrations changed in this PR — Squawk lint skipped."
