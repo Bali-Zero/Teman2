@@ -137,11 +137,41 @@ _PRIMARY_LAW_KEYWORDS = frozenset(
 
 # ── Stale-ingestion gate (S1.3) ──────────────────────────────────────────────
 
-_DEFAULT_FRESHNESS_STATE_PATH = (
-    Path(__file__).resolve().parents[5]
-    / "apps" / "evaluator" / "nlm_deep_research" / "freshness_monitor_state.json"
-)
+
+def _default_freshness_state_path() -> Path | None:
+    """Resolve the in-repo default path for freshness_monitor_state.json.
+
+    Returns the monorepo path when the file is reachable, otherwise ``None``.
+
+    Layout assumption: this module lives at
+        <repo>/apps/backend-rag/backend/services/oracle/nlm_notebook_registry.py
+    so the repo root is ``parents[5]``. On Fly Docker the source tree is
+    flattened to ``/app/backend/...`` (4 ancestors only), and ``parents[5]``
+    raises ``IndexError``. The lookup is wrapped in try/except so the
+    Docker import path stays clean — callers that need the freshness gate
+    set ``NLM_FRESHNESS_STATE_FILE`` explicitly via env var; callers that
+    don't need it (e.g. the orchestrator import on every query) tolerate
+    a ``None`` default and fall through to the existing
+    ``never_verified`` graceful-degradation branch in
+    ``is_freshness_state_fresh``.
+    """
+    try:
+        repo_root = Path(__file__).resolve().parents[5]
+    except IndexError:
+        return None
+    return (
+        repo_root / "apps" / "evaluator" / "nlm_deep_research"
+        / "freshness_monitor_state.json"
+    )
+
+
 _DEFAULT_MAX_STALE_HOURS = 24
+
+# Sentinel path used when neither the env override nor the repo default is
+# resolvable. ``read_text`` on a non-existent path raises ``FileNotFoundError``,
+# which ``is_freshness_state_fresh`` already treats as ``never_verified`` —
+# so the gate degrades gracefully instead of crashing the orchestrator import.
+_MISSING_STATE_PATH = Path("/nonexistent/nlm_freshness_state_unavailable.json")
 
 
 def _resolve_state_path() -> Path:
@@ -152,11 +182,19 @@ def _resolve_state_path() -> Path:
     Docker image that mounts/copies the state file. Allow override via
     ``NLM_FRESHNESS_STATE_FILE`` env var so tests and Fly.io deploys can
     pin a path explicitly.
+
+    When the env var is unset AND the repo-default path cannot be resolved
+    (e.g. Fly Docker, where ``parents[5]`` does not exist), returns a
+    sentinel path that ``is_freshness_state_fresh`` will treat as
+    ``never_verified`` — graceful degradation, no crash.
     """
     env = os.environ.get("NLM_FRESHNESS_STATE_FILE")
     if env:
         return Path(env)
-    return _DEFAULT_FRESHNESS_STATE_PATH
+    default = _default_freshness_state_path()
+    if default is not None:
+        return default
+    return _MISSING_STATE_PATH
 
 
 def _max_stale_hours() -> int:
