@@ -444,9 +444,9 @@
       "schedule": "09:00 WITA"
     },
     "com.balizero.intel.nightly": {
-      "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only.",
-      "produces": "Scraped articles → backend",
-      "consumes": "Source config, scraper scripts",
+      "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only. Reads from intel_radar_findings (Postgres) when INTEL_RADAR_PERSIST_DB=true (PR-1 §B), then enriches each article with live_news_score (0-100) + liveness_tier (breaking/developing/evergreen) + live_news_reasons via Claude CLI.",
+      "produces": "Scraped articles → backend; intel_radar_findings.scraper_picked=true; live_news_score on each enriched article",
+      "consumes": "Source config, scraper scripts, intel_radar_findings (Postgres)",
       "schedule": "01:00 WITA (nightly)"
     },
     "com.balizero.renewal-alerts": {
