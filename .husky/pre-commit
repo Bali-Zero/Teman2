@@ -9,7 +9,9 @@ if [ -n "$PY_FILES" ]; then
     if [ -n "$BACKEND_PY_FILES" ]; then
         # Use word-boundary check so identifiers ending in "print(" don't false-match
         # (es. _signal_fingerprint(, import_blueprint(). See lessons.md 2026-04-19.
-        if echo "$BACKEND_PY_FILES" | xargs grep -lE '(^|[^a-zA-Z_])print\(' 2>/dev/null; then
+        # Also skip lines starting with `>>>` (Python interactive docstring examples)
+        # so docstrings like `>>> print(variants)` don't trip the check.
+        if echo "$BACKEND_PY_FILES" | xargs grep -nE '(^|[^a-zA-Z_])print\(' 2>/dev/null | grep -vE ':\s*>>>\s' | grep -q .; then
             echo "❌ ERROR: Found print() statements in backend code."
             echo "   Golden Rule #8: Use logger.info/debug/error() instead"
             echo "   Add: logger = logging.getLogger(__name__)"

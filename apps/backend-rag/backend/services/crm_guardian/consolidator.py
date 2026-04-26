@@ -11,13 +11,12 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import asyncpg
 
-from .base import (
+from backend.services.crm_guardian.base import (
     GuardianAction,
-    GuardianConfig,
     GuardianEvent,
     GuardianRunContext,
     record_event,
@@ -80,7 +79,7 @@ def _drive_list_children(drive, folder_id: str) -> list[dict]:
     return out
 
 
-def _drive_move(drive, file_id: str, new_parent_id: str, old_parent_id: str, new_name: Optional[str] = None) -> dict:
+def _drive_move(drive, file_id: str, new_parent_id: str, old_parent_id: str, new_name: str | None = None) -> dict:
     """Move a file/folder: add to new parent, remove from old. Optionally rename."""
     body: dict[str, Any] = {}
     if new_name:
@@ -155,7 +154,7 @@ def _safe_filename_component(name: str, max_len: int = 60) -> str:
 # ============================================================
 # I1 provisioning — create canonical folder + template
 # ============================================================
-def provision_canonical_folder(drive, client_id: int, full_name: str, parent_id: str) -> dict:
+def provision_canonical_folder(drive: Any, client_id: int, full_name: str, parent_id: str) -> dict:
     """Create a new canonical folder under parent_id with the full subfolder template.
 
     Returns:
@@ -190,9 +189,9 @@ class MoveOp:
 
 
 def plan_consolidation(
-    drive,
+    drive: Any,
     plan_row: dict,
-    canonical_root_id: str,
+    canonical_root_id: str,  # noqa: ARG001 — kept for API parity with future per-tree dispatch
     misc_id: str,
 ) -> list[MoveOp]:
     """Walk each satellite folder and build the flat list of move operations.
@@ -271,7 +270,7 @@ async def apply_consolidation_for_client(
     assert canonical_id, "R3 requires canonical_folder_id"
 
     dry = context.config.dry_run
-    ev = lambda **kw: GuardianEvent(
+    ev = lambda **kw: GuardianEvent(  # noqa: E731
         invariant_id="I3_satellite_consolidation",
         run_id=context.run_id,
         dry_run=dry,
@@ -499,7 +498,7 @@ async def apply_provision_and_consolidate(
     parent_id = context.config.individual_crm_id
 
     dry = context.config.dry_run
-    ev = lambda **kw: GuardianEvent(
+    ev = lambda **kw: GuardianEvent(  # noqa: E731
         invariant_id="I1_canonical_folder",
         run_id=context.run_id,
         dry_run=dry,

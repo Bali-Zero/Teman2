@@ -8,22 +8,24 @@ Each tool was chosen via independent brainstorms with Gemini 3.1 Pro and DeepSee
 (both converged on **ADOPT-PARTIAL**); see [`brainstorms/2026-04-26-oss-injections/`](./brainstorms/2026-04-26-oss-injections/)
 for the full reasoning artifacts.
 
-| Sprint | Tool | PR | Live? |
-|--------|------|----|-------|
-| 1 | **Squawk** — Postgres migration linter (CI gate) | [#306](https://github.com/Balizero1987/Teman2/pull/306) (`935e61a7`) | ✅ active in GitHub Actions |
-| 2 | **Instructor pattern** — schema-validated LLM outputs | [#311](https://github.com/Balizero1987/Teman2/pull/311) (`a41cdc35`) | ✅ deployed on `nuzantara-rag` |
-| 3 | **OpenLLMetry** — auto-instrumentation for Gemini + OpenAI-compat | [#312](https://github.com/Balizero1987/Teman2/pull/312) (`d6db73c1`) | ✅ deployed, **dormant** until Langfuse keys are set |
+| Sprint | Tool                                                              | PR                                                                   | Live?                                                |
+| ------ | ----------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- |
+| 1      | **Squawk** — Postgres migration linter (CI gate)                  | [#306](https://github.com/Balizero1987/Teman2/pull/306) (`935e61a7`) | ✅ active in GitHub Actions                          |
+| 2      | **Instructor pattern** — schema-validated LLM outputs             | [#311](https://github.com/Balizero1987/Teman2/pull/311) (`a41cdc35`) | ✅ deployed on `nuzantara-rag`                       |
+| 3      | **OpenLLMetry** — auto-instrumentation for Gemini + OpenAI-compat | [#312](https://github.com/Balizero1987/Teman2/pull/312) (`d6db73c1`) | ✅ deployed, **dormant** until Langfuse keys are set |
 
 ---
 
 ## 1. Squawk migration lint (PR #306)
 
 ### What it does
+
 Catches dangerous Postgres operations at **PR-check time** rather than at the
 pre-deploy gate (~2-hour shift left). Triggers on every PR touching
 `apps/backend-rag/backend/db/migrations_v2/*.sql`.
 
 ### What it catches
+
 - `ALTER TABLE ... ADD NOT NULL` without `DEFAULT` (locks table during backfill)
 - `CREATE INDEX` / `DROP INDEX` without `CONCURRENTLY` (acquires `ACCESS EXCLUSIVE`)
 - `DROP COLUMN` (silent data loss)
@@ -31,6 +33,7 @@ pre-deploy gate (~2-hour shift left). Triggers on every PR touching
 - ~30 other Postgres-specific anti-patterns (see [Squawk rules](https://squawkhq.com/docs/rules/))
 
 ### What it does NOT replace
+
 The runtime rollback-marker validation in
 [`apps/backend-rag/backend/db/migration_manager.py`](../apps/backend-rag/backend/db/migration_manager.py)
 stays as-is. That gate (which caught PR #302) catches a different class of issue
@@ -38,6 +41,7 @@ stays as-is. That gate (which caught PR #302) catches a different class of issue
 The two checks are **complementary**, not redundant.
 
 ### How to bypass on a legitimate destructive change
+
 Add a Squawk-ignore comment on the offending statement:
 
 ```sql
@@ -49,11 +53,13 @@ The full rule list available for `squawk-ignore` is at
 <https://squawkhq.com/docs/rules/>.
 
 ### Where it lives
+
 - Workflow: [`.github/workflows/migration-lint.yml`](../.github/workflows/migration-lint.yml)
 - Action: [`sbdchd/squawk-action@v2`](https://github.com/sbdchd/squawk-action)
 - Pinned PG version for analysis: 15.0 (matches `tests.yml` and `fly-deploy.yml`)
 
 ### Verified live (2026-04-27)
+
 Canary PR #313 introduced a deliberately bad migration (NOT NULL no DEFAULT +
 non-CONCURRENT index). Squawk flagged 8 violations within 90s, blocked merge.
 PR closed without merging.
@@ -63,12 +69,14 @@ PR closed without merging.
 ## 2. Instructor pattern — schema-validated LLM outputs (PR #311)
 
 ### What it does
+
 Adds `GenAIClient.generate_structured(prompt, schema)` for **Pydantic-validated
 LLM outputs** instead of prompt-engineered JSON + `try/except json.JSONDecodeError`.
 Uses google-genai's native `response_schema` so we get the guarantee without
 adding the `instructor` dependency.
 
 ### When to use
+
 Use `generate_structured` instead of `generate_content` whenever the LLM is
 expected to return structured data (a list, a dict, an enum, a yes/no judgement).
 The signature mirrors `generate_content` plus a `response_schema` argument:
@@ -97,11 +105,13 @@ except LLMStructuredOutputError:
 ```
 
 ### Pilot in production
+
 [`backend/services/rag/query_expansion._llm_translate`](../apps/backend-rag/backend/services/rag/query_expansion.py)
 uses `TranslationResult` to translate user queries between Italian / English /
 Indonesian before retrieval. This path runs ~3000+ times per day in production.
 
 ### What is OUT of scope (deferred)
+
 - **Knowledge-graph entity extraction** (`services/rag/kg_*`) — both Gemini and
   DeepSeek brainstorms flagged it: nested schemas + qwen3.5 = high failure rate.
   Stays prompt-engineered for now.
@@ -112,18 +122,21 @@ Indonesian before retrieval. This path runs ~3000+ times per day in production.
   `instructor.from_openai()` wrapping for parity. Not blocking for this sprint.
 
 ### Tip from the brainstorm
+
 **Put `reasoning: str` as the FIRST field** of any non-trivial schema. It forces
 the model to "think out loud" before committing to the structured answer, which
 drastically reduces validation failures (Gemini 3.1 Pro insight, confirmed in
 practice).
 
 ### Observability hooks
+
 `generate_structured` mirrors `generate_content`'s observability pipeline
 (Prometheus, Postgres `llm_cost_events`, JSONL ledger). Cost-tracked rows have
 the `endpoint` label you pass at call time. Use a `dotted.path.tag` style for
 easy filtering in the dashboard later.
 
 ### Verified live (2026-04-27)
+
 Two real RAG queries (English + Italian) returned 200 OK with `expansion_count=3`
 and `evidence_score=0.85`, exercising the new path end-to-end.
 
@@ -132,18 +145,20 @@ and `evidence_score=0.85`, exercising the new path end-to-end.
 ## 3. OpenLLMetry — auto-instrumentation expansion (PR #312)
 
 ### What it does
+
 Auto-traces every LLM call we make via OpenInference instrumentors over the
 already-installed Langfuse SDK. **Behaviour-zero in production** until you set
 the Langfuse keys.
 
-| Backend | Instrumentor | Attribute |
-|---------|--------------|-----------|
-| Anthropic SDK | `openinference-instrumentation-anthropic` (already shipped) | `gen_ai.system=anthropic` (legacy, unused in prod) |
-| Gemini (google-genai) | `openinference-instrumentation-google-genai` | `gen_ai.system=gemini` |
-| OpenAI / DeepSeek / Ollama | `openinference-instrumentation-openai` | `gen_ai.system=openai` |
-| Claude OAuth CLI (subprocess) | manual OTEL span | `gen_ai.system=claude-cli` |
+| Backend                       | Instrumentor                                                | Attribute                                          |
+| ----------------------------- | ----------------------------------------------------------- | -------------------------------------------------- |
+| Anthropic SDK                 | `openinference-instrumentation-anthropic` (already shipped) | `gen_ai.system=anthropic` (legacy, unused in prod) |
+| Gemini (google-genai)         | `openinference-instrumentation-google-genai`                | `gen_ai.system=gemini`                             |
+| OpenAI / DeepSeek / Ollama    | `openinference-instrumentation-openai`                      | `gen_ai.system=openai`                             |
+| Claude OAuth CLI (subprocess) | manual OTEL span                                            | `gen_ai.system=claude-cli`                         |
 
 ### How to activate
+
 On Fly.io, set the secrets and the rolling restart picks them up:
 
 ```bash
@@ -159,6 +174,7 @@ in `app/setup/app_factory.py:_background_init()` registers the global OTEL
 provider and every LLM call starts emitting spans automatically.
 
 ### Privacy posture (UU PDP / GDPR)
+
 **By default, prompts and completions are NOT captured.** Only metadata: model,
 token counts, latency, status, schema name. Bali Zero queries routinely contain
 NPWP, NIB, passport numbers, names — keeping content out of traces is the safe
@@ -175,6 +191,7 @@ via the shared [`_build_trace_config()`](../apps/backend-rag/backend/core/observ
 helper.
 
 ### Per-provider kill-switch
+
 If a single instrumentor misbehaves (silent crash on import, latency spike,
 attribute pollution), disable just that one without redeploying:
 
@@ -189,6 +206,7 @@ on top of the kwarg gate. The `instrumentor.instrument()` call simply never
 runs for that provider.
 
 ### Full kill-switch
+
 To disable Langfuse entirely (matches today's behaviour before any keys were set):
 
 ```bash
@@ -201,6 +219,7 @@ fly secrets unset -a nuzantara-rag LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY
 `init_observability()` body short-circuits to a logged no-op.
 
 ### What is OUT of scope (deferred)
+
 - **LangSmith removal**: `langsmith>=0.4.0` and the `@traceable` decorators
   (in `kg_graph_nodes.py`, `agentic/orchestrator_core.py`) keep running in
   parallel. Phase 3 cutover happens after a 2-week soak with both running side-by-side.
@@ -213,9 +232,11 @@ fly secrets unset -a nuzantara-rag LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY
   scrubbing if/when `LANGFUSE_TRACE_LLM_MESSAGES=true`.
 
 ### What this enables, in plain words
+
 After activation, when a Bali Zero client says "Zantara was slow" or "she
 gave me a wrong answer," you can open the Langfuse dashboard, search by
 `user_email` or timestamp, and see the full timeline:
+
 1. Which LLM was called (Gemini? DeepSeek? Ollama?)
 2. How long each step took (retrieval, KG, grading, answer)
 3. Token cost per step
@@ -225,6 +246,7 @@ gave me a wrong answer," you can open the Langfuse dashboard, search by
 Without prompt/completion text leaking — only the operational picture.
 
 ### Verified live (2026-04-27)
+
 PR #312 deploy completed: success on `nuzantara-rag`. `/health` returns 200,
 `/health/detailed` returns valid JSON with services in expected lazy-init
 state. No crash on the new imports. Codice OTEL dormant as designed.
@@ -254,13 +276,13 @@ have before.
 
 ## Cost summary
 
-| Item | Cost |
-|------|------|
-| Squawk (OSS, MIT) | $0 |
-| Instructor pattern (uses google-genai native schema) | $0 — no new package |
-| OpenInference instrumentors (`google-genai`, `openai`) | $0 (~60 KB Docker image) |
-| Langfuse cloud (when activated) | depends on tier; free tier covers ~10k traces/day |
-| Self-hosted Langfuse on Fly.io (Phase 4) | ~$15/month if you go that route |
+| Item                                                   | Cost                                              |
+| ------------------------------------------------------ | ------------------------------------------------- |
+| Squawk (OSS, MIT)                                      | $0                                                |
+| Instructor pattern (uses google-genai native schema)   | $0 — no new package                               |
+| OpenInference instrumentors (`google-genai`, `openai`) | $0 (~60 KB Docker image)                          |
+| Langfuse cloud (when activated)                        | depends on tier; free tier covers ~10k traces/day |
+| Self-hosted Langfuse on Fly.io (Phase 4)               | ~$15/month if you go that route                   |
 
 ## Pivots taken during the sprint
 

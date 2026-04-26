@@ -7,16 +7,18 @@
 ## Architectural Analysis: Adopting OpenTelemetry LLM Observability for Nuzantara
 
 ### A. Architectural Fit – "Magic" vs. Explicit Control
+
 OpenLLMetry's auto-instrumentation is powerful but opaque. For a production system serving 5,000 clients with PII-laden prompts, the "transparent magic" is a double‑edged sword:
 
 - **Upside**: Zero‑code instrumentation for Gemini and OpenAI‑compatible clients (DeepSeek, Ollama) instantly gives span coverage where today only 3 files use `@traceable`. This lifts observability from ~20% coverage to ~80% of all LLM calls with no engineering effort.
-- **Downside**: Engineers lose visibility into *what* is traced and *where* PII could leak. A hidden import in `__init__.py` suddenly captures every prompt. Without explicit `@traceable` annotations, teams may forget to configure PII scrubbing or miss inadvertent attribute enrichment.
+- **Downside**: Engineers lose visibility into _what_ is traced and _where_ PII could leak. A hidden import in `__init__.py` suddenly captures every prompt. Without explicit `@traceable` annotations, teams may forget to configure PII scrubbing or miss inadvertent attribute enrichment.
 
 At Nuzantara's maturity level (FastAPI, moderate volume, compliance‑critical), **explicit instrumentation is safer** for the sensitive data flows. However, OpenLLMetry can be configured to require opt‑in: instead of a global `Traceloop.init`, we can wrap only the specific clients with `instrument_openai` / `instrument_google_genai` and add manual spans for Claude. This hybrid preserves developer awareness while reducing boilerplate.
 
 **Verdict**: Adopt OpenLLMetry's client‑specific instrumentors, **not** the blanket `init()`. Keep `@traceable` (or manual OTEL spans) for application‑level orchestration. This gives explicit control without sacrificing automation where it's safe.
 
 ### B. The "Instrument What We Don't Own" Problem – Claude Blind Spot
+
 Four LLM clients, only two auto‑instrumentable. Claude's CLI shell‑out is a major gap. Partial auto‑instrumentation (Gemini + OpenAI) creates a **two‑tier observability system**:
 
 - Spans from auto‑instrumented clients will have rich attributes (model, token count, latency, full prompt/response).
@@ -32,18 +34,22 @@ No—partial visibility is far better than today's ~20% manual coverage. The key
 Thus, the two‑tier problem is solvable. The bigger risk is **not** doing it—Claude handles internal tooling and PII; skipping its observability is unacceptable.
 
 ### C. PII / UU PDP Compliance – A Non‑Negotiable Gate
+
 Indonesian DPA and GDPR require:
+
 - No **default** capture of full prompts with NIK/NPWP/names.
 - Right to erasure of old traces.
 
 **OpenLLMetry + Self‑hosted Langfuse** gives us **full control**:
+
 - `TRACELOOP_TRACE_CONTENT=false` is insufficient (loses debugging).
-- Instead, implement a custom `SpanProcessor` that uses Presidio (or a regex‑based scrubbing) to redact sensitive fields *before* they reach the OTLP exporter. This retains sanitised payloads for debugging while meeting compliance.
+- Instead, implement a custom `SpanProcessor` that uses Presidio (or a regex‑based scrubbing) to redact sensitive fields _before_ they reach the OTLP exporter. This retains sanitised payloads for debugging while meeting compliance.
 - Langfuse's self‑hosted database allows us to delete traces on user request (GDPR Art. 17). LangSmith's SaaS may have less control.
 
 **Cost**: ~2 weeks to build and validate the Presidio integration, plus ongoing maintenance. For 15‑30k spans/day, the engineering cost is small relative to compliance risk.
 
 ### D. Migration Strategy – Risk Management for 5,000 Clients
+
 Three options:
 
 1. **Cold cutover** – too risky. A single bug in auto‑instrumentation (e.g., IP leak, 10x span volume) would impact production immediately.
@@ -51,11 +57,13 @@ Three options:
 3. **Layered** – keep LangSmith `@traceable` for orchestration spans (RAG flow, retrieval) while adding OpenLLMetry for raw LLM client spans. This isolates the new instrumentation to a known area, reducing blast radius.
 
 **Recommendation**: **Layered + Parallel in staging**.
+
 - Start by adding OpenLLMetry (with PII scrubbing) **alongside** existing LangSmith in a staging environment. Validate span accuracy, volume, and scrubbing.
 - Then roll out to production in a layered fashion: LangSmith remains the primary observability tool for application logic; OpenLLMetry enriches LLM details.
 - After 2 weeks of parallel production, drop LangSmith (or keep it as a secondary sink for compliance‑irrelevant data). This gives a safety net and minimises risk.
 
 ### E. Long‑Term OTEL Stability – Early Adopter Risk
+
 The OpenTelemetry GenAI semantic conventions are still experimental (as of early 2026). However:
 
 - The core OTEL framework (spans, attributes, exporters) is stable.
@@ -65,6 +73,7 @@ The OpenTelemetry GenAI semantic conventions are still experimental (as of early
 **Mitigation**: Abstract attribute access behind an internal helper library (e.g., `get_model_name(span)`), so spec changes only require a single code change. This is standard practice for any fast‑moving domain.
 
 ### F. Counterfactual – Keep LangSmith Forever
+
 - **Cost**: Paid plan, lock‑in. At 15‑30k spans/day, likely >$500/month.
 - **Stability**: Proven, zero migration risk, native LangChain support.
 - **Compliance**: LangSmith can scrub content (via API settings), but erasure requests need manual tickets. No self‑hosted option.

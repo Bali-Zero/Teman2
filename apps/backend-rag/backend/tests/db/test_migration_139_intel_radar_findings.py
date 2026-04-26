@@ -18,7 +18,6 @@ from pathlib import Path
 
 import pytest
 
-
 MIGRATION_PATH = (
     Path(__file__).parent.parent.parent
     / "db"

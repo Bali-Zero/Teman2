@@ -107,6 +107,13 @@ jobs:
 
       - name: Comment PR with results
         if: github.event_name == 'pull_request'
+        # Best-effort PR comment. Default GITHUB_TOKEN often lacks
+        # `pull-requests: write` (depends on repo policy + whether the
+        # PR is from a fork). When permission is missing the step fails
+        # with "Resource not accessible by integration" — that does not
+        # mean the analysis itself failed, only that we can't post a
+        # comment back to the PR. Don't let it gate the whole job.
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |

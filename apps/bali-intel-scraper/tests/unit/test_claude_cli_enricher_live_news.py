@@ -12,7 +12,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 
 # Add scripts dir to path so the enricher imports work standalone (the
 # bali-intel-scraper package layout is script-based, not installed).
