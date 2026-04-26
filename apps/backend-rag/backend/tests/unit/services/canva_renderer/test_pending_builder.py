@@ -27,12 +27,14 @@ def _slides_fixture() -> list[dict]:
             "body": "100 officers. Body cameras. Your address is already on their map.",
             "image_url": "https://nuzantara-warroom-images.fly.storage.tigris.dev/warroom/slide_01.jpg",
             "is_cover": True,
+            "is_hero_image": True,
         },
         {
             "slide_number": 2,
             "headline": "WHAT IS DHARMA DEWATA?\nNOT A TOURISM CAMPAIGN.",
             "body": "Inaugurated April 15, 2026 by the DGI.",
             "image_url": "https://nuzantara-warroom-images.fly.storage.tigris.dev/warroom/slide_02.jpg",
+            "is_hero_image": True,
         },
         {
             "slide_number": 3,
