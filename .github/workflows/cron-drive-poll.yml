@@ -1,0 +1,63 @@
+name: cron - drive poll (every 5 min)
+
+# Migrated from Pro crontab `*/5 * * * * drive-poll.sh` (2026-04-26).
+# Triggers Drive change polling on backend; nudges Fly out of sleep.
+# Failure path: Telegram alert to owner (cooldown 30min).
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-drive-poll
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: POST /api/admin/drive/poll
+        id: poll
+        env:
+          API_KEY: ${{ secrets.NUZANTARA_API_KEY }}
+        run: |
+          set -uo pipefail
+          BODY_FILE="$RUNNER_TEMP/body.json"
+          HTTP_CODE=$(curl -sS -o "$BODY_FILE" -w "%{http_code}" --max-time 120 \
+            -X POST \
+            -H "X-API-Key: $API_KEY" \
+            -H "Content-Type: application/json" \
+            https://nuzantara-rag.fly.dev/api/admin/drive/poll || echo "000")
+          BODY=$(cat "$BODY_FILE" 2>/dev/null || echo "")
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" | head -c 500 >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP_CODE" = "200" ]; then
+            PROCESSED=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('processed',0))" 2>/dev/null || echo "?")
+            echo "✅ Drive poll OK: $PROCESSED new files processed"
+          else
+            echo "::warning::Drive poll failed (HTTP $HTTP_CODE): $BODY"
+            exit 1
+          fi
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          HTTP_CODE: ${{ steps.poll.outputs.http_code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          TEXT="🚨 <b>drive-poll</b> failed
+          HTTP: ${HTTP_CODE:-?}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true

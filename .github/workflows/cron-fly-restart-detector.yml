@@ -1,0 +1,140 @@
+name: cron - fly restart loop detector (every 15 min)
+
+# Migrated from Pro crontab `*/15 * * * * fly-restart-loop-detector.sh` (2026-04-26).
+# Detects machines NOT in expected state or unhealthy checks across critical Fly apps.
+# Cooldown: 30min per app, persisted via Actions cache.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-fly-restart-detector
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      COOLDOWN_KEY: fly-restart-detector-cooldown-v1
+      COOLDOWN_SECONDS: '1800'
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Restore cooldown state
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/cooldown.state
+          key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ env.COOLDOWN_KEY }}-
+
+      - name: Check fly fleet for restart anomalies
+        id: check
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          STATE="$RUNNER_TEMP/cooldown.state"
+          touch "$STATE"
+          NOW=$(date +%s)
+          ALERTS=""
+
+          should_alert() {
+            local key="$1"
+            local last=$(grep "^${key}:" "$STATE" 2>/dev/null | tail -1 | cut -d: -f2)
+            if [ -z "$last" ]; then return 0; fi
+            local age=$(( NOW - last ))
+            [ "$age" -ge "$COOLDOWN_SECONDS" ]
+          }
+
+          mark_alerted() {
+            local key="$1"
+            grep -v "^${key}:" "$STATE" > "${STATE}.tmp" 2>/dev/null || true
+            echo "${key}:${NOW}" >> "${STATE}.tmp"
+            mv "${STATE}.tmp" "$STATE"
+          }
+
+          for app in nuzantara-rag nuzantara-postgres; do
+            RAW=$(flyctl status --json -a "$app" 2>&1 || true)
+            SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
+          import json, os, sys
+          try:
+              d = json.loads(os.environ.get("RAW", ""))
+          except Exception:
+              print("PARSE_ERROR")
+              sys.exit(0)
+          machines = d.get("Machines", []) or []
+          total = len(machines)
+          started = sum(1 for m in machines if m.get("state") == "started")
+          bad = [m.get("state", "?") for m in machines if m.get("state") != "started"]
+          unhealthy = 0
+          for m in machines:
+              for c in (m.get("checks") or []):
+                  if c.get("status") not in ("passing", None):
+                      unhealthy += 1
+          print(f"total={total}|started={started}|bad={','.join(bad) or 'none'}|unhealthy={unhealthy}")
+          PY
+          )
+            echo "[$app] $SUMMARY"
+            if echo "$SUMMARY" | grep -q "PARSE_ERROR"; then
+              if should_alert "${app}_unreachable"; then
+                ALERTS="${ALERTS}🛫 <b>${app}</b>: fly status CLI failed"$'\n'
+                mark_alerted "${app}_unreachable"
+              fi
+              continue
+            fi
+            STARTED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^started= | cut -d= -f2)
+            TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
+            BAD=$(echo "$SUMMARY" | tr '|' '\n' | grep ^bad= | cut -d= -f2)
+            UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
+            if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
+              if should_alert "${app}_state"; then
+                ALERTS="${ALERTS}🔴 <b>${app}</b>: $((TOTAL-STARTED))/${TOTAL} machines NOT started (${BAD})"$'\n'
+                mark_alerted "${app}_state"
+              fi
+            fi
+            if [ "${UNHEALTHY:-0}" -gt 0 ]; then
+              if should_alert "${app}_health"; then
+                ALERTS="${ALERTS}❤️‍🩹 <b>${app}</b>: ${UNHEALTHY} unhealthy health checks"$'\n'
+                mark_alerted "${app}_health"
+              fi
+            fi
+          done
+
+          {
+            echo "alerts<<EOF"
+            echo "$ALERTS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$ALERTS" ]; then
+            echo "::warning::Fly restart-loop signal: $ALERTS"
+          fi
+
+      - name: Save cooldown state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/cooldown.state
+          key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
+
+      - name: Telegram alert
+        if: steps.check.outputs.alerts != ''
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          ALERTS: ${{ steps.check.outputs.alerts }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          TEXT="🛫 <b>fly-restart-detector</b>
+          ${ALERTS}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true
