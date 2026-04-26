@@ -68,6 +68,29 @@ TIER_WEIGHT: dict[str, int] = {"T1": 30, "T2": 15, "T3": 5}
 SCORE_THRESHOLD: float = 40.0
 STAGING_FETCH_TIMEOUT: float = 30.0
 
+# PR-1 §C: live news preference. The intel-scraper enricher (Section B) tags
+# each staging item with live_news_score (0-100) and a derived liveness_tier
+# (breaking >= 80, developing 40-79, evergreen <40). The selector turns those
+# into a soft score adjustment so that — all else equal — a breaking-news
+# item beats an evergreen guide.
+#
+# Bonus: live_news_score / 2 → up to +50 points for breaking, +40 max for
+# upper-developing, 0 for evergreen. Defense-in-depth on top of the
+# live-first hard filter (when WR2_PREFER_LIVE_NEWS=true).
+#
+# Penalty: -20 if the headline matches a routine/evergreen pattern. Even
+# with a live_news_score from the enricher, a "How to apply for KITAS" or
+# "The Complete Guide to PT PMA" should never beat an actual breaking item.
+import re  # noqa: E402
+
+LIVE_NEWS_BONUS_DIVISOR: float = 2.0  # score / 2 → 0..50 points
+ROUTINE_TITLE_PENALTY: float = 20.0
+ROUTINE_TITLE_PATTERN: re.Pattern[str] = re.compile(
+    r"^\s*(?:how\s+to|guide\s+to|the\s+complete\s+guide|.+\s+explained|.+\s+decoded|step[-\s]by[-\s]step|everything\s+you\s+need)\b",
+    re.IGNORECASE,
+)
+LIVENESS_TIER_VALID = {"breaking", "developing", "evergreen"}
+
 
 def _parse_dt(value: Any) -> datetime | None:
     if not value:
@@ -111,7 +134,33 @@ def score_item(item: dict[str, Any]) -> tuple[float, dict[str, Any]]:
     detail["rules"]["tier"] = tier
     detail["rules"]["tier_points"] = tier_score
 
-    total = fresh_score + kw_score + tier_score
+    # Live news bonus (PR-1 §C). The intel-scraper enricher computes
+    # live_news_score (0-100); we use it as a soft additive signal here.
+    # Defaults to 0 when the field is missing (legacy items, evergreen).
+    raw_live = item.get("live_news_score")
+    try:
+        live_news_score = int(round(float(raw_live))) if raw_live is not None else 0
+    except (TypeError, ValueError):
+        live_news_score = 0
+    live_news_score = max(0, min(100, live_news_score))
+    live_bonus = round(live_news_score / LIVE_NEWS_BONUS_DIVISOR, 1)
+    detail["rules"]["live_news_score"] = live_news_score
+    detail["rules"]["live_news_bonus"] = live_bonus
+
+    liveness_tier = str(item.get("liveness_tier") or "").lower()
+    if liveness_tier not in LIVENESS_TIER_VALID:
+        liveness_tier = "evergreen"
+    detail["rules"]["liveness_tier"] = liveness_tier
+
+    # Routine/evergreen title penalty (PR-1 §C). Even when the enricher
+    # mistakenly stamps a live_news_score on a routine guide, the headline
+    # shape gives it away. Conservative: only fires on the title, not body.
+    routine_penalty = 0.0
+    if title and ROUTINE_TITLE_PATTERN.search(title):
+        routine_penalty = ROUTINE_TITLE_PENALTY
+    detail["rules"]["routine_penalty"] = routine_penalty
+
+    total = fresh_score + kw_score + tier_score + live_bonus - routine_penalty
     detail["score"] = round(total, 1)
     return total, detail
 
@@ -203,16 +252,49 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
         logger.info("No pending items — nothing to do today")
         return 1
 
+    # Live-first hard preference (PR-1 §C). When WR2_PREFER_LIVE_NEWS=true,
+    # restrict the candidate pool to items the enricher tagged as breaking
+    # or developing AND whose live_news_score crosses LIVE_NEWS_FILTER_MIN.
+    # If that pool is empty, log explicitly and fall back to the full pool
+    # (evergreen queue) so the pipeline never goes idle just because no
+    # live news landed today. The score-bonus + routine-penalty in
+    # score_item() apply on top regardless of this flag.
+    prefer_live = os.environ.get("WR2_PREFER_LIVE_NEWS", "false").lower() == "true"
+    live_filter_min = int(os.environ.get("WR2_LIVE_NEWS_FILTER_MIN", "40"))
+    if prefer_live:
+        live_pool = [
+            i for i in items
+            if str(i.get("liveness_tier") or "").lower() in {"breaking", "developing"}
+            and (int(i.get("live_news_score") or 0) >= live_filter_min)
+        ]
+        if live_pool:
+            logger.info(
+                "WR2_PREFER_LIVE_NEWS=true: using live pool (%d items, score >= %d)",
+                len(live_pool), live_filter_min,
+            )
+            items = live_pool
+        else:
+            logger.info(
+                "WR2_PREFER_LIVE_NEWS=true: live pool empty (no items with "
+                "liveness_tier∈{breaking,developing} AND live_news_score >= %d); "
+                "falling back to evergreen pool (%d items)",
+                live_filter_min, len(items),
+            )
+
     scored = [(item, *score_item(item)) for item in items]
     scored.sort(key=lambda t: -t[1])
 
     for rank, (item, score, detail) in enumerate(scored[:5], start=1):
         logger.info(
-            "#%d score=%.1f [%s] kw=%d title=%r",
+            "#%d score=%.1f [%s/%s] kw=%d live=%d/%.1f routine=-%.0f title=%r",
             rank,
             score,
             detail["rules"]["tier"],
+            detail["rules"].get("liveness_tier", "evergreen"),
             detail["rules"]["keywords_points"],
+            detail["rules"].get("live_news_score", 0),
+            detail["rules"].get("live_news_bonus", 0.0),
+            detail["rules"].get("routine_penalty", 0.0),
             (item.get("title") or "")[:80],
         )
 
@@ -278,12 +360,24 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
             logger.info("[DRY-RUN] brief_json preview: %s", json.dumps(top_detail, indent=2))
             return 0
 
+        # Enriched object pass-through (PR-1 §C bug fix). The intel-scraper
+        # produces a full structured enrichment (1400-2000 words across
+        # the_facts/bali_zero_take/in_practice/next_steps/faq) but the old
+        # draft generator only saw `summary[:3500]` — i.e. ~25% of the
+        # available material. We pass the entire enriched object through
+        # brief_json so the draft generator can use the structured ground
+        # truth instead of a truncated paragraph.
+        enrichment_obj = top_item.get("enrichment") or {}
         brief_json: dict[str, Any] = {
             "staging_id": staging_id,
             "staging_type": top_item.get("type"),
             "source_url": top_item.get("source"),
             "article_title": title,
             "article_summary": (top_item.get("content") or "")[:2000],
+            "enrichment": enrichment_obj,  # full structured object (PR-1 §C)
+            "live_news_score": top_item.get("live_news_score"),
+            "liveness_tier": top_item.get("liveness_tier"),
+            "live_news_reasons": top_item.get("live_news_reasons") or [],
             "detected_at": top_item.get("detected_at"),
             "picked_at": datetime.now(timezone.utc).isoformat(),
             "score_detail": top_detail,
