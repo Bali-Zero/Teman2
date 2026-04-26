@@ -381,6 +381,22 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\.(mp4|webm|mov|mkv|avi|png|jpg|jpeg|gif|pdf)$"),
         "binary media file: base64 false positive on encoded content",
     ),
+    # KB legal markdown: Indonesian copyright/IP/trade-secret regulation
+    # documents contain phrases like "Rahasia Dagang" / "Trade secret"
+    # that detect-secrets flags as Secret Keyword. Regulatory text under
+    # source control, never credentials.
+    (
+        re.compile(r"(^|/)apps/backend-rag/backend/kb/legal/.*\.md$"),
+        "backend-rag KB legal docs: regulatory text mentioning 'secret', not credentials",
+    ),
+    # Evaluator CEP test fixtures: `api_key="fake-key"` literal patterns
+    # in unittest mock setups. The test_*.py path pattern above only
+    # matches plain `test_X.py` filenames; this rule covers the
+    # subdirectory variant inside apps/evaluator/cep/.
+    (
+        re.compile(r"(^|/)apps/evaluator/cep/test_.*\.py$"),
+        "evaluator CEP test: fake-key literals in unittest mocks",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if

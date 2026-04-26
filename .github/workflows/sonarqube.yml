@@ -18,6 +18,10 @@ jobs:
     # scan still runs and publishes to SonarCloud; failure does not
     # block PRs. Re-enable as blocking gate once thresholds are agreed.
     continue-on-error: true
+    env:
+      # Hoist the secret so step-level `if:` can read it (GitHub does not
+      # allow `secrets.*` directly inside `if:` expressions).
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -28,12 +32,12 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Cache Python dependencies
         uses: actions/cache@v4
@@ -76,16 +80,22 @@ jobs:
         continue-on-error: true
 
       - name: SonarQube Scan
+        # Skip when SONAR_TOKEN is not set (forks, secret never configured).
+        # The scanner fails with "missing sonar.projectKey/organization" when
+        # the token is empty because the SonarSource action only injects
+        # those properties via its API resolver. The job has
+        # continue-on-error: true at the job level (advisory-only), but
+        # individual failed steps still surface red on the PR rollup; this
+        # if-guard prevents that visual noise without changing policy.
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: sonarsource/sonarqube-scan-action@master
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
 
       - name: SonarQube Quality Gate Check
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         continue-on-error: true
 
       - name: Upload coverage to Codecov

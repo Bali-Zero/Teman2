@@ -603,3 +603,9 @@ apps/mouth/public/assets/logo/_pre-fix-backup-*/
 
 # F1 baseline artifacts (large screenshots/JSON dumps)
 .artifacts/
+
+# Root-level scratch dumps (PII / one-off API responses); blocked by root_guard
+# but adding here so a stray `git add .` from a working dir won't reintroduce them.
+/Nuzantara/
+/api-news.txt
+/api-*.txt
