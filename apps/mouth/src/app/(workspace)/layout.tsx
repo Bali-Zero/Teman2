@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
 import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
+import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
 
 interface WorkspaceLayoutProps {
@@ -249,6 +250,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   }
 
   return (
+    <I18nProvider>
     <ToastProvider>
       <a href="#main-content" className="bz-skip-link">
         Skip to main content
@@ -329,5 +331,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       {!isTerminalPage && <WorkspaceAssistant />}
       <KitaCommandPalette />
     </ToastProvider>
+    </I18nProvider>
   );
 }
