@@ -26,7 +26,10 @@ _JOB_PERIODS: dict[str, float] = {
     "intel_scraper":       24.0,   # daily 03:00
     "nlm_deep_research":   24.0,   # daily 04:30
     "t4_monitor_daily":     6.0,   # every 6h
-    "war_room":            24.0,   # daily
+    # "war_room" removed 2026-04-27: WR1 was decommissioned by PR #171
+    # (apps/war-room/pipeline.sh deleted). The intel-nightly LaunchAgent
+    # already logs "skip" for it, but the watcher kept marking it failed
+    # and flooded Cell pulses with red. WR2 has its own supervisor.
     "system_doctor":       24.0,   # daily 08:00
     "core_guardian":        4.0,   # every 3h
     "expiry_alerter":      24.0,   # daily
