@@ -42,7 +42,7 @@ openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
 email-validator>=2.2.0
 pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 Pillow>=11.0.0  # Updated 2026-03-24: CVE fixes for image parsers (was 10.0.0)
-EbookLib>=0.18
+EbookLib>=0.20
 beautifulsoup4>=4.14.3  # Security and stability updates
 reportlab>=4.2.0  # PDF generation (LKPM ready-pack, invoices); also in -prod.txt
 
