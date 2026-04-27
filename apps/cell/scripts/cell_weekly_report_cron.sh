@@ -20,7 +20,8 @@ fi
 if [ -z "${CELL_DATABASE_URL:-}" ]; then
     echo "[cell-weekly-report] FATAL: CELL_DATABASE_URL not set." >&2
     echo "[cell-weekly-report]        Add it to ${SECRETS_FILE} or export before running." >&2
-    echo "[cell-weekly-report]        Format: postgresql://USER:PASS@localhost:15432/nuzantara_rag" >&2
+    echo "[cell-weekly-report]        Expected DSN format: postgresql scheme + user + password + host:port + db" >&2
+    echo "[cell-weekly-report]        Reference example: apps/cell/cell/core/config.py" >&2
     exit 3
 fi
 export CELL_DATABASE_URL
