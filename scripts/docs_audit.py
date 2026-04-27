@@ -111,28 +111,44 @@ def parse_docsync_keys(raw: List[str]) -> Dict[str, str]:
 
 
 def walk_docs(repo: Path) -> List[Path]:
-    """Return all docs/**/*.md files under repo, excluding DOCS_INVENTORY itself."""
+    """Return docs/**/*.md files visible to git, excluding DOCS_INVENTORY.md.
+
+    "Visible to git" = tracked OR untracked-but-not-gitignored. Files matched
+    by .gitignore are excluded so that local dev machines (which may carry
+    historical .md leftovers from pre-current-gitignore eras) match CI's
+    fresh clone exactly. Falls back to filesystem rglob when git is missing.
+    """
     docs_root = repo / "docs"
     if not docs_root.is_dir():
         return []
-    out = []
-    for p in docs_root.rglob("*.md"):
-        if p.name == "DOCS_INVENTORY.md":
+    try:
+        tracked = subprocess.run(
+            ["git", "ls-files", "docs/"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout
+        untracked = subprocess.run(
+            ["git", "ls-files", "--others", "--exclude-standard", "docs/"],
+            cwd=repo, check=True, capture_output=True, text=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return sorted(p for p in docs_root.rglob("*.md") if p.name != "DOCS_INVENTORY.md")
+    seen: set[str] = set()
+    paths: List[Path] = []
+    for line in (tracked + untracked).splitlines():
+        rel = line.strip()
+        if not rel or not rel.endswith(".md") or rel.endswith("DOCS_INVENTORY.md") or rel in seen:
             continue
-        out.append(p)
-    return sorted(out)
+        seen.add(rel)
+        paths.append(repo / rel)
+    return sorted(paths)
 
 
 def compute_refs_in(repo: Path, target: Path) -> int:
     """Count other .md files (in docs/ + reference root files) that contain target's basename."""
     basename = target.name
     # Scan roots: docs/** and a handful of root files. Skip the file itself + archive dest.
-    candidates: List[Path] = []
-    docs_root = repo / "docs"
-    if docs_root.is_dir():
-        for p in docs_root.rglob("*.md"):
-            if p != target and p.name != "DOCS_INVENTORY.md":
-                candidates.append(p)
+    # Use walk_docs() (git-aware) so candidates match local↔CI exactly.
+    candidates: List[Path] = [p for p in walk_docs(repo) if p != target]
     for root_name in ("CLAUDE.md", "INDEX.md", "SYMBIOSIS.md", "VADEMECUM.md", "AGENTS.md", "GEMINI.md", "AUTONOMOUS_OPS.md"):
         rp = repo / root_name
         if rp.is_file() and rp != target:

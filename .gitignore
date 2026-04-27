@@ -600,6 +600,14 @@ apps/backend-rag/scripts/output/
 # Runtime artifacts / local backups
 apps/cell/data/.ai_intel_last_harvest
 apps/mouth/public/assets/logo/_pre-fix-backup-*/
+# WR2 runtime path (logs, output zips, .env, .venv) — used by canva_renderer + intel_publisher
+apps/war-room/
+# Per-app Jest/Vitest coverage outputs
+apps/admin-dashboard/coverage/
+packages/core/coverage/
+# SQLite write-ahead log + shared memory (runtime, regenerated)
+data/seo_cell/*.db-wal
+data/seo_cell/*.db-shm
 
 # F1 baseline artifacts (large screenshots/JSON dumps)
 .artifacts/
