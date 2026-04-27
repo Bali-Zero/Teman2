@@ -26,10 +26,29 @@ shift
 COMMAND=("$@")
 
 MAX_RETRIES="${CRON_MAX_RETRIES:-2}"
-TIMEOUT="${CRON_TIMEOUT:-300}"
 LOG_DIR="${CRON_LOG_DIR:-$HOME/logs/cron}"
 LOCK_DIR="/tmp/cron-locks"
 SECRETS_FILE="$HOME/.nuzantara-secrets.env"
+
+# Sentinel state dir — Cell cron_sensor reads <job>.last.json from here.
+# Uses underscores (sentinel convention), not dashes from CLI job-name.
+SENTINEL_STATE_DIR="$HOME/.agent/decisions/state"
+SENTINEL_JOB_KEY="$(echo "$JOB_NAME" | tr '-' '_')"
+
+# Per-job timeout. Resolution order:
+#   1. PER_JOB_TIMEOUT_<KEY> env var (escape hatch from crontab line)
+#   2. Per-job default in case-table below (for jobs that legitimately need
+#      more than 300s, like Postgres dumps)
+#   3. CRON_TIMEOUT env var (global crontab override)
+#   4. 300s hard default
+case "$SENTINEL_JOB_KEY" in
+    fly_pg_backup)      _job_default=900 ;;   # PG dump+gzip+upload Tigris
+    fly_qdrant_backup)  _job_default=600 ;;   # Qdrant snapshot+upload
+    knowledge_graph_builder) _job_default=900 ;;  # full KG rebuild
+    *)                  _job_default="" ;;
+esac
+_per_job_var="PER_JOB_TIMEOUT_$(echo "$SENTINEL_JOB_KEY" | tr '[:lower:]' '[:upper:]')"
+TIMEOUT="${!_per_job_var:-${_job_default:-${CRON_TIMEOUT:-300}}}"
 
 # Load secrets if available
 if [ -f "$SECRETS_FILE" ]; then
@@ -46,7 +65,7 @@ else
     exit 1
 fi
 
-mkdir -p "$LOG_DIR" "$LOCK_DIR"
+mkdir -p "$LOG_DIR" "$LOCK_DIR" "$SENTINEL_STATE_DIR"
 
 LOCK_FILE="$LOCK_DIR/$JOB_NAME.lock"
 LOG_FILE="$LOG_DIR/$JOB_NAME.log"
@@ -123,6 +142,22 @@ fi
 printf '{"job":"%s","status":"%s","exit_code":%d,"attempts":%d,"duration_s":%d,"host":"%s","ts":"%s"}\n' \
     "$JOB_NAME" "$STATUS" "$EXIT_CODE" "$ATTEMPT" "$DURATION" "$HOSTNAME_SHORT" "$START_ISO" \
     >> "$JSON_LOG"
+
+# Sentinel state heartbeat — Cell cron_sensor reads this file to decide
+# job freshness. Without this write, jobs migrated from OpenClaw to
+# crontab+cron-wrapper.sh leave their old .last.json stale forever and
+# the Cell flags them all as failed (false-positive flood since 2026-04-13).
+LAST_ERROR_PAYLOAD=""
+if [ "$STATUS" = "failed" ]; then
+    if [ $EXIT_CODE -eq 124 ]; then
+        LAST_ERROR_PAYLOAD=",\"last_error\":\"timeout after ${TIMEOUT}s\""
+    else
+        LAST_ERROR_PAYLOAD=",\"last_error\":\"exit ${EXIT_CODE} after ${ATTEMPT} attempts\""
+    fi
+fi
+printf '{"job":"%s","ts":%d,"status":"%s","host":"%s","source":"cron-wrapper","duration_ms":%d%s}\n' \
+    "$SENTINEL_JOB_KEY" "$END_TS" "$STATUS" "$HOSTNAME_SHORT" "$((DURATION * 1000))" "$LAST_ERROR_PAYLOAD" \
+    > "$SENTINEL_STATE_DIR/$SENTINEL_JOB_KEY.last.json"
 
 # Human-readable log (last 100 lines of output)
 {
