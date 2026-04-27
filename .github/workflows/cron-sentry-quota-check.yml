@@ -1,0 +1,123 @@
+name: cron - sentry quota check (daily 09:00 WITA)
+
+# Migrated from Pro LaunchAgent / sentry-quota-check.sh (2026-04-26).
+# Reads Sentry config from nuzantara-rag runtime env via `flyctl ssh console`,
+# alerts Telegram if SENTRY_TRACES_SAMPLE_RATE > 0.02 in production
+# or if SENTRY_SEND_DEFAULT_PII is truthy.
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # 01:00 UTC = 09:00 WITA
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-sentry-quota-check
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APP: nuzantara-rag
+      MAX_TRACES: '0.02'
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Read runtime env from Fly machine
+        id: read
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+          # Read runtime env via fly ssh console with a python one-liner.
+          # Banner lines from ssh console come before the JSON; we grep the marker.
+          RUNTIME_RAW=$(flyctl ssh console --app "$APP" --quiet --command \
+            'python -c "import os,json; keys=[\"ENVIRONMENT\",\"SENTRY_TRACES_SAMPLE_RATE\",\"SENTRY_PROFILES_SAMPLE_RATE\",\"SENTRY_SEND_DEFAULT_PII\",\"SKIP_SENTRY_INIT\",\"SENTRY_DSN\"]; print(\"SQC_JSON:\"+json.dumps({k:os.getenv(k,\"\") for k in keys}))"' \
+            2>/dev/null || true)
+          RUNTIME_ENV=$(echo "$RUNTIME_RAW" | grep -o 'SQC_JSON:{.*}' | head -1 | sed 's/^SQC_JSON://')
+          if [ -z "$RUNTIME_ENV" ]; then
+            echo "::warning::unable to read runtime env from $APP"
+            echo "alert=⚠️ <b>sentry-quota-check</b>: unable to read runtime env from ${APP} (no machine running?)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          {
+            echo "runtime_env<<EOF"
+            echo "$RUNTIME_ENV"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Audit Sentry config
+        id: audit
+        if: steps.read.outputs.runtime_env != ''
+        env:
+          RUNTIME_ENV: ${{ steps.read.outputs.runtime_env }}
+        run: |
+          set -uo pipefail
+          eval "$(RUNTIME_ENV="$RUNTIME_ENV" python3 - <<'PY'
+          import json, os
+          d = json.loads(os.environ["RUNTIME_ENV"])
+          for k, v in d.items():
+              # shell-quote-safe: escape single quotes and wrap
+              esc = v.replace("'", "'\\''")
+              print(f"export {k}='{esc}'")
+          PY
+          )"
+          echo "app=$APP env=${ENVIRONMENT:-?} dsn=$([ -n "$SENTRY_DSN" ] && echo yes || echo no) traces=${SENTRY_TRACES_SAMPLE_RATE:-<default>} profiles=${SENTRY_PROFILES_SAMPLE_RATE:-<default>} send_pii=${SENTRY_SEND_DEFAULT_PII:-false} skip=${SKIP_SENTRY_INIT:-false}"
+
+          ALERT=""
+          if [ -n "${SKIP_SENTRY_INIT:-}" ]; then
+            echo "SKIP_SENTRY_INIT set — Sentry disabled, nothing to audit"
+            echo "alert=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${SENTRY_DSN:-}" ]; then
+            echo "no SENTRY_DSN — Sentry not active"
+            echo "alert=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # PII bypass check
+          SEND_PII_LC=$(printf '%s' "${SENTRY_SEND_DEFAULT_PII:-}" | tr '[:upper:]' '[:lower:]')
+          case "$SEND_PII_LC" in
+            1|true|yes)
+              ALERT="⚠️ <b>sentry-quota-check (${APP})</b>: SENTRY_SEND_DEFAULT_PII is truthy — PII scrubbing bypassed. Unset immediately."
+              ;;
+          esac
+          # Quota check (only in production)
+          if [ -z "$ALERT" ] && [ "${ENVIRONMENT:-}" = "production" ]; then
+            TRACES_VAL="${SENTRY_TRACES_SAMPLE_RATE:-0.0}"
+            OVER=$(python3 -c "print(1 if float('$TRACES_VAL') > float('$MAX_TRACES') else 0)" 2>/dev/null || echo 0)
+            if [ "$OVER" = "1" ]; then
+              ALERT="⚠️ <b>sentry-quota-check (${APP})</b>: SENTRY_TRACES_SAMPLE_RATE=${TRACES_VAL} exceeds safe ceiling ${MAX_TRACES} in production. Quota will burn."
+            fi
+          fi
+          if [ -n "$ALERT" ]; then
+            {
+              echo "alert<<EOF"
+              echo "$ALERT"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+            echo "::warning::$ALERT"
+          else
+            echo "OK"
+            echo "alert=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Telegram alert
+        if: steps.audit.outputs.alert != '' || steps.read.outputs.alert != ''
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          ALERT_AUDIT: ${{ steps.audit.outputs.alert }}
+          ALERT_READ: ${{ steps.read.outputs.alert }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          ALERT="${ALERT_AUDIT:-$ALERT_READ}"
+          TEXT="${ALERT}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true
