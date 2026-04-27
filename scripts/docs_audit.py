@@ -147,12 +147,8 @@ def compute_refs_in(repo: Path, target: Path) -> int:
     """Count other .md files (in docs/ + reference root files) that contain target's basename."""
     basename = target.name
     # Scan roots: docs/** and a handful of root files. Skip the file itself + archive dest.
-    candidates: List[Path] = []
-    docs_root = repo / "docs"
-    if docs_root.is_dir():
-        for p in docs_root.rglob("*.md"):
-            if p != target and p.name != "DOCS_INVENTORY.md":
-                candidates.append(p)
+    # Use walk_docs() (git-aware) so candidates match local↔CI exactly.
+    candidates: List[Path] = [p for p in walk_docs(repo) if p != target]
     for root_name in ("CLAUDE.md", "INDEX.md", "SYMBIOSIS.md", "VADEMECUM.md", "AGENTS.md", "GEMINI.md", "AUTONOMOUS_OPS.md"):
         rp = repo / root_name
         if rp.is_file() and rp != target:
