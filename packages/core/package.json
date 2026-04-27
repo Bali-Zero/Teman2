@@ -29,5 +29,6 @@
     "./utils": "./utils/index.ts",
     "./auth": "./auth/index.ts",
     "./analytics": "./analytics/index.ts"
-  }
+  },
+  "dependencies": {}
 }

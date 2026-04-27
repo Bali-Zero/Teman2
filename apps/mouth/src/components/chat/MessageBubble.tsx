@@ -380,6 +380,7 @@ function MessageBubbleComponent({
                 <button
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2"
+                  aria-expanded={isThinkingExpanded}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
                   <span>Thinking Process</span>
