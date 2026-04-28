@@ -107,6 +107,27 @@ RECONCILE_STALE_MIN = int(os.environ.get("WR2_RECONCILE_STALE_MIN", "30"))
 _draft_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 _recently_dispatched: set[tuple[str, str]] = set()
 _RECENTLY_DISPATCHED_MAX = 1000
+
+# Serialises every query on the LISTEN connection. asyncpg does NOT allow
+# concurrent operations on the same Connection — without this lock, the
+# 5s heartbeat overlaps the reconcile fetch (and the on-notify _current_status
+# read) and raises InterfaceError("another operation is in progress").
+# Initialised in _amain alongside _shutdown_event.
+_conn_lock: asyncio.Lock | None = None
+
+
+def _get_conn_lock() -> asyncio.Lock:
+    """Lazy-init the connection lock so it binds to the running event loop.
+
+    `asyncio.Lock()` created at module import binds to the current loop
+    (or none); pytest creates a fresh loop per async test, so a module-level
+    lock would belong to a dead loop. Lazy init avoids that and lets tests
+    drive _handle_payload / _reconcile_once without going through _amain.
+    """
+    global _conn_lock
+    if _conn_lock is None:
+        _conn_lock = asyncio.Lock()
+    return _conn_lock
 _handler_tasks: set[asyncio.Task] = set()
 _shutdown_event: asyncio.Event | None = None
 
@@ -208,9 +229,10 @@ async def _telegram(msg: str) -> None:
 
 async def _current_status(conn: asyncpg.Connection, draft_id: str) -> str | None:
     """Read the LATEST status for a draft. Used to skip stale payloads."""
-    return await conn.fetchval(
-        "SELECT status FROM war_room_drafts WHERE id = $1::uuid", draft_id
-    )
+    async with _get_conn_lock():
+        return await conn.fetchval(
+            "SELECT status FROM war_room_drafts WHERE id = $1::uuid", draft_id
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -332,17 +354,18 @@ async def _reconcile_once(conn: asyncpg.Connection) -> int:
     Returns the number of kickstarts issued. Idempotent: dedup set prevents
     re-kicking the same (draft_id, target) twice in a row.
     """
-    rows = await conn.fetch(
-        """
-        SELECT id::text AS draft_id, status, updated_at
-          FROM war_room_drafts
-         WHERE status = ANY($1::text[])
-           AND updated_at < NOW() - ($2 || ' minutes')::interval
-         ORDER BY updated_at ASC
-        """,
-        list(NONTERMINAL_TO_NEXT_STAGE.keys()),
-        str(RECONCILE_STALE_MIN),
-    )
+    async with _get_conn_lock():
+        rows = await conn.fetch(
+            """
+            SELECT id::text AS draft_id, status, updated_at
+              FROM war_room_drafts
+             WHERE status = ANY($1::text[])
+               AND updated_at < NOW() - ($2 || ' minutes')::interval
+             ORDER BY updated_at ASC
+            """,
+            list(NONTERMINAL_TO_NEXT_STAGE.keys()),
+            str(RECONCILE_STALE_MIN),
+        )
     n = 0
     for r in rows:
         draft_id = r["draft_id"]
@@ -430,7 +453,8 @@ async def _run_loop() -> None:
             # connections quickly via TimeoutError → drop and reconnect.
             while not _shutdown_event.is_set():
                 await asyncio.sleep(5)
-                await conn.execute("SELECT 1")
+                async with _get_conn_lock():
+                    await conn.execute("SELECT 1")
         except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
             logger.warning("connection lost: %s — reconnecting in %.1fs", e, backoff)
         finally:
@@ -478,6 +502,7 @@ def _configure_logging() -> None:
 async def _amain() -> None:
     global _shutdown_event
     _shutdown_event = asyncio.Event()
+    _get_conn_lock()  # bind to this loop
 
     # SIGTERM (launchd stop) and SIGINT (manual ctrl-c) both trigger drain.
     loop = asyncio.get_running_loop()
