@@ -2,8 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { UI } from '@/constants';
-import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic, X } from 'lucide-react';
 import { ChatRecordingOverlay } from './ChatRecordingOverlay';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import type { AttachedImage } from '@/hooks/useChatInput';
 
 export interface ChatInputBarProps {
   input: string;
@@ -23,6 +26,8 @@ export interface ChatInputBarProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleRecording?: () => void; // Click-to-toggle handler
+  attachedImages?: AttachedImage[];
+  onRemoveImage?: (id: string) => void;
 }
 
 export function ChatInputBar({
@@ -43,6 +48,8 @@ export function ChatInputBar({
   onStartRecording,
   onStopRecording,
   onToggleRecording,
+  attachedImages = [],
+  onRemoveImage,
 }: ChatInputBarProps) {
   // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
@@ -84,6 +91,44 @@ export function ChatInputBar({
             </Button>
           </div>
         )}
+
+        {/* Image Attachments Preview */}
+        <AnimatePresence>
+          {attachedImages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: 10, height: 0 }}
+              className="mb-2 flex gap-2 overflow-x-auto py-2 px-1 no-scrollbar"
+            >
+              {attachedImages.map((image) => (
+                <motion.div
+                  key={image.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-[var(--border)] shadow-md group/img"
+                >
+                  <Image
+                    src={image.base64}
+                    alt={image.name}
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    onClick={() => onRemoveImage?.(image.id)}
+                    className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-500/80 rounded-full text-white transition-colors opacity-0 group-hover/img:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                    title="Remove image"
+                    aria-label={`Remove ${image.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Container */}
         <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
@@ -203,7 +248,7 @@ export function ChatInputBar({
 
             <Button
               onClick={showImagePrompt ? onImageGenerate : onSend}
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && attachedImages.length === 0) || isLoading}
               size="icon"
               className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0"
               aria-label={
