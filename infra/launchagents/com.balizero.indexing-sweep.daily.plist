@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.indexing-sweep</string>
+
+    <!-- Daily Google Search Console Indexing Sweep
+         Phase 1: Articles (max 200/day)
+         Phase 2: KBLI (max 600/day via 3 SAs × 200 each)
+         Submits unindexed URLs to Google Indexing API, updates state JSON,
+         reports results to Telegram.
+
+         Runs daily at 00:30 WITA (17:30 UTC prev day) on Air only.
+         Requires: Google credentials (.secrets/*.json), OpenClaw for Telegram bridge.
+    -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/antonellosiano/Projects/nuzantara/scripts/daily_indexing_cron_wrapper.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/antonellosiano/Projects/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/antonellosiano</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>0</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/balizero-indexing-sweep.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/balizero-indexing-sweep.stderr.log</string>
+</dict>
+</plist>
