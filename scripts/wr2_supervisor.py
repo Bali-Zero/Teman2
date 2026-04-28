@@ -421,10 +421,15 @@ async def _run_loop() -> None:
 
             reconcile_task = asyncio.create_task(_reconcile_loop(conn))
 
-            # Heartbeat: SELECT 1 every 60s. Surfaces dead connections
-            # quickly via TimeoutError → we drop and reconnect.
+            # Heartbeat: SELECT 1 every 5s. `flyctl proxy` does not send TCP
+            # keepalive on the WG tunnel to nuzantara-postgres.internal, and
+            # an idle LISTEN connection gets dropped at ~10s (observed
+            # 2026-04-28 in launchd.err.log: "connecting → connection lost"
+            # cycle every 60s with the prior 60s heartbeat). A 5s heartbeat
+            # keeps the socket below that threshold; it also surfaces dead
+            # connections quickly via TimeoutError → drop and reconnect.
             while not _shutdown_event.is_set():
-                await asyncio.sleep(60)
+                await asyncio.sleep(5)
                 await conn.execute("SELECT 1")
         except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
             logger.warning("connection lost: %s — reconnecting in %.1fs", e, backoff)
