@@ -94,5 +94,6 @@
     "tailwindcss": "^4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
-  }
+  },
+  "_nb_d_canary": "do-not-merge"
 }
