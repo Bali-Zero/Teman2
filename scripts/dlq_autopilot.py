@@ -226,7 +226,14 @@ Rules:
             logger.info(f"{job}: skip {label} (exhausted: {_EXHAUSTED_TOKENS[label]})")
             continue
 
-        env = {**os.environ, "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"}
+        env = {
+            **os.environ,
+            "PATH": (
+                f"{os.path.expanduser('~/.local/bin')}:"
+                f"{os.path.expanduser('~/.claude/local')}:"
+                "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+            ),
+        }
         if token:
             env["CLAUDE_CODE_OAUTH_TOKEN"] = token
         else:

@@ -10,7 +10,17 @@
 
 set -euo pipefail
 
-REPO="/Users/antonellosiano/Projects/nuzantara"
+# Machine-aware repo + python (Pro vs Air). Dirname fallback so a future
+# user rename doesn't silently fail.
+case "$(whoami)" in
+    nuzantara)      REPO="$HOME/Desktop/nuzantara" ;;
+    antonellosiano) REPO="$HOME/Projects/nuzantara" ;;
+    *)
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
+        ;;
+esac
+
 LOG_DIR="$HOME/logs/cron"
 mkdir -p "$LOG_DIR"
 
@@ -21,7 +31,7 @@ if [ -f "$HOME/.nuzantara-secrets.env" ]; then
     set +a
 fi
 
-PY="/Users/antonellosiano/.pyenv/shims/python3"
+PY="$HOME/.pyenv/shims/python3"
 if [ ! -x "$PY" ]; then
     PY="/usr/bin/python3"
 fi
