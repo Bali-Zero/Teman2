@@ -164,6 +164,47 @@ _Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P
 
 ---
 
+### ⚠️ STRUCTURAL: Unknown agent overwrites loaded LaunchAgent plist files with their own JSON dump (2026-04-29)
+
+_Discovered: 2026-04-29 ~15:30Z during P0-3 audit · Severity: P0 · Status: Recovery automated, root cause UNKNOWN — escalation HIGH in `shared/escalations_pro.jsonl`_
+
+**TRAUMA:** At `2026-04-29 15:09:15-17 WITA` an unidentified process truncated **51 of 54** project plist files in `~/Library/LaunchAgents/com.{nuzantara,balizero,cell}.*.plist`, replacing each plist XML with a tiny JSON fragment that is the value of *one* of the plist's own keys — typically `StartCalendarInterval` (e.g. `{"Hour":1,"Minute":0}`, 21 bytes) or `EnvironmentVariables` (e.g. `{"GH_TOKEN":"...","FIREWORKS_API_KEY":"...","HOME":"/Users/nuzantara",...}`, ~145-313 bytes). At `2026-04-29 16:05:18` the *same event repeated*: 50 plist re-corrupted (all but the 3 freshly-canary-tested ones) within a single second window. **Cycle ~56 minutes between waves.**
+
+The signature exactly matches `plutil -convert json -o "$plist" -- "$plist"` or equivalent (`subprocess.run(["plutil","-extract","<key>","json"], stdout=open("$plist","w"))`) — a "read one key, write back the value as JSON, but truncate the file first because of `>` redirect" pattern. Grep across `~/scripts ~/Desktop/nuzantara ~/.cron-agent-python ~/.openclaw ~/.claude ~/.agent` for `plutil.*-convert`, `plutil.*>` redirects, `Library/LaunchAgents.*write_text`, etc., turned up **zero matches** — the producer is not a versioned shell/python script with a literal plutil invocation. Sentinel (`nuzantara-sentinel.py`, runs at 16:05), automap-watchdog (60s cycle, runs `automap_autofix.py`), launchagent-state-bridge.py (300s), zombie-hunter (60s), and system_doctor.py (4h) were all checked — all read launchctl but write only to `~/.agent/decisions/state/*.json`, not to plist files.
+
+**Critical observation:** a canary plist NOT loaded in launchd (`com.balizero.canary-final`, file present, never bootstrapped) was NEVER corrupted across two waves. **The producer enumerates services *currently in `launchctl list`* and writes per-label.**
+
+The on-disk corruption was masked for hours because launchd had loaded the *real* config at boot — `launchctl print gui/$(id -u)/<label>` still returned the full config from memory, so production behavior was unaffected. **Reboot would have lost 51 services**, including critical daemons (`com.cell.organism`, `com.balizero.nlm-bridge`, `com.balizero.post-publish-poller`, all WR2 producers) and CRON jobs (`com.balizero.intel.nightly`, `com.balizero.indexing-sweep.daily`, login-healthcheck, fly-restart-loop-detector).
+
+**Secrets leaked into world-readable (mode 0644) plist files** during the event:
+- `com.balizero.post-publish-poller.plist` → `GH_TOKEN` (`ghp_iZ4V…`, 40 chars), `FIREWORKS_API_KEY` (`fw_GXzCU…`, 25 chars), `SCRAPER_API_KEY` (`internal-…`, 20 chars)
+- `com.balizero.post-publish-webhook.plist` → `POST_PUBLISH_SECRET` (26 chars)
+- `com.cell.organism.plist` → `GOOGLE_API_KEY` (`AIzaSy…`), `CELL_TELEGRAM_BOT_TOKEN`, `FLY_API_TOKEN` (FlyV1, 687 chars), `CELL_DATABASE_URL` (postgres password embedded)
+- `com.nuzantara.dlq-autopilot.plist` + `com.nuzantara.sentinel.plist` → `TELEGRAM_BOT_TOKEN` (shared bot, same as `cell.organism`)
+
+Backups of the corrupt blobs are kept in `~/p0-3-recovery/plist_corrupt_backup/` for forensic analysis. Rotation plan in `~/p0-3-recovery/secrets_rotation_plan.md` (manual approval required per secret class).
+
+**ANTIBODY (recovery, automated):**
+
+The `~/p0-3-recovery/reconstruct_plist.py` script parses `launchctl print gui/501/<label>` output (which has the in-memory config in launchd's text format) and emits a valid plist XML using `plistlib.dump`. Each output is validated with `plutil -lint` before it is moved into `~/Library/LaunchAgents/`. **Atomic mv preserves the live launchd state** — no `launchctl unload`/`load` needed; the next boot picks up the rebuilt plist while the running process is unaffected. End-to-end recovery for 53/54 plist takes ~30s on Pro and produces zero service flap (verified via PID snapshot diff).
+
+The 1 unrecoverable plist (`com.nuzantara.qwen-code-review.plist`) was never loaded in launchd, has no fallback in `~/Desktop/nuzantara/infra/launchagents/`, and is not referenced by anything currently running — the corrupt 22-byte file was moved to `~/p0-3-recovery/com.nuzantara.qwen-code-review.plist.removed`.
+
+**ANTIBODY (prevention — UNRESOLVED):**
+
+The producer of the corruption has not been identified. `fs_usage` audit on `~/Library/LaunchAgents/` is active since 16:23 WITA — has captured 50+ minutes of read events with NO writes (writer has not struck again at the expected ~16:05 cycle, so either the cycle broke or the writer is conditional). Until producer is identified + stopped, recovery is one-shot per wave: re-run `python3 ~/p0-3-recovery/reconstruct_plist.py && for src in ~/p0-3-recovery/plist_reconstructed/com.*.plist; do install -m 0644 "$src" ~/Library/LaunchAgents/; done`.
+
+The original P0-3 audit (mass `KeepAlive=true` enforcement on the 54 plist) is **paused** until the producer is stopped — applying VADEMECUM §11 fixes to plist that get blown away every hour is wasted work. The lint+patch scripts (`scripts/lint_launchagents.sh`, `scripts/patch_launchagents.sh`) authored as part of the P0-3 worktree are kept as-is in this PR for resumption later.
+
+**GOTCHA:**
+
+- The producer enumerates **launchd-loaded services only**. A new plist that has never been bootstrapped is left untouched — useful as a canary, useless as production state.
+- `plutil -lint` on a corrupted plist returns 1 (failure) but launchd still serves the cached XML from boot. Don't equate "plutil-lint OK" with "service running properly".
+- Most-likely candidates not yet ruled out: (a) a parallel AI-agent session (Antigravity/Cline/Codex/Gemini/Claude Code subagent) issued the lethal command via filesystem MCP without logging to terminal history; (b) a not-yet-discovered binary running with `plutil -convert -o file file` semantics; (c) launchd-internal corruption triggered by simultaneous `launchctl list` from many processes (zombie-hunter + state-bridge + manual + lint scripts). The 56-min cycle is the strongest signal.
+- The P0-3 lint script is conservatively read-only — only uses `plutil -extract <key> raw 2>/dev/null` redirecting STDERR. The patch script uses `plutil -insert/-replace` directly on the file (in-place, atomic). NEITHER produces the corruption signature.
+
+---
+
 ### ✅ RESOLVED: Atlas migrate-lint paywalled in v0.38 — pivoted to Squawk (2026-04-26)
 
 _Discovered: 2026-04-26 during sprint 1 PR #306 CI run · Patched: same day via pivot to `sbdchd/squawk-action@v2`_
