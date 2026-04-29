@@ -9,6 +9,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
+# ── Load secrets (TELEGRAM_BOT_TOKEN / TELEGRAM_OWNER_CHAT_ID for
+#    CRITICAL/DEAD pipeline alerts) ───────────────────────────────────────────
+if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    source "$HOME/.nuzantara-secrets.env"
+    set +a
+fi
+
 # Detect venv (Pro uses .venv, Air uses venv)
 if [ -d "$PROJECT_ROOT/apps/backend-rag/.venv" ]; then
     PYTHON="$PROJECT_ROOT/apps/backend-rag/.venv/bin/python"
