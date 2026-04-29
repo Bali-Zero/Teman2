@@ -21,7 +21,7 @@ from typing import Any
 import asyncpg
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from prometheus_client import Counter, Histogram
 
 from backend.services.rag.kg_graph_state import KGAgentState
@@ -197,6 +197,15 @@ Return ONLY a JSON object:
             f"Entities: {len(state['extracted_entities'])}, "
             f"Citizenship: {state['user_context'].get('citizenship')}",
         )
+    except ValidationError as e:
+        logger.error(
+            f"❌ [Understand Query] LLM output validation failed: {e}. "
+            f"Falling back to domain hints.",
+        )
+        state["intent"] = domain_hints.get("intent", "general")
+        state["domain"] = domain_hints.get("domain", "general")
+        state["extracted_entities"] = domain_hints.get("entities", [])
+        logger.info(f"⚠️ [Understand Query] Using fallback classification: {state['domain']}")
     except (asyncio.TimeoutError, Exception) as e:
         logger.error(
             f"⚠️ [Understand Query] LLM structured call failed ({type(e).__name__}: {e}), "

@@ -655,16 +655,20 @@ class KGLangGraphOrchestrator:
             final_state = await self.app.ainvoke(initial_state, config=config)
 
             # Track success metrics
-            intent = final_state.get("intent", "unknown")
-            kg_langgraph_queries_total.labels(status="success", intent=intent).inc()
+            raw_intent = final_state.get("intent", "unknown")
+            valid_intents = {"company_setup", "visa", "hire", "property", "tax", "general", "unknown"}
+            intent_label = raw_intent if raw_intent in valid_intents else "unknown"
+            kg_langgraph_queries_total.labels(status="success", intent=intent_label).inc()
 
-            logger.info(f"✅ [Query] KG exploration complete, intent={intent}")
+            logger.info(f"✅ [Query] KG exploration complete, intent={intent_label}")
 
             return final_state
         except Exception as e:
             # Track error metrics and return empty result (don't crash the caller)
-            intent = initial_state.get("intent", "unknown")
-            kg_langgraph_queries_total.labels(status="error", intent=intent).inc()
+            raw_intent = initial_state.get("intent", "unknown")
+            valid_intents = {"company_setup", "visa", "hire", "property", "tax", "general", "unknown"}
+            intent_label = raw_intent if raw_intent in valid_intents else "unknown"
+            kg_langgraph_queries_total.labels(status="error", intent=intent_label).inc()
             logger.error(f"❌ [Query] KG exploration failed: {e}", exc_info=True)
             return {"workflow": None, "error": str(e)}
 
