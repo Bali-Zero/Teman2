@@ -133,3 +133,69 @@ organs:
     path: ~/.agent/decisions/state/login_healthcheck.last.json
     timestamp_field: ts
     status_field: status
+- id: pro.fly_restart_loop_detector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/fly-restart-loop-detector.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.fly-restart-loop-detector
+  severity_on_silence: critical
+  cicatrix_refs:
+  - 2026-04-29-drive-poll-attribute-error
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.cpu_monitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/cpu-monitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.cpu-monitor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.cpu_monitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.disk_monitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/disk-monitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.disk-monitor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.disk_monitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.zombie_hunter
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90
+  owner_module: .claude/scripts/zombie-hunter.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.zombie-hunter
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-04-29-untracked-files-lost
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.zombie_hunter.json
+    timestamp_field: ts
+    status_field: status
