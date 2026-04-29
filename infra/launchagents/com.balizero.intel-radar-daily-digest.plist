@@ -8,7 +8,7 @@
     <array>
         <string>/bin/zsh</string>
         <string>-lc</string>
-        <string>set -a; [ -f /Users/nuzantara/.nuzantara-secrets.env ] &amp;&amp; source /Users/nuzantara/.nuzantara-secrets.env; set +a; /Users/nuzantara/.pyenv/versions/3.11.9/bin/python3 /Users/nuzantara/scripts/cron-agent-python/intel_radar_daily_digest.py &gt;&gt; /Users/nuzantara/logs/intel-radar-daily-digest.log 2&gt;&amp;1</string>
+        <string>set -a; [ -f /Users/nuzantara/.nuzantara-secrets.env ] &amp;&amp; source /Users/nuzantara/.nuzantara-secrets.env; set +a; /Users/nuzantara/.pyenv/versions/3.11.11/bin/python3 /Users/nuzantara/scripts/cron-agent-python/intel_radar_daily_digest.py &gt;&gt; /Users/nuzantara/logs/intel-radar-daily-digest.log 2&gt;&amp;1</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -28,7 +28,7 @@
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>PATH</key>
-        <string>/Users/nuzantara/.pyenv/versions/3.11.9/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
     <key>KeepAlive</key>
     <false/>
