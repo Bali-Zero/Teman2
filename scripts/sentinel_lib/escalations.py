@@ -8,13 +8,23 @@ Each file is append-only. O_APPEND provides local atomicity (writes < PIPE_BUF =
 Merge conflicts are structurally impossible because each file has a single writer.
 
 Readers: read both files, parse each line as JSON, merge in-memory.
+
+P1-8: in addition to the canonical JSONL (federation bus), every write is
+mirrored into a per-machine local SQLite index at
+``~/.agent/decisions/escalations.sqlite`` for indexed active-query and
+bounded-retention pruning. The SQLite mirror lives OUTSIDE the git tree
+(per ADR-3 v3.3 — no shared SQLite, no split-brain). Toggle off with
+``ESCALATIONS_USE_SQLITE=false``.
 """
 import json
+import logging
 import os
 import socket
 import time
 from pathlib import Path
 from typing import Iterator
+
+_logger = logging.getLogger("sentinel_lib.escalations")
 
 _NUZANTARA_ROOT = Path(__file__).parent.parent.parent  # scripts/sentinel_lib → project root
 _SHARED_DIR = _NUZANTARA_ROOT / "shared"
@@ -59,6 +69,33 @@ def write_escalation(entry: dict) -> None:
         os.write(fd, line)
     finally:
         os.close(fd)
+
+    # P1-8: dual-write to local SQLite index (best-effort; never blocks JSONL).
+    if os.environ.get("ESCALATIONS_USE_SQLITE", "true").lower() not in (
+        "0", "false", "no", "off",
+    ):
+        try:
+            _mirror_to_sqlite(record)
+        except Exception as exc:  # noqa: BLE001 — mirror failures must NEVER break JSONL
+            _logger.warning("SQLite mirror failed (record kept in JSONL): %s", exc)
+
+
+def _mirror_to_sqlite(record: dict) -> None:
+    """Insert one record into the SQLite mirror via the migration module.
+
+    Imported lazily so test environments without the migration module on
+    sys.path still get the JSONL behavior.
+    """
+    import sys as _sys
+
+    scripts_dir = str(Path(__file__).resolve().parent.parent)
+    if scripts_dir not in _sys.path:
+        _sys.path.insert(0, scripts_dir)
+    try:
+        import migrate_escalations_to_sqlite as _mig
+    except ImportError:
+        return  # mirror module not available — skip silently
+    _mig.write_escalation_to_sqlite(record)
 
 
 def read_all_escalations(include_resolved: bool = False) -> list[dict]:
