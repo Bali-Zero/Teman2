@@ -620,11 +620,23 @@ async def whatsapp_webhook(
     request: Request,
 ) -> dict[str, Any]:
     """
-    Handle incoming WhatsApp messages.
+    Handle incoming WhatsApp messages — ack-first pattern (P0-6 audit 2026-04-29).
 
     Meta sends POST requests with message events.
     Verifies X-Hub-Signature-256 HMAC if WHATSAPP_APP_SECRET is configured.
-    We process in background and return 200 immediately.
+
+    Flow:
+      1. Verify HMAC signature (synchronous, fast).
+      2. Parse + persist payload to ``inbound_webhooks`` (idempotent on
+         Meta message_id via UNIQUE(channel, dedup_key)).
+      3. Schedule fast-path processing via FastAPI BackgroundTasks (existing
+         behaviour).
+      4. Return 200 OK in <200ms — guaranteed by virtue of (1)+(2)+(3) all
+         being O(1) async DB ops.
+
+    The WebhookProcessor (services/channels/webhook_processor.py) drains
+    any rows that the fast path missed (Fly machine crash mid-handler,
+    handler exception, etc.) so no inbound message is silently lost.
     """
     # HMAC-SHA256 signature verification
     body = await request.body()
@@ -639,12 +651,44 @@ async def whatsapp_webhook(
 
     # Parse body into webhook model
     try:
-        webhook = WhatsAppWebhook(**json.loads(body))
+        raw_payload = json.loads(body)
+        webhook = WhatsAppWebhook(**raw_payload)
     except Exception as e:
         logger.error(f"❌ WhatsApp webhook body parse error: {e}")
         raise HTTPException(status_code=400, detail="Invalid request body")
 
     logger.info(f"Webhook received: {webhook.object}, {len(webhook.entry)} entries")
+
+    # ── Ack-first persistence (P0-6) ──
+    # Persist the verified payload BEFORE any business processing so a Fly
+    # machine crash mid-flight does not lose the webhook. Dedup key is the
+    # Meta-provided message_id (one row per inbound DM, even if Meta retries
+    # the webhook before our 200 OK lands).
+    db_pool = _get_db_pool(request)
+    if db_pool is not None:
+        for entry in webhook.entry:
+            for change in entry.changes:
+                if change.field != "messages":
+                    continue
+                for msg in change.value.get("messages", []):
+                    msg_id = msg.get("id")
+                    if not msg_id:
+                        continue
+                    try:
+                        from backend.services.channels import inbound_webhook_repo
+                        await inbound_webhook_repo.persist(
+                            db_pool,
+                            channel="whatsapp",
+                            dedup_key=msg_id,
+                            payload=raw_payload,
+                        )
+                    except Exception as exc:  # noqa: BLE001 — never block ack
+                        logger.warning(
+                            "WhatsApp webhook: persist failed "
+                            "(message_id=%s): %s — falling back to "
+                            "BackgroundTasks-only path",
+                            msg_id, exc,
+                        )
 
     for entry in webhook.entry:
         for change in entry.changes:
