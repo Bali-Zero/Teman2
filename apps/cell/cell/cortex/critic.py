@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -314,7 +315,21 @@ class CriticAgent:
             resp.raise_for_status()
             data = resp.json()
             text = data.get("message", {}).get("content", "")
-            parsed = json.loads(text)
+            # PR-D3 (2026-04-30): Ollama small models occasionally wrap JSON
+            # in markdown fences ("```json {...} ```") or prefix it ("Here is
+            # the JSON: {...}"), causing json.loads(text) to fail and the
+            # whole expectation to silently degrade to None. Use the same
+            # regex extraction that strategy_mutator.py uses (line ~180):
+            # find the outermost {...} block and parse only that.
+            json_match = re.search(r"\{.*\}", text, re.DOTALL)
+            if not json_match:
+                logger.info(
+                    "Critic LLM returned no JSON object for '%s': %s",
+                    action,
+                    text[:200],
+                )
+                return None
+            parsed = json.loads(json_match.group())
 
             # Validate required fields.
             outcome = parsed.get("expected_outcome", "")
