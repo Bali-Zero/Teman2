@@ -17,6 +17,15 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 LOG_FILE="$PROJECT_ROOT/apps/evaluator/nlm_deep_research/peraturan_ingestion.log"
 LOCK_FILE="/tmp/peraturan_ingestion.lock"
 
+# ── Load secrets (GOOGLE_SERVICE_ACCOUNT_JSON / GOOGLE_APPLICATION_CREDENTIALS,
+#    plus any optional Telegram tokens used by downstream notify hooks) ───────
+if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    source "$HOME/.nuzantara-secrets.env"
+    set +a
+fi
+
 cd "$PROJECT_ROOT"
 
 # ── PID lock (prevent overlapping runs) ──────────────────────────────────────
