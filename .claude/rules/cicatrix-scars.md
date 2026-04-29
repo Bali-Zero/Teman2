@@ -205,18 +205,32 @@ The `~/p0-3-recovery/reconstruct_plist.py` script parses `launchctl print gui/50
 
 The 1 unrecoverable plist (`com.nuzantara.qwen-code-review.plist`) was never loaded in launchd, has no fallback in `~/Desktop/nuzantara/infra/launchagents/`, and is not referenced by anything currently running — the corrupt 22-byte file was moved to `~/p0-3-recovery/com.nuzantara.qwen-code-review.plist.removed`.
 
-**ANTIBODY (prevention — UNRESOLVED):**
+**ANTIBODY (prevention — partial, producer still UNKNOWN):**
 
-The producer of the corruption has not been identified. `fs_usage` audit on `~/Library/LaunchAgents/` is active since 16:23 WITA — has captured 50+ minutes of read events with NO writes (writer has not struck again at the expected ~16:05 cycle, so either the cycle broke or the writer is conditional). Until producer is identified + stopped, recovery is one-shot per wave: re-run `python3 ~/p0-3-recovery/reconstruct_plist.py && for src in ~/p0-3-recovery/plist_reconstructed/com.*.plist; do install -m 0644 "$src" ~/Library/LaunchAgents/; done`.
+The producer of the corruption has not been identified, but two preventive layers are now in place (2026-04-29 18:50 WITA):
 
-The original P0-3 audit (mass `KeepAlive=true` enforcement on the 54 plist) is **paused** until the producer is stopped — applying VADEMECUM §11 fixes to plist that get blown away every hour is wasted work. The lint+patch scripts (`scripts/lint_launchagents.sh`, `scripts/patch_launchagents.sh`) authored as part of the P0-3 worktree are kept as-is in this PR for resumption later.
+1. **Filesystem hardening** — all 54 project plist were chmod'd read-only:
+   - 5 plist with leaked secrets (`com.cell.organism`, `com.balizero.post-publish-poller`, `com.balizero.post-publish-webhook`, `com.nuzantara.dlq-autopilot`, `com.nuzantara.sentinel`) → `0400` (owner read only, no world read, no write at all). Stops both *write* and *read by other users*.
+   - 49 remaining plist → `0444` (world read OK, no write). Stops only *write*.
+   - Verified: 54/54 still plutil-lint OK, `launchctl load/unload` still works, `> "$plist"` redirect now fails with `Permission denied`. To legitimately edit a plist: `chmod u+w "$plist"`, edit, restore mode.
+   - Memory ID 1879 has the operational note.
+
+2. **fs_usage audit** active since 19:33 WITA (PID 10080, capture log `~/p0-3-recovery/fs_usage_trap/capture-20260429-193348.log`) — captures any future `WrData`/`O_TRUNC`/`truncate` on project plist with PID + parent PID. To inspect: `grep -E "WrData|O_TRUNC|truncate" ~/p0-3-recovery/fs_usage_trap/capture-*.log`. To stop: `sudo pkill -f "fs_usage -w -f filesys"`.
+
+The originally-suspected **56-minute recurrence cycle was refuted** — by 18:44 WITA (>3.5 h after the 16:05 second wave) no third wave had fired, even before chmod was applied. Most likely scenario: the writer was a one-shot AI agent action (Antigravity/Cline/parallel Claude Code session via filesystem MCP), not a recurring daemon.
+
+If recovery is ever needed again: `python3 ~/p0-3-recovery/reconstruct_plist.py && for src in ~/p0-3-recovery/plist_reconstructed/com.*.plist; do chmod u+w "$HOME/Library/LaunchAgents/$(basename "$src")" 2>/dev/null; install -m 0444 "$src" ~/Library/LaunchAgents/; done` (note the `chmod u+w` step required because of the new hardening).
+
+The original P0-3 audit (mass `KeepAlive=true` enforcement on the 54 plist) remains **paused**: the lint+patch scripts (`scripts/lint_launchagents.sh`, `scripts/patch_launchagents.sh`) need a `chmod u+w` step before patching now. Resumption tracked separately.
 
 **GOTCHA:**
 
 - The producer enumerates **launchd-loaded services only**. A new plist that has never been bootstrapped is left untouched — useful as a canary, useless as production state.
 - `plutil -lint` on a corrupted plist returns 1 (failure) but launchd still serves the cached XML from boot. Don't equate "plutil-lint OK" with "service running properly".
-- Most-likely candidates not yet ruled out: (a) a parallel AI-agent session (Antigravity/Cline/Codex/Gemini/Claude Code subagent) issued the lethal command via filesystem MCP without logging to terminal history; (b) a not-yet-discovered binary running with `plutil -convert -o file file` semantics; (c) launchd-internal corruption triggered by simultaneous `launchctl list` from many processes (zombie-hunter + state-bridge + manual + lint scripts). The 56-min cycle is the strongest signal.
+- Most-likely remaining candidates (none ruled out): (a) a parallel AI-agent session (Antigravity/Cline/Codex/Gemini/Claude Code subagent) issued the lethal command via filesystem MCP without logging to terminal history — supported by Antigravity network activity at 15:09:05–13 (10 s before corruption); (b) a not-yet-discovered binary running with `plutil -convert -o file file` semantics; (c) launchd-internal race triggered by simultaneous `launchctl list` from many processes. The originally-noted 56-min cycle hypothesis is now **refuted** (no third wave fired by 18:44 WITA, even before hardening).
 - The P0-3 lint script is conservatively read-only — only uses `plutil -extract <key> raw 2>/dev/null` redirecting STDERR. The patch script uses `plutil -insert/-replace` directly on the file (in-place, atomic). NEITHER produces the corruption signature.
+- After chmod hardening, any future recovery / `patch_launchagents.sh --apply` MUST `chmod u+w` the plist first — otherwise `plutil -insert/-replace` will fail silently with `Operation not permitted`. The lint script (read-only) is unaffected.
+- Cross-LLM brainstorm artifacts: `/tmp/kakuro-S4-final-brainstorms/{codex,deepseek,gemini,notebooklm}.md` — DeepSeek's analysis is the most useful (Codex hit auth fail, Gemini hit rate-limit, NotebookLM CLI error).
 
 ---
 
