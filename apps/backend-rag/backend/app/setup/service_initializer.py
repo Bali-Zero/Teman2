@@ -1128,33 +1128,9 @@ async def initialize_channel_router(
         else:
             logger.warning("⚠️ Instagram credentials not configured, adapter disabled")
 
-        # Register Twitter adapter (if configured)
-        # Env vars: X_CONSUMER_KEY, X_CONSUMER_SECRET, X_ACCESS_TOKEN,
-        # X_ACCESS_TOKEN_SECRET, X_BEARER_TOKEN (matching config.py settings)
-        x_consumer_key = settings.x_consumer_key or os.getenv("TWITTER_CONSUMER_KEY")
-        x_consumer_secret = settings.x_consumer_secret or os.getenv("TWITTER_CONSUMER_SECRET")
-        x_access_token = settings.x_access_token or os.getenv("TWITTER_ACCESS_TOKEN")
-        x_access_token_secret = settings.x_access_token_secret or os.getenv(
-            "TWITTER_ACCESS_TOKEN_SECRET",
-        )
-        x_bearer_token = settings.x_bearer_token or os.getenv("TWITTER_BEARER_TOKEN")
-        if x_consumer_key and x_consumer_secret and x_access_token and x_access_token_secret:
-            from backend.channels.twitter.adapter import TwitterChannelAdapter
-
-            twitter_config = {
-                "consumer_key": x_consumer_key,
-                "consumer_secret": x_consumer_secret,
-                "access_token": x_access_token,
-                "access_token_secret": x_access_token_secret,
-                "bearer_token": x_bearer_token or "",
-                "client_id": settings.x_client_id or "",
-                "client_secret": settings.x_client_secret or "",
-            }
-            twitter_adapter = TwitterChannelAdapter(twitter_config)
-            channel_router.register_adapter("twitter", twitter_adapter)
-            logger.info("✅ TwitterChannelAdapter registered")
-        else:
-            logger.warning("⚠️ Twitter credentials not configured, adapter disabled")
+        # Twitter adapter quarantined 2026-04-30 — CRC handshake broken.
+        # See apps/backend-rag/backend/channels/.disabled-2026-04-30/README.md
+        # and CLAUDE.md §10 for reactivation criteria.
 
         # Initialize channel optimizations (rate limiter, Redis dedup, DLQ, metrics)
         from backend.channels.optimizations import delivery_manager, initialize_optimizations

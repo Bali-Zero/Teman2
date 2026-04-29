@@ -110,6 +110,17 @@ Concrete forensic sequence for incident #2 (full timeline in commit
   to switch when untracked files exist AND the parent process is not
   the session that created them; mutex / lockfile on `feature/*`
   branches during long-session work.
+- **Innervation Genoma exclusion (2026-04-30)**: `nuz-sync` is
+  explicitly NOT enrolled in `apps/organism/organism/genome.yaml`
+  despite being a critical Pro organ. Rationale: this scar identifies
+  sibling automation as the most likely producer of branch-hijack
+  incidents, and `nuz-sync` is the prime suspect for incident #1
+  (auto-pull on git changes during long Claude sessions, fired inside
+  its 5-min cron tick window at 21:42). If the Organism Supervisor
+  were to auto-recover `nuz-sync`, a recovery loop during a
+  hijack-in-progress could amplify the file-loss blast radius. Manual
+  operator restart only until the producer is conclusively identified
+  and isolated. Quarantine documented in PR W1.0 (`chore/innervation-w1-cleanup-2026-04-30`).
 
 **GOTCHA:**
 

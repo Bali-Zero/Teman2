@@ -113,8 +113,8 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     # string is residue of an abandoned third-party config (e.g. dummy
     # `atlas:atlas@localhost:5432` Postgres test creds in the workflow).
     (
-        re.compile(r"(^|/)\.disabled/.*"),
-        ".disabled/ quarantine: residual artifacts from abandoned attempts, not deployed",
+        re.compile(r"(^|/)\.disabled(-\d{4}-\d{2}-\d{2})?/.*"),
+        ".disabled/ or .disabled-YYYY-MM-DD/ quarantine: residual artifacts from abandoned attempts, not deployed",
     ),
     # OpenAPI schemas and examples
     (
