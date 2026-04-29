@@ -12,10 +12,12 @@ ADMIT articles into NLM NB-2 via the nlm CLI.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import httpx
 import logging
 import math
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
@@ -231,7 +233,6 @@ class T4RelevanceFilter:
 
     def __init__(self) -> None:
         self._openai_client: Optional[object] = None
-        self._anthropic_client: Optional[object] = None
 
     def _get_openai_client(self) -> Any:
         if self._openai_client is None:
@@ -239,13 +240,6 @@ class T4RelevanceFilter:
 
             self._openai_client = openai.AsyncOpenAI()
         return self._openai_client
-
-    def _get_anthropic_client(self) -> Any:
-        if self._anthropic_client is None:
-            import anthropic  # noqa: PLC0415
-
-            self._anthropic_client = anthropic.AsyncAnthropic()
-        return self._anthropic_client
 
     def layer1_keywords(self, text: str) -> bool:
         """Return True if text passes keyword recall gate."""
@@ -280,8 +274,15 @@ class T4RelevanceFilter:
         return self._cosine(text_vec, ref)
 
     async def _haiku_classify(self, text: str) -> float:
-        """Call Haiku to score immigration relevance (0.0–1.0)."""
-        client = self._get_anthropic_client()
+        """Call Haiku via the ``claude`` CLI (OAuth Max plan, never the SDK).
+
+        Project rule (CLAUDE.md Golden Rule #13 + .claude/rules/python-backend.md):
+        Anthropic access is OAuth-only — never ``ANTHROPIC_API_KEY``, never
+        ``anthropic.Anthropic(...)``. We shell out to ``claude -p`` with
+        ``CLAUDE_CODE_OAUTH_TOKEN`` from the Max subscription. Pattern mirrors
+        ``apps/backend-rag/backend/llm/claude_oauth_client.py`` (kept inline here
+        because evaluator must not import from backend-rag).
+        """
         prompt = (
             "You are an immigration advisor for Bali, Indonesia. "
             "Score the following article's relevance to immigration enforcement "
@@ -290,21 +291,49 @@ class T4RelevanceFilter:
             "1.0 = highly relevant enforcement news. 0.0 = irrelevant.\n\n"
             f"Article: {text[:1500]}"
         )
-        message = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=10,
-            messages=[{"role": "user", "content": prompt}],
+
+        # Build env: strip ANTHROPIC_API_KEY (kill-switch), pass first OAuth
+        # token from the 3-token chain. If none set, let the CLI fall back to
+        # the macOS-keychain-stored token.
+        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+        for key in ("CLAUDE_CODE_OAUTH_TOKEN_1", "CLAUDE_CODE_OAUTH_TOKEN_2",
+                    "CLAUDE_CODE_OAUTH_TOKEN_3", "CLAUDE_CODE_OAUTH_TOKEN"):
+            tok = os.environ.get(key, "").strip()
+            if tok:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = tok
+                break
+
+        proc = await asyncio.create_subprocess_exec(
+            "claude", "-p", prompt, "--model", "claude-haiku-4-5-20251001",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
-        raw = message.content[0].text.strip()
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
+        except asyncio.TimeoutError:
+            with contextlib.suppress(ProcessLookupError):
+                proc.kill()
+            logger.warning("Haiku via OAuth CLI timed out — defaulting to 0.0")
+            return 0.0
+
+        if proc.returncode != 0:
+            logger.warning(
+                "claude CLI exit=%s stderr=%r — defaulting to 0.0",
+                proc.returncode, stderr.decode("utf-8", errors="replace")[:200],
+            )
+            return 0.0
+
+        raw = stdout.decode("utf-8", errors="replace").strip()
         try:
             return float(raw)
         except ValueError:
-            # Haiku sometimes returns "0.85\n\nExplanation..." — extract first token
+            # CLI sometimes returns "0.85\n\nExplanation..." — extract first token
             import re as _re
             m = _re.search(r"^\d+(?:\.\d+)?", raw)
             if m:
                 return float(m.group())
-            logger.warning("Haiku returned non-float: %r — defaulting to 0.0", raw)
+            logger.warning("CLI returned non-float: %r — defaulting to 0.0", raw)
             return 0.0
 
     async def layer3_haiku(self, text: str) -> float:
