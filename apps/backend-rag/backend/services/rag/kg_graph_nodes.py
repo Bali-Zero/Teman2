@@ -21,11 +21,24 @@ from typing import Any
 import asyncpg
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
+from pydantic import BaseModel, Field
 from prometheus_client import Counter, Histogram
 
 from backend.services.rag.kg_graph_state import KGAgentState
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Pydantic Schemas
+# ============================================================================
+
+class QueryIntentSchema(BaseModel):
+    """Schema per la validazione rigorosa dell'output LLM durante Query Understanding."""
+    intent: str = Field(description="Intent: company_setup, visa, hire, property, tax, general")
+    domain: str = Field(description="Domain: visa, tax, property, kbli, company, general")
+    entities: list[str] = Field(default_factory=list, description="List of extracted entities")
+    citizenship: str = Field(default="domestic", description="Citizenship inferred from context: foreign vs domestic")
 
 
 # ============================================================================
@@ -151,10 +164,13 @@ Return ONLY a JSON object:
 
     user_prompt = f"Query: {state['query']}"
 
+    # Setup the LLM for structured output using Pydantic
+    structured_llm = llm.with_structured_output(QueryIntentSchema)
+
     # Call LLM with timeout to prevent hanging on provider outages
     try:
-        response = await asyncio.wait_for(
-            llm.ainvoke(
+        parsed_result = await asyncio.wait_for(
+            structured_llm.ainvoke(
                 [
                     SystemMessage(content=system_prompt),
                     HumanMessage(content=user_prompt),
@@ -162,42 +178,30 @@ Return ONLY a JSON object:
             ),
             timeout=30.0,
         )
-    except (asyncio.TimeoutError, Exception) as e:
-        logger.warning(
-            f"⚠️ [Understand Query] LLM call failed ({type(e).__name__}), "
-            f"using fast-path domain detection",
-        )
-        state["intent"] = domain_hints.get("intent", "general")
-        state["domain"] = domain_hints.get("domain", "general")
-        state["extracted_entities"] = domain_hints.get("entities", [])
-        return state
-
-    # Parse response (assume LLM returns JSON)
-    try:
-        import json
-
-        parsed = json.loads(response.content)
-        state["intent"] = parsed.get("intent")
-        state["extracted_entities"] = parsed.get("entities", [])
-
+        
+        # Aggiornamento stato con Pydantic model
+        state["intent"] = parsed_result.intent
+        state["extracted_entities"] = parsed_result.entities
+        
         # Store domain for routing decisions
-        domain = parsed.get("domain", domain_hints.get("domain", "general"))
+        domain = parsed_result.domain if parsed_result.domain else domain_hints.get("domain", "general")
         state["domain"] = domain
-
+        
         # Update user_context with citizenship and domain
-        if "citizenship" in parsed:
-            state["user_context"]["citizenship"] = parsed["citizenship"]
+        state["user_context"]["citizenship"] = parsed_result.citizenship
         state["user_context"]["domain"] = domain
-
+        
         logger.info(
             f"✅ [Understand Query] Intent: {state['intent']}, "
             f"Domain: {domain}, "
             f"Entities: {len(state['extracted_entities'])}, "
             f"Citizenship: {state['user_context'].get('citizenship')}",
         )
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.error(f"❌ [Understand Query] Failed to parse LLM response: {e}")
-        # Use pre-detected domain as fallback
+    except (asyncio.TimeoutError, Exception) as e:
+        logger.error(
+            f"⚠️ [Understand Query] LLM structured call failed ({type(e).__name__}: {e}), "
+            f"using fast-path domain detection",
+        )
         state["intent"] = domain_hints.get("intent", "general")
         state["domain"] = domain_hints.get("domain", "general")
         state["extracted_entities"] = domain_hints.get("entities", [])

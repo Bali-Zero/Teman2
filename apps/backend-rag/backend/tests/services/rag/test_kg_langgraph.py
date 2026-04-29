@@ -161,22 +161,25 @@ def test_state_workflow_synthesis(sample_state):
 @pytest.mark.asyncio
 async def test_understand_query_node_success(sample_state, mock_llm):
     """Test understand_query_node extracts intent and entities."""
-    # Mock LLM response
-    mock_response = MagicMock()
-    mock_response.content = json.dumps(
-        {
-            "intent": "company_setup",
-            "entities": ["kbli:56101", "pt_pma"],
-            "citizenship": "foreign",
-        },
+    # Mock LLM response with Pydantic schema
+    from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+    from unittest.mock import AsyncMock, MagicMock
+    mock_response = QueryIntentSchema(
+        intent="company_setup",
+        domain="company",
+        entities=["kbli:56101", "pt_pma"],
+        citizenship="foreign"
     )
-    mock_llm.ainvoke.return_value = mock_response
+    mock_structured_llm = MagicMock()
+    mock_structured_llm.ainvoke = AsyncMock(return_value=mock_response)
+    mock_llm.with_structured_output = MagicMock(return_value=mock_structured_llm)
 
     # Execute node
     result = await understand_query_node(sample_state, mock_llm)
 
     # Assertions
     assert result["intent"] == "company_setup"
+    assert result["domain"] == "company"
     assert "kbli:56101" in result["extracted_entities"]
     assert result["user_context"]["citizenship"] == "foreign"
 
@@ -184,10 +187,11 @@ async def test_understand_query_node_success(sample_state, mock_llm):
 @pytest.mark.asyncio
 async def test_understand_query_node_parse_error(sample_state, mock_llm):
     """Test understand_query_node handles JSON parse errors."""
-    # Mock LLM response with invalid JSON
-    mock_response = MagicMock()
-    mock_response.content = "INVALID JSON"
-    mock_llm.ainvoke.return_value = mock_response
+    from unittest.mock import AsyncMock, MagicMock
+    # Mock LLM error
+    mock_structured_llm = MagicMock()
+    mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM Error"))
+    mock_llm.with_structured_output = MagicMock(return_value=mock_structured_llm)
 
     # Execute node
     result = await understand_query_node(sample_state, mock_llm)
