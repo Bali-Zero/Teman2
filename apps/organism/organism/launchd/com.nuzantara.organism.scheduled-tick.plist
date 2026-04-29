@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.nuzantara.organism.scheduled-tick</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
+    <string>-m</string><string>organism.scheduled_tick</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key><string>/Users/nuzantara</string>
+    <key>ORGANISM_REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
+    <key>PYTHONPATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/nuzantara/logs/organism/scheduled-tick.log</string>
+  <key>StandardErrorPath</key><string>/Users/nuzantara/logs/organism/scheduled-tick.err</string>
+</dict>
+</plist>
