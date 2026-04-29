@@ -18,11 +18,13 @@ import re
 import subprocess
 import sys
 import time
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from typing import Callable
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -106,6 +108,30 @@ STALENESS = {
 }
 
 VERBOSE = False
+
+# --- P1-7 NLM auto-recovery constants ---
+# State files written by NLM pipelines to ~/.agent/decisions/state/<job>.last.json
+# Format: {"job": "...", "ts": <unix_epoch>, "status": "ok"|"failed", "host": "..."}.
+# Mapping is explicit (not regex) because nb1_daily_refresh dispatches via
+# nlm_bridge, not nb1_pipeline (which doesn't exist). None = "known but no
+# rerun handle" (heartbeat / umbrella) — these are skipped silently.
+NLM_PIPELINE_MODULES: dict[str, str | None] = {
+    "nlm_nb1_daily_refresh":  "apps.evaluator.nlm_deep_research.nlm_bridge",
+    "nlm_nb3_company_setup":  "apps.evaluator.nlm_deep_research.nb3_pipeline",
+    "nlm_nb4_tax_fiscal":     "apps.evaluator.nlm_deep_research.nb4_pipeline",
+    "nlm_nb5_property":       "apps.evaluator.nlm_deep_research.nb5_pipeline",
+    "nlm_nb6_ops_compliance": "apps.evaluator.nlm_deep_research.nb6_pipeline",
+    "nlm_nb7_editorial":      "apps.evaluator.nlm_deep_research.nb7_pipeline",
+    "nlm_nb8_expat_life":     "apps.evaluator.nlm_deep_research.nb8_pipeline",
+    "nlm_nb10_team_guides":   "apps.evaluator.nlm_deep_research.nb10_pipeline",
+    "nlm_bridge":             None,
+    "nlm_deep_research":      None,
+    "weekly_report":          None,
+}
+NLM_STATE_DIR = Path.home() / ".agent" / "decisions" / "state"
+NLM_STALENESS_HOURS = 24
+NLM_RERUN_TIMEOUT_S = 300
+NLM_TELEGRAM_OWNER_CHAT_ID = "1125336968"
 
 
 def log(msg: str) -> None:
@@ -1308,6 +1334,170 @@ def fix_log_rotation(dry_run: bool) -> list[AutoFix]:
     return fixes
 
 
+# --- P1-7 NLM auto-recovery ---
+
+def _nlm_send_telegram_warning(message: str, *, chat_id: str = NLM_TELEGRAM_OWNER_CHAT_ID) -> bool:
+    """Telegram alert for NLM auto-recovery failures.
+
+    Reuses the urllib.request POST pattern from scripts/expiry_alerter.py
+    (_send_telegram). Plain text — no parse_mode — to avoid escaping issues
+    with subprocess stderr that may contain Markdown/HTML metacharacters.
+    Returns True on send, False on missing-token or HTTP error.
+    """
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        secrets = Path.home() / ".nuzantara-secrets.env"
+        if secrets.exists():
+            for line in secrets.read_text().splitlines():
+                if line.startswith("TELEGRAM_BOT_TOKEN="):
+                    bot_token = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    break
+    if not bot_token:
+        log("nlm_recovery: no TELEGRAM_BOT_TOKEN — alert skipped")
+        return False
+
+    try:
+        data = urllib.parse.urlencode({"chat_id": chat_id, "text": message}).encode()
+        urllib.request.urlopen(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            data, timeout=10,
+        )
+        return True
+    except Exception as e:
+        log(f"nlm_recovery: telegram failed: {type(e).__name__}: {e}")
+        return False
+
+
+def _nlm_pipeline_name_from_state_file(path: Path) -> str:
+    """`nlm_nb6_ops_compliance.last.json` -> `nlm_nb6_ops_compliance`."""
+    name = path.name
+    if name.endswith(".last.json"):
+        return name[: -len(".last.json")]
+    return path.stem
+
+
+def check_nlm_pipelines_stuck(
+    state_dir: Path | None = None,
+    *,
+    now_fn: Callable[[], float] = time.time,
+    max_age_hours: int = NLM_STALENESS_HOURS,
+) -> dict:
+    """Detect NLM pipelines stuck >24h or with status=='failed' and attempt rerun.
+
+    Walks ``state_dir`` for ``nlm_*.last.json`` files. For each known pipeline:
+    - if ts<=0 (never run) OR status=='ok' AND age within max_age_hours: skip
+    - else: subprocess.run([sys.executable, '-m', <module>], timeout=300)
+        - returncode 0 -> recovered
+        - returncode != 0 OR TimeoutExpired -> failed + Telegram alert
+    Pipelines without a module mapping (heartbeat / umbrella) are skipped.
+
+    Idempotent (healthy short-circuits, no state writes here). Telegram alert
+    fires only on rerun failure to avoid spam. Returns dict with
+    ``stuck/recovered/failed/skipped/errors`` keys, used by ``--check-nlm``
+    CLI and as raw input for system_doctor's collector pipeline.
+
+    24h threshold: NB-1 daily refresh expects a beat every 24h; tighter
+    yields false positives during normal night-window OpenClaw runs, looser
+    lets a real failure linger an extra day.
+    """
+    if state_dir is None:
+        state_dir = NLM_STATE_DIR
+
+    result: dict = {
+        "stuck": [], "recovered": [], "failed": [],
+        "skipped": [], "errors": {},
+    }
+
+    if not state_dir.exists() or not state_dir.is_dir():
+        return result
+
+    now = now_fn()
+
+    for path in sorted(state_dir.glob("nlm_*.last.json")):
+        pipeline = _nlm_pipeline_name_from_state_file(path)
+
+        if pipeline not in NLM_PIPELINE_MODULES:
+            result["skipped"].append(pipeline)
+            continue
+
+        try:
+            state = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            result["errors"][pipeline] = f"{type(e).__name__}: {e}"
+            continue
+
+        ts = state.get("ts", 0)
+        status = state.get("status", "")
+        try:
+            ts_num = float(ts)
+        except (TypeError, ValueError):
+            result["errors"][pipeline] = f"invalid ts: {ts!r}"
+            continue
+
+        if ts_num <= 0:
+            result["skipped"].append(pipeline)
+            continue
+
+        age_hours = (now - ts_num) / 3600.0
+        is_stuck = age_hours > max_age_hours
+        is_failed = status == "failed"
+
+        if not (is_stuck or is_failed):
+            result["skipped"].append(pipeline)
+            continue
+
+        module_path = NLM_PIPELINE_MODULES.get(pipeline)
+        if module_path is None:
+            result["skipped"].append(pipeline)
+            continue
+
+        result["stuck"].append(pipeline)
+
+        cmd = [sys.executable, "-m", module_path]
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True,
+                timeout=NLM_RERUN_TIMEOUT_S,
+                cwd=str(PROJECT_ROOT),
+            )
+        except subprocess.TimeoutExpired as exc:
+            result["failed"].append(pipeline)
+            stderr_tail = (exc.stderr or "")[-500:] if isinstance(exc.stderr, str) else ""
+            _nlm_send_telegram_warning(
+                f"[NLM auto-recovery FAILED] {pipeline}\n"
+                f"Age: {age_hours:.1f}h since last success\n"
+                f"Rerun: timeout after {NLM_RERUN_TIMEOUT_S}s\n"
+                f"Stderr: {stderr_tail}\n"
+                f"Run: python scripts/system_doctor.py --check-nlm"
+            )
+            continue
+        except Exception as e:
+            result["failed"].append(pipeline)
+            result["errors"][pipeline] = f"{type(e).__name__}: {e}"
+            _nlm_send_telegram_warning(
+                f"[NLM auto-recovery FAILED] {pipeline}\n"
+                f"Age: {age_hours:.1f}h since last success\n"
+                f"Rerun: subprocess error: {type(e).__name__}: {e}\n"
+                f"Run: python scripts/system_doctor.py --check-nlm"
+            )
+            continue
+
+        if proc.returncode == 0:
+            result["recovered"].append(pipeline)
+        else:
+            result["failed"].append(pipeline)
+            stderr = proc.stderr or proc.stdout or ""
+            _nlm_send_telegram_warning(
+                f"[NLM auto-recovery FAILED] {pipeline}\n"
+                f"Age: {age_hours:.1f}h since last success\n"
+                f"Rerun: returncode={proc.returncode}, timeout={NLM_RERUN_TIMEOUT_S}s\n"
+                f"Stderr: {stderr[-500:]}\n"
+                f"Run: python scripts/system_doctor.py --check-nlm"
+            )
+
+    return result
+
+
 # --- Report formatting ---
 
 def build_telegram_summary(report: DoctorReport) -> str:
@@ -1369,8 +1559,17 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="Read-only, no auto-fixes")
     parser.add_argument("--verbose", action="store_true", help="Debug output to stderr")
     parser.add_argument("--notify-telegram", action="store_true", help="Send Telegram alert on issues (used by cron)")
+    parser.add_argument("--check-nlm", action="store_true",
+                        help="Run only NLM pipeline auto-recovery (P1-7) and print result JSON")
     args = parser.parse_args()
     VERBOSE = args.verbose
+
+    if args.check_nlm:
+        state_dir_env = os.environ.get("NLM_STATE_DIR")
+        state_dir = Path(state_dir_env) if state_dir_env else NLM_STATE_DIR
+        nlm_result = check_nlm_pipelines_stuck(state_dir=state_dir, now_fn=time.time)
+        print(json.dumps(nlm_result, indent=2, default=str))
+        return
 
     log("Starting System Doctor...")
     now = datetime.now(WITA)
