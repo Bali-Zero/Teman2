@@ -44,6 +44,27 @@ VALID_THRESHOLD = 0.6
 REVIEW_THRESHOLD = 0.3
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient (citation_check
+# fallback when no client is injected). Lifespan-closed via
+# close_intel_validators_client() in app_factory.lifespan().
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client() -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(follow_redirects=True, timeout=10.0)
+    return _module_client
+
+
+async def close_intel_validators_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 # ── Dataclasses ─────────────────────────────────────────────────────────
 
 
@@ -123,39 +144,37 @@ async def citation_check(
 
     Accepts injected http_client for testing. If None, creates one and closes it.
     """
-    client_owned = http_client is None
-    client: Any = http_client or httpx.AsyncClient(follow_redirects=True, timeout=10.0)
-    try:
-        for attempt in range(max_retries):
-            try:
-                r = await client.head(url)
-                if 200 <= r.status_code < 300:
-                    return CitationResult.PASS
-                if r.status_code in _DEFINITIVE_CODES:
-                    return CitationResult.DEFINITIVE_FAIL
-                # 5xx or unexpected — retry
-                logger.info(
-                    "citation_check %s: status=%s, retry %d/%d",
-                    url, r.status_code, attempt + 1, max_retries,
-                )
-            except httpx.TimeoutException:
-                logger.info(
-                    "citation_check %s: timeout, retry %d/%d",
-                    url, attempt + 1, max_retries,
-                )
-            except httpx.HTTPError as exc:
-                logger.info(
-                    "citation_check %s: %s, retry %d/%d",
-                    url, exc, attempt + 1, max_retries,
-                )
+    # Golden Rule #10: when no client is injected, reuse the module-level
+    # singleton so concurrent citation checks don't each open a new TCP
+    # connection. Lifespan closes the singleton on shutdown.
+    client: Any = http_client if http_client is not None else _get_module_client()
+    for attempt in range(max_retries):
+        try:
+            r = await client.head(url)
+            if 200 <= r.status_code < 300:
+                return CitationResult.PASS
+            if r.status_code in _DEFINITIVE_CODES:
+                return CitationResult.DEFINITIVE_FAIL
+            # 5xx or unexpected — retry
+            logger.info(
+                "citation_check %s: status=%s, retry %d/%d",
+                url, r.status_code, attempt + 1, max_retries,
+            )
+        except httpx.TimeoutException:
+            logger.info(
+                "citation_check %s: timeout, retry %d/%d",
+                url, attempt + 1, max_retries,
+            )
+        except httpx.HTTPError as exc:
+            logger.info(
+                "citation_check %s: %s, retry %d/%d",
+                url, exc, attempt + 1, max_retries,
+            )
 
-            if attempt + 1 < max_retries:
-                await asyncio.sleep(backoff_base * (2 ** attempt))
+        if attempt + 1 < max_retries:
+            await asyncio.sleep(backoff_base * (2 ** attempt))
 
-        return CitationResult.SOFT_FAIL
-    finally:
-        if client_owned:
-            await client.aclose()
+    return CitationResult.SOFT_FAIL
 
 
 # ── Tier 3 ──────────────────────────────────────────────────────────────

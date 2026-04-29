@@ -384,7 +384,11 @@ Yuk dicek biar nggak kelewat deadline!</p>
 
     @staticmethod
     def _get_http_client() -> httpx.AsyncClient:
-        return httpx.AsyncClient(
+        # Caller wraps in `async with self._get_http_client() as client:`
+        # — deterministic close. Equivalent to OK_CONTEXT_MANAGER per the
+        # P0-5 audit; flagged only because the instantiation is on a
+        # different line than the `async with`.
+        return httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
             headers={"User-Agent": "LKPMDeadlineNotifier/1.0"},
         )
 

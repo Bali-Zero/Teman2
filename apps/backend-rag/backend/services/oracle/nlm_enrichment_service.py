@@ -27,8 +27,13 @@ class NLMEnrichmentService:
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Return a persistent async HTTP client, creating one if needed."""
-        if self._client is None:
+        """Return a persistent async HTTP client, creating one if needed.
+
+        Golden Rule #10 — uses ``is_closed`` guard so the client is
+        re-created if a previous shutdown closed it (e.g. lifespan
+        teardown then a stray request arriving during graceful drain).
+        """
+        if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=15.0)
         return self._client
 

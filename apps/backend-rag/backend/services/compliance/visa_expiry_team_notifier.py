@@ -341,8 +341,13 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
 
     @staticmethod
     def _get_http_client() -> httpx.AsyncClient:
-        """Creates a reusable AsyncClient for a single notification run."""
-        return httpx.AsyncClient(
+        """Creates a reusable AsyncClient for a single notification run.
+
+        Caller wraps in ``async with self._get_http_client() as client:``
+        — deterministic close. Equivalent to OK_CONTEXT_MANAGER per the
+        P0-5 audit.
+        """
+        return httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
             headers={"User-Agent": "VisaExpiryTeamNotifier/1.0"},
         )
 

@@ -43,12 +43,33 @@ class WhatsAppChannelAdapter(BaseChannel):
         )
 
         self.formatter = WhatsAppMessageFormatter()
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        Created on first access; re-created if a previous shutdown closed
+        it. Lifespan teardown calls ``close()`` via the channel-router
+        adapter loop in ``app_factory.lifespan`` (security audit
+        2026-04-03). The ``isinstance`` guard protects unit tests that
+        inject AsyncMock instances.
+        """
+        c = self._client
+        if c is None or (isinstance(c, httpx.AsyncClient) and c.is_closed):
+            self._client = httpx.AsyncClient(timeout=30.0)
+        return self._client
+
+    @client.setter
+    def client(self, value: httpx.AsyncClient | None) -> None:
+        """Setter for unit tests that inject a mock AsyncClient."""
+        self._client = value
 
     async def close(self) -> None:
         """Close the HTTP client to prevent connection leaks."""
-        if self.client and not self.client.is_closed:
-            await self.client.aclose()
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
 
     async def receive_message(self, raw_event: dict) -> ChannelMessage:
         """

@@ -287,7 +287,7 @@ class ConnectionPool:
             if channel not in self.clients:
                 import httpx
 
-                self.clients[channel] = httpx.AsyncClient(
+                self.clients[channel] = httpx.AsyncClient(  # golden-rule-10-exempt: ConnectionPool owns lifecycle (close_all wired in shutdown)
                     timeout=self.timeout,
                     limits=httpx.Limits(max_connections=self.max_connections),
                 )

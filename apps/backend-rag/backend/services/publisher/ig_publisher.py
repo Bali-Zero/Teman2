@@ -42,6 +42,26 @@ DEFAULT_GRAPH_BASE = "https://graph.facebook.com/v20.0"
 DEFAULT_TIMEOUT = 30.0
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient. Lifespan
+# closes via close_ig_publisher_client() in app_factory.lifespan().
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_ig_publisher_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 class IGPublisher(Publisher):
     platform_name = Platform.INSTAGRAM
 
@@ -105,11 +125,7 @@ class IGPublisher(Publisher):
                 error=f"validation: {', '.join(validation.issues)}",
             )
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
         try:
             items = _build_items(draft)
@@ -168,17 +184,10 @@ class IGPublisher(Publisher):
                 draft_id=draft.draft_id,
                 error=f"{type(exc).__name__}: {exc}",
             )
-        finally:
-            if close_client:
-                await client.aclose()
 
     async def delete(self, post_external_id: str) -> bool:
         """Meta Graph API supports DELETE /{media-id}; best-effort."""
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
         try:
             resp = await client.delete(
                 f"{self.graph_base}/{post_external_id}",
@@ -189,9 +198,6 @@ class IGPublisher(Publisher):
         except Exception as exc:  # noqa: BLE001
             logger.info("ig delete failed: %s", exc)
             return False
-        finally:
-            if close_client:
-                await client.aclose()
 
     # ── Internal ─────────────────────────────────────────────────────
 
