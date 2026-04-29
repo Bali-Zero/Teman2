@@ -105,36 +105,73 @@ class TestInitCriticalServices:
     @pytest.mark.asyncio
     @patch("backend.app.setup.service_initializer.service_registry")
     @patch("backend.services.search.search_service.SearchService")
-    async def test_init_critical_services_search_failure(self, mock_search_service, mock_registry):
-        """Test SearchService initialization failure"""
-        app = FastAPI()
-        app.state = MagicMock()
+    async def test_init_critical_services_search_failure_degraded(
+        self, mock_search_service, mock_registry,
+    ):
+        """P0-1 (2026-04-29): SearchService init failure must NOT raise.
 
+        Previously this test asserted ``pytest.raises(RuntimeError)`` —
+        that fail-fast caused Fly.io restart loops on deterministic
+        Qdrant outages (cicatrix STRUCTURAL 2026-04-29). The new
+        contract: ``@degraded_safe('search')`` catches the exception,
+        registers ``search`` in ``app.state.degraded_services``, and
+        ``_init_critical_services`` returns ``(None, ai_client)``.
+        """
+        app = FastAPI()
+        # Use a real namespace so degraded_services set semantics work;
+        # MagicMock would silently accept any attribute access.
+        # NOTE: app.state is already a State() — we just ensure the
+        # decorator's hasattr/contains checks see a real set.
         mock_search_service.side_effect = ConnectionError("Qdrant connection failed")
         mock_registry.has_critical_failures.return_value = True
         mock_registry.format_failures_message.return_value = "Critical services failed"
 
-        with pytest.raises(RuntimeError):
-            await _init_critical_services(app)
+        search_service, ai_client = await _init_critical_services(app)
+
+        assert search_service is None, (
+            "expected None on degraded init; got " f"{search_service!r}"
+        )
+        # The decorator must have registered the service name.
+        assert hasattr(app.state, "degraded_services"), (
+            "app.state.degraded_services must be set by @degraded_safe"
+        )
+        assert "search" in app.state.degraded_services, (
+            "expected 'search' in degraded_services; got "
+            f"{app.state.degraded_services!r}"
+        )
 
     @pytest.mark.asyncio
     @patch("backend.app.setup.service_initializer.service_registry")
     @patch("backend.llm.zantara_ai_client.ZantaraAIClient")
     @patch("backend.services.search.search_service.SearchService")
-    async def test_init_critical_services_ai_failure(
+    async def test_init_critical_services_ai_failure_degraded(
         self, mock_search_service, mock_ai_client, mock_registry,
     ):
-        """Test ZantaraAIClient initialization failure"""
-        app = FastAPI()
-        app.state = MagicMock()
+        """P0-1 (2026-04-29): ZantaraAIClient init failure must NOT raise.
 
+        See ``test_init_critical_services_search_failure_degraded`` for
+        the contract change rationale. Same expectation: returns
+        ``(search_service, None)``, registers ``ai_client`` in
+        ``app.state.degraded_services``.
+        """
+        app = FastAPI()
         mock_search_service.return_value = MagicMock()
         mock_ai_client.side_effect = ValueError("AI client init failed")
         mock_registry.has_critical_failures.return_value = True
         mock_registry.format_failures_message.return_value = "Critical services failed"
 
-        with pytest.raises(RuntimeError):
-            await _init_critical_services(app)
+        search_service, ai_client = await _init_critical_services(app)
+
+        assert ai_client is None, (
+            "expected None on degraded init; got " f"{ai_client!r}"
+        )
+        assert hasattr(app.state, "degraded_services"), (
+            "app.state.degraded_services must be set by @degraded_safe"
+        )
+        assert "ai_client" in app.state.degraded_services, (
+            "expected 'ai_client' in degraded_services; got "
+            f"{app.state.degraded_services!r}"
+        )
 
 
 class TestInitToolStack:

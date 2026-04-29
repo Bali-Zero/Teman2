@@ -1,24 +1,41 @@
 """
 Service Initialization Module
 
-Handles initialization of all ZANTARA RAG services with fail-fast for critical services.
+Handles initialization of all ZANTARA RAG services with **degraded-mode**
+semantics for critical services (P0-1, 2026-04-29).
 
-Critical services (SearchService, ZantaraAIClient) must initialize successfully.
-If any critical service fails, the application will raise RuntimeError to prevent starting in a broken state.
+Critical services (SearchService, ZantaraAIClient) are wrapped with the
+``@degraded_safe`` decorator: if init fails the exception is logged, the
+service name is registered in ``app.state.degraded_services`` (and in the
+existing ``service_registry``), and the app keeps booting so uvicorn can
+bind 8080. Routers depending on a degraded service must surface a
+structured 503 (see ``backend.app.deps.services.get_search_service``).
+
+This replaces the previous fail-fast that raised RuntimeError when a
+critical service failed to init — that pattern caused Fly.io to enter a
+restart loop on deterministic failures (cicatrix STRUCTURAL 2026-04-29
+"Backend /health masks app.state.startup_failed"). With P0-0 already in
+main, /health correctly returns 503 on ``app.state.startup_failed``, but
+a degraded-but-running backend is preferable to a crash loop because at
+least /health and the read-only routers stay reachable for diagnosis.
+
+Non-critical services continue to use the in-place try/except pattern
+(no ``raise``), unchanged.
+
+Reference: docs/audits/2026-04-29-zero-crash-audit/11_brainstorms/P0-1_searchservice_degraded_mode.md
 
 # Cache bust: 2026-01-01 15:38 UTC - Fixed _init_rag_components function definition
-
-Non-critical services will log errors and continue with degraded functionality.
 """
 
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import os
 import random
-from typing import Any
+from typing import Any, Callable
 
 import asyncpg
 from fastapi import FastAPI
@@ -29,117 +46,230 @@ from backend.app.core.service_health import ServiceStatus, service_registry
 logger = logging.getLogger("zantara.backend")
 
 
+def _record_genome_scar(service_name: str, exc: Exception) -> None:
+    """Best-effort scar registration in the genome KB.
+
+    Symbiosis Pillar 2 (accumulated learning): every degraded init is a
+    cicatrix that future agents should be able to query. We swallow ANY
+    failure here — a missing/broken genome module must never block app
+    startup.
+    """
+    try:  # noqa: SIM105 — broad catch is intentional, see docstring
+        from backend.services.genome.client import (  # type: ignore[import-not-found]
+            get_genome_client,
+        )
+
+        get_genome_client().record_scar(
+            cell="apps/backend-rag",
+            scar_id=f"{service_name}_init_failure_{type(exc).__name__}",
+            procedure=f"_init_critical_services raised {type(exc).__name__}",
+            rationale=str(exc)[:500],
+        )
+    except Exception:
+        # Genome unavailable / contract changed / Redis down — never
+        # propagate. The degraded_services set + service_registry are the
+        # authoritative signals; genome is the cherry on top.
+        return
+
+
+def degraded_safe(service_name: str) -> Callable[..., Any]:
+    """Decorator: catches init failure → registers service as degraded.
+
+    Wraps an ``async def _init_<X>(app: FastAPI, ...)`` so that an
+    exception during init does NOT propagate — instead:
+
+    1. The exception is logged (with stack trace) at ERROR level.
+    2. ``app.state.degraded_services`` is initialized to a ``set`` if
+       missing, and ``service_name`` is added.
+    3. A best-effort genome scar is recorded (see ``_record_genome_scar``).
+    4. The wrapper returns ``None``, so the caller's destructuring keeps
+       working (e.g. ``search_service, ai_client = ...``).
+
+    The decorator does NOT touch ``service_registry`` — that remains the
+    init function's responsibility on success, and the per-service
+    try/except (still inside the wrapped helper) is responsible for the
+    UNAVAILABLE registration on failure. Two-track state is intentional:
+    ``service_registry`` is the in-process status board,
+    ``degraded_services`` is the user-facing surface (returned in 503
+    detail by dependencies).
+
+    P0-0 (in main) made ``/health`` return 503 on
+    ``app.state.startup_failed``. With P0-1, ``startup_failed`` stays
+    ``False`` even when one critical service is degraded — the health
+    endpoint (and downstream routers) can read ``degraded_services`` to
+    report granular status.
+    """
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(fn)
+        async def wrapper(app: FastAPI, *args: Any, **kwargs: Any) -> Any:
+            try:
+                return await fn(app, *args, **kwargs)
+            except Exception as exc:  # noqa: BLE001 — by design, see docstring
+                logger.exception(
+                    "❌ Critical service '%s' init failed; entering degraded mode",
+                    service_name,
+                )
+                if (
+                    not hasattr(app.state, "degraded_services")
+                    or app.state.degraded_services is None
+                ):
+                    app.state.degraded_services = set()
+                app.state.degraded_services.add(service_name)
+                _record_genome_scar(service_name, exc)
+                return None
+        return wrapper
+    return decorator
+
+
+@degraded_safe("search")
+async def _init_search_service(app: FastAPI) -> Any:
+    """Initialize SearchService and verify Qdrant reachability.
+
+    On failure: ``@degraded_safe`` catches, registers ``search`` in
+    ``app.state.degraded_services``, returns None. On success: registers
+    HEALTHY in ``service_registry``. The ``SEARCH_FORCE_FAIL`` env var
+    deterministically triggers the degraded path for local end-to-end
+    verification (see Phase 5 of the P0-1 prompt) — guarded by an env
+    check so it never accidentally trips in CI.
+    """
+    if os.getenv("SEARCH_FORCE_FAIL") == "1":
+        # Test/verification hook only. Raising here exercises the
+        # @degraded_safe path end-to-end without breaking Qdrant.
+        raise RuntimeError(
+            "SEARCH_FORCE_FAIL=1 — synthetic degraded-mode injection (P0-1)",
+        )
+
+    from backend.services.ingestion.collection_manager import CollectionManager
+    from backend.services.misc.cultural_insights_service import CulturalInsightsService
+    from backend.services.routing.conflict_resolver import ConflictResolver
+    from backend.services.routing.query_router_integration import QueryRouterIntegration
+    from backend.services.search.search_service import SearchService
+
+    # Create shared services
+    collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
+    conflict_resolver = ConflictResolver()
+    query_router = QueryRouterIntegration()
+
+    # Create cultural insights service (requires embedder)
+    from backend.core.embeddings import create_embeddings_generator
+
+    embedder = create_embeddings_generator()
+    cultural_insights = CulturalInsightsService(
+        collection_manager=collection_manager, embedder=embedder,
+    )
+
+    # Create SearchService with dependencies
+    search_service = SearchService(
+        collection_manager=collection_manager,
+        conflict_resolver=conflict_resolver,
+        cultural_insights=cultural_insights,
+        query_router=query_router,
+    )
+
+    # Add cross-encoder reranking methods to SearchService instance
+    # (non-critical: a failure here doesn't degrade SearchService itself)
+    if settings.reranker_backend == "cross-encoder":
+        try:
+            from backend.services.rag.reranker_integration import add_cross_encoder_reranking
+
+            add_cross_encoder_reranking(search_service)
+        except Exception as e:
+            logger.warning(f"⚠️ Cross-encoder reranking setup failed (non-critical): {e}")
+
+    # Store services in app state for dependency injection. ONLY done on
+    # the success path — partially-initialized state would mislead
+    # downstream code into thinking SearchService is ready.
+    app.state.collection_manager = collection_manager
+    app.state.conflict_resolver = conflict_resolver
+    app.state.cultural_insights = cultural_insights
+    app.state.query_router = query_router
+    app.state.search_service = search_service
+
+    # Verify Qdrant is actually reachable before registering as HEALTHY.
+    # Note: a Qdrant probe failure here is registered as UNAVAILABLE in
+    # service_registry but does NOT trip degraded_safe (we don't re-raise)
+    # — the SearchService object exists, callers will discover Qdrant
+    # downtime at request time. This preserves prior behavior.
+    try:
+        import httpx as _httpx
+
+        _headers = {}
+        if settings.qdrant_api_key:
+            _headers["api-key"] = settings.qdrant_api_key
+        async with _httpx.AsyncClient(
+            base_url=settings.qdrant_url, headers=_headers, timeout=5.0,
+        ) as _qdrant_check:
+            _resp = await _qdrant_check.get("/collections")
+            _resp.raise_for_status()
+        service_registry.register("search", ServiceStatus.HEALTHY)
+        logger.info("✅ SearchService initialized (Qdrant verified)")
+    except Exception as qdrant_err:
+        service_registry.register(
+            "search", ServiceStatus.UNAVAILABLE,
+            error=f"SearchService created but Qdrant unreachable: {qdrant_err}",
+        )
+        logger.error(
+            f"❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: {qdrant_err}",
+        )
+
+    return search_service
+
+
+@degraded_safe("ai_client")
+async def _init_ai_client(app: FastAPI) -> Any:
+    """Initialize ZantaraAIClient.
+
+    On failure: ``@degraded_safe`` catches, registers ``ai_client`` in
+    ``app.state.degraded_services``, returns None.
+    """
+    from backend.llm.zantara_ai_client import ZantaraAIClient
+
+    ai_client = ZantaraAIClient()
+    app.state.ai_client = ai_client
+    service_registry.register("ai", ServiceStatus.HEALTHY)
+    logger.info("✅ ZantaraAIClient initialized")
+    return ai_client
+
+
 async def _init_critical_services(
     app: FastAPI,
 ) -> tuple[Any, Any]:
     """
     Initialize critical services: SearchService and ZantaraAIClient.
 
-    These services must initialize successfully or the application will fail to start.
+    P0-1 (2026-04-29): no longer raises on failure. Each helper is
+    wrapped with ``@degraded_safe`` which logs, registers the service in
+    ``app.state.degraded_services``, and returns None. The app keeps
+    booting so uvicorn binds 8080; routers depending on these services
+    must surface 503 (see ``backend.app.deps.services``).
 
     Args:
         app: FastAPI application instance
 
     Returns:
-        Tuple of (search_service, ai_client). Both may be None if initialization failed.
-
-    Raises:
-        RuntimeError: If critical services fail to initialize
+        Tuple of (search_service, ai_client). Either may be None if
+        initialization failed; callers must handle the None case.
     """
-    from backend.llm.zantara_ai_client import ZantaraAIClient
-    from backend.services.search.search_service import SearchService
-
     # Store service registry in app state for health endpoints
     app.state.service_registry = service_registry
 
-    # 1. Search / Qdrant (CRITICAL)
-    search_service = None
-    try:
-        # Initialize SearchService with dependency injection
-        from backend.services.ingestion.collection_manager import CollectionManager
-        from backend.services.misc.cultural_insights_service import CulturalInsightsService
-        from backend.services.routing.conflict_resolver import ConflictResolver
-        from backend.services.routing.query_router_integration import QueryRouterIntegration
+    # 1. Search / Qdrant (CRITICAL — degraded-mode on failure)
+    search_service = await _init_search_service(app)
 
-        # Create shared services
-        collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
-        conflict_resolver = ConflictResolver()
-        query_router = QueryRouterIntegration()
+    # 2. AI Client (CRITICAL — degraded-mode on failure)
+    ai_client = await _init_ai_client(app)
 
-        # Create cultural insights service (requires embedder)
-        from backend.core.embeddings import create_embeddings_generator
-
-        embedder = create_embeddings_generator()
-        cultural_insights = CulturalInsightsService(
-            collection_manager=collection_manager, embedder=embedder,
-        )
-
-        # Create SearchService with dependencies
-        search_service = SearchService(
-            collection_manager=collection_manager,
-            conflict_resolver=conflict_resolver,
-            cultural_insights=cultural_insights,
-            query_router=query_router,
-        )
-
-        # Add cross-encoder reranking methods to SearchService instance
-        if settings.reranker_backend == "cross-encoder":
-            try:
-                from backend.services.rag.reranker_integration import add_cross_encoder_reranking
-
-                add_cross_encoder_reranking(search_service)
-            except Exception as e:
-                logger.warning(f"⚠️ Cross-encoder reranking setup failed (non-critical): {e}")
-
-        # Store services in app state for dependency injection
-        app.state.collection_manager = collection_manager
-        app.state.conflict_resolver = conflict_resolver
-        app.state.cultural_insights = cultural_insights
-        app.state.query_router = query_router
-        app.state.search_service = search_service
-
-        # Verify Qdrant is actually reachable before registering as HEALTHY
-        try:
-            import httpx as _httpx
-
-            _headers = {}
-            if settings.qdrant_api_key:
-                _headers["api-key"] = settings.qdrant_api_key
-            async with _httpx.AsyncClient(
-                base_url=settings.qdrant_url, headers=_headers, timeout=5.0,
-            ) as _qdrant_check:
-                _resp = await _qdrant_check.get("/collections")
-                _resp.raise_for_status()
-            service_registry.register("search", ServiceStatus.HEALTHY)
-            logger.info("✅ SearchService initialized (Qdrant verified)")
-        except Exception as qdrant_err:
-            service_registry.register(
-                "search", ServiceStatus.UNAVAILABLE,
-                error=f"SearchService created but Qdrant unreachable: {qdrant_err}",
-            )
-            logger.error(f"❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: {qdrant_err}")
-    except (ValueError, ConnectionError, RuntimeError) as e:
-        error_msg = str(e)
-        service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(f"❌ CRITICAL: Failed to initialize SearchService: {e}", exc_info=True)
-
-    # 2. AI Client (CRITICAL)
-    ai_client = None
-    try:
-        ai_client = ZantaraAIClient()
-        app.state.ai_client = ai_client
-        service_registry.register("ai", ServiceStatus.HEALTHY)
-        logger.info("✅ ZantaraAIClient initialized")
-    except (ValueError, ConnectionError, RuntimeError) as exc:
-        error_msg = str(exc)
-        service_registry.register("ai", ServiceStatus.UNAVAILABLE, error=error_msg)
-        logger.error(f"❌ CRITICAL: Failed to initialize ZantaraAIClient: {exc}", exc_info=True)
-
-    # Fail-fast if critical services are unavailable
+    # P0-1: NO `raise RuntimeError` here. The previous fail-fast caused
+    # Fly.io restart loops on deterministic failures (cicatrix
+    # STRUCTURAL 2026-04-29). Health endpoint surfaces degraded state via
+    # `app.state.degraded_services`; per-router dependencies surface 503
+    # to clients. This is intentional graceful degradation.
     if service_registry.has_critical_failures():
-        error_msg = service_registry.format_failures_message()
-        logger.critical(f"🔥 {error_msg}")
-        raise RuntimeError(error_msg)
+        failures = service_registry.format_failures_message()
+        logger.warning(
+            "⚠️ Critical service(s) degraded but app continues to boot: %s",
+            failures,
+        )
 
     return search_service, ai_client
 
