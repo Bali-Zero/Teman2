@@ -384,12 +384,31 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     )
 
     started_at = time.time()
-    try:
-        _launch_claude()
-        _focus_claude_and_send_command(command_text)
-    except Exception as e:
-        logger.error("GUI automation failed: %s", e)
-        _send_telegram(f"WR2 Canva apply GUI failed: {e}")
+    # PR-D2 (2026-04-30): GUI automation fails transiently when another app
+    # steals focus during the milliseconds between activate + verify_frontmost.
+    # Retry envelope: up to 5 attempts with 30s gap. Telegram alert only
+    # after the full envelope fails — no per-attempt noise.
+    last_error: Exception | None = None
+    for attempt in range(1, 6):
+        try:
+            _launch_claude()
+            _focus_claude_and_send_command(command_text)
+            if attempt > 1:
+                logger.info("GUI automation succeeded on attempt %d/5", attempt)
+            last_error = None
+            break
+        except Exception as e:  # noqa: BLE001
+            last_error = e
+            logger.warning(
+                "GUI automation attempt %d/5 failed: %s", attempt, e,
+            )
+            if attempt < 5:
+                time.sleep(30)
+    if last_error is not None:
+        logger.error("GUI automation exhausted 5 retries: %s", last_error)
+        _send_telegram(
+            f"WR2 Canva apply GUI failed after 5 retries: {last_error}"
+        )
         return False
 
     logger.info("Command sent — polling for output...")
