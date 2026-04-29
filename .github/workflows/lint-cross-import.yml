@@ -1,0 +1,117 @@
+name: Lint Cross-Import
+
+# NB-D guard (audit 2026-04-29): pre-deploy lint that catches cross-workspace
+# import violations BEFORE Vercel monorepo build cascades a single broken
+# package.json across all 21 apps. See:
+#   docs/audits/2026-04-29-zero-crash-audit/09_intervention_plan.md  (NB-D)
+#   .claude/rules/cicatrix-scars.md                                  (entry to be added on resolution)
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'apps/*/package.json'
+      - 'packages/*/package.json'
+      - 'apps/*/tsconfig*.json'
+      - 'packages/*/tsconfig*.json'
+      - 'scripts/lint_cross_import.sh'
+      - '.github/workflows/lint-cross-import.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-cross-import-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-cross-import:
+    name: Cross-import integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Python (for the helper script)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Step 1 — package.json JSON validity (covers BOTH workspace and orphan
+      # apps; e.g. apps/kbli-navigator is not in `workspaces` but its
+      # package.json must still parse).
+      - name: Validate package.json files
+        run: bash scripts/lint_cross_import.sh validate-json
+
+      # Step 2 — install workspace deps via lockfile. --ignore-scripts speeds
+      # up and avoids postinstall side effects (we only need the dep tree, not
+      # any build artefacts). --no-audit / --no-fund kill noise.
+      - name: Install workspaces (npm ci, lockfile-bound)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # Step 3 — workspace dependency tree integrity. We deliberately scope to
+      # `missing:` ONLY as a HARD violation. `extraneous` is downgraded to a
+      # warning because Linux CI runners install platform-specific optional
+      # deps (e.g. `@emnapi/*`, `@napi-rs/wasm-runtime`, `@tybys/wasm-util`)
+      # that npm flags `extraneous` against the lockfile baked on macOS — a
+      # cross-platform `npm ci` quirk, not a real bug. `UNMET PEER DEPENDENCY`
+      # is also informational. The audit goal is regression-detection on a
+      # MISSING direct dep (the actual Vercel-cascade root cause), not
+      # retro-cleanup of historical optional/peer noise.
+      - name: npm dependency tree integrity
+        run: |
+          set +e
+          npm ls --workspaces --all --depth=0 > npm-ls.out 2> npm-ls.err
+          rc=$?
+          set -e
+          # Print everything for the run log (so reviewers can inspect).
+          if [ -s npm-ls.out ]; then
+            echo "----- npm ls stdout -----"
+            cat npm-ls.out
+          fi
+          if [ -s npm-ls.err ]; then
+            echo "----- npm ls stderr -----"
+            cat npm-ls.err
+          fi
+          # HARD violation: `missing:` lines (a workspace declares a dep that's
+          # not actually installed — this is what cascades to a broken Vercel
+          # build).
+          if grep -E '(^|\s)missing:' npm-ls.err npm-ls.out > /dev/null 2>&1; then
+            echo "::error::npm workspace dependency tree has HARD violations (missing direct deps). See log above."
+            grep -nE '(^|\s)missing:' npm-ls.err npm-ls.out | sed 's/^/::error::npm-ls: /'
+            exit 1
+          fi
+          # Soft signal: extraneous packages — usually optional/platform deps.
+          if grep -E '(^|\s)extraneous' npm-ls.err npm-ls.out > /dev/null 2>&1; then
+            echo "::warning::npm reports extraneous packages (informational; common for cross-platform optional deps like @emnapi/*, @napi-rs/wasm-runtime). Not gating."
+          fi
+          # Soft signal: peer warnings — informational only.
+          if grep -E 'UNMET PEER DEPENDENCY' npm-ls.err > /dev/null 2>&1; then
+            echo "::warning::npm reports UNMET PEER DEPENDENCY (informational, not gating). Inspect log."
+          fi
+          # If npm ls exited non-zero but we found no HARD violation, that's
+          # the expected outcome on this repo (extraneous + peer noise) —
+          # don't surface it as a problem.
+
+      # Step 4 — circular workspace import detection (DFS over @nuzantara/* and
+      # @balizero/* edges in each package.json).
+      - name: Detect circular workspace imports
+        run: bash scripts/lint_cross_import.sh circular
+
+      # Step 5 — drift detector: source imports of @nuzantara/* / @balizero/*
+      # must be either declared in the nearest package.json or aliased in the
+      # nearest tsconfig*.json compilerOptions.paths. (tsconfig path aliases
+      # ARE the canonical resolution path in this repo — see
+      # apps/mouth/tsconfig.json which aliases @balizero/core to packages/core.)
+      - name: Detect undeclared workspace imports
+        run: bash scripts/lint_cross_import.sh undeclared
