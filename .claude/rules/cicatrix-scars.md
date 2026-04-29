@@ -214,9 +214,9 @@ Squawk: [`docs/oss-injections-2026-04-26.md`](../../docs/oss-injections-2026-04-
 
 ---
 
-### ⚠️ STRUCTURAL: SQL v2 migrations apply on OLD image, not the freshly-built one (2026-04-26)
+### ✅ RESOLVED: SQL v2 migrations apply on OLD image, not the freshly-built one (2026-04-26 → 2026-04-29)
 
-_Discovered: 2026-04-26 deploy of PR #307 (migration 139 `intel_radar_findings`) · Workaround: `workflow_dispatch` re-trigger after merge_
+_Discovered: 2026-04-26 deploy of PR #307 (migration 139 `intel_radar_findings`) · Workaround: `workflow_dispatch` re-trigger after merge · Patched: 2026-04-29 via PR #336 + #339 + #340, verified in fly-deploy run 25097928856 (commit `711cd6066`) which applied 30 migrations on fresh image including canary 141, with `applied_count=30` notice in workflow log_
 
 **TRAUMA:** `.github/workflows/fly-deploy.yml` runs jobs in this order:
 
@@ -291,6 +291,41 @@ Idempotent (the runner skips already-applied migrations via `_schema_versions` t
 - This caveat does NOT affect Python-style migrations (`backend/migrations/apply_migration_NNN.py`) — those are handled by the existing `run-python-migrations` post-deploy job. SQL v2 is the gap.
 
 **Why we discovered it on PR #307 specifically:** prior SQL v2 migrations (e.g. 138 `wr2_status_notify`) had a follow-up commit on the same day that re-triggered the workflow on a new push, masking the issue. PR #307 was a clean single-deploy, exposing the gap.
+
+**RESOLUTION (2026-04-29, P0-4 zero-crash audit):** PR #336 added job
+`run-sql-v2-migrations-post-deploy` after `deploy`, with two follow-up
+hotfixes that landed lessons worth keeping:
+
+- **PR #339** — sentinel must filter `config.metadata.fly_process_group == "api"`. The
+  app has two process groups (`api`, `rag`); they share the image tag at
+  deploy time but have different installed Python packages. Without the
+  filter, the sentinel could pick a `rag`-group machine and crash with
+  `ModuleNotFoundError: asyncpg` (run 25095416132). The pre-deploy
+  `run-migrations` job omits `--machine` and flyctl auto-routes — once we
+  pin via `--machine`, that auto-routing is gone.
+- **PR #340** — do NOT add `PYTHONPATH=.` to the post-deploy command. The
+  Fly image has its `sys.path` configured at build time; `PYTHONPATH=.`
+  shadows site-packages on this image and asyncpg disappears even on the
+  api group (run 25096530075). Keep the post-deploy `--command`
+  byte-identical to the pre-deploy one. The kakuro-S2 prompt template
+  suggested `PYTHONPATH=.` by analogy with the local-dev golden rule
+  "No Root Execution: PYTHONPATH=. python -m backend.module" — that rule
+  is for local dev, not Fly containers.
+
+Verified in fly-deploy run 25097928856 (commit `711cd6066`): job applied
+30 migrations on the fresh image including canary 141 with
+`applied_count=30` notice. Telegram alert fired but got 401 Unauthorized
+— **separate cicatrix to track**: bot token rotation needed for
+`TELEGRAM_BOT_TOKEN` secret. Migration itself succeeded; alert loss is
+recoverable (workflow notice in run logs).
+
+**NEW GOTCHA (post-resolution):** Future agents adding any new
+`flyctl ssh console --machine` step must (a) filter machines by
+`fly_process_group` to the group that has the package they need, and
+(b) NOT prefix the inner command with `PYTHONPATH=.` unless they have
+verified empirically that it does NOT shadow site-packages on the
+target image. Defensive default: copy the existing pre-deploy
+`run-migrations` command character-for-character.
 
 ---
 
