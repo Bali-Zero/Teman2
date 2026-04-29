@@ -231,6 +231,47 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.error(f"⚠️ Failed to initialize EventBus: {e}")
 
+            # Initialize WebhookProcessor (P0-6 zero-crash audit 2026-04-29)
+            # Drains the inbound_webhooks table populated by ack-first
+            # webhook routers (whatsapp, telegram, instagram, twitter).
+            # Handles failures + Fly machine crash recovery via PG LISTEN
+            # on inbound_webhook_queued + 5s polling fallback.
+            try:
+                from backend.services.channels.webhook_processor import (
+                    WebhookProcessor,
+                )
+
+                # Per-channel handlers retry the same business logic the
+                # routers normally invoke synchronously. They re-route via
+                # the existing ChannelRouter on app.state.channel_router.
+                async def _route_via_channel_router(
+                    channel_name: str, payload: dict
+                ) -> None:
+                    cr = getattr(app.state, "channel_router", None)
+                    if cr is None:
+                        raise RuntimeError(
+                            "ChannelRouter not initialized — cannot retry "
+                            f"inbound {channel_name} webhook"
+                        )
+                    await cr.route_message(channel_name, payload)
+
+                webhook_processor = WebhookProcessor(
+                    db_pool=app.state.db_pool,
+                    handlers={
+                        "whatsapp": lambda p: _route_via_channel_router("whatsapp", p),
+                        "telegram": lambda p: _route_via_channel_router("telegram", p),
+                        "instagram": lambda p: _route_via_channel_router("instagram", p),
+                        "twitter": lambda p: _route_via_channel_router("twitter", p),
+                    },
+                )
+                await webhook_processor.start()
+                app.state.webhook_processor = webhook_processor
+                logger.info(
+                    "✅ WebhookProcessor started (whatsapp+telegram+instagram+twitter)"
+                )
+            except Exception as e:
+                logger.error(f"⚠️ Failed to initialize WebhookProcessor: {e}")
+
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
     app.state._init_task = init_task
@@ -348,6 +389,11 @@ async def lifespan(app: FastAPI):
     event_bus = getattr(app.state, "event_bus", None)
     if event_bus:
         await _safe_stop("EventBus", event_bus.stop())
+
+    # Shutdown WebhookProcessor (P0-6)
+    webhook_processor = getattr(app.state, "webhook_processor", None)
+    if webhook_processor:
+        await _safe_stop("WebhookProcessor", webhook_processor.stop())
 
     # Shutdown Database Health Check Loop
     db_health_check_task = getattr(app.state, "db_health_check_task", None)

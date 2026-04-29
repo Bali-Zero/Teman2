@@ -162,7 +162,19 @@ async def verify_instagram_webhook(request: Request) -> PlainTextResponse:
 
 @webhook_router.post("")
 async def instagram_webhook(request: Request) -> dict[str, Any]:
-    """Handle incoming Instagram DMs via ChannelRouter."""
+    """Handle incoming Instagram DMs — ack-first pattern (P0-6 audit 2026-04-29).
+
+    Flow:
+      1. Parse payload + filter echo/read/delivery events.
+      2. Persist each message to ``inbound_webhooks`` (idempotent on
+         message.mid via UNIQUE(channel, dedup_key)).
+      3. Synchronously route via ChannelRouter (existing behavior).
+      4. Return 200 OK — Meta requires this.
+
+    The WebhookProcessor (services/channels/webhook_processor.py) drains
+    any rows that the synchronous path missed (Fly machine crash, channel
+    router exception, etc.) so no inbound DM is silently lost.
+    """
     try:
         raw_payload = await request.json()
         webhook = InstagramWebhook(**raw_payload)
@@ -202,6 +214,40 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
             if not messaging.message.text:
                 logger.info("IG Webhook: skipping non-text message")
                 return {"status": "ok"}
+
+    # ── Ack-first persistence (P0-6) ──
+    # Dedup key: messaging[0].message.mid. Best-effort — never block the ack.
+    db_pool = None
+    try:
+        from backend.app.dependencies import get_database
+        db_pool = get_database(request)
+    except Exception:
+        pass
+
+    if db_pool is not None:
+        mid = ""
+        try:
+            for entry in webhook.entry:
+                for messaging in entry.messaging:
+                    if messaging.message and messaging.message.mid:
+                        mid = messaging.message.mid
+                        break
+                if mid:
+                    break
+
+            if mid:
+                from backend.services.channels import inbound_webhook_repo
+                await inbound_webhook_repo.persist(
+                    db_pool,
+                    channel="instagram",
+                    dedup_key=mid,
+                    payload=raw_payload,
+                )
+        except Exception as exc:  # noqa: BLE001 — never block ack
+            logger.warning(
+                "IG Webhook: persist failed (mid=%s): %s — "
+                "falling back to synchronous-only path", mid, exc,
+            )
 
     try:
         from backend.app.dependencies import get_channel_router

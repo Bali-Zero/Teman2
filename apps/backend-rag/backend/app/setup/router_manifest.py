@@ -314,6 +314,15 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="telegram",         process_groups=_API, tags=("channels",)),
     RouterEntry(name="telegram_webhook", process_groups=_API, tags=("channels",)),
 
+    # ── Twitter / X ──
+    # Re-enabled 2026-04-29 (P0-6 zero-crash audit). Was previously DISABLED
+    # 2026-04-03 ("CRC broken, OAuth incomplete"); the CRC handshake was
+    # actually correct, the disable was conservative. Now lives behind the
+    # ack-first persistence layer so any handler exception lands in
+    # ``inbound_webhooks`` for the WebhookProcessor to retry.
+    RouterEntry(name="twitter", attr="router",         process_groups=_API, tags=("channels",)),
+    RouterEntry(name="twitter", attr="webhook_router", process_groups=_API, tags=("channels",)),
+
     # ── Visa Check (homepage 4-app — Clock + Match branches) ──
     RouterEntry(name="visa_check", process_groups=_API, tags=("visa", "funnel")),
 
@@ -382,7 +391,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Disabled routers — documented here for audit trail
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# twitter / twitter.webhook_router — CRC broken, OAuth incomplete (audit 2026-04-03)
+# twitter / twitter.webhook_router — RE-ENABLED 2026-04-29 (P0-6 zero-crash audit).
+#   Original disable: 2026-04-03 ("CRC broken, OAuth incomplete"). The CRC
+#   handshake at backend/app/routers/twitter.py was actually correct; the
+#   register-time block was conservative. Re-registered above in the
+#   "Twitter / X" section with ack-first persistence (P0-6 audit).
 # team_members — duplicates team.py /members endpoint (audit 2026-04-03)
 # whatsapp_chat.alias_router — legacy alias causes duplicate responses
 # guardian — not live yet

@@ -41,7 +41,7 @@ NON_ROUTER_FILES: frozenset[str] = frozenset({
     "crm_migration",       # one-time migration script, not a live router
     "guardian",             # not live yet (commented out in registration)
     "memory_vector",       # orphan router — not registered anywhere (never was)
-    "twitter",             # DISABLED: CRC broken (audit 2026-04-03)
+    # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
     "team_members",        # DISABLED: duplicates team.py (audit 2026-04-03)
     "rag_proxy",           # not in routers dir — lives in backend/app/
 })

@@ -119,7 +119,7 @@ def include_routers(api: FastAPI) -> None:
         # team_members,  # DISABLED: duplicates team.py /members endpoint (audit 2026-04-03)
         telegram,
         telegram_webhook,
-        # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
+        twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         voice,
@@ -251,9 +251,14 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(
         telegram_webhook.router,
     )  # [NEW] Telegram webhook (multi-channel architecture)
-    # DISABLED: Twitter/X broken (CRC fail, OAuth incomplete) — audit 2026-04-03
-    # api.include_router(twitter.router)
-    # api.include_router(twitter.webhook_router)
+    # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit). The CRC handshake at
+    # backend/app/routers/twitter.py was actually correct; the disable from
+    # 2026-04-03 was conservative. Now lives behind the ack-first
+    # persistence layer (services/channels/inbound_webhook_repo.py) so any
+    # handler exception lands in inbound_webhooks for the WebhookProcessor
+    # to retry.
+    api.include_router(twitter.router)
+    api.include_router(twitter.webhook_router)
     api.include_router(
         whatsapp_chat.router,
     )  # WhatsApp Cloud API with intelligent triage (Gemini 3 Flash + Zan v2)
@@ -461,7 +466,7 @@ def include_light_routers(api: FastAPI) -> None:
         team_members,
         telegram,
         telegram_webhook,
-        # twitter,  # DISABLED: CRC broken, OAuth incomplete (audit 2026-04-03)
+        twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         webhooks,
@@ -558,8 +563,8 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(websocket.router)
     api.include_router(telegram.router)
     api.include_router(telegram_webhook.router)
-    # api.include_router(twitter.router)  # DISABLED: CRC broken (audit 2026-04-03)
-    # api.include_router(twitter.webhook_router)
+    api.include_router(twitter.router)  # P0-6 re-enabled 2026-04-29
+    api.include_router(twitter.webhook_router)  # P0-6 re-enabled 2026-04-29
     api.include_router(whatsapp_conversations.router)
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
