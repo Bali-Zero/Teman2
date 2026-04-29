@@ -1,8 +1,25 @@
 #!/bin/bash
 
-# Configuration
-PROJECT_DIR="/Users/antonellosiano/Projects/nuzantara"
-PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/venv/bin/python3"
+# Configuration — machine-aware (Pro vs Air). Same pattern as
+# curiosity_loop.sh and genome_decay.sh after the renaissance PR-A1 fix.
+case "$(whoami)" in
+    nuzantara)
+        PROJECT_DIR="$HOME/Desktop/nuzantara"
+        # Pro uses .venv (CLAUDE.md §14)
+        PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/.venv/bin/python3"
+        ;;
+    antonellosiano)
+        PROJECT_DIR="$HOME/Projects/nuzantara"
+        # Air uses venv (CLAUDE.md §14)
+        PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/venv/bin/python3"
+        ;;
+    *)
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+        PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/.venv/bin/python3"
+        [ -x "$PYTHON_EXEC" ] || PYTHON_EXEC="$PROJECT_DIR/apps/backend-rag/venv/bin/python3"
+        ;;
+esac
 EVAL_DIR="$PROJECT_DIR/apps/evaluator"
 LOG_FILE="$PROJECT_DIR/logs/judgement_day.log"
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
