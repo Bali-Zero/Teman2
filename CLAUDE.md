@@ -223,7 +223,7 @@ apps/backend-rag/
 │   │   ├── dependencies.py # ⚠️ Imported by ALL routers — test before deploy
 │   │   └── main.py         # Entrypoint (alias for main_cloud.py)
 │   ├── services/           # Core business logic (domain services, subpackages)
-│   ├── channels/           # 7 channels (whatsapp, telegram, instagram, twitter, web, gchat, slack)
+│   ├── channels/           # 4 live (whatsapp, telegram, instagram, web) + .disabled-2026-04-30/ (twitter — CRC broken; gchat/slack scaffolds never wired)
 │   ├── core/               # Config, security, logging
 │   ├── llm/                # LLM clients (Gemini, Ollama, OpenRouter)
 │   ├── prompts/            # ⭐ Prompt SSOT (zantara_core.py)
@@ -300,16 +300,19 @@ The user writes in **colloquial Italian**. Translate intent into precise technic
 - **Pricing:** `PRICING_REFERENCE.md` · **Visa:** `VISA_TYPES_REFERENCE.md`
 - **KBLI:** `/kbli` (homepage), `/kbli/[code]` (1,563 SSG pages), `/kbli-navigator` → 301 → `/kbli`
 
-### Channels (7)
+### Channels (4 live)
 
-| Channel             | Status        | Ownership                         |
-| ------------------- | ------------- | --------------------------------- |
-| WhatsApp            | ✅ Live       | Fly.io (Gemini 3 Flash + RAG)     |
-| Telegram            | ✅ Live       | Pro OpenClaw (Opus 4.6 + SOUL.md) |
-| Instagram           | ✅ Live       | Fly.io                            |
-| X/Twitter           | ❌ CRC broken | Fly.io                            |
-| Web Chat            | ✅ Live       | Fly.io                            |
-| Google Chat · Slack | 🔧 Scaffold   | —                                 |
+| Channel    | Status   | Ownership                         |
+| ---------- | -------- | --------------------------------- |
+| WhatsApp   | ✅ Live  | Fly.io (Gemini 3 Flash + RAG)     |
+| Telegram   | ✅ Live  | Pro OpenClaw (Opus 4.6 + SOUL.md) |
+| Instagram  | ✅ Live  | Fly.io                            |
+| Web Chat   | ✅ Live  | Fly.io                            |
+
+> Twitter (CRC broken), Google Chat (scaffold), and Slack (scaffold)
+> quarantined under `apps/backend-rag/backend/channels/.disabled-2026-04-30/`
+> — see README in that directory for reactivation criteria. None of these
+> are enrolled in the Innervation Genoma registry.
 
 ### Subdomains (8)
 
