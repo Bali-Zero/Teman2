@@ -198,14 +198,26 @@ class EventBus:
     async def emit_pg(self, channel: str, payload: dict[str, Any]) -> None:
         """Emit an event via PostgreSQL NOTIFY (cross-process).
 
+        P0-2 phase 2: this method now delegates to
+        :func:`backend.services.events.outbox.publish` so the event is
+        recorded in ``events_outbox`` BEFORE the pg_notify fires. That
+        makes the publication durable across listener reconnect windows:
+        :meth:`_replay_outbox_on_reconnect` re-dispatches any unconsumed
+        row when the listener comes back up.
+
         Args:
-            channel: PG channel name (e.g. "client_changed")
-            payload: JSON-serializable dict (max ~8KB)
+            channel: PG channel name (e.g. ``"client_changed"``). Must
+                satisfy :func:`backend.services.events.outbox.validate_channel`
+                — alphanumeric + underscore, ≤ 63 chars.
+            payload: JSON-serializable dict (max ~8KB).
         """
         if not self._db_pool:
             logger.warning("EventBus: no db_pool, cannot emit PG event")
             return
 
+        # Lightweight size warning preserved from phase 1 — outbox.publish
+        # re-serialises with _outbox_id injected, so we flag the raw size
+        # before it grows further.
         payload_str = json.dumps(payload, default=str)
         if len(payload_str) > 7500:
             logger.warning(
@@ -213,8 +225,12 @@ class EventBus:
                 f"(limit ~8KB), truncating metadata"
             )
 
+        # Local import: outbox imports nothing from event_bus, but package
+        # __init__ may pull both — defer to avoid module-load surprises.
+        from backend.services.events.outbox import publish as outbox_publish
+
         async with self._db_pool.acquire() as conn:
-            await conn.execute("SELECT pg_notify($1, $2)", channel, payload_str)
+            await outbox_publish(conn, channel, payload)
 
     # ── Lifecycle ──────────────────────────────────────────────────────
 
@@ -277,11 +293,12 @@ class EventBus:
         # disconnected. This closes the durability gap of pg_notify (volatile,
         # no queue) — see cicatrix scar "EventBus is PG LISTEN/NOTIFY but
         # Symbiosis docs say Redis Streams (2026-04-29)" and migration 144.
-        # Phase-1 contract: replay only fires for events written through
-        # outbox.publish(). Existing emit_pg() callers are unchanged in this
-        # PR and still publish only via raw pg_notify, so they remain volatile
-        # until phase 2. Best-effort: a failure here must not block the
-        # listener loop.
+        #
+        # Phase 2 (this PR): emit_pg() and the DB triggers in migration 146
+        # write to events_outbox before pg_notify fires, so every event on a
+        # PG_CHANNEL_MAP channel is durable. Phase 1 had only the helper +
+        # this hook in place — replay was a no-op until producers wired in.
+        # Best-effort: a failure here must NOT block the listener loop.
         await self._replay_outbox_on_reconnect()
 
         # Keep-alive loop
