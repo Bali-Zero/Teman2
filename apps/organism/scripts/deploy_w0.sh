@@ -156,8 +156,13 @@ deploy_one() {
     chmod u+w "$dst" 2>/dev/null || true
   fi
 
-  # 4. cp from repo.
-  install -m 0644 "$src" "$dst"
+  # 4. cp from repo. Install at 0400 directly (not 0644) per cicatrice
+  # P0-3 hardening — all 3 W0 plist contain EnvironmentVariables (token
+  # paths, redis URLs, organism state), so 0400 (owner read-only) is the
+  # required mode, NOT 0444 (world-readable). 0400 closes the brief
+  # window between install and chmod where the file would otherwise be
+  # world-readable.
+  install -m 0400 "$src" "$dst"
 
   # 5. trigger 1 — plutil lint.
   if ! plutil -lint "$dst" >/dev/null; then
@@ -179,12 +184,16 @@ deploy_one() {
       "new .bak/.disabled/.backup file appeared in $TARGET during cp"
   fi
 
-  # 8. Read-only mode (P0-3 hardening parity).
-  chmod 0444 "$dst"
+  # 8. Read-only mode (P0-3 hardening parity). 0400 because all 3 W0
+  # plist contain EnvironmentVariables (see install -m 0400 above).
+  chmod 0400 "$dst"
 
-  # 9. trigger 3 — bootstrap.
-  if ! launchctl bootstrap "gui/${UID_NUM}" "$dst" 2>&1; then
-    abort "3_bootstrap" "$plist" "launchctl bootstrap exited non-zero"
+  # 9. trigger 3 — bootstrap. Capture stderr so the abort() Telegram alert
+  # carries the actual launchd diagnostic (e.g. "service already loaded —
+  # error 36") instead of a generic "non-zero" message.
+  local bootstrap_out
+  if ! bootstrap_out=$(launchctl bootstrap "gui/${UID_NUM}" "$dst" 2>&1); then
+    abort "3_bootstrap" "$plist" "launchctl bootstrap failed: ${bootstrap_out:-no stderr}"
   fi
 
   # 10. trigger 5 — verify "state = running" within timeout.
