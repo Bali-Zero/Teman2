@@ -34,8 +34,8 @@ so they can land in `migrations_v2/` without breaking either:
 
 | Bootstrap (`ci_bootstrap_schema.py`) | Migration |
 |--------------------------------------|-----------|
-| `CREATE TABLE IF NOT EXISTS user_profiles ...`  | `129_legacy_user_profiles.sql` |
-| `CREATE TABLE IF NOT EXISTS conversations ...`  | `130_legacy_conversations.sql` |
+| `CREATE TABLE IF NOT EXISTS user_profiles ...`  | `142_legacy_user_profiles.sql` (was `129_*` until P0-7 renumber on 2026-04-29) |
+| `CREATE TABLE IF NOT EXISTS conversations ...`  | `143_legacy_conversations.sql` (was `130_*` until P0-7 renumber on 2026-04-29) |
 | `CREATE TABLE IF NOT EXISTS lkpm_reports ...` + 18 ALTER + company_id | `132_legacy_lkpm_reports.sql` |
 | `CREATE TABLE IF NOT EXISTS system_settings ...` | `133_legacy_system_settings.sql` |
 | `CREATE TABLE IF NOT EXISTS notification_log ...` + index | `134_legacy_notification_log.sql` |

@@ -23,7 +23,45 @@ logger = logging.getLogger(__name__)
 # `__all__` advertises the re-export so static analyzers don't flag it
 # as dead code (CodeQL: py/unused-global-variable).
 _ROLLBACK_MARKER_RE = ROLLBACK_MARKER_RE
-__all__ = ["MigrationManager", "_ROLLBACK_MARKER_RE", "_extract_rollback_sql"]
+__all__ = [
+    "MigrationManager",
+    "_ROLLBACK_MARKER_RE",
+    "_assert_unique_migration_numbers",
+    "_extract_rollback_sql",
+]
+
+
+def _assert_unique_migration_numbers(sql_files: list[Path]) -> None:
+    """Raise MigrationError if any two paths in `sql_files` share a numeric
+    prefix (e.g. `129_a.sql` + `129_b.sql`).
+
+    Pulled out of `MigrationManager.discover_migrations` so unit tests can
+    exercise the rule without instantiating the manager (which requires
+    DATABASE_URL). Files that don't start with `NNN_` are ignored — the
+    parser falls back to logging a warning later.
+    """
+    seen: dict[int, str] = {}
+    duplicates: dict[int, list[str]] = {}
+    for sql_file in sql_files:
+        try:
+            num = int(sql_file.stem.split("_")[0])
+        except (ValueError, IndexError):
+            continue
+        if num in seen:
+            duplicates.setdefault(num, [seen[num]]).append(sql_file.name)
+        else:
+            seen[num] = sql_file.name
+    if duplicates:
+        details = ", ".join(
+            f"{num}: [{', '.join(files)}]" for num, files in sorted(duplicates.items())
+        )
+        raise MigrationError(
+            "Duplicate migration numbers in migrations_v2/: "
+            f"{details}. Two files cannot share a prefix — the runner "
+            "applies one and silently skips the other. Resolution: "
+            "rename the not-yet-applied file to the next free number. "
+            "See cicatrix STRUCTURAL 2026-04-29 P0-7."
+        )
 
 
 def _extract_rollback_sql(sql_text: str) -> str | None:
@@ -235,6 +273,13 @@ class MigrationManager:
         migrations_dir.mkdir(exist_ok=True)
 
         sql_files = sorted(migrations_dir.glob("*.sql"))
+
+        # P0-7 (zero-crash audit 2026-04-29): reject duplicate migration
+        # numbers. Two files sharing the same prefix make
+        # `discover_migrations` order undefined — the runner applies one
+        # alphabetically and silently skips the other on the next deploy.
+        # See cicatrix STRUCTURAL 2026-04-29 P0-7 (PRs #254 + #258).
+        _assert_unique_migration_numbers(sql_files)
 
         migrations = []
         for sql_file in sql_files:
