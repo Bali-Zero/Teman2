@@ -233,10 +233,13 @@ async def telegram_webhook(
     channel_router: ChannelRouter = Depends(get_channel_router),
 ) -> dict[str, Any]:
     """
-    Telegram Bot API webhook endpoint.
+    Telegram Bot API webhook endpoint — ack-first pattern (P0-6 audit 2026-04-29).
 
-    Receives updates from Telegram and routes them through the multi-channel architecture.
-    Intercepts callback_query updates for intel approval voting.
+    Flow:
+      1. Parse + validate update_id (Telegram-provided idempotency key).
+      2. Persist payload to ``inbound_webhooks`` (idempotent on update_id).
+      3. Handle callback_query OR route via ChannelRouter (existing behavior).
+      4. Return 200 OK — Telegram requires this even on error to prevent retries.
 
     Returns:
         Success confirmation (Telegram expects 200 OK)
@@ -250,6 +253,26 @@ async def telegram_webhook(
         if not update_id:
             logger.warning("Received Telegram update without update_id")
             return {"ok": False, "error": "Missing update_id"}
+
+        # ── Ack-first persistence (P0-6) ──
+        # Telegram update_id is monotonic per-bot; dedup key is the string form.
+        # Best-effort — never block the ack.
+        db_pool = getattr(request.app.state, "db_pool", None)
+        if db_pool is not None:
+            try:
+                from backend.services.channels import inbound_webhook_repo
+                await inbound_webhook_repo.persist(
+                    db_pool,
+                    channel="telegram",
+                    dedup_key=f"telegram-{update_id}",
+                    payload=update,
+                )
+            except Exception as exc:  # noqa: BLE001 — never block ack
+                logger.warning(
+                    "Telegram webhook: persist failed (update_id=%s): %s — "
+                    "falling back to synchronous-only path",
+                    update_id, exc,
+                )
 
         # Handle callback_query (inline keyboard button presses) before ChannelRouter
         callback_query = update.get("callback_query")

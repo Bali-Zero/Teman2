@@ -117,7 +117,16 @@ async def verify_twitter_webhook(request: Request) -> JSONResponse:
 
 @webhook_router.post("")
 async def twitter_webhook(request: Request) -> dict:
-    """Handle incoming X/Twitter DMs via Account Activity API."""
+    """Handle incoming X/Twitter DMs — ack-first pattern (P0-6 audit 2026-04-29).
+
+    Flow:
+      1. Verify HMAC signature (synchronous, fast).
+      2. Parse + filter echo messages.
+      3. Persist payload to ``inbound_webhooks`` (idempotent on
+         direct_message_events[0].id via UNIQUE(channel, dedup_key)).
+      4. Synchronously route via ChannelRouter (existing behavior).
+      5. Return 200 OK — Twitter expects this.
+    """
     # Verify webhook signature if consumer_secret is configured
     if settings.x_consumer_secret:
         body = await request.body()
@@ -141,6 +150,7 @@ async def twitter_webhook(request: Request) -> dict:
 
     # Filter out echo messages (sent by our own bot account)
     has_inbound = False
+    inbound_dm_id = ""
     for dm in dm_events:
         msg_create = dm.get("message_create", {})
         sender_id = msg_create.get("sender_id", "")
@@ -161,10 +171,38 @@ async def twitter_webhook(request: Request) -> dict:
             continue
         if text_len > 0:
             has_inbound = True
+            if not inbound_dm_id:
+                inbound_dm_id = dm.get("id", "")
 
     if not has_inbound:
         logger.info("X DM: no inbound messages to process")
         return {"status": "ok"}
+
+    # ── Ack-first persistence (P0-6) ──
+    # Dedup key: first non-echo direct_message_events[].id. Best-effort —
+    # never block the ack.
+    db_pool = None
+    try:
+        from backend.app.dependencies import get_database
+        db_pool = get_database(request)
+    except Exception:
+        pass
+
+    if db_pool is not None and inbound_dm_id:
+        try:
+            from backend.services.channels import inbound_webhook_repo
+            await inbound_webhook_repo.persist(
+                db_pool,
+                channel="twitter",
+                dedup_key=inbound_dm_id,
+                payload=raw_payload,
+            )
+        except Exception as exc:  # noqa: BLE001 — never block ack
+            logger.warning(
+                "X webhook: persist failed (dm_id=%s): %s — "
+                "falling back to synchronous-only path",
+                inbound_dm_id, exc,
+            )
 
     try:
         from backend.app.dependencies import get_channel_router
