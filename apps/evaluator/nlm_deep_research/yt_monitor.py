@@ -210,8 +210,10 @@ def ingest_video(notebook_id: str, video_url: str, dry_run: bool = False) -> boo
         return True
 
     try:
+        # PR-E1 (2026-04-30): nlm CLI dropped --notebook flag — NOTEBOOK_ID
+        # is now a positional, --youtube replaces --url for YT video ingestion.
         result = subprocess.run(
-            ["nlm", "source", "add", "--notebook", notebook_id, "--url", video_url],
+            ["nlm", "source", "add", notebook_id, "--youtube", video_url],
             capture_output=True,
             text=True,
             timeout=120,
