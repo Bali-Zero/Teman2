@@ -48,9 +48,32 @@ export METABOLIC_DB_PATH="${METABOLIC_DB_PATH:-$HOME/.agent/decisions/organism_m
 
 # mode=pro: no PG_DSN, writes 1 row with scope='host', collector='pro'.
 # TTR+DO will be NULL with metadata.error='not_applicable_by_design'.
-exec "$PY" scripts/metabolic_rollup.py \
+"$PY" scripts/metabolic_rollup.py \
     --db-path "$METABOLIC_DB_PATH" \
     --mode pro \
     --collector-host pro \
     --notify \
     >> "$LOG_DIR/metabolic-rollup-pro.log" 2>&1
+rc=$?
+
+# Innervation W1.1: emit liveness sidecar regardless of rc — the aggregator
+# only cares that we ran, the status field tells it how the run went.
+ORGAN_LAST_SEEN_DIR="$HOME/.organism/last_seen"
+mkdir -p "$ORGAN_LAST_SEEN_DIR"
+if [ "$rc" -eq 0 ]; then
+    organ_status=ok
+else
+    organ_status=fail
+fi
+"$PY" -c "
+import json, time
+out = '$ORGAN_LAST_SEEN_DIR/pro.metabolic_rollup.json'
+open(out, 'w').write(json.dumps({
+    'ts': time.time(),
+    'status': '$organ_status',
+    'organ_id': 'pro.metabolic_rollup',
+    'metadata': {'rc': $rc, 'mode': 'pro'},
+}))
+" 2>>"$LOG_DIR/metabolic-rollup-pro.log" || true
+
+exit "$rc"

@@ -267,3 +267,180 @@ def test_bridge_source_override_wins_over_last_seen_db(tmp_path):
     assert reading.status == "green"
     assert reading.metadata["alive"] == 1
     assert reading.metadata["dead"] == 0
+
+
+# ---------- W1.1 enrollment tests -------------------------------------------
+#
+# Every Tier-1 Critical Pro infra organ enrolled in genome.yaml during W1.1
+# emits a sidecar at ~/.organism/last_seen/<organ_id>.json with the standard
+# schema (ts, status, organ_id, metadata). The aggregator already supports
+# this via bridge_source: state_file. The tests here use tmp_path bridge
+# files (not the real ~/.organism/) and assert two cases per organ:
+#
+#   - happy path: sidecar present + ts recent → state alive (aggregate green)
+#   - dead path:  sidecar missing            → state dead (aggregate red),
+#                 with bridge error surfaced via the aggregator's classification
+#                 (BridgeReading.error populated by BridgeStateReader._read_one).
+#
+# Spec ref: ScratchPad: docs/innervation-2026-04-29/07_innervation_protocol.md §1.1.
+
+
+def _w1_organ(
+    organ_id: str,
+    bridge_path: Path,
+    expected_hb_seconds: int,
+    *,
+    severity: str = "warning",
+) -> dict:
+    """Build a genoma entry mirroring the W1.1 enrollment shape."""
+    out = _organ(
+        organ_id,
+        expected_hb_seconds=expected_hb_seconds,
+        bridge_path=bridge_path,
+    )
+    out["severity_on_silence"] = severity
+    return out
+
+
+def _write_w1_sidecar(path: Path, *, status: str, age_s: float, organ_id: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "ts": time.time() - age_s,
+                "status": status,
+                "organ_id": organ_id,
+                "metadata": {},
+            }
+        )
+    )
+
+
+def _w1_happy_dead_pair(
+    tmp_path: Path,
+    organ_id: str,
+    expected_hb_seconds: int,
+    *,
+    severity: str = "warning",
+) -> tuple[SensorReading, SensorReading]:
+    """Run the aggregator twice for one organ: once happy, once dead."""
+    genome = tmp_path / f"{organ_id}_genome.yaml"
+    db = tmp_path / f"{organ_id}_last_seen.db"
+    bridge = tmp_path / f"{organ_id}.json"
+
+    _write_genome(genome, [_w1_organ(organ_id, bridge, expected_hb_seconds, severity=severity)])
+
+    # Happy: sidecar fresh (age ≪ 1.5x expected)
+    _write_w1_sidecar(bridge, status="ok", age_s=max(1.0, expected_hb_seconds * 0.1), organ_id=organ_id)
+    sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+    happy = _run(sensor)
+
+    # Dead: sidecar absent. (Use a fresh sensor instance to be explicit, even
+    # though read() reloads I/O each call.)
+    bridge.unlink()
+    sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+    dead = _run(sensor)
+
+    return happy, dead
+
+
+def test_w1_pro_fly_restart_loop_detector_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.fly_restart_loop_detector",
+        expected_hb_seconds=1350,
+        severity="critical",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.fly_restart_loop_detector"]
+
+
+def test_w1_pro_cpu_monitor_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.cpu_monitor",
+        expected_hb_seconds=1350,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.cpu_monitor"]
+
+
+def test_w1_pro_disk_monitor_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.disk_monitor",
+        expected_hb_seconds=1350,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.disk_monitor"]
+
+
+def test_w1_pro_zombie_hunter_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.zombie_hunter",
+        expected_hb_seconds=90,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.zombie_hunter"]
+
+
+def test_w1_pro_dlq_autopilot_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.dlq_autopilot",
+        expected_hb_seconds=2700,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.dlq_autopilot"]
+
+
+def test_w1_pro_sentinel_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.sentinel",
+        expected_hb_seconds=90000,
+        severity="critical",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.sentinel"]
+
+
+def test_w1_cell_organism_enrolled(tmp_path):
+    """cell.organism daemon: recovery_action=human_only but sidecar still
+    feeds the aggregator so the Supervisor can see liveness/status without
+    being able to act on silence (operator wakes it up by hand)."""
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "cell.organism",
+        expected_hb_seconds=90,
+        severity="critical",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["cell.organism"]
+
+
+def test_w1_pro_metabolic_rollup_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.metabolic_rollup",
+        expected_hb_seconds=5400,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.metabolic_rollup"]
