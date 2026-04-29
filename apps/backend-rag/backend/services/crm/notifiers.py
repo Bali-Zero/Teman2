@@ -483,7 +483,10 @@ class StalePracticeNotifier:
         logger.info("Admin summary sent", extra={"context": {"to": ADMIN_EMAIL, "stale_count": len(stale)}})
 
     async def _send_team_leader_alert(self, email: str, practices: list[dict[str, Any]]) -> None:
-        subject = "[TEAM] ⏰ Pratiche in attesa — aggiornamento richiesto"
+        # Language policy 2026-04-29: messages directed exclusively at team
+        # members default to Indonesian (Bali Zero team is mostly Indonesian).
+        # Client-facing flows still use NATIONALITY_LANGUAGE_MAP elsewhere.
+        subject = "[TEAM] ⏰ Praktik tertunda — perlu pembaruan"
 
         rows_html = ""
         for p in practices:
@@ -494,7 +497,7 @@ class StalePracticeNotifier:
                 f'<td style="{_TD}">{_esc(p["client_name"])}</td>'
                 f'<td style="{_TD}">{_esc(p["practice_type_name"])}</td>'
                 f'<td style="{_TD}">{_esc(p["status"])}</td>'
-                f'<td style="{_TD};color:#f87171;font-weight:600;">{p["days_stale"]} giorni</td>'
+                f'<td style="{_TD};color:#f87171;font-weight:600;">{p["days_stale"]} hari</td>'
                 f"</tr>\n"
             )
 
@@ -503,24 +506,24 @@ class StalePracticeNotifier:
         <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
           <div style="max-width:700px;margin:0 auto;">
             <h2 style="color:#f1f5f9;margin-bottom:4px;">
-              Ciao! \ud83d\udc4b Alcune pratiche hanno bisogno della tua attenzione.
+              Halo! \ud83d\udc4b Beberapa praktik membutuhkan perhatian Anda.
             </h2>
             <p style="color:#cbd5e1;line-height:1.6;">
-              Alcune tue pratiche non hanno aggiornamenti da <strong>{STALE_DAYS}+ giorni</strong>.
-              Puoi controllare lo stato e aggiungere una nota nel CRM?
+              Beberapa praktik Anda belum diperbarui selama <strong>{STALE_DAYS}+ hari</strong>.
+              Bisakah Anda memeriksa statusnya dan menambahkan catatan di CRM?
             </p>
             <table style="width:100%;border-collapse:collapse;margin-top:16px;">
               <thead>
                 <tr style="background:#1e3a5f;">
-                  <th style="{_TH}">ID</th><th style="{_TH}">Cliente</th>
-                  <th style="{_TH}">Tipo pratica</th><th style="{_TH}">Status</th>
-                  <th style="{_TH}">Giorni senza agg.</th>
+                  <th style="{_TH}">ID</th><th style="{_TH}">Klien</th>
+                  <th style="{_TH}">Jenis praktik</th><th style="{_TH}">Status</th>
+                  <th style="{_TH}">Hari tanpa pembaruan</th>
                 </tr>
               </thead>
               <tbody>{rows_html}</tbody>
             </table>
             <p style="margin-top:24px;font-size:13px;color:#64748b;">
-              Grazie mille! \u2014 Zantara CRM
+              Terima kasih banyak! \u2014 Zantara CRM
             </p>
           </div>
         </body>
