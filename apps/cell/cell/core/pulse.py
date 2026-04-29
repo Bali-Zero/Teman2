@@ -9,12 +9,71 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from cell.sensors.health_sensor import HealthReading
     from cell_core.observability.pulse_metrics import PulseMetrics
 
 from cell.core import db as cell_db
 from cell.fast.health_triage import HealthStatus
 
 logger = logging.getLogger("cell.pulse")
+
+
+# P0-0: classification used to be inline in single_pulse() and looked only at
+# (reading.reachable, reading.status_code). That meant a 200 OK with body
+# {"status":"startup_failed"} reported GREEN and Cell never escalated — same
+# blind spot as the backend's /health (cicatrix STRUCTURAL 2026-04-29).
+# Now it inspects reading.body.status semantically before falling back to HTTP.
+_BODY_STATUS_RED = frozenset({
+    "unhealthy",
+    "startup_failed",
+    "startup_timeout",
+    "failed",
+    "down",
+    "critical",
+})
+_BODY_STATUS_YELLOW = frozenset({
+    "degraded",
+    "initializing",
+    "warming",
+    "warming_up",
+    "partial",
+})
+_BODY_STATUS_GREEN = frozenset({
+    "healthy",
+    "ok",
+    "ready",
+    "operational",
+})
+
+
+def classify_http_status(reading: HealthReading) -> HealthStatus:
+    """Classify a HealthReading by body.status first, then HTTP envelope.
+
+    Order:
+      1. Unreachable / 5xx → RED
+      2. Body.status known semantic value → mapped status
+      3. Non-200 (3xx/4xx) with no overriding body → YELLOW
+      4. Default → GREEN
+    """
+    if not reading.reachable:
+        return HealthStatus.RED
+    if reading.status_code >= 500:
+        return HealthStatus.RED
+
+    body = reading.body if isinstance(reading.body, dict) else None
+    if body is not None:
+        body_status = str(body.get("status", "")).lower()
+        if body_status in _BODY_STATUS_RED:
+            return HealthStatus.RED
+        if body_status in _BODY_STATUS_YELLOW:
+            return HealthStatus.YELLOW
+        if body_status in _BODY_STATUS_GREEN:
+            return HealthStatus.GREEN
+        # Unknown body.status falls through to HTTP-based classification.
+
+    if reading.status_code != 200:
+        return HealthStatus.YELLOW
+    return HealthStatus.GREEN
 
 
 @dataclass
@@ -131,12 +190,10 @@ class PulseEngine:
         reading = await self._health.read()
 
         # 4. EVALUATE (FAST) — aggregate all sensors
-        if reading.reachable and reading.status_code == 200:
-            http_status = HealthStatus.GREEN
-        elif reading.reachable:
-            http_status = HealthStatus.YELLOW
-        else:
-            http_status = HealthStatus.RED
+        # P0-0: classify on body.status first (so a 200 OK with
+        # {"status":"startup_failed"} surfaces RED instead of GREEN), then
+        # fall back to HTTP envelope. See classify_http_status above.
+        http_status = classify_http_status(reading)
 
         response_ms = int(reading.response_time_seconds * 1000) if reading.reachable else 0
 

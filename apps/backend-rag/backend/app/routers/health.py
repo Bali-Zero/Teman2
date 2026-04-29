@@ -7,6 +7,8 @@ Provides health check endpoints for monitoring service status:
 """
 
 import logging
+import os
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -17,6 +19,14 @@ from backend.app.core.config import settings
 from backend.app.models import HealthResponse
 
 logger = logging.getLogger(__name__)
+
+# P0-0: how long /health tolerates `startup_complete=False` before flipping to 503.
+# Cold-start RAG warmup (Qdrant + embeddings + KG) is ~30-90s on Fly.io shared-2x;
+# 180s gives generous headroom while still catching deadlocked init that would
+# otherwise stay "initializing" indefinitely. Fly.io grace_period (600s in
+# fly.toml) is wider than this — Fly continues to accept the warmup return
+# until our own deadline fires.
+STARTUP_WARMUP_DEADLINE_S = float(os.getenv("STARTUP_WARMUP_DEADLINE_S", "180"))
 
 
 _qdrant_client: httpx.AsyncClient | None = None
@@ -53,6 +63,36 @@ def _check_startup_failed(app) -> dict[str, Any] | None:
             "error": getattr(app.state, "startup_error", "Unknown"),
         }
     return None
+
+
+def _check_warmup_timeout(app) -> dict[str, Any] | None:
+    """P0-0: return error dict if startup is incomplete and the warmup deadline has passed.
+
+    Cicatrix STRUCTURAL 2026-04-29 — without this check, an init that hangs
+    (deadlocked DB pool, Qdrant retry loop, slow embedding load) keeps the
+    backend in "initializing" forever and Fly.io never auto-restarts.
+
+    Returns None when:
+      - startup_complete is True (happy path)
+      - startup_started_at is missing (older code path / process group)
+      - we are still inside STARTUP_WARMUP_DEADLINE_S (legitimate warmup)
+    """
+    if getattr(app.state, "startup_complete", False):
+        return None
+    started_at = getattr(app.state, "startup_started_at", None)
+    if started_at is None:
+        return None
+    elapsed = time.time() - started_at
+    if elapsed <= STARTUP_WARMUP_DEADLINE_S:
+        return None
+    return {
+        "status": "startup_timeout",
+        "error": (
+            f"startup_complete=False after {int(elapsed)}s "
+            f"(deadline {int(STARTUP_WARMUP_DEADLINE_S)}s)"
+        ),
+        "elapsed_seconds": int(elapsed),
+    }
 
 
 async def get_qdrant_stats() -> dict[str, Any]:
@@ -161,6 +201,51 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
     We must return HTTP 503 to make Fly.io act.
     """
     try:
+        # P0-0: surface app.state.startup_failed as HTTP 503 BEFORE any other branch.
+        # _check_startup_failed already exists (lines 48-55); the bug fixed here
+        # is that health_check never called it, so a deterministically-broken
+        # backend reported HTTP 200 + status='healthy' indefinitely. Fly.io
+        # auto-restart only fires on non-2xx, so without 503 the machine never
+        # recycles. See cicatrix STRUCTURAL 2026-04-29 'Backend /health masks
+        # app.state.startup_failed'.
+        startup_err = _check_startup_failed(request.app)
+        if startup_err is not None:
+            response.status_code = 503
+            return HealthResponse(
+                status="unhealthy",
+                version="v100-qdrant",
+                database={
+                    "status": "unknown",
+                    "type": "postgresql",
+                    "message": startup_err["error"],
+                },
+                embeddings={
+                    "status": "unknown",
+                    "message": startup_err["status"],
+                },
+            )
+
+        # P0-0: also flip to 503 if startup is still incomplete past the warmup
+        # deadline. Below the deadline we keep returning 200 with the existing
+        # "initializing" body so Fly.io's 600s grace period still works for
+        # legitimate cold starts.
+        warmup_err = _check_warmup_timeout(request.app)
+        if warmup_err is not None:
+            response.status_code = 503
+            return HealthResponse(
+                status="unhealthy",
+                version="v100-qdrant",
+                database={
+                    "status": "unknown",
+                    "type": "postgresql",
+                    "message": warmup_err["error"],
+                },
+                embeddings={
+                    "status": "unknown",
+                    "message": warmup_err["status"],
+                },
+            )
+
         process_mode = getattr(request.app.state, "process_mode", None)
 
         # Get search service from backend.app.state
