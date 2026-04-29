@@ -5,6 +5,103 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: Backend prod down — drive_poll_service called missing method on ServiceAccountDriveService (2026-04-29)
+
+_Discovered: 2026-04-29 ~01:54Z (login flow 500 on kita.balizero.com) · Patched: same day, recovery 03:11Z, vaccination PR `ops/post-incident-vaccination-2026-04-29`_
+
+**TRAUMA:** `apps/backend-rag/backend/services/crm/drive_poll_service.py`
+called `await drive_service.get_file_metadata(...)` at lines 266 and 314 on
+a `ServiceAccountDriveService` instance that did NOT implement that method.
+Each Drive change event raised an unhandled `AttributeError`; the cron
+runs every 5 minutes on Pro and the drive watch returned thousands of
+changes after a recent backfill, so the event loop drowned in exceptions.
+Result: FastAPI lifespan on the Fly.io `api` machine logged
+`Logging configured` → `google-genai loaded` → `Middleware registered`
+and never reached `Application startup complete`. Health check kept
+timing out, the machine entered a restart loop (started 02:36Z), the Fly
+proxy returned `no candidate` to upstream, login at
+`https://kita.balizero.com/api/auth/login` returned 500 with body
+`Unexpected end of JSON input`, all CRM endpoints unavailable.
+
+Concrete sequence (mem 1865, 1867):
+
+```
+01:54Z  drive_poll_service starts flooding AttributeError on get_file_metadata
+02:12Z  diagnosis: missing method on ServiceAccountDriveService
+02:36Z  api machine d894e65bede478 enters restart loop (lifespan stuck)
+02:42Z  hotfix #1: drive-poll cron disabled on Pro to stop the flood
+02:47Z  hotfix #2: commit 720d54f5c adds get_file_metadata, deploy via CI
+03:11Z  login flow recovered (POST /api/auth/login → 200 + JWT valid)
+04:14Z  prevention: login healthcheck probe installed (mem 1870)
+```
+
+The 720d54f5c hotfix is the long-term fix. The cron stayed disabled
+afterward as a precaution because the original test suite never
+exercised the `drive_service.<method>` call path against the real
+`ServiceAccountDriveService` class — only against mocks.
+
+**ANTIBODY (3 layers):**
+
+1. **PR-check time** —
+   `apps/backend-rag/backend/tests/unit/services/crm/test_drive_poll_service_methods.py`
+   parses `drive_poll_service.py` with `ast` and asserts that every method
+   invoked on the local `drive_service` variable is implemented on
+   `ServiceAccountDriveService`. The same test file pins
+   `get_file_metadata` and the existing `get_start_page_token` /
+   `list_changes_since` contract — any future rename or removal fails CI
+   with a message that cites memory 1865 by id.
+2. **Runtime detector (15 min cadence)** —
+   `~/scripts/cron-agent-python/fly_watcher.py` `_lifespan_stuck_check`
+   pulls the last 400 lines of `fly logs --no-tail` for `nuzantara-rag`
+   and flags the *exact* failure signature (`Middleware registered`
+   present + `Application startup complete` absent). Telegram alert is
+   appended to the existing `_check_now` failure list, so the dedupe
+   logic and 30-min cooldown apply automatically.
+3. **Fleet-wide watchdog** —
+   `~/scripts/fly-restart-loop-detector.sh` was authored on 2026-04-20
+   but was never installed as a LaunchAgent until this incident.
+   `~/Library/LaunchAgents/com.nuzantara.fly-restart-loop-detector.plist`
+   now loads it every 15 minutes (`StartInterval: 900`); state file at
+   `~/.agent/decisions/fly_restart_monitor.state.json`.
+
+End-to-end probe (`~/scripts/login-healthcheck.sh`, mem 1870) sits on top
+of all three: it fires on the *user* metric (POST `/api/auth/login` →
+200 + JWT) and pages Telegram after 2 consecutive failures with a 2h
+cooldown. Existence credentials at `~/.nuzantara-secrets.env`
+(`HEALTHCHECK_PIN` + `HEALTHCHECK_EMAIL`).
+
+**GOTCHA:**
+
+- `_lifespan_stuck_check` fires only when a *recent* startup attempt is
+  visible in the log buffer. After the machine has been healthy for
+  hours the markers age out of the last 400 lines and the check returns
+  `progress_seen=False, complete_seen=False` (silent OK). This is
+  intentional — alerting on "no startup in last 400 lines" would be a
+  false positive every steady-state run. The 15-min cadence is short
+  enough that any real restart loop will be caught while at least one
+  attempt is still in the buffer.
+- The lifespan check skips silently (`ok=True, skipped=True`) when the
+  `fly` CLI times out or fails — degrade-open is intentional. The
+  `fly-restart-loop-detector.sh` LaunchAgent is the redundant signal in
+  that case.
+- The drive-poll cron on Pro
+  (`*/5 * * * * /Users/nuzantara/scripts/openclaw-cron/drive-poll.sh`)
+  is left commented out in crontab as `# DISABLED 2026-04-29 02:42`
+  with restore instructions inline. Re-enable only after the contract
+  test has been green for at least 48h (i.e. the hotfix has survived a
+  full daily cycle including the indexing sweep at 00:30 WITA).
+- The bug bypassed CI because `drive_poll_service` is reached only via
+  cron at runtime, not through any HTTP endpoint exercised by the
+  existing pytest suite. The new AST-based contract test does NOT need
+  to import `drive_poll_service` (which would require Postgres, Drive
+  credentials, and asyncpg pools) — it parses the source file as
+  text. That's why it costs <50ms in CI and runs unconditionally.
+
+Memories: 1865 (root cause), 1866 (resolved-update), 1867 (recovery
+sequence), 1870 (login probe). Recovery commit: `720d54f5c`.
+
+---
+
 ### ✅ RESOLVED: Atlas migrate-lint paywalled in v0.38 — pivoted to Squawk (2026-04-26)
 
 _Discovered: 2026-04-26 during sprint 1 PR #306 CI run · Patched: same day via pivot to `sbdchd/squawk-action@v2`_
