@@ -17,7 +17,11 @@
 #   4. presence of new .bak-* / .disabled / .backup-* files in
 #      ~/Library/LaunchAgents/com.{nuzantara,balizero,cell}.* not seen pre-cp
 #   5. launchctl print gui/$(id -u)/<label> doesn't show "state = running"
-#      within VERIFY_TIMEOUT_SECONDS
+#      within VERIFY_TIMEOUT_SECONDS (daemon plist) — OR — for cron plist
+#      (StartCalendarInterval/StartInterval, no KeepAlive=true), shows
+#      "state = not running" with a non-zero "last exit code". Cron pattern
+#      with state=not running and last exit code=0 (or absent: never run)
+#      is the launchd-correct steady-state and MUST NOT abort.
 #
 # Usage:
 #   ./deploy_w0.sh                    # full deploy
@@ -196,21 +200,62 @@ deploy_one() {
     abort "3_bootstrap" "$plist" "launchctl bootstrap failed: ${bootstrap_out:-no stderr}"
   fi
 
-  # 10. trigger 5 — verify "state = running" within timeout.
+  # 10. trigger 5 — verify launchd reached the expected steady state within
+  # timeout. "Expected steady state" depends on plist type:
+  #   - daemon  (KeepAlive=true): state = running
+  #   - cron    (StartCalendarInterval/StartInterval, no KeepAlive=true):
+  #             state = not running + last exit code = 0 (already ran OK)
+  #             OR no last-exit-code line yet (never fired since bootstrap)
+  # The cron-pattern branch is the launchd-correct steady-state and MUST
+  # NOT abort: a cron tick with KeepAlive=true would be a daemon, not a cron.
+  # `plutil -extract KeepAlive raw` returns "true" + rc=0 if KeepAlive=true,
+  # rc=1 if the key is absent (cron plist). NB: `-extract … json` rejects
+  # top-level scalars on macOS (`Invalid object in plist for JSON format`),
+  # so `raw` is the only reliable form for boolean keys.
+  local is_daemon=0
+  if [ "$(plutil -extract KeepAlive raw -o - "$dst" 2>/dev/null)" = "true" ]; then
+    is_daemon=1
+  fi
+
   local elapsed=0
-  local seen_running=0
+  local accepted=0
+  local last_print=""
   while [ "$elapsed" -lt "$VERIFY_TIMEOUT_SECONDS" ]; do
-    if launchctl print "gui/${UID_NUM}/${label}" 2>/dev/null \
-        | grep -qE 'state = running'; then
-      seen_running=1
-      break
+    last_print=$(launchctl print "gui/${UID_NUM}/${label}" 2>/dev/null || true)
+    if [ "$is_daemon" = "1" ]; then
+      if echo "$last_print" | grep -qE 'state = running'; then
+        accepted=1
+        break
+      fi
+    else
+      # Cron pattern: not running is the expected steady-state.
+      # Accept iff state=not running AND (no last exit code line yet OR last exit code = 0).
+      if echo "$last_print" | grep -qE 'state = not running'; then
+        if echo "$last_print" | grep -qE 'last exit code = '; then
+          if echo "$last_print" | grep -qE 'last exit code = 0\b'; then
+            accepted=1
+            break
+          fi
+          # Non-zero exit → keep waiting in case launchd is mid-cycle, but
+          # don't promote to accepted; loop exit will trigger abort.
+        else
+          # Never fired yet — bootstrap fresh. Accept.
+          accepted=1
+          break
+        fi
+      fi
     fi
     sleep 1
     elapsed=$((elapsed + 1))
   done
-  if [ "$seen_running" != "1" ]; then
-    abort "5_state_running" "$plist" \
-      "launchctl print did not show 'state = running' within ${VERIFY_TIMEOUT_SECONDS}s"
+  if [ "$accepted" != "1" ]; then
+    if [ "$is_daemon" = "1" ]; then
+      abort "5_state_running" "$plist" \
+        "launchctl print did not show 'state = running' within ${VERIFY_TIMEOUT_SECONDS}s"
+    else
+      abort "5_state_running" "$plist" \
+        "cron plist did not reach steady-state (state=not running + last exit=0) within ${VERIFY_TIMEOUT_SECONDS}s"
+    fi
   fi
 
   echo "  ✓ $plist deployed and running"
