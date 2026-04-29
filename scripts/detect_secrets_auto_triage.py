@@ -107,6 +107,15 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.antigravity/.*"),
         ".antigravity/ tree: internal tooling state",
     ),
+    # Quarantine dir for abandoned attempts kept for audit (e.g. Atlas
+    # migrate-lint pre-paywall, see cicatrix 2026-04-26). Files here are
+    # frozen byte-for-byte and not on any execution path; any token-shaped
+    # string is residue of an abandoned third-party config (e.g. dummy
+    # `atlas:atlas@localhost:5432` Postgres test creds in the workflow).
+    (
+        re.compile(r"(^|/)\.disabled/.*"),
+        ".disabled/ quarantine: residual artifacts from abandoned attempts, not deployed",
+    ),
     # OpenAPI schemas and examples
     (
         re.compile(r"(^|/)openapi\.(json|yaml|yml)$", re.IGNORECASE),
