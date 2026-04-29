@@ -110,6 +110,19 @@ class ServiceAccountDriveService:
         logger.info(f"✅ Created folder: {name} (ID: {folder['id']})")
         return folder
 
+    async def get_file_metadata(self, file_id: str) -> dict[str, Any]:
+        """Fetch file/folder metadata via Drive API v3.
+
+        Returns the dict from Drive API (name, parents, mimeType, size, ...).
+        Caller paths: backend/services/crm/drive_poll_service.py:266 + :314.
+        """
+        request = self.service.files().get(
+            fileId=file_id,
+            fields="id, name, mimeType, parents, size, modifiedTime, webViewLink",
+            supportsAllDrives=True,
+        )
+        return await asyncio.to_thread(request.execute)
+
     async def get_folder_structure(
         self,
         root_folder_id: str,
