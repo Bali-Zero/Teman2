@@ -263,11 +263,17 @@ jobs:
           # --process-group api is redundant when --machine pins to a known
           # api-group machine, but it documents intent and would catch any
           # future drift in the sentinel filter.
+          #
+          # NOTE: do NOT add `PYTHONPATH=.` — it shadows the container's
+          # site-packages on this image and asyncpg disappears from sys.path
+          # (verified empirically on runs 25095416132 and 25096530075).
+          # Keep the command character-for-character identical to the
+          # pre-deploy `run-migrations` job, which is proven to work.
           flyctl ssh console \
             --app nuzantara-rag \
             --machine "$MACHINE" \
             --process-group api \
-            --command "/bin/sh -c 'cd /app && PYTHONPATH=. python -m backend.db.migrate apply-all'" \
+            --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'" \
             2>&1 | tee migration_output.txt
           # Migration runner (backend/db/migrate.py) prints
           #   "✅ Applied: N migrations"
