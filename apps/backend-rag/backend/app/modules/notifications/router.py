@@ -313,28 +313,44 @@ async def send_direct_email(
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
     attachments = [a.model_dump() for a in request.attachments] if request.attachments else None
 
-    # Route: intra-domain (@balizero.com) → Zoho SMTP, external → Brevo
+    # Provider chain (NB-E 2026-04-29):
+    #   intra-domain (@balizero.com): Zoho SMTP → Brevo
+    #   external:                     Brevo → Resend → Zoho SMTP
+    # Resend uses zantara@send.balizero.com (separate DKIM) so a Brevo
+    # account suspension / apex DNS issue cannot also kill the fallback.
     if request.to.endswith("@balizero.com"):
-        result = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
+        chain: list[tuple[str, callable]] = [  # type: ignore[type-arg]
+            ("zoho", _send_via_zoho_smtp),
+            ("brevo", _send_via_brevo),
+        ]
     else:
-        result = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
+        chain = [
+            ("brevo", _send_via_brevo),
+            ("resend", _send_via_resend),
+            ("zoho", _send_via_zoho_smtp),
+        ]
 
-    if result:
-        logger.info(f"Direct email sent to {request.to} — {request.subject!r}")
-        return SendEmailResponse(success=True, message=f"Email sent to {request.to}")
+    for idx, (name, sender) in enumerate(chain):
+        result = await sender(
+            request.to, request.subject, request.body, cc_list, bcc_list, attachments,
+        )
+        if result:
+            tag = "primary" if idx == 0 else f"fallback={name}"
+            logger.info(
+                f"Direct email sent to {request.to} via {name} ({tag}) — {request.subject!r}"
+            )
+            return SendEmailResponse(
+                success=True,
+                message=f"Email sent to {request.to} via {name}",
+            )
+        logger.warning(
+            f"Provider {name} failed for {request.to}, trying next in chain"
+        )
 
-    # Fallback: if primary fails, try the other channel
-    logger.warning(f"Primary channel failed for {request.to}, trying fallback")
-    if request.to.endswith("@balizero.com"):
-        fallback = await _send_via_brevo(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
-    else:
-        fallback = await _send_via_zoho_smtp(request.to, request.subject, request.body, cc_list, bcc_list, attachments)
-
-    if fallback:
-        logger.info(f"Email sent to {request.to} via fallback — {request.subject!r}")
-        return SendEmailResponse(success=True, message=f"Email sent to {request.to} (fallback)")
-
-    return SendEmailResponse(success=False, message="Both Zoho SMTP and Brevo failed")
+    return SendEmailResponse(
+        success=False,
+        message=f"All providers failed: {', '.join(n for n, _ in chain)}",
+    )
 
 
 async def _send_via_zoho_smtp(
@@ -428,6 +444,32 @@ async def _send_via_brevo(
     except Exception as e:
         logger.error(f"Brevo failed for {to_email}: {e}")
         return False
+
+
+async def _send_via_resend(
+    to_email: str,
+    subject: str,
+    body: str,
+    cc_list: list[str] | None,
+    bcc_list: list[str] | None = None,
+    attachments: list[dict] | None = None,
+) -> bool:
+    """Send via Resend HTTPS API (fallback for external delivery, NB-E 2026-04-29).
+
+    Uses ``zantara@send.balizero.com`` (separate DKIM/MX subdomain) so a
+    Brevo suspension or apex ``balizero.com`` DNS misconfiguration does
+    not also break the fallback path. Returns False on any failure.
+    """
+    from backend.services.notifications.resend_http import send_via_resend
+
+    return await send_via_resend(
+        to_email=to_email,
+        subject=subject,
+        body=body,
+        cc=cc_list,
+        bcc=bcc_list,
+        attachments=attachments,
+    )
 
 
 # Include test endpoints only in non-production environments
