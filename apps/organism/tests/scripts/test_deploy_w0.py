@@ -86,8 +86,19 @@ def _make_env(
           bootout)   exit 0 ;;
           bootstrap) exit 0 ;;
           print)
-            # Print the canonical "state = running" line so trigger 5 passes.
-            echo "state = running"
+            # `launchctl print gui/<uid>/<label>` — $2 is the path. Emit a
+            # realistic steady-state line per plist type so trigger 5 passes:
+            #   - daemon (supervisor, control-panel): state = running
+            #   - cron   (scheduled-tick): state = not running + last exit = 0
+            case "$2" in
+              *scheduled-tick*)
+                echo "state = not running"
+                echo "last exit code = 0"
+                ;;
+              *)
+                echo "state = running"
+                ;;
+            esac
             exit 0
             ;;
         esac
@@ -260,7 +271,12 @@ def test_trigger_4_quarantine_artifact_aborts(tmp_path):
 
 @pytest.mark.allow_real_subprocess
 def test_trigger_5_state_running_timeout_aborts(tmp_path):
-    """Trigger 5: launchctl print never shows 'state = running' → abort."""
+    """Trigger 5: launchctl print never shows 'state = running' → abort.
+
+    Daemon-path failure: the first plist in PLISTS is supervisor (KeepAlive=true).
+    With set -euo pipefail, abort on supervisor exits before scheduled-tick is
+    even reached, so this test exercises only the daemon branch.
+    """
     launchctl_body = textwrap.dedent(
         f"""\
         #!/usr/bin/env bash
@@ -280,3 +296,80 @@ def test_trigger_5_state_running_timeout_aborts(tmp_path):
 
     assert result.returncode != 0
     assert "trigger=5_state_running" in result.stderr
+
+
+@pytest.mark.allow_real_subprocess
+def test_trigger_5_cron_never_fired_accepted(tmp_path):
+    """Trigger 5 cron-branch: scheduled-tick never ran yet → state=not running
+    with NO 'last exit code' line is the bootstrap-fresh steady-state and
+    must be accepted (no abort).
+
+    The default stub already emits "state = not running" + "last exit code = 0"
+    for scheduled-tick. To exercise the never-fired path we override print to
+    omit the last-exit line for that label only.
+    """
+    launchctl_body = textwrap.dedent(
+        f"""\
+        #!/usr/bin/env bash
+        echo "launchctl $@" >> {tmp_path}/calls.log
+        case "$1" in
+          bootout)   exit 0 ;;
+          bootstrap) exit 0 ;;
+          print)
+            case "$2" in
+              *scheduled-tick*)
+                # Bootstrap-fresh: never fired yet, no last-exit line.
+                echo "state = not running"
+                ;;
+              *)
+                echo "state = running"
+                ;;
+            esac
+            exit 0
+            ;;
+        esac
+        exit 0
+        """
+    )
+    _, env, log = _make_env(tmp_path, launchctl_body=launchctl_body)
+    result = _run(env)
+
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert "W0-B deploy complete (3 plist deployed)" in result.stdout
+
+
+@pytest.mark.allow_real_subprocess
+def test_trigger_5_cron_last_exit_nonzero_aborts(tmp_path):
+    """Trigger 5 cron-branch: scheduled-tick ran and crashed (last exit != 0)
+    → trigger 5 must fire. Cron-pattern accept is steady-state OK only when
+    last exit code is 0 or absent."""
+    launchctl_body = textwrap.dedent(
+        f"""\
+        #!/usr/bin/env bash
+        echo "launchctl $@" >> {tmp_path}/calls.log
+        case "$1" in
+          bootout)   exit 0 ;;
+          bootstrap) exit 0 ;;
+          print)
+            case "$2" in
+              *scheduled-tick*)
+                echo "state = not running"
+                echo "last exit code = 78"
+                ;;
+              *)
+                echo "state = running"
+                ;;
+            esac
+            exit 0
+            ;;
+        esac
+        exit 0
+        """
+    )
+    _, env, log = _make_env(tmp_path, launchctl_body=launchctl_body)
+    result = _run(env)
+
+    assert result.returncode != 0
+    assert "trigger=5_state_running" in result.stderr
+    # Error message must reference cron-specific phrasing so triage is fast.
+    assert "cron plist" in result.stderr
