@@ -13,6 +13,7 @@ Modern Architecture (2026-02-11):
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
@@ -82,6 +83,14 @@ async def lifespan(app: FastAPI):
     # main_api.py sets "light"; without this the memory check silently never fires on the rag VM.
     app.state.process_mode = "rag"
 
+    # P0-0: track startup timing so /health can surface a warmup deadline.
+    # Without this, an init that hangs (deadlocked DB pool, slow embedding load,
+    # silent Qdrant retry loop) stays "initializing" forever and Fly.io never
+    # auto-restarts. See cicatrix STRUCTURAL 2026-04-29.
+    app.state.startup_started_at = time.time()
+    app.state.startup_complete = False
+    app.state.startup_failed = False
+
     async def _background_init():
         """Initialize all services in background after server starts listening."""
         # Langfuse POC observability (feat/observability-langfuse-poc).
@@ -130,6 +139,8 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ Failed to initialize Notification Scheduler: {e}")
 
+        # P0-0: mark startup complete so /health stops returning warmup status.
+        app.state.startup_complete = True
         logger.info("✅ ZANTARA startup complete - all services ready")
 
         # Warm-up CrossEncoder model in background thread (prevents 10-30s first-request spike)
