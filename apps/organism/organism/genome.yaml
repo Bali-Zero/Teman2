@@ -1,0 +1,153 @@
+# Genoma — registry of all 149 organi nervosi del Nuzantara.
+#
+# This file is the SINGLE SOURCE OF TRUTH for "what organs exist, where they
+# run, what their expected heartbeat is, and how to recover them when silent".
+#
+# Authoritative spec: docs/innervation-2026-04-29/07_innervation_protocol.md §2
+# Validation: `python -m organism.tools.validate_genome` (pre-commit hook +
+# CI). HALT-on-checksum-mismatch (NB-1 ADR-7).
+#
+# Wave 0 initial scope: 7 organ entries — 3 infrastructure backends
+# (postgres, redis, qdrant) that the higher-level organi depend on, plus
+# the 4 organi that get heartbeat in Wave 1 (backend.api, drive_poll,
+# claude_max_watcher, login_healthcheck). Skeleton for the remaining 142
+# organi added in Waves 1-4 PRs.
+#
+# Coexistence: complementary to redundancies.yaml. Genoma = "chi esiste".
+# Redundancies = "chi è duplicato e come consolidare".
+#
+# Editing notes for future Claudes:
+# - Run `python -m organism.tools.validate_genome --update-checksum` after
+#   every edit. The validator REJECTS the file when the recorded checksum
+#   does not match the canonical SHA256 (NB-1 ADR-7 enforcement).
+# - `yaml.safe_dump` (used by --update-checksum) strips comments. Either
+#   re-apply this header by hand, OR switch to ruamel.yaml in a follow-up.
+#   For Wave 0 we tolerate the manual step — file is small.
+# - `dependencies` MUST resolve to ids in this file. External infra (PG,
+#   Redis, Qdrant) gets explicit `infra.*` entries below.
+
+version: 1
+checksum_algo: sha256
+checksum: 2b5b1da6bc848220a0bdedd8fe2b2a1e8a1c5f0c881a6c85435aac82182121ff
+
+organs:
+  # ---------- Infrastructure backends (no heartbeat — bridged via TCP probes) ----
+  - id: infra.postgres
+    runtime: fly_machine
+    type: daemon
+    # 0 = no heartbeat expected; the validator/Cell sensor uses bridge_source
+    # to determine liveness instead of waiting for an emit_event() call.
+    expected_hb_seconds: 0
+    owner_module: infra/fly/nuzantara-postgres
+    dependencies: []
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-postgres
+    severity_on_silence: critical
+    cicatrix_refs: []
+
+  - id: infra.redis
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 0
+    owner_module: brew/redis
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: homebrew.mxcl.redis
+    severity_on_silence: critical
+    cicatrix_refs: []
+
+  - id: infra.qdrant
+    runtime: fly_machine
+    type: daemon
+    expected_hb_seconds: 0
+    owner_module: infra/fly/nuzantara-qdrant
+    dependencies: []
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-qdrant
+    severity_on_silence: critical
+    cicatrix_refs: []
+
+  # ---------- Wave 1 heartbeat targets ---------------------------------------
+  - id: backend.api
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 60
+    owner_module: apps/backend-rag/backend/app/main.py
+    dependencies:
+      - infra.postgres
+      - infra.redis
+      - infra.qdrant
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs:
+      - 2026-04-29-startup-failed-mask
+      - 2026-04-29-drive-poll-attribute-error
+
+  - id: backend.crm.drive_poll
+    runtime: pro_launchd
+    type: cron
+    # Cron runs every 5 minutes; expected heartbeat 360s = 1.2x interval to
+    # tolerate one missed run before flagging stale. Currently DISABLED per
+    # cicatrix 2026-04-29 (drive-poll AttributeError); Wave 2 re-enables.
+    expected_hb_seconds: 360
+    owner_module: scripts/openclaw-cron/drive-poll.sh
+    dependencies:
+      - infra.postgres
+      - backend.api
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.drive-poll
+    severity_on_silence: warning
+    cicatrix_refs:
+      - 2026-04-29-drive-poll-attribute-error
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/drive_poll.last.json
+      timestamp_field: ts
+      status_field: status
+
+  - id: pro.claude_max_watcher
+    runtime: pro_launchd
+    type: cron
+    # Hourly cron. Heartbeat threshold 3600s; stale at 7200s, dead at 10800s.
+    expected_hb_seconds: 3600
+    owner_module: scripts/claude-max-usage-watcher.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.claude-max-usage-watcher
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.claude/usage-watcher/claude_max_usage.md
+      timestamp_field: Captured
+      status_field: Plan
+
+  - id: pro.login_healthcheck
+    runtime: pro_launchd
+    type: cron
+    # Every 15 minutes. Heartbeat threshold 900s (= interval), stale 1800s,
+    # dead 2700s. Critical because login probe IS the user-facing canary
+    # for the kita.balizero.com → backend.api chain.
+    expected_hb_seconds: 900
+    owner_module: scripts/login-healthcheck.sh
+    dependencies:
+      - backend.api
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.login-healthcheck
+    severity_on_silence: critical
+    cicatrix_refs:
+      - 2026-04-29-startup-failed-mask
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/login_healthcheck.last.json
+      timestamp_field: ts
+      status_field: status

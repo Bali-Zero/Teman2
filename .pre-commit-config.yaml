@@ -93,3 +93,15 @@ repos:
         # Only runs against files added/modified at repo root (no slash in path).
         # The script accepts file paths as argv and exits 1 if any is not whitelisted.
         files: ^[^/]+$
+
+      - id: validate-genome
+        name: "Validate apps/organism/organism/genome.yaml"
+        # Runs ONLY when genome.yaml is staged. NB-1 ADR-7 HALT-on-mismatch:
+        # if the recorded SHA256 checksum does not match the canonical organ
+        # list, the commit is rejected. To update after a legitimate edit:
+        #   PYTHONPATH=apps/organism python -m organism.tools.validate_genome \
+        #     --update-checksum
+        entry: bash -c 'PYTHONPATH=apps/organism python3 -m organism.tools.validate_genome apps/organism/organism/genome.yaml'
+        language: system
+        files: ^apps/organism/organism/genome\.yaml$
+        pass_filenames: false
