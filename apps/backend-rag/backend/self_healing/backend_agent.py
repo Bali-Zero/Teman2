@@ -90,7 +90,9 @@ class BackendSelfHealingAgent:
         self.start_time = time.time()
         self.error_count = 0
         self.fix_count = 0
-        self.http_client = httpx.AsyncClient(timeout=10.0)
+        # Golden Rule #10: lazy-init via property; close() releases on
+        # lifespan teardown.
+        self._http_client: httpx.AsyncClient | None = None
 
         # Wire dependencies
         try:
@@ -131,6 +133,25 @@ class BackendSelfHealingAgent:
         )
 
         logger.info(f"Initializing agent for service: {service_name}")
+
+    @property
+    def http_client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        The orchestrator captures the reference once during ``__init__``
+        (via ``HTTPAPICheck`` and ``OrchestratorReporter``) — subsequent
+        access here returns the same client unless it was closed
+        externally, in which case a fresh one is created.
+        """
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(timeout=10.0)
+        return self._http_client
+
+    async def close(self) -> None:
+        """Release the HTTP client (lifespan shutdown hook)."""
+        if self._http_client is not None and not self._http_client.is_closed:
+            await self._http_client.aclose()
+        self._http_client = None
 
     # ── Legacy API preserved for autonomous_scheduler ──
 

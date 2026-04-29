@@ -27,18 +27,18 @@ _brevo_client: httpx.AsyncClient | None = None
 
 def _get_brevo_client() -> httpx.AsyncClient:
     """Lazy-init persistent httpx client for Brevo (Golden Rule #10)."""
-    global _brevo_client
-    if _brevo_client is None:
+    global _brevo_client  # noqa: PLW0603 — singleton by design
+    if _brevo_client is None or _brevo_client.is_closed:
         _brevo_client = httpx.AsyncClient(timeout=15.0)
     return _brevo_client
 
 
 async def close_brevo_client() -> None:
     """Call from FastAPI lifespan shutdown."""
-    global _brevo_client
-    if _brevo_client is not None:
+    global _brevo_client  # noqa: PLW0603
+    if _brevo_client is not None and not _brevo_client.is_closed:
         await _brevo_client.aclose()
-        _brevo_client = None
+    _brevo_client = None
 
 
 # Pre-written obstacle templates in Bahasa Indonesia (NO AI generation)

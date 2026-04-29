@@ -70,7 +70,8 @@ class UnifiedHealthService:
 
     async def initialize(self) -> None:
         """Initialize HTTP and Redis clients"""
-        self.http_client = httpx.AsyncClient(timeout=10.0)
+        if self.http_client is None or self.http_client.is_closed:
+            self.http_client = httpx.AsyncClient(timeout=10.0)
 
         # Get Redis client from centralized RedisManager
         from backend.core.redis_manager import RedisManager

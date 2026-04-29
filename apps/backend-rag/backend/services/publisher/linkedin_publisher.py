@@ -40,6 +40,25 @@ LINKEDIN_API_VERSION = "202507"
 MAX_COMMENTARY_CHARS = 3000
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_linkedin_publisher_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 class LinkedInPublisher(Publisher):
     platform_name = Platform.LINKEDIN
 
@@ -99,11 +118,7 @@ class LinkedInPublisher(Publisher):
                 error=f"validation: {', '.join(validation.issues)}",
             )
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
         try:
             body = self._build_post_body(draft)
@@ -155,16 +170,9 @@ class LinkedInPublisher(Publisher):
                 draft_id=draft.draft_id,
                 error=f"{type(exc).__name__}: {exc}",
             )
-        finally:
-            if close_client:
-                await client.aclose()
 
     async def delete(self, post_external_id: str) -> bool:
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
         try:
             resp = await client.delete(
                 f"{self.api_base}/posts/{post_external_id}",
@@ -175,9 +183,6 @@ class LinkedInPublisher(Publisher):
         except Exception as exc:  # noqa: BLE001
             logger.info("linkedin delete failed: %s", exc)
             return False
-        finally:
-            if close_client:
-                await client.aclose()
 
     # ── Internal ─────────────────────────────────────────────────────
 

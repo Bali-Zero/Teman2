@@ -35,7 +35,9 @@ class AudioService:
 
     def __init__(self) -> None:
         # Short timeout for TTS - fallback to OpenAI quickly if Pollinations is slow
-        self.http_client = httpx.AsyncClient(timeout=10.0)
+        # Golden Rule #10: lazy-init via property; lifespan close() wired
+        # in app_factory.lifespan via app.state.audio_service.
+        self._http_client: httpx.AsyncClient | None = None
         self.tts_timeout = 5.0  # Fast fallback to OpenAI for TTS
 
         # OpenAI client for fallback and STT
@@ -206,9 +208,30 @@ class AudioService:
         set_usage(input_tokens=int(duration_seconds), output_tokens=len(text) // 4)
         return text
 
+    @property
+    def http_client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        Re-creates the client if previously closed, but only when the
+        attribute is an actual ``httpx.AsyncClient`` — unit tests inject
+        ``AsyncMock`` instances whose ``is_closed`` is itself a mock and
+        would otherwise spuriously trigger re-creation.
+        """
+        c = self._http_client
+        if c is None or (isinstance(c, httpx.AsyncClient) and c.is_closed):
+            self._http_client = httpx.AsyncClient(timeout=10.0)
+        return self._http_client
+
+    @http_client.setter
+    def http_client(self, value: httpx.AsyncClient | None) -> None:
+        """Setter for unit tests that inject a mock AsyncClient."""
+        self._http_client = value
+
     async def close(self):
         """Close the HTTP client."""
-        await self.http_client.aclose()
+        if self._http_client is not None and not self._http_client.is_closed:
+            await self._http_client.aclose()
+        self._http_client = None
 
 
 # Singleton instance

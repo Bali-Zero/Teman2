@@ -237,7 +237,7 @@ class LegalScraper:
                     "httpx http2=True failed (install httpx[http2] / h2); "
                     "falling back to HTTP/1.1",
                 )
-                self._client = httpx.AsyncClient(
+                self._client = httpx.AsyncClient(  # golden-rule-10-exempt: HTTP/2 fallback inside is_closed guard
                     follow_redirects=True,
                     limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
                 )

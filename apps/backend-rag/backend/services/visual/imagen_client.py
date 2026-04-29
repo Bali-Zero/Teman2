@@ -27,6 +27,25 @@ from backend.services.observability import llm_cost_tracked, set_usage
 logger = logging.getLogger(__name__)
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_imagen_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 class ImagenError(RuntimeError):
     """Raised on configuration errors (missing key); per-call errors surface in ImagenResult."""
 
@@ -173,11 +192,7 @@ class ImagenClient:
         }
         payload = {"instances": [instance], "parameters": params}
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
         try:
             resp = await client.post(url, json=payload, timeout=self.timeout)
@@ -220,9 +235,6 @@ class ImagenClient:
                 error=f"{type(exc).__name__}: {exc}",
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
-        finally:
-            if close_client:
-                await client.aclose()
 
 
 def _parse_response(

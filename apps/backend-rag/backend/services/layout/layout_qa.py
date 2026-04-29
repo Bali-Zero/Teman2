@@ -25,6 +25,25 @@ VISION_MODEL_DEFAULT = "qwen2.5vl:7b"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_layout_qa_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 @dataclass
 class LayoutFlags:
     text_overflow: bool
@@ -117,11 +136,7 @@ class LayoutQAClient:
             "options": {"temperature": 0},
         }
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
         try:
             resp = await client.post(
@@ -164,9 +179,6 @@ class LayoutQAClient:
             return self._err(f"timeout {self.timeout}s")
         except Exception as exc:  # noqa: BLE001
             return self._err(f"{type(exc).__name__}: {exc}")
-        finally:
-            if close_client:
-                await client.aclose()
 
     @staticmethod
     def _err(message: str, *, raw: str = "") -> LayoutFlags:
