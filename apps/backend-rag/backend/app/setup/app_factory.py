@@ -513,6 +513,40 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Error closing email http client: {e}")
 
+    # P0-5 fase 2 (2026-04-29): close every module-level lazy-singleton
+    # AsyncClient introduced by the httpx mass rewrite. Each importer is
+    # individually try/except'd so a missing module never blocks shutdown.
+    _p0_5_close_hooks = (
+        ("backend.services.publisher.ig_publisher", "close_ig_publisher_client"),
+        ("backend.services.publisher.linkedin_publisher", "close_linkedin_publisher_client"),
+        ("backend.services.publisher.x_publisher", "close_x_publisher_client"),
+        ("backend.services.newsletter.publisher", "close_newsletter_publisher_client"),
+        ("backend.services.visual.fireworks_fallback", "close_fireworks_client"),
+        ("backend.services.visual.vision_qa", "close_vision_qa_client"),
+        ("backend.services.visual.imagen_client", "close_imagen_client"),
+        ("backend.services.layout.layout_qa", "close_layout_qa_client"),
+        ("backend.services.review.telegram_adapter", "close_review_telegram_client"),
+        ("backend.services.measurer.meta_graph_sampler", "close_meta_graph_sampler_client"),
+        ("backend.services.measurer.brevo_stats_client", "close_brevo_stats_client"),
+        ("backend.services.measurer.ig_graph_sensor", "close_ig_graph_sensor_client"),
+        ("backend.services.intel.intel_validators", "close_intel_validators_client"),
+        ("backend.services.council.cli_runners", "close_council_runner_client"),
+        ("backend.self_healing.checks.http_api", "close_http_api_check_client"),
+        ("backend.services.compliance.lkpm_ready_pack", "close_brevo_client"),
+    )
+    for module_path, close_name in _p0_5_close_hooks:
+        try:
+            module = __import__(module_path, fromlist=[close_name])
+            close_fn = getattr(module, close_name, None)
+            if close_fn is None:
+                continue
+            await close_fn()
+            logger.info(f"✅ P0-5 client closed: {module_path}.{close_name}")
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning(f"⚠️ P0-5 close error {module_path}.{close_name}: {e}")
+
     logger.info("✅ ZANTARA shutdown complete")
 
 

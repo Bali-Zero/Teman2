@@ -33,7 +33,32 @@ class TwitterChannelAdapter(BaseChannel):
             client_secret=config.get("client_secret", ""),
         )
         self.formatter = TwitterMessageFormatter()
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        Lifespan teardown calls ``close()`` via the channel-router
+        adapter loop in ``app_factory.lifespan`` (security audit
+        2026-04-03). ``isinstance`` guard protects unit tests that
+        inject AsyncMock.
+        """
+        c = self._client
+        if c is None or (isinstance(c, httpx.AsyncClient) and c.is_closed):
+            self._client = httpx.AsyncClient(timeout=30.0)
+        return self._client
+
+    @client.setter
+    def client(self, value: httpx.AsyncClient | None) -> None:
+        """Setter for unit tests that inject a mock AsyncClient."""
+        self._client = value
+
+    async def close(self) -> None:
+        """Close the HTTP client to prevent connection leaks."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
 
     def _oauth1_header(self, method: str, url: str, body: str = "") -> str:
         """Generate OAuth 1.0a Authorization header for X API v2."""

@@ -46,6 +46,25 @@ DEFAULT_API_KEY = os.environ.get("NOTIFICATIONS_API_KEY", "REDACTED-ROTATED-KEY"
 DEFAULT_TIMEOUT = 15.0
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_newsletter_publisher_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 @dataclass
 class PerRecipientResult:
     email: str
@@ -132,23 +151,15 @@ class NewsletterPublisher:
         subject = self._build_subject(content)
         result.subject = subject
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
-        try:
-            for email in recipient_list:
-                per = await self._send_one(client, email, subject, html)
-                result.per_recipient.append(per)
-                if per.ok:
-                    result.recipients_sent += 1
-                else:
-                    result.recipients_failed += 1
-        finally:
-            if close_client:
-                await client.aclose()
+        for email in recipient_list:
+            per = await self._send_one(client, email, subject, html)
+            result.per_recipient.append(per)
+            if per.ok:
+                result.recipients_sent += 1
+            else:
+                result.recipients_failed += 1
 
         return result
 

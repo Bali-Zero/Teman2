@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 API_BASE = "https://api.brevo.com/v3"
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_brevo_stats_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 class BrevoError(RuntimeError):
     """Raised on Brevo API failures."""
 
@@ -76,7 +95,7 @@ class BrevoStatsClient:
     async def _get(self, path: str, *, params: dict | None = None) -> dict[str, Any]:
         url = f"{API_BASE}{path}"
         headers = {"api-key": self.api_key, "Accept": "application/json"}
-        client = self._client or httpx.AsyncClient(timeout=self.timeout)
+        client = self._client or _get_module_client(self.timeout)
         close = self._client is None
         try:
             resp = await client.get(url, headers=headers, params=params or {})

@@ -260,7 +260,7 @@ class QdrantClient:
         Returns:
             httpx.AsyncClient instance with connection pool configured
         """
-        if self._http_client is None:
+        if self._http_client is None or self._http_client.is_closed:
             # Create async client with connection pooling
             self._http_client = httpx.AsyncClient(
                 base_url=self.qdrant_url,

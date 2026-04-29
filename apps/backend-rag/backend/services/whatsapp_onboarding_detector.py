@@ -57,7 +57,22 @@ class OnboardingIntentDetector:
     def __init__(self, mcp_base_url: str = "http://localhost:8000") -> None:
         """Initialize detector with MCP server URL."""
         self.mcp_base_url = mcp_base_url
-        self.client = httpx.AsyncClient(timeout=30.0)
+        # Golden Rule #10: lazy-init via property; close() releases on
+        # singleton teardown (get_onboarding_detector cache).
+        self._client: httpx.AsyncClient | None = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10)."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=30.0)
+        return self._client
+
+    async def close(self) -> None:
+        """Release the HTTP client."""
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
 
     async def detect_and_trigger(
         self,

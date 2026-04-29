@@ -190,8 +190,10 @@ class LLMAdapter:
         self.request_count = 0
         self.last_reset = time.time()
 
-        # HTTP client with longer timeout for large test generations (10 minutes)
-        self.client = httpx.AsyncClient(timeout=600.0)
+        # HTTP client with longer timeout for large test generations (10 minutes).
+        # Golden Rule #10: lazy-init via property; close() releases on
+        # lifespan teardown.
+        self._client: httpx.AsyncClient | None = None
 
         logger.info("🔥 LLM Adapter initialized - QWEN-FIRST MODE (Enhanced)")
         logger.info(f"   Primary: {primary_provider.value}")
@@ -643,9 +645,27 @@ class LLMAdapter:
 
         return health
 
+    @property
+    def client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        ``isinstance`` guard protects unit tests that inject AsyncMock.
+        """
+        c = self._client
+        if c is None or (isinstance(c, httpx.AsyncClient) and c.is_closed):
+            self._client = httpx.AsyncClient(timeout=600.0)
+        return self._client
+
+    @client.setter
+    def client(self, value: httpx.AsyncClient | None) -> None:
+        """Setter for unit tests that inject a mock AsyncClient."""
+        self._client = value
+
     async def close(self) -> None:
         """Cleanup resources"""
-        await self.client.aclose()
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
+        self._client = None
         logger.info("🧠 LLM Adapter closed")
 
 

@@ -42,6 +42,25 @@ BANNED_ELEMENTS: tuple[str, ...] = (
 )
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_vision_qa_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 @dataclass
 class VisionFlags:
     matches_brief: bool
@@ -142,11 +161,7 @@ class OllamaVisionClient:
             "options": {"temperature": 0},
         }
 
-        client = self._client
-        close_client = False
-        if client is None:
-            client = httpx.AsyncClient(timeout=self.timeout)
-            close_client = True
+        client = self._client or _get_module_client(self.timeout)
 
         try:
             resp = await client.post(
@@ -238,6 +253,3 @@ class OllamaVisionClient:
                 ok=False,
                 error=f"{type(exc).__name__}: {exc}",
             )
-        finally:
-            if close_client:
-                await client.aclose()

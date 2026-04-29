@@ -181,7 +181,7 @@ class ConnectionPool:
                     # Create new connection (this would be actual HTTP client)
                     import httpx
 
-                    client = httpx.AsyncClient(
+                    client = httpx.AsyncClient(  # golden-rule-10-exempt: ConnectionPool owns lifecycle (return_connection / aclose on full)
                         timeout=30.0,
                         limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
                     )

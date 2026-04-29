@@ -26,6 +26,25 @@ logger = logging.getLogger(__name__)
 GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 
 
+# Golden Rule #10: module-level lazy singleton AsyncClient.
+_module_client: httpx.AsyncClient | None = None
+
+
+def _get_module_client(timeout: float) -> httpx.AsyncClient:
+    global _module_client  # noqa: PLW0603 — singleton by design
+    if _module_client is None or _module_client.is_closed:
+        _module_client = httpx.AsyncClient(timeout=timeout)
+    return _module_client
+
+
+async def close_ig_graph_sensor_client() -> None:
+    """Release the module-level AsyncClient (lifespan shutdown hook)."""
+    global _module_client  # noqa: PLW0603
+    if _module_client is not None and not _module_client.is_closed:
+        await _module_client.aclose()
+    _module_client = None
+
+
 class IGGraphError(RuntimeError):
     """Raised on Graph API error payloads."""
 
@@ -119,7 +138,7 @@ class IGGraphSensor:
     async def _get(self, path: str, **params: Any) -> dict[str, Any]:
         params["access_token"] = self.token
         url = f"{GRAPH_API_BASE}{path}"
-        client = self._client or httpx.AsyncClient(timeout=20.0)
+        client = self._client or _get_module_client(20.0)
         close = self._client is None
         try:
             resp = await client.get(url, params=params)
