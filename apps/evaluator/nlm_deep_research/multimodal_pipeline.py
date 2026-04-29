@@ -299,12 +299,15 @@ def _run_nlm_create(
 
     Returns (success, message).
     """
+    # PR-E1 (2026-04-30): nlm CLI promoted infographic/mindmap to top-level
+    # commands (out of the deprecated `studio create` namespace). `studio`
+    # now only has status/delete/rename. New shape: `nlm <type> create NOTEBOOK_ID`.
     if artifact_type == "audio":
         cmd = [NLM_CLI, "audio", "create", notebook_id, "--format", "deep_dive", "--confirm"]
     elif artifact_type == "infographic":
-        cmd = [NLM_CLI, "studio", "create", "infographic", notebook_id, "--confirm"]
+        cmd = [NLM_CLI, "infographic", "create", notebook_id, "--confirm"]
     elif artifact_type == "mind-map":
-        cmd = [NLM_CLI, "studio", "create", "mind-map", notebook_id, "--confirm"]
+        cmd = [NLM_CLI, "mindmap", "create", notebook_id, "--confirm"]
     elif artifact_type == "report":
         cmd = [NLM_CLI, "report", "create", notebook_id, "--confirm"]
     else:
