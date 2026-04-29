@@ -35,6 +35,15 @@ if [ -f "$HOME/.zshrc.secrets" ]; then
     source "$HOME/.zshrc.secrets" 2>/dev/null || true
     set -u
 fi
+# PR-D1 (2026-04-30): also source canonical secrets file (PR-C3 introduced
+# this path; .zshrc.secrets above is the legacy fallback). Either is fine —
+# the if-fi guards mean dev environments without the file still work.
+if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+    # shellcheck disable=SC1091
+    set -a
+    source "$HOME/.nuzantara-secrets.env"
+    set +a
+fi
 
 VENV="$PROJECT_ROOT/apps/backend-rag/.venv"
 if [ ! -f "$VENV/bin/activate" ]; then
