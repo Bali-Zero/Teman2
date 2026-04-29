@@ -5,6 +5,156 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h)
+
+_Discovered: 2026-04-29 21:42 WITA (incident #1, FASE 1+2 doc-recovery from
+context) and 22:30 WITA (incident #2, W0-A `.py` file recovery from
+`.git/objects` dangling blobs) · Partial mitigation: WIP-commit-every-10min
+pattern (MOS lesson 2026-04-29) · Permanent fix: TBD, requires identifying
+producer at the automation layer_
+
+**TRAUMA:** Long-running Claude Code sessions (Opus 4.7 max effort, 1M
+context, multi-hour) accumulate untracked work product (`.py` files,
+`.yaml`, `.md` design docs) in the working tree before reaching a commit
+threshold. Sibling processes — `nuz-sync` watchdog, parallel `claude`
+sessions, possibly `agent-*` subagents launched with
+`--dangerously-skip-permissions` — perform `git stash` + `git checkout
+<other-branch>` + `git pull` sequences automatically, dropping untracked
+files from the working tree.
+
+`git stash` without `-u` does NOT stash untracked files. `git checkout
+<branch>` allows the operation to proceed even when untracked files would
+be silently dropped IF the target branch doesn't have those paths.
+Result: file-loss is silent at the git level, observable only by
+inspecting the working tree post-switch.
+
+Same-day recurrence with two distinct producers makes this STRUCTURAL,
+not a one-off:
+
+| Incident | Time (WITA) | Producer | Lost |
+|---|---|---|---|
+| #1 | 21:42 | `nuz-sync` watchdog auto-pull | 2 untracked design docs (`00_design_intent.md` + `01_innervation_matrix.md`, ~17 KB combined). Recovered from in-context conversation buffer; NOT recoverable from `.git/objects` because never `git add`-ed before drop. |
+| #2 | 22:30:03 | Parallel Claude session checking out `nbe/resend-fallback-team-templates` | 4 untracked `.py` files (~26 KB). Recovered from `.git/objects` dangling blobs because the file content had been hashed during a previous `git add` attempt before the hijack. |
+
+Concrete forensic sequence for incident #2 (full timeline in commit
+`7decc8187` `99b_status_2026_04_29_w0a_branch_hijack.md`):
+
+| Time | Event |
+|---|---|
+| 22:14 | Session-A starts FASE 3 W0-A on `feature/innervation-2026-04-29`. |
+| ~22:25 | Session-A writes 4 untracked `.py` files (~26 KB) + 18/18 tests passing. |
+| 22:30:03 | Sibling claude session: `git stash` (tracked-only) + `git checkout main`. Tracked edits land in `stash@{0}` as `innervation-wip-pre-NBE`. |
+| 22:30:06 | Same sibling: `git pull origin main --ff-only` + `git checkout nbe/resend-fallback-team-templates`. The 4 untracked `.py` files are silently dropped from working tree (target branch doesn't carry those paths). |
+| ~22:31 | Session-A's next bash command runs into `cd: no such file` because `apps/cell` symlink resolution is now under a different branch's worktree shape. |
+| 22:32 | Session-A diagnoses via `git reflog` + `git fsck --dangling --no-reflogs` and recovers all 4 files from `.git/objects` to `/tmp/innervation-recovery-20260429_223214/`. |
+| 22:42 | Path B atomic restore + WIP commit `3980a1403` + push to origin in <30s window. |
+
+**ANTIBODY (partial — permanent fix pending):**
+
+1. **WIP-commit-every-10min policy** (MOS lesson saved 2026-04-29,
+   importance 8): every long-running session SHOULD commit a "WIP
+   checkpoint" to its feature branch every ~10 minutes whenever
+   untracked files exist in the working tree. Committed objects are
+   reachable from the branch ref, NOT subject to checkout silent-drop.
+   Pattern (in shell, single atomic batch — NEVER as multiple separate
+   commands):
+
+   ```bash
+   if git ls-files --others --exclude-standard | grep -q .; then
+     git add -A apps/<scope>/  # scope-limited, NOT bare `git add -A`
+     git commit -m "WIP(<scope>): checkpoint $(date +%H:%M) — work in progress"
+     git push origin "$(git rev-parse --abbrev-ref HEAD)"
+   fi
+   ```
+
+2. **Push within 30 seconds of commit**: protects the local commit
+   against further hijack OR Pro disk-loss. Do not run any Write/Read
+   tool calls between `git commit` and `git push origin`.
+
+3. **Pre-session check `ps aux | grep claude | wc -l`**: counts
+   concurrent Claude processes. If >2 (current session + the
+   `~/scripts/claude-max-usage-watcher.py` cron tick), STOP and ask
+   Zero which processes to kill before starting work. Concurrent
+   sessions are the documented vector of the 22:30 hijack.
+
+4. **Recovery procedure documented for next time**: dangling-blob
+   extraction is reliable for content that has been `git add`-ed at
+   least once OR written via tools that hash content into the
+   object store. To recover any blob from this incident class:
+
+   ```bash
+   git fsck --dangling --no-reflogs 2>&1 | grep "dangling blob"
+   for h in <hash>; do
+     git cat-file -p "$h" > /tmp/recovery-$(date +%s)/<filename>
+   done
+   ```
+
+   Same-hour recovery is reliable. After ~14 days, `git gc` may
+   prune dangling blobs unrecoverably.
+
+**ANTIBODY (TBD, requires investigation):**
+
+- Identify which sibling process performed the 22:30 branch-switch.
+  Suspects (per `ps aux` snapshot at 22:32):
+  - PID 79949 (long-running Opus, 26 min CPU consumed since 13:19) —
+    candidate #1. The session that wrote the FASE 1+2 docs is likely
+    still resident.
+  - PID 42807 (long-running, since 13:01) — candidate #2.
+  - `agent-B-nba`, `agent-D-p02-fase2`, `agent-E-p05-fase2` (wave-2/wave-3
+    team agents, `--dangerously-skip-permissions`) — any could have
+    issued the checkout via filesystem MCP.
+  - Bash background `until` loop watching deploy `410da34b` (PID 29764)
+    is a poll, not a checkout actor.
+- Until identified, the trigger condition cannot be eliminated.
+- Future investigation directions: pre-checkout git hook that refuses
+  to switch when untracked files exist AND the parent process is not
+  the session that created them; mutex / lockfile on `feature/*`
+  branches during long-session work.
+
+**GOTCHA:**
+
+- `git stash list` shows incident #1's stash with descriptive label
+  (`feature-innervation-temp-2026-04-29`) but does NOT contain the
+  actually-lost design-doc files. The stash only saved tracked-but-dirty
+  files (CLAUDE.md, lint, etc.) — the untracked design docs (`00`+`01`
+  ~17KB) were dropped between the auto-stash and the checkout. **A stash
+  whose label is "temp-<branch>" is not a guarantee that all WIP work
+  for that branch is in it.** Always cross-check `git fsck --dangling`
+  output against the stash patch before assuming "stash has my work".
+
+- Recovery via `git fsck --dangling --no-reflogs` only works if the
+  file content was hashed into `.git/objects` at some point. Files
+  written to disk and never `git add`-ed do NOT have a blob there.
+  Incident #1 design docs (00 + 01) had been written via the `Write`
+  tool but were never `git add`-ed before the 21:42 stash-and-pull;
+  they were unrecoverable from objects (had to be reconstructed from
+  conversation context). Incident #2 `.py` files HAD been `git add`-ed
+  during the in-progress test cycle, so blobs existed and recovery
+  was clean.
+
+- Recovery dirs in `/tmp/innervation-recovery-*` are volatile (cleared
+  on macOS reboot). Always copy critical recovery artifacts into a
+  committed branch within minutes, not hours. The Path B sequence in
+  commit `3980a1403` is the canonical idempotent recipe.
+
+- `nuz-sync watchdog` history (per `~/logs/nuz-sync/last-run` mtime
+  1777473151 = 22:32:31 UTC) shows the watchdog ran AFTER the 22:30
+  hijack — so it isn't the producer of incident #2. It IS likely the
+  producer of incident #1 (21:42 was inside its 5-min cron tick
+  window). Two different producers, same symptom = structural class.
+
+- `_writer="pro"` field in `shared/escalations_pro.jsonl` confirms the
+  hijack was a same-machine concurrent session, not Air→Pro federation.
+
+Memory references: MOS records the 22:30 timeline as decision/discovery
+2026-04-29 importance 9 ("Innervation Track C3 W0-A interrupted by
+branch hijack — Path B executed, WIP commit 3980a1403 has 9 files / 1029
+insertions / 18 tests passing, full forensics in 99b_status_*"). The
+21:42 incident reference: `02_dispatch_resilience_log.md` § 6 in the
+innervation FASE 1 docs.
+
+---
+
 ### ✅ RESOLVED: Backend prod down — drive_poll_service called missing method on ServiceAccountDriveService (2026-04-29)
 
 _Discovered: 2026-04-29 ~01:54Z (login flow 500 on kita.balizero.com) · Patched: same day, recovery 03:11Z, vaccination PR `ops/post-incident-vaccination-2026-04-29`_
