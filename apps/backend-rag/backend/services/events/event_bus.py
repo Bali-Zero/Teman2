@@ -273,6 +273,17 @@ class EventBus:
             f"{list(PG_CHANNEL_MAP.keys())}"
         )
 
+        # Replay events that landed in events_outbox while the listener was
+        # disconnected. This closes the durability gap of pg_notify (volatile,
+        # no queue) — see cicatrix scar "EventBus is PG LISTEN/NOTIFY but
+        # Symbiosis docs say Redis Streams (2026-04-29)" and migration 144.
+        # Phase-1 contract: replay only fires for events written through
+        # outbox.publish(). Existing emit_pg() callers are unchanged in this
+        # PR and still publish only via raw pg_notify, so they remain volatile
+        # until phase 2. Best-effort: a failure here must not block the
+        # listener loop.
+        await self._replay_outbox_on_reconnect()
+
         # Keep-alive loop
         while self._running:
             await asyncio.sleep(_PING_INTERVAL_S)
@@ -280,6 +291,77 @@ class EventBus:
                 await self._conn.execute("SELECT 1")
             except Exception:
                 raise  # triggers reconnect
+
+    async def _replay_outbox_on_reconnect(self) -> None:
+        """Replay unconsumed events_outbox rows for every known PG channel.
+
+        Foundation hook for the P0-2 outbox pattern (migration 144).
+        Uses a connection acquired from ``self._db_pool`` rather than the
+        long-lived listener connection — fetching+acking happens off the
+        listen path so a slow query cannot starve the keep-alive ping.
+
+        If ``self._db_pool`` is not set (legacy callers that constructed
+        EventBus with ``db_pool=None``), the replay is silently skipped:
+        the listener still works, just without durability. We log a
+        single info line so the gap is visible in deployment logs.
+
+        All exceptions are swallowed and logged: replay is best-effort
+        and must never bring down the listener.
+        """
+        if self._db_pool is None:
+            logger.info(
+                "EventBus: outbox replay skipped — no db_pool configured"
+            )
+            return
+
+        try:
+            from backend.services.events.outbox import replay_unconsumed
+        except Exception as exc:  # noqa: BLE001 — module import is the failure
+            logger.error("EventBus: outbox module unavailable: %s", exc)
+            return
+
+        total = 0
+        try:
+            async with self._db_pool.acquire() as replay_conn:
+                for pg_channel in PG_CHANNEL_MAP:
+                    async def _dispatch(
+                        payload: dict[str, Any], _ch: str = pg_channel
+                    ) -> None:
+                        await self._handle_pg_event(
+                            _ch, json.dumps(payload, default=str)
+                        )
+
+                    try:
+                        count = await replay_unconsumed(
+                            replay_conn,
+                            _dispatch,
+                            channel=pg_channel,
+                            max_age_minutes=60,
+                        )
+                    except Exception as exc:  # noqa: BLE001 — per-channel isolation
+                        logger.error(
+                            "EventBus: outbox replay failed for '%s': %s",
+                            pg_channel,
+                            exc,
+                            exc_info=True,
+                        )
+                        continue
+
+                    if count > 0:
+                        logger.warning(
+                            "📡 EventBus: replayed %d unconsumed events on '%s'",
+                            count,
+                            pg_channel,
+                        )
+                        total += count
+        except Exception as exc:  # noqa: BLE001 — pool acquire / unexpected
+            logger.error(
+                "EventBus: outbox replay aborted: %s", exc, exc_info=True
+            )
+            return
+
+        if total == 0:
+            logger.debug("EventBus: outbox replay found nothing to replay")
 
     async def _close_conn(self) -> None:
         if self._conn and not self._conn.is_closed():
