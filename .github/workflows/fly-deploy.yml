@@ -202,7 +202,7 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Pin migration to a fresh-image machine (sentinel)
+      - name: Pin migration to a fresh-image machine in the api group (sentinel)
         id: sentinel
         run: |
           # Fly's `flyctl deploy --strategy rolling` waits until each machine
@@ -211,24 +211,46 @@ jobs:
           # We still verify defensively: if any started machine still carries
           # a different tag, the rollout is incomplete and we must not run
           # migrations on the OLD image (the bug we are fixing).
+          #
+          # CRITICAL: nuzantara-rag has TWO process groups: `api` and `rag`.
+          # Both share the image tag at deploy time, but they have DIFFERENT
+          # installed Python packages (`asyncpg` is only in the `api` group).
+          # The migration runner imports `backend.db.base_repository` which
+          # imports `asyncpg`, so we MUST pin the SSH session to a machine in
+          # the `api` group. The pre-deploy `run-migrations` job omits
+          # --machine and flyctl auto-routes to a working group, but once we
+          # specify --machine we lose that auto-routing; so we filter the
+          # process_group ourselves here. Belt-and-suspenders: also pass
+          # --process-group api to the ssh console call below.
           for i in $(seq 1 18); do
             JSON=$(flyctl machines list --app nuzantara-rag --json 2>/dev/null || echo '[]')
             STARTED_TAGS=$(echo "$JSON" | jq -r '[.[] | select(.state=="started") | .image_ref.tag] | unique')
             STARTED_COUNT=$(echo "$STARTED_TAGS" | jq 'length')
             if [ "$STARTED_COUNT" = "1" ]; then
               TAG=$(echo "$STARTED_TAGS" | jq -r '.[0]')
-              MACHINE=$(echo "$JSON" | jq -r --arg tag "$TAG" '[.[] | select(.state=="started" and .image_ref.tag==$tag)] | .[0].id')
-              echo "✅ Both started machines share image tag: $TAG"
-              echo "✅ Pinning migration to machine: $MACHINE"
-              echo "tag=$TAG" >> $GITHUB_OUTPUT
-              echo "machine=$MACHINE" >> $GITHUB_OUTPUT
-              exit 0
+              # Pick a started, fresh-image machine in the api process group.
+              MACHINE=$(echo "$JSON" | jq -r --arg tag "$TAG" '
+                [.[]
+                 | select(.state=="started"
+                          and .image_ref.tag==$tag
+                          and (.config.metadata.fly_process_group == "api"))]
+                | .[0].id // empty')
+              if [ -n "$MACHINE" ]; then
+                echo "✅ All started machines share image tag: $TAG"
+                echo "✅ Pinning migration to api-group machine: $MACHINE"
+                echo "tag=$TAG" >> $GITHUB_OUTPUT
+                echo "machine=$MACHINE" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+              echo "Tentativo $i/18 — image tag converged ($TAG) but no started machine in api process group yet"
+            else
+              echo "Tentativo $i/18 — started_unique_tags=$STARTED_COUNT (rolling not yet converged)"
             fi
-            echo "Tentativo $i/18 — started_unique_tags=$STARTED_COUNT (rolling not yet converged)"
             sleep 10
           done
-          echo "❌ Could not converge on a single fresh image tag after 3 min"
-          echo "Started machines image tags: $STARTED_TAGS"
+          echo "❌ Could not isolate a fresh-image machine in the api process group after 3 min"
+          echo "Machine list (debug):"
+          echo "$JSON" | jq '.[] | {id, state, group: .config.metadata.fly_process_group, tag: .image_ref.tag}'
           exit 1
 
       - name: Re-run SQL v2 apply-all on fresh image
@@ -238,9 +260,13 @@ jobs:
           set -o pipefail
           MACHINE="${{ steps.sentinel.outputs.machine }}"
           # tee preserves the live log AND captures output for the alert step.
+          # --process-group api is redundant when --machine pins to a known
+          # api-group machine, but it documents intent and would catch any
+          # future drift in the sentinel filter.
           flyctl ssh console \
             --app nuzantara-rag \
             --machine "$MACHINE" \
+            --process-group api \
             --command "/bin/sh -c 'cd /app && PYTHONPATH=. python -m backend.db.migrate apply-all'" \
             2>&1 | tee migration_output.txt
           # Migration runner (backend/db/migrate.py) prints
