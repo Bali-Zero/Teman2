@@ -1,4 +1,11 @@
--- 129_legacy_user_profiles.sql
+-- 142_legacy_user_profiles.sql
+--
+-- (Renumbered from 129_legacy_user_profiles.sql by P0-7 audit fix
+-- 2026-04-29 — original 129 was duplicated by 129_crm_guardian.sql,
+-- which the runner picked up first; 129_legacy_user_profiles never
+-- landed in _schema_versions. The DDL below is idempotent — no-op
+-- on prod where user_profiles already exists.)
+--
 --
 -- Promote `user_profiles` from a CI-bootstrap-only table to a
 -- migrations_v2 entry. Mirrors the DDL that
