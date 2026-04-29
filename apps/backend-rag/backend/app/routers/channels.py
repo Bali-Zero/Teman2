@@ -48,11 +48,13 @@ async def channel_health(
         errors = stats.get("errors", 0)
         error_rate = (errors / received * 100) if received > 0 else 0.0
 
-        # Determine status
-        if error_rate > 20:
-            status = "degraded"
-        elif error_rate > 50:
+        # Determine status. Order matters: check the stricter threshold first,
+        # otherwise `> 20` matches before `> 50` is ever reached and `down` is
+        # unreachable (latent bug pre-2026-04-30).
+        if error_rate > 50:
             status = "down"
+        elif error_rate > 20:
+            status = "degraded"
         else:
             status = "up"
 
