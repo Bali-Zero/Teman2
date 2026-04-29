@@ -61,3 +61,7 @@ CLAUDE.md
 README.md
 docs/AI_ONBOARDING.md
 docs/DOCS_INVENTORY.md
+
+# Quarantined attempts kept for audit only — should NOT be reformatted
+# (the byte-identical content is the point: it shows what we tried).
+.disabled/
