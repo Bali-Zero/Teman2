@@ -22,7 +22,6 @@ _STATE_DIR = os.path.expanduser("~/.agent/decisions/state")
 # (yellow = 1.5× period, red = 3× period)
 _JOB_PERIODS: dict[str, float] = {
     "fly_pg_backup":       24.0,   # daily
-    "fly_health_check":    12.0,   # every 30min 7-19h only — stale if >12h
     "intel_scraper":       24.0,   # daily 03:00
     "nlm_deep_research":   24.0,   # daily 04:30
     "t4_monitor_daily":     6.0,   # every 6h
@@ -30,8 +29,17 @@ _JOB_PERIODS: dict[str, float] = {
     # (apps/war-room/pipeline.sh deleted). The intel-nightly LaunchAgent
     # already logs "skip" for it, but the watcher kept marking it failed
     # and flooded Cell pulses with red. WR2 has its own supervisor.
+    # "fly_health_check" removed 2026-04-30 (renaissance follow-up):
+    # MIGRATED to fly-watcher 2026-04-14 (see crontab Pro). The state
+    # file ~/.agent/decisions/state/fly_health_check.last.json hasn't
+    # been updated since the migration — it's frozen at 373h+ and was
+    # flooding Cell pulses red post-PR-C5.
+    # "core_guardian" removed 2026-04-30 (renaissance follow-up):
+    # PR #367 (PR-C5) deleted the cron line `0 */3 * * * core-guardian`
+    # because 30 weeks of runs always reported `candidates=0 fixed=0`
+    # — pure dead code. The cron sensor was still expecting a 4h
+    # heartbeat and flooding Cell pulses red every minute.
     "system_doctor":       24.0,   # daily 08:00
-    "core_guardian":        4.0,   # every 3h
     "expiry_alerter":      24.0,   # daily
     "knowledge_graph_builder": 24.0,
     "metabolic_rollup":        24.0,   # daily 23:30
