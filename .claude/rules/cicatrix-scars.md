@@ -102,6 +102,68 @@ sequence), 1870 (login probe). Recovery commit: `720d54f5c`.
 
 ---
 
+### ⚠️ STRUCTURAL: Backend `/health` masks `app.state.startup_failed` (2026-04-29)
+
+_Discovered: 2026-04-29 audit zero-crash · Severity: P0 · Workaround: TBD (intervention plan P0-0 in `docs/audits/2026-04-29-zero-crash-audit/11_brainstorms/P0-0_health_endpoint_classify.md`)_
+
+**TRAUMA:** `apps/backend-rag/backend/app/setup/app_factory.py:114-118` catches RuntimeError from critical service initialization, sets `app.state.startup_failed=True`, and returns. `apps/backend-rag/backend/app/routers/health.py:48-55` defines `_check_startup_failed()` helper, but `health_check()` at lines 147-266 NEVER CALLS IT.
+
+A backend with broken critical services keeps returning HTTP 200 from `/health`. **Fly auto-restart only fires on non-2xx**. So a deterministically-broken backend stays "healthy" forever — silent crash. The 2026-04-29 03:11Z incident (kita.balizero.com login broken, machine `d894e65bede478` "in restart loop") is exactly this pattern — could only be detected via downstream login probe.
+
+**Compounding (BS-0b):** `apps/cell/cell/core/pulse.py` classifies green based on `reading.reachable and reading.status_code == 200` — Cell's own nervous system has the same blind spot.
+
+**ANTIBODY (proposed):** P0-0 brainstorm — call `_check_startup_failed(request.app)` at top of `health_check()`, return 503; track `startup_started_at` in `app_factory.py` with 180s warmup deadline; `pulse.py` classify on body status field (`unhealthy/startup_failed/failed/down` → red, `degraded/initializing/warming` → yellow).
+
+**GOTCHA:** Removing `raise` in `_init_critical_services` (graceful degradation per Symbiosis Law 4) is essential. Without it, uvicorn won't bind 8080. Warmup 180s assumes RAG cold-start ≤90-120s.
+
+---
+
+### ⚠️ STRUCTURAL: EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams (2026-04-29)
+
+_Discovered: 2026-04-29 audit zero-crash via NotebookLM NB-1 ground-truth · Severity: P0 · Workaround: TBD (P0-2 Outbox Pattern)_
+
+**TRAUMA:** `SYMBIOSIS.md` Law 4 promises "Redis Streams + consumer groups, if Redis is down ogni agente funziona in isolamento". Reality (per NB-1 source citations): EventBus uses **PostgreSQL LISTEN/NOTIFY**. See `apps/backend-rag/backend/services/events/__init__.py` PG_CHANNEL_MAP (`practice_changed`, `client_changed`, `compliance_alert`, `lkpm_ingest_completed`, `war_room_event`, `intel_event`, `cognitive_event`). Listener `_RECONNECT_DELAY_S = 5`.
+
+When PG listener disconnects (5s window), every NOTIFY is **silently lost** — pg_notify is volatile, no queue. Symbiosis Law 4 promise is wrong twice: there's no Redis to be down, AND PG NOTIFY has no durability layer.
+
+**ANTIBODY (proposed):** P0-2 Outbox Pattern — table `events_outbox`, atomic INSERT+NOTIFY in same transaction, replay on listener reconnect. Reference impl already exists: `apps/backend-rag/backend/services/bridge/outbox.py` does this for Pro/Air bridge. Generalize.
+
+**Decision needed (Zero handoff):** (a) update SYMBIOSIS.md to match code reality + add Outbox, OR (b) migrate code to Redis Streams. Recommended (a).
+
+**GOTCHA:** Database trigger functions (migrations 112, 113, 114) call `pg_notify` directly — must update in follow-up SQL migration. Consumers must be idempotent for replay safety. Pruning policy: events_outbox grows unbounded.
+
+---
+
+### ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)
+
+_Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P0 · Workaround: TBD (P0-3 mass plist audit)_
+
+**TRAUMA:** `~/Library/LaunchAgents/com.{nuzantara,balizero,cell}.*.plist`. Codex counted 53 project plist:
+- 7/53 (13%) have `KeepAlive=true`
+- 11/53 (21%) have NO KeepAlive directive at all
+- 5/53 (9%) missing `EnvironmentVariables` (VADEMECUM §11 violation)
+- 6/53 (11%) logging to `/tmp/` (lost on reboot, breaks Sentinel)
+
+Critical daemons that should KeepAlive=true but don't include `com.cell.organism` (the actual organism cell), `com.balizero.nlm-bridge`, `com.balizero.post-publish-poller`. Cell's crisis-recovery hierarchy assumes daemon respawns within 10s — only works with KeepAlive=true.
+
+**ANTIBODY (proposed):** P0-3 — `scripts/lint_launchagents.sh` + auto-patcher `scripts/patch_launchagents.sh --dry-run` + PreToolUse hook. Auto-classifies daemon-vs-cron based on `StartInterval`/`StartCalendarInterval` presence (cron) vs absence (daemon).
+
+**GOTCHA:** `RunAtLoad=true + no schedule` is ambiguous (daemon-on-boot vs one-shot-on-load) — manual review. Each plist gets `.pre-vademecum-audit` backup before patching.
+
+---
+
+### ⚠️ STRUCTURAL: SQL v2 migrations duplicate numbers `129_*` and `130_*` (2026-04-29)
+
+_Discovered: 2026-04-29 audit zero-crash via Codex empirical scan · Severity: P0 · Workaround: rename non-applied duplicate (P0-7)_
+
+**TRAUMA:** `apps/backend-rag/backend/db/migrations_v2/` has TWO migration files sharing number `129` and TWO sharing `130`. Runner (`backend/db/migration_manager.py`) tracks via `migration_number` column in `_schema_versions` — duplicates cause undefined apply order and silent corruption risk.
+
+**ANTIBODY (proposed):** P0-7 — compare contents + git history, identify which is in `_schema_versions` (applied), rename the not-applied to next-available number. CI guardrail `lint-migration-numbers.yml` prevents regression. Migration runner asserts uniqueness in `discover_migrations()`.
+
+**GOTCHA:** If both have been applied (unlikely): Zero handoff. Renaming changes file hash but not SQL content — apply order must be re-verified.
+
+---
+
 ### ✅ RESOLVED: Atlas migrate-lint paywalled in v0.38 — pivoted to Squawk (2026-04-26)
 
 _Discovered: 2026-04-26 during sprint 1 PR #306 CI run · Patched: same day via pivot to `sbdchd/squawk-action@v2`_
