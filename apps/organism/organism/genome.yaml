@@ -28,7 +28,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: d2b8db9f2f236250290a4e0d449c2ddf3f7c93c4806ff54076b1610f5dd7efdd
+checksum: 825ed3052ebc5bf7c60eef9c7f9cc47a3c302ca636172e11d9561a3779f3caa7
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -197,5 +197,71 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.zombie_hunter.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.dlq_autopilot
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2700
+  owner_module: scripts/dlq_autopilot.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.dlq-autopilot
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.dlq_autopilot.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/nuzantara-sentinel.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.sentinel
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: cell.organism
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 90
+  owner_module: apps/cell/cell/main.py
+  dependencies:
+  - infra.postgres
+  - infra.redis
+  recovery_action: human_only
+  recovery_params:
+    label: com.cell.organism
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/cell.organism.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.metabolic_rollup
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: scripts/metabolic_rollup_pro.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.cell.metabolic-rollup
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.metabolic_rollup.json
     timestamp_field: ts
     status_field: status

@@ -391,3 +391,56 @@ def test_w1_pro_zombie_hunter_enrolled(tmp_path):
     assert happy.metadata["alive"] == 1
     assert dead.status == "red"
     assert dead.metadata["dead_organs"] == ["pro.zombie_hunter"]
+
+
+def test_w1_pro_dlq_autopilot_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.dlq_autopilot",
+        expected_hb_seconds=2700,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.dlq_autopilot"]
+
+
+def test_w1_pro_sentinel_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.sentinel",
+        expected_hb_seconds=90000,
+        severity="critical",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.sentinel"]
+
+
+def test_w1_cell_organism_enrolled(tmp_path):
+    """cell.organism daemon: recovery_action=human_only but sidecar still
+    feeds the aggregator so the Supervisor can see liveness/status without
+    being able to act on silence (operator wakes it up by hand)."""
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "cell.organism",
+        expected_hb_seconds=90,
+        severity="critical",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["cell.organism"]
+
+
+def test_w1_pro_metabolic_rollup_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.metabolic_rollup",
+        expected_hb_seconds=5400,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.metabolic_rollup"]
