@@ -38,11 +38,14 @@ MIG_DIR = (
 )
 
 
-# Files this batch ships. Numbered with one intentional gap (131) for
-# Strategy 01 Step 3 (`131_unify_migration_tracking.sql`).
+# Files this batch ships. Originally numbered 129–137 with one
+# intentional gap (131) for Strategy 01 Step 3
+# (`131_unify_migration_tracking.sql`). 129 and 130 collided with the
+# crm_guardian batch (PR #258) and were renumbered to 142 and 143 by
+# the P0-7 audit fix on 2026-04-29 — see cicatrix STRUCTURAL P0-7.
 LEGACY_PROMOTION_FILES = (
-    "129_legacy_user_profiles.sql",
-    "130_legacy_conversations.sql",
+    "142_legacy_user_profiles.sql",
+    "143_legacy_conversations.sql",
     "132_legacy_lkpm_reports.sql",
     "133_legacy_system_settings.sql",
     "134_legacy_notification_log.sql",
@@ -51,7 +54,7 @@ LEGACY_PROMOTION_FILES = (
     "137_team_members_legacy_columns_and_defaults.sql",
 )
 
-# Files that landed in the 129-137 number range but are NOT part of the
+# Files that landed in the 129/130 number range and are NOT part of the
 # legacy-promotion batch. They have their own forward/rollback contracts
 # tested elsewhere (or none, if pre-dating the convention). Listed here
 # so test_files_match_directory_listing accepts them as expected.
@@ -196,7 +199,12 @@ def test_files_match_directory_listing() -> None:
         and 129 <= int(f.name[:3]) <= 137
     )
     # 131 is intentionally reserved for unify_migration_tracking
-    expected = sorted(LEGACY_PROMOTION_FILES + NON_LEGACY_FILES_IN_RANGE)
+    # 142, 143 used to live in this range as 129_legacy_user_profiles and
+    # 130_legacy_conversations; renumbered out by P0-7 (2026-04-29).
+    in_range_legacy = tuple(
+        f for f in LEGACY_PROMOTION_FILES if 129 <= int(f[:3]) <= 137
+    )
+    expected = sorted(in_range_legacy + NON_LEGACY_FILES_IN_RANGE)
     assert actual == expected, (
         f"unexpected files in 129–137 range\n"
         f"  expected: {expected}\n"

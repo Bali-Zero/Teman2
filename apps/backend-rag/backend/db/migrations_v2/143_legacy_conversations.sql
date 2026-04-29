@@ -1,4 +1,10 @@
--- 130_legacy_conversations.sql
+-- 143_legacy_conversations.sql
+--
+-- (Renumbered from 130_legacy_conversations.sql by P0-7 audit fix
+-- 2026-04-29 — original 130 was duplicated by
+-- 130_crm_guardian_summary_queue.sql. The DDL below is idempotent —
+-- no-op on prod where conversations already exists.)
+--
 --
 -- Promote `conversations` from a CI-bootstrap-only table to a
 -- migrations_v2 entry. Mirrors `ci_bootstrap_schema.py` exactly.
