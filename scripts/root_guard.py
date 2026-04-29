@@ -127,6 +127,11 @@ WHITELIST_DOTDIRS: set[str] = {
     ".vscode",
     ".security",
     ".Jules",
+    # Quarantine dir for abandoned attempts kept for audit only. Subdirectories
+    # are dated/contextual (e.g. atlas-attempt-pre-2026-04-26/) and contain a
+    # README.md explaining why each block is parked + cicatrix-scars pointer.
+    # Outside every active CI matcher (`paths:` filters), see PR #363.
+    ".disabled",
 }
 
 
