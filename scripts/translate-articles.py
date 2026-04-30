@@ -310,6 +310,38 @@ def main():
     logger.info(f"DONE: {success} translated, {skipped} skipped/failed in {elapsed:.0f}s")
     logger.info(f"Average: {elapsed/max(success,1):.1f}s per translation")
 
+    # Innervation W1.3 sidecar emission. Best-effort — never raises back to
+    # the caller. The genome aggregator polls this file; absent file =
+    # treated as silent (dead) in the next pulse, so a write failure
+    # surfaces naturally without us needing alarmist error handling here.
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        out_dir = _Path.home() / ".organism" / "last_seen"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        # Map: success=ok, skipped/failed in body = degraded, no articles touched = ok-but-idle.
+        if total == 0:
+            sidecar_status = "ok"
+        elif success > 0 and skipped == 0:
+            sidecar_status = "ok"
+        elif success == 0 and skipped == total:
+            sidecar_status = "fail"
+        else:
+            sidecar_status = "degraded"
+        (out_dir / "pro.translate_hourly.json").write_text(_json.dumps({
+            "ts": time.time(),
+            "status": sidecar_status,
+            "organ_id": "pro.translate_hourly",
+            "metadata": {
+                "total": total,
+                "success": success,
+                "skipped": skipped,
+                "elapsed_s": round(elapsed, 1),
+            },
+        }), encoding="utf-8")
+    except Exception as _exc:  # noqa: BLE001
+        logger.warning(f"organ_last_seen emit failed for pro.translate_hourly: {_exc}")
+
 
 if __name__ == "__main__":
     main()
