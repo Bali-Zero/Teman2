@@ -181,31 +181,29 @@ async def test_dispatch_hitl_only_routes_to_awaiting_approval(
     daemon = daemon_with_audit_mock
     repo = MagicMock()
     repo.advance_status = AsyncMock()
-
-    # Mock pool.acquire() async ctx
-    conn = AsyncMock()
-
-    class _Ctx:
-        async def __aenter__(self_inner):
-            return conn
-
-        async def __aexit__(self_inner, *args):
-            return None
+    repo.request_approval = AsyncMock(return_value=_proposal(
+        requested_action="restart_agent", status="awaiting_approval"
+    ))
 
     daemon._pool = MagicMock()
-    daemon._pool.acquire = MagicMock(return_value=_Ctx())
+    # Daemon falls back to "<no-telegram>" when bot_token/chat_id are None
+    # (FADConfig in fixture has them as None).
 
     proposal = _proposal(requested_action="restart_agent")
 
     await daemon._dispatch_proposal(repo, proposal, "production")
 
-    # restart_agent is HITL_ONLY → daemon SQL UPDATE sets awaiting_approval.
-    # advance_status is NOT called for this path; daemon writes directly.
+    # restart_agent is HITL_ONLY → daemon calls repo.request_approval.
+    # advance_status is NOT called for this path.
     repo.advance_status.assert_not_called()
-    conn.execute.assert_awaited_once()
-    # Verify the SQL is the awaiting_approval one
-    sql = conn.execute.call_args.args[0]
-    assert "awaiting_approval" in sql
+    repo.request_approval.assert_awaited_once()
+    # When telegram credentials are missing, chat_id="<no-telegram>"
+    kwargs = repo.request_approval.call_args.kwargs
+    assert kwargs["telegram_chat_id"] == "<no-telegram>"
+    assert kwargs["telegram_message_id"] is None
+    # Token must be a non-empty hex string
+    assert isinstance(kwargs["approval_token"], str)
+    assert len(kwargs["approval_token"]) == 64
 
 
 # ---------------------------------------------------------------------------

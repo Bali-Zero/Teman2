@@ -345,6 +345,120 @@ class FederationAlertRepo:
             await conn.execute(sql, proposal_id, owner)
 
     # ------------------------------------------------------------------
+    # Approval gate (PR #3)
+    # ------------------------------------------------------------------
+
+    async def request_approval(
+        self,
+        proposal_id: str,
+        *,
+        approval_token: str,
+        telegram_chat_id: str,
+        telegram_message_id: int | None = None,
+    ) -> ProposalRow:
+        """Move proposal to status='awaiting_approval' with a fresh token.
+
+        Refuses to overwrite an existing token (a re-issue must rotate
+        the token via a separate ``rotate_approval_token`` flow — out of
+        scope for V1).
+        """
+        async with self._acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE federation_alert_proposals
+                   SET requires_approval = TRUE,
+                       approval_token = $2,
+                       telegram_chat_id = $3,
+                       telegram_message_id = $4,
+                       status = 'awaiting_approval',
+                       updated_at = NOW()
+                 WHERE proposal_id = $1
+                   AND approval_token IS NULL
+                   AND status NOT IN (
+                       'completed', 'failed', 'quarantined', 'duplicate'
+                   )
+                 RETURNING *
+                """,
+                proposal_id,
+                approval_token,
+                telegram_chat_id,
+                telegram_message_id,
+            )
+        if row is None:
+            raise RuntimeError(
+                f"request_approval failed: proposal {proposal_id} either not "
+                "found, terminal, or already has an approval_token"
+            )
+        return _row_to_proposal(row)
+
+    async def record_approval(
+        self,
+        proposal_id: str,
+        *,
+        approved_by: str,
+    ) -> ProposalRow:
+        """Mark proposal approved + transition to 'executing'.
+
+        Refuses if proposal is not in awaiting_approval (defense against
+        late callbacks — Telegram delivers at-least-once).
+        """
+        async with self._acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE federation_alert_proposals
+                   SET approved_by = $2,
+                       approved_at = NOW(),
+                       status = 'executing',
+                       updated_at = NOW()
+                 WHERE proposal_id = $1
+                   AND status = 'awaiting_approval'
+                 RETURNING *
+                """,
+                proposal_id,
+                approved_by,
+            )
+        if row is None:
+            raise LookupError(
+                f"record_approval: proposal {proposal_id} not in "
+                "awaiting_approval"
+            )
+        return _row_to_proposal(row)
+
+    async def record_rejection(
+        self,
+        proposal_id: str,
+        *,
+        rejected_by: str,
+        reason: str = "rejected via Telegram",
+    ) -> ProposalRow:
+        """Mark proposal rejected → terminal status='quarantined'."""
+        async with self._acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE federation_alert_proposals
+                   SET rejected_by = $2,
+                       rejected_at = NOW(),
+                       status = 'quarantined',
+                       quarantine_reason = $3,
+                       quarantined_at = NOW(),
+                       completed_at = NOW(),
+                       updated_at = NOW()
+                 WHERE proposal_id = $1
+                   AND status = 'awaiting_approval'
+                 RETURNING *
+                """,
+                proposal_id,
+                rejected_by,
+                reason[:500],
+            )
+        if row is None:
+            raise LookupError(
+                f"record_rejection: proposal {proposal_id} not in "
+                "awaiting_approval"
+            )
+        return _row_to_proposal(row)
+
+    # ------------------------------------------------------------------
     # Mode persistence
     # ------------------------------------------------------------------
 

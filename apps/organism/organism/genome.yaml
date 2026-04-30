@@ -30,427 +30,427 @@ version: 1
 checksum_algo: sha256
 checksum: 968ef15c9d75538ef578319e193c57189b39feb12a03802197da080835faf598
 organs:
-- id: infra.postgres
-  runtime: fly_machine
-  type: daemon
-  expected_hb_seconds: 0
-  owner_module: infra/fly/nuzantara-postgres
-  dependencies: []
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-postgres
-  severity_on_silence: critical
-  cicatrix_refs: []
-- id: infra.redis
-  runtime: pro_launchd
-  type: daemon
-  expected_hb_seconds: 0
-  owner_module: brew/redis
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: homebrew.mxcl.redis
-  severity_on_silence: critical
-  cicatrix_refs: []
-- id: infra.qdrant
-  runtime: fly_machine
-  type: daemon
-  expected_hb_seconds: 0
-  owner_module: infra/fly/nuzantara-qdrant
-  dependencies: []
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-qdrant
-  severity_on_silence: critical
-  cicatrix_refs: []
-- id: backend.api
-  runtime: fly_machine
-  type: webhook
-  expected_hb_seconds: 60
-  owner_module: apps/backend-rag/backend/app/main.py
-  dependencies:
-  - infra.postgres
-  - infra.redis
-  - infra.qdrant
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-rag
-    process_group: api
-  severity_on_silence: critical
-  cicatrix_refs:
-  - 2026-04-29-startup-failed-mask
-  - 2026-04-29-drive-poll-attribute-error
-- id: backend.crm.drive_poll
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 360
-  owner_module: scripts/openclaw-cron/drive-poll.sh
-  dependencies:
-  - infra.postgres
-  - backend.api
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.drive-poll
-  severity_on_silence: warning
-  cicatrix_refs:
-  - 2026-04-29-drive-poll-attribute-error
-  bridge_source:
-    type: state_file
-    path: ~/.agent/decisions/state/drive_poll.last.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.claude_max_watcher
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 3600
-  owner_module: scripts/claude-max-usage-watcher.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.claude-max-usage-watcher
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.claude/usage-watcher/last_run.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.login_healthcheck
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 900
-  owner_module: scripts/login-healthcheck.sh
-  dependencies:
-  - backend.api
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.login-healthcheck
-  severity_on_silence: critical
-  cicatrix_refs:
-  - 2026-04-29-startup-failed-mask
-  bridge_source:
-    type: state_file
-    path: ~/.agent/decisions/state/login_healthcheck.last.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.fly_restart_loop_detector
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 1350
-  owner_module: scripts/fly-restart-loop-detector.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.fly-restart-loop-detector
-  severity_on_silence: critical
-  cicatrix_refs:
-  - 2026-04-29-drive-poll-attribute-error
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.cpu_monitor
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 1350
-  owner_module: scripts/cpu-monitor.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.cpu-monitor
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.cpu_monitor.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.disk_monitor
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 1350
-  owner_module: scripts/disk-monitor.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.disk-monitor
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.disk_monitor.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.zombie_hunter
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 90
-  owner_module: .claude/scripts/zombie-hunter.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.zombie-hunter
-  severity_on_silence: warning
-  cicatrix_refs:
-  - 2026-04-29-untracked-files-lost
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.zombie_hunter.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.dlq_autopilot
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 2700
-  owner_module: scripts/dlq_autopilot.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.dlq-autopilot
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.dlq_autopilot.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.sentinel
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 90000
-  owner_module: scripts/nuzantara-sentinel.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.sentinel
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.sentinel.json
-    timestamp_field: ts
-    status_field: status
-- id: cell.organism
-  runtime: pro_launchd
-  type: daemon
-  expected_hb_seconds: 90
-  owner_module: apps/cell/cell/main.py
-  dependencies:
-  - infra.postgres
-  - infra.redis
-  recovery_action: human_only
-  recovery_params:
-    label: com.cell.organism
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/cell.organism.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.metabolic_rollup
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 5400
-  owner_module: scripts/metabolic_rollup_pro.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.cell.metabolic-rollup
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.metabolic_rollup.json
-    timestamp_field: ts
-    status_field: status
-- id: channel.whatsapp
-  runtime: fly_machine
-  type: webhook
-  expected_hb_seconds: 120
-  owner_module: apps/backend-rag/backend/channels/whatsapp
-  dependencies:
-  - backend.api
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-rag
-    process_group: api
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: http
-    path: https://kita.balizero.com/api/channels/health-public
-    timestamp_field: ts
-    json_path: channels.whatsapp.status
-- id: channel.telegram
-  runtime: fly_machine
-  type: webhook
-  expected_hb_seconds: 120
-  owner_module: apps/backend-rag/backend/channels/telegram
-  dependencies:
-  - backend.api
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-rag
-    process_group: api
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: http
-    path: https://kita.balizero.com/api/channels/health-public
-    timestamp_field: ts
-    json_path: channels.telegram.status
-- id: channel.instagram
-  runtime: fly_machine
-  type: webhook
-  expected_hb_seconds: 120
-  owner_module: apps/backend-rag/backend/channels/instagram
-  dependencies:
-  - backend.api
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-rag
-    process_group: api
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: http
-    path: https://kita.balizero.com/api/channels/health-public
-    timestamp_field: ts
-    json_path: channels.instagram.status
-- id: channel.web
-  runtime: fly_machine
-  type: webhook
-  expected_hb_seconds: 120
-  owner_module: apps/backend-rag/backend/channels/web
-  dependencies:
-  - backend.api
-  recovery_action: fly_machines_start
-  recovery_params:
-    app: nuzantara-rag
-    process_group: api
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: http
-    path: https://kita.balizero.com/api/channels/health-public
-    timestamp_field: ts
-    json_path: channels.web.status
-- id: pro.intel_nightly
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 90000
-  owner_module: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.intel.nightly
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.agent/decisions/state/intel_scraper.last.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.translate_hourly
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 5400
-  owner_module: scripts/translate-articles.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.translate.hourly
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/pro.translate_hourly.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.renewal_alerts
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 90000
-  owner_module: scripts/openclaw-cron/renewal-alerts.sh
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.renewal-alerts
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.agent/decisions/state/expiry_alerter.last.json
-    timestamp_field: ts
-    status_field: status
-- id: wr2.supervisor
-  runtime: pro_launchd
-  type: daemon
-  expected_hb_seconds: 300
-  owner_module: scripts/wr2_supervisor.py
-  dependencies:
-  - infra.postgres
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.wr2.supervisor
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/wr2.supervisor.json
-    timestamp_field: ts
-    status_field: status
-- id: wr2.oracle
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 1209600
-  owner_module: backend.services.cognitive.oracle_cli
-  dependencies:
-  - infra.postgres
-  - wr2.supervisor
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.wr2.oracle
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/wr2.oracle.json
-    timestamp_field: ts
-    status_field: status
-- id: wr2.newsletter
-  runtime: pro_launchd
-  type: cron
-  expected_hb_seconds: 1209600
-  owner_module: backend.services.newsletter.newsletter_cli
-  dependencies:
-  - infra.postgres
-  - wr2.supervisor
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.balizero.wr2.newsletter
-  severity_on_silence: warning
-  cicatrix_refs: []
-  bridge_source:
-    type: state_file
-    path: ~/.organism/last_seen/wr2.newsletter.json
-    timestamp_field: ts
-    status_field: status
-- id: pro.organism_control_panel
-  runtime: pro_launchd
-  type: daemon
-  expected_hb_seconds: 120
-  owner_module: apps/organism/organism/control_panel.py
-  dependencies: []
-  recovery_action: launchctl_kickstart
-  recovery_params:
-    label: com.nuzantara.organism.control-panel
-  severity_on_silence: critical
-  cicatrix_refs: []
-  bridge_source:
-    type: http
-    path: http://127.0.0.1:1819/health
-    timestamp_field: ts
-    json_path: status
+  - id: infra.postgres
+    runtime: fly_machine
+    type: daemon
+    expected_hb_seconds: 0
+    owner_module: infra/fly/nuzantara-postgres
+    dependencies: []
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-postgres
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: infra.redis
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 0
+    owner_module: brew/redis
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: homebrew.mxcl.redis
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: infra.qdrant
+    runtime: fly_machine
+    type: daemon
+    expected_hb_seconds: 0
+    owner_module: infra/fly/nuzantara-qdrant
+    dependencies: []
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-qdrant
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: backend.api
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 60
+    owner_module: apps/backend-rag/backend/app/main.py
+    dependencies:
+      - infra.postgres
+      - infra.redis
+      - infra.qdrant
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs:
+      - 2026-04-29-startup-failed-mask
+      - 2026-04-29-drive-poll-attribute-error
+  - id: backend.crm.drive_poll
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 360
+    owner_module: scripts/openclaw-cron/drive-poll.sh
+    dependencies:
+      - infra.postgres
+      - backend.api
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.drive-poll
+    severity_on_silence: warning
+    cicatrix_refs:
+      - 2026-04-29-drive-poll-attribute-error
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/drive_poll.last.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.claude_max_watcher
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 3600
+    owner_module: scripts/claude-max-usage-watcher.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.claude-max-usage-watcher
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.claude/usage-watcher/last_run.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.login_healthcheck
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 900
+    owner_module: scripts/login-healthcheck.sh
+    dependencies:
+      - backend.api
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.login-healthcheck
+    severity_on_silence: critical
+    cicatrix_refs:
+      - 2026-04-29-startup-failed-mask
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/login_healthcheck.last.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.fly_restart_loop_detector
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1350
+    owner_module: scripts/fly-restart-loop-detector.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.fly-restart-loop-detector
+    severity_on_silence: critical
+    cicatrix_refs:
+      - 2026-04-29-drive-poll-attribute-error
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.cpu_monitor
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1350
+    owner_module: scripts/cpu-monitor.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.cpu-monitor
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.cpu_monitor.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.disk_monitor
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1350
+    owner_module: scripts/disk-monitor.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.disk-monitor
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.disk_monitor.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.zombie_hunter
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90
+    owner_module: .claude/scripts/zombie-hunter.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.zombie-hunter
+    severity_on_silence: warning
+    cicatrix_refs:
+      - 2026-04-29-untracked-files-lost
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.zombie_hunter.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.dlq_autopilot
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 2700
+    owner_module: scripts/dlq_autopilot.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.dlq-autopilot
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.dlq_autopilot.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.sentinel
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/nuzantara-sentinel.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.sentinel
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.sentinel.json
+      timestamp_field: ts
+      status_field: status
+  - id: cell.organism
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 90
+    owner_module: apps/cell/cell/main.py
+    dependencies:
+      - infra.postgres
+      - infra.redis
+    recovery_action: human_only
+    recovery_params:
+      label: com.cell.organism
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/cell.organism.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.metabolic_rollup
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 5400
+    owner_module: scripts/metabolic_rollup_pro.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.cell.metabolic-rollup
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.metabolic_rollup.json
+      timestamp_field: ts
+      status_field: status
+  - id: channel.whatsapp
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 120
+    owner_module: apps/backend-rag/backend/channels/whatsapp
+    dependencies:
+      - backend.api
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: http
+      path: https://kita.balizero.com/api/channels/health-public
+      timestamp_field: ts
+      json_path: channels.whatsapp.status
+  - id: channel.telegram
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 120
+    owner_module: apps/backend-rag/backend/channels/telegram
+    dependencies:
+      - backend.api
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: http
+      path: https://kita.balizero.com/api/channels/health-public
+      timestamp_field: ts
+      json_path: channels.telegram.status
+  - id: channel.instagram
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 120
+    owner_module: apps/backend-rag/backend/channels/instagram
+    dependencies:
+      - backend.api
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: http
+      path: https://kita.balizero.com/api/channels/health-public
+      timestamp_field: ts
+      json_path: channels.instagram.status
+  - id: channel.web
+    runtime: fly_machine
+    type: webhook
+    expected_hb_seconds: 120
+    owner_module: apps/backend-rag/backend/channels/web
+    dependencies:
+      - backend.api
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: http
+      path: https://kita.balizero.com/api/channels/health-public
+      timestamp_field: ts
+      json_path: channels.web.status
+  - id: pro.intel_nightly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.intel.nightly
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/intel_scraper.last.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.translate_hourly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 5400
+    owner_module: scripts/translate-articles.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.translate.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.translate_hourly.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.renewal_alerts
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/openclaw-cron/renewal-alerts.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.renewal-alerts
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.agent/decisions/state/expiry_alerter.last.json
+      timestamp_field: ts
+      status_field: status
+  - id: wr2.supervisor
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 300
+    owner_module: scripts/wr2_supervisor.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.wr2.supervisor
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/wr2.supervisor.json
+      timestamp_field: ts
+      status_field: status
+  - id: wr2.oracle
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1209600
+    owner_module: backend.services.cognitive.oracle_cli
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.wr2.oracle
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/wr2.oracle.json
+      timestamp_field: ts
+      status_field: status
+  - id: wr2.newsletter
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1209600
+    owner_module: backend.services.newsletter.newsletter_cli
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.balizero.wr2.newsletter
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/wr2.newsletter.json
+      timestamp_field: ts
+      status_field: status
+  - id: pro.organism_control_panel
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 120
+    owner_module: apps/organism/organism/control_panel.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      label: com.nuzantara.organism.control-panel
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: http
+      path: http://127.0.0.1:1819/health
+      timestamp_field: ts
+      json_path: status

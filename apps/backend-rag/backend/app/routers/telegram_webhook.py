@@ -285,6 +285,34 @@ async def telegram_webhook(
                 if handled:
                     return {"ok": True, "update_id": update_id, "type": "callback_query"}
 
+            if callback_data.startswith("fad:"):
+                # Federation Alert Dispatcher approval callback.
+                # See docs/superpowers/specs/2026-04-30-federation-alert-dispatcher.md
+                try:
+                    from backend.app.deps.database import get_database_pool
+                    from backend.services.federation_alerts.webhook import (
+                        handle_fad_callback,
+                    )
+
+                    pool = get_database_pool(request)
+                    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+                    handled = await handle_fad_callback(
+                        callback_query,
+                        pool=pool,
+                        bot_token=bot_token,
+                    )
+                    if handled:
+                        return {
+                            "ok": True,
+                            "update_id": update_id,
+                            "type": "fad_callback",
+                        }
+                except Exception as exc:  # noqa: BLE001 — never block ack
+                    logger.warning(
+                        "FAD callback handler crashed: %s (data=%s)",
+                        exc, callback_data[:80],
+                    )
+
             # Non-intel callbacks fall through to ChannelRouter
             return {"ok": True, "update_id": update_id}
 
