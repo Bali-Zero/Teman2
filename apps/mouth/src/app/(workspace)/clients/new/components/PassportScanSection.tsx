@@ -30,7 +30,7 @@ interface PassportScanSectionProps {
 // State Machine Types
 // ============================================
 
-/** OCR-extractable field keys */
+/** OCR-extractable field keys (applied to the form on confirm) */
 const OCR_FIELDS = [
   'full_name',
   'nationality',
@@ -42,9 +42,15 @@ const OCR_FIELDS = [
 
 type OcrFieldKey = (typeof OCR_FIELDS)[number];
 
+/** Read-only name component fields shown for verification (not applied to form) */
+const NAME_COMPONENT_FIELDS = ['given_names', 'surname'] as const;
+type NameComponentKey = (typeof NAME_COMPONENT_FIELDS)[number];
+
 /** Human-readable labels for each OCR field */
-const FIELD_LABELS: Record<OcrFieldKey, string> = {
+const FIELD_LABELS: Record<OcrFieldKey | NameComponentKey, string> = {
   full_name: 'Full Name',
+  given_names: 'Given Names',
+  surname: 'Surname',
   nationality: 'Nationality',
   date_of_birth: 'Date of Birth',
   gender: 'Gender',
@@ -389,6 +395,27 @@ export function PassportScanSection({ onFieldsConfirmed, onDiscarded }: Passport
           <CheckCircle className="w-5 h-5 text-green-400" />
           <p className="text-sm font-medium text-[var(--foreground)]">Passport Data Extracted</p>
         </div>
+
+        {/* Name components (read-only verify) — shown when OCR returned them */}
+        {(result.given_names || result.surname) && (
+          <div className="rounded-md border border-[var(--border)] bg-[var(--background-elevated)]/50 p-3 space-y-1">
+            <p className="text-xs text-[var(--foreground-muted)] mb-1">
+              Verify name attribution from passport
+            </p>
+            {NAME_COMPONENT_FIELDS.map((key) =>
+              result[key] ? (
+                <div key={key} className="flex items-center gap-3 px-1">
+                  <span className="text-xs text-[var(--foreground-muted)] w-28 flex-shrink-0">
+                    {FIELD_LABELS[key]}
+                  </span>
+                  <span className="text-sm text-[var(--foreground)] font-medium">
+                    {result[key]}
+                  </span>
+                </div>
+              ) : null,
+            )}
+          </div>
+        )}
 
         {/* Fields */}
         <div className="space-y-2">

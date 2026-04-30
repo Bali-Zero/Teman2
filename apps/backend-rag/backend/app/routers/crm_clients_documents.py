@@ -140,6 +140,8 @@ class PassportPreviewResponse(BaseModel):
     success: bool
     confidence: float = 0.0
     full_name: str | None = None
+    surname: str | None = None
+    given_names: str | None = None
     nationality: str | None = None
     date_of_birth: str | None = None
     gender: str | None = None
@@ -212,7 +214,7 @@ async def extract_passport_enhanced(
 {
   "passport_number": "XX123456",
   "expiry_date": "YYYY-MM-DD",
-  "full_name": "SURNAME GIVEN_NAMES",
+  "full_name": "GIVEN_NAMES SURNAME",
   "surname": "SURNAME",
   "given_names": "GIVEN NAMES",
   "gender": "M or F",
@@ -221,6 +223,10 @@ async def extract_passport_enhanced(
   "nationality": "country code",
   "confidence": 0.95
 }
+
+The "surname" field MUST contain ONLY the family name (Surname/Apellidos/Nom),
+and "given_names" MUST contain ONLY the first/middle names (Given names/Prenoms/Nombres).
+"full_name" MUST be given names FIRST, then surname (Western reading order).
 
 Use null for unclear fields. Return ONLY JSON."""
 
@@ -304,6 +310,8 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # Normalize extracted fields
         extracted["full_name"] = title_case_name(extracted.get("full_name"))
+        extracted["surname"] = title_case_name(extracted.get("surname"))
+        extracted["given_names"] = title_case_name(extracted.get("given_names"))
         extracted["nationality"] = normalize_nationality(extracted.get("nationality"))
         extracted["date_of_birth"] = normalize_date(extracted.get("date_of_birth"))
         extracted["expiry_date"] = normalize_date(extracted.get("expiry_date"))
@@ -343,6 +351,8 @@ Use null for unclear fields. Return ONLY JSON."""
                 success=bool(extracted),
                 confidence=extracted.get("confidence", 0.0) if extracted else 0.0,
                 full_name=extracted.get("full_name") if extracted else None,
+                surname=extracted.get("surname") if extracted else None,
+                given_names=extracted.get("given_names") if extracted else None,
                 nationality=extracted.get("nationality") if extracted else None,
                 date_of_birth=extracted.get("date_of_birth") if extracted else None,
                 gender=extracted.get("gender") if extracted else None,
@@ -358,17 +368,14 @@ Use null for unclear fields. Return ONLY JSON."""
 
         # --- Persist mode (client_id is not None) ---
 
-        # Verify name match
+        # Verify name match (order-insensitive: "Rewis Bishop" must match "Bishop Rewis")
         name_match = None
         ratio = None
         extracted_name = extracted.get("full_name")
         if extracted_name and existing_name:
-            # Fuzzy match with 80% threshold
-            ratio = SequenceMatcher(
-                None,
-                existing_name.upper().replace(",", " ").split(),
-                extracted_name.upper().replace(",", " ").split(),
-            ).ratio()
+            existing_tokens = sorted(existing_name.upper().replace(",", " ").split())
+            extracted_tokens = sorted(extracted_name.upper().replace(",", " ").split())
+            ratio = SequenceMatcher(None, existing_tokens, extracted_tokens).ratio()
             name_match = ratio >= 0.8
 
         # Prepare OCR data for storage
@@ -437,6 +444,8 @@ Use null for unclear fields. Return ONLY JSON."""
             success=True,
             confidence=extracted.get("confidence", 0.0),
             full_name=extracted.get("full_name"),
+            surname=extracted.get("surname"),
+            given_names=extracted.get("given_names"),
             nationality=extracted.get("nationality"),
             date_of_birth=extracted.get("date_of_birth"),
             gender=extracted.get("gender"),
