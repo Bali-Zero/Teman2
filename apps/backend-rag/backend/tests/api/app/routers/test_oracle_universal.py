@@ -1113,7 +1113,7 @@ async def test_dropped_fields_use_dedicated_logger(caplog) -> None:
     assert r.status_code == 200
     named = [rec for rec in caplog.records if rec.name == "oracle.query.dropped_fields"]
     assert len(named) == 1
-    assert named[0].levelname == "WARNING"
+    assert named[0].levelno == _logging.WARNING
     assert "domain_hint" in named[0].message
 
 
