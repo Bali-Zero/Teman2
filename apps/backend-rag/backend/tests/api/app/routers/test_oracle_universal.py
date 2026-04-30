@@ -1046,7 +1046,7 @@ async def test_query_default_response_format_does_not_log_drop_warning(caplog) -
 
 
 @pytest.mark.asyncio
-async def test_query_malformed_service_response_logs_validation_error(caplog) -> None:
+async def test_query_malformed_service_response_logs_validation_error(monkeypatch) -> None:
     """Q2: when oracle_service returns a dict that does not match
     OracleQueryResponse, the router must:
     - still answer 200 (contract unchanged, no breaking caller impact),
@@ -1054,10 +1054,25 @@ async def test_query_malformed_service_response_logs_validation_error(caplog) ->
     - but tag the error string with `response_validation_error:` and emit
       a WARN log — so Sentry can distinguish schema drift from a true
       runtime fault.
-    """
-    import logging as _logging
 
-    caplog.set_level(_logging.WARNING, logger="backend.app.routers.oracle_universal")
+    We assert the WARN log via monkeypatch on the router's `logger.warning`
+    (same pattern as `test_dropped_fields_emit_sentry_tag`) instead of caplog,
+    because caplog's record propagation is fragile across the full backend
+    test collection: some upstream test had already configured the
+    `backend.app.routers.oracle_universal` logger with `propagate=False` or a
+    higher level, making caplog blind to records emitted in this test even
+    though the WARN is produced (verified: the response body still carries
+    `error="response_validation_error: …"` in CI). monkeypatch on the bound
+    method is immune to that interference.
+    """
+    captured: list[tuple[str, tuple]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(msg: str, *args, **kwargs) -> None:  # noqa: ANN401
+        captured.append((msg, args))
+
+    monkeypatch.setattr(oracle_router.logger, "warning", _capture)
 
     app = _build_app()
     # Missing required field execution_time_ms → ValidationError
@@ -1079,10 +1094,13 @@ async def test_query_malformed_service_response_logs_validation_error(caplog) ->
     assert body["success"] is False
     assert body["error"].startswith("response_validation_error:")
     validation_logs = [
-        rec for rec in caplog.records
-        if "validation failed" in rec.message and rec.levelname == "WARNING"
+        (msg, args) for msg, args in captured
+        if "validation failed" in msg
     ]
-    assert len(validation_logs) == 1
+    assert len(validation_logs) == 1, (
+        f"expected exactly 1 'validation failed' WARN, got {len(validation_logs)} "
+        f"(all captured: {captured})"
+    )
 
 
 # ---------------------------------------------------------------------------
