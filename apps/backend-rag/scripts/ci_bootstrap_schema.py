@@ -414,6 +414,40 @@ def main() -> int:
             conn.execute(text(stmt))
     print("[bootstrap] team_members prod-only columns + defaults ensured")
 
+    # practice_types prod-only divergence.
+    #
+    # The SQLModel `PracticeType` in `backend/app/modules/crm/models.py` declares
+    # `duration_days: int | None` and `active: bool` (Python-side names). Prod
+    # however has historical column names `typical_duration_days` and `is_active`
+    # (verified via \d practice_types and used by every existing seed migration:
+    # migration_044_seed_practice_types.py, migration_066_populate_practice_types_from_pricing.py,
+    # migration_122_practice_types_visa_d1_5yr.py, plus the catalog endpoint
+    # crm_practices.py:855-857 which selects `is_active` and `typical_duration_days`).
+    #
+    # SQL v2 migration 148_practice_types_bridging_visa.sql writes against the
+    # prod column names. To keep CI green without rewriting the prod schema or
+    # the catalog endpoint, mirror prod by ensuring both sets of columns exist
+    # in CI. The SQLModel-emitted `duration_days`/`active` stay (so ORM reads
+    # work), the prod-shape `typical_duration_days`/`is_active` get added so
+    # raw-SQL writes from the seed migrations resolve.
+    with engine.begin() as conn:
+        for stmt in (
+            "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS typical_duration_days INTEGER",
+            "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+            # SQLModel emits `active` as NOT NULL with Python-side default only.
+            # The seed migrations write `is_active=true` and leave `active` to
+            # the DB default — give it one so raw-SQL inserts don't trip the
+            # NOT NULL constraint. Same shape as team_members.active above.
+            "ALTER TABLE practice_types ALTER COLUMN active SET DEFAULT TRUE",
+            # SQLModel `created_at` uses Python `default_factory=datetime.utcnow`
+            # (no DB server_default). Raw-SQL seed inserts that don't list
+            # created_at trip NOT NULL. Same fix as clients/team_members.
+            "ALTER TABLE practice_types ALTER COLUMN created_at SET DEFAULT NOW()",
+        ):
+            conn.execute(text(stmt))
+    print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default + created_at default)")
+
     return 0
 
 
