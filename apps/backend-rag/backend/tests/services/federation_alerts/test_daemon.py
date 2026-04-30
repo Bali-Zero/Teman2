@@ -352,3 +352,67 @@ async def test_process_notify_payload_terminal_proposal_skipped(
         json.dumps({"v": 1, "proposal_id": "pid-1"}), repo
     )
     repo.acquire_lease.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_enqueue_replay_serialises_dict_payload(
+    daemon_with_audit_mock,
+) -> None:
+    """Replay path receives a dict from outbox; daemon must JSON-encode it.
+
+    Regression for the replay-kwarg + dict-vs-str mismatch surfaced during
+    the live smoke test on Pro (2026-04-30). ``replay_unconsumed`` decodes
+    the JSONB column and injects ``_outbox_id`` / ``_replay`` before
+    dispatch — the daemon's ``_enqueue_replay`` must accept a dict and
+    funnel it through ``_process_notify_payload`` (which expects str).
+    """
+    daemon = daemon_with_audit_mock
+    daemon._pool = MagicMock()  # FederationAlertRepo() requires pool|conn
+    captured: list[str] = []
+
+    async def fake_process(payload_str, _repo):  # noqa: ANN001
+        captured.append(payload_str)
+
+    daemon._process_notify_payload = fake_process  # type: ignore[assignment]
+
+    payload_dict = {
+        "v": 1,
+        "proposal_id": "replay-pid",
+        "run_id": "replay-run",
+        "_outbox_id": 42,
+        "_replay": True,
+    }
+    await daemon._enqueue_replay(payload_dict)
+
+    assert len(captured) == 1
+    decoded = json.loads(captured[0])
+    assert decoded["proposal_id"] == "replay-pid"
+    assert decoded["_outbox_id"] == 42
+    assert decoded["_replay"] is True
+
+
+def test_replay_unconsumed_signature_uses_positional_dispatch_fn() -> None:
+    """``replay_unconsumed`` takes ``dispatch_fn`` as positional arg.
+
+    The daemon must NOT pass it as ``dispatch=`` kwarg — that crashed at
+    boot during the 2026-04-30 smoke test with::
+
+        TypeError: replay_unconsumed() got an unexpected keyword argument
+        'dispatch'
+
+    This test pins the contract so a future refactor can't reintroduce
+    the mismatch silently.
+    """
+    import inspect
+
+    from backend.services.events.outbox import replay_unconsumed
+
+    sig = inspect.signature(replay_unconsumed)
+    params = list(sig.parameters.values())
+    # conn (positional), dispatch_fn (positional-or-keyword), then kw-only
+    assert params[1].name == "dispatch_fn"
+    assert params[1].kind in (
+        inspect.Parameter.POSITIONAL_ONLY,
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    )
+    assert "dispatch" not in sig.parameters
