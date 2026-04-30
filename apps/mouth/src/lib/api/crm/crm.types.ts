@@ -348,6 +348,8 @@ export interface PassportOcrResult {
   success: boolean;
   confidence: number;
   full_name: string | null;
+  surname: string | null;
+  given_names: string | null;
   nationality: string | null;
   date_of_birth: string | null;
   gender: "M" | "F" | null;
