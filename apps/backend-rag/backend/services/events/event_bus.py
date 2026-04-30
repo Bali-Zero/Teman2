@@ -70,6 +70,18 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # Learner (skills/scars from high-perf theses), Telegram notifier for
     # critical wr_anomaly_alerts + Oracle ultra_moves.
     "cognitive_event": "cognitive.event",
+    # Emitted by 15+ alert producers (cell-organism, compliance-ops, daily-ops,
+    # heartbeat-check, fly-watcher, gap_scanner, WR2 supervisor, imigrasi-monitor,
+    # pajak-monitor, bi-exchange, intel-feed, vision-doc, ...) that today only
+    # send to Telegram. Federation Alert Dispatcher (FAD) daemon LISTENs on
+    # this channel to classify, run multi-LLM consensus, sandbox-test fixes,
+    # and post Telegram approval requests. See:
+    #   docs/superpowers/specs/2026-04-30-federation-alert-dispatcher.md
+    # Compact payload <500B (pg_notify hard limit 8000B), full payload in
+    # federation_alert_proposals table (migration 147). Schema:
+    #   {v: 1, proposal_id, run_id, idempotency_key, source, severity,
+    #    action_hint, _outbox_id}
+    "federation_alert": "federation.alert",
 }
 
 _RECONNECT_DELAY_S = 5
