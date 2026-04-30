@@ -28,7 +28,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: c153272ca126bd421a4601f87db8ee713ffab17d889187b7655112c86afa0124
+checksum: d3d17a36b0319d3b43dd8dca9c870913bfb7213d65df0bf99e256af9a26363ed
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -383,5 +383,58 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.agent/decisions/state/expiry_alerter.last.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.supervisor
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/wr2_supervisor.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.supervisor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.supervisor.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.oracle
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1209600
+  owner_module: backend.services.cognitive.oracle_cli
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.oracle
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.oracle.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.newsletter
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1209600
+  owner_module: backend.services.newsletter.newsletter_cli
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.newsletter
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.newsletter.json
     timestamp_field: ts
     status_field: status
