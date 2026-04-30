@@ -96,6 +96,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="admin_rate_limit",           process_groups=_BOTH, tags=("admin", "rate-limit")),
     RouterEntry(name="admin_self_healing",         process_groups=_BOTH, tags=("admin", "self-healing")),
     RouterEntry(name="admin_team_activity",        process_groups=_API, tags=("admin",)),
+    RouterEntry(name="admin_team_members",         process_groups=_API, tags=("admin", "team")),
     RouterEntry(name="admin_zoho_auth",            process_groups=_API, tags=("admin", "integrations")),
 
     # ── Agent / AI ──
