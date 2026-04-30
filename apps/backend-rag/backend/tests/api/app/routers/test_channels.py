@@ -104,3 +104,97 @@ async def test_health_status_down_when_error_rate_above_50pct():
         body = await _get_health(app)
 
     assert body["channels"]["whatsapp"]["status"] == "down"
+
+
+# ---------------------------------------------------------------------------
+# /health-public — Innervation Genoma bridge endpoint (W1.2)
+# ---------------------------------------------------------------------------
+
+
+def _build_app_no_auth(channel_router_stub: Any) -> FastAPI:
+    """Same as _build_app but does NOT override get_current_user — verifies
+    the public endpoint genuinely doesn't require auth, not that we bypassed it."""
+    app = FastAPI()
+    app.include_router(router)
+    app.state.channel_router = channel_router_stub
+    app.state.db_pool = None
+    return app
+
+
+async def _get_health_public(app: FastAPI) -> tuple[int, dict[str, Any]]:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/channels/health-public")
+    return resp.status_code, (resp.json() if resp.status_code == 200 else {})
+
+
+@pytest.mark.asyncio
+async def test_health_public_returns_per_channel_status_no_auth():
+    """The endpoint must respond 200 with no auth header attached."""
+    app = _build_app_no_auth(_stub_router(["whatsapp", "telegram", "instagram", "web"]))
+
+    metrics = MagicMock()
+    metrics.get_stats.return_value = {"messages_received": 100, "errors": 5}  # 5%
+    with patch(
+        "backend.channels.optimizations.channel_metrics",
+        metrics,
+    ):
+        status_code, body = await _get_health_public(app)
+
+    assert status_code == 200
+    assert "ts" in body and isinstance(body["ts"], (int, float))
+    assert "channels" in body
+    assert set(body["channels"].keys()) == {"whatsapp", "telegram", "instagram", "web"}
+    for chan_name, chan_body in body["channels"].items():
+        assert chan_body == {"status": "up"}, f"{chan_name} body shape drift: {chan_body}"
+
+
+@pytest.mark.asyncio
+async def test_health_public_does_not_leak_dlq_metrics_or_counts():
+    """The endpoint MUST NOT expose dlq counts, error_rate strings, raw stats,
+    registered_count, or any other field beyond `ts` and `channels.<name>.status`."""
+    app = _build_app_no_auth(_stub_router(["whatsapp"]))
+
+    metrics = MagicMock()
+    metrics.get_stats.return_value = {
+        "messages_received": 1000,
+        "errors": 30,
+        "internal_secret": "should-not-leak",
+    }
+    with patch(
+        "backend.channels.optimizations.channel_metrics",
+        metrics,
+    ):
+        _, body = await _get_health_public(app)
+
+    forbidden_top_level = {
+        "dlq", "stats", "registered_count", "error_rate", "timestamp", "status",
+    }
+    assert not (set(body.keys()) & forbidden_top_level), (
+        f"public endpoint leaked top-level keys: "
+        f"{set(body.keys()) & forbidden_top_level}"
+    )
+    for chan in body["channels"].values():
+        assert set(chan.keys()) == {"status"}, (
+            f"channel body leaked extra keys: {chan.keys()}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_health_public_threshold_ladder_matches_private_health():
+    """Stay consistent with /health: 5%→up, 30%→degraded, 60%→down."""
+    cases = [(5, "up"), (30, "degraded"), (60, "down")]
+    for errors, expected_status in cases:
+        app = _build_app_no_auth(_stub_router(["whatsapp"]))
+        metrics = MagicMock()
+        metrics.get_stats.return_value = {"messages_received": 100, "errors": errors}
+        with patch(
+            "backend.channels.optimizations.channel_metrics",
+            metrics,
+        ):
+            _, body = await _get_health_public(app)
+
+        assert body["channels"]["whatsapp"]["status"] == expected_status, (
+            f"errors={errors}% → expected {expected_status} "
+            f"got {body['channels']['whatsapp']['status']}"
+        )
