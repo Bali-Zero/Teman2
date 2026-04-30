@@ -440,9 +440,13 @@ def main() -> int:
             # the DB default — give it one so raw-SQL inserts don't trip the
             # NOT NULL constraint. Same shape as team_members.active above.
             "ALTER TABLE practice_types ALTER COLUMN active SET DEFAULT TRUE",
+            # SQLModel `created_at` uses Python `default_factory=datetime.utcnow`
+            # (no DB server_default). Raw-SQL seed inserts that don't list
+            # created_at trip NOT NULL. Same fix as clients/team_members.
+            "ALTER TABLE practice_types ALTER COLUMN created_at SET DEFAULT NOW()",
         ):
             conn.execute(text(stmt))
-    print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default)")
+    print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default + created_at default)")
 
     return 0
 
