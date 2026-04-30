@@ -33,8 +33,14 @@ __all__: list[str] = [
     "ProposalRow",
     "AlertInput",
     "FederationAlertRepo",
+    "FederationAlertDaemon",
+    "FADConfig",
+    "AuditLogger",
 ]
 
+from backend.services.federation_alerts.audit import AuditLogger
+from backend.services.federation_alerts.config import FADConfig
+from backend.services.federation_alerts.daemon import FederationAlertDaemon
 from backend.services.federation_alerts.models import (
     AlertInput,
     AlertSeverity,

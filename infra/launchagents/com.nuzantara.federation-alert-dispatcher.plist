@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.federation-alert-dispatcher</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>set -a; [ -f "$HOME/.nuzantara-secrets.env" ] &amp;&amp; source "$HOME/.nuzantara-secrets.env"; set +a; cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag &amp;&amp; PYTHONPATH=. /Users/nuzantara/.pyenv/versions/3.11.11/bin/python -m backend.scripts.federation_alert_daemon</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/alert-dispatcher/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/alert-dispatcher/launchd.err.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>FEDERATION_ALERT_MODE</key>
+        <string>observe</string>
+        <key>FEDERATION_ALERT_LOG_LEVEL</key>
+        <string>INFO</string>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>
