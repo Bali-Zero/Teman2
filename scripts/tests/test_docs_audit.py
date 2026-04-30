@@ -207,6 +207,78 @@ def test_check_flag_exit_codes(aged_fixture):
     assert result.returncode == 1
 
 
+def test_check_ignores_mtime_days_drift(aged_fixture):
+    """`--check` must NOT fail when the only delta is mtime_days incrementing.
+
+    Calendar time advances every day; if `--check` flagged that, every PR
+    touching `docs/**` would fail Docs Guardian on the day after the last
+    inventory regen — making the gate noise instead of signal. Regression
+    for the 2026-05-01 incident on PR #401, where the `inventory-check`
+    job in `.github/workflows/docs-guardian.yml` flagged a 1-day
+    mtime_days drift on every row even though no doc was actually stale.
+    """
+    common = [
+        "--whitelist", "docs/WHITELIST_KEEPER.md",
+        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+    ]
+    # Generate inventory at the fixture's current "today".
+    _run_audit(aged_fixture, *common)
+
+    # Bump every mtime_days by 1 to simulate "the next calendar day".
+    inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
+    bumped: list[str] = []
+    in_table = False
+    for line in inventory.read_text().splitlines():
+        if line.startswith("|") and "mtime_days" in line:
+            in_table = True
+            bumped.append(line)
+            continue
+        if in_table and line.startswith("| ") and "---" not in line:
+            parts = line.split("|")
+            # | path | STATUS | mtime_days | refs_in | broken | drift | …
+            if len(parts) >= 9:
+                try:
+                    parts[3] = f" {int(parts[3].strip()) + 1} "
+                    line = "|".join(parts)
+                except ValueError:
+                    pass
+        bumped.append(line)
+    inventory.write_text("\n".join(bumped) + "\n")
+
+    # Drift is mtime-only → the fix in render_inventory's strip_volatile
+    # must mask it, so --check must still exit 0.
+    result = _run_audit(aged_fixture, *common, "--check")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+    # Sanity: re-running without --check must rewrite the file with the
+    # real (smaller) mtime values, restoring byte-identical state.
+    _run_audit(aged_fixture, *common)
+    result = _run_audit(aged_fixture, *common, "--check")
+    assert result.returncode == 0
+
+
+def test_check_still_catches_real_drift(aged_fixture):
+    """Counterpart to the mtime-drift mask: a real status change must trip --check.
+
+    Without this guarantee, the strip_volatile mask could over-strip and
+    silently hide actual drift (e.g. a doc going LIVE → STALE).
+    """
+    common = [
+        "--whitelist", "docs/WHITELIST_KEEPER.md",
+        "--cluster", "test-dup:docs/DUP_V1.md,docs/DUP_V2.md:docs/DUP_V2.md",
+    ]
+    _run_audit(aged_fixture, *common)
+    inventory = aged_fixture / "docs" / "DOCS_INVENTORY.md"
+    content = inventory.read_text()
+    # Flip first LIVE row to STALE.
+    mutated = content.replace("| LIVE |", "| STALE |", 1)
+    assert mutated != content, "fixture has no LIVE rows — adjust"
+    inventory.write_text(mutated)
+
+    result = _run_audit(aged_fixture, *common, "--check")
+    assert result.returncode == 1
+
+
 def test_git_mtime_beats_stat_mtime(tmp_path):
     """When the file is in a git repo, the audit must use `git log` for mtime,
     not `os.stat().st_mtime`. This protects against git-checkout resetting

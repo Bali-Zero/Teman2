@@ -439,11 +439,35 @@ def main() -> int:
     inventory_path = repo / "docs" / "DOCS_INVENTORY.md"
     old_content = inventory_path.read_text(encoding="utf-8") if inventory_path.exists() else ""
 
-    # Strip "Last run:" line for comparison (timestamp changes every run)
-    def strip_ts(s: str) -> str:
-        return "\n".join(l for l in s.splitlines() if "Last run:" not in l)
+    # Normalise volatile fields before comparing committed vs. rendered:
+    #   * "Last run: …" — wall-clock timestamp, changes every run
+    #   * mtime_days column in the file table — increments daily for every
+    #     row because git commit-mtime grows with calendar time, even if
+    #     no doc was touched. Without stripping this, `--check` returns 1
+    #     on every PR touching docs/** the day after the last regen.
+    def strip_volatile(s: str) -> str:
+        out: List[str] = []
+        for line in s.splitlines():
+            if "Last run:" in line:
+                continue
+            # File table rows look like:
+            #   | path | STATUS | <int> | <int> | <int> | yes/no | cluster | action |
+            # mtime_days is column 3 (1-indexed) — replace with placeholder
+            # so daily drift doesn't trip the comparison. Header row
+            # ("File | Status | mtime_days | …") is preserved verbatim.
+            if line.startswith("| ") and "|" in line[2:] and "mtime_days" not in line:
+                parts = line.split("|")
+                # Expected layout: ['', ' path ', ' STATUS ', ' mtime_days ',
+                #                   ' refs_in ', ' broken ', ' drift ',
+                #                   ' cluster ', ' action ', '']
+                # Skip the alignment row "|------|...".
+                if len(parts) >= 9 and "---" not in line:
+                    parts[3] = " <mtime> "
+                    line = "|".join(parts)
+            out.append(line)
+        return "\n".join(out)
 
-    stale_delta = strip_ts(new_content) != strip_ts(old_content)
+    stale_delta = strip_volatile(new_content) != strip_volatile(old_content)
 
     if args.json:
         payload = {
