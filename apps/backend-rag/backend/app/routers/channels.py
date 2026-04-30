@@ -9,6 +9,7 @@ Provides visibility into the multi-channel messaging system:
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -97,6 +98,49 @@ async def channel_health(
         "dlq": dlq_summary,
         "registered_count": len(channels_health),
     }
+
+
+@router.get("/health-public")
+async def channel_health_public(request: Request) -> dict[str, Any]:
+    """
+    Public liveness for the Innervation Genoma aggregator.
+
+    Returns ONLY per-channel `status` (one of `up | degraded | down`) and a
+    top-level `ts` (unix epoch). No metrics, no DLQ, no error_rate, no
+    counts — the bridge_state_reader (cell.sensors.bridge_state_reader)
+    polls this endpoint and maps `up→ok`, `degraded→degraded`, `down→fail`.
+
+    Unauthenticated by design: the only information disclosed is whether
+    each channel is currently accepting messages, which an attacker
+    already observes by hitting the channel webhooks themselves. No PII,
+    no operational secrets, no traffic numbers.
+
+    Threshold logic mirrors `/health` (the `down → degraded → up` ladder
+    fixed in PR #380), so the two endpoints stay consistent.
+    """
+    channel_router = getattr(request.app.state, "channel_router", None)
+    if channel_router is None:
+        return {"ts": time.time(), "channels": {}, "error": "channel_router_uninitialized"}
+
+    from backend.channels.optimizations import channel_metrics
+
+    channels: dict[str, dict[str, str]] = {}
+    for name in channel_router.get_available_channels():
+        stats = channel_metrics.get_stats(name) if channel_metrics else {}
+        received = stats.get("messages_received", 0)
+        errors = stats.get("errors", 0)
+        error_rate = (errors / received * 100) if received > 0 else 0.0
+
+        if error_rate > 50:
+            status = "down"
+        elif error_rate > 20:
+            status = "degraded"
+        else:
+            status = "up"
+
+        channels[name] = {"status": status}
+
+    return {"ts": time.time(), "channels": channels}
 
 
 @router.get("/stats")
