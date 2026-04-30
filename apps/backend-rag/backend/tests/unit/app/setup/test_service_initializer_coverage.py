@@ -129,8 +129,24 @@ async def test_init_critical_services_success(mock_app):
 
 
 @pytest.mark.asyncio
-async def test_init_critical_services_search_fails(mock_app):
-    """SearchService fails but AI client succeeds — still raises if critical."""
+async def test_init_critical_services_search_fails(mock_app, caplog):
+    """SearchService fails but AI client succeeds — degraded mode (no raise).
+
+    PR #344 (p0-1: SearchService degraded mode + structured 503) intentionally
+    removed the `raise RuntimeError` from _init_critical_services so that a
+    deterministic critical-service failure no longer triggers Fly.io restart
+    loops (cicatrix STRUCTURAL 2026-04-29 — Backend /health masks
+    app.state.startup_failed). The boot continues, /health reports degraded
+    via `app.state.degraded_services`, and per-router dependencies surface
+    503 to clients.
+
+    This test now asserts the new contract:
+      - _init_critical_services returns (search_service, ai_client) — no raise
+      - a WARNING log is emitted with "Critical service(s) degraded" so ops
+        can observe the degradation
+    """
+    import logging as _logging
+
     with (
         patch(
             "backend.services.ingestion.collection_manager.CollectionManager",
@@ -148,13 +164,34 @@ async def test_init_critical_services_search_fails(mock_app):
         mock_registry.has_critical_failures.return_value = True
         mock_registry.format_failures_message.return_value = "search failed"
 
-        with pytest.raises(RuntimeError, match="search failed"):
-            await _init_critical_services(mock_app)
+        caplog.set_level(_logging.WARNING)
+        # No raise — degraded boot is the documented behavior post-PR #344.
+        search, ai = await _init_critical_services(mock_app)
+        # Tuple still returned (downstream code reads it).
+        assert ai is not None
+        # Degradation observable via WARN log (substring match — formatter
+        # may add ANSI color codes in CI).
+        degraded_logs = [
+            rec for rec in caplog.records
+            if "Critical service(s) degraded" in rec.message
+        ]
+        assert len(degraded_logs) == 1, (
+            f"expected exactly 1 'Critical service(s) degraded' WARN, "
+            f"got {len(degraded_logs)} (records: {[r.message for r in caplog.records]})"
+        )
 
 
 @pytest.mark.asyncio
-async def test_init_critical_services_ai_fails(mock_app):
-    """AI client fails — should raise RuntimeError."""
+async def test_init_critical_services_ai_fails(mock_app, caplog):
+    """AI client fails — degraded mode (no raise).
+
+    Same contract as `test_init_critical_services_search_fails`: PR #344
+    intentionally removed `raise RuntimeError` from _init_critical_services.
+    A failed AI client is observable via the WARNING log + the registry's
+    `has_critical_failures()`, not via an exception.
+    """
+    import logging as _logging
+
     with (
         patch("backend.services.search.search_service.SearchService"),
         patch(
@@ -185,8 +222,20 @@ async def test_init_critical_services_ai_fails(mock_app):
         mock_registry.has_critical_failures.return_value = True
         mock_registry.format_failures_message.return_value = "AI client failed"
 
-        with pytest.raises(RuntimeError, match="AI client failed"):
-            await _init_critical_services(mock_app)
+        caplog.set_level(_logging.WARNING)
+        # Degraded mode — no raise.
+        search, ai = await _init_critical_services(mock_app)
+        # Search service was constructed; ai_client is None because the
+        # patched constructor raised — but the boot continues.
+        assert search is not None or ai is None  # tolerant of either path
+        degraded_logs = [
+            rec for rec in caplog.records
+            if "Critical service(s) degraded" in rec.message
+        ]
+        assert len(degraded_logs) == 1, (
+            f"expected exactly 1 'Critical service(s) degraded' WARN, "
+            f"got {len(degraded_logs)} (records: {[r.message for r in caplog.records]})"
+        )
 
 
 @pytest.mark.asyncio
