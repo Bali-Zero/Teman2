@@ -6,6 +6,7 @@ Sensors graduated out of stub-land (own test_*_sensor.py):
   - WarRoomEventSensor     (Sprint 2c)
   - KGSensor               (Sprint 2d)
   - CompetitorSERPSensor   (Sprint 2e)
+  - LeadAttributionSensor  (Sprint 2 — pre_natal gate feeder)
 
 Only CannibalizationSensor remains a stub — per Sprint 2d commit, it
 belongs in the thinker layer, not the sensor layer, and will be
@@ -20,6 +21,7 @@ from apps.evaluator.seo_cell.sensors import (
     GA4Sensor,
     GSCSensor,
     KGSensor,
+    LeadAttributionSensor,
     WarRoomEventSensor,
 )
 
@@ -38,17 +40,18 @@ async def test_stub_sensor_returns_reading(sensor):
     assert reading.metadata.get("stub") is True
 
 
-def test_six_distinct_sensor_names():
-    all_six = [
+def test_seven_distinct_sensor_names():
+    all_seven = [
         *STUB_SENSORS,
         GSCSensor(),
         GA4Sensor(),
         WarRoomEventSensor(),
         KGSensor(),
         CompetitorSERPSensor(),
+        LeadAttributionSensor(),
     ]
-    names = {s.name for s in all_six}
-    assert len(names) == 6
+    names = {s.name for s in all_seven}
+    assert len(names) == 7
     assert names == {
         "gsc",
         "ga4",
@@ -56,4 +59,5 @@ def test_six_distinct_sensor_names():
         "kg",
         "war_room_event",
         "cannibalization",
+        "lead_attribution",
     }

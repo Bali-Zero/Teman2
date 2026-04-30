@@ -31,6 +31,7 @@ from apps.evaluator.seo_cell.sensors import (
     GA4Sensor,
     GSCSensor,
     KGSensor,
+    LeadAttributionSensor,
     WarRoomEventSensor,
 )
 from apps.evaluator.seo_cell.thinker import SEOThinker
@@ -69,6 +70,7 @@ def create_seo_cell() -> PulseLoop:
         KGSensor(),
         WarRoomEventSensor(),
         CannibalizationSensor(),
+        LeadAttributionSensor(),
     ]
 
     thinker = SEOThinker()
