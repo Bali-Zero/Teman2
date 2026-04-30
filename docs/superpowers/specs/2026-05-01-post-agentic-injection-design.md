@@ -153,8 +153,8 @@ Tre migration nuove (Sprint 0 step 2+3 paralleli, Step 1 ricorrente vivo):
 
 | Migration                        | Tabella                                        | Cosa traccia                                                                                                                                                        |
 | -------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `145_client_segments.sql`        | `client_segments`                              | `(client_id, tier ∈ {1,2,3}, lifetime_value_usd, computed_at)`. Calcolo iniziale via batch SQL su `practices` JOIN `invoices`; aggiornamento ricorrente settimanale |
-| `146_renewal_alert_outcomes.sql` | `renewal_alert_outcomes`                       | `(alert_id FK renewal_alerts, outcome ∈ {acted_by_team, client_renewed, client_ignored, expired_no_action}, outcome_at, observed_by ∈ {cell, team_member})`         |
+| `149_client_segments.sql`        | `client_segments`                              | `(client_id, tier ∈ {1,2,3}, lifetime_value_usd, computed_at)`. Calcolo iniziale via batch SQL su `practices` JOIN `invoices`; aggiornamento ricorrente settimanale |
+| `150_renewal_alert_outcomes.sql` | `renewal_alert_outcomes`                       | `(alert_id FK renewal_alerts, outcome ∈ {acted_by_team, client_renewed, client_ignored, expired_no_action}, outcome_at, observed_by ∈ {cell, team_member})`         |
 | (no new table)                   | `renewal_baseline_2024_2026` view materialized | Computed retroactively + ri-aggiornata settimanale da Cell skill `measure_conversion`                                                                               |
 
 **Squawk lint mandatorio** su tutte e 3 (cf. PR #306 + cicatrix `2026-04-26-atlas-paywalled`). `-- === ROLLBACK ===` marker su tutte (cf. cicatrix `2026-04-19-migration-runner`).
@@ -169,8 +169,8 @@ Tre migration nuove (Sprint 0 step 2+3 paralleli, Step 1 ricorrente vivo):
 
 | Step | Cosa                                                                                                                                       | Worktree                     | Stima      |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | ---------- |
-| 0.2  | Migration `145_client_segments.sql` + script computazione LTV iniziale                                                                     | `worktree-tier-segmentation` | 2-3 giorni |
-| 0.3  | Migration `146_renewal_alert_outcomes.sql` + backfill su `renewal_alerts` esistenti (post-hoc inference da `practices.status` transitions) | `worktree-outcome-tracking`  | 1 giorno   |
+| 0.2  | Migration `149_client_segments.sql` + script computazione LTV iniziale                                                                     | `worktree-tier-segmentation` | 2-3 giorni |
+| 0.3  | Migration `150_renewal_alert_outcomes.sql` + backfill su `renewal_alerts` esistenti (post-hoc inference da `practices.status` transitions) | `worktree-outcome-tracking`  | 1 giorno   |
 | 0.1  | Skill `measure_conversion` con materialized view auto-refresh settimanale (NON un batch one-off)                                           | Sprint 1 (vive con Cell)     | n/a        |
 
 **Critica del piano originale corretta in D**: il baseline retroattivo NON è un job batch one-off. Diventa un _organo vivo_ che ri-computa retroattivamente ogni settimana. Più Lamarckian, più SYMBIOSIS.
@@ -449,8 +449,8 @@ Se anche **uno** sfora → Sprint 5 NON parte, Sprint 4 esteso di 2 settimane pe
 - `packages/nuzantara-skills/base.py` (`Skill`, `Proposal`, `DispatchResult` classes)
 - `packages/nuzantara-skills/renewals/{detect_expiring_kitas,propose_outreach,draft_wa_message,measure_conversion,update_skill_confidence}.py`
 - `apps/backend-rag/backend/app/middleware/heartbeat.py`
-- `apps/backend-rag/backend/db/migrations_v2/145_client_segments.sql`
-- `apps/backend-rag/backend/db/migrations_v2/146_renewal_alert_outcomes.sql`
+- `apps/backend-rag/backend/db/migrations_v2/149_client_segments.sql`
+- `apps/backend-rag/backend/db/migrations_v2/150_renewal_alert_outcomes.sql`
 - `apps/organism/organism/tools/discover_organisms.py`
 - `apps/organism/organism/supervisor/consiglio_v2.py`
 - `apps/organism/organism/launchd/com.nuzantara.genome-discovery.plist`
