@@ -25,6 +25,11 @@ import { useToast } from "@/components/ui/toast";
 import { toast as sonnerToast } from "sonner";
 import { api } from "@/lib/api";
 import type { Practice } from "@/lib/api/crm/crm.types";
+import {
+  STATUS_LABELS as STATUS_DROPDOWN_LABELS,
+  getAllowedNextStatuses,
+  type PracticeStatus,
+} from "@/lib/api/crm/state-machine";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
 import { logger } from "@/lib/logger";
 import { toError } from "@/lib/types/common";
@@ -91,6 +96,10 @@ export default function CaseDetailPage() {
     assigned_to: "",
     start_date: "",
   });
+  // Whether the current user is allowed to perform admin-only state
+  // transitions (e.g. completed → cancelled, cancelled → inquiry).
+  // Hydrated from `api.isAdmin()` after the profile loads.
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Inline notes edit
   const [isEditingNotes, setIsEditingNotes] = useState(false);
@@ -144,6 +153,7 @@ export default function CaseDetailPage() {
       try {
         const user = await api.getProfile();
         userEmail.current = user.email;
+        setIsAdmin(api.isAdmin());
 
         if (caseId) {
           casesMetrics.trackPageView("detail", caseId, user.email);
@@ -1924,11 +1934,14 @@ export default function CaseDetailPage() {
                     color: "var(--bz-text-1)",
                   }}
                 >
-                  <option value="inquiry">Inquiry</option>
-                  <option value="waiting_documents">Waiting Documents</option>
-                  <option value="sending_invoice">Sending Invoice</option>
-                  <option value="on_process">On Process</option>
-                  <option value="completed">Completed</option>
+                  {getAllowedNextStatuses(
+                    editForm.status as PracticeStatus,
+                    isAdmin,
+                  ).map((status) => (
+                    <option key={status} value={status}>
+                      {STATUS_DROPDOWN_LABELS[status] ?? status}
+                    </option>
+                  ))}
                 </select>
               </div>
 
