@@ -95,7 +95,7 @@ class FederationAlertDaemon:
             async with self._pool.acquire() as conn:
                 await replay_unconsumed(
                     conn,
-                    dispatch=self._enqueue_replay,
+                    self._enqueue_replay,
                     channel=PG_CHANNEL,
                     consumer_id=self._config.daemon_owner,
                 )
@@ -195,11 +195,17 @@ class FederationAlertDaemon:
     # Per-payload processing
     # ------------------------------------------------------------------
 
-    async def _enqueue_replay(self, payload_str: str) -> None:
-        """Callback invoked by replay_unconsumed for each unconsumed row."""
-        # The daemon's main loop handles the same shape, so just delegate.
+    async def _enqueue_replay(self, payload: dict[str, Any]) -> None:
+        """Callback invoked by replay_unconsumed for each unconsumed row.
+
+        ``replay_unconsumed`` decodes the JSONB column into a dict and
+        injects ``_outbox_id`` / ``_replay`` keys before dispatching.
+        The daemon's main NOTIFY loop, by contrast, receives the raw
+        payload string from ``add_listener``. Re-serialise here so both
+        paths funnel through ``_process_notify_payload``.
+        """
         repo = FederationAlertRepo(pool=self._pool)  # type: ignore[arg-type]
-        await self._process_notify_payload(payload_str, repo)
+        await self._process_notify_payload(json.dumps(payload), repo)
 
     async def _process_notify_payload(
         self, payload_str: str, repo: FederationAlertRepo
