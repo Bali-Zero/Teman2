@@ -424,7 +424,7 @@ def main() -> int:
     # migration_122_practice_types_visa_d1_5yr.py, plus the catalog endpoint
     # crm_practices.py:855-857 which selects `is_active` and `typical_duration_days`).
     #
-    # SQL v2 migration 147_practice_types_bridging_visa.sql writes against the
+    # SQL v2 migration 148_practice_types_bridging_visa.sql writes against the
     # prod column names. To keep CI green without rewriting the prod schema or
     # the catalog endpoint, mirror prod by ensuring both sets of columns exist
     # in CI. The SQLModel-emitted `duration_days`/`active` stay (so ORM reads

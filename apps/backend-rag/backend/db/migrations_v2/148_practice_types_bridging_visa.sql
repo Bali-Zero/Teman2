@@ -1,4 +1,4 @@
--- Migration 147: add Bridging Visa to practice_types catalog
+-- Migration 148: add Bridging Visa to practice_types catalog
 --
 -- Purpose: register a new Bali Zero service "Bridging Visa" so that it
 -- appears in the New Process form dropdown at kita.balizero.com/process/new
