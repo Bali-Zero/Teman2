@@ -329,6 +329,28 @@ The user writes in **colloquial Italian**. Translate intent into precise technic
 
 Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`) → all. Team → only `assigned_to` matches.
 
+### Team Bali Zero (operational reference)
+
+| Member | Email | Role | Perimeter |
+|---|---|---|---|
+| Antonello (Zero) | `zero@balizero.com` / `antonellosiano@gmail.com` | Owner / Architect | All |
+| Asya | `asya@balizero.com` | Platform / Backend | All except prod secrets rotation |
+| Surya | `surya@balizero.com` | Tax operations | Tax practices, CoreTax |
+| Ari Firda | `ari.firda@balizero.com` | Visa/Immigration | Visa practices, KITAS |
+| Adit | `adit@balizero.com` | Operations / Welcome | Office, contracts, onboarding |
+| Sahira | `sahira@balizero.com` | Sales / WhatsApp | Lead handoff, client comms |
+| Krisna | `krisna@balizero.com` | LKPM / Reporting | LKPM allowlist (migration 110), Telegram @KrissTzy |
+| Damar | `damar@balizero.com` | Marketing / War Room | Canva, social, dispatch carousels |
+| Vino | `vino@balizero.com` | Marketing | Social, content support |
+| Veronika | `tax@balizero.com` | Tax team manager | Tax team coordination |
+| Rina | `rina@balizero.com` | Reception | Front desk, scheduling |
+| Ruslana | `ruslana@balizero.com` | Strategic / English content | Strategy, English copy. Telegram chat_id 3743891689 |
+| **Subhi Darajat** ⭐ NEW | `subhi@balizero.com` | **Growth Systems Owner** (probation 90gg 2026-04-30 → 2026-07-29) | `apps/mouth/(blog\|marketing\|kbli\|visa\|property\|tax-calendar)/**` + GA4/GSC + organic distribution. NO backend RAG, NO genome.yaml, NO secrets. See `~/.claude/projects/-Users-nuzantara/memory/subhi-{task-routing,rbac-permissions,contact}.md` |
+
+**Email language to team** (`feedback_email_language.md`): Bahasa Indonesia for all `@balizero.com` except `zero@`/`antonellosiano@`. Subhi: bahasa default, italiano OK as fallback.
+
+**Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` (alias of `damar@balizero.com`) via Brevo `/api/notifications/send-email` + `X-API-Key: zantara-secret-2024`. Never `zero@`, `notifications@`, `subhi@` for automated/transactional sends.
+
 ## 10. Frontend Deploy — QA Automatico (OBBLIGATORIO)
 
 After any frontend deploy, automatically:

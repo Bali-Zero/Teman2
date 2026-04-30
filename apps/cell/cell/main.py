@@ -28,6 +28,7 @@ from cell.sensors.backup_sensor import BackupSensor
 from cell.sensors.cron_sensor import CronSensor
 from cell.sensors.database_sensor import DatabaseSensor
 from cell.sensors.error_rate_sensor import ErrorRateSensor
+from cell.utils.organ_emitter import emit_organ_last_seen
 from cell.sensors.health_sensor import HealthSensor
 from cell.sensors.ollama_sensor import OllamaSensor
 from cell.sensors.qdrant_sensor import QdrantSensor
@@ -297,6 +298,24 @@ async def main() -> None:
                 logger.info(f"Pulse #{pulse_count} complete. Health: {status_str}{action_str}{tier_str}")
                 _last_status = status_str
 
+                # Innervation W1.1: emit liveness sidecar each pulse so the
+                # genome aggregator sees we're alive. Map health to sidecar
+                # status: green→ok, yellow→degraded, red→fail.
+                _organ_status = {
+                    "green": "ok",
+                    "yellow": "degraded",
+                    "red": "fail",
+                }.get(status_str, "degraded")
+                emit_organ_last_seen(
+                    "cell.organism",
+                    _organ_status,
+                    {
+                        "pulse_count": pulse_count,
+                        "tier": result.thought_tier,
+                        "action": result.action_taken,
+                    },
+                )
+
                 # Episodic forgetting — every 1000 pulses (~17h at 60s intervals)
                 if pulse_count % 1000 == 0 and pulse_count > 0:
                     try:
@@ -308,6 +327,15 @@ async def main() -> None:
 
             except Exception as e:
                 logger.error(f"Pulse #{pulse_count} error: {e}", exc_info=True)
+                # Innervation W1.1: pulse threw — surface as fail in the
+                # sidecar so the aggregator does not treat us as silently
+                # alive. Stays best-effort (emit_organ_last_seen swallows
+                # its own exceptions).
+                emit_organ_last_seen(
+                    "cell.organism",
+                    "fail",
+                    {"pulse_count": pulse_count, "error": type(e).__name__},
+                )
 
             # Adaptive interval: homeostatic controller decides (circadian + stress-aware)
             interval = homeostatic.recommended_pulse_interval()

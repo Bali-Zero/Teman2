@@ -44,6 +44,7 @@ _BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
 
 NLM_QUERY_TIMEOUT = 120
+LAYER_B_QUERY_TIMEOUT = 180  # PR-D1 (2026-04-30): NLM bridge slow under load — was 90s
 GAP_QUERY_DELAY = 5  # seconds between queries — NLM rate limiting
 
 # Freshness thresholds (days)
@@ -446,13 +447,13 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
 
         domain_results: dict[str, str] = {}
 
-        for topic in topics:
+        for topic_idx, topic in enumerate(topics, 1):
             result["total_topics"] += 1
 
             if not dry_run:
                 total_queries_attempted += 1
                 query = FRESHNESS_QUERY_TEMPLATE.format(topic=topic)
-                response = _query_notebook(nb_id, query, timeout=90)
+                response = _query_notebook(nb_id, query, timeout=LAYER_B_QUERY_TIMEOUT)
                 if response is None:
                     total_queries_failed += 1
                 classification = _classify_freshness(response)
@@ -461,7 +462,12 @@ def run_layer_b(dry_run: bool = False) -> dict[str, Any]:
 
             domain_results[topic] = classification
             result[classification.lower()] += 1
-            logger.debug("  [%s] %s: %s", domain, topic[:50], classification)
+            # PR-D1 (2026-04-30): per-topic progress so a kill mid-domain
+            # leaves a breadcrumb in the log instead of silent gap.
+            logger.info(
+                "  [%s %d/%d] %s — %s",
+                domain, topic_idx, len(topics), topic[:60], classification,
+            )
 
             if not dry_run:
                 time.sleep(GAP_QUERY_DELAY)

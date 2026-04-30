@@ -371,7 +371,7 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
     """Send a message via Telegram Bot API.
 
     Args:
-        text: Message text (supports Markdown).
+        text: Message text (supports HTML — <b>, <i>, <code>).
         dry_run: If True, print instead of sending.
 
     Returns:
@@ -389,10 +389,15 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         return False
 
     url = f"{TELEGRAM_API_BASE}/bot{token}/sendMessage"
+    # Renaissance follow-up #2 (2026-04-30): switched parse_mode from
+    # "Markdown" (legacy v1) to "HTML" because pipeline names contain
+    # underscores ("nb1_daily_refresh", "t4_monitor") which Markdown v1
+    # interprets as italic delimiters. Unbalanced underscores → HTTP 400.
+    # gap_scanner.py uses HTML and works reliably; we copy that pattern.
     payload = json.dumps({
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
         "disable_web_page_preview": True,
     }).encode("utf-8")
 
@@ -460,12 +465,12 @@ def send_alert(statuses: list[dict[str, Any]], dry_run: bool = False) -> None:
         logger.info("All pipelines healthy — no alert needed")
         return
 
-    lines = ["\U0001f6a8 *NLM Pipeline Alert*", ""]
+    lines = ["\U0001f6a8 <b>NLM Pipeline Alert</b>", ""]
 
     for s in alert_statuses:
         emoji = STATUS_EMOJI.get(s["status"], "?")
         last_run = _format_last_run(s.get("last_success"))
-        lines.append(f"{emoji} `{s['pipeline']}` — {s['status']} ({last_run})")
+        lines.append(f"{emoji} <code>{s['pipeline']}</code> — {s['status']} ({last_run})")
 
     ok_count = sum(1 for s in statuses if s["status"] == STATUS_OK)
     total = len(statuses)
@@ -490,7 +495,7 @@ def send_daily_digest(
     if memory is None:
         memory = check_memory_pressure()
 
-    lines = ["\U0001f3e5 *NLM Pipeline Health \u2014 Daily Digest*", ""]
+    lines = ["\U0001f3e5 <b>NLM Pipeline Health \u2014 Daily Digest</b>", ""]
 
     for s in statuses:
         emoji = STATUS_EMOJI.get(s["status"], "?")
@@ -498,7 +503,7 @@ def send_daily_digest(
         duration = ""
         if s.get("duration_seconds") is not None:
             duration = f" ({s['duration_seconds']}s)"
-        lines.append(f"{emoji} `{s['pipeline']}` \u2014 {last_run}{duration}")
+        lines.append(f"{emoji} <code>{s['pipeline']}</code> \u2014 {last_run}{duration}")
 
     # Summary counts
     ok_count = sum(1 for s in statuses if s["status"] == STATUS_OK)

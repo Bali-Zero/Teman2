@@ -9,6 +9,7 @@ Provides visibility into the multi-channel messaging system:
 
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -48,11 +49,13 @@ async def channel_health(
         errors = stats.get("errors", 0)
         error_rate = (errors / received * 100) if received > 0 else 0.0
 
-        # Determine status
-        if error_rate > 20:
-            status = "degraded"
-        elif error_rate > 50:
+        # Determine status. Order matters: check the stricter threshold first,
+        # otherwise `> 20` matches before `> 50` is ever reached and `down` is
+        # unreachable (latent bug pre-2026-04-30).
+        if error_rate > 50:
             status = "down"
+        elif error_rate > 20:
+            status = "degraded"
         else:
             status = "up"
 
@@ -95,6 +98,67 @@ async def channel_health(
         "dlq": dlq_summary,
         "registered_count": len(channels_health),
     }
+
+
+@router.get("/health-public")
+async def channel_health_public(request: Request) -> dict[str, Any]:
+    """
+    Public liveness for the Innervation Genoma aggregator.
+
+    Returns ONLY per-channel `status` (one of `up | degraded | down`) and a
+    top-level `ts` (unix epoch). No metrics, no DLQ, no error_rate, no
+    counts — the bridge_state_reader (cell.sensors.bridge_state_reader)
+    polls this endpoint and maps `up→ok`, `degraded→degraded`, `down→fail`.
+
+    Unauthenticated by design: the only information disclosed is whether
+    each channel is currently accepting messages, which an attacker
+    already observes by hitting the channel webhooks themselves. No PII,
+    no operational secrets, no traffic numbers.
+
+    Threshold logic mirrors `/health` (the `down → degraded → up` ladder
+    fixed in PR #380), so the two endpoints stay consistent.
+    """
+    # Known channel names. The api process group serves this endpoint but
+    # `app.state.channel_router` is only initialized in the `rag` process
+    # group (heavy mode — see `service_initializer.initialize_services_light`
+    # which sets channel_router=None). When this endpoint runs in light mode
+    # we cannot inspect per-channel error_rate, but the Innervation Cell
+    # aggregator still needs to see the four channel.* organi declared
+    # in the Genoma — otherwise it classifies them as silent and dead.
+    #
+    # Fallback: return `status: "unknown"` for each known channel. The
+    # bridge_state_reader maps unknown vocab to `degraded`, so the operator
+    # sees yellow ("can't see, but channel is registered"), not red
+    # ("the channel is dead"). Honest signal, no false alarm.
+    KNOWN_CHANNELS = ("whatsapp", "telegram", "instagram", "web")
+
+    channel_router = getattr(request.app.state, "channel_router", None)
+    if channel_router is None:
+        return {
+            "ts": time.time(),
+            "channels": {name: {"status": "unknown"} for name in KNOWN_CHANNELS},
+            "info": "channel_router_uninitialized_in_api_group",
+        }
+
+    from backend.channels.optimizations import channel_metrics
+
+    channels: dict[str, dict[str, str]] = {}
+    for name in channel_router.get_available_channels():
+        stats = channel_metrics.get_stats(name) if channel_metrics else {}
+        received = stats.get("messages_received", 0)
+        errors = stats.get("errors", 0)
+        error_rate = (errors / received * 100) if received > 0 else 0.0
+
+        if error_rate > 50:
+            status = "down"
+        elif error_rate > 20:
+            status = "degraded"
+        else:
+            status = "up"
+
+        channels[name] = {"status": status}
+
+    return {"ts": time.time(), "channels": channels}
 
 
 @router.get("/stats")
