@@ -28,7 +28,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: d3d17a36b0319d3b43dd8dca9c870913bfb7213d65df0bf99e256af9a26363ed
+checksum: 968ef15c9d75538ef578319e193c57189b39feb12a03802197da080835faf598
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -438,3 +438,19 @@ organs:
     path: ~/.organism/last_seen/wr2.newsletter.json
     timestamp_field: ts
     status_field: status
+- id: pro.organism_control_panel
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 120
+  owner_module: apps/organism/organism/control_panel.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.organism.control-panel
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: http://127.0.0.1:1819/health
+    timestamp_field: ts
+    json_path: status
