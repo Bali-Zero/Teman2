@@ -28,7 +28,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 2a64235b5c4f9f863d213362e39bc13906d2cd12b59a9fb268a66ceda8b5e7b1
+checksum: c153272ca126bd421a4601f87db8ee713ffab17d889187b7655112c86afa0124
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -337,3 +337,51 @@ organs:
     path: https://kita.balizero.com/api/channels/health-public
     timestamp_field: ts
     json_path: channels.web.status
+- id: pro.intel_nightly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.intel.nightly
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/intel_scraper.last.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.translate_hourly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: scripts/translate-articles.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.translate.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.translate_hourly.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.renewal_alerts
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/openclaw-cron/renewal-alerts.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.renewal-alerts
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/expiry_alerter.last.json
+    timestamp_field: ts
+    status_field: status
