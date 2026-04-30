@@ -193,6 +193,16 @@ _PUBLIC_KNOWLEDGE = (
         "LangGraph agent layer health check — public monitoring endpoint",
     ),
     PublicEndpoint(
+        "/api/channels/health-public",
+        Category.PUBLIC_KNOWLEDGE,
+        "Innervation Genoma channel liveness — Cell aggregator polls this "
+        "endpoint via the http bridge_source type. Returns ONLY per-channel "
+        "{status: up|degraded|down}, no DLQ/metrics/PII (defense-in-depth: "
+        "the route handler itself is also no-auth; this entry exists so the "
+        "hybrid_auth middleware lets the request through to the handler).",
+        match="exact",
+    ),
+    PublicEndpoint(
         "/api/cell/metrics",
         Category.PUBLIC_KNOWLEDGE,
         "CELL ErrorRateSensor reads this internally — no user data exposed",
