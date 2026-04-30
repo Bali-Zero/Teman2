@@ -90,6 +90,20 @@ def test_is_public_endpoint(middleware, mock_request):
     assert middleware.is_public_endpoint(mock_request) is False
 
 
+def test_channels_health_public_is_public(middleware, mock_request):
+    """W1.2-bug regression: `/api/channels/health-public` must be exempt from
+    auth. The Innervation Cell aggregator polls this endpoint via the http
+    bridge_source type with no JWT; if the middleware blocks it with 401,
+    the 4 channel.* organi appear permanently `dead` to the Supervisor."""
+    mock_request.url.path = "/api/channels/health-public"
+    assert middleware.is_public_endpoint(mock_request) is True
+
+    # The auth-walled `/api/channels/health` MUST stay protected even though
+    # its prefix overlaps — ensures the exact-match flag works.
+    mock_request.url.path = "/api/channels/health"
+    assert middleware.is_public_endpoint(mock_request) is False
+
+
 def test_cors_headers_for_request(middleware, mock_request):
     with patch("middleware.hybrid_auth._allowed_origins", return_value={"https://allowed.com"}):
         mock_request.headers = {"origin": "https://allowed.com"}
