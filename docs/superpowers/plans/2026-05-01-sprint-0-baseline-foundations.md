@@ -37,34 +37,40 @@
 
 ---
 
-## Task 1: Branch creation + initial setup
+## Task 1: Branch state verification
 
 **Files:**
 
-- N/A (git operations only)
+- N/A (git verification only)
 
-- [ ] **Step 1: Create feature branch from main**
+**Status (as of plan-patch 2026-05-01)**: branch `feature/post-agentic-injection-2026-05-01` already exists locally with 2 commits (design doc + plan), parented on `main` at `9bfc1a76c` (= origin/main). Plan execution starts on this branch.
 
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/post-agentic-injection-2026-05-01
-```
+- [ ] **Step 1: Verify currently on feature branch**
 
-Expected output: `Switched to a new branch 'feature/post-agentic-injection-2026-05-01'`
+Run: `git branch --show-current`
+Expected: `feature/post-agentic-injection-2026-05-01`
 
-- [ ] **Step 2: Verify clean working tree**
+If output differs, run: `git checkout feature/post-agentic-injection-2026-05-01`
 
-Run: `git status -s`
-Expected: empty output (or only research/ untracked dirs which are not relevant)
+- [ ] **Step 2: Verify branch base is origin/main**
 
-- [ ] **Step 3: Push empty branch to origin**
+Run: `git log --oneline origin/main..HEAD`
+Expected: 2 commits visible — `0a161fa7f` (spec) + `080978a5d` (plan).
+
+If more or different commits appear, STOP and investigate before proceeding.
+
+- [ ] **Step 3: Verify working tree is clean**
+
+Run: `git status -s | grep -v '^?? research/'`
+Expected: empty output (untracked `research/` dirs are unrelated and ignored).
+
+- [ ] **Step 4: Push feature branch to origin (no PR yet)**
 
 ```bash
 git push -u origin feature/post-agentic-injection-2026-05-01
 ```
 
-Expected: branch created on GitHub, no PR yet (PR opens after Task 6).
+Expected: branch created on GitHub with the 2 docs commits. PR opens after Task 6 once migration + script commits are added.
 
 ---
 
@@ -77,7 +83,7 @@ Expected: branch created on GitHub, no PR yet (PR opens after Task 6).
 
 ### Schema design
 
-Table tracks LTV-based tier segmentation. Tier 1 = high-value (LTV ≥ $5000), Tier 2 = medium ($2000-4999), Tier 3 = low (<$2000). LTV = sum of `practices.invoice_amount` for status='completed' practices, all-time.
+Table tracks LTV-based tier segmentation. Tier 1 = high-value (LTV ≥ $5000), Tier 2 = medium ($2000-4999), Tier 3 = low (<$2000). LTV = sum of `practices.total_invoiced_idr` for status='completed' practices, converted IDR→USD at static rate. (See Task 4 for full schema notes.)
 
 - [ ] **Step 1: Write the failing test for migration file existence + schema**
 
@@ -370,59 +376,102 @@ git commit -m "feat(db): add migration 150 — renewal_alert_outcomes for outcom
 
 **Files:**
 
+- Create: `apps/backend-rag/backend/tests/scripts/__init__.py` (NEW dir)
 - Create: `apps/backend-rag/scripts/compute_client_segments.py`
 - Test: `apps/backend-rag/backend/tests/scripts/test_compute_client_segments.py`
+
+### Schema verified against real codebase (2026-05-01)
+
+The real `practices` table has:
+
+- `total_invoiced_idr NUMERIC(16,2)` — sum of all invoiced amounts in IDR (verified in `services/crm/partners/commission_engine.py:89`)
+- `completed_at TIMESTAMPTZ` — set when `status` transitions to `completed` (same source)
+- `status TEXT` — practice_state_machine values (`inquiry`, `waiting_documents`, `sending_invoice`, `on_process`, `completed`, `cancelled`)
+- `payment_status TEXT` — `unpaid`, `paid`, `partial` (verified m075 trigger)
+- `client_id INTEGER`
+
+The `invoices` table is FK-linked to `practices` and stores `amount_idr NUMERIC` per invoice (verified in `services/invoicing/invoice_service.py`).
+
+**Decision**: use `practices.total_invoiced_idr` as the canonical amount source (no per-invoice JOIN needed; the column is already pre-aggregated by triggers). All amounts are IDR — single-currency simplifies logic. Convert to USD via static rate at computation time only.
 
 ### Logic
 
 For each client in `clients` table:
 
-1. Sum `practices.invoice_amount` for status='completed' practices
-2. Convert to USD using `practices.invoice_currency` (assume IDR→USD via static rate `1 USD = 15500 IDR`, all other currencies passthrough)
+1. Sum `practices.total_invoiced_idr` for status='completed' practices
+2. Convert IDR sum to USD via static rate `1 USD = 15500 IDR` (refreshed quarterly)
 3. Determine tier: ≥$5000 → 1, $2000-4999 → 2, <$2000 → 3
 4. UPSERT into `client_segments`
 
 Conservative defaults: clients with no completed practices → tier 3, LTV $0.
 
-- [ ] **Step 1: Write the failing test for LTV/tier logic**
+**Defensive column check**: before running queries, the script verifies `practices.total_invoiced_idr` and `practices.completed_at` exist via `information_schema.columns`. If absent (schema drift), aborts with clear error rather than producing wrong data silently.
+
+- [ ] **Step 1: Create test directory + **init**.py**
+
+```bash
+mkdir -p apps/backend-rag/backend/tests/scripts
+```
+
+Create `apps/backend-rag/backend/tests/scripts/__init__.py` (empty file):
+
+```python
+
+```
+
+- [ ] **Step 2: Write the failing test for LTV/tier logic**
 
 Create `apps/backend-rag/backend/tests/scripts/test_compute_client_segments.py`:
 
 ```python
 """Test LTV computation + tier assignment logic.
 
-Note: tests synthetic in-memory data, NOT real DB. Real-DB integration
-test happens via deploy verification (Task 7).
+Tests synthetic in-memory data only. Real-DB integration test happens via
+deploy verification (Task 7-8).
+
+Schema reality (verified 2026-05-01 against repo code):
+- practices.total_invoiced_idr NUMERIC(16,2)  — IDR only, single currency
+- practices.completed_at TIMESTAMPTZ          — set on status='completed' transition
+- practices.status TEXT                       — 'completed' | 'on_process' | etc.
 """
 import pytest
 
-# Import will fail until script exists — that's the point of TDD step 2
+# Import will fail until script exists — that's the point of TDD step 3
 from scripts.compute_client_segments import compute_ltv_usd, assign_tier
 
 
 class TestComputeLtvUsd:
-    def test_idr_practice_converts_to_usd(self):
+    def test_completed_practice_idr_converts_to_usd(self):
         # 31,000,000 IDR @ 15500 IDR/USD = $2000
-        practices = [{"invoice_amount": 31_000_000, "invoice_currency": "IDR", "status": "completed"}]
+        practices = [{"total_invoiced_idr": 31_000_000, "status": "completed"}]
         assert compute_ltv_usd(practices) == pytest.approx(2000.0, rel=1e-3)
 
-    def test_usd_practice_passthrough(self):
-        practices = [{"invoice_amount": 1500, "invoice_currency": "USD", "status": "completed"}]
-        assert compute_ltv_usd(practices) == 1500.0
-
-    def test_only_completed_practices_count(self):
+    def test_multiple_completed_practices_sum(self):
+        # 31M + 15.5M = 46.5M IDR = $3000
         practices = [
-            {"invoice_amount": 1000, "invoice_currency": "USD", "status": "completed"},
-            {"invoice_amount": 5000, "invoice_currency": "USD", "status": "on_process"},  # not counted
-            {"invoice_amount": 2000, "invoice_currency": "USD", "status": "cancelled"},   # not counted
+            {"total_invoiced_idr": 31_000_000, "status": "completed"},
+            {"total_invoiced_idr": 15_500_000, "status": "completed"},
         ]
-        assert compute_ltv_usd(practices) == 1000.0
+        assert compute_ltv_usd(practices) == pytest.approx(3000.0, rel=1e-3)
+
+    def test_only_completed_status_counts(self):
+        practices = [
+            {"total_invoiced_idr": 15_500_000, "status": "completed"},  # $1000
+            {"total_invoiced_idr": 31_000_000, "status": "on_process"},  # not counted
+            {"total_invoiced_idr": 46_500_000, "status": "cancelled"},  # not counted
+            {"total_invoiced_idr": 15_500_000, "status": "sending_invoice"},  # not counted
+        ]
+        assert compute_ltv_usd(practices) == pytest.approx(1000.0, rel=1e-3)
 
     def test_no_practices_returns_zero(self):
         assert compute_ltv_usd([]) == 0.0
 
-    def test_null_invoice_amount_treated_as_zero(self):
-        practices = [{"invoice_amount": None, "invoice_currency": "USD", "status": "completed"}]
+    def test_null_total_invoiced_idr_treated_as_zero(self):
+        practices = [{"total_invoiced_idr": None, "status": "completed"}]
+        assert compute_ltv_usd(practices) == 0.0
+
+    def test_zero_total_invoiced_idr(self):
+        practices = [{"total_invoiced_idr": 0, "status": "completed"}]
         assert compute_ltv_usd(practices) == 0.0
 
 
@@ -446,12 +495,12 @@ class TestAssignTier:
         assert assign_tier(0.0) == 3
 ```
 
-- [ ] **Step 2: Run tests, verify all fail with ImportError**
+- [ ] **Step 3: Run tests, verify all fail with ImportError**
 
 Run: `cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/scripts/test_compute_client_segments.py -v`
 Expected: FAILED with `ModuleNotFoundError: No module named 'scripts.compute_client_segments'`
 
-- [ ] **Step 3: Create script**
+- [ ] **Step 4: Create script**
 
 Create `apps/backend-rag/scripts/compute_client_segments.py`:
 
@@ -462,6 +511,11 @@ Create `apps/backend-rag/scripts/compute_client_segments.py`:
 Run once post-deploy of migration 149. Idempotent: re-running updates rows.
 From Sprint 4 onward, Cell skill `measure_conversion` will trigger weekly
 re-computation; this script is the bootstrap.
+
+Schema reality (verified 2026-05-01):
+    practices.total_invoiced_idr NUMERIC  — pre-aggregated IDR amount
+    practices.completed_at TIMESTAMPTZ    — completion timestamp
+    practices.status TEXT                 — 'completed' | etc.
 
 Spec: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §4 Sprint 0.2
 
@@ -475,6 +529,7 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 from typing import Any
 
 import asyncpg
@@ -487,29 +542,23 @@ IDR_PER_USD: float = 15_500.0
 
 
 def compute_ltv_usd(practices: list[dict[str, Any]]) -> float:
-    """Sum completed practice amounts converted to USD.
+    """Sum completed practice IDR amounts converted to USD.
 
     Args:
-        practices: list of dicts with keys invoice_amount, invoice_currency, status.
+        practices: list of dicts with keys total_invoiced_idr (numeric|None), status (str).
 
     Returns:
-        Total LTV in USD; 0.0 if no completed practices or all amounts null.
+        Total LTV in USD; 0.0 if no completed practices or all amounts null/zero.
     """
-    total: float = 0.0
+    total_idr: float = 0.0
     for p in practices:
         if p.get("status") != "completed":
             continue
-        amount = p.get("invoice_amount") or 0
+        amount = p.get("total_invoiced_idr")
         if amount is None:
             continue
-        amount = float(amount)
-        currency = (p.get("invoice_currency") or "USD").upper()
-        if currency == "IDR":
-            amount = amount / IDR_PER_USD
-        elif currency != "USD":
-            logger.warning(f"Unknown currency {currency!r} treated as USD passthrough")
-        total += amount
-    return total
+        total_idr += float(amount)
+    return total_idr / IDR_PER_USD if total_idr else 0.0
 
 
 def assign_tier(ltv_usd: float) -> int:
@@ -526,15 +575,52 @@ def assign_tier(ltv_usd: float) -> int:
     return 3
 
 
-async def compute_for_all_clients(conn: asyncpg.Connection, dry_run: bool = False) -> dict[str, int]:
+async def verify_schema(conn: asyncpg.Connection) -> None:
+    """Defensive check: required columns must exist before running queries.
+
+    Aborts with clear error if schema drift renamed/removed required columns.
+    """
+    required = [
+        ("practices", "total_invoiced_idr"),
+        ("practices", "completed_at"),
+        ("practices", "status"),
+        ("practices", "client_id"),
+        ("clients", "id"),
+        ("clients", "deleted_at"),
+        ("client_segments", "client_id"),  # Migration 149 must be applied first
+    ]
+    missing: list[str] = []
+    for table, column in required:
+        exists = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = $1 AND column_name = $2
+            )
+            """,
+            table,
+            column,
+        )
+        if not exists:
+            missing.append(f"{table}.{column}")
+    if missing:
+        raise RuntimeError(
+            f"Schema verification failed. Missing columns: {missing}. "
+            "Migration 149 may not be applied, or schema drift occurred. "
+            "Aborting to avoid wrong data."
+        )
+
+
+async def compute_for_all_clients(
+    conn: asyncpg.Connection, dry_run: bool = False,
+) -> dict[str, int]:
     """Compute and upsert client_segments for every client. Returns counts per tier."""
     rows = await conn.fetch(
         """
         SELECT
             c.id AS client_id,
             COALESCE(json_agg(json_build_object(
-                'invoice_amount', p.invoice_amount,
-                'invoice_currency', p.invoice_currency,
+                'total_invoiced_idr', p.total_invoiced_idr,
                 'status', p.status
             )) FILTER (WHERE p.id IS NOT NULL), '[]'::json) AS practices_json
         FROM clients c
@@ -572,7 +658,7 @@ async def compute_for_all_clients(conn: asyncpg.Connection, dry_run: bool = Fals
     return counts
 
 
-async def main() -> None:
+async def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Preview without writing")
     args = parser.parse_args()
@@ -580,35 +666,41 @@ async def main() -> None:
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         logger.error("DATABASE_URL not set")
-        return
+        return 1
 
     conn = await asyncpg.connect(db_url)
     try:
+        await verify_schema(conn)
         counts = await compute_for_all_clients(conn, dry_run=args.dry_run)
         mode = "DRY-RUN" if args.dry_run else "WRITE"
         logger.info(
             f"[{mode}] processed {counts['total']} clients: "
             f"tier_1={counts['tier_1']}, tier_2={counts['tier_2']}, tier_3={counts['tier_3']}",
         )
+        return 0
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        return 2
     finally:
         await conn.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))
 ```
 
-- [ ] **Step 4: Re-run tests, verify all 11 pass**
+- [ ] **Step 5: Re-run tests, verify all 12 pass**
 
 Run: `cd apps/backend-rag && PYTHONPATH=. pytest backend/tests/scripts/test_compute_client_segments.py -v`
-Expected: 11 PASSED
+Expected: 12 PASSED
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add apps/backend-rag/scripts/compute_client_segments.py \
+        apps/backend-rag/backend/tests/scripts/__init__.py \
         apps/backend-rag/backend/tests/scripts/test_compute_client_segments.py
-git commit -m "feat(scripts): add compute_client_segments.py — LTV + tier assignment"
+git commit -m "feat(scripts): add compute_client_segments.py — LTV (IDR→USD) + tier assignment with schema verification"
 ```
 
 ---
@@ -619,6 +711,15 @@ git commit -m "feat(scripts): add compute_client_segments.py — LTV + tier assi
 
 - Create: `apps/backend-rag/scripts/backfill_renewal_outcomes.py`
 - Test: `apps/backend-rag/backend/tests/scripts/test_backfill_renewal_outcomes.py`
+
+### Schema verified (2026-05-01)
+
+- `practices.completed_at TIMESTAMPTZ` — exists (verified `services/crm/partners/commission_engine.py:89`)
+- `practices.status TEXT` — exists
+- `interactions.practice_id INTEGER` — exists, FK-linked to practices (verified `app/routers/crm_interactions.py:165`)
+- `renewal_alerts` schema: `id, practice_id, client_id, alert_type, description, target_date, alert_date, notify_team_member, status, last_notified_at, created_at` (verified `services/misc/autonomous_scheduler.py:585`)
+
+Same defensive `verify_schema()` pattern as Task 4.
 
 ### Inference rules
 
@@ -839,7 +940,40 @@ async def backfill_all(conn: asyncpg.Connection, dry_run: bool = False) -> dict[
     return counts
 
 
-async def main() -> None:
+async def verify_schema(conn: asyncpg.Connection) -> None:
+    """Defensive check: required columns must exist before backfill."""
+    required = [
+        ("practices", "completed_at"),
+        ("practices", "status"),
+        ("renewal_alerts", "id"),
+        ("renewal_alerts", "alert_date"),
+        ("renewal_alerts", "target_date"),
+        ("renewal_alerts", "practice_id"),
+        ("interactions", "practice_id"),
+        ("renewal_alert_outcomes", "alert_id"),  # Migration 150 must be applied
+    ]
+    missing: list[str] = []
+    for table, column in required:
+        exists = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = $1 AND column_name = $2
+            )
+            """,
+            table,
+            column,
+        )
+        if not exists:
+            missing.append(f"{table}.{column}")
+    if missing:
+        raise RuntimeError(
+            f"Schema verification failed. Missing columns: {missing}. "
+            "Migration 150 may not be applied. Aborting."
+        )
+
+
+async def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -847,10 +981,11 @@ async def main() -> None:
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         logger.error("DATABASE_URL not set")
-        return
+        return 1
 
     conn = await asyncpg.connect(db_url)
     try:
+        await verify_schema(conn)
         counts = await backfill_all(conn, dry_run=args.dry_run)
         mode = "DRY-RUN" if args.dry_run else "WRITE"
         logger.info(
@@ -858,12 +993,17 @@ async def main() -> None:
             f"renewed={counts['client_renewed']}, acted={counts['acted_by_team']}, "
             f"ignored={counts['client_ignored']}, expired={counts['expired_no_action']}",
         )
+        return 0
+    except RuntimeError as exc:
+        logger.error(str(exc))
+        return 2
     finally:
         await conn.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    sys.exit(asyncio.run(main()))
 ```
 
 - [ ] **Step 4: Re-run tests, verify all 6 pass**
