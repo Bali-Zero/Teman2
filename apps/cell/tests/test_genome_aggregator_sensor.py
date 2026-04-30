@@ -593,3 +593,42 @@ def test_w1_channel_web_enrolled_via_http(tmp_path):
     assert happy.status == "green"
     assert dead.status == "red"
     assert dead.metadata["dead_organs"] == ["channel.web"]
+
+
+# ---------- W1.3 intel + content cron organi (state_file bridge) -----------
+
+
+def test_w1_pro_intel_nightly_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.intel_nightly",
+        expected_hb_seconds=90000,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.intel_nightly"]
+
+
+def test_w1_pro_translate_hourly_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.translate_hourly",
+        expected_hb_seconds=5400,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.translate_hourly"]
+
+
+def test_w1_pro_renewal_alerts_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "pro.renewal_alerts",
+        expected_hb_seconds=90000,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.renewal_alerts"]
