@@ -161,33 +161,37 @@ def test_state_workflow_synthesis(sample_state):
 @pytest.mark.asyncio
 async def test_understand_query_node_success(sample_state, mock_llm):
     """Test understand_query_node extracts intent and entities."""
-    # Mock LLM response
-    mock_response = MagicMock()
-    mock_response.content = json.dumps(
-        {
-            "intent": "company_setup",
-            "entities": ["kbli:56101", "pt_pma"],
-            "citizenship": "foreign",
-        },
+    # Mock LLM response with Pydantic schema
+    from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+    from unittest.mock import AsyncMock, MagicMock
+    mock_response = QueryIntentSchema(
+        intent="company_setup",
+        domain="company",
+        entities=["kbli:56101", "pt_pma"],
+        citizenship="foreign"
     )
-    mock_llm.ainvoke.return_value = mock_response
+    mock_structured_llm = MagicMock()
+    mock_structured_llm.ainvoke = AsyncMock(return_value=mock_response)
+    mock_llm.with_structured_output = MagicMock(return_value=mock_structured_llm)
 
     # Execute node
     result = await understand_query_node(sample_state, mock_llm)
 
     # Assertions
     assert result["intent"] == "company_setup"
+    assert result["domain"] == "company"
     assert "kbli:56101" in result["extracted_entities"]
     assert result["user_context"]["citizenship"] == "foreign"
 
 
 @pytest.mark.asyncio
 async def test_understand_query_node_parse_error(sample_state, mock_llm):
-    """Test understand_query_node handles JSON parse errors."""
-    # Mock LLM response with invalid JSON
-    mock_response = MagicMock()
-    mock_response.content = "INVALID JSON"
-    mock_llm.ainvoke.return_value = mock_response
+    """Test understand_query_node handles generic LLM errors via fallback."""
+    from unittest.mock import AsyncMock, MagicMock
+    # Mock LLM error
+    mock_structured_llm = MagicMock()
+    mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM Error"))
+    mock_llm.with_structured_output = MagicMock(return_value=mock_structured_llm)
 
     # Execute node
     result = await understand_query_node(sample_state, mock_llm)
@@ -195,6 +199,42 @@ async def test_understand_query_node_parse_error(sample_state, mock_llm):
     # Assertions (fallback behavior)
     assert result["intent"] == "general"
     assert result["extracted_entities"] == []
+
+
+@pytest.mark.asyncio
+async def test_understand_query_node_validation_error(sample_state, mock_llm):
+    """Test understand_query_node falls back to domain hints on Pydantic ValidationError.
+
+    Covers the dedicated `except ValidationError` branch added in commit
+    3b264f0d4 (DeepSeek review). When the LLM returns a payload that violates
+    QueryIntentSchema (hallucinated structured output), the node must NOT crash
+    and must use the keyword-based domain detector as fallback.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+    from pydantic import ValidationError
+
+    from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+
+    # Force a real ValidationError (intent is required, missing here).
+    try:
+        QueryIntentSchema()  # type: ignore[call-arg]
+        raise AssertionError("Expected ValidationError on empty schema")
+    except ValidationError as exc:
+        validation_error = exc
+
+    # Query with explicit visa keyword so the keyword fallback fills domain="visa".
+    sample_state["query"] = "Apa itu KITAS untuk foreign worker?"
+
+    mock_structured_llm = MagicMock()
+    mock_structured_llm.ainvoke = AsyncMock(side_effect=validation_error)
+    mock_llm.with_structured_output = MagicMock(return_value=mock_structured_llm)
+
+    result = await understand_query_node(sample_state, mock_llm)
+
+    # Fallback uses _detect_domain_from_query -> visa branch
+    assert result["intent"] == "visa"
+    assert result["domain"] == "visa"
+    assert "KITAS" in result["extracted_entities"]
 
 
 @pytest.mark.asyncio
@@ -437,6 +477,33 @@ def test_route_after_understanding_simple_query(sample_state):
     from langgraph.graph import END
 
     assert route == END
+
+
+@pytest.mark.parametrize(
+    "domain,expected_route",
+    [
+        ("visa", "visa_subgraph"),
+        ("tax", "tax_subgraph"),
+        ("property", "property_subgraph"),
+        ("company", "company_subgraph"),
+        ("kbli", "company_subgraph"),  # kbli aliases to company subgraph
+    ],
+)
+def test_route_after_understanding_domain_dispatch(sample_state, domain, expected_route):
+    """Test deterministic Pydantic-validated domain → subgraph dispatch.
+
+    Post-refactor (commit aa10cfe47), the router is a pure function of the
+    `domain` field on state. These cases lock the mapping so a future change
+    to `domain_to_subgraph` requires updating the test (no silent drift).
+    """
+    sample_state["domain"] = domain
+    # Intent unrelated on purpose: domain-phase must override
+    sample_state["intent"] = "general"
+    sample_state["extracted_entities"] = []
+
+    route = route_after_query_understanding(sample_state)
+
+    assert route == expected_route
 
 
 def test_route_after_traversal_sufficient_evidence(sample_state):
