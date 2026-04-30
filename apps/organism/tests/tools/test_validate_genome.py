@@ -185,3 +185,42 @@ def test_compute_checksum_is_canonical_and_stable(tmp_path):
     h2 = vg.compute_checksum([reordered])
     assert h1 == h2
     assert len(h1) == 64  # sha256 hex length
+
+
+# ---------- live genome.yaml integration ------------------------------------
+
+
+_LIVE_GENOME = (
+    Path(__file__).resolve().parents[2] / "organism" / "genome.yaml"
+)
+
+
+def test_live_genome_is_valid():
+    """The repo's genome.yaml must always validate clean — guards against
+    accidental schema drift in PRs that touch the live registry."""
+    assert _LIVE_GENOME.exists(), f"missing {_LIVE_GENOME}"
+    errors = vg.validate_file(_LIVE_GENOME)
+    assert errors == [], f"live genome failed validation: {errors}"
+
+
+@pytest.mark.parametrize(
+    "organ_id",
+    ["wr2.supervisor", "wr2.oracle", "wr2.newsletter"],
+)
+def test_w1_4_wr2_core_organi_enrolled(organ_id):
+    """W1.4 enrolls the WR2 core trio. Each entry must:
+    - exist in the live genome
+    - declare bridge_source.type == state_file
+    - have severity_on_silence == 'warning' (sidecar emission deferred to W2 —
+      until then the sensor sees a missing file → silent → don't page Zero)
+    """
+    doc = yaml.safe_load(_LIVE_GENOME.read_text())
+    by_id = {o["id"]: o for o in doc["organs"]}
+    assert organ_id in by_id, f"{organ_id} not enrolled in live genome"
+    organ = by_id[organ_id]
+    assert "bridge_source" in organ, f"{organ_id} missing bridge_source"
+    assert organ["bridge_source"]["type"] == "state_file"
+    assert organ["severity_on_silence"] == "warning", (
+        f"{organ_id}: until the wrapper emits sidecars (W2), severity must be "
+        f"'warning' — 'critical' here would page on every Cell pulse"
+    )

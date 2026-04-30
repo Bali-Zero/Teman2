@@ -446,6 +446,51 @@ def test_w1_pro_metabolic_rollup_enrolled(tmp_path):
     assert dead.metadata["dead_organs"] == ["pro.metabolic_rollup"]
 
 
+# ---------- W1.4 wr2.* core organi (state_file bridge) ----------------------
+# WR2 supervisor + the two flagship cron (oracle weekly Sun 22:30, newsletter
+# Mon 09:00). Sidecar emission is deferred to W2 (requires touching
+# ~/.openclaw/bin/wr2/wr2-cron-wrapper.sh shared by 13+ cron, plus
+# wr2_supervisor.py heartbeat). Until then severity_on_silence='warning'
+# in the live genome — these tests still exercise the full happy/dead
+# pair via tmp_path bridges to lock the sensor contract.
+
+
+def test_w1_wr2_supervisor_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "wr2.supervisor",
+        expected_hb_seconds=300,
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["wr2.supervisor"]
+
+
+def test_w1_wr2_oracle_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "wr2.oracle",
+        expected_hb_seconds=1209600,  # 2 weeks (1.5x weekly cadence)
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["wr2.oracle"]
+
+
+def test_w1_wr2_newsletter_enrolled(tmp_path):
+    happy, dead = _w1_happy_dead_pair(
+        tmp_path,
+        "wr2.newsletter",
+        expected_hb_seconds=1209600,  # 2 weeks (1.5x weekly cadence)
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["wr2.newsletter"]
+
+
 # ---------- W1.2 channel.* organi (http bridge) -----------------------------
 # These reach liveness through `bridge_source.type=http` (the public
 # /api/channels/health-public endpoint) instead of a state_file. The
