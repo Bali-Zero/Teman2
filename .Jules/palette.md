@@ -5,3 +5,7 @@
 ## 2026-04-25 - [Keyboard Visibility for Actions]
 **Learning:** Actions that only appear on hover (e.g., a "Delete" button) are inaccessible to keyboard-only users unless they are also triggered by focus.
 **Action:** Use Tailwind's `group-focus-within:opacity-100` (or similar focus-based classes) alongside `group-hover:opacity-100` to ensure secondary actions become visible when a user tabs through a list.
+
+## 2026-05-15 - [Image Attachment Previews and Focus-Visible Overlays]
+**Learning:** Users lack confidence when attaching media without immediate visual feedback. Providing thumbnails in the input area increases clarity. For accessibility, overlay controls (like remove buttons) on these thumbnails must be visible on focus using `group-focus-within`, not just hover, to support keyboard navigation.
+**Action:** Always provide animated previews for media attachments. Ensure any hover-triggered overlay controls are also focus-triggered for accessibility.
