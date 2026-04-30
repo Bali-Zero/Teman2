@@ -342,36 +342,8 @@ class FederationAlertDaemon:
             return
 
         if policy.requires_approval:
-            # PR #3 implements the Telegram approval flow. For PR #2,
-            # we surface the proposal to status='awaiting_approval' so
-            # the next phase can pick it up. The DB CHECK requires
-            # approval_token + requires_approval=True for that status,
-            # so we set both here even though the token is unused yet.
-            # Set requires_approval=True via direct SQL; no setter on
-            # the repo intentionally (PR #3 will add a typed method).
-            assert self._pool is not None
-            async with self._pool.acquire() as conn:
-                await conn.execute(
-                    """
-                    UPDATE federation_alert_proposals
-                       SET requires_approval = TRUE,
-                           approval_token = COALESCE(approval_token, $2),
-                           status = 'awaiting_approval',
-                           updated_at = NOW()
-                     WHERE proposal_id = $1
-                       AND status NOT IN (
-                           'completed', 'failed', 'quarantined', 'duplicate'
-                       )
-                    """,
-                    proposal_id,
-                    f"pending-pr3:{proposal_id}",
-                )
-            self._audit.emit(
-                "proposal.awaiting_approval",
-                proposal_id=proposal_id,
-                run_id=proposal.run_id,
-                mode=mode,
-                data={"action": action_name, "reason": policy.reason},
+            await self._request_telegram_approval(
+                repo, proposal, mode, reason=policy.reason
             )
             return
 
@@ -447,6 +419,155 @@ class FederationAlertDaemon:
                 "dry_run": is_dry,
                 "side_effects_count": len(result.side_effects),
             },
+        )
+
+    # ------------------------------------------------------------------
+    # PR #3 helpers — Telegram approval + ConsiglioOrchestrator hook
+    # ------------------------------------------------------------------
+
+    async def _request_telegram_approval(
+        self,
+        repo: FederationAlertRepo,
+        proposal: Any,
+        mode: str,
+        *,
+        reason: str | None,
+    ) -> None:
+        """Generate a fresh approval_token, store it, send Telegram message.
+
+        Failures degrade gracefully: the proposal stays in
+        awaiting_approval (DB row written), even if Telegram delivery
+        fails the audit captures the gap and a future retry can
+        re-issue the message via a separate workflow.
+        """
+        from backend.services.federation_alerts.approval import (
+            generate_approval_token,
+        )
+        from backend.services.federation_alerts.notifier import (
+            send_proposal_to_telegram,
+        )
+
+        proposal_id = proposal.proposal_id
+        token = generate_approval_token()
+        chat_id = self._config.telegram_chat_id
+
+        if not chat_id or not self._config.telegram_bot_token:
+            # Without Telegram credentials we still mark the proposal
+            # awaiting_approval — admins can review via DB and trigger
+            # external approval. Audit captures the missing channel.
+            await repo.request_approval(
+                proposal_id,
+                approval_token=token,
+                telegram_chat_id="<no-telegram>",
+                telegram_message_id=None,
+            )
+            self._audit.emit(
+                "proposal.awaiting_approval_offline",
+                proposal_id=proposal_id,
+                run_id=proposal.run_id,
+                mode=mode,
+                data={
+                    "reason": reason,
+                    "missing": "telegram_credentials",
+                },
+            )
+            return
+
+        # Send to Telegram synchronously (urllib) on a worker thread
+        # so the daemon's main event loop is never blocked.
+        message_id = await asyncio.to_thread(
+            send_proposal_to_telegram,
+            bot_token=self._config.telegram_bot_token,
+            chat_id=chat_id,
+            proposal=proposal,
+            approval_token=token,
+        )
+
+        # Persist the token + message_id BEFORE returning so a callback
+        # arriving immediately can be verified.
+        try:
+            await repo.request_approval(
+                proposal_id,
+                approval_token=token,
+                telegram_chat_id=str(chat_id),
+                telegram_message_id=message_id,
+            )
+        except RuntimeError as exc:
+            logger.warning(
+                "request_approval failed for %s: %s", proposal_id, exc
+            )
+            self._audit.emit(
+                "proposal.approval_request_failed",
+                proposal_id=proposal_id,
+                run_id=proposal.run_id,
+                mode=mode,
+                data={"error": str(exc)[:200]},
+            )
+            return
+
+        self._audit.emit(
+            "proposal.awaiting_approval",
+            proposal_id=proposal_id,
+            run_id=proposal.run_id,
+            mode=mode,
+            data={
+                "reason": reason,
+                "telegram_message_id": message_id,
+                "telegram_delivered": message_id is not None,
+            },
+        )
+
+    async def _run_consiglio_if_configured(
+        self,
+        proposal: Any,
+        timeout_sec: int,
+    ) -> dict[str, Any] | None:
+        """Run ConsiglioV1.deliberate() asynchronously, with a hard deadline.
+
+        Returns the normalized deliberation result (see
+        ``dispatcher.deliberate_with_deadline``) or None if Consiglio
+        is not importable in this runtime (e.g. missing CLI binaries).
+        """
+        try:
+            from backend.services.federation_alerts.dispatcher import (
+                deliberate_with_deadline,
+            )
+            from backend.services.research.consiglio_orchestrator import (
+                ConsiglioV1,
+            )
+        except ImportError as exc:
+            logger.warning("ConsiglioV1 unavailable: %s", exc)
+            return None
+
+        consiglio = ConsiglioV1()
+        prompt = self._build_consiglio_prompt(proposal)
+        return await deliberate_with_deadline(
+            consiglio,
+            prompt,
+            deadline_sec=timeout_sec,
+        )
+
+    @staticmethod
+    def _build_consiglio_prompt(proposal: Any) -> str:
+        """Compose the prompt string sent to each LLM in ConsiglioV1.
+
+        Keeps payload minimal — full alert context lives in the DB row,
+        but Consiglio voters only need enough to vote on whether the
+        action is appropriate for the alert.
+        """
+        action = getattr(proposal, "requested_action", None) or "(none)"
+        alert_type = getattr(proposal, "alert_type", "alert")
+        severity = getattr(proposal, "severity", "medium")
+        target_file = getattr(proposal, "target_file", None) or "(none)"
+        return (
+            "Federation Alert Dispatcher proposal review.\n\n"
+            f"alert_type: {alert_type}\n"
+            f"severity: {severity}\n"
+            f"requested_action: {action}\n"
+            f"target_file: {target_file}\n\n"
+            "Vote whether the requested_action is appropriate for the alert. "
+            'Respond with JSON: {"claims":[{"key":"action_appropriate",'
+            '"value":"yes|no","confidence":0.0-1.0}]}'
         )
 
 
