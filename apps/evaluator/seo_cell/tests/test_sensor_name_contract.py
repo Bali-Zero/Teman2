@@ -13,6 +13,15 @@ The tests below fail on any re-introduction of that drift. They also
 guarantee that `BayesianCalibrator._fit` actually reads the non-zero
 scores a real Brief row carries, by reconstructing the Brief → X
 projection end-to-end.
+
+Sprint 2 added a 7th sensor (`lead_attribution`) that feeds the
+pre_natal unlock gate exclusively, NOT the post-graduation Bayesian
+scoring path. It is intentionally excluded from SENSOR_NAMES — the
+contract here is about scoring weights, not sensor inventory. The
+exclusion is asserted explicitly to prevent a future wave from
+silently re-adding lead_attribution to SENSOR_NAMES (which would
+require a corresponding DEFAULT_WEIGHTS rebalance and a calibrator
+training change).
 """
 from __future__ import annotations
 
@@ -30,24 +39,30 @@ from apps.evaluator.seo_cell.sensors import (
     GA4Sensor,
     GSCSensor,
     KGSensor,
+    LeadAttributionSensor,
     WarRoomEventSensor,
 )
 
 
+# Sensors that participate in the Bayesian scoring contract.
+# `lead_attribution` is excluded by design (gate-feeding only).
+_SCORING_SENSOR_CLASSES = (
+    GSCSensor,
+    GA4Sensor,
+    CompetitorSERPSensor,
+    KGSensor,
+    WarRoomEventSensor,
+    CannibalizationSensor,
+)
+
+
 def _live_sensor_names() -> set[str]:
-    """Instantiate each sensor class exactly as `sensors/__init__.py`
-    re-exports them, then read the public `.name` attribute. No I/O
-    happens — the name is a class attribute set at import.
+    """Names of sensors that are part of the calibrator scoring contract.
+
+    Returns the 6 v2.1 scoring sensors. `lead_attribution` is checked
+    separately by `test_lead_attribution_excluded_from_scoring_contract`.
     """
-    sensors = [
-        GSCSensor(),
-        GA4Sensor(),
-        CompetitorSERPSensor(),
-        KGSensor(),
-        WarRoomEventSensor(),
-        CannibalizationSensor(),
-    ]
-    return {s.name for s in sensors}
+    return {cls().name for cls in _SCORING_SENSOR_CLASSES}
 
 
 def test_sensor_names_match_live_sensor_instances():
@@ -106,6 +121,24 @@ def test_calibrator_fit_reads_nonzero_scores_for_every_sensor():
         f"projected={dict(zip(SENSOR_NAMES, projected))}, "
         f"brief_keys={set(scores)}"
     )
+
+
+def test_lead_attribution_excluded_from_scoring_contract():
+    """Sprint 2 sensor feeds the pre_natal unlock gate, NOT the
+    Bayesian calibrator. SENSOR_NAMES + DEFAULT_WEIGHTS must NOT
+    contain `lead_attribution`.
+
+    A future wave that wants to weight leads in the post-graduation
+    scoring must (a) add it to SENSOR_NAMES, (b) rebalance
+    DEFAULT_WEIGHTS, (c) retrain the calibrator with Brief rows that
+    carry a `lead_attribution` score, and (d) update this test. Doing
+    only (a)+(b) without (c)+(d) would silently feed zeros into the
+    fit — exactly the A1 class of bug.
+    """
+    leads = LeadAttributionSensor()
+    assert leads.name == "lead_attribution"
+    assert leads.name not in SENSOR_NAMES
+    assert leads.name not in DEFAULT_WEIGHTS
 
 
 def test_calibrator_mutates_when_briefs_keyed_by_live_sensor_names():

@@ -110,23 +110,17 @@ class SEOThinker:
         native = Maturation(birth_date=config.cell_birth_date()).phase
 
         gsc_query_count = 0
+        lead_count = 0
         for r in readings:
             if r.sensor_name == "gsc" and isinstance(r.value, dict):
                 gsc_query_count = int(r.value.get("query_count", 0))
-                break
-
-        # website_organic lead count will come from CRM via Sprint 2's
-        # lead_attribution_sensor. That sensor has NOT shipped yet, and
-        # nothing in this codebase currently writes a rolling counter
-        # into memory_context — the earlier comment that claimed the
-        # actor populates one was aspirational, not accurate.
-        #
-        # Consequence: pre_natal stays locked on the leads criterion
-        # regardless of real traffic, which is the intended safe default
-        # until the sensor lands. Do NOT read memory_context here to
-        # paper over the gap — a zero from a missing sensor is honest,
-        # a fake non-zero would silently graduate the cell.
-        lead_count = 0
+            elif r.sensor_name == "lead_attribution" and isinstance(r.value, dict):
+                # Sprint 2: read directly from the sensor (CRM-backed).
+                # If the sensor errors (yellow/red), it returns
+                # value.lead_count=0, which keeps pre_natal locked —
+                # a zero from a failed sensor is honest, the same safe
+                # default as the pre-Sprint-2 hardcoded zero.
+                lead_count = int(r.value.get("lead_count", 0))
 
         pre_natal = is_pre_natal(
             gsc_query_count=gsc_query_count,

@@ -17,7 +17,8 @@ def test_factory_returns_pulse_loop():
     cell = create_seo_cell()
     assert isinstance(cell, PulseLoop)
     assert cell.config.name == "seo-guardian"
-    assert len(cell.sensors) == 6
+    # Sprint 2: 7 sensors (6 v2.1 + lead_attribution).
+    assert len(cell.sensors) == 7
 
 
 @pytest.mark.asyncio
@@ -33,6 +34,7 @@ async def test_single_pulse_completes_in_pre_natal(monkeypatch):
     ga4 = next(s for s in cell.sensors if s.name == "ga4")
     war = next(s for s in cell.sensors if s.name == "war_room_event")
     kg = next(s for s in cell.sensors if s.name == "kg")
+    leads = next(s for s in cell.sensors if s.name == "lead_attribution")
 
     tmp_creds = Path("/tmp/seo_cell_test_fake_creds.json")
     tmp_creds.write_text("{}")
@@ -57,7 +59,8 @@ async def test_single_pulse_completes_in_pre_natal(monkeypatch):
         with patch.object(gsc, "_fetch_rows_blocking", return_value=[]), \
              patch.object(ga4, "_fetch_report_blocking", return_value={"rows": []}), \
              patch.object(war, "_fetch_posts", return_value=[]), \
-             patch.object(kg, "_fetch_snapshot", return_value=empty_kg):
+             patch.object(kg, "_fetch_snapshot", return_value=empty_kg), \
+             patch.object(leads, "_fetch_leads", return_value=[]):
             result = await cell.single_pulse()
     finally:
         gsc_mod.GOOGLE_CREDENTIALS_PATH = orig_gsc
