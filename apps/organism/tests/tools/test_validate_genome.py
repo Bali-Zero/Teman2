@@ -224,3 +224,26 @@ def test_w1_4_wr2_core_organi_enrolled(organ_id):
         f"{organ_id}: until the wrapper emits sidecars (W2), severity must be "
         f"'warning' — 'critical' here would page on every Cell pulse"
     )
+
+
+def test_w1_5_organism_control_panel_enrolled():
+    """W1.5 enrolls the organism control-panel HTTP daemon (already
+    KeepAlive=true on Pro :1819) with an http bridge that hits its own
+    /health endpoint. Severity=critical: if the control panel itself
+    is down, /pause and /resume are unreachable — Zero loses the
+    blackout escape hatch.
+    """
+    doc = yaml.safe_load(_LIVE_GENOME.read_text())
+    by_id = {o["id"]: o for o in doc["organs"]}
+    assert "pro.organism_control_panel" in by_id, (
+        "pro.organism_control_panel not enrolled in live genome"
+    )
+    organ = by_id["pro.organism_control_panel"]
+    assert organ["type"] == "daemon"
+    assert organ["recovery_action"] == "launchctl_kickstart"
+    assert organ["recovery_params"]["label"] == "com.nuzantara.organism.control-panel"
+    assert organ["severity_on_silence"] == "critical"
+    bridge = organ["bridge_source"]
+    assert bridge["type"] == "http"
+    assert bridge["path"] == "http://127.0.0.1:1819/health"
+    assert bridge["timestamp_field"] == "ts"
