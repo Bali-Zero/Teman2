@@ -1109,16 +1109,29 @@ async def test_query_malformed_service_response_logs_validation_error(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_dropped_fields_use_dedicated_logger(caplog) -> None:
+async def test_dropped_fields_use_dedicated_logger(monkeypatch) -> None:
     """Wave 3: the Q1 drop WARN must emerge from the dedicated
     `oracle.query.dropped_fields` logger so the event can be routed, muted
     or aggregated independently of the rest of the router's chatty logs.
 
     Until wave 3 it came from `backend.app.routers.oracle_universal`.
-    """
-    import logging as _logging
 
-    caplog.set_level(_logging.WARNING, logger="oracle.query.dropped_fields")
+    Asserted via monkeypatch on the dedicated logger's `warning` method for
+    the same reason as `test_query_malformed_service_response_logs_validation_error`:
+    the full backend-test collection runs an upstream test that pollutes
+    the logger graph (caplog records arrive with ANSI-colored `levelname`
+    like `'\\x1b[33mWARNING\\x1b[0m'` instead of `'WARNING'`, breaking
+    direct equality and causing 5+ consecutive `Tests & Coverage`
+    failures on main). Bound-method capture is immune to that pollution.
+    """
+    captured: list[tuple[str, tuple]] = []
+
+    import backend.app.routers.oracle_universal as oracle_router
+
+    def _capture(msg: str, *args, **kwargs) -> None:  # noqa: ANN401
+        captured.append((msg, args))
+
+    monkeypatch.setattr(oracle_router._DROPPED_FIELDS_LOGGER, "warning", _capture)
 
     app = _build_app()
     process = AsyncMock(return_value=_happy_result(query="logger name drift"))
@@ -1133,10 +1146,15 @@ async def test_dropped_fields_use_dedicated_logger(caplog) -> None:
             )
 
     assert r.status_code == 200
-    named = [rec for rec in caplog.records if rec.name == "oracle.query.dropped_fields"]
-    assert len(named) == 1
-    assert named[0].levelname == "WARNING"
-    assert "domain_hint" in named[0].message
+    assert len(captured) == 1, (
+        f"expected exactly 1 dropped-fields WARN, got {len(captured)} "
+        f"(captured: {captured})"
+    )
+    msg, args = captured[0]
+    rendered = msg % args if args else msg
+    assert "domain_hint" in rendered, (
+        f"expected 'domain_hint' in dropped-fields message, got: {rendered!r}"
+    )
 
 
 @pytest.mark.asyncio
