@@ -435,9 +435,14 @@ def main() -> int:
             "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS typical_duration_days INTEGER",
             "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
             "ALTER TABLE practice_types ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()",
+            # SQLModel emits `active` as NOT NULL with Python-side default only.
+            # The seed migrations write `is_active=true` and leave `active` to
+            # the DB default — give it one so raw-SQL inserts don't trip the
+            # NOT NULL constraint. Same shape as team_members.active above.
+            "ALTER TABLE practice_types ALTER COLUMN active SET DEFAULT TRUE",
         ):
             conn.execute(text(stmt))
-    print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at)")
+    print("[bootstrap] practice_types prod-only columns ensured (typical_duration_days + is_active + updated_at + active default)")
 
     return 0
 
