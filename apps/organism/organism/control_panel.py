@@ -5,13 +5,15 @@ filesystem-readable file (ORGANISM_TOKEN_PATH env). No user database,
 no session — one shared operator token.
 
 Endpoints:
-  GET  /health    — status + paused flag (no auth)
+  GET  /health    — status + paused flag + ts (no auth, used as W1.5
+                    organism heartbeat bridge for the Cell aggregator)
   POST /pause     — set blackout for N min (auth required)
   POST /resume    — clear blackout (auth required)
   GET  /stats     — organism metrics (W2 will populate)
 """
 import logging
 import os
+import time
 from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException
 from organism.blackout import BlackoutManager
@@ -40,7 +42,11 @@ def create_app(*, blackout: BlackoutManager) -> FastAPI:
     async def health():
         paused = blackout.is_paused()
         logger.debug("Health check: paused=%s", paused)
-        return {"status": "ok", "paused": paused}
+        # `ts` (unix epoch) is the heartbeat field consumed by the Cell
+        # GenomeAggregatorSensor for the pro.organism_control_panel organ
+        # (W1.5). Don't remove or rename without updating the bridge_source
+        # entry in genome.yaml.
+        return {"status": "ok", "paused": paused, "ts": time.time()}
 
     @app.post("/pause")
     async def pause(minutes: int = 30, x_organism_token: str | None = Header(None)):

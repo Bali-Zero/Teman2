@@ -6,12 +6,20 @@ from organism.blackout import BlackoutManager
 
 
 def test_health_endpoint_returns_ok(tmp_path):
+    import time as _time
+    before = _time.time()
     app = create_app(blackout=BlackoutManager(flag_path=tmp_path / "pause.flag"))
     client = TestClient(app)
     resp = client.get("/health")
+    after = _time.time()
     assert resp.status_code == 200
-    assert resp.json()["status"] == "ok"
-    assert resp.json()["paused"] is False
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["paused"] is False
+    # `ts` field powers the W1.5 organism heartbeat bridge — must be
+    # present, numeric, and within the request window.
+    assert isinstance(body["ts"], (int, float))
+    assert before <= body["ts"] <= after
 
 
 def test_pause_requires_token(tmp_path):

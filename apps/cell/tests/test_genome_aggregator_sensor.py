@@ -677,3 +677,69 @@ def test_w1_pro_renewal_alerts_enrolled(tmp_path):
     assert happy.metadata["alive"] == 1
     assert dead.status == "red"
     assert dead.metadata["dead_organs"] == ["pro.renewal_alerts"]
+
+
+# ---------- W1.5 organism control-panel daemon (http bridge) ---------------
+# pro.organism_control_panel hits http://127.0.0.1:1819/health (the daemon
+# already KeepAlive=true on Pro). The /health body is FLAT (`{status, paused, ts}`),
+# not nested like the channels endpoint, so we mock a separate response shape.
+
+
+def _mock_control_panel_response(status_value: str, *, age_s: float = 1.0):
+    """Build an httpx-Client mock returning the control-panel /health body."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = ""
+    resp.json = MagicMock(return_value={
+        "status": status_value,
+        "paused": False,
+        "ts": time.time() - age_s,
+    })
+    client = MagicMock()
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+    client.get = MagicMock(return_value=resp)
+    return MagicMock(return_value=client)
+
+
+def _w1_organ_control_panel(*, severity: str = "critical") -> dict:
+    return {
+        "id": "pro.organism_control_panel",
+        "runtime": "pro_launchd",
+        "type": "daemon",
+        "expected_hb_seconds": 120,
+        "owner_module": "apps/organism/organism/control_panel.py",
+        "dependencies": [],
+        "recovery_action": "launchctl_kickstart",
+        "recovery_params": {"label": "com.nuzantara.organism.control-panel"},
+        "severity_on_silence": severity,
+        "cicatrix_refs": [],
+        "bridge_source": {
+            "type": "http",
+            "path": "http://127.0.0.1:1819/health",
+            "timestamp_field": "ts",
+            "json_path": "status",
+        },
+    }
+
+
+def test_w1_pro_organism_control_panel_enrolled(tmp_path):
+    """Happy: /health 200 + status=ok + fresh ts → green.
+    Dead:  /health 503 → BridgeReading.error → red."""
+    genome = tmp_path / "control_panel_genome.yaml"
+    db = tmp_path / "control_panel_last_seen.db"
+    _write_genome(genome, [_w1_organ_control_panel()])
+
+    with _patch("cell.sensors.bridge_state_reader.httpx.Client",
+                _mock_control_panel_response("ok", age_s=1.0)):
+        sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+        happy = _run(sensor)
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+
+    with _patch("cell.sensors.bridge_state_reader.httpx.Client",
+                _mock_http_5xx()):
+        sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+        dead = _run(sensor)
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["pro.organism_control_panel"]
