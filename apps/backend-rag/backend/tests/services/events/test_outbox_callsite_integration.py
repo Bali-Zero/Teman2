@@ -295,14 +295,24 @@ def _read_migration_146() -> str:
     return _MIGRATION_146_PATH.read_text(encoding="utf-8")
 
 
-# lkpm_ingest_completed is in PG_CHANNEL_MAP but has NO DB trigger — it is
-# emitted by Python import scripts after bulk OSS receipt ingest. The
-# Python emitter path now goes through ``EventBus.emit_pg`` (refactored to
-# use outbox.publish), so it gains durability without needing a SQL
-# trigger. Other channels DO have DB triggers (075/076/112/113/114) and
-# need migration 146 to wrap them in events_outbox INSERTs.
+# Channels in PG_CHANNEL_MAP that have NO DB trigger and so do not need
+# coverage in migration 146. Both are emitted only via Python through
+# ``EventBus.emit_pg`` (refactored in p0-2-fase2 to call ``outbox.publish``),
+# so they already gain durability without a SQL trigger.
+#
+#   - ``lkpm_ingest_completed`` — emitted by import scripts after bulk OSS
+#     receipt ingest (see backend.scripts.lkpm_ingest_q1_2026).
+#   - ``federation_alert`` — emitted by the FAD pipeline (PR #393/#395):
+#     Python producers call ``EventBus.emit_pg('federation_alert', payload)``
+#     after writing to ``federation_alert_proposals`` (migration 147). No DB
+#     trigger fires it; the FAD daemon (services/federation_alerts/daemon.py)
+#     LISTENs and consumes via ``replay_unconsumed`` against events_outbox.
+#
+# The remaining channels DO have DB triggers (migrations 075/076/112/113/114)
+# and migration 146 must wrap each one in an events_outbox INSERT.
+_PG_NOTIFY_ONLY_CHANNELS = frozenset({"lkpm_ingest_completed", "federation_alert"})
 _TRIGGER_BACKED_CHANNELS = frozenset(
-    {ch for ch in PG_CHANNEL_MAP if ch != "lkpm_ingest_completed"}
+    ch for ch in PG_CHANNEL_MAP if ch not in _PG_NOTIFY_ONLY_CHANNELS
 )
 
 

@@ -319,15 +319,37 @@ class TestCalculateWorkflowConfidence:
 class TestUnderstandQueryNode:
     """Tests for the query understanding LangGraph node."""
 
+    @staticmethod
+    def _structured_llm(parsed_obj: Any | None = None,
+                        *, side_effect: Any | None = None) -> AsyncMock:
+        """Build an LLM mock compatible with PR #382 structured-output API.
+
+        `understand_query_node` calls `llm.with_structured_output(QueryIntentSchema)`
+        and then `.ainvoke(...)` on the wrapper. The wrapper returns a Pydantic
+        instance directly (NOT a `.content` JSON string). This helper wires both
+        layers so tests stay readable.
+        """
+        structured_llm = AsyncMock()
+        if side_effect is not None:
+            structured_llm.ainvoke = AsyncMock(side_effect=side_effect)
+        else:
+            structured_llm.ainvoke = AsyncMock(return_value=parsed_obj)
+
+        llm = MagicMock()
+        llm.with_structured_output = MagicMock(return_value=structured_llm)
+        return llm
+
     @pytest.mark.asyncio
     async def test_successful_llm_parse(self) -> None:
-        from backend.services.rag.kg_graph_nodes import understand_query_node
+        from backend.services.rag.kg_graph_nodes import (
+            QueryIntentSchema,
+            understand_query_node,
+        )
 
         state = _make_state(query="What is KITAS?")
-        llm = AsyncMock()
-        llm_response = MagicMock()
-        llm_response.content = '{"intent": "visa", "domain": "visa", "entities": ["KITAS"], "citizenship": "foreign"}'
-        llm.ainvoke = AsyncMock(return_value=llm_response)
+        llm = self._structured_llm(QueryIntentSchema(
+            intent="visa", domain="visa", entities=["KITAS"], citizenship="foreign",
+        ))
 
         result = await understand_query_node(state, llm)
         assert result["intent"] == "visa"
@@ -340,8 +362,7 @@ class TestUnderstandQueryNode:
         from backend.services.rag.kg_graph_nodes import understand_query_node
 
         state = _make_state(query="kitas application")
-        llm = AsyncMock()
-        llm.ainvoke = AsyncMock(side_effect=asyncio.TimeoutError())
+        llm = self._structured_llm(side_effect=asyncio.TimeoutError())
 
         result = await understand_query_node(state, llm)
         # Should fall back to domain detection
@@ -350,25 +371,34 @@ class TestUnderstandQueryNode:
     @pytest.mark.asyncio
     async def test_llm_json_parse_error_fallback(self) -> None:
         from backend.services.rag.kg_graph_nodes import understand_query_node
+        from pydantic import ValidationError
 
+        # Simulate the structured-output parser raising ValidationError when
+        # the upstream LLM returns malformed JSON. The node catches it and
+        # falls back to fast-path domain detection.
         state = _make_state(query="npwp registration")
-        llm = AsyncMock()
-        llm_response = MagicMock()
-        llm_response.content = "not valid json"
-        llm.ainvoke = AsyncMock(return_value=llm_response)
+        try:
+            from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+            QueryIntentSchema(intent="x")  # missing required fields
+        except ValidationError as ve:
+            llm = self._structured_llm(side_effect=ve)
+        else:
+            pytest.skip("schema no longer raises on minimal input")
 
         result = await understand_query_node(state, llm)
         assert result["domain"] == "tax"  # fallback from domain detection
 
     @pytest.mark.asyncio
     async def test_general_query(self) -> None:
-        from backend.services.rag.kg_graph_nodes import understand_query_node
+        from backend.services.rag.kg_graph_nodes import (
+            QueryIntentSchema,
+            understand_query_node,
+        )
 
         state = _make_state(query="how to start business in bali")
-        llm = AsyncMock()
-        llm_response = MagicMock()
-        llm_response.content = '{"intent": "company_setup", "domain": "company", "entities": ["PT PMA"]}'
-        llm.ainvoke = AsyncMock(return_value=llm_response)
+        llm = self._structured_llm(QueryIntentSchema(
+            intent="company_setup", domain="company", entities=["PT PMA"],
+        ))
 
         result = await understand_query_node(state, llm)
         assert result["intent"] == "company_setup"
