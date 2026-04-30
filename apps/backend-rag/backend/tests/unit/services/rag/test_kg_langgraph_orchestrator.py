@@ -209,45 +209,103 @@ class TestRouteAfterQueryUnderstanding:
         state = self._make_state(domain="kbli")
         assert route_after_query_understanding(state) == "company_subgraph"
 
-    def test_intent_company_setup(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
-        state = self._make_state(intent="company_setup")
-        assert route_after_query_understanding(state) == "company_subgraph"
+    # ────────────────────────────────────────────────────────────────────
+    # Intent-only routing tests
+    #
+    # The router was refactored to route PRIMARILY on `domain`
+    # (`route_after_query_understanding` PHASE 1). Intent only matters when
+    # it lands in the small `golden_route_intents` allowlist (PHASE 2:
+    # `pt_pma_setup`, `kitas_work`, `nib_oss`, `npwp_registration`). The
+    # broader intent-name-to-subgraph mapping below was removed when the
+    # Pydantic-validated domain field became the routing contract.
+    #
+    # These tests now lock in the new contract: an `intent="..."` set
+    # WITHOUT a corresponding `domain` does NOT route to a subgraph — it
+    # falls through to PHASE 4 and terminates (END) so the upstream
+    # vector-search fallback handles the query.
+    # ────────────────────────────────────────────────────────────────────
 
-    def test_intent_visa_application(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_intent_company_setup_without_domain_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
+        state = self._make_state(intent="company_setup")  # domain="general"
+        assert route_after_query_understanding(state) == END
+
+    def test_intent_visa_application_without_domain_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(intent="visa_application")
-        assert route_after_query_understanding(state) == "visa_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_intent_property_acquisition(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_intent_property_acquisition_without_domain_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(intent="property_acquisition")
-        assert route_after_query_understanding(state) == "property_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_intent_tax_compliance(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_intent_tax_compliance_without_domain_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(intent="tax_compliance")
-        assert route_after_query_understanding(state) == "tax_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_keyword_pt_pma(self) -> None:
+    def test_intent_pt_pma_setup_takes_golden_route(self) -> None:
+        """PHASE 2: intents in the golden_route_intents allowlist still
+        route to use_golden_route, even without a domain hint."""
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+        state = self._make_state(intent="pt_pma_setup")
+        assert route_after_query_understanding(state) == "use_golden_route"
+
+    # ────────────────────────────────────────────────────────────────────
+    # Keyword-only routing tests
+    #
+    # The router does NOT look at `state["query"]` for routing decisions
+    # (only `domain` and `intent` are read). Keyword-based routing was
+    # moved upstream into `_detect_domain_from_query` inside
+    # `understand_query_node`, which populates `state["domain"]` BEFORE
+    # this function runs. So setting only `query="..."` here exercises a
+    # bypass of the upstream classifier and must terminate.
+    # ────────────────────────────────────────────────────────────────────
+
+    def test_keyword_pt_pma_query_only_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(query="How to set up PT PMA in Bali")
-        assert route_after_query_understanding(state) == "company_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_keyword_kitas(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_keyword_kitas_query_only_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(query="I need a kitas for work")
-        assert route_after_query_understanding(state) == "visa_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_keyword_villa(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_keyword_villa_query_only_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(query="Buy a villa in Bali")
-        assert route_after_query_understanding(state) == "property_subgraph"
+        assert route_after_query_understanding(state) == END
 
-    def test_keyword_pajak(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+    def test_keyword_pajak_query_only_terminates(self) -> None:
+        from backend.services.rag.kg_langgraph_orchestrator import (
+            END,
+            route_after_query_understanding,
+        )
         state = self._make_state(query="How to pay pajak in Indonesia")
-        assert route_after_query_understanding(state) == "tax_subgraph"
+        assert route_after_query_understanding(state) == END
 
     def test_complex_query_with_multiple_entities(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
