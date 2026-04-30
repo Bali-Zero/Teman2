@@ -118,9 +118,27 @@ async def channel_health_public(request: Request) -> dict[str, Any]:
     Threshold logic mirrors `/health` (the `down → degraded → up` ladder
     fixed in PR #380), so the two endpoints stay consistent.
     """
+    # Known channel names. The api process group serves this endpoint but
+    # `app.state.channel_router` is only initialized in the `rag` process
+    # group (heavy mode — see `service_initializer.initialize_services_light`
+    # which sets channel_router=None). When this endpoint runs in light mode
+    # we cannot inspect per-channel error_rate, but the Innervation Cell
+    # aggregator still needs to see the four channel.* organi declared
+    # in the Genoma — otherwise it classifies them as silent and dead.
+    #
+    # Fallback: return `status: "unknown"` for each known channel. The
+    # bridge_state_reader maps unknown vocab to `degraded`, so the operator
+    # sees yellow ("can't see, but channel is registered"), not red
+    # ("the channel is dead"). Honest signal, no false alarm.
+    KNOWN_CHANNELS = ("whatsapp", "telegram", "instagram", "web")
+
     channel_router = getattr(request.app.state, "channel_router", None)
     if channel_router is None:
-        return {"ts": time.time(), "channels": {}, "error": "channel_router_uninitialized"}
+        return {
+            "ts": time.time(),
+            "channels": {name: {"status": "unknown"} for name in KNOWN_CHANNELS},
+            "info": "channel_router_uninitialized_in_api_group",
+        }
 
     from backend.channels.optimizations import channel_metrics
 

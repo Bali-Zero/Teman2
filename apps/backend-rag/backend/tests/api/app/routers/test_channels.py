@@ -198,3 +198,34 @@ async def test_health_public_threshold_ladder_matches_private_health():
             f"errors={errors}% → expected {expected_status} "
             f"got {body['channels']['whatsapp']['status']}"
         )
+
+
+@pytest.mark.asyncio
+async def test_health_public_uninitialized_returns_known_channels_unknown_status():
+    """W1.2-bug-2 regression: when `app.state.channel_router` is None
+    (api process group runs `initialize_services_light` which intentionally
+    sets channel_router=None — the heavy ChannelRouter lives in the rag
+    process group), the endpoint MUST still return the four known channel
+    names with status='unknown'. The bridge_state_reader maps unknown
+    vocab to `degraded`, so the operator sees yellow ('can't see, channel
+    is registered'), not red ('channel is dead')."""
+    app = FastAPI()
+    app.include_router(router)
+    app.state.channel_router = None  # simulate light-init mode
+    app.state.db_pool = None
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/channels/health-public")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "ts" in body and isinstance(body["ts"], (int, float))
+    assert set(body["channels"].keys()) == {"whatsapp", "telegram", "instagram", "web"}
+    for chan_name, chan_body in body["channels"].items():
+        assert chan_body == {"status": "unknown"}, (
+            f"{chan_name} unexpected body shape: {chan_body}"
+        )
+    # An informational `info` field is acceptable so operators can tell why
+    # the response is `unknown` from a lone curl.
+    assert "info" in body or "error" in body
