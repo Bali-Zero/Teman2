@@ -149,6 +149,12 @@ const MARKETING_TEAM: TeamMember[] = [
     photo: "/static/team/zero.jpg",
   },
   {
+    name: "Subhi Darajat",
+    initials: "SD",
+    role: "Senior Dev",
+    gradient: "linear-gradient(135deg, #f59e0b 0%, #c2410c 100%)",
+  },
+  {
     name: "Surya",
     initials: "SU",
     role: "Marketing Specialist",

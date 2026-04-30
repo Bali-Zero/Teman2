@@ -118,6 +118,11 @@ export const CHAPTERS: Chapter[] = [
 
 // Source: apps/mouth/src/app/(blog)/team/page.tsx — verified
 export const TEAM_MEMBERS: TeamMember[] = [
+  {
+    name: "Subhi Darajat",
+    role: "Senior Dev",
+    department: "leadership",
+  },
   // Leadership
   {
     name: "Zainal Abidin",
