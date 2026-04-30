@@ -179,9 +179,9 @@ def test_tilde_in_path_is_expanded(tmp_path, monkeypatch):
 
 
 def test_unsupported_bridge_type_returns_error(tmp_path):
-    """Bridge type other than `state_file` (e.g. `sql_table`) is not yet
-    implemented in W0; the reader returns a reading with error rather than
-    silently skipping (so the operator sees the work-not-done)."""
+    """Bridge type other than `state_file`/`http` is not yet implemented;
+    the reader returns a reading with error rather than silently skipping
+    (so the operator sees the work-not-done)."""
     f = tmp_path / "any.json"
     _write_state(f, ts=1.0, status="ok")
 
@@ -197,3 +197,167 @@ def test_unsupported_bridge_type_returns_error(tmp_path):
     r = readings[0]
     assert r.error
     assert "unsupported" in r.error.lower() or "sql_table" in r.error.lower()
+
+
+# ---------- http branch (W1.2) ----------------------------------------------
+
+
+from unittest.mock import MagicMock, patch
+import httpx as _httpx_mod  # alias to avoid shadowing if test names collide
+
+
+def _mock_httpx_client(*, status_code: int = 200, json_body: Any = None,
+                       text_body: str | None = None,
+                       raise_exc: Exception | None = None):
+    """Build a context-manager mock for `httpx.Client(...)` whose `.get()`
+    either raises `raise_exc`, returns a response with `status_code` +
+    `json_body` (or `text_body`), or both."""
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.text = text_body if text_body is not None else ""
+    if json_body is not None:
+        resp.json = MagicMock(return_value=json_body)
+    elif text_body is not None:
+        # text-but-not-json body — simulate json() raising
+        def _raise(*args, **kwargs):
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
+        resp.json = MagicMock(side_effect=_raise)
+
+    client = MagicMock()
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+    if raise_exc is not None:
+        client.get = MagicMock(side_effect=raise_exc)
+    else:
+        client.get = MagicMock(return_value=resp)
+
+    cls = MagicMock(return_value=client)
+    return cls
+
+
+def test_http_source_returns_reading_with_status_and_ts():
+    """Happy path: GET 200 + valid JSON body with channels nested status."""
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ts": 1000.0, "channels": {"whatsapp": {"status": "up"}}},
+    )
+    src = BridgeSource(
+        organ_id="channel.whatsapp",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.whatsapp.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+
+    assert reading.error == "", reading.error
+    assert reading.timestamp == 1000.0
+    assert reading.status == "ok"
+
+
+def test_http_source_maps_degraded_status():
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ts": 1000.0, "channels": {"telegram": {"status": "degraded"}}},
+    )
+    src = BridgeSource(
+        organ_id="channel.telegram",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.telegram.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert reading.status == "degraded"
+
+
+def test_http_source_maps_down_status_to_fail():
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ts": 1000.0, "channels": {"instagram": {"status": "down"}}},
+    )
+    src = BridgeSource(
+        organ_id="channel.instagram",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.instagram.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert reading.status == "fail"
+
+
+def test_http_source_5xx_returns_error():
+    cls = _mock_httpx_client(status_code=503, text_body="upstream down")
+    src = BridgeSource(
+        organ_id="channel.web",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.web.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert "http 503" in reading.error
+    assert reading.status == ""  # no status on error
+
+
+def test_http_source_timeout_returns_error():
+    cls = _mock_httpx_client(raise_exc=_httpx_mod.ConnectTimeout("simulated"))
+    src = BridgeSource(
+        organ_id="channel.whatsapp",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.whatsapp.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert "http request failed" in reading.error
+    assert "ConnectTimeout" in reading.error
+
+
+def test_http_source_malformed_json_returns_error():
+    cls = _mock_httpx_client(status_code=200, text_body="not json{")
+    src = BridgeSource(
+        organ_id="channel.whatsapp",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.whatsapp.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert "json parse error" in reading.error
+
+
+def test_http_source_missing_json_path_returns_error():
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ts": 1000.0, "channels": {}},  # whatsapp absent
+    )
+    src = BridgeSource(
+        organ_id="channel.whatsapp",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.whatsapp.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert "missing json_path" in reading.error
+    assert reading.timestamp == 1000.0  # ts still parsed before json_path check
+
+
+def test_http_source_unknown_status_vocab_maps_to_degraded():
+    """Operator visibility over silence: an unknown status string from the
+    backend (vocab drift) maps to `degraded` rather than `ok` or `fail`."""
+    cls = _mock_httpx_client(
+        status_code=200,
+        json_body={"ts": 1000.0, "channels": {"whatsapp": {"status": "weird-state"}}},
+    )
+    src = BridgeSource(
+        organ_id="channel.whatsapp",
+        type="http",
+        path="https://example.test/health",
+        json_path="channels.whatsapp.status",
+    )
+    with patch("cell.sensors.bridge_state_reader.httpx.Client", cls):
+        reading = BridgeStateReader([src]).read_all()[0]
+    assert reading.status == "degraded"

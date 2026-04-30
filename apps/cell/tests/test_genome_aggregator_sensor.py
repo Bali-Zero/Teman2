@@ -444,3 +444,152 @@ def test_w1_pro_metabolic_rollup_enrolled(tmp_path):
     assert happy.metadata["alive"] == 1
     assert dead.status == "red"
     assert dead.metadata["dead_organs"] == ["pro.metabolic_rollup"]
+
+
+# ---------- W1.2 channel.* organi (http bridge) -----------------------------
+# These reach liveness through `bridge_source.type=http` (the public
+# /api/channels/health-public endpoint) instead of a state_file. The
+# aggregator path is identical once BridgeStateReader returns a
+# BridgeReading; we mock httpx.Client to drive the http branch.
+
+
+from unittest.mock import MagicMock, patch as _patch
+
+
+def _w1_organ_http(
+    organ_id: str,
+    *,
+    expected_hb_seconds: int = 120,
+    json_path: str,
+    severity: str = "critical",
+) -> dict:
+    """Build a genoma entry for a channel.* organ with http bridge_source."""
+    return {
+        "id": organ_id,
+        "runtime": "fly_machine",
+        "type": "webhook",
+        "expected_hb_seconds": expected_hb_seconds,
+        "owner_module": f"apps/backend-rag/backend/channels/{organ_id.split('.')[1]}",
+        "dependencies": ["backend.api"],
+        "recovery_action": "fly_machines_start",
+        "recovery_params": {"app": "nuzantara-rag", "process_group": "api"},
+        "severity_on_silence": severity,
+        "cicatrix_refs": [],
+        "bridge_source": {
+            "type": "http",
+            "path": "https://kita.balizero.com/api/channels/health-public",
+            "timestamp_field": "ts",
+            "json_path": json_path,
+        },
+    }
+
+
+def _mock_http_response(status_value: str, *, age_s: float = 1.0):
+    """Build an httpx-Client mock that returns 200 + JSON body with the
+    channels.<chan>.status field set to `status_value` and ts = now-age_s."""
+    resp = MagicMock()
+    resp.status_code = 200
+    resp.text = ""
+    chan_dict = {chan: {"status": status_value} for chan in
+                 ("whatsapp", "telegram", "instagram", "web")}
+    resp.json = MagicMock(return_value={
+        "ts": time.time() - age_s,
+        "channels": chan_dict,
+    })
+    client = MagicMock()
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+    client.get = MagicMock(return_value=resp)
+    return MagicMock(return_value=client)
+
+
+def _mock_http_5xx():
+    """All channels appear dead because the endpoint is unreachable."""
+    resp = MagicMock(status_code=503, text="upstream down")
+    client = MagicMock()
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+    client.get = MagicMock(return_value=resp)
+    return MagicMock(return_value=client)
+
+
+def _w1_http_happy_dead_pair(
+    tmp_path: Path,
+    organ_id: str,
+    json_path: str,
+    *,
+    expected_hb_seconds: int = 120,
+    severity: str = "critical",
+) -> tuple[SensorReading, SensorReading]:
+    """Run the aggregator for one channel organ:
+       - happy: GET 200 + status=up (mapped to ok by reader)
+       - dead:  GET 503 (reader returns BridgeReading.error)
+    """
+    genome = tmp_path / f"{organ_id}_genome.yaml"
+    db = tmp_path / f"{organ_id}_last_seen.db"
+
+    _write_genome(genome, [_w1_organ_http(
+        organ_id,
+        expected_hb_seconds=expected_hb_seconds,
+        json_path=json_path,
+        severity=severity,
+    )])
+
+    # Happy: backend reports `up`, reader maps to `ok`, ts fresh.
+    with _patch("cell.sensors.bridge_state_reader.httpx.Client",
+                _mock_http_response("up", age_s=1.0)):
+        sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+        happy = _run(sensor)
+
+    # Dead: 503 → BridgeReading.error → no timestamp → aggregator counts dead.
+    with _patch("cell.sensors.bridge_state_reader.httpx.Client",
+                _mock_http_5xx()):
+        sensor = GenomeAggregatorSensor(genome_path=genome, last_seen_db_path=db)
+        dead = _run(sensor)
+
+    return happy, dead
+
+
+def test_w1_channel_whatsapp_enrolled_via_http(tmp_path):
+    happy, dead = _w1_http_happy_dead_pair(
+        tmp_path,
+        "channel.whatsapp",
+        json_path="channels.whatsapp.status",
+    )
+    assert happy.status == "green"
+    assert happy.metadata["alive"] == 1
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["channel.whatsapp"]
+
+
+def test_w1_channel_telegram_enrolled_via_http(tmp_path):
+    happy, dead = _w1_http_happy_dead_pair(
+        tmp_path,
+        "channel.telegram",
+        json_path="channels.telegram.status",
+    )
+    assert happy.status == "green"
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["channel.telegram"]
+
+
+def test_w1_channel_instagram_enrolled_via_http(tmp_path):
+    happy, dead = _w1_http_happy_dead_pair(
+        tmp_path,
+        "channel.instagram",
+        json_path="channels.instagram.status",
+    )
+    assert happy.status == "green"
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["channel.instagram"]
+
+
+def test_w1_channel_web_enrolled_via_http(tmp_path):
+    happy, dead = _w1_http_happy_dead_pair(
+        tmp_path,
+        "channel.web",
+        json_path="channels.web.status",
+    )
+    assert happy.status == "green"
+    assert dead.status == "red"
+    assert dead.metadata["dead_organs"] == ["channel.web"]

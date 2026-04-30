@@ -28,7 +28,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 825ed3052ebc5bf7c60eef9c7f9cc47a3c302ca636172e11d9561a3779f3caa7
+checksum: 2a64235b5c4f9f863d213362e39bc13906d2cd12b59a9fb268a66ceda8b5e7b1
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -265,3 +265,75 @@ organs:
     path: ~/.organism/last_seen/pro.metabolic_rollup.json
     timestamp_field: ts
     status_field: status
+- id: channel.whatsapp
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/whatsapp
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.whatsapp.status
+- id: channel.telegram
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/telegram
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.telegram.status
+- id: channel.instagram
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/instagram
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.instagram.status
+- id: channel.web
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/web
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.web.status
