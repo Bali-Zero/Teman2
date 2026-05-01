@@ -52,6 +52,23 @@ class TestAmountToUsd:
     def test_lowercase_currency_normalized(self):
         assert amount_to_usd(1500, "usd") == 1500.0
 
+    def test_genuine_usd_below_threshold(self):
+        # $5000 USD genuino — below 50k threshold, no heuristic
+        assert amount_to_usd(5000, "USD") == 5000.0
+
+    def test_idr_mistag_heuristic_triggers_above_threshold(self):
+        # 31M "USD" → almost certainly IDR mistag → ~$2000
+        assert amount_to_usd(31_000_000, "USD") == pytest.approx(2000.0, rel=1e-3)
+
+    def test_idr_mistag_heuristic_at_exact_threshold(self):
+        # 50k exactly USD → genuino, no heuristic
+        assert amount_to_usd(50_000, "USD") == 50_000.0
+
+    def test_idr_mistag_heuristic_just_above_threshold(self):
+        # 50k+1 → triggers heuristic
+        result = amount_to_usd(50_001, "USD")
+        assert result < 100  # ~$3.2 if treated as IDR
+
 
 class TestComputeLtvUsd:
     def test_completed_practice_with_actual_price(self):

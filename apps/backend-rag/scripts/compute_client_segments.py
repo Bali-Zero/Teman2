@@ -50,15 +50,32 @@ CURRENCY_TO_USD: dict[str, float] = {
 }
 
 
+# Heuristic threshold: amounts above this with currency='USD' are almost
+# certainly IDR mistagged (Bali Zero realistic max single practice ~$5000).
+# See data quality investigation 2026-05-01: 190/218 completed practices
+# had IDR-magnitude amounts with currency='USD' label.
+IDR_MISTAG_THRESHOLD_USD: float = 50_000.0
+
+
 def amount_to_usd(amount: float | None, currency: str | None) -> float:
-    """Convert amount to USD using static rate table.
+    """Convert amount to USD using static rate table + IDR-mistag heuristic.
 
     Unknown currency → treated as USD passthrough (logs warning).
     None / 0 / negative → 0.
+    Heuristic: if currency='USD' but amount > 50k, treat as IDR mistag.
     """
     if amount is None or amount <= 0:
         return 0.0
     cur = (currency or "USD").upper()
+
+    # IDR-mistag heuristic: large "USD" amounts are almost always IDR
+    # entered with the wrong currency tag in the practices form.
+    if cur == "USD" and float(amount) > IDR_MISTAG_THRESHOLD_USD:
+        logger.debug(
+            f"IDR-mistag detected: amount={amount} currency=USD; treating as IDR"
+        )
+        return float(amount) * CURRENCY_TO_USD["IDR"]
+
     rate = CURRENCY_TO_USD.get(cur)
     if rate is None:
         logger.warning(f"Unknown currency {cur!r}, treating as USD passthrough")
