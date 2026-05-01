@@ -82,6 +82,14 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #   {v: 1, proposal_id, run_id, idempotency_key, source, severity,
     #    action_hint, _outbox_id}
     "federation_alert": "federation.alert",
+    # Emitted by cell_core.observatory.emit_pulse_observed() (PR-1, 2026-05-01)
+    # for any cell with CELL_OBSERVATORY_EMIT=true. Payload v1:
+    # {event_version, cell_id, cell_kind, pulse_id, pulse_timestamp,
+    #  phase, sensors[], pulse_result{classifier_self,...},
+    #  homeostatic_state{stress_level,energy_level,...}, scar_signals[],
+    #  metadata{host,machine_role,...}, _outbox_id}.
+    # Consumer: apps/cell-observatory-collector (PR-3, Pro local SQLite).
+    "cell_pulse_observed": "cell.pulse.observed",
 }
 
 _RECONNECT_DELAY_S = 5
