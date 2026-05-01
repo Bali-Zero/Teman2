@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.cell-observatory-selfcheck</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>~/Desktop/nuzantara/apps/cell-observatory-collector/scripts/healthcheck.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>300</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/cell-observatory/selfcheck.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/cell-observatory/selfcheck.log</string>
+</dict>
+</plist>
