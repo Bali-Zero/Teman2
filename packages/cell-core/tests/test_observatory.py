@@ -98,7 +98,7 @@ async def test_emit_pulse_observed_writes_outbox_and_notifies(monkeypatch):
         async def fetchrow(self, sql, *args):
             captured["insert_sql"] = sql
             captured["insert_args"] = args
-            return {"outbox_id": 42}
+            return {"id": 42}
 
         async def execute(self, sql, *args):
             captured["notify_sql"] = sql
@@ -136,6 +136,7 @@ async def test_emit_pulse_observed_writes_outbox_and_notifies(monkeypatch):
     )
 
     assert "INSERT INTO events_outbox" in captured["insert_sql"]
+    assert "RETURNING id" in captured["insert_sql"]  # pins schema contract: PK is 'id', not 'outbox_id'
     assert captured["insert_args"][0] == "cell_pulse_observed"
     payload = json.loads(captured["insert_args"][1])
     assert payload["cell_id"] == "organism"
@@ -168,3 +169,31 @@ async def test_emit_pulse_observed_swallows_db_errors(monkeypatch, caplog):
         sensors=[], pulse_result={}, homeostatic_state={},
     )
     assert any("emit failed" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_pool_returns_none_if_asyncpg_missing(monkeypatch):
+    """When asyncpg is not installed, _get_or_create_pool returns None silently."""
+    monkeypatch.setenv("EVENTBUS_DATABASE_URL", "postgresql://x/y")
+    from cell_core import observatory
+    observatory._reset_pool_for_tests()
+
+    # Simulate asyncpg ImportError by removing it from sys.modules + blocking import
+    import sys
+    saved = sys.modules.pop("asyncpg", None)
+    try:
+        # Insert a sentinel that raises ImportError when 'asyncpg' is imported
+        class _BlockedFinder:
+            def find_module(self, name, path=None):
+                if name == "asyncpg":
+                    raise ImportError("blocked by test")
+                return None
+        sys.meta_path.insert(0, _BlockedFinder())
+        try:
+            pool = await observatory._get_or_create_pool()
+            assert pool is None
+        finally:
+            sys.meta_path.pop(0)
+    finally:
+        if saved is not None:
+            sys.modules["asyncpg"] = saved

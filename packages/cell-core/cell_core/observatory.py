@@ -14,13 +14,14 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
-import asyncpg
+if TYPE_CHECKING:
+    import asyncpg
 
 logger = logging.getLogger(__name__)
 
-_pool: Optional[asyncpg.Pool] = None
+_pool: Optional["asyncpg.Pool"] = None
 _pool_lock_pid: Optional[int] = None  # detect fork without inherit
 
 
@@ -29,9 +30,18 @@ def is_enabled() -> bool:
     return os.environ.get("CELL_OBSERVATORY_EMIT", "").lower() == "true"
 
 
-async def _get_or_create_pool() -> Optional[asyncpg.Pool]:
-    """Return the lazy-initialized asyncpg pool, or None if EVENTBUS_DATABASE_URL is unset."""
+async def _get_or_create_pool() -> "Optional[asyncpg.Pool]":
+    """Return the lazy-initialized asyncpg pool, or None if EVENTBUS_DATABASE_URL is unset.
+
+    Returns None also when asyncpg is not installed (cell-core installed
+    without the [postgres] optional extra).
+    """
     global _pool, _pool_lock_pid
+    try:
+        import asyncpg
+    except ImportError:
+        # Cell-core installed without [postgres] extra; observatory disabled.
+        return None
 
     current_pid = os.getpid()
     if _pool_lock_pid is not None and _pool_lock_pid != current_pid:
@@ -65,7 +75,7 @@ def _reset_pool_for_tests() -> None:
 
 _INSERT_SQL = (
     "INSERT INTO events_outbox (channel, payload) "
-    "VALUES ($1, $2) RETURNING outbox_id"
+    "VALUES ($1, $2) RETURNING id"
 )
 _NOTIFY_SQL = "SELECT pg_notify($1, $2)"
 
@@ -112,7 +122,7 @@ async def emit_pulse_observed(
         async with pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(_INSERT_SQL, "cell_pulse_observed", json.dumps(payload))
-                outbox_id = row["outbox_id"]
+                outbox_id = int(row["id"])
                 payload["_outbox_id"] = outbox_id
                 await conn.execute(_NOTIFY_SQL, "cell_pulse_observed", json.dumps(payload))
     except Exception as exc:
