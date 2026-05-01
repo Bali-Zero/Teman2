@@ -414,6 +414,15 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)apps/evaluator/cep/test_.*\.py$"),
         "evaluator CEP test: fake-key literals in unittest mocks",
     ),
+    # cell-core types.py contains a Crockford-base32 alphabet literal
+    # ("0123456789ABCDEFGHJKMNPQRSTVWXYZ") used by the ULID-style
+    # _default_pulse_id() factory. The 32-char unique-character string
+    # has high entropy and is flagged as Base64; it is a public
+    # encoding alphabet (Crockford 1999), not a secret.
+    (
+        re.compile(r"(^|/)packages/cell-core/cell_core/types\.py$"),
+        "cell-core types.py: Crockford-base32 alphabet literal for ULID factory, not a secret",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if

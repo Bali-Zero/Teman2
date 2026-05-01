@@ -162,3 +162,23 @@ def test_dna_config():
     )
     assert len(cfg.rules) == 1
     assert cfg.constraints["max_daily_budget_usd"] == 10.0
+
+
+def test_pulse_result_has_pulse_id_default():
+    """PulseResult must have a pulse_id field auto-populated with a ULID-like string."""
+    from cell_core.types import PulseResult
+    result = PulseResult(
+        timestamp=datetime.now(timezone.utc),
+        pulse_number=1,
+    )
+    assert hasattr(result, "pulse_id")
+    assert isinstance(result.pulse_id, str)
+    assert len(result.pulse_id) >= 16
+
+
+def test_pulse_result_pulse_id_unique_per_instance():
+    """Two PulseResult created back-to-back must have different pulse_ids."""
+    from cell_core.types import PulseResult
+    a = PulseResult(timestamp=datetime.now(timezone.utc), pulse_number=1)
+    b = PulseResult(timestamp=datetime.now(timezone.utc), pulse_number=2)
+    assert a.pulse_id != b.pulse_id
