@@ -5,10 +5,18 @@ Run once post-deploy of migration 149. Idempotent: re-running updates rows.
 From Sprint 4 onward, Cell skill `measure_conversion` will trigger weekly
 re-computation; this script is the bootstrap.
 
-Schema reality (verified 2026-05-01):
-    practices.total_invoiced_idr NUMERIC  — pre-aggregated IDR amount
-    practices.completed_at TIMESTAMPTZ    — completion timestamp
-    practices.status TEXT                 — 'completed' | etc.
+Schema reality (verified 2026-05-01 against prod DB):
+    practices.actual_price NUMERIC      — final invoiced amount (preferred)
+    practices.quoted_price NUMERIC      — fallback when actual_price IS NULL
+    practices.currency VARCHAR          — per-row currency (USD/IDR/etc.)
+    practices.completion_date TIMESTAMPTZ — completion timestamp (sometimes NULL)
+    practices.status VARCHAR            — 'completed' | 'on_process' | etc.
+    clients.id INTEGER, clients.deleted_at TIMESTAMPTZ
+
+Note: earlier draft (commit 5bd02c380) assumed practices.total_invoiced_idr +
+practices.completed_at, columns referenced by services/crm/partners/
+commission_engine.py:89 but NOT actually present in prod schema.
+verify_schema() catches this drift and aborts cleanly.
 
 Spec: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §4 Sprint 0.2
 
@@ -30,28 +38,60 @@ import asyncpg
 logger = logging.getLogger("compute_client_segments")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Static USD conversion. Refresh rate quarterly; design choice: simplicity > FX accuracy.
-IDR_PER_USD: float = 15_500.0
+# Static currency conversion rates (USD baseline). Refresh quarterly.
+# Design choice: simplicity > FX accuracy.
+CURRENCY_TO_USD: dict[str, float] = {
+    "USD": 1.0,
+    "IDR": 1.0 / 15_500.0,
+    "EUR": 1.10,
+    "AUD": 0.66,
+    "GBP": 1.27,
+    "SGD": 0.74,
+}
+
+
+def amount_to_usd(amount: float | None, currency: str | None) -> float:
+    """Convert amount to USD using static rate table.
+
+    Unknown currency → treated as USD passthrough (logs warning).
+    None / 0 / negative → 0.
+    """
+    if amount is None or amount <= 0:
+        return 0.0
+    cur = (currency or "USD").upper()
+    rate = CURRENCY_TO_USD.get(cur)
+    if rate is None:
+        logger.warning(f"Unknown currency {cur!r}, treating as USD passthrough")
+        rate = 1.0
+    return float(amount) * rate
 
 
 def compute_ltv_usd(practices: list[dict[str, Any]]) -> float:
-    """Sum completed practice IDR amounts converted to USD.
+    """Sum completed practice prices converted to USD.
 
     Args:
-        practices: list of dicts with keys total_invoiced_idr (numeric|None), status (str).
+        practices: list of dicts with keys actual_price, quoted_price, currency, status.
 
     Returns:
         Total LTV in USD; 0.0 if no completed practices or all amounts null/zero.
+
+    Logic:
+        For each practice with status='completed':
+            price = COALESCE(actual_price, quoted_price, 0)
+            convert price to USD via currency rate
+            add to total
     """
-    total_idr: float = 0.0
+    total: float = 0.0
     for p in practices:
         if p.get("status") != "completed":
             continue
-        amount = p.get("total_invoiced_idr")
+        # Prefer actual_price; fall back to quoted_price.
+        amount = p.get("actual_price")
         if amount is None:
-            continue
-        total_idr += float(amount)
-    return total_idr / IDR_PER_USD if total_idr else 0.0
+            amount = p.get("quoted_price")
+        currency = p.get("currency")
+        total += amount_to_usd(amount, currency)
+    return total
 
 
 def assign_tier(ltv_usd: float) -> int:
@@ -74,8 +114,9 @@ async def verify_schema(conn: asyncpg.Connection) -> None:
     Aborts with clear error if schema drift renamed/removed required columns.
     """
     required = [
-        ("practices", "total_invoiced_idr"),
-        ("practices", "completed_at"),
+        ("practices", "actual_price"),
+        ("practices", "quoted_price"),
+        ("practices", "currency"),
         ("practices", "status"),
         ("practices", "client_id"),
         ("clients", "id"),
@@ -114,7 +155,9 @@ async def compute_for_all_clients(
         SELECT
             c.id AS client_id,
             COALESCE(json_agg(json_build_object(
-                'total_invoiced_idr', p.total_invoiced_idr,
+                'actual_price', p.actual_price,
+                'quoted_price', p.quoted_price,
+                'currency', p.currency,
                 'status', p.status
             )) FILTER (WHERE p.id IS NOT NULL), '[]'::json) AS practices_json
         FROM clients c
