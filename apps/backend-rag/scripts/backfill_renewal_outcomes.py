@@ -80,9 +80,15 @@ def infer_outcome(
 
 
 async def verify_schema(conn: asyncpg.Connection) -> None:
-    """Defensive check: required columns must exist before backfill."""
+    """Defensive check: required columns must exist before backfill.
+
+    Real prod schema uses practices.completion_date (TIMESTAMPTZ), NOT
+    practices.completed_at. The latter is referenced by services/crm/
+    partners/commission_engine.py:89 but that code path is broken in
+    prod (only tested via mocks).
+    """
     required = [
-        ("practices", "completed_at"),
+        ("practices", "completion_date"),
         ("practices", "status"),
         ("renewal_alerts", "id"),
         ("renewal_alerts", "alert_date"),
@@ -125,7 +131,7 @@ async def backfill_all(
             ra.target_date,
             ra.practice_id,
             p.status AS practice_status,
-            p.completed_at,
+            p.completion_date AS completed_at,
             (SELECT COUNT(*) FROM interactions i WHERE i.practice_id = ra.practice_id) AS interactions_count
         FROM renewal_alerts ra
         LEFT JOIN practices p ON p.id = ra.practice_id
