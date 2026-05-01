@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import socket
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
@@ -246,7 +248,7 @@ class PulseLoop:
                 _m.observe_genome(_cell, self.genome)
                 _m.observe_genome_tiers(_cell, self.genome)
 
-        return PulseResult(
+        pulse_result = PulseResult(
             timestamp=now,
             pulse_number=self.pulse_count,
             health_status=worst_status,
@@ -254,6 +256,52 @@ class PulseLoop:
             action_reason=proposal.reason if action_taken else None,
             thought_tier=proposal.tier_used if should_think else None,
         )
+
+        # NEW (B2 fix from cross-LLM review): fire-and-forget observatory emit.
+        # Wrapped in try/except so a misconfigured observatory cannot break
+        # the homeostatic loop.
+        try:
+            from cell_core import observatory
+            if observatory.is_enabled():
+                asyncio.create_task(observatory.emit_pulse_observed(
+                    cell_id=self.config.name,
+                    cell_kind="cell",
+                    pulse_id=pulse_result.pulse_id,
+                    pulse_timestamp_ms=int(now.timestamp() * 1000),
+                    phase="active",
+                    sensors=[
+                        {
+                            "name": r.sensor_name,
+                            "status": r.status,
+                            "value": r.value,
+                            "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+                            "metadata": r.metadata,
+                        }
+                        for r in readings
+                    ],
+                    pulse_result={
+                        "classifier_self": worst_status,
+                        "trend_window_min": None,
+                        "trend_label": None,
+                    },
+                    homeostatic_state={
+                        "stress_level": state.stress_level,
+                        "energy_level": state.energy_level,
+                        "arousal": state.arousal,
+                        "comfort_zone": list(state.comfort_zone),
+                        "setpoint_rt_ms": state.setpoint_rt_ms,
+                        "circadian_phase": state.circadian_phase,
+                    },
+                    scar_signals=[],
+                    metadata={
+                        "host": socket.gethostname(),
+                        "machine_role": os.environ.get("MACHINE_ROLE", "unknown"),
+                    },
+                ))
+        except Exception as exc:
+            logger.warning("observatory hook scheduling error (non-blocking): %s", exc)
+
+        return pulse_result
 
     @staticmethod
     def _worst_status(readings: list[SensorReading]) -> str:

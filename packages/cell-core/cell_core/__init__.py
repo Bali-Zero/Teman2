@@ -10,6 +10,7 @@ from cell_core.reasoner import ReasonerFramework, TierConfig
 from cell_core.safety import DNAInterpreter, DNAIntegrityError, DNALoader, SafetyGate
 from cell_core.metabolic import MetabolicSnapshot, MetabolicStore, MetricValue, TrendAnalyzer
 from cell_core.observability import CardinalityGuard, CellMetricsExporter, PulseMetrics
+from cell_core import observatory  # noqa: F401 — opt-in emit module
 from cell_core.types import (
     CellConfig,
     DNAConfig,
@@ -38,4 +39,5 @@ __all__ = [
     "ReasonerFramework", "TierConfig",
     "MetabolicSnapshot", "MetabolicStore", "MetricValue", "TrendAnalyzer",
     "PulseMetrics", "CellMetricsExporter", "CardinalityGuard",
+    "observatory",
 ]
