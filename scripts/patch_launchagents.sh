@@ -44,24 +44,37 @@ add_observatory_emit_to_plist() {
     local plist="$1"
     local backup="${plist}.pre-observatory-emit"
 
-    [ -f "$backup" ] || cp "$plist" "$backup"
+    [ -f "$backup" ] || /bin/cp -p "$plist" "$backup"
 
     local original_mode
-    original_mode=$(stat -f "%Lp" "$plist")
-    chmod u+w "$plist"
-
-    if /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null | grep -q CELL_OBSERVATORY_EMIT; then
-        /usr/bin/plutil -replace EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
-    else
-        /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null >/dev/null \
-            || /usr/bin/plutil -insert EnvironmentVariables -dictionary "$plist"
-        /usr/bin/plutil -insert EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
+    original_mode=$(/usr/bin/stat -f "%Lp" "$plist" 2>/dev/null || echo "")
+    if ! [[ "$original_mode" =~ ^[0-7]{3,4}$ ]]; then
+        echo "[ERROR] could not read mode of $plist (got: '$original_mode'); falling back to 0444" >&2
+        original_mode="444"
     fi
 
-    /usr/bin/plutil -lint "$plist" >/dev/null
+    (
+        trap "/bin/chmod \"0\$original_mode\" \"\$plist\" 2>/dev/null || true" INT TERM EXIT
+        /bin/chmod u+w "$plist"
 
-    chmod "0$original_mode" "$plist"
-    echo "[ok] $(basename "$plist")"
+        if /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null | /usr/bin/grep -q CELL_OBSERVATORY_EMIT; then
+            /usr/bin/plutil -replace EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
+        else
+            /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null >/dev/null \
+                || /usr/bin/plutil -insert EnvironmentVariables -dictionary "$plist"
+            /usr/bin/plutil -insert EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
+        fi
+
+        if ! /usr/bin/plutil -lint "$plist" >/dev/null 2>&1; then
+            echo "[ERROR] plutil -lint failed for $plist after edit; restoring from backup" >&2
+            /bin/cp -p "$backup" "$plist"
+            /bin/chmod "0$original_mode" "$plist"
+            return 1
+        fi
+
+        /bin/chmod "0$original_mode" "$plist"
+        echo "[ok] $(basename "$plist")"
+    ) || return 1
 }
 
 CHANGES_LOG="/tmp/p0-3-patch-changes.log"
