@@ -15,11 +15,13 @@ DRY_RUN=true
 RELOAD=true
 ONLY_FILTER=""
 ASSUME_YES=false
+ADD_OBS_EMIT=false
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --dry-run) DRY_RUN=true; shift ;;
         --apply)   DRY_RUN=false; shift ;;
+        --add-observatory-emit) ADD_OBS_EMIT=true; shift ;;
         --no-reload) RELOAD=false; shift ;;
         --only)    ONLY_FILTER="$2"; shift 2 ;;
         --yes|-y)  ASSUME_YES=true; shift ;;
@@ -29,12 +31,38 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 
-PLIST_DIR="$HOME/Library/LaunchAgents"
+PLIST_DIR="${PLIST_DIR_OVERRIDE:-$HOME/Library/LaunchAgents}"
 LOGS_DIR="$HOME/logs"
 PATH_VAR="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.pyenv/shims:$HOME/.pyenv/bin"
 HOME_VAR="$HOME"
 
 mkdir -p "$LOGS_DIR"
+
+# Helper: inject CELL_OBSERVATORY_EMIT=true into a plist that may be chmod 0444.
+# Backs up to .pre-observatory-emit (first time only), unlocks, patches, re-locks.
+add_observatory_emit_to_plist() {
+    local plist="$1"
+    local backup="${plist}.pre-observatory-emit"
+
+    [ -f "$backup" ] || cp "$plist" "$backup"
+
+    local original_mode
+    original_mode=$(stat -f "%Lp" "$plist")
+    chmod u+w "$plist"
+
+    if /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null | grep -q CELL_OBSERVATORY_EMIT; then
+        /usr/bin/plutil -replace EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
+    else
+        /usr/bin/plutil -extract EnvironmentVariables xml1 -o - "$plist" 2>/dev/null >/dev/null \
+            || /usr/bin/plutil -insert EnvironmentVariables -dictionary "$plist"
+        /usr/bin/plutil -insert EnvironmentVariables.CELL_OBSERVATORY_EMIT -string "true" "$plist"
+    fi
+
+    /usr/bin/plutil -lint "$plist" >/dev/null
+
+    chmod "0$original_mode" "$plist"
+    echo "[ok] $(basename "$plist")"
+}
 
 CHANGES_LOG="/tmp/p0-3-patch-changes.log"
 : > "$CHANGES_LOG"
@@ -57,7 +85,7 @@ for pat in "$PLIST_DIR"/com.nuzantara.*.plist \
     [ -e "$pat" ] && PLISTS+=("$pat")
 done
 
-[ "${#PLISTS[@]}" -eq 0 ] && { echo "[ERROR] No project plist found" >&2; exit 2; }
+[ "${#PLISTS[@]}" -eq 0 ] && [ "$ADD_OBS_EMIT" = "false" ] && { echo "[ERROR] No project plist found" >&2; exit 2; }
 
 # Prefix used by all log lines for grep-ability
 PREFIX="[DRY]"
@@ -76,7 +104,7 @@ matches_filter() {
     return 1
 }
 
-for plist in "${PLISTS[@]}"; do
+for plist in ${PLISTS[@]+"${PLISTS[@]}"}; do
     label=$(plutil -extract Label raw -- "$plist" 2>/dev/null)
     [ -z "$label" ] && label=$(basename "$plist" .plist)
 
@@ -216,6 +244,20 @@ for plist in "${PLISTS[@]}"; do
         fi
     fi
 done
+
+# Observatory emit injection (--add-observatory-emit)
+if [ "$ADD_OBS_EMIT" = "true" ]; then
+    for plist in "$PLIST_DIR"/com.cell.organism.plist \
+                 "$PLIST_DIR"/com.balizero.seo-cell*.plist \
+                 "$PLIST_DIR"/com.balizero.evaluator*.plist; do
+        [ -f "$plist" ] || continue
+        if [ "$DRY_RUN" = "true" ]; then
+            echo "[dry-run] would add CELL_OBSERVATORY_EMIT=true to $(basename "$plist")"
+        else
+            add_observatory_emit_to_plist "$plist"
+        fi
+    done
+fi
 
 # Summary
 echo ""
