@@ -167,9 +167,13 @@ async def compute_for_all_clients(
         """,
     )
 
+    import json as _json
+
     counts: dict[str, int] = {"tier_1": 0, "tier_2": 0, "tier_3": 0, "total": 0}
     for row in rows:
-        practices = list(row["practices_json"])
+        # asyncpg returns json_agg as str by default, not parsed list — decode here.
+        raw = row["practices_json"]
+        practices = _json.loads(raw) if isinstance(raw, str) else list(raw)
         ltv = compute_ltv_usd(practices)
         tier = assign_tier(ltv)
         counts[f"tier_{tier}"] += 1
