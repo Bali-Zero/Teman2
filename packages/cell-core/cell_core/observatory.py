@@ -61,3 +61,62 @@ def _reset_pool_for_tests() -> None:
     global _pool, _pool_lock_pid
     _pool = None
     _pool_lock_pid = None
+
+
+_INSERT_SQL = (
+    "INSERT INTO events_outbox (channel, payload) "
+    "VALUES ($1, $2) RETURNING outbox_id"
+)
+_NOTIFY_SQL = "SELECT pg_notify($1, $2)"
+
+
+async def emit_pulse_observed(
+    cell_id: str,
+    cell_kind: str,
+    pulse_id: str,
+    pulse_timestamp_ms: int,
+    phase: str,
+    sensors: list[dict[str, Any]],
+    pulse_result: dict[str, Any],
+    homeostatic_state: dict[str, Any],
+    scar_signals: Optional[list[dict[str, Any]]] = None,
+    metadata: Optional[dict[str, Any]] = None,
+) -> None:
+    """Emit a pulse-observed event to events_outbox + pg_notify.
+
+    No-op when CELL_OBSERVATORY_EMIT != 'true' or EVENTBUS_DATABASE_URL is unset.
+    Errors are swallowed (WARN log) — caller MUST NOT block on this.
+    """
+    if not is_enabled():
+        return
+
+    try:
+        pool = await _get_or_create_pool()
+        if pool is None:
+            return
+
+        payload: dict[str, Any] = {
+            "event_version": "v1",
+            "cell_id": cell_id,
+            "cell_kind": cell_kind,
+            "pulse_id": pulse_id,
+            "pulse_timestamp": pulse_timestamp_ms,
+            "phase": phase,
+            "sensors": sensors,
+            "pulse_result": pulse_result,
+            "homeostatic_state": homeostatic_state,
+            "scar_signals": scar_signals or [],
+            "metadata": metadata or {},
+        }
+
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(_INSERT_SQL, "cell_pulse_observed", json.dumps(payload))
+                outbox_id = row["outbox_id"]
+                payload["_outbox_id"] = outbox_id
+                await conn.execute(_NOTIFY_SQL, "cell_pulse_observed", json.dumps(payload))
+    except Exception as exc:
+        logger.warning(
+            "cell_observatory emit failed (non-blocking): cell=%s pulse=%s err=%s",
+            cell_id, pulse_id, exc,
+        )
