@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import secrets
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -106,6 +107,23 @@ class HomeostaticState:
         self.arousal = _clamp(self.arousal)
 
 
+def _default_pulse_id() -> str:
+    """Generate a 26-char Crockford-base32 ULID-style pulse id (sortable).
+
+    Format: 10-char timestamp ms + 16-char random. Good enough for log correlation
+    without adding a `ulid-py` dependency.
+    """
+    ts_ms = int(time.time() * 1000)
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    enc = ""
+    n = ts_ms
+    for _ in range(10):
+        enc = alphabet[n & 0x1F] + enc
+        n >>= 5
+    rnd = "".join(secrets.choice(alphabet) for _ in range(16))
+    return enc + rnd
+
+
 @dataclass
 class PulseResult:
     """Result of one lifecycle tick."""
@@ -120,6 +138,7 @@ class PulseResult:
     action_reason: str | None = None
     thought_tier: int | None = None
     error: str | None = None
+    pulse_id: str = field(default_factory=_default_pulse_id)
 
 
 @dataclass
