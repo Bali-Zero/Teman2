@@ -27,3 +27,37 @@ _pool_lock_pid: Optional[int] = None  # detect fork without inherit
 def is_enabled() -> bool:
     """Return True iff CELL_OBSERVATORY_EMIT env var is the literal 'true' (case-insensitive)."""
     return os.environ.get("CELL_OBSERVATORY_EMIT", "").lower() == "true"
+
+
+async def _get_or_create_pool() -> Optional[asyncpg.Pool]:
+    """Return the lazy-initialized asyncpg pool, or None if EVENTBUS_DATABASE_URL is unset."""
+    global _pool, _pool_lock_pid
+
+    current_pid = os.getpid()
+    if _pool_lock_pid is not None and _pool_lock_pid != current_pid:
+        # Process forked since pool creation; pool is invalid in child.
+        _pool = None
+        _pool_lock_pid = None
+
+    if _pool is not None:
+        return _pool
+
+    dsn = os.environ.get("EVENTBUS_DATABASE_URL")
+    if not dsn:
+        return None
+
+    _pool = await asyncpg.create_pool(
+        dsn,
+        min_size=1,
+        max_size=3,
+        command_timeout=5.0,
+    )
+    _pool_lock_pid = current_pid
+    return _pool
+
+
+def _reset_pool_for_tests() -> None:
+    """Internal test hook — DO NOT use in production."""
+    global _pool, _pool_lock_pid
+    _pool = None
+    _pool_lock_pid = None
