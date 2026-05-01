@@ -285,8 +285,12 @@ class PulseLoop:
                         "trend_label": None,
                     },
                     homeostatic_state={
-                        "energy_pct": getattr(state, "energy_pct", None),
-                        "load_factor": getattr(state, "load_factor", None),
+                        "stress_level": state.stress_level,
+                        "energy_level": state.energy_level,
+                        "arousal": state.arousal,
+                        "comfort_zone": list(state.comfort_zone),
+                        "setpoint_rt_ms": state.setpoint_rt_ms,
+                        "circadian_phase": state.circadian_phase,
                     },
                     scar_signals=[],
                     metadata={

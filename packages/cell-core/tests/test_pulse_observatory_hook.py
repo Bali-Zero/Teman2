@@ -80,13 +80,16 @@ async def test_single_pulse_emits_to_observatory_when_enabled(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_single_pulse_does_not_block_on_emit(monkeypatch):
-    """A slow observatory emit MUST NOT delay the pulse cycle return (<1s)."""
+    """Slow observatory emit MUST NOT delay pulse cycle return."""
     monkeypatch.setenv("CELL_OBSERVATORY_EMIT", "true")
 
     from cell_core import observatory
 
+    scheduled = {"flag": False}  # captured by slow_emit closure
+
     async def slow_emit(**kw):
-        await asyncio.sleep(5.0)
+        scheduled["flag"] = True  # synchronous mark BEFORE the sleep
+        await asyncio.sleep(5.0)  # simulates slow Postgres
 
     monkeypatch.setattr(observatory, "emit_pulse_observed", slow_emit)
     monkeypatch.setattr(observatory, "is_enabled", lambda: True)
@@ -94,9 +97,16 @@ async def test_single_pulse_does_not_block_on_emit(monkeypatch):
     loop = _make_pulse_loop()
 
     start = time.monotonic()
-    await loop.single_pulse()
+    result = await loop.single_pulse()
     elapsed = time.monotonic() - start
 
+    # Allow the create_task'd coroutine to start
+    await asyncio.sleep(0)
+
+    # Both assertions are required:
+    # 1. The slow_emit was actually SCHEDULED (not just absent)
+    # 2. The pulse cycle did NOT block on it
+    assert scheduled["flag"] is True, "slow_emit was never scheduled — hook may be missing"
     assert elapsed < 1.0, f"pulse blocked on observatory: {elapsed:.3f}s"
 
 
