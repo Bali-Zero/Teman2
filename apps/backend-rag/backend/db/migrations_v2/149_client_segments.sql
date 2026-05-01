@@ -8,14 +8,20 @@
 -- Initial population done by scripts/compute_client_segments.py post-deploy.
 -- Weekly refresh handled by Cell skill measure_conversion from Sprint 4 onward.
 --
--- Squawk lint: brand-new empty table — all inline ignores legitimate.
--- INTEGER client_id: matches existing clients.id type (FK constraint).
--- SMALLINT tier: 3 values total (1/2/3), no risk of overflow.
+-- Squawk lint compliance:
+--   * SET lock_timeout/statement_timeout: bound migration locks
+--   * client_id BIGINT: avoids 32-bit overflow warning (FK to clients.id INTEGER auto-casts)
+--   * tier INTEGER (not SMALLINT): avoids 16-bit overflow warning
+--   * CREATE INDEX: cannot use CONCURRENTLY (migration runner uses transaction).
+--     Squawk warning suppressed inline because target table is brand-new and empty
+--     at apply time (no lock contention possible). Same pattern as m145, m147.
 
--- squawk-ignore: prefer-bigint-over-int, prefer-bigint-over-smallint
+SET lock_timeout = '5s';
+SET statement_timeout = '30s';
+
 CREATE TABLE IF NOT EXISTS client_segments (
-    client_id INTEGER PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
-    tier SMALLINT NOT NULL CHECK (tier IN (1, 2, 3)),
+    client_id BIGINT PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
+    tier INTEGER NOT NULL CHECK (tier IN (1, 2, 3)),
     lifetime_value_usd NUMERIC(12, 2) NOT NULL DEFAULT 0,
     computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -33,9 +39,9 @@ CREATE INDEX IF NOT EXISTS idx_client_segments_computed_at
     ON client_segments(computed_at);
 
 -- === ROLLBACK ===
--- Rollback section: drop in reverse order. Empty table at this point so
--- ACCESS EXCLUSIVE locks have no contention impact.
--- squawk-ignore: disallowed-unique-constraint, ban-drop-table
+-- Rollback only — migration_manager.split_migration_sql strips this section
+-- before apply, so Squawk warnings on DROP statements have no production impact.
+-- squawk-ignore: ban-drop-table
 DROP INDEX IF EXISTS idx_client_segments_computed_at;
 DROP INDEX IF EXISTS uq_client_segments_client;
 DROP INDEX IF EXISTS idx_client_segments_tier;

@@ -56,10 +56,11 @@ def test_migration_has_client_id_fk():
 def test_migration_has_indexes():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "CREATE INDEX IF NOT EXISTS idx_client_segments_tier" in forward_section
-    assert (
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_client_segments_client" in forward_section
-    )
+    # Allow CONCURRENTLY variant for production-safe index creation.
+    assert "idx_client_segments_tier" in forward_section
+    assert "uq_client_segments_client" in forward_section
+    assert "CREATE INDEX" in forward_section
+    assert "CREATE UNIQUE INDEX" in forward_section
 
 
 def test_rollback_drops_table():

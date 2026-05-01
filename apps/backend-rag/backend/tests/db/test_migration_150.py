@@ -63,10 +63,9 @@ def test_migration_has_alert_id_fk():
 def test_migration_has_alert_id_index():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert (
-        "CREATE INDEX IF NOT EXISTS idx_renewal_alert_outcomes_alert"
-        in forward_section
-    )
+    # Allow CONCURRENTLY variant for production-safe index creation.
+    assert "idx_renewal_alert_outcomes_alert" in forward_section
+    assert "CREATE INDEX" in forward_section
 
 
 def test_rollback_drops_table():

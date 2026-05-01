@@ -8,13 +8,16 @@
 -- historical practices.status transitions and records observed_by='team_member'
 -- for all backfilled rows. From Sprint 2 onward, Cell writes observed_by='cell'.
 --
--- Squawk lint: brand-new empty table — all inline ignores legitimate.
--- alert_id INTEGER: matches existing renewal_alerts.id type.
+-- Squawk lint compliance:
+--   * SET lock_timeout/statement_timeout: bound migration locks
+--   * alert_id BIGINT: avoids 32-bit overflow warning (FK to renewal_alerts.id auto-casts)
 
--- squawk-ignore: prefer-bigint-over-int
+SET lock_timeout = '5s';
+SET statement_timeout = '30s';
+
 CREATE TABLE IF NOT EXISTS renewal_alert_outcomes (
     id BIGSERIAL PRIMARY KEY,
-    alert_id INTEGER NOT NULL REFERENCES renewal_alerts(id) ON DELETE CASCADE,
+    alert_id BIGINT NOT NULL REFERENCES renewal_alerts(id) ON DELETE CASCADE,
     outcome TEXT NOT NULL CHECK (outcome IN (
         'acted_by_team',
         'client_renewed',
@@ -40,8 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_renewal_alert_outcomes_outcome_at
     ON renewal_alert_outcomes(outcome_at);
 
 -- === ROLLBACK ===
--- Rollback section: drop in reverse order. Empty table at this point so
--- ACCESS EXCLUSIVE locks have no contention impact.
+-- Rollback only — migration_manager strips this section before apply.
 -- squawk-ignore: ban-drop-table
 DROP INDEX IF EXISTS idx_renewal_alert_outcomes_outcome_at;
 DROP INDEX IF EXISTS idx_renewal_alert_outcomes_outcome;
