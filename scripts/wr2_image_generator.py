@@ -77,6 +77,36 @@ TIGRIS_BUCKET = "nuzantara-warroom-images"
 TIGRIS_PUBLIC_BASE = f"https://{TIGRIS_BUCKET}.fly.storage.tigris.dev"
 
 # ─────────────────────────────────────────────────────────────────────────
+# Backend selection (Sprint 1.6 W3 — FlowKit secondary backend)
+# ─────────────────────────────────────────────────────────────────────────
+# WR2_IMAGE_BACKEND chooses the image-generation path:
+#   "auto"        — try FlowKit first if available, else Playwright (DEFAULT)
+#   "flowkit"     — FlowKit only; raise BackendUnavailableError if down
+#   "playwright"  — Playwright only (legacy / opt-out path)
+#
+# FlowKit is the empirically-faster path (5-15s/image vs 30-90s for
+# Playwright on the same Nano Banana Pro model, GEM_PIX_2 — verified
+# 2026-05-03 on Antonello's Ultra account, FREE for PAYGATE_TIER_TWO).
+# It requires the FlowKit local agent at http://127.0.0.1:8100 + Chrome
+# extension loaded + bearer token captured. When any of those is missing
+# we silently fall back to the existing Playwright path so the cron stays
+# resilient.
+IMAGE_BACKEND = os.environ.get("WR2_IMAGE_BACKEND", "auto").lower()
+FLOWKIT_BASE_URL = os.environ.get("WR2_FLOWKIT_BASE_URL", "http://127.0.0.1:8100")
+FLOWKIT_TIMEOUT_S = float(os.environ.get("WR2_FLOWKIT_TIMEOUT_S", "60"))
+FLOWKIT_MATERIAL = os.environ.get("WR2_FLOWKIT_MATERIAL", "realistic")
+FLOWKIT_LANGUAGE = os.environ.get("WR2_FLOWKIT_LANGUAGE", "en")
+
+
+class BackendUnavailableError(RuntimeError):
+    """Raised when the requested image backend cannot be used.
+
+    Only fires when WR2_IMAGE_BACKEND is pinned to a specific backend
+    (e.g. `flowkit`) and that backend is unavailable. In `auto` mode we
+    fall back silently rather than raising.
+    """
+
+# ─────────────────────────────────────────────────────────────────────────
 # VLM validation (CLIP-style prompt-image alignment via local Ollama Qwen2.5VL)
 # ─────────────────────────────────────────────────────────────────────────
 # Empirical bug observed 2026-04-25 on draft 0e8e1cf5: 2/4 hero images came
@@ -468,23 +498,212 @@ def _build_prompt_variants(image_prompt: str) -> list[str]:
     return [full, v2, v3]
 
 
+async def _probe_flowkit_available() -> bool:
+    """Single-shot probe for FlowKit availability.
+
+    Imports the client lazily (so Playwright-only deployments don't pull
+    httpx churn at module load) and runs `is_available()` once. Logs the
+    outcome at INFO level so the operator sees which backend handled the
+    draft without trawling per-slide logs.
+    """
+    try:
+        # Lazy import — see _acquire_bytes_via_flowkit for path setup.
+        import sys
+        from pathlib import Path as _P
+        sys.path.insert(0, str(_P(__file__).resolve().parent))
+        from wr2_flowkit_client import FlowKitClient  # noqa: E402
+    except ImportError as e:
+        logger.warning("FlowKit client import failed: %s", e)
+        return False
+    try:
+        async with FlowKitClient(
+            base_url=FLOWKIT_BASE_URL,
+            timeout_s=FLOWKIT_TIMEOUT_S,
+        ) as fk:
+            return await fk.is_available()
+    except Exception as e:  # noqa: BLE001
+        logger.info("FlowKit probe raised %s — treating as unavailable", e)
+        return False
+
+
+async def _upload_and_return(
+    img_bytes: bytes,
+    slide_number: int,
+    draft_id: str,
+) -> tuple[int, str | None, str | None]:
+    """Upload image bytes to Tigris and return the standard tuple.
+
+    Shared by both FlowKit and Playwright backends — single source of truth
+    for the (slide_number, image_url, error) contract that
+    `_gen_image_with_semaphore` returns.
+    """
+    logger.info("[slide %d] uploading to Tigris", slide_number)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    key = f"warroom/{draft_id}/slide-{slide_number:02d}-{ts}.png"
+    try:
+        url = _upload_to_tigris(img_bytes, key, "image/png")
+    except Exception as e:
+        return slide_number, None, f"tigris upload failed: {e}"
+    logger.info("[slide %d] uploaded → %s", slide_number, url)
+    return slide_number, url, None
+
+
+async def _acquire_bytes_via_flowkit(
+    slide_number: int,
+    image_prompt: str,
+    draft_id: str,
+) -> tuple[bytes | None, str | None]:
+    """Generate one hero image via FlowKit (Nano Banana Pro / GEM_PIX_2).
+
+    Returns (bytes, None) on success or (None, error_msg) on failure. Uses
+    the brand+anti-cliche-wrapped prompt (`_compose_final_prompt`) so the
+    visual constraints encoded in the draft generator's SYSTEM_INSTRUCTIONS
+    still reach the model.
+
+    Caller is responsible for VLM alignment validation, Tigris upload, and
+    retry policy — this helper is a single-shot byte producer matching the
+    contract of `_gen_one_image`.
+    """
+    # Local import keeps Playwright-only code paths free of httpx churn at
+    # import time, and keeps the FlowKit dependency optional for Air boxes
+    # that haven't been set up.
+    import sys
+    from pathlib import Path as _P
+    sys.path.insert(0, str(_P(__file__).resolve().parent))
+    from wr2_flowkit_client import (  # noqa: E402
+        FlowKitClient,
+        FlowKitDownloadError,
+        FlowKitGenerationError,
+        FlowKitProjectError,
+    )
+
+    final_prompt = _compose_final_prompt(image_prompt)
+    project_name = f"wr2-{draft_id[:8]}"
+    tmp_path = Path("/tmp") / f"wr2-flowkit-{draft_id}-slide-{slide_number:02d}.png"
+    try:
+        async with FlowKitClient(
+            base_url=FLOWKIT_BASE_URL,
+            timeout_s=FLOWKIT_TIMEOUT_S,
+        ) as fk:
+            project_id = await fk.ensure_project(
+                project_name,
+                material=FLOWKIT_MATERIAL,
+                language=FLOWKIT_LANGUAGE,
+            )
+            result = await fk.generate_image(
+                project_id=project_id,
+                prompt=final_prompt,
+                orientation="PORTRAIT",
+            )
+            await fk.download_image(result["fife_url"], tmp_path)
+    except FlowKitProjectError as e:
+        return None, f"flowkit project error: {e}"
+    except FlowKitGenerationError as e:
+        return None, f"flowkit generation error: {e}"
+    except FlowKitDownloadError as e:
+        return None, f"flowkit download error: {e}"
+    except Exception as e:  # noqa: BLE001 — defensive, network is unpredictable
+        return None, f"flowkit unhandled error: {e}"
+    try:
+        img_bytes = tmp_path.read_bytes()
+    except OSError as e:
+        return None, f"flowkit local read failed: {e}"
+    finally:
+        # Clean up the temp file even on success — Tigris upload happens
+        # from in-memory bytes, no need to keep the local copy around.
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+    if not img_bytes:
+        return None, "flowkit returned zero bytes"
+    return img_bytes, None
+
+
 async def _gen_image_with_semaphore(
     sem: asyncio.Semaphore,
     context: Any,
     slide_number: int,
     image_prompt: str,
     draft_id: str,
+    *,
+    backend: str = "auto",
+    flowkit_available: bool = False,
 ) -> tuple[int, str | None, str | None]:
     """Generate + upload one hero image. Returns (slide_number, url, error).
 
-    Retries up to MAX_RETRIES_PER_SLIDE times on failure (Gemini UI flakiness
-    is intermittent — page sometimes stalls while loading or the send button
-    vanishes briefly; a fresh tab usually succeeds). After exhausting retries
-    on the primary prompt, falls back to progressively stripped prompt
-    variants (see _build_prompt_variants) — this recovers from silent safety
-    refusals that ignore a fraction of phrasings.
+    Backend selection (Sprint 1.6 W3):
+      - `backend="flowkit"` — FlowKit only. Falls through to error if the
+        first attempt raises (no Playwright fallback in this mode).
+      - `backend="playwright"` — Playwright only (legacy behavior).
+      - `backend="auto"` — try FlowKit first when `flowkit_available=True`
+        (caller has pre-checked `is_available()` to avoid repeated probing
+        per slide). On any failure, fall back to Playwright retry/variant
+        loop. This is the DEFAULT.
+
+    Retries up to MAX_RETRIES_PER_SLIDE times on Playwright failure (Gemini
+    UI flakiness is intermittent — page sometimes stalls while loading or
+    the send button vanishes briefly; a fresh tab usually succeeds). After
+    exhausting retries on the primary prompt, falls back to progressively
+    stripped prompt variants (see _build_prompt_variants) — this recovers
+    from silent safety refusals that ignore a fraction of phrasings.
     """
     async with sem:
+        # ── FlowKit fast path ───────────────────────────────────────────
+        if backend in ("auto", "flowkit") and flowkit_available:
+            logger.info(
+                "[slide %d] generating via FlowKit (Nano Banana Pro)",
+                slide_number,
+            )
+            t0 = time.time()
+            fk_bytes, fk_err = await _acquire_bytes_via_flowkit(
+                slide_number, image_prompt, draft_id,
+            )
+            dt = time.time() - t0
+            if fk_bytes:
+                logger.info(
+                    "[slide %d] FlowKit ok (%.1fs, %d bytes)",
+                    slide_number, dt, len(fk_bytes),
+                )
+                # VLM alignment guard applies to ALL backends — FlowKit can
+                # also produce off-prompt outputs and the WR2 brand bar is
+                # the same regardless of producer.
+                score, why = await _score_image_alignment(
+                    fk_bytes, image_prompt, slide_number,
+                )
+                if score >= VLM_MIN_SCORE:
+                    return await _upload_and_return(
+                        fk_bytes, slide_number, draft_id,
+                    )
+                logger.warning(
+                    "[slide %d] FlowKit image rejected (score=%.2f < %.2f): %s",
+                    slide_number, score, VLM_MIN_SCORE, why,
+                )
+                if backend == "flowkit":
+                    return slide_number, None, (
+                        f"flowkit VLM rejected (score={score:.2f}): {why}"
+                    )
+                # else: fall through to Playwright path
+            else:
+                logger.warning(
+                    "[slide %d] FlowKit failed after %.1fs: %s",
+                    slide_number, dt, fk_err,
+                )
+                if backend == "flowkit":
+                    return slide_number, None, fk_err or "flowkit unknown error"
+                # backend=auto: drop into Playwright retry loop below.
+
+        # ── Playwright path (legacy + auto-fallback) ────────────────────
+        if backend == "flowkit":
+            # Should not reach here — flowkit-only never enters Playwright.
+            return slide_number, None, "WR2_IMAGE_BACKEND=flowkit but FlowKit not available"
+        if context is None:
+            # backend=auto + flowkit unavailable + no Playwright context
+            # provided → caller must have skipped browser launch. Surface
+            # a clear error so the run aborts rather than silently failing.
+            return slide_number, None, (
+                "no Playwright context available and FlowKit unreachable"
+            )
         last_err: str | None = None
         img_bytes: bytes | None = None
         prompt_variants = _build_prompt_variants(image_prompt)
@@ -558,15 +777,7 @@ async def _gen_image_with_semaphore(
             logger.error("[slide %d] all variants+attempts failed, last err=%s", slide_number, last_err)
             return slide_number, None, last_err or "all retries failed"
 
-        logger.info("[slide %d] uploading to Tigris", slide_number)
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        key = f"warroom/{draft_id}/slide-{slide_number:02d}-{ts}.png"
-        try:
-            url = _upload_to_tigris(img_bytes, key, "image/png")
-        except Exception as e:
-            return slide_number, None, f"tigris upload failed: {e}"
-        logger.info("[slide %d] uploaded → %s", slide_number, url)
-        return slide_number, url, None
+        return await _upload_and_return(img_bytes, slide_number, draft_id)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -670,41 +881,80 @@ async def _process_one(
             )
         return True
 
-    # Launch Playwright with the gemini profile
-    from playwright.async_api import async_playwright
+    # ── Backend selection (Sprint 1.6 W3) ─────────────────────────────────
+    # Probe FlowKit ONCE per draft (not per slide) to decide whether to
+    # launch Playwright at all. In flowkit-only mode we skip Playwright
+    # entirely; in auto mode we still launch Playwright as fallback even
+    # if FlowKit is currently up — the cron is long-running and FlowKit's
+    # bearer token can expire mid-draft (45 min refresh window).
+    flowkit_available = False
+    if IMAGE_BACKEND in ("auto", "flowkit"):
+        flowkit_available = await _probe_flowkit_available()
+        if not flowkit_available and IMAGE_BACKEND == "flowkit":
+            err = "WR2_IMAGE_BACKEND=flowkit but FlowKit is not available"
+            logger.error(err)
+            raise BackendUnavailableError(err)
+        if flowkit_available:
+            logger.info(
+                "FlowKit available — using as primary backend (PAYGATE_TIER_TWO)"
+            )
+        else:
+            logger.info(
+                "FlowKit unavailable — using Playwright backend"
+            )
 
     results: list[Any] = []
-    # Strictly serial: fresh browser context per slide, one tab at a time.
-    # Empirical (Apr 25-26 2026, Ultra plan): parallel tabs on the persistent
-    # Gemini profile silently degrade output (returns stock-style content
-    # unrelated to the prompt). Hero images are too important to speculate on.
-    # The old shared-context branch (WR2_IMAGE_ISOLATE_BROWSER=false) is
-    # removed; ISOLATE_PER_SLIDE is now a no-op kept for backwards-compat.
-    logger.info("Serial mode — one fresh browser context per hero slide")
-    async with async_playwright() as p:
+
+    if IMAGE_BACKEND == "flowkit":
+        # FlowKit-only path: no Playwright launch at all.
+        sem = asyncio.Semaphore(1)
         for idx, s in enumerate(hero_slides):
-            context = await p.chromium.launch_persistent_context(
-                user_data_dir=str(GEMINI_PROFILE_DIR),
-                headless=True,
-                viewport={"width": 1440, "height": 900},
-                args=["--disable-blink-features=AutomationControlled"],
+            r = await _gen_image_with_semaphore(
+                sem,
+                None,  # no Playwright context
+                s["slide_number"],
+                s.get("image_prompt") or "",
+                str(draft_id),
+                backend="flowkit",
+                flowkit_available=True,
             )
-            try:
-                sem = asyncio.Semaphore(1)
-                r = await _gen_image_with_semaphore(
-                    sem,
-                    context,
-                    s["slide_number"],
-                    s.get("image_prompt") or "",
-                    str(draft_id),
-                )
-                results.append(r)
-            finally:
-                await context.close()
-            # Inter-slide cooldown except after last (lets server-side
-            # rate-limits clear before the next tab).
+            results.append(r)
             if idx < len(hero_slides) - 1:
-                await asyncio.sleep(5)
+                await asyncio.sleep(2)  # short cooldown, FlowKit is fast
+    else:
+        # `auto` or `playwright`: launch Playwright as fallback / primary.
+        # Strictly serial: fresh browser context per slide, one tab at a time.
+        # Empirical (Apr 25-26 2026, Ultra plan): parallel tabs on the persistent
+        # Gemini profile silently degrade output (returns stock-style content
+        # unrelated to the prompt). Hero images are too important to speculate on.
+        from playwright.async_api import async_playwright
+        logger.info("Serial mode — one fresh browser context per hero slide")
+        async with async_playwright() as p:
+            for idx, s in enumerate(hero_slides):
+                context = await p.chromium.launch_persistent_context(
+                    user_data_dir=str(GEMINI_PROFILE_DIR),
+                    headless=True,
+                    viewport={"width": 1440, "height": 900},
+                    args=["--disable-blink-features=AutomationControlled"],
+                )
+                try:
+                    sem = asyncio.Semaphore(1)
+                    r = await _gen_image_with_semaphore(
+                        sem,
+                        context,
+                        s["slide_number"],
+                        s.get("image_prompt") or "",
+                        str(draft_id),
+                        backend=IMAGE_BACKEND,
+                        flowkit_available=flowkit_available,
+                    )
+                    results.append(r)
+                finally:
+                    await context.close()
+                # Inter-slide cooldown except after last (lets server-side
+                # rate-limits clear before the next tab).
+                if idx < len(hero_slides) - 1:
+                    await asyncio.sleep(5)
 
     # Stitch URLs back into slides
     url_by_slide: dict[int, str] = {}
@@ -775,7 +1025,9 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
         logger.error("DATABASE_URL not set")
         return 2
 
-    if not GEMINI_PROFILE_DIR.exists():
+    # Playwright profile is only required if Playwright is reachable from the
+    # selected backend. `flowkit`-only mode skips browser launch entirely.
+    if IMAGE_BACKEND != "flowkit" and not GEMINI_PROFILE_DIR.exists():
         logger.error(
             "Gemini profile not found at %s — run "
             "`bash scripts/playwright/login-all.sh gemini` first",
