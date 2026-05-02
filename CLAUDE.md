@@ -385,6 +385,8 @@ before the pre-deploy gate even runs. To bypass on a legitimate destructive
 change: `-- squawk-ignore: <rule-name>` on the offending statement. Full
 reference: [`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.md).
 
+**WR2 image-generator backend** (Sprint 1.6 W3, 2026-05-03): `WR2_IMAGE_BACKEND` selects FlowKit (`auto` default — opt-in primary, falls back to Playwright) / `flowkit` / `playwright`. See [`docs/wr2/flowkit-integration.md`](docs/wr2/flowkit-integration.md).
+
 ## 12. AI Dispatch System
 
 > `./scripts/ai-dispatch.sh help` for full commands. Details: `docs/AI_DISPATCH_REFERENCE.md`
