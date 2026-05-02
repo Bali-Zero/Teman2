@@ -94,6 +94,7 @@ def include_routers(api: FastAPI) -> None:
         newsletter,
         nusantara_health,
         olympus,  # [OLYMPUS] DB Guardian health + internal management
+        observed_shell,  # [OBSERVED-SHELL] Sprint 1 PR-1.2 — cell-core observability bridge
         omnichannel,  # [NEW] Unified inbox for cross-channel conversations
         oracle_ingest,
         oracle_universal,
@@ -193,6 +194,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # Channel health, DLQ, unified conversations
     api.include_router(omnichannel.router)  # [NEW] Unified inbox threads API
+    api.include_router(observed_shell.router)  # /api/observed-shell/emit (Sprint 1 PR-1.2)
 
     # HR/Payroll router
     api.include_router(hr.router)  # [NEW] HR/Payroll module
@@ -444,6 +446,7 @@ def include_light_routers(api: FastAPI) -> None:
         metabolic_health,  # [METABOLIC] SYMBIOSIS Pillar 7 read-only metrics (PR #60)
         newsletter,
         nusantara_health,
+        observed_shell,  # [OBSERVED-SHELL] Sprint 1 PR-1.2 — cell-core observability bridge
         omnichannel,
         partners,  # [PARTNERS] CRM Partners module v1 (PR #141 + follow-ups)
         performance,
@@ -525,6 +528,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # /api/channels (health, DLQ, conversations)
     api.include_router(omnichannel.router)  # /api/omnichannel (threads, assignment)
+    api.include_router(observed_shell.router)  # /api/observed-shell/emit (Sprint 1 PR-1.2)
 
     # HR/Payroll router
     api.include_router(hr.router)
