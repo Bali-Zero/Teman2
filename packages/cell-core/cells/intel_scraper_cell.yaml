@@ -1,0 +1,104 @@
+# intel-scraper-cell — light promotion (Sprint 1, brainstorm 2026-05-02 round 2)
+#
+# Three production runners map onto this cell:
+#   - apps/bali-intel-scraper/        — Cell BODY: 8-step daily pipeline 03:00 WITA
+#                                       (scrape → validate → filter → enrich → SEO →
+#                                        approval → images → publish to Qdrant
+#                                        balizero_news + apps/web/blog/)
+#   - cron-agent-python intel-radar   — HGT PUBLISHER: hourly multi-source aggregator,
+#                                       INSERTs trend_signals (mig 113) → DB trigger
+#                                       fires `intel_event` channel
+#   - cron-agent-python intel-feed-processor
+#                                     — LIGHT SENSOR: every 2h crawl + parse,
+#                                       feeds raw signals to the body's enricher
+#
+# This is a LIGHT cell promotion: NO PulseLoop, NO Homeostasis, NO HGT consumer.
+# Just Genome scar registry (cell-core/genome.py SQLite) + the existing
+# DB-trigger HGT publisher path + ObservedShellBus.emit() at lifecycle points.
+#
+# Reference: docs/audits/2026-05-02-cell-openclaw-brainstorm/99b_synthesis_v2.md
+#            § "8. intel-scraper-cell ⭐ LEGGERA"
+# Spec:      docs/cell-core/intel-scraper-cell.md
+# Loader:    cell_core.cell_loader.load_cell_definition()
+
+name: intel-scraper-cell
+level: L1
+class: light                      # full | light | organism-submodule
+
+# ── Symbiosis 7 Leggi (admission test fields) ─────────────────────────
+
+exposes_gui: false
+llm_invocation: cli               # Claude CLI subprocess via CLAUDE_CODE_OAUTH_TOKEN
+                                  # (no Anthropic paid API)
+
+external_sources:
+  - exa                           # multi-source search API (intel-radar)
+  - firecrawl                     # web scraping (apps/bali-intel-scraper)
+  - claude_cli                    # enricher subprocess (free Max plan)
+  - rss_feeds                     # imigrasi.go.id, oss.go.id, pajak.go.id
+  - drive_api                     # category folder watching (intel-feed-processor)
+
+client_data_access: false         # Law 2: NO client PII in this cell
+
+publishes_via: pg_trigger         # trend_signals INSERT → DB trigger fires
+                                  # `intel_event` channel (mig 113). The cell
+                                  # itself does NOT call pg_notify directly —
+                                  # the trigger does it on data write.
+
+fallback_modes:
+  - llm_provider_down             # Claude CLI quota exhausted → fall back to
+                                  # Ollama gemma4:26b enricher (Pro local)
+  - qdrant_down                   # Qdrant unreachable → cache hot in JSONL
+                                  # under apps/bali-intel-scraper/data/staging/
+  - drive_oauth_expired           # 5-min circuit breaker (cf. CLAUDE.md
+                                  # § "Drive Polling")
+
+kill_switch: true                 # operator stops via:
+                                  # `launchctl unload ~/Library/LaunchAgents/com.balizero.intel.nightly.plist`
+                                  # cron-agent-python: edit ~/.cron-agent-python/strategies/
+
+auto_publishes: false             # Telegram review gate before article publish
+                                  # (apps/bali-intel-scraper/scripts/telegram_approval.py).
+                                  # Symbiosis Law 5 satisfied via human-in-the-loop.
+
+depends_on_other_cell_decisions: false
+                                  # Reads `trend_signals` table state but does NOT
+                                  # depend on another cell's REASONING. Local
+                                  # sovereignty maintained.
+
+metrics:                          # Law 7: ≥3 quantitative signals
+  - articles_processed            # counter, per-run
+  - dedup_filtered                # counter, deduplicator drop count
+  - qdrant_upsert_count           # counter, balizero_news writes
+  - p99_latency_ms                # histogram, full pipeline duration
+  - llm_provider_fallback_rate    # gauge, fraction of Claude CLI failures
+                                  # routed to Ollama in the last 7 days
+
+# ── Innervation Genoma cross-references ────────────────────────────────
+#
+# Existing organism organ entries (apps/organism/organism/genome.yaml) that
+# this cell wraps:
+
+innervation_organs:
+  - pro.intel_nightly             # apps/bali-intel-scraper run_intel_pipeline.py
+  # Future Sprint: declare entries for
+  # - cron-agent-python intel-radar
+  # - cron-agent-python intel-feed-processor
+
+# ── Cell-core HGT contract ────────────────────────────────────────────
+#
+# The cell is a LIGHT HGT PUBLISHER — exposes domain="news" eligibility for
+# any skill recorded in cell_core.genome that meets confidence>=0.7 and
+# scope='Project'. The actual Redis publication is handled by the standard
+# HGTPublisher; this cell does not implement its own.
+
+hgt:
+  domain: news                    # CANONICAL_DOMAINS member
+  publisher_only: true            # not a consumer in Sprint 1
+  scope: Project                  # only germline skills published
+  min_confidence: 0.70            # standard HGT threshold
+
+# ── Sprint plan reference ─────────────────────────────────────────────
+
+sprint_target: 1                  # promotion lands in Sprint 1 (this PR)
+spec: docs/cell-core/intel-scraper-cell.md

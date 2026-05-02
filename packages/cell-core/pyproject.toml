@@ -7,7 +7,9 @@ name = "cell-core"
 version = "0.1.0"
 description = "Biological lifecycle engine for Nuzantara agents"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",  # cell_loader (Sprint 1) — parse declarative cell defs
+]
 
 [project.optional-dependencies]
 postgres = ["asyncpg>=0.29"]
