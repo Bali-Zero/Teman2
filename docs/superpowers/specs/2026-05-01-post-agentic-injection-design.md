@@ -7,6 +7,7 @@
 **Changelog 2026-05-02**:
 
 - §3.3.2: rimosso `packages/nuzantara-skills/` (era ridondante — `cell_core.genome` già skill registry full-featured); Sprint 1.A diventa estensione SEED_SKILLS (1 giorno invece di 3-4)
+- §3.3.5: riformulato heartbeat — la versione originale ("middleware FastAPI in backend chiama emit_organ_last_seen") era broken-by-design (filesystem ephemeral su Fly). Cell-side bridge approach: estendere `health_sensor.py` + `channel_sensor.py` esistenti per emettere sidecar file su Pro post-poll. Costo: 2 giorni invece di 4-5
 - §3.3.6 NUOVO: coordinamento con Cell Pulse Observatory Fase 0 (PRs #406-415 in `main`)
 - §4 Sprint 1: scope reframed in 2-strato Air-parallel (1.A + 1.B) + 1.C deferred per coordination Observatory
 - §4 Sprint 2: scope ridotto perché 50% già fatto in Sprint 1.A
@@ -162,11 +163,35 @@ Cron settimanale (Pro, Lunedì 09:00 WITA):
 
 L'organismo che non sa cosa contiene è cieco. L'auto-discovery rende il Genoma **sempre sincrono con la realtà** senza richiedere disciplina manuale.
 
-#### 3.3.5 Heartbeat per backend.api e channel.\* (`apps/backend-rag/backend/app/middleware/heartbeat.py`, NUOVO)
+#### 3.3.5 Heartbeat per backend.api e channel.\* — Cell-side bridge (riformulato 2026-05-02)
 
-Middleware FastAPI che chiama `emit_organ_last_seen('backend.api', 'ok')` ogni 60s in lifespan task. Per i 4 channel webhook (`whatsapp/telegram/instagram/web`), 1 riga per handler post-process: `emit_organ_last_seen('channel.{name}', 'ok', metadata={'event': 'message_processed'})`.
+> **Discovery 2026-05-02**: la prima formulazione ("FastAPI middleware in `apps/backend-rag/backend/app/middleware/heartbeat.py` chiama `emit_organ_last_seen` ogni 60s") era **broken-by-design**. `emit_organ_last_seen` scrive `~/.organism/last_seen/<id>.json` su filesystem **locale**. Backend.api e tutti i channel webhook girano su Fly.io — filesystem ephemeral. Lo stato non sopravvive a un restart e non è raggiungibile dal `genome_aggregator_sensor` su Pro che legge `~/.organism/last_seen/`.
 
-Risolve gap 2. Costo: ~50 righe totali di codice. Sblocca `genome_aggregator_sensor` per classificare correttamente questi organi.
+**Approach (A)**: Cell-side bridge — Cell sensors esistenti traducono i poll che fanno già in sidecar file su Pro filesystem.
+
+| Organ               | Cell sensor (esistente)                                                               | Cosa cambia in Sprint 1.B                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend.api`       | `apps/cell/cell/sensors/health_sensor.py` (poll `/health` ogni 60s, già live)         | Aggiungere chiamata `emit_organ_last_seen('backend.api', status_from_reading)` post-poll                                                  |
+| `channel.whatsapp`  | `apps/cell/cell/sensors/channel_sensor.py` (queue depth `inbound_webhooks`, già live) | Estendere a poll `/api/channels/whatsapp/health` (NUOVO endpoint `apps/backend-rag/backend/app/routers/channel_health.py`) + emit sidecar |
+| `channel.telegram`  | (idem)                                                                                | Idem                                                                                                                                      |
+| `channel.instagram` | (idem)                                                                                | Idem                                                                                                                                      |
+| `channel.web`       | (idem)                                                                                | Idem                                                                                                                                      |
+
+**Backend changes (minimal)**:
+
+- `apps/backend-rag/backend/app/routers/channel_health.py` (NUOVO, ~30 LOC): endpoint per channel `GET /api/channels/{name}/health` ritorna `{"status": "ok|degraded|fail", "ts": ..., "last_event_seen_at": ..., "queue_depth": ...}` aggregando lo state dei `channels/{name}/` modules.
+- Backend NON tocca filesystem heartbeat: solo HTTP exposure.
+
+**Cell changes (minimal)**:
+
+- `apps/cell/cell/sensors/health_sensor.py` (MOD): post-poll, chiama `emit_organ_last_seen('backend.api', mapped_status, metadata={'http_status': reading.status_code, 'latency_ms': ...})`.
+- `apps/cell/cell/sensors/channel_sensor.py` (MOD): per ogni channel poll a `/api/channels/{name}/health`, chiama `emit_organ_last_seen('channel.{name}', mapped_status, metadata={'queue_depth': ...})`. Estende il sensor esistente (queue depth → multi-fonte aggregation).
+
+**Costo build**: 2 giorni (Cell-side + 1 endpoint backend, no middleware lifecycle complexity). Sblocca `genome_aggregator_sensor` per classificare correttamente questi 5 organi (backend.api + 4 channel) entro 2× expected_hb_seconds = 120s/240s window.
+
+**Coordination**: zero conflict con Observatory PR-5 Task 5.3 — i sensors `health_sensor.py` e `channel_sensor.py` non sono toccati da Observatory (che agisce su `cell_core.observatory` + `pulse.py` + plist env var, hot path ma diverso).
+
+**Note SYMBIOSIS**: Pilastro 4 (graceful degradation): se Cell down, no sidecar → genome_aggregator classifica `dead`. È il signal corretto — backend potrebbe essere up ma se nessuno lo verifica, è "dead from observer's POV". Pilastro 6 (sovranità locale): tutti gli stati vivono su Pro filesystem, niente cloud dependency per heartbeat.
 
 #### 3.3.6 Coordinamento con Cell Pulse Observatory (Fase 0 progetto parallelo)
 
