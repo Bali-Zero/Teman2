@@ -52,9 +52,19 @@ INSERT OR IGNORE INTO schema_version VALUES (1, strftime('%s','now')*1000);
 """
 
 
-def _to_epoch_ms(iso: str) -> int:
-    dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-    return int(dt.timestamp() * 1000)
+def _to_epoch_ms(value: object) -> int:
+    """Accept ISO 8601 str or epoch-ms int.
+
+    cell-core observatory.emit_pulse_observed serializes pulse_timestamp
+    as int (ms) directly. Older brainstorm payloads + smoke-test fixtures
+    used ISO strings. Support both for forward compat.
+    """
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return int(dt.timestamp() * 1000)
+    raise TypeError(f"pulse_timestamp must be int or ISO str, got {type(value).__name__}")
 
 
 def _now_ms() -> int:
@@ -87,8 +97,18 @@ class Storage:
             return [dict(r) for r in rows]
 
     async def insert_pulse_event(self, payload: dict[str, Any]) -> bool:
-        """Idempotent insert. Returns True if inserted, False if outbox_id already present."""
+        """Idempotent insert. Returns True if inserted, False if outbox_id already present.
+
+        Producer (cell_core.observatory.emit_pulse_observed) injects the
+        events_outbox row id as `_outbox_id` (underscore-prefix per the
+        cross-LLM B4 contract). The collector replay path also injects
+        `_outbox_id`. We accept either `_outbox_id` (canonical) or
+        `outbox_id` (legacy/test fixtures) for forward compat.
+        """
         assert self._conn is not None
+        outbox_id = payload.get("_outbox_id", payload.get("outbox_id"))
+        if outbox_id is None:
+            raise KeyError("payload missing _outbox_id (producer must inject)")
         ts_ms = _to_epoch_ms(payload["pulse_timestamp"])
         now = _now_ms()
         cursor = await self._conn.execute(
@@ -97,7 +117,7 @@ class Storage:
             " classifier_self, payload_json, received_at, received_lag_ms) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                payload["outbox_id"], payload["cell_id"], payload["cell_kind"],
+                int(outbox_id), payload["cell_id"], payload["cell_kind"],
                 payload["pulse_id"], ts_ms, payload["phase"],
                 payload["pulse_result"].get("classifier_self", "unknown"),
                 json.dumps(payload),

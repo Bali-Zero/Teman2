@@ -725,10 +725,53 @@ class PulseEngine:
                 thought_tier=thought_tier,
             )
 
-        return PulseResult(
+        pulse_result = PulseResult(
             timestamp=now,
             health_status=status,
             action_taken=action,
             action_reason=action_reason,
             thought_tier=thought_tier,
         )
+
+        # Cell Pulse Observatory hook (Track A activation 2026-05-02).
+        # Fire-and-forget — pulse loop must NEVER block on observatory.
+        # No-op when CELL_OBSERVATORY_EMIT != 'true'.
+        try:
+            from cell_core import observatory
+            if observatory.is_enabled():
+                import asyncio as _asyncio
+                import os as _os
+                import socket as _socket
+                _asyncio.create_task(observatory.emit_pulse_observed(
+                    cell_id=_cell,
+                    cell_kind="cell",
+                    pulse_id=getattr(pulse_result, "pulse_id", f"organism-{pulse_number}"),
+                    pulse_timestamp_ms=int(now.timestamp() * 1000),
+                    phase="active",
+                    sensors=[
+                        {"name": k, "status": v.get("status") if isinstance(v, dict) else None,
+                         "value": v if not isinstance(v, dict) else None,
+                         "metadata": v if isinstance(v, dict) else {}}
+                        for k, v in (sensor_metadata or {}).items()
+                    ],
+                    pulse_result={
+                        "classifier_self": status.value if hasattr(status, "value") else str(status),
+                        "trend_window_min": None,
+                        "trend_label": None,
+                    },
+                    homeostatic_state={
+                        "db_ok": db_ok,
+                        "qdrant_ok": qdrant_ok,
+                        "error_rate_norm": error_rate_norm,
+                    },
+                    scar_signals=[],
+                    metadata={
+                        "host": _socket.gethostname(),
+                        "machine_role": _os.environ.get("MACHINE_ROLE", "unknown"),
+                        "pulse_number": pulse_number,
+                    },
+                ))
+        except Exception as exc:
+            logger.warning(f"observatory hook scheduling error (non-blocking): {exc}")
+
+        return pulse_result
