@@ -41,12 +41,10 @@ no replay, no ack, no dispatch.
 
 from __future__ import annotations
 
-import asyncio
 import datetime as dt
 import json
 import logging
 import pathlib
-import sys
 from typing import Any
 
 import asyncpg
@@ -164,13 +162,14 @@ class ObservedShellBus:
             with JSONL_FALLBACK.open("a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
         except (OSError, TypeError, ValueError) as e:
-            # Last resort: stderr with a SAFE repr (no raw record dump — could
-            # contain secrets). Do NOT crash the caller.
-            print(
-                f"observed-shell: fallback FAILED ({e}); "
-                f"automation={record.get('automation_name', '?')!r} "
-                f"status={record.get('status', '?')!r}",
-                file=sys.stderr,
+            # Last resort: logger.error with a SAFE repr (no raw record dump —
+            # could contain secrets). Do NOT crash the caller.
+            # Golden Rule #8: use logger, not print().
+            logger.error(
+                "observed-shell: fallback FAILED (%s); automation=%r status=%r",
+                e,
+                record.get("automation_name", "?"),
+                record.get("status", "?"),
             )
 
 
