@@ -8,10 +8,6 @@ intended for ``--apply`` in the Week 3-4 PR.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from backend.scripts.seed_initial_skills import (
     SEED_SKILLS,
     apply_seed,
@@ -109,3 +105,62 @@ def test_main_apply_writes(tmp_path):
 
     g = Genome(db_path=str(db))
     assert g.stats()["total"] == len(SEED_SKILLS)
+
+
+# ─── Sprint 1.A 2026-05-02: 5 crm renewals skills ─────────────────────
+
+_RENEWAL_SKILL_IDS = frozenset(
+    {
+        "crm:detect_expiring_kitas",
+        "crm:propose_renewal_outreach",
+        "crm:draft_wa_renewal_message",
+        "crm:measure_renewal_conversion",
+        "crm:update_renewal_confidence",
+    }
+)
+
+
+def test_seed_includes_renewals_skills():
+    """Sprint 1.A: 5 crm renewals skills must be present in SEED_SKILLS."""
+    seeded_ids = {s["skill_id"] for s in SEED_SKILLS}
+    missing = _RENEWAL_SKILL_IDS - seeded_ids
+    assert not missing, f"Renewal skills missing from SEED_SKILLS: {missing}"
+
+
+def test_seed_renewals_have_correct_metadata():
+    """All 5 renewal skills must have cell='crm', domain='crm', confidence=0.6."""
+    renewals = [s for s in SEED_SKILLS if s["skill_id"] in _RENEWAL_SKILL_IDS]
+    assert len(renewals) == 5, f"Expected 5 renewal skills, got {len(renewals)}"
+    for s in renewals:
+        assert s.get("cell") == "crm", (
+            f"Skill {s['skill_id']} has cell={s.get('cell')!r}, expected 'crm'"
+        )
+        assert s.get("domain") == "crm", (
+            f"Skill {s['skill_id']} has domain={s.get('domain')!r}, expected 'crm'"
+        )
+        assert s.get("confidence") == 0.6, (
+            f"Skill {s['skill_id']} has confidence={s.get('confidence')!r}, expected 0.6"
+        )
+        # Required fields populated
+        for field in ("procedure", "precondition", "success_criterion"):
+            value = s.get(field, "")
+            assert isinstance(value, str) and len(value) > 20, (
+                f"Skill {s['skill_id']} has {field}={value!r}, expected non-trivial string"
+            )
+
+
+def test_seed_renewals_persisted_with_domain(tmp_path):
+    """After --apply, 5 renewal rows in genome have domain='crm'."""
+    from cell_core.genome import Genome
+
+    db = tmp_path / "renewals.db"
+    rc = main(["--db-path", str(db), "--apply"])
+    assert rc == 0
+
+    g = Genome(db_path=str(db))
+    # get_active filters by cell + domain (cf. cell_core/genome.py:get_active)
+    crm_skills = g.get_active(cell="crm", domain="crm", limit=100)
+    crm_ids = {s["id"] for s in crm_skills}
+    assert _RENEWAL_SKILL_IDS.issubset(crm_ids), (
+        f"Renewal skills missing from genome cell='crm' domain='crm': {_RENEWAL_SKILL_IDS - crm_ids}"
+    )
