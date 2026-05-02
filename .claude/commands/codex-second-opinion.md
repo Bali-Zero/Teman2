@@ -19,10 +19,12 @@ Ask Codex CLI for an adversarial second opinion before commit/push. Pattern B (r
    - Run `git status` to confirm cwd is the repo root and the working tree is sensible.
    - Show the user one line: "Dispatching Codex spalla — mode=<mode>, base=<base>, brief=<first 60 chars>".
 
-3. Delegate to the helper script (single source of truth for all logic):
+3. Delegate to the helper script. The script is executable; invoke it
+   DIRECTLY (not via `bash <script>`) so the allowed-tools whitelist
+   matches (Codex spalla self-review BLOCKER #4):
 
    ```bash
-   bash .claude/scripts/codex-spalla.sh "<mode>" "<base>" "<focus brief>"
+   .claude/scripts/codex-spalla.sh "<mode>" "<base>" "<focus brief>"
    ```
 
    The helper handles:

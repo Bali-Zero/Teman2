@@ -143,8 +143,13 @@ Shell helper, single source of truth. Bash 3.2-compatible (macOS default).
 **Triggers** (suggest only — no auto-spawn):
 
 - After `Bash(gh pr create:*)` regardless of size.
-- After `Bash(git diff:*)` whose output > 100 lines AND mentions `auth|payment|migration|pricing|webhook`.
-- After `Edit` or `Write` to `apps/backend-rag/backend/services/auth*` or `services/pricing*`.
+- After `Bash(git diff:*)` whose **command string** mentions sensitive
+  keywords (`auth|payment|migration|pricing|webhook|partner|commission|alembic`).
+  The hook receives the tool input (command string), NOT the diff output —
+  filtering on output line count would require post-execution reading of
+  the captured stdout, which the PostToolUse contract does not pass us.
+  Codex spalla self-review caught this drift on 2026-05-03 (BLOCKER #6).
+- After `Edit` or `Write` to `apps/backend-rag/backend/services/(auth|pricing|partner|commission|payment)*` or `alembic/versions/*.py`.
 
 **Output:**
 

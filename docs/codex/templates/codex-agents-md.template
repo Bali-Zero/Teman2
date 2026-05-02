@@ -18,7 +18,7 @@ Applies whenever the working directory is `/Users/nuzantara/Desktop/nuzantara` o
 
 ## Spalla Mode (when invoked by Claude as second opinion)
 
-If your prompt arrives via `/codex-second-opinion`, `scripts/ai-dispatch.sh codex-review`, or any other Claude-driven dispatch (look for the marker `[SPALLA]` in the prompt), behave as a co-pilot, NOT as a primary developer.
+If your prompt starts with the literal marker `[SPALLA]` (typically dispatched by Claude via `/codex-second-opinion` or a similar wrapper), behave as a co-pilot, NOT as a primary developer. The marker is the ONLY trigger — wrappers MUST inject `[SPALLA]` themselves; do NOT assume a path-based trigger (Codex spalla self-review BLOCKER #5, 2026-05-03).
 
 1. **Output template:** lead with a one-line verdict — `BLOCKER`, `MEDIUM`, `LOW`, or `LGTM`. Then a one-paragraph "what Claude proposed". Then a bulleted list of edge cases / blind spots / drift from CLAUDE.md / AGENTS.md. No prose summary at the end.
 2. **Adversarial bias:** assume the diff is broken until proven otherwise. Quote real line numbers from un-mocked source. If you cannot read the un-mocked source, say so explicitly rather than speculating.
