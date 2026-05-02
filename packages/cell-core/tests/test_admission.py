@@ -138,3 +138,91 @@ def test_graceful_degradation_blocks_no_fallbacks() -> None:
         if v.legge == Legge.GRACEFUL_DEGRADATION and v.severity == "blocker"
     ]
     assert grace_violations, result.summary()
+
+
+# ── round-2 review fixes (4-LLM cross-review of PR #426) ──────────────
+
+
+def test_registry_has_all_seven_leggi_populated() -> None:
+    """Round-2 review (Claude): protect the 7 Leggi registry from a future
+    refactor accidentally dropping a check. Without this assert, a missing
+    check silently surfaces as a warning ("no check registered") and the
+    cell still PASSES — defeating the point of the gate.
+    """
+    assert len(AdmissionTest.CHECKS) == 7
+    assert set(AdmissionTest.CHECKS.keys()) == set(Legge)
+
+
+def test_publishes_via_none_blocks_when_cell_class_is_cell() -> None:
+    """Round-2 review (Claude/GPT-5.5): publishes_via='none' is reserved for
+    substrate-only organelles. A cell setting it bypasses Law 3 entirely.
+    Now blocks unless cell_class='organelle' is also declared.
+    """
+    cell = _passing_cell()
+    cell["publishes_via"] = "none"   # cell_class defaults to 'cell'
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    event_violations = [
+        v for v in result.violations
+        if v.legge == Legge.EVENT_DRIVEN and v.severity == "blocker"
+    ]
+    assert event_violations, result.summary()
+
+
+def test_publishes_via_none_passes_for_organelle() -> None:
+    """A substrate-only organelle (e.g. pg-proxy) explicitly opts out of
+    publishing — declaring cell_class='organelle' makes publishes_via='none'
+    valid.
+    """
+    cell = _passing_cell()
+    cell["name"] = "pg-proxy-organelle"
+    cell["publishes_via"] = "none"
+    cell["cell_class"] = "organelle"
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is True, result.summary()
+
+
+def test_publishes_via_unknown_value_blocks() -> None:
+    """Round-2 review (Claude/GPT-5.5): unknown publishes_via values were
+    only WARNING — silent admission. Now they BLOCK.
+    """
+    cell = _passing_cell()
+    cell["publishes_via"] = "rabbitmq"   # not in allowlist
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    event_violations = [
+        v for v in result.violations
+        if v.legge == Legge.EVENT_DRIVEN and v.severity == "blocker"
+    ]
+    assert event_violations, result.summary()
+
+
+def test_llm_invocation_anthropic_api_blocks() -> None:
+    """Round-2 review (Gemini): Law 1 specifically bans the Anthropic paid
+    API. Verify a cell declaring llm_invocation='anthropic_api' fails.
+    """
+    cell = _passing_cell()
+    cell["llm_invocation"] = "anthropic_api"
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    cli_violations = [
+        v for v in result.violations
+        if v.legge == Legge.CLI_ONLY and v.severity == "blocker"
+    ]
+    assert cli_violations, result.summary()
+
+
+def test_auto_publishes_true_blocks() -> None:
+    """Round-2 review (Gemini/GPT-5.5): Law 5 forbids auto-publishing to
+    externally-visible channels. Verify auto_publishes=True triggers a
+    blocker even with kill_switch=True.
+    """
+    cell = _passing_cell()
+    cell["auto_publishes"] = True   # kill_switch already True
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    zero_violations = [
+        v for v in result.violations
+        if v.legge == Legge.ZERO_FINAL_INSTANCE and v.severity == "blocker"
+    ]
+    assert zero_violations, result.summary()

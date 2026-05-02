@@ -34,8 +34,23 @@ set -euo pipefail
 
 LOG_DIR="${HOME}/.openclaw/logs"
 ARCHIVE_DIR="${LOG_DIR}/archive"
-THRESHOLD_BYTES="${OPENCLAW_LOGROTATE_THRESHOLD:-104857600}"  # 100 MB
+
+# Round-2 review fix: validate env vars BEFORE arithmetic evaluation. Bash
+# arithmetic context evaluates command substitutions inside variables, so
+# OPENCLAW_LOGROTATE_THRESHOLD='a[$(rm -rf /)]' would execute. Reject any
+# non-decimal-integer value early.
+THRESHOLD_BYTES="${OPENCLAW_LOGROTATE_THRESHOLD:-104857600}"  # 100 MB default
 RETENTION_DAYS="${OPENCLAW_LOGROTATE_RETENTION_DAYS:-7}"
+
+if [[ ! "$THRESHOLD_BYTES" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: OPENCLAW_LOGROTATE_THRESHOLD must be a non-negative integer" >&2
+  exit 2
+fi
+if [[ ! "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: OPENCLAW_LOGROTATE_RETENTION_DAYS must be a non-negative integer" >&2
+  exit 2
+fi
+
 TARGETS=("gateway.log" "gateway.err.log")
 
 MODE="dry-run"
@@ -101,11 +116,28 @@ rotate_one() {
     return
   fi
 
-  # Apply: gzip into archive dir, sync, truncate live file in place.
-  # `cat | gzip > dest` reads while the live FD keeps appending; safe because
-  # we truncate AFTER gzip finishes — any bytes written during gzip survive
-  # in the live file and are simply not in this archive (next rotation picks
-  # them up). No rename-at-the-end so OpenClaw's open FD never breaks.
+  # Apply: gzip into archive dir, then truncate the live file in place.
+  #
+  # ── DATA-LOSS WINDOW (round-2 review correction) ────────────────────
+  # `: > "$src"` is `O_TRUNC`: it discards file contents from byte 0 to EOF
+  # immediately. Any log lines OpenClaw appended via its open FD BETWEEN
+  # the moment `gzip` finished reading and the truncate are LOST. The
+  # window is typically <100ms on a 100 MB log, but it is NOT zero — the
+  # earlier draft of this comment claimed the bytes "survive in the live
+  # file"; that was wrong (file truncation does NOT preserve bytes past
+  # the truncation point — the inode's data blocks are released).
+  #
+  # Why we still use truncate-in-place (not copytruncate or rename):
+  # - Renaming the file (`mv "$src" "$dest"; touch "$src"`) would break
+  #   OpenClaw's open FD: it would keep writing to the now-detached inode
+  #   that is now visible only as `$dest`. Restart of the OpenClaw daemon
+  #   would be needed to re-open the new path. That's worse than a small
+  #   data-loss window.
+  # - The 03:00 WITA cron timing is chosen specifically because gateway
+  #   throughput is lowest then; the data-loss window catches at most a
+  #   handful of low-priority log lines.
+  # - For OpenClaw tooling logs, this trade-off is acceptable. For audit-
+  #   grade logs, this script is NOT the right tool.
   if ! gzip -9 -c "$src" > "${dest}.partial"; then
     log "ERROR: gzip failed for ${src} — leaving live file untouched"
     rm -f "${dest}.partial"
@@ -115,7 +147,7 @@ rotate_one() {
   : > "$src"
   local archived_size
   archived_size="$(stat_size "$dest")"
-  log "archived: ${target} ${size}B -> ${dest} (${archived_size}B gzipped)"
+  log "archived: ${target} ${size}B -> ${dest} (${archived_size}B gzipped); small data-loss window during truncate is documented and accepted"
 }
 
 prune_archives() {

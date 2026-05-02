@@ -35,8 +35,11 @@ Three things together:
 2. **`backend.services.events.observed_shell.ObservedShellBus`** — a
    simple class with `emit(automation_name, status, payload?, trace_id?)`.
    Falls back to `~/logs/observed-shell.jsonl` if the DB pool is None
-   or the INSERT fails. **Never raises.** The cell must not see an
-   exception just because observability is unavailable.
+   or the INSERT fails. **Best-effort, does not propagate exceptions to
+   the caller** under any documented code path (serialization failures,
+   DB errors, JSONL write errors, unknown status are all caught). The
+   cell must not see an exception just because observability is
+   unavailable.
 
 3. **Status taxonomy** — `ok | error | warning | skipped`. Mirrors
    launchctl semantics. `skipped` means "no work to do" (legitimate

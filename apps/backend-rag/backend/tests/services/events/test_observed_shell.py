@@ -5,9 +5,17 @@ See ``backend/services/events/observed_shell.py`` and migration
 
 Tests use mocked asyncpg pool/connection (AsyncMock) — same pattern as
 ``test_outbox.py``. No real DB.
+
+Round-1 review feedback (4-LLM cross-review of PR #426):
+- Add non-JSON-serializable payload test (reviewer-Claude/Gemini/DeepSeek/GPT-5.5)
+- Add pool.acquire() raises test (reviewer-DeepSeek)
+- Add JSONL fallback parent-dir creation test (reviewer-Claude)
+- Add emit_one() convenience wrapper test (reviewer-Claude)
 """
 from __future__ import annotations
 
+import datetime as dt
+import decimal
 import json
 import pathlib
 import tempfile
@@ -21,6 +29,7 @@ from backend.services.events.observed_shell import (
     JSONL_FALLBACK,
     ObservedShellBus,
     VALID_STATUSES,
+    emit_one,
 )
 
 
@@ -77,7 +86,8 @@ async def test_emit_with_no_pool_falls_back_to_jsonl(tmp_path, monkeypatch):
     record = json.loads(lines[0])
     assert record["automation_name"] == "backup.daily"
     assert record["status"] == "ok"
-    assert record["payload"] == {"duration_ms": 99}
+    # payload_json is pre-serialized — round-trip back to dict for assertion.
+    assert json.loads(record["payload_json"]) == {"duration_ms": 99}
     assert record["_fallback_reason"] == "no db_pool"
 
 
@@ -124,6 +134,98 @@ async def test_emit_invalid_status_coerces_to_error(tmp_path, monkeypatch):
 
     record = json.loads(fake_jsonl.read_text().strip().splitlines()[0])
     assert record["status"] == "error"
+
+
+# ── round-2 review fixes: non-serializable payload, pool.acquire raise, ──
+# ── parent-dir creation, emit_one() wrapper ──────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_emit_with_non_serializable_payload_does_not_raise(
+    tmp_path, monkeypatch
+):
+    """Round-1 review (4/4 LLMs flagged): a payload with datetime / Decimal /
+    asyncpg.Record objects must NOT crash emit() and must NOT crash the
+    JSONL fallback either. Both paths use ``default=str`` so the type is
+    coerced to its string repr.
+    """
+    fake_jsonl = tmp_path / "observed-shell.jsonl"
+    monkeypatch.setattr(observed_shell, "JSONL_FALLBACK", fake_jsonl)
+
+    payload_with_unfriendly_types = {
+        "when": dt.datetime(2026, 5, 2, 17, 0, tzinfo=dt.timezone.utc),
+        "amount": decimal.Decimal("1234.56"),
+        "ratio": float("nan"),  # also non-strict-JSON
+    }
+
+    bus = ObservedShellBus(db_pool=None)
+    # Must not raise:
+    await bus.emit("paymentsync", "ok", payload_with_unfriendly_types)
+
+    assert fake_jsonl.exists()
+    record = json.loads(fake_jsonl.read_text().strip().splitlines()[0])
+    # payload_json round-trips to a dict whose values are stringified versions
+    payload_round = json.loads(record["payload_json"])
+    assert "2026-05-02" in payload_round["when"]
+    assert payload_round["amount"] == "1234.56"
+
+
+@pytest.mark.asyncio
+async def test_emit_with_pool_acquire_raising_falls_back(tmp_path, monkeypatch):
+    """Round-2 review (DeepSeek): if pool.acquire() itself raises (e.g.
+    PoolClosedError) — not just the .execute() — the bus must still degrade
+    gracefully and route to JSONL.
+    """
+    fake_jsonl = tmp_path / "observed-shell.jsonl"
+    monkeypatch.setattr(observed_shell, "JSONL_FALLBACK", fake_jsonl)
+
+    fake_pool = MagicMock()
+    # acquire() raises immediately when entered.
+    bad_ctx = MagicMock()
+    bad_ctx.__aenter__ = AsyncMock(
+        side_effect=asyncpg.InterfaceError("pool closed")
+    )
+    bad_ctx.__aexit__ = AsyncMock(return_value=None)
+    fake_pool.acquire = MagicMock(return_value=bad_ctx)
+
+    bus = ObservedShellBus(fake_pool)
+    # Must not raise:
+    await bus.emit("translate.hourly", "ok", {"x": 1})
+
+    assert fake_jsonl.exists()
+    record = json.loads(fake_jsonl.read_text().strip().splitlines()[0])
+    assert record["automation_name"] == "translate.hourly"
+    # InterfaceError is a PostgresError subclass -> "db error" branch.
+    assert "db error" in record["_fallback_reason"] or \
+           "unexpected" in record["_fallback_reason"]
+
+
+@pytest.mark.asyncio
+async def test_emit_creates_parent_directory_for_jsonl(tmp_path, monkeypatch):
+    """Round-2 review (Claude): on a fresh host where ~/logs/ doesn't yet
+    exist, the first emit() must create it, not crash.
+    """
+    fake_jsonl = tmp_path / "subdir" / "missing" / "observed-shell.jsonl"
+    monkeypatch.setattr(observed_shell, "JSONL_FALLBACK", fake_jsonl)
+
+    bus = ObservedShellBus(db_pool=None)
+    await bus.emit("backup.daily", "ok", {"x": 1})
+
+    assert fake_jsonl.parent.is_dir()
+    assert fake_jsonl.exists()
+
+
+@pytest.mark.asyncio
+async def test_emit_one_convenience_wrapper(tmp_path, monkeypatch):
+    """Round-2 review (Claude): emit_one() is in __all__ but had no test."""
+    fake_jsonl = tmp_path / "observed-shell.jsonl"
+    monkeypatch.setattr(observed_shell, "JSONL_FALLBACK", fake_jsonl)
+
+    await emit_one(None, "trans.run", "ok", {"items": 5})
+
+    assert fake_jsonl.exists()
+    record = json.loads(fake_jsonl.read_text().strip().splitlines()[0])
+    assert record["automation_name"] == "trans.run"
 
 
 # ── helper: async context manager wrapper ──────────────────────────────

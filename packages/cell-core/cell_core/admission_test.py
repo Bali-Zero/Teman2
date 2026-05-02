@@ -208,9 +208,20 @@ def _check_event_driven(cd: dict[str, Any]) -> Violation | None:
         publishes_via: str — must be 'pg_notify' or 'pg_trigger' for cells
                               that produce events; 'consumer_only' for cells
                               that are pure consumers; 'none' is reserved for
-                              substrate-only organelles (pg-proxy etc.)
+                              substrate-only organelles (pg-proxy etc.) AND
+                              requires cell_class == 'organelle' to PASS.
+        cell_class: str — 'cell' (default) or 'organelle' (allows publishes_via='none')
+
+    Round-2 review fix (Claude/GPT-5.5/DeepSeek):
+    1. Unknown values now BLOCK (was warning) — silent registration of a
+       new transport name is not an admission concern; it should fail loudly.
+    2. publishes_via='none' is gated on cell_class == 'organelle'. Without
+       that pairing, a cell could opt-out of Law 3 entirely just by setting
+       publishes_via='none'. Now flagged as blocker.
     """
     publishes = cd.get("publishes_via")
+    cell_class = cd.get("cell_class", "cell")
+
     if publishes is None:
         return Violation(
             legge=Legge.EVENT_DRIVEN,
@@ -226,11 +237,24 @@ def _check_event_driven(cd: dict[str, Any]) -> Violation | None:
             ),
             severity="blocker",
         )
+    if publishes == "none" and cell_class != "organelle":
+        return Violation(
+            legge=Legge.EVENT_DRIVEN,
+            message=(
+                "publishes_via='none' is reserved for substrate-only organelles "
+                "(set cell_class='organelle' if this is a substrate). "
+                "Cells must use pg_notify | pg_trigger | consumer_only."
+            ),
+            severity="blocker",
+        )
     if publishes not in {"pg_notify", "pg_trigger", "consumer_only", "none"}:
         return Violation(
             legge=Legge.EVENT_DRIVEN,
-            message=f"publishes_via='{publishes}' is not in the allowlist",
-            severity="warning",
+            message=(
+                f"publishes_via='{publishes}' is not in the allowlist "
+                "{pg_notify, pg_trigger, consumer_only, none}"
+            ),
+            severity="blocker",
         )
     return None
 

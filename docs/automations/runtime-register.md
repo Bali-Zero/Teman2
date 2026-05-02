@@ -239,7 +239,7 @@ for full list. Sprint 3 will refactor as cell.)
 
 | Tier | Count | Notes |
 |---|---|---|
-| **full-cell** (8 in 14-cell list) | 8 | system-doctor, seo-guardian, fact-checker, tech-orchestrator, conversation-trainer, daily-ops, crm-cell, hgt-coordinator, gap-scanner, kg-cell, research-cell, mata-garuda — minus the 2 lights | Wait, count is 12 + 1 (war-room-organism) + 1 (mata-garuda) − 2 (intel-scraper light + war-room is system not cell). Re-check |
+| **full-cell** | 12 | 6 existing L1 (system-doctor, seo-guardian, fact-checker, tech-orchestrator, conversation-trainer, daily-ops) + 1 NEW L1 (crm-cell) + 1 NEW L2 (hgt-coordinator) + 3 existing L2 (gap-scanner, kg-cell, research-cell) + 1 NEW L4.5 (mata-garuda) | The 14-cell list minus intel-scraper-cell (light tier) and war-room-organism (organism-submodule, federation-of-organelle, not a single cell) |
 | **light-cell** | 1 | intel-scraper-cell only |
 | **organism-submodule** | ~30 | WR2 cognitive (9) + WR2 operational (4-7) + matagaruda (19) + cell core daemons (6) |
 | **observed-shell** | ~80-100 | the bulk of CRM, sentinel, monitoring, NLM cycle, indexing, code quality, audit, regulatory monitors, translation, BI |

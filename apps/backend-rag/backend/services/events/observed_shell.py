@@ -83,8 +83,13 @@ class ObservedShellBus:
         the payload JSON-serialised. On failure (no pool, conn error,
         DB write error): a line appended to JSONL_FALLBACK.
 
-        This function NEVER raises. The caller's automation must not
-        fail because observability is unavailable.
+        This function is best-effort and does NOT propagate exceptions to
+        the caller in any code path under normal operation: serialization
+        failures, DB pool errors, JSONL write errors, and unrecognized
+        statuses are all caught. The caller's automation must not fail
+        because observability is unavailable. (If the OS itself fails to
+        write to stderr — e.g. closed FD — that's a degenerate case the
+        host can't recover from anyway.)
         """
         if status not in VALID_STATUSES:
             logger.warning(
@@ -94,10 +99,20 @@ class ObservedShellBus:
             )
             status = "error"
 
+        # Pre-serialize the payload ONCE up front using `default=str` so that
+        # non-JSON-native types (datetime, Decimal, asyncpg.Record, UUID)
+        # don't crash either the DB path OR the JSONL fallback. If even the
+        # safe-encode path fails, fall through to a stringified preview.
+        try:
+            payload_json = json.dumps(payload or {}, default=str)
+        except (TypeError, ValueError) as exc:
+            payload_json = json.dumps({"_serialize_error": repr(exc),
+                                       "_repr": repr(payload)[:1000]})
+
         record = {
             "automation_name": automation_name,
             "status": status,
-            "payload": payload or {},
+            "payload_json": payload_json,    # already-serialized; safe to round-trip
             "trace_id": trace_id,
             "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         }
@@ -116,7 +131,7 @@ class ObservedShellBus:
                     """,
                     automation_name,
                     status,
-                    json.dumps(record["payload"]),
+                    payload_json,
                     trace_id,
                 )
         except (asyncpg.PostgresError, OSError) as e:
@@ -128,17 +143,33 @@ class ObservedShellBus:
 
     @staticmethod
     def _fallback_to_jsonl(record: dict[str, Any], reason: str) -> None:
-        """Append the record to the JSONL fallback file."""
+        """Append the record to the JSONL fallback file.
+
+        ``record["payload_json"]`` is already a JSON string (pre-serialized by
+        ``emit``), so this method only needs to dump a flat envelope of strings
+        and primitives — `default=str` guards against any future field type
+        drift. Writes to ``~/logs/observed-shell.jsonl`` with mode 0o600 if the
+        file is being created (caller's other sensitive payloads stay private
+        from other users on the host).
+        """
         try:
             JSONL_FALLBACK.parent.mkdir(parents=True, exist_ok=True)
-            line = json.dumps({**record, "_fallback_reason": reason})
+            envelope = {**record, "_fallback_reason": reason}
+            line = json.dumps(envelope, default=str)
+            # Create with restrictive mode if not yet present; existing files
+            # keep their mode (we don't want to clobber operator chmod).
+            if not JSONL_FALLBACK.exists():
+                # Touch with 0o600 before opening for append.
+                JSONL_FALLBACK.touch(mode=0o600, exist_ok=True)
             with JSONL_FALLBACK.open("a", encoding="utf-8") as fh:
                 fh.write(line + "\n")
-        except OSError as e:
-            # Last resort: stderr. Don't crash the caller.
+        except (OSError, TypeError, ValueError) as e:
+            # Last resort: stderr with a SAFE repr (no raw record dump — could
+            # contain secrets). Do NOT crash the caller.
             print(
-                f"observed-shell: fallback FAILED ({e}). lost record: "
-                f"{record}",
+                f"observed-shell: fallback FAILED ({e}); "
+                f"automation={record.get('automation_name', '?')!r} "
+                f"status={record.get('status', '?')!r}",
                 file=sys.stderr,
             )
 
