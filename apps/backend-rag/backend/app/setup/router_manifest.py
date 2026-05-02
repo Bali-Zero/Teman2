@@ -259,6 +259,12 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Olympus (full-only: internal admin) ──
     RouterEntry(name="olympus", attr="internal_router", process_groups=_API, tags=("admin",)),
 
+    # ── Observability (cell-core) ──
+    # Sprint 1 PR-1.2: HTTP bridge for cell-core ObservedShellBus (Sprint 0
+    # Track C2). X-API-Key auth via verify_internal_api_key dep — NOT in
+    # PUBLIC_ENDPOINTS. Backed by observed_shell_events table (mig 151).
+    RouterEntry(name="observed_shell", process_groups=_API, tags=("observability", "cell-core", "internal")),
+
     # ── Omnichannel ──
     RouterEntry(name="omnichannel", process_groups=_API, tags=("channels",)),
 
