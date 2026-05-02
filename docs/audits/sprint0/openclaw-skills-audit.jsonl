@@ -1,0 +1,59 @@
+{"skill": "1password", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "antigravity", "kind": "user-enabled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "disable", "reason": "user-enabled but 0 invocations in 30d"}
+{"skill": "apple-notes", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "apple-reminders", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "bear-notes", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "blogwatcher", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "blucli", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "bluebubbles", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "camsnap", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "canvas", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "clawflow", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "clawflow-inbox-triage", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "clawhub", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "coding-agent", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "discord", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "eightctl", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "elite-longterm-memory", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "gemini", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "gh-issues", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "gifgrep", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "github", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "gog", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "goplaces", "kind": "user-enabled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "disable", "reason": "user-enabled but 0 invocations in 30d"}
+{"skill": "healthcheck", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "himalaya", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "imsg", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "llm-task", "kind": "plugin", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "keep", "reason": "plugin \u2014 separate lifecycle from Telegram menu"}
+{"skill": "lobster", "kind": "plugin", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "keep", "reason": "plugin \u2014 separate lifecycle from Telegram menu"}
+{"skill": "mcporter", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "memory-core", "kind": "plugin", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "keep", "reason": "plugin \u2014 separate lifecycle from Telegram menu"}
+{"skill": "memory-lancedb", "kind": "plugin", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "keep", "reason": "plugin \u2014 separate lifecycle from Telegram menu"}
+{"skill": "model-usage", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "nano-pdf", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "node-connect", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "notion", "kind": "user-enabled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "disable", "reason": "user-enabled but 0 invocations in 30d"}
+{"skill": "obsidian", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "openai-whisper", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "openai-whisper-api", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "openhue", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "oracle", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "ordercli", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "peekaboo", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "sag", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "session-logs", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "sherpa-onnx-tts", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "skill-creator", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "slack", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "songsee", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "sonoscli", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "spotify-player", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "summarize", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "things-mac", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "tmux", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "trello", "kind": "user-enabled", "enabled": false, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "video-frames", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "voice-call", "kind": "user-enabled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "disable", "reason": "user-enabled but 0 invocations in 30d"}
+{"skill": "wacli", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "weather", "kind": "bundled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "unknown", "reason": "manual review required"}
+{"skill": "xurl", "kind": "user-enabled", "enabled": true, "invocations_30d": 0, "last_seen": null, "recommendation": "disable", "reason": "user-enabled but 0 invocations in 30d"}

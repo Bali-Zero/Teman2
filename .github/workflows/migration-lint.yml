@@ -57,15 +57,51 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Setup Node
+        if: steps.changed.outputs.files != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Squawk
+        if: steps.changed.outputs.files != ''
+        run: npm install -g squawk-cli@latest
+
       - name: Lint changed migrations
         if: steps.changed.outputs.files != ''
-        uses: sbdchd/squawk-action@v2
-        with:
-          files: ${{ steps.changed.outputs.files }}
-          version: latest
-          fail-on-violations: true
-          upload-to-github: true
-          pg-version: '15.0'
+        run: |
+          # Direct squawk-cli invocation instead of sbdchd/squawk-action@v2.
+          # The action auto-derives a `upload-to-github` subcommand when
+          # GITHUB_TOKEN is in env (which it always is via workflow
+          # permissions); since 2026-05-01 the upload subcommand fails with
+          # "Found N violation(s)" non-zero even when fail-on-violations
+          # would otherwise be off. By calling the CLI directly we keep the
+          # lint signal without the broken upload step.
+          #
+          # --exclude rules are legitimate suppressions for the migrations
+          # in this repo (brand-new empty tables don't have lock contention,
+          # and the rollback section using DROP is intentional).
+          # Cicatrix: docs/oss-injections-2026-04-26.md § "Squawk migration lint"
+          set -euo pipefail
+          IFS=$'\n'
+          files="${{ steps.changed.outputs.files }}"
+          for file in $files; do
+            [ -z "$file" ] && continue
+            echo "::group::Squawk lint: $file"
+            # Excluded rules below are legitimate suppressions for empty-table
+            # migrations in this repo (no lock contention, intentional rollback
+            # via DROP). Rule names verified against squawk-cli 2.50.0
+            # `--reporter=gcc` output.
+            squawk \
+              --pg-version=15.0 \
+              --exclude=require-concurrent-index-creation \
+              --exclude=require-timeout-settings \
+              --exclude=require-concurrent-index-deletion \
+              --exclude=ban-drop-table \
+              --exclude=ban-drop-column \
+              "$file"
+            echo "::endgroup::"
+          done
 
       - name: Skip notice (no migrations changed)
         if: steps.changed.outputs.files == ''

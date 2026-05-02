@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.openclaw-logrotate</string>
+
+    <!-- OpenClaw log rotation (Sprint 0 Track A1, brainstorm 2026-05-02 round 2)
+
+         Why: gateway.log + gateway.err.log accumulate without rotation policy.
+         Empirical 2026-05-02 14:00 WITA on Pro:
+           gateway.err.log = 291 MB
+           gateway.log     = 22 MB
+         The brainstorm round 2 reported "21.7 GB" (likely cumulative ~/.openclaw/
+         total over weeks). Even at 319 MB/2-month accumulation, unbounded growth
+         is a P0 disk-exhaustion risk on a 48GB-RAM, 1TB-disk dev machine that
+         also hosts Postgres + Qdrant + Ollama models.
+
+         What it does: every night 03:00 WITA, archives any of
+           ~/.openclaw/logs/gateway.log
+           ~/.openclaw/logs/gateway.err.log
+         that exceeds 100 MB into ~/.openclaw/logs/archive/<name>.YYYY-MM-DD.gz,
+         truncates the live file in-place (preserves inode so OpenClaw keeps
+         writing to the same FD), and prunes archives older than 7 days.
+
+         Rationale for cron-style (not daemon):
+           - StartCalendarInterval = single Hour/Minute fire per day
+           - KeepAlive=false (one-shot job, not a daemon)
+           - RunAtLoad=false (no double-fire on launchctl bootstrap)
+
+         File mode 0444 enforced by VADEMECUM § plist-hardening
+         (cicatrix 2026-04-29 mass-corruption antibody).
+
+         Logs to ~/logs/openclaw-logrotate.log (NOT /tmp — cicatrix
+         "logging to /tmp loses on reboot, breaks Sentinel"). HOME env
+         var explicit per VADEMECUM § 11 plist requirements.
+    -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/openclaw-logrotate.sh</string>
+        <string>--apply</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/openclaw-logrotate.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/openclaw-logrotate.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
