@@ -74,6 +74,34 @@ _INFRA = (
     # Removed 2026-04-18: /api/health had no mounted router (health.py mounts
     # under /health, not /api/health). Entry was stale — external probes MUST
     # use /health.
+    # Sprint 1.B 2026-05-02: per-channel health endpoint for Cell-side
+    # heartbeat bridge. Cell on Pro polls these to write
+    # ~/.organism/last_seen/channel.{name}.json sidecars.
+    # Spec: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §3.3.5
+    PublicEndpoint(
+        "/api/channels/whatsapp/health",
+        Category.INFRA,
+        "Channel health (whatsapp) — Cell heartbeat bridge poll target",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/channels/telegram/health",
+        Category.INFRA,
+        "Channel health (telegram) — Cell heartbeat bridge poll target",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/channels/instagram/health",
+        Category.INFRA,
+        "Channel health (instagram) — Cell heartbeat bridge poll target",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/channels/web/health",
+        Category.INFRA,
+        "Channel health (web) — Cell heartbeat bridge poll target",
+        match="exact",
+    ),
 )
 
 _AUTH = (
