@@ -153,7 +153,13 @@ redis>=7.1.0  # Already present, used for caching
 
 # MCP (Model Context Protocol)
 mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility
-fastmcp==2.1.0  # Downgraded 2026-04-25 to resolve python-dotenv conflict with litellm 1.83.7
+# fastmcp removed 2026-05-03: not imported by backend-rag runtime. The MCP
+# server lives in apps/nuzantara-mcp/ with its own venv (fastmcp 3.2.4).
+# Removal closes 8 Dependabot alerts on fastmcp 2.1.0 (1 critical + 4 high
+# + 3 medium): SSRF/Path Traversal (GHSA-vv7q-7jx5-f767), OAuth Proxy
+# Confused Deputy (GHSA-rww4-4w9c-7733, GHSA-c2jp-c369-7pvx), token reuse
+# (GHSA-5h2m-4q8j-pqpj), CVE-2025-66416 (GHSA-rcfx-77hg-w2wv), command
+# injection variants, reflected XSS callback page.
 python-json-logger>=2.0.0
 
 # Security & HTTP
