@@ -93,30 +93,45 @@ async def lifespan(app: FastAPI):
     yield
 ```
 
-### Bash (LaunchAgent / launchd cron jobs)
+### Bash (LaunchAgent / launchd cron jobs) — Sprint 1 PR-1.2 ✅ shipped
 
-For shell-only callers (e.g. `wr2-hardening-chain.sh`), wrap a curl call
-to the FastAPI backend that has the bus attached. Example endpoint
-(NOT shipped in this Sprint 0; tracked as Sprint 1 follow-up):
+The HTTP endpoint `POST /api/observed-shell/emit` lands in Sprint 1
+PR-1.2 (`apps/backend-rag/backend/app/routers/observed_shell.py`). Use
+the canonical bash wrapper rather than raw `curl`:
 
 ```bash
-# Bash wrapper for observed-shell emit (Sprint 1 will ship the endpoint)
-curl -fsS -X POST http://127.0.0.1:8000/api/observed-shell/emit \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: ${BACKEND_API_KEY:?missing}" \
-  -d '{
-    "automation_name": "wr2.hardening.run",
-    "status": "ok",
-    "payload": {
-      "exit_code": 0,
-      "missed_runs_caught": 3
-    }
-  }' || true   # non-fatal
+source scripts/observed-shell-emit.sh
+observed_shell_emit "wr2.hardening.run" "ok" '{"missed_runs_caught":3}' "trace-abc"
 ```
 
-The `|| true` makes the emit non-fatal: if the backend is down the
-hardening run continues. This is the pattern Symbiosis Law 4 applied
-at the observability layer.
+The wrapper is **best-effort** — emit failure (DNS, refused, 5xx, missing
+API key) returns 0 and only logs to stderr. The parent automation MUST
+NOT fail because observability is unavailable. This mirrors
+`ObservedShellBus.emit()` never-raises invariant at the network layer.
+
+The endpoint is X-API-Key authenticated (not in `PUBLIC_ENDPOINTS`):
+
+```bash
+export OBSERVED_SHELL_API_URL="http://127.0.0.1:8080"
+export OBSERVED_SHELL_API_KEY="$(grep ^API_KEYS ~/.nuzantara-secrets.env | cut -d= -f2 | tr -d '"' | head -1)"
+```
+
+#### Pattern: extrinsic wrapper around an unchanged Python script
+
+The recommended pattern for retrofitting observability onto an existing
+script (e.g. `apps/bali-intel-scraper/scripts/run_intel_pipeline.py`) is
+to **leave the Python untouched** and wrap it with a sibling shell
+wrapper such as `scripts/intel-scraper-with-observability.sh`:
+
+- Source `observed-shell-emit.sh`
+- emit `ok` + `phase=start` BEFORE the subprocess
+- run the workload (Python pipeline, unchanged)
+- emit `ok` + `phase=finish` + `duration_ms` (or `error` + `exit_code`)
+  AFTER the subprocess
+
+Same `trace_id` ties the start/finish emit pair together. Observability
+stays decoupled from pipeline logic; rolling back the wrapper restores
+the original LaunchAgent behavior unchanged.
 
 ## List of automations to migrate (Sprint 1 wave)
 
