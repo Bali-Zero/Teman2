@@ -5,6 +5,67 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: OpenClaw MCP child apparent mortality = test artifact (2026-05-02)
+
+_Discovered: 2026-05-02 during deep test del bot @Balizerobot dopo realignment workspace prompt. **Non è un bug strutturale** — è artefatto del test pattern._
+
+**TRAUMA:** Tool call MCP (`nuzantara-rag__chat_kbli`, `__ask_legal`, `__search_service_pricing`) fallivano in modo intermittente con:
+
+```
+[tools] nuzantara-rag__<tool> failed: MCP error -32000: Connection closed
+[tools] nuzantara-rag__<tool> failed: Not connected
+```
+
+Sembrava che il child stdio (`nuzantara-mcp-server.py`, FastMCP 3.2.4) morisse silenziosamente fra una query e l'altra. `pgrep -P $(pgrep -f openclaw-gateway)` ritornava periodicamente 0 children quando il gateway era ancora up. Il pattern era: **prima query OK → seconda query "Not connected" → restart gateway → ricomincia il ciclo**.
+
+**Root cause** (tracciato leggendo `~/.openclaw/lib/node_modules/openclaw/dist/`):
+
+1. OpenClaw mantiene il MCP runtime **per-session lane** (`SESSION_MCP_RUNTIME_MANAGER` in `pi-embedded-iRgRpYxO.js`). Ogni sessionId UUID ha il proprio child stdio MCP.
+2. Quando una **nuova session** rimpiazza una previous sotto lo stesso `sessionKey`, `reply-B8i7ZpFD.js:2611` chiama `disposeSessionMcpRuntime(previousSessionEntry.sessionId)`.
+3. Disposal → `disposeSession()` (line 1329) → `session.client.close() + session.transport.close()` → SIGPIPE al child Python.
+4. La query DOPO trovava 0 children e ritornava `Connection closed` / `Not connected`.
+
+**Trigger del bug nel test setup**: usare `--session-id "fresh-$(date +%s%N)"` ad ogni invocation `openclaw agent` per "forzare reload del system prompt". Logic in `agent-command-BfFD6VqT.js:859-860`:
+
+```js
+const sessionId = opts.sessionId?.trim() || (fresh ? sessionEntry?.sessionId : void 0) || crypto.randomUUID();
+const isNewSession = !fresh && !opts.sessionId;
+```
+
+Con `--session-id` SEMPRE nuovo e nessuna entry matchante in store → `isNewSession=true` → previous lane disposed → child killed.
+
+**Production NON impattato:** il bot @Balizerobot riceve da `chat_id` 8764530025 (Zero) o altri stabili → sessionKey `agent:telegram-codex:main` deterministico → sessionId stabile per giorni. Il pattern non si manifesta in produzione.
+
+**ANTIBODY:**
+
+1. **Documentazione test pattern** in `~/.openclaw/workspace/MCP_INTEGRATION.md` sezione Troubleshooting (cf. realignment 2026-05-02). Pattern corretto:
+   ```bash
+   # RIGHT — riusa default sessionKey
+   openclaw agent --agent telegram-codex --message "..."
+
+   # RIGHT — sessionKey deterministico via E.164
+   openclaw agent --agent telegram-codex --to +6281234567890 --message "..."
+
+   # WRONG — kills previous lane ogni call
+   openclaw agent --session-id "fresh-$(date +%s%N)" ...
+   ```
+
+2. **Watchdog LaunchAgent** `com.nuzantara.openclaw-children-watchdog` (5min interval, 30min cooldown, 2min grace post-restart). Alerta Telegram a Zero (chat_id 1125336968) se gateway è up MA 0 children con sessions attive in 24h. Implementazione `~/scripts/openclaw-children-watchdog.sh`. State `~/.agent/decisions/state/openclaw_children_watchdog.state`. Log `~/logs/openclaw-children-watchdog.log`.
+
+3. **MOS lesson** salvata in `lessons.md` 2026-05-02 + memorie discovery (importance 8) + fact (importance 7).
+
+**GOTCHA:**
+
+- Il pattern "tool funziona la prima volta, poi falla" può sembrare race condition o bug stdio. È invece il design **per-session lifecycle** che si scontra col test setup.
+- 3 children attesi è il default normale (uno per agent: `main`, `telegram-codex`, `coder`). Non 1.
+- Sandbox prune `idleHours: 24` può comunque dispose un child legittimo se il bot Telegram resta inattivo per >24h. Improbabile in production reale, ma possibile durante manutenzioni lunghe.
+- `launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway` rispawna correttamente il gateway. Children vengono ricreati lazy al primo tool call dopo il restart.
+- I file `~/.openclaw/lib/node_modules/openclaw/dist/*.js` sono il riferimento di codice sorgente per debug — non bundle minified, leggibili.
+
+**Lesson trasversale (cf. lessons.md 2026-05-02):** prima di cercare un bug strutturale in un sistema in production, verifica che il test setup non lo stia generando artificialmente. "Il sistema funziona ma i miei test falliscono" è il segnale di un'asymmetry nel setup di test, non di un bug.
+
+---
+
 ### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
 
 _Discovered: 2026-05-02 during Sprint 1.B Era Post-Agentica deploy — 3 hotfix
