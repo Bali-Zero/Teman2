@@ -121,6 +121,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
 
     # ── Channels ──
     RouterEntry(name="channels",    process_groups=_API, tags=("channels",)),
+    RouterEntry(name="channel_health", process_groups=_API, tags=("channels", "health")),
 
     # ── CRM ──
     RouterEntry(name="crm_analytics",          process_groups=_API, tags=("crm",)),
