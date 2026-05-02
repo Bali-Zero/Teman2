@@ -18,7 +18,10 @@ class PulseEventV1(BaseModel):
     cell_id: str
     cell_kind: str
     pulse_id: str
-    pulse_timestamp: str  # ISO 8601 string; collector converts to int ms
+    # cell-core observatory.emit_pulse_observed sends pulse_timestamp as int
+    # (epoch ms). Older brainstorm payloads + smoke fixtures used ISO str.
+    # Both must validate — Storage._to_epoch_ms handles both.
+    pulse_timestamp: int | str
     phase: str
     sensors: list[dict[str, Any]]
     pulse_result: dict[str, Any]

@@ -49,10 +49,22 @@ def _render_user_prompt(event: PulseEventV1) -> str:
 
 
 class MinimaxClassifier:
-    BASE_URL = "https://api.minimax.io/v1/chat/completions"
-    MODEL = "MiniMax-M2"
-    PRICE_INPUT_USD_PER_M = 0.30
-    PRICE_OUTPUT_USD_PER_M = 1.20
+    """
+    Routes through OpenRouter to minimax/minimax-m2.5:free (Track A activation
+    2026-05-02). Original direct minimax.io endpoint had insufficient_balance
+    on the user's account; OpenRouter free tier costs zero per call.
+
+    Switch to a paid model (e.g. `minimax/minimax-m2.7` at $0.30/M input,
+    $1.20/M output) by overriding MODEL via OBSERVATORY_CLASSIFIER_MODEL env.
+    """
+    BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
+    # m2.5 (non-reasoning): puts JSON output into choices[0].message.content
+    # as expected. m2.7 is a reasoning model and routes the model output to
+    # `reasoning` field, leaving `content=null` — broke our model_validate_json.
+    # m2.5 paid (~$0.00008 per pulse) skips the privacy guardrail that blocks :free.
+    MODEL = "minimax/minimax-m2.5"
+    PRICE_INPUT_USD_PER_M = 0.15
+    PRICE_OUTPUT_USD_PER_M = 1.15
 
     def __init__(self, api_key: str, circuit_threshold: int = 5,
                  circuit_recovery_s: float = 60.0):
@@ -67,13 +79,43 @@ class MinimaxClassifier:
         await self._client.aclose()
 
     async def _call_api(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+        # max_tokens=1000: m2.5 routes long internal reasoning to `reasoning`
+        # field, leaving content empty if budget is too tight. 1000 gives
+        # ~3-5s additional latency vs 200 but ensures content is generated.
+        # response_format=json_object forces structured output (OpenRouter
+        # passes it through to MiniMax).
         resp = await self._client.post(
             self.BASE_URL,
             headers={"Authorization": f"Bearer {self._api_key}"},
-            json={"model": self.MODEL, "messages": messages, "temperature": 0.1, "max_tokens": 200},
+            json={
+                "model": self.MODEL,
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 1000,
+                "response_format": {"type": "json_object"},
+            },
         )
         resp.raise_for_status()
         return resp.json()
+
+    @staticmethod
+    def _extract_content(resp: dict[str, Any]) -> str:
+        """Extract JSON content. Prefers `choices[0].message.content`; if null,
+        attempts `reasoning` field (m2.5 reasoning model fallback)."""
+        msg = resp["choices"][0]["message"]
+        content = msg.get("content")
+        if content:
+            return content
+        # Reasoning model fallback: try to extract JSON from `reasoning` field
+        reasoning = msg.get("reasoning") or ""
+        if reasoning:
+            # Look for JSON object in reasoning
+            import re
+            match = re.search(r"\{[^{}]*\"label\"[^{}]*\}", reasoning, re.DOTALL)
+            if match:
+                return match.group(0)
+        # Both empty: signal to caller via empty string
+        return ""
 
     def _check_circuit(self) -> None:
         if time.monotonic() < self._circuit_open_until:
@@ -104,16 +146,22 @@ class MinimaxClassifier:
         self._record_success()
 
         latency_ms = int((time.monotonic() - start) * 1000)
-        content = resp["choices"][0]["message"]["content"]
+        content = self._extract_content(resp)
 
         try:
+            if not content:
+                raise ValidationError.from_exception_data(
+                    "ClassificationOutput", [
+                        {"type": "missing", "loc": ("content",), "msg": "empty response"}
+                    ]
+                ) if False else ValueError("empty response from API (content+reasoning both null)")
             parsed = ClassificationOutput.model_validate_json(content)
-        except ValidationError:
+        except (ValidationError, ValueError):
             # Retry once (PR #311 pattern); if second fail propagate
-            messages.append({"role": "assistant", "content": content})
-            messages.append({"role": "user", "content": "Output was not valid JSON. Re-emit ONLY the JSON object."})
+            messages.append({"role": "assistant", "content": content or "(empty)"})
+            messages.append({"role": "user", "content": "Output was not valid JSON. Re-emit ONLY the JSON object: {\"reasoning\": \"...\", \"label\": \"normal|anomaly|critical|uncertain\", \"confidence\": 0.0}"})
             resp2 = await self._call_api(messages)
-            content2 = resp2["choices"][0]["message"]["content"]
+            content2 = self._extract_content(resp2)
             parsed = ClassificationOutput.model_validate_json(content2)
 
         usage = resp.get("usage", {})
