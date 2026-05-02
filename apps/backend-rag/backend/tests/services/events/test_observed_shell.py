@@ -17,18 +17,14 @@ from __future__ import annotations
 import datetime as dt
 import decimal
 import json
-import pathlib
-import tempfile
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
 
 from backend.services.events import observed_shell
 from backend.services.events.observed_shell import (
-    JSONL_FALLBACK,
     ObservedShellBus,
-    VALID_STATUSES,
     emit_one,
 )
 

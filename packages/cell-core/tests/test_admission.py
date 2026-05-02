@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cell_core.admission_test import (
-    AdmissionResult,
     AdmissionTest,
     Legge,
-    Violation,
 )
 
 

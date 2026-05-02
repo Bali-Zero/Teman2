@@ -118,7 +118,11 @@ class AdmissionTest:
         """Run every registered check against the cell definition."""
         cell_name = cell_definition.get("name", "<unnamed>")
         violations: list[Violation] = []
-        for legge in Legge:
+        # Iterate explicitly over Legge enum members. CodeQL Python's
+        # py/non-iterable-in-for-loop heuristic doesn't recognize Enum
+        # iteration via metaclass — using `list(Legge)` is functionally
+        # identical and bypasses the false positive.
+        for legge in list(Legge):
             check = self.CHECKS.get(legge)
             if check is None:
                 violations.append(
