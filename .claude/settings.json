@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.claude.com/schema/claude-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(.claude/scripts/codex-spalla.sh:*)",
+      "Bash(./scripts/ai-dispatch.sh:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/codex-spalla-trigger.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

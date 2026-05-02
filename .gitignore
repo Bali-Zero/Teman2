@@ -420,6 +420,15 @@ openclaw
 
 .aider*
 .claude/
+# Track shared Claude Code project assets (commands, helper scripts, hooks, settings)
+# while still ignoring local artifacts (settings.local.json, locks/, handovers/).
+# Pattern: re-include directories first, then specific files, leaving everything else ignored.
+!.claude/
+.claude/*
+!.claude/commands/
+!.claude/scripts/
+!.claude/hooks/
+!.claude/settings.json
 .serena/
 OPENCLAW_MASTER_GUIDE_2026.md
 
