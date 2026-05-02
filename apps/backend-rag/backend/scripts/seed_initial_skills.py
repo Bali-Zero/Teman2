@@ -231,6 +231,77 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "confidence": 0.85,
     },
 
+    # ─── crm cell — renewals domain (Sprint 1.A 2026-05-02) ───────
+    {
+        "cell": "crm",
+        "skill_id": "crm:detect_expiring_kitas",
+        "procedure": (
+            "Query clients table for KITAS expiring in [today, today + N days]. "
+            "Return list of (client_id, days_until_expiry, kitas_expiry_date) "
+            "ordered by urgency. Source column: clients.kitas_expiry_date. "
+            "Filter out clients with deleted_at IS NOT NULL."
+        ),
+        "precondition": "kitas_expiry_date populated for active clients (data quality assumption).",
+        "success_criterion": "All clients with KITAS expiring within window are returned, none missed.",
+        "confidence": 0.6,
+        "domain": "crm",
+    },
+    {
+        "cell": "crm",
+        "skill_id": "crm:propose_renewal_outreach",
+        "procedure": (
+            "For each (client_id, days_until_expiry) from detect_expiring_kitas, "
+            "build a Proposal with channel='whatsapp', urgency = "
+            "{<=7d: 'critical', <=30d: 'high', <=60d: 'medium', else: 'low'}, "
+            "and a one-line reasoning string. Skip clients with last_outreach < 14 days ago."
+        ),
+        "precondition": "crm:detect_expiring_kitas produced at least one candidate.",
+        "success_criterion": "One Proposal per eligible client; correct urgency tier; no duplicates within 14d.",
+        "confidence": 0.6,
+        "domain": "crm",
+    },
+    {
+        "cell": "crm",
+        "skill_id": "crm:draft_wa_renewal_message",
+        "procedure": (
+            "Generate WhatsApp draft via Ollama deepseek-r1:32b on Pro local. "
+            "Template parameters: client.full_name, kitas_expiry_date, days_until_expiry, "
+            "client.preferred_language (default 'en'). Output <= 1000 chars. "
+            "Never include NPWP / NIB / passport in payload outside Pro local."
+        ),
+        "precondition": "Proposal approved by Zero via Telegram; client.phone populated.",
+        "success_criterion": "Draft text generated, locale-correct, <= 1000 chars, zero PII leakage.",
+        "confidence": 0.6,
+        "domain": "crm",
+    },
+    {
+        "cell": "crm",
+        "skill_id": "crm:measure_renewal_conversion",
+        "procedure": (
+            "Cron 24h post-execute: SELECT outcome FROM renewal_alert_outcomes "
+            "WHERE alert_id IN (recent_proposals_24h) GROUP BY outcome. "
+            "Compute conversion_rate = client_renewed / total_executed. "
+            "Store in materialized view renewal_baseline_2024_2026 (Sprint 0 §3.4)."
+        ),
+        "precondition": "Outreach Proposal executed at least 24h ago; renewal_alert_outcomes populated.",
+        "success_criterion": "Conversion rate computed per (skill, segment) tuple; updated weekly.",
+        "confidence": 0.6,
+        "domain": "crm",
+    },
+    {
+        "cell": "crm",
+        "skill_id": "crm:update_renewal_confidence",
+        "procedure": (
+            "Lamarckian update: on outcome='client_renewed' bump confidence by +0.05 (max 0.95). "
+            "On outcome='expired_no_action' decay confidence by -0.10 (min 0.10). "
+            "Call Genome.record_skill with new confidence; valid_from = NOW()."
+        ),
+        "precondition": "At least N=10 outcomes observed for this skill in last 30 days.",
+        "success_criterion": "Confidence drifts toward empirical conversion_rate over time; bounded [0.10, 0.95].",
+        "confidence": 0.6,
+        "domain": "crm",
+    },
+
     # ─── visa / oracle cell ───────────────────────────────────────
     {
         "cell": "visa_oracle",
@@ -473,6 +544,7 @@ def apply_seed(seeds: list[dict[str, Any]], genome) -> dict[str, int]:
                 success_criterion=s["success_criterion"],
                 confidence=s.get("confidence", 0.6),
                 scope=s.get("scope", "Project"),
+                domain=s.get("domain", "generic"),
             )
             counts[action] += 1
         except Exception as exc:
