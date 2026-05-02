@@ -71,24 +71,31 @@ class Collector:
                 self._classification_queue.task_done()
 
     async def _replay_outbox_unconsumed(self, conn: asyncpg.Connection) -> None:
+        # Schema reference: migration 144 created events_outbox with PK
+        # column "id" (BIGSERIAL), NOT "outbox_id". Confirmed in production
+        # schema 2026-05-02 via psql introspection. The Python-side variable
+        # _outbox_id is a contract with downstream consumers — we inject it
+        # into the payload for dedup/replay correlation.
         rows = await conn.fetch(
-            "SELECT outbox_id, payload FROM events_outbox "
+            "SELECT id, payload FROM events_outbox "
             "WHERE channel='cell_pulse_observed' AND consumed_at IS NULL "
-            "ORDER BY outbox_id ASC LIMIT 1000"
+            "ORDER BY id ASC LIMIT 1000"
         )
         for row in rows:
             try:
-                payload = json.loads(row["payload"])
-                payload["_outbox_id"] = row["outbox_id"]
+                raw = row["payload"]
+                payload = raw if isinstance(raw, dict) else json.loads(raw)
+                outbox_id = int(row["id"])
+                payload["_outbox_id"] = outbox_id
                 inserted = await self.storage.insert_pulse_event(payload)
                 if inserted:
                     self._enqueue_for_classification(payload)
                 await conn.execute(
-                    "UPDATE events_outbox SET consumed_at=NOW() WHERE outbox_id=$1",
-                    row["outbox_id"],
+                    "UPDATE events_outbox SET consumed_at=NOW() WHERE id=$1",
+                    outbox_id,
                 )
             except Exception as exc:
-                log.warning("replay row failed", outbox_id=row["outbox_id"], error=str(exc))
+                log.warning("replay row failed", outbox_id=row["id"], error=str(exc))
 
     def _on_notify(self, conn, pid, channel, payload_str):
         try:
