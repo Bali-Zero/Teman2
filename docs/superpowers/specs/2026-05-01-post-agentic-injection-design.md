@@ -1,8 +1,16 @@
 # Era Post-Agentica — Iniezione Cell + Genoma via vertical-slice renewals
 
-**Data**: 2026-05-01
+**Data**: 2026-05-01 (revisione 2026-05-02 §3.3.2 + §3.3.6 + §4 Sprint 1-2)
 **Autore**: Claude Opus 4.7 (max effort, 1M context) in dialogo con Antonello (Zero)
-**Branch propost**: `feature/post-agentic-injection-2026-05-01`
+**Branch propost**: `feature/post-agentic-injection-2026-05-01` (Sprint 0 done) → `feat/post-agentic-skill-registry-2026-05-02` + `feat/post-agentic-heartbeat-middleware-2026-05-02` (Sprint 1)
+
+**Changelog 2026-05-02**:
+
+- §3.3.2: rimosso `packages/nuzantara-skills/` (era ridondante — `cell_core.genome` già skill registry full-featured); Sprint 1.A diventa estensione SEED_SKILLS (1 giorno invece di 3-4)
+- §3.3.6 NUOVO: coordinamento con Cell Pulse Observatory Fase 0 (PRs #406-415 in `main`)
+- §4 Sprint 1: scope reframed in 2-strato Air-parallel (1.A + 1.B) + 1.C deferred per coordination Observatory
+- §4 Sprint 2: scope ridotto perché 50% già fatto in Sprint 1.A
+
 **Riferimenti autoritativi**:
 
 - `SYMBIOSIS.md` (7 Leggi inviolabili)
@@ -40,7 +48,7 @@ Quattro angoli LLM consultati in parallelo:
 
 **Verdetto: Approccio 3 (Doppio binario) — 3 voti su 4.**
 
-La critica di Gemini (state fragmentation) è valida e indirizzata: il routing shadow-vs-sandbox **non vive in Cell**, vive in un **dispatcher esterno** (`packages/nuzantara-skills/dispatcher.py`). Cell ha un single output path (proposal); la complessità di branching sta in 30 righe di dispatcher testabile in isolation.
+La critica di Gemini (state fragmentation) è valida e indirizzata: il routing shadow-vs-sandbox **non vive in Cell**, vive in un **dispatcher esterno** (`apps/backend-rag/backend/services/skill/dispatcher.py`, NUOVO — sibling di `service.py` esistente). Cell ha un single output path (proposal); la complessità di branching sta in 30 righe di dispatcher testabile in isolation.
 
 **Approccio scelto**: Approccio 3 con **mitigazione architetturale Gemini** (dispatcher esterno, Cell single-output).
 
@@ -52,10 +60,10 @@ La critica di Gemini (state fragmentation) è valida e indirizzata: il routing s
 
 L'iniezione si compone di **2 strati che vivono insieme dal day 1**, non in fasi temporali separate:
 
-| Strato                 | Cosa                                                                                  | Rispetto SYMBIOSIS                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| **C base**             | Heartbeat tutti gli organi, Genoma auto-discovery, governatore omeostatico            | Pilastri 4 (graceful degradation), 6 (sovranità locale), 7 (numeri prima) |
-| **B-1 vertical slice** | Skill registry condiviso `packages/nuzantara-skills/`, primo dominio = renewals KITAS | Pilastri 1 (CLI-only), 3 (event-driven), 5 (Zero ultima istanza)          |
+| Strato                 | Cosa                                                                                              | Rispetto SYMBIOSIS                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **C base**             | Heartbeat tutti gli organi, Genoma auto-discovery, governatore omeostatico                        | Pilastri 4 (graceful degradation), 6 (sovranità locale), 7 (numeri prima) |
+| **B-1 vertical slice** | Skill registry esistente (`cell_core.genome`) + 5 skill renewals seed + dispatcher + Consiglio v2 | Pilastri 1 (CLI-only), 3 (event-driven), 5 (Zero ultima istanza)          |
 
 C base costruisce le fondamenta che reggono B-1. B-1 è il primo dominio dove l'organismo _vive_ e _decide_. Senza C base, B-1 decide su dati ciechi. Senza B-1, C base è solo un osservatorio passivo.
 
@@ -63,7 +71,7 @@ C base costruisce le fondamenta che reggono B-1. B-1 è il primo dominio dove l'
 
 ```
 [Sensors]                    [Cortex]                   [Dispatcher]                 [Outcome]
-visa_expiry_team_notifier →  Cell skill_library    →    nuzantara-skills/         →  renewal_alert_outcomes
+visa_expiry_team_notifier →  Cell skill_library    →    skill/dispatcher.py       →  renewal_alert_outcomes
 renewal_alerts (m007+080b)   propose(skill_name,        dispatcher.dispatch()         (acted_by_team |
 predictive_engine            payload, confidence)       │                              client_renewed |
                                                         ├── tier-3 + value<2K USD →    client_ignored |
@@ -81,7 +89,7 @@ predictive_engine            payload, confidence)       │                     
 
 ### 3.3 Componenti
 
-#### 3.3.1 Dispatcher (`packages/nuzantara-skills/dispatcher.py`, NUOVO)
+#### 3.3.1 Dispatcher (`apps/backend-rag/backend/services/skill/dispatcher.py`, NUOVO)
 
 ```python
 def dispatch(proposal: Proposal) -> DispatchResult:
@@ -99,19 +107,32 @@ def dispatch(proposal: Proposal) -> DispatchResult:
 
 Single point of branching. Cell non sa cosa succede dopo la `propose()`.
 
-#### 3.3.2 Skill registry condiviso (`packages/nuzantara-skills/`, NUOVO)
+#### 3.3.2 Skill registry — usa `cell_core.genome` esistente (NON nuovo package)
 
-5 skill iniziali per dominio renewals KITAS:
+> **Discovery 2026-05-02 (durante Sprint 1 planning su Air)**: il "gap 3" originale del brief ("Cell isolata dal Cortex, no skill registry condivisa") **NON era un gap reale**. La realtà del codebase:
+>
+> - **`packages/cell-core/cell_core/genome.py`** è già un skill registry full-featured: SQLite + FTS5, tier1/tier2, 11 HGT domains canonici (`visa`/`tax`/`kbli`/`property`/`legal`/`crm`/`news`/`architecture`/`rag`/`graph`/`generic`), confidence/uses/last_used, valid_to per epigenetic silencing, inherited_from per HGT.
+> - **`apps/backend-rag/backend/services/skill/service.py`** è già un wrapper Genome con graceful-degradation (no-op se cell_core non importable).
+> - **`apps/backend-rag/backend/services/learner/`** è già un orchestrator nightly che chiama `record_skill` / `record_scar` su outcome osservati.
+> - **`apps/backend-rag/backend/scripts/seed_initial_skills.py`** è già un seeder con ~32 skill curated (cell="experience"/"rag"/"crm"/etc., procedure/precondition/success_criterion/confidence iniziale).
+>
+> Il design originale aveva proposto un nuovo `packages/nuzantara-skills/` ridondante. Cancellato.
 
-| Skill                     | Trigger                                       | Output                                                                       |
-| ------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
-| `detect_expiring_kitas`   | Sensor reading da `clients.kitas_expiry_date` | Set di `client_id` con expiring 0-90d                                        |
-| `propose_outreach`        | `detect_expiring_kitas` output                | `Proposal(skill_name='outreach', client_id, channel, urgency)`               |
-| `draft_wa_message`        | Su `propose_outreach` approved                | Template WA personalizzato (per ora: italiano per Zero, dopo: bahasa client) |
-| `measure_conversion`      | Cron 24h post-execute                         | Calcola conversion rate per skill+segment                                    |
-| `update_skill_confidence` | Output di `measure_conversion`                | Lamarckian: aggiorna `skill_library.confidence`                              |
+**Scope reale Sprint 1.A (semplificato)**: aggiungere ~5 skill renewals al SEED_SKILLS list di `seed_initial_skills.py`, run `--apply` su prod genome.
 
-Le skill vivono in `packages/nuzantara-skills/` perché **entrambi** Cell e backend-rag le importano. Backend-rag le usa per esporre endpoint MCP; Cell le usa per popolare cortex.skill*library. Single source of truth per \_vocabolario di azione*.
+| Skill ID                         | Cell | Domain | Procedure (sintesi)                                               |
+| -------------------------------- | ---- | ------ | ----------------------------------------------------------------- |
+| `crm:detect_expiring_kitas`      | crm  | crm    | Query `clients.kitas_expiry_date` between [today, today+90d]      |
+| `crm:propose_renewal_outreach`   | crm  | crm    | Generate Proposal(client_id, channel=WA, urgency by days_left)    |
+| `crm:draft_wa_renewal_message`   | crm  | crm    | Template via Ollama deepseek-r1, locale=client.preferred_language |
+| `crm:measure_renewal_conversion` | crm  | crm    | Cron 24h post-execute → join renewal_alert_outcomes               |
+| `crm:update_renewal_confidence`  | crm  | crm    | Lamarckian: bump confidence on outcome=client_renewed             |
+
+Cell consumer: `apps/cell/cell/cortex/skill_library.py` (esistente) o nuovo modulo crm-aware. Backend-rag consumer: `apps/backend-rag/backend/services/skill/service.py` (esistente).
+
+**Costo build**: 1 giorno (era 3-4 nel design originale). Single source of truth confermato: `cell_core.genome` SQLite at `~/.nuzantara/experience.db`.
+
+**Implication su Sprint 2**: anche Sprint 2 ("Skill renewals + Cell wire-up") è in larga parte già fatto. Le 5 skill proposte sopra coprono Sprint 2 §1; restano §3 (sensor `kitas_renewal_sensor`) e §4 (shadow path attivo + sandbox stubbed). Cell `cortex.skill_library` import da package condiviso §2 è già live.
 
 #### 3.3.3 Consiglio v2 mono-LLM locale (`apps/organism/organism/supervisor/consiglio_v2.py`, NUOVO)
 
@@ -147,6 +168,32 @@ Middleware FastAPI che chiama `emit_organ_last_seen('backend.api', 'ok')` ogni 6
 
 Risolve gap 2. Costo: ~50 righe totali di codice. Sblocca `genome_aggregator_sensor` per classificare correttamente questi organi.
 
+#### 3.3.6 Coordinamento con Cell Pulse Observatory (Fase 0 progetto parallelo)
+
+> **Discovery 2026-05-02 (Air session)**: durante la pausa post-Sprint 0, è stato shippato in `main` un progetto parallelo "Cell Pulse Observatory Fase 0" (PRs #406-415) — observability-only baseline empirico di pulse events + classifier MiniMax M2. Stato corrente: PR-0..PR-4 merged; PR-5 partial (smoke test + rollback scripts shipped, **organism cell activation + 48h obs window NON ancora done**); PR-6/PR-7 pending.
+
+Spec autoritativa: `docs/superpowers/specs/2026-05-01-cell-observatory-fase0-design.md`.
+
+**Touchpoint condivisi con Sprint 1 Era Post-Agentica**:
+
+| Componente                                    | Observatory                                    | Sprint 1 Era Post-Agentica            | Conflict?                                                 |
+| --------------------------------------------- | ---------------------------------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `packages/cell-core/cell_core/genome.py`      | non tocca                                      | Sprint 1.A estende SEED_SKILLS        | Zero — read-only su Genome, append seed                   |
+| `packages/cell-core/cell_core/observatory.py` | introdotto da Observatory PR-1                 | non tocca                             | Zero                                                      |
+| `packages/cell-core/cell_core/pulse.py`       | hook `emit_pulse_observed` (Observatory PR-1)  | possibile heartbeat hook              | Manageable se entrambi fire-and-forget pattern            |
+| `events_outbox` PG channel                    | `cell_pulse_observed` (Observatory PR-2)       | heartbeat usa state file (non outbox) | Zero — heartbeat sceglie state file approach (Pilastro 4) |
+| `apps/cell/cell/main.py`                      | non tocca                                      | non tocca in Sprint 1.A/B             | Zero                                                      |
+| `com.cell.organism.plist`                     | Observatory PR-5 Task 5.3 aggiunge env var     | Sprint 1.C aggiungerebbe heartbeat    | DEFER Sprint 1.C finché Observatory PR-5 done + 48h obs   |
+| `apps/organism/organism/genome.yaml`          | Observatory **non** enrolling cells nel Genoma | Sprint 1.C enroll 32 organi mancanti  | Zero diretto                                              |
+
+**Strategia coordinamento**: Strategia 2 — parallel scope-isolated.
+
+- **Sprint 1.A (skill registry extension)** parte ora da Air, branch `feat/post-agentic-skill-registry-2026-05-02`. Touchpoint: solo `seed_initial_skills.py`. Zero conflict.
+- **Sprint 1.B (heartbeat middleware)** parte ora da Air, branch `feat/post-agentic-heartbeat-middleware-2026-05-02`. Touchpoint: solo `apps/backend-rag/backend/app/middleware/`. Zero conflict.
+- **Sprint 1.C (Genoma auto-discovery + heartbeat sweep su organism cell)** **DEFERRED** finché Observatory PR-5 Task 5.3 (organism cell activation) + 48h observation window passed + PR-6/PR-7 done. Stima ritardo: 3-7 giorni.
+
+**Marker tracciato in MOS**: decision id 2041 (saved 2026-05-02), summary in `MEMORY.md` Coordination section.
+
 ### 3.4 Database schema additions
 
 Tre migration nuove (Sprint 0 step 2+3 paralleli, Step 1 ricorrente vivo):
@@ -175,26 +222,34 @@ Tre migration nuove (Sprint 0 step 2+3 paralleli, Step 1 ricorrente vivo):
 
 **Critica del piano originale corretta in D**: il baseline retroattivo NON è un job batch one-off. Diventa un _organo vivo_ che ri-computa retroattivamente ogni settimana. Più Lamarckian, più SYMBIOSIS.
 
-### Sprint 1 — C base + skill registry skeleton (settimane 1-2)
+### Sprint 1 — C base + skill registry extension (riformulato 2026-05-02)
 
-Lavoro in parallelo via worktree (cf. `superpowers:dispatching-parallel-agents`):
+> **Reframe post-discovery**: scope ridotto da 3-strato a **2-strato Air-side parallel** + 1 strato Pro-side deferred. La discovery del 2026-05-02 (cf. §3.3.2 e §3.3.6) ha rivelato che il "skill registry" è già live in `cell_core.genome`; non serve nuovo package. Sprint 1.C deferred per coordinamento Observatory.
 
-| Worktree                    | Cosa                                                                                                 | Stima      |
-| --------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
-| `worktree-c-base-heartbeat` | Heartbeat middleware backend.api + 4 channel; `pyproject.toml` shim per `emit_organ_last_seen` reuso | 4-5 giorni |
-| `worktree-c-base-discovery` | Script `discover_organisms.py` + cron LaunchAgent + PR template                                      | 2-3 giorni |
-| `worktree-skills-skeleton`  | `packages/nuzantara-skills/` setup (pyproject, base classes `Skill`, `Proposal`, `DispatchResult`)   | 3 giorni   |
+Lavoro in parallelo (cf. `superpowers:dispatching-parallel-agents`):
 
-Wave 0 di `09_migration_plan.md` viene completata qui (Genoma + Supervisor deploy + scheduled_tick) — è prerequisito hard.
+| Sub-sprint | Branch                                              | Cosa                                                                                              | Stima      | Status         |
+| ---------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- | -------------- |
+| **1.A**    | `feat/post-agentic-skill-registry-2026-05-02`       | Estendi `SEED_SKILLS` in `seed_initial_skills.py` con 5 skill renewals (cell="crm", domain="crm") | 1 giorno   | Air, parte ora |
+| **1.B**    | `feat/post-agentic-heartbeat-middleware-2026-05-02` | FastAPI middleware `backend.api` + 4 channel webhook handlers `emit_organ_last_seen`              | 4-5 giorni | Air, parte ora |
+| **1.C**    | `feat/post-agentic-genoma-discovery-2026-05-XX`     | `discover_organisms.py` + cron LaunchAgent + heartbeat sweep su organism cell + plist edits       | 2-3 giorni | **DEFERRED**   |
 
-### Sprint 2 — Skill renewals + Cell wire-up (settimane 3-4)
+**Sprint 1.C deferred condition**: Observatory PR-5 Task 5.3 done + 48h observation window passed + PR-6/PR-7 merged. Cf. §3.3.6.
+
+Wave 0 di `09_migration_plan.md` (Genoma + Supervisor deploy + scheduled_tick) **NON è prerequisito Sprint 1.A/B** (era prerequisito Sprint 1.C). Defer wave 0 con Sprint 1.C.
+
+### Sprint 2 — Skill renewals consumer + Cell wire-up (riformulato)
+
+> **Reframe**: in larga parte già fatto in Sprint 1.A. Resta:
 
 Sequenziale (no parallel, runtime impact):
 
-1. 5 skill renewals concrete in `packages/nuzantara-skills/renewals/`
-2. Cell `cortex.skill_library` import da package condiviso (refactor `apps/cell/cell/cortex/skill_library.py` → wrapper)
-3. Sensor `kitas_renewal_sensor` (estende `compliance/visa_expiry_team_notifier.py`)
-4. **Shadow path attivo, sandbox path stubbed** (`execute_sandbox = NotImplementedError`)
+1. ~~5 skill renewals concrete~~ — fatto in Sprint 1.A (seed in genome)
+2. ~~Cell `cortex.skill_library` import da package condiviso~~ — già live (`cell_core.genome` accesso diretto via `apps/cell/cell/cortex/skill_library.py` esistente, no refactor needed)
+3. **Sensor `kitas_renewal_sensor`** (estende `compliance/visa_expiry_team_notifier.py`) — gap reale, da implementare
+4. **Shadow path attivo, sandbox path stubbed** (`execute_sandbox = NotImplementedError`) — gap reale, da implementare
+
+Stima Sprint 2 effettiva: ~3-4 giorni invece di 2 settimane originali.
 
 ### Sprint 3 — Sandbox path + Consiglio v2 (settimane 5-6)
 
@@ -444,10 +499,9 @@ Se anche **uno** sfora → Sprint 5 NON parte, Sprint 4 esteso di 2 settimane pe
 
 ## 10. Riferimenti tecnici da costruire
 
-- `packages/nuzantara-skills/__init__.py`
-- `packages/nuzantara-skills/dispatcher.py`
-- `packages/nuzantara-skills/base.py` (`Skill`, `Proposal`, `DispatchResult` classes)
-- `packages/nuzantara-skills/renewals/{detect_expiring_kitas,propose_outreach,draft_wa_message,measure_conversion,update_skill_confidence}.py`
+- `apps/backend-rag/backend/services/skill/dispatcher.py` (NUOVO — sibling of existing `service.py`)
+- 5 nuove righe nel `SEED_SKILLS` di `apps/backend-rag/backend/scripts/seed_initial_skills.py` (skill_id `crm:detect_expiring_kitas`, `crm:propose_renewal_outreach`, `crm:draft_wa_renewal_message`, `crm:measure_renewal_conversion`, `crm:update_renewal_confidence`)
+- (Skill registry storage: `cell_core.genome` already provides — no new files)
 - `apps/backend-rag/backend/app/middleware/heartbeat.py`
 - `apps/backend-rag/backend/db/migrations_v2/149_client_segments.sql`
 - `apps/backend-rag/backend/db/migrations_v2/150_renewal_alert_outcomes.sql`
@@ -457,7 +511,7 @@ Se anche **uno** sfora → Sprint 5 NON parte, Sprint 4 esteso di 2 settimane pe
 
 Refactor:
 
-- `apps/cell/cell/cortex/skill_library.py` → wrapper attorno `packages/nuzantara-skills/`
+- `apps/cell/cell/cortex/skill_library.py` — already uses `cell_core.genome` (no refactor needed; verify import patterns are consistent with backend-rag's `services/skill/service.py`)
 - `apps/organism/organism/genome.yaml` → +32 organi via auto-discovery PR
 - `apps/organism/organism/supervisor/consiglio_gate.py` → estende `_CONSIGLIO_GATED_ACTIONS` con dominio business
 
