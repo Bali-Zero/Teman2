@@ -5,6 +5,99 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
+
+_Discovered: 2026-05-02 during Sprint 1.B Era Post-Agentica deploy — 3 hotfix
+PRs (#423, #424) chained on the original PR #422 because tests were green
+but live endpoints failed. Severity: P1 — every new endpoint addition is at risk._
+
+**TRAUMA:** Sprint 1.B PR #422 added a new FastAPI router
+`apps/backend-rag/backend/app/routers/channel_health.py` exposing
+`GET /api/channels/{name}/health` for Cell-side heartbeat bridge. Unit tests
+all green (4/4), but on prod:
+
+1. **First curl** post-deploy → `401 {"detail":"Authentication required"}`. Cause:
+   `HybridAuthMiddleware` blocks all `/api/*` paths not in `PUBLIC_ENDPOINTS` registry.
+   Test `_build_app_with_db_pool()` mounted only the router, NOT the middleware
+   stack, so auth was never exercised. Fixed by hotfix #423 — added 4 exact-match
+   entries in `_INFRA` group of `apps/backend-rag/backend/app/auth/public_endpoints.py`.
+2. **Second curl** post-deploy of #423 → `404 {"detail":"Not found"}`. Cause:
+   the new router was added to `router_manifest.py` as `RouterEntry(name="channel_health", ...)`
+   but `router_registration.py` uses **explicit imports**, not the manifest. The
+   manifest is read by tests (`test_router_manifest.py`) but NOT by the runtime
+   `include_routers()` and `include_light_routers()` functions. Fixed by hotfix
+   #424 — added `from backend.app.routers import channel_health` (×2) and
+   `api.include_router(channel_health.router)` (×2) in router_registration.py.
+3. After deploy of #424, all 4 endpoints returned 200 + valid JSON.
+
+The 3-PR chain (#422 → #423 → #424) cost ~2 hours of CI/deploy/curl cycles
+that could have been avoided if the test infrastructure exercised the full
+production stack (middleware + manifest-vs-registration drift).
+
+**ANTIBODY (proposed but not yet implemented in code):**
+
+1. **Integration test layer** — `apps/backend-rag/backend/tests/integration/test_endpoints_reachable.py`
+   that mounts the full `main_api` (or `main`) FastAPI app via `create_app()`
+   and `httpx.AsyncClient(app=app, base_url="http://test")`, then GETs every
+   route returned by `app.routes`. For each path:
+   - Expect 401 (if not in PUBLIC_ENDPOINTS) or 200/404/422 (if public).
+   - Any new path that returns 404 → test fails.
+   - Any new path with `health` in URL that returns 401 → flag as candidate
+     for PUBLIC_ENDPOINTS review.
+
+2. **Manifest-vs-registration parity test** — `backend/tests/setup/test_manifest_parity.py`:
+   - Read `ROUTER_MANIFEST` from `router_manifest.py`.
+   - Read `include_routers()` source via `inspect.getsource()` and grep for
+     `include_router(<name>.router)` calls.
+   - Assert every `RouterEntry(name=X)` with `process_groups` containing
+     `_API` or `_BOTH` has a matching `api.include_router(X.router)` call
+     in both `include_routers` AND `include_light_routers`.
+   - Catches drift the moment a new manifest entry is added without the
+     corresponding explicit imports.
+
+3. **Public endpoint registry test extension** —
+   `tests/test_public_endpoints_registry.py` already enforces "every registered
+   path resolves to a mounted route". Add the inverse: every route with
+   `/api/.*/health` or `/api/.*/heartbeat` pattern that is NOT in PUBLIC_ENDPOINTS
+   triggers a test warning (not failure — some health endpoints are intentionally
+   admin-only, like `/api/channels/health`). Reviewer must explicitly mark
+   `# health-private: <reason>` in the route handler to silence the warning.
+
+**GOTCHA:**
+
+- The test mock `_build_app_with_db_pool()` in
+  `backend/tests/unit/app/routers/test_channel_health.py` is the canonical
+  pattern for new router unit tests. It is **intentionally minimal** — it
+  does not mount middleware. That is correct for unit tests of router logic.
+  The bug class is the *absence* of a complementary integration layer, not
+  the unit test pattern itself.
+- `router_manifest.py` has a SCAR comment at the top referring to PRs
+  #54/#55/#60 ("registered routers only in include_routers() but not
+  include_light_routers()"). Sprint 1.B Sprint 1.B PR #422 is a **regression**:
+  same scar class, different surface. The manifest was created to "make this
+  structurally impossible to repeat" — but only for the symmetric case of
+  routers added to one include function but missed in the other. It does NOT
+  catch routers added ONLY to the manifest with no include_router call at all.
+- `HybridAuthMiddleware.__init__` logs `Public Endpoints: {len(self.public_endpoints)}`
+  at FastAPI startup. After PR #423 the count went from N to N+4. The log line
+  is grep-able as a sanity check after every public-endpoint PR — but only
+  on Fly machines, not CI.
+- Required CI checks (E2E + MCP + Frontend + Detect Secrets) did NOT catch
+  any of the 3 issues. E2E Tests touches frontend only; backend route mounting
+  drift is not exercised. Adding the 3 antibody tests above costs ~50ms each
+  in CI, no infra needed.
+
+Sprint timeline reference (Sprint 1.B Era Post-Agentica, 2026-05-02):
+- 11:30 UTC PR #422 merged → deploy success → 401
+- 12:50 UTC PR #423 (public_endpoints) merged → deploy success → 404
+- 14:25 UTC PR #424 (router_registration) merged → deploy success → 200 ✅
+
+Brainstorm artifacts: none yet (this entry is post-mortem). Future agents
+implementing the antibody integration test should reference this scar as
+a self-contained reproduction.
+
+---
+
 ### ⚠️ STRUCTURAL: Untracked files lost when sibling automation switches branches mid-session (2026-04-29, twice in 9h)
 
 _Discovered: 2026-04-29 21:42 WITA (incident #1, FASE 1+2 doc-recovery from
