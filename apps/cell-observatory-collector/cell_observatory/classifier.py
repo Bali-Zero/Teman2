@@ -49,10 +49,19 @@ def _render_user_prompt(event: PulseEventV1) -> str:
 
 
 class MinimaxClassifier:
-    BASE_URL = "https://api.minimax.io/v1/chat/completions"
-    MODEL = "MiniMax-M2"
-    PRICE_INPUT_USD_PER_M = 0.30
-    PRICE_OUTPUT_USD_PER_M = 1.20
+    """
+    Routes through OpenRouter to minimax/minimax-m2.5:free (Track A activation
+    2026-05-02). Original direct minimax.io endpoint had insufficient_balance
+    on the user's account; OpenRouter free tier costs zero per call.
+
+    Switch to a paid model (e.g. `minimax/minimax-m2.7` at $0.30/M input,
+    $1.20/M output) by overriding MODEL via OBSERVATORY_CLASSIFIER_MODEL env.
+    """
+    BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
+    MODEL = "minimax/minimax-m2.5:free"
+    # Pricing fields preserved for cost ledger semantics — set to 0 for :free.
+    PRICE_INPUT_USD_PER_M = 0.0
+    PRICE_OUTPUT_USD_PER_M = 0.0
 
     def __init__(self, api_key: str, circuit_threshold: int = 5,
                  circuit_recovery_s: float = 60.0):
