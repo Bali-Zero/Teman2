@@ -367,3 +367,76 @@ def test_intel_scraper_cell_drift_blocks_when_fields_missing(tmp_path: Path) -> 
         v.legge == Legge.ZERO_FINAL_INSTANCE and v.severity == "blocker"
         for v in result.violations
     ), result.summary()
+
+
+# ── Sprint 1 W2 — hgt-coordinator-cell admission entry ────────────────────
+
+
+def _hgt_coordinator_cell() -> dict:
+    """Cell definition for the HGT coordinator quarantine layer.
+
+    The coordinator is CLI-only (OpenClaw Kimi K2.6 invokes
+    ``python -m cell_core.hgt_coordinator.cli observe`` — no GUI), reads
+    Redis Stream cell:skills (substrate-only, OSINT blindato N/A — the
+    stream is internal cell traffic, not external scraping), publishes
+    NOTHING (it's a propose-only observer; consumer of cell:skills, NOT
+    a producer of new pg_notify channels), degrades to [] when Redis is
+    down, leaves Zero as final instance via the SQLite audit log
+    (humans + Kimi review pending rows; no auto-merge), runs locally
+    with SQLite per-machine (Local Sovereignty doctrine — JSONL
+    canonical / SQLite per-machine outside git tree per ADR
+    federation-bus.md), and declares ≥3 quantitative metrics.
+    """
+    return {
+        "name": "hgt-coordinator-cell",
+        "level": "L2",
+        "exposes_gui": False,
+        "llm_invocation": "none",  # python coordinator has no LLM call;
+                                    # Kimi K2.6 OpenClaw agent runs
+                                    # *outside* this cell and uses
+                                    # OpenClaw OAuth/OpenRouter, not the
+                                    # python module.
+        "external_sources": [],     # cell:skills is internal substrate
+        "client_data_access": False,
+        "publishes_via": "consumer_only",  # observes cell:skills, writes
+                                            # only to local SQLite — not
+                                            # a pg_notify producer
+        "fallback_modes": [
+            "redis_down",            # → return [] + warning
+            "sqlite_down",           # → propose_transfers raises;
+                                     # CLI returns exit 2 transient
+        ],
+        "kill_switch": True,         # disable agent in openclaw.json
+                                     # (sandbox.mode='off-disabled') OR
+                                     # remove agent entry entirely
+        "auto_publishes": False,     # propose-only — humans review via
+                                     # `cli resolve --status …`
+        "depends_on_other_cell_decisions": False,  # reads raw substrate
+                                                    # (cell:skills); does
+                                                    # NOT depend on any
+                                                    # other cell's
+                                                    # reasoning
+        "metrics": [
+            "proposals_emitted_per_run",
+            "proposals_resolved_within_72h",
+            "redis_read_latency_ms",
+            "audit_log_row_count",
+        ],
+    }
+
+
+def test_hgt_coordinator_cell_passes_admission() -> None:
+    """Sprint 1 W2 — quarantine layer must pass all 7 Leggi.
+
+    Reference: ``docs/cell-core/hgt-coordinator-quarantine.md`` §
+    Quarantine Guarantees, ``packages/cell-core/cell_core/hgt_coordinator/__init__.py``
+    docstring §, brainstorm round 2 § Q3.
+    """
+    cell = _hgt_coordinator_cell()
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is True, result.summary()
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        f"hgt-coordinator-cell must clear admission with zero blockers; got: "
+        f"{[(v.legge.value, v.message) for v in blockers]}"
+    )
