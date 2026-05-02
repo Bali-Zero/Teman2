@@ -58,10 +58,12 @@ class MinimaxClassifier:
     $1.20/M output) by overriding MODEL via OBSERVATORY_CLASSIFIER_MODEL env.
     """
     BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-    MODEL = "minimax/minimax-m2.5:free"
-    # Pricing fields preserved for cost ledger semantics — set to 0 for :free.
-    PRICE_INPUT_USD_PER_M = 0.0
-    PRICE_OUTPUT_USD_PER_M = 0.0
+    # Default to paid m2.7 (~$0.0001 per pulse classification, trivial for fase 0).
+    # The :free variant requires OpenRouter privacy "Free Model Usage" enabled —
+    # account guardrail blocks otherwise. Paid skips the guardrail.
+    MODEL = "minimax/minimax-m2.7"
+    PRICE_INPUT_USD_PER_M = 0.30
+    PRICE_OUTPUT_USD_PER_M = 1.20
 
     def __init__(self, api_key: str, circuit_threshold: int = 5,
                  circuit_recovery_s: float = 60.0):
