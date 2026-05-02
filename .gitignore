@@ -166,6 +166,7 @@ data/*.log
 data/qdrant_production_snapshots/
 data/flyio-export-*/
 data/kg_production_export/
+data/hgt_coordinator/
 benchmark_results/
 carousel-bali-traffic/output/
 carousel-bali-traffic/images/
