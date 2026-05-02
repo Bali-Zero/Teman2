@@ -38,6 +38,7 @@ def include_routers(api: FastAPI) -> None:
         blog_ask,
         bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge
         cell_status,  # [CELL] CELL organism dashboard status
+        channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
         collective_memory,
         conversations,
@@ -189,6 +190,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 
     # Channel system + Omnichannel router (unified inbox)
+    api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # Channel health, DLQ, unified conversations
     api.include_router(omnichannel.router)  # [NEW] Unified inbox threads API
 
@@ -407,6 +409,7 @@ def include_light_routers(api: FastAPI) -> None:
         auth,
         bridge,  # [BRIDGE] Pro<->Fly bidirectional bridge (Phase 1 Sinapsi)
         cell_status,
+        channel_health,  # [HEARTBEAT] Sprint 1.B 2026-05-02 — Cell-side bridge
         channels,  # Channel health, DLQ, unified conversations
         crm_analytics,
         crm_clients_documents,
@@ -519,6 +522,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(partners.router)  # [PARTNERS] /api/partners/* — CRM Partners module
 
     # Channel system + Omnichannel router (unified inbox)
+    api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # /api/channels (health, DLQ, conversations)
     api.include_router(omnichannel.router)  # /api/omnichannel (threads, assignment)
 
