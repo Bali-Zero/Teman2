@@ -1,10 +1,29 @@
-"""Tests for the 7 Leggi admission test framework — Sprint 0 Track C1."""
+"""Tests for the 7 Leggi admission test framework — Sprint 0 Track C1.
+
+Sprint 1 W1 added:
+- ``load_cell_definition`` (YAML / JSON loader)
+- intel-scraper-cell admission test against the on-disk cell.yaml
+"""
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+import pytest
+
 from cell_core.admission_test import (
     AdmissionTest,
+    CellDefinitionLoadError,
     Legge,
+    load_cell_definition,
+)
+
+
+# Repo root (cell.yaml lives at <repo>/apps/bali-intel-scraper/cell.yaml)
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_INTEL_SCRAPER_CELL_YAML = (
+    _REPO_ROOT / "apps" / "bali-intel-scraper" / "cell.yaml"
 )
 
 
@@ -222,3 +241,129 @@ def test_auto_publishes_true_blocks() -> None:
         if v.legge == Legge.ZERO_FINAL_INSTANCE and v.severity == "blocker"
     ]
     assert zero_violations, result.summary()
+
+
+# ── Sprint 1 W1: load_cell_definition + intel-scraper-cell admission ──
+
+
+def test_load_cell_definition_json_round_trip(tmp_path: Path) -> None:
+    """JSON round-trip — must produce the same dict that run_all() consumes."""
+    cd = {
+        "name": "json-cell",
+        "level": "L1",
+        "exposes_gui": False,
+        "external_sources": ["fly-api"],
+        "client_data_access": False,
+        "publishes_via": "pg_notify",
+        "fallback_modes": ["redis_down"],
+        "kill_switch": True,
+        "auto_publishes": False,
+        "depends_on_other_cell_decisions": False,
+        "metrics": ["a", "b", "c"],
+    }
+    p = tmp_path / "json-cell.json"
+    p.write_text(json.dumps(cd))
+    loaded = load_cell_definition(p)
+    assert loaded == cd
+    # And the loaded dict passes admission.
+    assert AdmissionTest().run_all(loaded).passed is True
+
+
+def test_load_cell_definition_missing_file_raises(tmp_path: Path) -> None:
+    """FileNotFoundError surfaces — caller can decide whether to skip."""
+    with pytest.raises(FileNotFoundError):
+        load_cell_definition(tmp_path / "nope.yaml")
+
+
+def test_load_cell_definition_root_not_mapping_raises(tmp_path: Path) -> None:
+    """A list at the root of a JSON file fails loud."""
+    p = tmp_path / "list.json"
+    p.write_text(json.dumps(["not", "a", "dict"]))
+    with pytest.raises(CellDefinitionLoadError):
+        load_cell_definition(p)
+
+
+def test_intel_scraper_cell_yaml_exists() -> None:
+    """The Sprint 1 W1 cell.yaml MUST be on disk at the canonical path."""
+    assert _INTEL_SCRAPER_CELL_YAML.exists(), (
+        f"missing {_INTEL_SCRAPER_CELL_YAML} — Sprint 1 W1 declarative "
+        f"contract not in place"
+    )
+
+
+def test_intel_scraper_cell_passes_admission() -> None:
+    """The intel-scraper-cell definition PASSES all 7 Leggi (zero blockers).
+
+    This is the canonical Sprint 1 W1 acceptance test. If it ever fails,
+    either the cell definition drifted (fix cell.yaml) or the admission
+    rubric changed (fix admission_test.py). Both deserve a code review.
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_INTEL_SCRAPER_CELL_YAML)
+    result = AdmissionTest().run_all(cd)
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        "intel-scraper-cell admission FAILED:\n" + result.summary()
+    )
+    assert result.passed is True, result.summary()
+    assert result.cell_name == "intel-scraper-cell"
+
+
+def test_intel_scraper_cell_metadata_contracts() -> None:
+    """Cell-yaml-only contract checks (not part of the 7 Leggi).
+
+    These are Sprint 1 W1 specific invariants that don't belong in the
+    generic admission_test runtime check but DO belong in the cell's
+    own test surface.
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_INTEL_SCRAPER_CELL_YAML)
+
+    # Identity
+    assert cd["name"] == "intel-scraper-cell"
+    assert cd["level"] == "L1"
+    assert cd["runtime"] == "cron-agent-python"
+
+    # OSINT-blindato pre-declaration
+    assert cd["client_data_access"] is False
+    assert isinstance(cd["external_sources"], list)
+    assert len(cd["external_sources"]) >= 3
+
+    # Event contracts must include intel.scraper.run with the 8 declared fields
+    contracts = cd.get("event_contracts", [])
+    run_contracts = [c for c in contracts if c.get("name") == "intel.scraper.run"]
+    assert len(run_contracts) == 1, (
+        "exactly one intel.scraper.run contract expected"
+    )
+    fields = set(run_contracts[0].get("fields", {}).keys())
+    required_fields = {
+        "trace_id",
+        "status",
+        "sources_attempted",
+        "articles_found",
+        "scars_added",
+        "duration_ms",
+        "started_at",
+        "finished_at",
+    }
+    missing = required_fields - fields
+    assert not missing, f"intel.scraper.run contract missing fields: {missing}"
+
+    # HGT publish policy: structural patterns only (UU PDP scope)
+    assert cd.get("hgt_publish_only_structural_patterns") is True
+
+
+def test_intel_scraper_cell_drift_blocks_when_fields_missing(tmp_path: Path) -> None:
+    """Defensive: simulate cell.yaml drift (e.g. someone removes
+    ``kill_switch``) and confirm admission FAILS with a clear blocker."""
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_INTEL_SCRAPER_CELL_YAML)
+    # Corrupted copy
+    drifted = dict(cd)
+    drifted["kill_switch"] = False   # operator removed the kill switch
+    result = AdmissionTest().run_all(drifted)
+    assert result.passed is False
+    assert any(
+        v.legge == Legge.ZERO_FINAL_INSTANCE and v.severity == "blocker"
+        for v in result.violations
+    ), result.summary()

@@ -42,8 +42,10 @@ Out of scope:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any, Callable
 
 
@@ -352,3 +354,65 @@ def _check_numbers_first(cd: dict[str, Any]) -> Violation | None:
             severity="blocker",
         )
     return None
+
+
+# === Cell-definition loader =================================================
+#
+# Sprint 1 W1: cells declare their 7 Leggi profile in a sidecar YAML
+# (e.g. ``apps/bali-intel-scraper/cell.yaml``). ``load_cell_definition``
+# parses the file into the same plain dict that
+# ``AdmissionTest.run_all()`` consumes — no schema layer.
+#
+# PyYAML is the canonical loader. When unavailable (e.g. cell-core
+# installed in a minimal env), JSON files are still readable.
+
+
+class CellDefinitionLoadError(ValueError):
+    """Raised when a cell definition file cannot be loaded or parsed."""
+
+
+def load_cell_definition(path: str | Path) -> dict[str, Any]:
+    """Load a cell definition from a YAML or JSON file.
+
+    Returns a plain dict suitable for ``AdmissionTest().run_all(cd)``.
+
+    Raises:
+        FileNotFoundError: when *path* does not exist.
+        CellDefinitionLoadError: when the file cannot be parsed, the
+            root is not a mapping, or PyYAML is not installed for a
+            ``.yaml`` / ``.yml`` file.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"cell definition not found: {p}")
+
+    text = p.read_text(encoding="utf-8")
+
+    if p.suffix.lower() == ".json":
+        try:
+            loaded = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise CellDefinitionLoadError(
+                f"cell definition {p} is not valid JSON: {exc}"
+            ) from exc
+    else:
+        try:
+            import yaml  # type: ignore[import-untyped]
+        except ImportError as exc:  # pragma: no cover  (env-specific)
+            raise CellDefinitionLoadError(
+                f"cell definition {p} is YAML but PyYAML is not installed; "
+                f"install with `pip install pyyaml` or convert to JSON"
+            ) from exc
+        try:
+            loaded = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
+            raise CellDefinitionLoadError(
+                f"cell definition {p} is not valid YAML: {exc}"
+            ) from exc
+
+    if not isinstance(loaded, dict):
+        raise CellDefinitionLoadError(
+            f"cell definition {p} root must be a mapping, got "
+            f"{type(loaded).__name__}"
+        )
+    return loaded

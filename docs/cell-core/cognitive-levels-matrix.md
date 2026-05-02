@@ -89,7 +89,7 @@ blocker, I list the remediation Sprint that addresses it.
   - **Law 5 Auto-publish:** must NOT auto-send WhatsApp to clients
     (Sahira approval gate stays).
 
-### #8 `intel-scraper-cell` (light) — L1, Sprint 1
+### #8 `intel-scraper-cell` (light) — L1, Sprint 1 W1 ✅ DELIVERED
 
 - Per Sprint 0 Track B4: 3 production runners map onto this cell
   (`apps/bali-intel-scraper/`, intel-radar, intel-feed-processor).
@@ -97,6 +97,24 @@ blocker, I list the remediation Sprint that addresses it.
   publishes to `trend_signals` which `dossier-compiler` consumes. As long
   as dossier-compiler reads the substrate, not the scraper's reasoning,
   Law 6 is fine.
+- **Sprint 1 W1 delivery (2026-05-02):** declarative cell.yaml at
+  `apps/bali-intel-scraper/cell.yaml` (passes
+  `pytest packages/cell-core/tests/test_admission.py -k intel_scraper`
+  with zero blockers); wrapper modules under
+  `apps/bali-intel-scraper/backend/cell/`:
+    * `scar_recorder.py` — Genome scars at namespace
+      `intel.scraper.<source_slug>.<failure_kind>`, cross-run uses counter.
+    * `hgt_publisher.py` — STRUCTURAL pattern broadcast on confidence ≥0.7
+      with PII marker filter (defense-in-depth).
+    * `event_bridge.py` — emits `intel.scraper.run` row per run via
+      `ObservedShellBus` (migration 151).
+    * `runner.py` — async-context-manager orchestrator with deterministic
+      status (ok|degraded|failed), 35 unit/integration tests.
+- **Out of scope for W1 (deferred):** integration into the scraper's
+  actual entrypoint (`apps/bali-intel-scraper/backend/app/main.py` /
+  cron-agent-python intel-radar / intel-feed-processor); that
+  integration is a 1-PR follow-up tracked separately so reviewers can
+  read the wrapper layer in isolation.
 
 ### #9 `hgt-coordinator-cell` ⭐ NEW — L2, Sprint 1
 
