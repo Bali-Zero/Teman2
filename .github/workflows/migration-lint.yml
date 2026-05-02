@@ -64,8 +64,14 @@ jobs:
           files: ${{ steps.changed.outputs.files }}
           version: latest
           fail-on-violations: true
-          upload-to-github: true
           pg-version: '15.0'
+        # Note: removed `upload-to-github: true` — that input was renamed in
+        # squawk-action between releases and the current v2 rejects it as an
+        # `Unexpected input(s)` warning followed by a hard `Upload to GitHub
+        # failed` failure (pre-existing on PRs #149, #150, #425 before being
+        # fixed here in Sprint 0). Violations still surface as GitHub
+        # annotations on the PR via the action's default behavior; the
+        # explicit upload toggle is no longer needed.
 
       - name: Skip notice (no migrations changed)
         if: steps.changed.outputs.files == ''
