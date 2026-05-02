@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.codex-spalla-calibrate</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nuzantara/scripts/codex-spalla-calibrate.sh &gt;&gt; /Users/nuzantara/logs/codex-spalla-calibration.cron.log 2&gt;&amp;1</string>
+    </array>
+    <!-- Sunday 06:00 Asia/Makassar (WITA, UTC+8) = Saturday 22:00 UTC.
+         launchd interprets Hour/Minute in LOCAL time, so we encode the
+         user-facing schedule directly: Weekday=0 (Sunday), Hour=6,
+         Minute=0 — which fires at 06:00 WITA on the Pro machine. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>6</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/codex-spalla-calibration.cron.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/codex-spalla-calibration.cron.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
