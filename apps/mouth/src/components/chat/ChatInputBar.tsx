@@ -2,8 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { UI } from '@/constants';
-import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic, X } from 'lucide-react';
 import { ChatRecordingOverlay } from './ChatRecordingOverlay';
+import { AttachedImage } from '@/hooks/useChatInput';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 export interface ChatInputBarProps {
   input: string;
@@ -23,6 +26,8 @@ export interface ChatInputBarProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleRecording?: () => void; // Click-to-toggle handler
+  attachedImages?: AttachedImage[];
+  onRemoveImage?: (id: string) => void;
 }
 
 export function ChatInputBar({
@@ -43,6 +48,8 @@ export function ChatInputBar({
   onStartRecording,
   onStopRecording,
   onToggleRecording,
+  attachedImages = [],
+  onRemoveImage,
 }: ChatInputBarProps) {
   // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
@@ -84,6 +91,44 @@ export function ChatInputBar({
             </Button>
           </div>
         )}
+
+        {/* Attached Images Preview */}
+        <AnimatePresence>
+          {attachedImages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: 10, height: 0 }}
+              className="mb-2 flex flex-wrap gap-2 overflow-hidden"
+            >
+              {attachedImages.map((img) => (
+                <motion.div
+                  key={img.id}
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  className="relative group/img h-20 w-20 rounded-xl overflow-hidden border border-[var(--border)] shadow-md"
+                >
+                  <Image
+                    src={img.base64}
+                    alt={img.name}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                  <button
+                    onClick={() => onRemoveImage?.(img.id)}
+                    className="absolute top-1 right-1 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover/img:opacity-100 group-focus-within:opacity-100 transition-opacity hover:bg-red-500 focus-visible:ring-2 focus-visible:ring-red-500 outline-none"
+                    aria-label={`Remove image ${img.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Container */}
         <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
