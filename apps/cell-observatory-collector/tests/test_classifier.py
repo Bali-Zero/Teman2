@@ -25,7 +25,8 @@ async def test_classify_returns_structured():
         result = await clf.classify(event)
     assert result.label.value == "normal"
     assert result.confidence == 0.9
-    assert result.cost_usd > 0
+    # cost_usd >= 0 (zero on free OpenRouter tier minimax-m2.5:free, positive on paid models)
+    assert result.cost_usd >= 0
     await clf.aclose()
 
 

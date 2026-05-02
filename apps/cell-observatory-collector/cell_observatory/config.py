@@ -19,9 +19,20 @@ class Config:
     @classmethod
     def from_env(cls) -> "Config":
         try:
-            minimax_api_key = os.environ["MINIMAX_API_KEY"]
+            # Track A activation 2026-05-02: MiniMax classifier routes through
+            # OpenRouter (free tier minimax-m2.5:free). Cascade priority:
+            #   1. OPENROUTER_API_KEY (canonical OpenRouter env name)
+            #   2. MINIMAXM2_API_KEY (legacy alias)
+            #   3. MINIMAX_API_KEY (direct minimax.io fallback for paid mode)
+            minimax_api_key = (
+                os.environ.get("OPENROUTER_API_KEY")
+                or os.environ.get("MINIMAXM2_API_KEY")
+                or os.environ["MINIMAX_API_KEY"]
+            )
         except KeyError as e:
-            raise RuntimeError("MINIMAX_API_KEY required") from e
+            raise RuntimeError(
+                "OPENROUTER_API_KEY or MINIMAXM2_API_KEY or MINIMAX_API_KEY required"
+            ) from e
 
         try:
             eventbus_database_url = os.environ["EVENTBUS_DATABASE_URL"]
