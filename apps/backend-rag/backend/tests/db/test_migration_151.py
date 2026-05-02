@@ -61,13 +61,18 @@ def test_migration_has_partial_indexes():
     assert "WHERE status != 'ok'" in forward_section
 
 
-def test_migration_has_squawk_ignore_directives():
-    """Round-2 review: legitimate suppressions on a brand-new empty table
-    where Squawk's concurrent-index warning cannot apply."""
+def test_migration_documents_squawk_workflow_exclusions():
+    """Round-3 review (CI Squawk fail): squawk-cli 2.50.0 does NOT support
+    per-statement `-- squawk-ignore: <rule>` comments. The migration must
+    document that the rule exclusions are workflow-level, not inline.
+    """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "squawk-ignore" in forward_section
-    assert "require-concurrent-index-creation" in forward_section
+    # The migration cites the workflow exclusion strategy in its comment.
+    assert "migration-lint.yml" in forward_section, (
+        "Migration must document where Squawk rule exclusions live "
+        "(workflow level, not inline)"
+    )
 
 
 def test_rollback_drops_table():

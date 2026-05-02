@@ -40,13 +40,17 @@ CREATE TABLE IF NOT EXISTS observed_shell_events (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- squawk-ignore: require-concurrent-index-creation
--- Brand-new empty table, no lock contention possible. Concurrent index
--- creation buys nothing on a 0-row table and Squawk's warning doesn't apply.
+-- Indexes below: brand-new empty table, no lock contention possible.
+-- Concurrent index creation buys nothing on a 0-row table. Squawk warnings
+-- for require-concurrent-index-creation, require-timeout-settings,
+-- ban-drop-table, ban-drop-column, require-concurrent-index-deletion are
+-- excluded at the workflow level (.github/workflows/migration-lint.yml)
+-- because squawk-cli 2.50.0 does not recognize per-statement
+-- `-- squawk-ignore: <rule>` comments (they generate spurious
+-- `unused-ignore` warnings).
 CREATE INDEX IF NOT EXISTS ix_observed_shell_events_name_ts
     ON observed_shell_events (automation_name, created_at DESC);
 
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_observed_shell_events_status_ts
     ON observed_shell_events (status, created_at DESC)
     WHERE status != 'ok';
