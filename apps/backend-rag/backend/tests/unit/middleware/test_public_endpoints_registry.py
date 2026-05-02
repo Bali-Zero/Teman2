@@ -130,15 +130,32 @@ class TestB2_RegistryEntriesResolveToRoutes:
         if len(mounted_paths) == 0:
             pytest.skip("Could not collect any mounted routes — router imports failed in this env")
 
+        # FastAPI mounts dynamic-segment routes with literal `{name}` in the
+        # path string (e.g. `/api/channels/{name}/health`). Registry entries
+        # are concrete paths (e.g. `/api/channels/whatsapp/health`). To resolve
+        # a literal entry against a templated mounted path, build a set of
+        # regex patterns from mounted_paths and check whether each entry
+        # matches any of them. This was a pre-existing bug in the test
+        # surfaced when Sprint 0 fixed the earlier blocker that made pytest
+        # stop before reaching this case.
+        import re
+
+        compiled_mounts: list[re.Pattern[str]] = []
+        for p in mounted_paths:
+            # Replace `{anything}` with a non-empty path-segment match.
+            pattern = re.sub(r"\{[^/}]+\}", r"[^/]+", p)
+            compiled_mounts.append(re.compile(rf"^{pattern}(?:/.*)?$"))
+
         unresolved: list[str] = []
         for entry in PUBLIC_ENDPOINTS:
             if entry.prefix in ("", "/"):
                 # Root sentinels aren't declared as app routes
                 continue
             hit = any(
-                p == entry.prefix or p.startswith(entry.prefix)
+                p == entry.prefix or p.startswith(entry.prefix) or pat.match(entry.prefix)
                 for p in mounted_paths
-            )
+                for pat in compiled_mounts
+            ) or any(pat.match(entry.prefix) for pat in compiled_mounts)
             if not hit:
                 unresolved.append(entry.prefix)
 
