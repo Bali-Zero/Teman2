@@ -310,7 +310,16 @@ def _read_migration_146() -> str:
 #
 # The remaining channels DO have DB triggers (migrations 075/076/112/113/114)
 # and migration 146 must wrap each one in an events_outbox INSERT.
-_PG_NOTIFY_ONLY_CHANNELS = frozenset({"lkpm_ingest_completed", "federation_alert"})
+_PG_NOTIFY_ONLY_CHANNELS = frozenset({
+    "lkpm_ingest_completed",
+    "federation_alert",
+    # cell_pulse_observed: emitted by cell_core.observatory.emit_pulse_observed
+    # (Python direct asyncpg INSERT to events_outbox + pg_notify) inside the
+    # cell process itself, NOT via DB trigger. The events_outbox row IS
+    # written, but the path is Python-callsite, not migration-146-trigger.
+    # Track A 2026-05-02 — see PR #411 + #416 + #425.
+    "cell_pulse_observed",
+})
 _TRIGGER_BACKED_CHANNELS = frozenset(
     ch for ch in PG_CHANNEL_MAP if ch not in _PG_NOTIFY_ONLY_CHANNELS
 )
