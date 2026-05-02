@@ -410,12 +410,59 @@ class PulseEngine:
                 _m.record_pulse(
                     _cell, status.value, time.monotonic() - _t_pulse_start,
                 )
-            return PulseResult(
+
+            sleep_pulse_result = PulseResult(
                 timestamp=now,
                 health_status=status,
                 skipped=True,
                 skip_reason="sleeping — dreaming and consolidating",
             )
+
+            # Cell Pulse Observatory hook (sleep path).
+            # Emit even during sleep so observers see the full circadian cycle:
+            # dreaming pulses are interesting signal (memory consolidation,
+            # cortex hook 4) distinct from awake pulses. phase="sleep" lets
+            # downstream consumers filter.
+            try:
+                from cell_core import observatory
+                if observatory.is_enabled():
+                    import asyncio as _asyncio
+                    import os as _os
+                    import socket as _socket
+                    _asyncio.create_task(observatory.emit_pulse_observed(
+                        cell_id=_cell,
+                        cell_kind="cell",
+                        pulse_id=getattr(sleep_pulse_result, "pulse_id", f"organism-sleep-{pulse_number}"),
+                        pulse_timestamp_ms=int(now.timestamp() * 1000),
+                        phase="sleep",
+                        sensors=[
+                            {"name": k, "status": v.get("status") if isinstance(v, dict) else None,
+                             "value": v if not isinstance(v, dict) else None,
+                             "metadata": v if isinstance(v, dict) else {}}
+                            for k, v in (sensor_metadata or {}).items()
+                        ],
+                        pulse_result={
+                            "classifier_self": status.value if hasattr(status, "value") else str(status),
+                            "trend_window_min": None,
+                            "trend_label": None,
+                            "skipped": True,
+                            "skip_reason": "sleeping — dreaming and consolidating",
+                        },
+                        homeostatic_state={
+                            "circadian_phase": "asleep",
+                            "did_dream": _did_dream,
+                        },
+                        scar_signals=[],
+                        metadata={
+                            "host": _socket.gethostname(),
+                            "machine_role": _os.environ.get("MACHINE_ROLE", "unknown"),
+                            "pulse_number": pulse_number,
+                        },
+                    ))
+            except Exception as exc:
+                logger.warning(f"observatory sleep hook scheduling error (non-blocking): {exc}")
+
+            return sleep_pulse_result
 
         # LTM context — refresh every 60 pulses (~1h)
         ltm_context = self._ltm_cache
