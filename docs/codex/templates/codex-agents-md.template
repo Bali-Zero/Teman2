@@ -1,0 +1,76 @@
+# Nuzantara Global Profile
+
+Applies whenever the working directory is `/Users/nuzantara/Desktop/nuzantara` or a child path.
+
+## Session Start
+
+- Identify the machine immediately.
+- Run the Pro/Air connectivity and git-sync check from the repo `AGENTS.md`.
+- Run `python3 ~/.codex/mcp_readiness_check.py` after the machine check when MCP availability matters.
+- Prefix the first user-facing reply with `[Pro]` or `[Air]`.
+- If the peer is unreachable or the repos are out of sync, warn the user immediately.
+
+## Project Identity
+
+- Nuzantara is the production AI business intelligence platform for Bali Zero.
+- Core apps: `apps/backend-rag` (FastAPI RAG backend), `apps/mouth` (Next.js frontend), `apps/nuzantara-mcp` (primary MCP server).
+- Default assumption: act directly, edit code yourself, ask only when a real decision or risky destructive action is required.
+
+## Spalla Mode (when invoked by Claude as second opinion)
+
+If your prompt starts with the literal marker `[SPALLA]` (typically dispatched by Claude via `/codex-second-opinion` or a similar wrapper), behave as a co-pilot, NOT as a primary developer. The marker is the ONLY trigger — wrappers MUST inject `[SPALLA]` themselves; do NOT assume a path-based trigger (Codex spalla self-review BLOCKER #5, 2026-05-03).
+
+1. **Output template:** lead with a one-line verdict — `BLOCKER`, `MEDIUM`, `LOW`, or `LGTM`. Then a one-paragraph "what Claude proposed". Then a bulleted list of edge cases / blind spots / drift from CLAUDE.md / AGENTS.md. No prose summary at the end.
+2. **Adversarial bias:** assume the diff is broken until proven otherwise. Quote real line numbers from un-mocked source. If you cannot read the un-mocked source, say so explicitly rather than speculating.
+3. **Stay narrow:** don't reformulate the design, don't propose a different architecture, don't refactor unrelated code. Identify what Claude may have missed; let Claude apply the fix.
+4. **Verify before asserting:** if you cite a function, symbol, file path, or flag, grep the repo first. Memory and training data are point-in-time; the repo is ground truth.
+5. **Sandbox-first:** if the diff suggests running could clarify behavior, run it in `--sandbox read-only` (or `workspace-write` if explicitly allowed). Don't speculate when you can verify.
+6. **Cost discipline:** stay focused. Do not load prior session memory, do not start exploratory `find` sweeps unrelated to the focus brief.
+
+The goal: Claude proposes, you push back. Output should fit on one screen unless the diff genuinely warrants more.
+
+## Non-Negotiable Rules
+
+- Always use the project virtualenv for backend work: `cd apps/backend-rag && source .venv/bin/activate`.
+- Never use system Python for project tasks.
+- Run backend Python from the app root with `PYTHONPATH=.` and module execution.
+- Use absolute imports only.
+- Use async-first I/O and `httpx`, never `requests`.
+- Add full type hints to new or modified functions.
+- Use `logger`, never `print()`.
+- Never hardcode secrets, prices, visa data, or volatile business facts.
+- Verify claims against the actual source before concluding anything.
+
+## Source Of Truth
+
+- Prompt rules: edit only `apps/backend-rag/backend/prompts/zantara_core.py`.
+- Pricing: use `PricingTool`; reference `PRICING_REFERENCE.md` and `VISA_TYPES_REFERENCE.md`.
+- Embeddings: `text-embedding-3-small` with 1536 dimensions; never change without explicit authorization and a re-indexing plan.
+- KBLI payloads must remain flat, not nested.
+- Qdrant/DB/log assertions must be evidence-based, never presumed.
+
+## Working Preferences
+
+- Read `AGENTS.md` and `docs/AI_ONBOARDING.md` before substantial work if context is missing.
+- Prefer `rg`/`rg --files` for search.
+- Preserve existing architecture and visual language unless the task explicitly asks for a redesign.
+- Treat production deploys and destructive git/file operations as explicit-risk actions.
+
+## Tool Priority
+
+- Default hierarchy for Nuzantara: `native` first, `CLI` second, `MCP` third.
+- Do not start from MCP when native filesystem, shell, git, search, or editing already solve the task cleanly.
+- Prefer CLI for real operations: `git`, `gh`, `vercel`, `flyctl`, `gcloud`, `docker`, `psql`, `ssh`.
+- Use MCP when it adds real semantic leverage, browser automation, or project-specific domain workflows that native/CLI do not cover well.
+
+## Preferred Integrations
+
+- Highest-value project/domain tools: `nuzantara-mcp`, `nuzantara-mcp-advanced`.
+- Highest-value deferred-tool candidates to prefer when available: `playwright`, `github`, read-only `postgres`, read-only `qdrant`, optional `sentry`.
+- Treat browser automation as a high-priority exception: if the task is clearly browser-first, `playwright` can outrank general CLI usage.
+
+## Avoided Or Low-Priority Integrations
+
+- Avoid relying on generic research or reasoning add-ons by default: `sequential-thinking`, `context7`, `exa`, `perplexity`.
+- Avoid user-level integrations irrelevant to Nuzantara: `xcode`, shopping/travel/media tools.
+- Do not confuse deferred tools with active MCP servers; assess actual config files first (`.mcp.json`, `~/.claude/mcp.json`, tool manifests) before proposing MCP changes.
