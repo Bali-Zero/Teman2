@@ -1,0 +1,96 @@
+{
+  "value": {
+    "answer": "**1. Italian resident receiving dividends from PT PMA pays 10% WHT (25%+ ownership) or 15% WHT (Confirmed)**\nThis is accurate. Under Indonesian tax law, a foreign resident staying 183 days or less is classified as a Foreign Tax Subject (SPLN) and is normally subject to a standard 20% Article 26 Income Tax (PPh 26) on dividends [1, 2]. However, under the Italy-Indonesia Double Tax Avoidance Agreement (P3B), this rate is reduced to 10% if the beneficial owner holds at least 25% of the PT PMA's capital, and 15% in all other cases [2]. To apply this reduced rate, the SPLN must present a valid Certificate of Domicile (Form DGT-1) to the PT PMA prior to payment [3]. \n\n**2. Italy applies 26% substitute tax on foreign dividends for individuals (Outside Information)**\nThe provided sources confirm that dividends received by an Italian resident from Indonesia are subject to Italian domestic taxation (IRPEF) [4]. However, the sources *do not* contain information verifying the exact \"26% substitute tax\" rate under Italian domestic law. You may want to independently verify this specific Italian tax rate.\n\n**3. Tax credit mechanism allows crediting Indonesian WHT against Italian tax (Confirmed)**\nThis is accurate. The Italy-Indonesia P3B is designed to prevent double taxation [5]. The sources confirm that the withholding tax (PPh 26) paid in Indonesia can be credited against the income tax owed on those same dividends in Italy [4]. \n\n**4. Combined effective rate ~40-45% (CIT 22% + WHT + net Italian tax) (Partially Confirmed / Outside Information)**\nThe Indonesian portion of this calculation is confirmed by the sources: The standard Corporate Income Tax (PPh Badan) for a PT PMA is 22% on net taxable income [6]. If the remaining 78% of profits are distributed as dividends to Italy, the 10% WHT adds 7.8%, bringing the total Indonesian effective tax rate to 29.8% (or 33.7% if the 15% WHT rate applies). However, the exact combined effective rate of \"40-45%\" relies on the specific net Italian tax burden, which is outside the scope of the provided sources and should be independently verified.\n\n**5. Using Italian HoldCo with 25%+ ownership reduces WHT to 10% (Confirmed, with strict PMK 112/2025 caveats)**\nWhile an Italian holding company (SPLN) owning 25% or more of the PT PMA is eligible for the 10% reduced PPh 26 rate [2], you must heavily account for the new anti-abuse frameworks. Under the recently enacted Ministry of Finance Regulation (PMK) No. 112 of 2025, claiming this reduced treaty rate now requires strict compliance with substance-over-form rules [7]. The Italian HoldCo must prove it is the true Beneficial Owner (not a conduit entity) and pass the Principal Purpose Test (PPT) [8]. Furthermore, PMK 112/2025 dictates that the HoldCo must maintain its 25% ownership for a minimum holding period of 365 calendar days to qualify for the 10% rate; otherwise, the higher treaty rate applies [9]. \n\n**CoreTax System (PSIAP) Compliance Note:**\nAs the withholding agent (*Pemotong Pajak*), the PT PMA must manage all of these cross-border dividend declarations through the new CoreTax administration system governed by PMK 81/2024 [10, 11]. The PT PMA must digitally verify the DGT-1 forms, generate the electronic withholding certificates (e-Bupot), and file the monthly SPT Masa PPh 26 by the 20th of the following month [11, 12]. CoreTax has shifted the remittance deadline for PPh 26 payments to the 15th of the following month [11, 12]. Failure to align the SPLN's treaty documents with CoreTax submissions will result in automatic system rejections and default to the 20% penalty rate [3, 13].",
+    "conversation_id": "542c5155-af86-4a43-94b8-58ceada047fe",
+    "sources_used": [
+      "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "806c21a0-d4f8-493d-a433-acb786466322",
+      "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+      "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+      "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "d5f2d49e-48b1-4b15-aa83-d494994c8709"
+    ],
+    "citations": {
+      "1": "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "2": "806c21a0-d4f8-493d-a433-acb786466322",
+      "3": "806c21a0-d4f8-493d-a433-acb786466322",
+      "4": "806c21a0-d4f8-493d-a433-acb786466322",
+      "5": "806c21a0-d4f8-493d-a433-acb786466322",
+      "6": "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+      "7": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+      "8": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+      "9": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+      "10": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "11": "d5f2d49e-48b1-4b15-aa83-d494994c8709",
+      "12": "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "13": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1"
+    },
+    "references": [
+      {
+        "source_id": "0d9003d1-8ce6-4d2a-8265-977447482979",
+        "citation_number": 1,
+        "cited_text": "I dipendenti hanno diritto a una Biaya Jabatan (deduzione automatica): 5% dello stipendio lordo, massimo Rp 500.000/mese (Rp 6.000.000/anno). Non richiede documentazione — si applica automaticamente. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PPH 26 — STRUTTURA E ALIQUOTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.1 Aliquota standard PPh 26 ALIQUOTA FLAT: 20% sul REDDITO BRUTO (no deduzioni PTKP) [TAX-041] Applicata su: Stipendio/compenso del direktur WNA non penduduk Redditi da dividendi a soggetti esteri non residenti Royalties a soggetti esteri Interessi a soggetti esteri"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 2,
+        "cited_text": "P3B INDONESIA-ITALIA — PUNTI CHIAVE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Rilevante per clienti italiani di Bali Zero: [TAX-069] DIVIDENDI (Art. 10): Aliquota ridotta: 10% se beneficiario detiene ≥ 25% del capitale Aliquota ridotta: 15% negli altri casi Aliquota standard senza P3B: 20% INTERESSI (Art. 11): Aliquota ridotta: 10% su tutti gli interessi Aliquota standard senza P3B: 20% ROYALTIES (Art. 12): Aliquota ridotta: 10-15% (dipende dal tipo di royalty) Aliquota standard senza P3B: 20%"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 3,
+        "cited_text": "TIPI DI COD: Form DGT-1: per redditi generali (dividendi, royalties, interessi) Form DGT-2: per redditi da lavoro dipendente / pensioni Form DGT-3: per shipping/air transport PROCEDURA: Il beneficiario ottiene il COD dalla propria autorità fiscale (es: Agenzia delle Entrate in Italia, IRS negli USA, HMRC in UK) Presenta il COD alla PT PMA pagante PRIMA del pagamento La PT PMA applica l'aliquota P3B invece del 20% standard Il COD è valido per 12 mesi dalla data di emissione SENZA COD: La PT PMA DEVE applicare l'aliquota standard PPh 26 del 20%. Non è possibile applicare retroattivamente il P3B dopo il pagamento senza COD. [TAX-067]"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 4,
+        "cited_text": "TRASFERIMENTO DIVIDENDI ALL'ESTERO: Il P3B riduce la ritenuta indonesiana sui dividendi inviati alla casa madre o ai soci stranieri. Ma il P3B non elimina l'imposizione nel paese di residenza — solo previene la doppia imposizione. I dividendi ricevuti dall'Italia sono soggetti a IRPEF in Italia (con credito per la ritenuta indonesiana già pagata). ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ NOTE OPERATIVE BALI ZERO ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 5,
+        "cited_text": "TAX TREATY — CONVENZIONI CONTRO LA DOPPIA IMPOSIZIONE GUIDA PER INVESTITORI STRANIERI IN INDONESIA 2024-2025 Guida normativa verificata | Basata su P3B Indonesia con 70+ paesi Prodotta da Bali Zero / Zantara Intelligence ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CHE COS'È UN TAX TREATY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Un Tax Treaty (o P3B — Perjanjian Penghindaran Pajak Berganda) è un accordo bilaterale tra due paesi per evitare che lo stesso reddito venga tassato due volte: una volta in Indonesia (paese della fonte) e una volta nel paese di residenza del beneficiario. [TAX-065]"
+      },
+      {
+        "source_id": "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+        "citation_number": 6,
+        "cited_text": "Colpisce tutti i redditi netti prodotti da una PT PMA nel corso dell'anno fiscale (Januari – Desember). [TAX-011] BASE IMPONIBILE: Reddito lordo − Biaya yang diperkenankan (costi deducibili) = PKP (Penghasilan Kena Pajak = reddito imponibile) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ALIQUOTE PPH BADAN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1 Aliquota standard [TAX-012] ALIQUOTA STANDARD: 22% sul PKP (Penghasilan Kena Pajak) Introdotta con UU 7/2021 (HPP) — in vigore dal 2022. (In precedenza era prevista una riduzione al 20% poi abolita)"
+      },
+      {
+        "source_id": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+        "citation_number": 7,
+        "cited_text": "PMK 112/2025 builds on and supersedes the earlier procedural framework under Directorate General of Taxes (DGT) Regulations No. PER-25/PJ/2018 (PER 25/2018) and PER-28/PJ/2018 (PER 28/2018) which previously regulated treaty claims primarily through the use of the DGT Form and related documentary declarations. The new regulation reflects Indonesia's shift from a form-driven treaty access model to a substance-based entitlement framework, in line with international developments under the OECD's Base Erosion and Profit Shifting (BEPS) standard."
+      },
+      {
+        "source_id": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+        "citation_number": 8,
+        "cited_text": "PMK 112 of 2025 expanded and formalised anti-abuse regime as follows: Beneficial Ownership tests – similar with PER 25/2018. Explicit Limitations on Benefits – specific criteria to determine whether a taxpayer may claim treaty benefits. Principal Purpose Test – to prevent the granting of treaty benefits when obtaining those benefits is the primary, or one of the primary objectives of an arrangement or transaction. Conduit rules and substance indicators – provision of requirements to apply lower WHT rates on dividends and requirements to determine taxing rights on capital gains on the transfer of shares of entities with significant immovable properties ."
+      },
+      {
+        "source_id": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+        "citation_number": 9,
+        "cited_text": "Where a tax treaty prescribes two dividend WHT rates tied to the level of share ownership, the reduced rate may be used if the corporate WPLN is the beneficial owner of the dividend and satisfies both of the following conditions: It holds at least the required percentage of shares; and It maintains that ownership for a minimum of 365 calendar days , counted to include the dividend payment date. This approach aligns with the concepts reflected in Article 8 of the MLI and Article 10 of the OECD Model . If these criteria are not met, the dividend is subject to the higher treaty rate , assuming the WPLN remains the beneficial owner of the income."
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 10,
+        "cited_text": "CORETAX (2025): Il DJP ha introdotto il sistema CoreTax che unifica tutte le funzioni: NPWP registration e-SPT (tutti i tipi) e-Faktur (fatture IVA) Pembayaran pajak (pagamento imposte) Monitoring rimborsivo La migrazione a CoreTax è stata graduale nel 2024-2025. Bali Zero assiste nella configurazione di CoreTax per i propri clienti. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PENALITÀ E SANZIONI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      },
+      {
+        "source_id": "d5f2d49e-48b1-4b15-aa83-d494994c8709",
+        "citation_number": 11,
+        "cited_text": "Versamento PPh 21 (ritenuta stipendi dipendenti WNI/WNA penduduk) Versamento PPh 26 (ritenuta compensi WNA non penduduk) Versamento PPh 23 (ritenuta su servizi, dividendi, royalties) Versamento PPh 4(2) Final (sewa tanah/bangunan, se applicabile) Nota: con CoreTax 2025, alcune scadenze slittano al 15 ENTRO IL 15 DEL MESE SUCCESSIVO: Versamento PPh 25 (acconto mensile PPh Badan) Versamento BPJS Ketenagakerjaan e Kesehatan Versamento PPN (se PKP registrato) — ora anche SPT Masa PPN ENTRO IL 20 DEL MESE SUCCESSIVO (dichiarazioni/report):"
+      },
+      {
+        "source_id": "0d9003d1-8ce6-4d2a-8265-977447482979",
+        "citation_number": 12,
+        "cited_text": "4.1 Calcolo e ritenuta mensile Calcolare PPh 21/26 su ogni pagamento di stipendio/compenso Trattenere l'importo dalla busta paga del dipendente Versare al DJP entro il 10 del mese successivo (ora il 15 con CoreTax) CODICE SETOR PAJAK: PPh 21: 411121-100 PPh 26: 411127-100 4.2 SPT Masa PPh 21/26 (dichiarazione mensile) La PT PMA deve presentare ogni mese il SPT Masa PPh 21/26: [TAX-048] SCADENZA: entro il 20 del mese successivo MODALITÀ: e-Filing via DJP Online / CoreTax Include: elenco dipendenti, compensi, PPh calcolata e versata"
+      },
+      {
+        "source_id": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+        "citation_number": 13,
+        "cited_text": "Scroll to view entire element Practical Implications and Operational Impact Digitalization of Treaty Claims The shift to electronic submission and receipt tracking via the DGT portal streamlines compliance but requires system readiness and process updates by taxpayers and withholding agents. Heightened Substantive Scrutiny With formal Principal Purpose Test (“PPT”) and Limitation on Benefits (“LOB”) provisions, taxpayers must ensure genuine economic substance and beneficial ownership to avoid denial of treaty benefits. New Obligations for Indonesian Taxpayers Domestic taxpayers claiming treaty relief abroad must obtain a Domestic Taxpayer Certificate of Domicile (“SKD WPDN”) and, where applicable, seek Special Form validation adding a new layer of compliance. Withholding Agent Accountability Agents must verify eligibility, manage electronic submissions, and retain documentation. Failure to comply may result in tax exposure and penalties. Audit and Enforcement Readiness The DGT's enhanced authority to test compliance post-filing increases the importance of robust documentation and internal treaty claim reviews."
+      }
+    ]
+  }
+}

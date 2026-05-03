@@ -1,0 +1,7 @@
+# Istruzioni:
+# 1. Copia la risposta completa di NotebookLM
+# 2. Cancella questo contenuto
+# 3. Incolla la risposta di NotebookLM
+# 4. Salva il file
+# 5. Rinomina in: pt_pma_setup.txt
+# 6. Esegui: python scripts/caching/transcribe_podcasts.py validate data/transcriptions

@@ -1,0 +1,128 @@
+# Bali Zero - Visa & Business Experts in Bali, Indonesia
+# https://balizero.com
+# Updated: 2026-02-16
+
+# Allow all search engines
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /portal/
+Disallow: /_next/
+Disallow: /login
+Disallow: /register
+Disallow: /clients/
+Disallow: /cases/
+Disallow: /settings/
+Disallow: /omnichannel/
+Disallow: /calendar/
+Disallow: /notifications/
+Disallow: /documents/
+Disallow: /email/
+Disallow: /knowledge/
+Disallow: /whatsapp/
+Disallow: /team-management/
+Disallow: /process/
+Disallow: /analytics/
+Disallow: /intelligence/
+Disallow: /agents/
+Disallow: /chat/
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Googlebot-Image
+Allow: /static/
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# ============================================
+# AI CRAWLERS - WELCOME!
+# We want AI systems to cite our content
+# ============================================
+
+# OpenAI / ChatGPT Search
+User-agent: GPTBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+Crawl-delay: 2
+
+# Anthropic / Claude
+User-agent: ClaudeBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Crawl-delay: 2
+
+# Google Gemini / AI Overview (allow for AI visibility)
+User-agent: Google-Extended
+Allow: /
+
+# Apple AI Training (Applebot-Extended)
+User-agent: Applebot-Extended
+Allow: /
+Crawl-delay: 2
+
+# Bytespider (TikTok/ByteDance AI)
+User-agent: Bytespider
+Allow: /
+Crawl-delay: 2
+
+# Amazon AI
+User-agent: Amazonbot
+Allow: /
+Crawl-delay: 2
+
+# You.com AI
+User-agent: YouBot
+Allow: /
+Crawl-delay: 2
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Common Crawl (used by many AI training datasets)
+User-agent: CCBot
+Allow: /
+
+# Cohere AI
+User-agent: cohere-ai
+Allow: /
+
+# ============================================
+# SITEMAPS & AI CONTEXT
+# ============================================
+
+Sitemap: https://balizero.com/sitemap.xml
+
+# LLMs.txt for AI-structured context
+# See: https://balizero.com/llms.txt

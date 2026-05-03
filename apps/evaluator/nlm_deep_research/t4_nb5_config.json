@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "notebook": "NB-5",
+  "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+  "description": "T4 Social Monitor config for NB-5 Property & Real Estate Indonesia 2025",
+  "last_updated": "2026-03-30",
+  "svs_threshold": 0.35,
+  "fetch_frequency_hours": 12,
+  "max_slots": 11,
+
+  "reference_query": "Indonesian property land rights BPN regulation Bali real estate HGB Hak Pakai PT PMA spatial planning RTRW",
+
+  "keywords_critical": [
+    "perda bali",
+    "peraturan bpn",
+    "hak tanah dicabut",
+    "nominee ditindak",
+    "alih fungsi lahan",
+    "sertifikat tanah palsu",
+    "razia villa ilegal",
+    "moratorium",
+    "sengketa tanah bali",
+    "wna diproses",
+    "tanah disita",
+    "penegakan hukum pertanahan"
+  ],
+
+  "keywords_high": [
+    "hak pakai",
+    "hgb",
+    "hak guna bangunan",
+    "sertifikat tanah",
+    "bpn",
+    "ppat",
+    "rtrw",
+    "rdtr",
+    "kkpr",
+    "pt pma",
+    "wna beli tanah",
+    "properti asing",
+    "izin mendirikan bangunan",
+    "pbg",
+    "kawasan wisata",
+    "tata ruang",
+    "pertanahan",
+    "hak milik",
+    "atr bpn",
+    "pendaftaran tanah",
+    "sengketa tanah",
+    "hak tanggungan"
+  ],
+
+  "keywords_medium": [
+    "properti bali",
+    "real estat",
+    "investasi properti",
+    "rumah tapak",
+    "tanah bali",
+    "kavling",
+    "vila bali",
+    "kpr",
+    "hipotek",
+    "gadai tanah"
+  ],
+
+  "sources": [
+    {
+      "id": "atrbpn_instagram",
+      "type": "instagram",
+      "handle": "@kementerian.atrbpn",
+      "name": "Kementerian ATR/BPN Instagram",
+      "tier": "T4-T0",
+      "priority": "CRITICAL",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Official ministry account — land policy announcements"
+    },
+    {
+      "id": "atrbpn_twitter",
+      "type": "twitter",
+      "handle": "@kem_atrbpn",
+      "name": "Kementerian ATR/BPN Twitter/X",
+      "tier": "T4-T0",
+      "priority": "CRITICAL",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Primary X account for ATR/BPN ministry"
+    },
+    {
+      "id": "kanwil_bpn_bali_ig",
+      "type": "instagram",
+      "handle": "@kanwil.bpn.bali",
+      "name": "Kanwil BPN Bali Instagram",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Bali provincial land office — local enforcement, local regulation"
+    },
+    {
+      "id": "kantah_badung_ig",
+      "type": "instagram",
+      "handle": "@kantahkabbadung",
+      "name": "Kantah Kabupaten Badung Instagram",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Badung district land office — most active tourism area in Bali"
+    },
+    {
+      "id": "ditjen_penataan_agraria_ig",
+      "type": "instagram",
+      "handle": "@ditjenpenataanagraria",
+      "name": "Ditjen Penataan Agraria Instagram",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Directorate General for Agrarian Land Use — legal framework for land rights"
+    },
+    {
+      "id": "ditjen_tata_ruang_ig",
+      "type": "instagram",
+      "handle": "@ditjentataruang",
+      "name": "Ditjen Tata Ruang Instagram",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Directorate General for Spatial Planning — RTRW/RDTR updates"
+    },
+    {
+      "id": "tarubali_web",
+      "type": "web",
+      "url": "https://tarubali.baliprov.go.id",
+      "name": "Tarubali — Bali Spatial Planning Portal",
+      "tier": "T4-T0",
+      "priority": "CRITICAL",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Official Bali spatial planning portal — RDTR, RTRW updates, permit news"
+    },
+    {
+      "id": "hukumonline_pertanahan",
+      "type": "rss_or_web",
+      "url": "https://www.hukumonline.com/tag/pertanahan",
+      "name": "Hukumonline — Pertanahan Tag",
+      "tier": "T4-T2",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 12,
+      "active": true,
+      "notes": "Legal news aggregator — land law commentary, case law summaries"
+    },
+    {
+      "id": "bpk_peraturan_web",
+      "type": "web",
+      "url": "https://peraturan.bpk.go.id",
+      "name": "JDIH BPK — Regulasi Pertanahan",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 24,
+      "active": true,
+      "notes": "National legislative database — new PPs, Perda, Permen ATR/BPN; check daily not 12h"
+    },
+    {
+      "id": "jdih_baliprov",
+      "type": "web",
+      "url": "https://jdih.baliprov.go.id",
+      "name": "JDIH Bali Province",
+      "tier": "T4-T0",
+      "priority": "MEDIUM",
+      "fetch_frequency_hours": 24,
+      "active": true,
+      "notes": "Bali provincial regulation database — Perda Bali updates (2/2023, 3/2026, 4/2026)"
+    },
+    {
+      "id": "atrbpn_youtube",
+      "type": "youtube",
+      "channel_id": "UC29czQyZyoMFNDgXYYWjmkw",
+      "handle": "@KementerianATRBPN",
+      "name": "Kementerian ATR/BPN YouTube",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 24,
+      "active": true,
+      "notes": "National land agency official channel — sosialisasi, kebijakan, pengumuman"
+    },
+    {
+      "id": "ditjen_sppr_youtube",
+      "type": "youtube",
+      "channel_id": null,
+      "handle": "@DitjenSPPRATRBPN",
+      "name": "Ditjen SPPR ATR/BPN YouTube",
+      "tier": "T4-T0",
+      "priority": "HIGH",
+      "fetch_frequency_hours": 24,
+      "active": true,
+      "notes": "Directorate General for Spatial Planning & Land Affairs — need to verify channel_id"
+    }
+  ],
+
+  "circuit_breakers": {
+    "CB-LOCAL": {
+      "trigger": "Local reg sources (tarubali, jdih.baliprov.go.id) unavailable",
+      "threshold": "5 consecutive zero-result queries",
+      "open_duration": "72h → 7d",
+      "mitigation": "Pre-uploaded T0 text sources are BPN-independent"
+    },
+    "CB-BPN": {
+      "trigger": "BPN website (bpn.go.id) down",
+      "threshold": "5 failures",
+      "open_duration": "Standard CB-SOURCE",
+      "mitigation": "T0 regulations already uploaded as text — not URL-dependent"
+    },
+    "CB-AWIG": {
+      "trigger": "N/A — permanent known gap (awig-awig not digitized)",
+      "threshold": "N/A",
+      "open_duration": "Permanent",
+      "mitigation": "MD-4 standing disclaimer; 'verify locally with banjar adat' framing"
+    },
+    "CB-PRICE": {
+      "trigger": "N/A — market prices excluded from scope",
+      "threshold": "N/A",
+      "open_duration": "N/A",
+      "mitigation": "Track NJOP only; market prices out of scope for NB-5"
+    }
+  },
+
+  "guardrails": {
+    "nominee_guardrail": {
+      "type": "HARD_CODED",
+      "description": "All nominee content must include dispute_risk category and reference UU 5/1960 + Perda 4/2026",
+      "action": "Flag for review if setup instructions detected"
+    }
+  },
+
+  "cron": {
+    "pro_openclaw": "0 18 * * 2,4",
+    "wita_time": "02:00 Tue/Thu",
+    "utc_time": "18:00 Mon/Wed",
+    "notes": "02:00 WITA = 18:00 UTC previous day. Runs before NB-5 NLM pipeline at 02:25 WITA."
+  }
+}

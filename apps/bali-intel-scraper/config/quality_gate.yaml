@@ -1,0 +1,284 @@
+# Quality Gate Configuration — Intel Pipeline
+# All weights, thresholds, and keyword lists are configurable here.
+# Changes take effect on next pipeline run (no restart needed).
+
+# Dimension weights (must sum to 1.0)
+weights:
+  relevance: 0.35
+  urgency: 0.20
+  reliability: 0.20
+  business_impact: 0.25
+
+# Routing thresholds (composite score 0.0–1.0)
+thresholds:
+  auto_publish: 0.70 # ≥ 0.70 → auto-publish + alert team
+  review: 0.40 # 0.40–0.69 → queue for manual review
+  # below 0.40 → archive (kept, not discarded)
+
+# ─── Dimension 1: Relevance ─────────────────────────────────────────────
+
+relevance:
+  # Keywords per topic — matched against title + content (case-insensitive)
+  topic_keywords:
+    visa:
+      - visa
+      - kitas
+      - kitap
+      - voa
+      - visa on arrival
+      - e-visa
+      - evisa
+      - b211
+      - c31
+      - c32
+      - izin tinggal
+      - izin tinggal terbatas
+      - izin tinggal tetap
+      - perpanjangan visa
+      - visa extension
+      - second home visa
+      - golden visa
+      - retirement visa
+      - digital nomad visa
+      - investor visa
+      - sosial budaya
+
+    immigration:
+      - imigrasi
+      - immigration
+      - deportasi
+      - deportation
+      - overstay
+      - blacklist
+      - timpora
+      - cekal
+      - paspor
+      - passport
+      - wna
+      - warga negara asing
+      - foreign national
+      - orang asing
+      - kanim
+      - kantor imigrasi
+      - razia
+      - operasi pengawasan
+
+    company:
+      - pt pma
+      - perseroan terbatas
+      - company setup
+      - pendirian perusahaan
+      - nib
+      - oss
+      - oss rba
+      - izin usaha
+      - business license
+      - akta pendirian
+      - kbli
+      - perizinan berusaha
+      - dpmptsp
+      - bkpm
+      - modal asing
+      - foreign investment
+      - penanaman modal
+
+    tax:
+      - pajak
+      - tax
+      - npwp
+      - pph
+      - ppn
+      - spt
+      - tax return
+      - withholding tax
+      - double tax
+      - tax treaty
+      - coretax
+      - djp
+      - direktorat jenderal pajak
+      - tax amnesty
+      - tax compliance
+      - efin
+
+    property:
+      - properti
+      - property
+      - tanah
+      - land
+      - hak pakai
+      - hak guna bangunan
+      - hgb
+      - sertifikat
+      - bpn
+      - notaris
+      - ppat
+      - bphtb
+      - imb
+      - pbg
+      - real estate
+      - villa
+      - apartment
+
+    employment:
+      - tenaga kerja asing
+      - tka
+      - work permit
+      - rptka
+      - imta
+      - kemnaker
+      - ketenagakerjaan
+      - labor
+      - employment
+      - expatriate worker
+      - sponsor
+
+    bali_economy:
+      - bali
+      - pariwisata bali
+      - bali tourism
+      - umkm bali
+      - investasi bali
+      - bandara ngurah rai
+      - digital economy bali
+      - economic growth bali
+
+  # Weight per topic (higher = more important for scoring)
+  topic_weights:
+    visa: 1.0
+    immigration: 1.0
+    company: 0.90
+    tax: 0.85
+    property: 0.80
+    employment: 0.90
+    bali_economy: 0.70
+
+# ─── Dimension 2: Urgency ───────────────────────────────────────────────
+
+urgency:
+  freshness_half_life_hours: 48 # articles lose 50% urgency score after 48h
+
+  # Keywords that signal breaking/urgent news
+  keywords:
+    - breaking
+    - urgent
+    - darurat
+    - segera
+    - efektif mulai
+    - berlaku mulai
+    - effective immediately
+    - new regulation
+    - peraturan baru
+    - deadline
+    - batas waktu
+    - ditangkap
+    - arrested
+    - razia
+    - operasi
+    - pendeportasian
+    - deportasi massal
+    - penutupan
+    - moratorium
+    - larangan
+    - banned
+    - suspended
+    - dicabut
+
+# ─── Dimension 3: Reliability ───────────────────────────────────────────
+
+reliability:
+  # Map domain → tier
+  source_tiers:
+    # T1 — Government official sources
+    imigrasi.go.id: T1
+    www.imigrasi.go.id: T1
+    ditjenimigrasi.go.id: T1
+    ngurahrai.imigrasi.go.id: T1
+    kemenkumham.go.id: T1
+    www.kemenkumham.go.id: T1
+    kanwilbali.kemenkumham.go.id: T1
+    kemnaker.go.id: T1
+    bkpm.go.id: T1
+    www.bkpm.go.id: T1
+    kemlu.go.id: T1
+    pajak.go.id: T1
+    www.pajak.go.id: T1
+    oss.go.id: T1
+    pemprovbali.go.id: T1
+    bpn.go.id: T1
+    atrbpn.go.id: T1
+    # T2 — Major news outlets
+    thejakartapost.com: T2
+    www.thejakartapost.com: T2
+    jakartaglobe.id: T2
+    en.tempo.co: T2
+    tempo.co: T2
+    kompas.com: T2
+    www.kompas.com: T2
+    news.detik.com: T2
+    cnnindonesia.com: T2
+    www.cnnindonesia.com: T2
+    balipedia.com: T2
+    coconuts.co: T2
+    balidiscovery.com: T2
+    # T3 — Blogs, social, unverified (default)
+
+  tier_scores:
+    T1: 1.0
+    T2: 0.70
+    T3: 0.40
+
+# ─── Dimension 4: Business Impact ──────────────────────────────────────
+
+business_impact:
+  # Maps topic → keywords that indicate CRM service overlap
+  service_category_map:
+    visa:
+      - visa
+      - kitas
+      - kitap
+      - b211
+      - voa
+      - izin tinggal
+      - second home
+      - golden visa
+      - retirement visa
+    company:
+      - pt pma
+      - company
+      - perusahaan
+      - nib
+      - oss
+      - kbli
+      - izin usaha
+      - business license
+      - pendirian
+    tax:
+      - pajak
+      - tax
+      - npwp
+      - spt
+      - pph
+      - ppn
+      - coretax
+    property:
+      - properti
+      - property
+      - tanah
+      - hak pakai
+      - hgb
+      - sertifikat
+      - villa
+      - apartment
+    immigration:
+      - imigrasi
+      - immigration
+      - deportasi
+      - overstay
+      - paspor
+      - wna
+    work_permit:
+      - tka
+      - rptka
+      - imta
+      - work permit
+      - tenaga kerja asing

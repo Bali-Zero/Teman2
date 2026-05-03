@@ -1,0 +1,126 @@
+{
+  "value": {
+    "answer": "**1 e 2. Registrazione AIRE e residenza fiscale in Italia**\nLe mie fonti si concentrano esclusivamente sulla legislazione indonesiana e non contengono informazioni sulla normativa italiana relativa all'AIRE (Anagrafe degli Italiani Residenti all'Estero); ti invito a verificare queste informazioni in modo indipendente con un consulente italiano. Dal lato indonesiano, in base all'UU 36/2008, se soggiorni in Indonesia per più di 183 giorni in un periodo di 12 mesi o hai intenzione di risiedervi (dimostrata ad esempio dal possesso di un KITAS o KITAP), diventi automaticamente un residente fiscale indonesiano, ovvero un **SPDN (Subjek Pajak Dalam Negeri)** [1, 2]. Come SPDN, sei obbligato a registrarti per un NPWP e sei soggetto alla PPh 21 sul tuo reddito mondiale [2, 3]. Se non sei iscritto all'AIRE e l'Italia ti considera ancora residente, si concretizza un forte rischio di doppia residenza fiscale [4].\n\n**3. Tie-breaker rules del P3B Indonesia-Italia (Art. 4)**\nConfermo. Per risolvere il rischio di doppia residenza fiscale, si applicano le \"tie-breaker rules\" (regole dirimenti) previste dall'Articolo 4 del P3B (Tax Treaty / DTAA) basato sul modello OCSE [4]. Se sei classificato sia come SPDN indonesiano sia come residente italiano, lo status prevalente viene stabilito analizzando in ordine gerarchico: 1. Dimora permanente, 2. Centro degli interessi vitali (affari, famiglia), 3. Soggiorno abituale, 4. Cittadinanza, 5. Accordo tra le autorità competenti [4]. \n\n**4. Regole CFC (Art. 167 TUIR) e status \"Low-Tax\" dell'Indonesia**\nLe mie fonti non menzionano l'Articolo 167 del TUIR né le normative CFC (Controlled Foreign Companies) italiane, per le quali ti consiglio una verifica indipendente. Tuttavia, posso confermarti le aliquote applicabili in Indonesia. In base all'UU 7/2021 (Legge HPP), l'aliquota standard dell'imposta sul reddito delle società (**PPh Badan**) per una PT PMA è del **22%** sull'utile imponibile (PKP) [5, 6]. Con un'aliquota del 22%, l'Indonesia generalmente non rientra nei parametri standard delle giurisdizioni a fiscalità privilegiata. Attenzione, però: se la tua PT PMA usufruisce di incentivi speciali come il Tax Holiday (sancito dal PMK 69/2024), l'aliquota PPh Badan può essere ridotta fino allo 0% per 5-20 anni [7, 8], il che potrebbe far scattare le normative CFC nel tuo Paese d'origine. I dividendi distribuiti a te come socio straniero (se decidi di restare SPLN, ovvero non residente) sconteranno invece una ritenuta PPh 26, ridotta al 10-15% grazie al P3B Indonesia-Italia, a patto di presentare il Certificate of Domicile [9, 10].\n\n**5 e 6. Quadro RW e IVAFE**\nIl Quadro RW e l'IVAFE sono obblighi dichiarativi puramente italiani e non sono coperti dalle mie fonti (informazione da verificare in autonomia). Tuttavia, come consulente indonesiano ti avverto che, in quanto SPDN in Indonesia, sei tu stesso obbligato a dichiarare tutti i tuoi asset mondiali, i conti correnti e le partecipazioni societarie nella tua SPT Tahunan Pribadi (dichiarazione dei redditi annuale), con scadenza il 31 marzo [3]. \n\n**Attenzione ai cambiamenti CoreTax (PMK 81/2024):**\nPer gli anni 2025-2026, l'Indonesia ha dismesso il vecchio sistema DJP Online per implementare **CoreTax (PSIAP)**, regolamentato dal PMK 81/2024 [11, 12]. Come WNA (straniero) classificato SPDN, devi obbligatoriamente migrare al nuovo formato NPWP a 16 cifre [13]. Il sistema CoreTax integra un potente modulo CRM (Compliance Risk Management) connesso allo scambio automatico di informazioni (AEOI) e al registro dei titolari effettivi (UBO) [12, 14, 15]. Omettere di dichiarare asset o mantenere strutture societarie opache tra Italia e Indonesia innescherà immediatamente un controllo automatizzato da parte del DJP (SP2DK) [16-18].",
+    "conversation_id": "542c5155-af86-4a43-94b8-58ceada047fe",
+    "sources_used": [
+      "806c21a0-d4f8-493d-a433-acb786466322",
+      "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+      "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+      "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "aa5a6e2a-ffff-4747-a36d-63d8860be233"
+    ],
+    "citations": {
+      "1": "806c21a0-d4f8-493d-a433-acb786466322",
+      "2": "806c21a0-d4f8-493d-a433-acb786466322",
+      "3": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "4": "806c21a0-d4f8-493d-a433-acb786466322",
+      "5": "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+      "6": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+      "7": "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "8": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+      "9": "0d9003d1-8ce6-4d2a-8265-977447482979",
+      "10": "806c21a0-d4f8-493d-a433-acb786466322",
+      "11": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "12": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "13": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+      "14": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+      "15": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+      "16": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+      "17": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+      "18": "1c465196-5417-4a3d-92ff-032beeaa4aa6"
+    },
+    "references": [
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 1,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ RESIDENZA FISCALE — DETERMINARE SE WNA È \"PENDUDUK\" ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CRITERI PER ESSERE PENDUDUK INDONESIA (UU 36/2008 Pasal 2): [TAX-070] Un WNA è considerato WAJIB PAJAK DALAM NEGERI (residente fiscale indonesiano) se: Bertempat tinggal di Indonesia (dimora abituale in Indonesia), OPPURE Berada di Indonesia > 183 hari dalam 12 bulan (presenza > 183 giorni), OPPURE Berada di Indonesia dalam tahun pajak (presenza nell'anno fiscale) E bermaksud bertempat tinggal (intende stabilirsi) in Indonesia"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 2,
+        "cited_text": "KITAP = fortissimo indicatore di residenza fiscale indonesiana. KITAS lavorativo a lungo termine = presumibilmente penduduk. SE PENDUDUK INDONESIA: Soggetto a PPh 21 (non PPh 26) Obbligo SPT Tahunan Pribadi Tassazione sul reddito MONDIALE (non solo indonesiano) Possibilità di credito per imposte pagate all'estero (P3B) SE NON PENDUDUK: Soggetto a PPh 26 Solo sui redditi DA FONTE INDONESIANA Nessun obbligo SPT Tahunan in Indonesia Applicazione P3B solo con COD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 3,
+        "cited_text": "3.2 Documenti per NPWP Pribadi WNA Paspor + KITAS attivo NPWP Badan della PT PMA sponsor Surat keterangan kerja (lettera di impiego) dalla PT PMA Indirizzo di residenza in Indonesia (affitto, hotel, ecc.) Foto (spesso richiesta al KPP) 3.3 NPWP WNA e obblighi fiscali Con NPWP Pribadi, il direktur WNA è soggetto a: PPh 26 sullo stipendio percepito dalla PT PMA (ritenuta alla fonte) SPT Tahunan Pribadi (dichiarazione annuale personale) — entro 31 marzo Se percepisce redditi anche all'estero: obbligo di dichiarazione globale ma agevolazione per evitare doppia imposizione (tax treaty)"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 4,
+        "cited_text": "RISCHI E PIANIFICAZIONE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ RISCHIO DOPPIA RESIDENZA FISCALE: Un WNA con residenza in Indonesia (KITAS/KITAP + NPWP Pribadi) che mantiene anche residenza fiscale nel paese d'origine rischia di essere tassato su tutto il reddito mondiale in ENTRAMBI i paesi. [TAX-071] SOLUZIONE: Il P3B prevede regole di \"tie-breaker\" per determinare il paese di residenza fiscale prevalente (art. 4 dei P3B basati su OCSE): Dimora permanente (abitazione stabile disponibile) Centro degli interessi vitali (affari, famiglia) Soggiorno abituale Cittadinanza Accordo tra le autorità competenti"
+      },
+      {
+        "source_id": "b0ea1709-a9ac-46cb-9843-6cc8cc1ebdb1",
+        "citation_number": 5,
+        "cited_text": "Colpisce tutti i redditi netti prodotti da una PT PMA nel corso dell'anno fiscale (Januari – Desember). [TAX-011] BASE IMPONIBILE: Reddito lordo − Biaya yang diperkenankan (costi deducibili) = PKP (Penghasilan Kena Pajak = reddito imponibile) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ALIQUOTE PPH BADAN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1 Aliquota standard [TAX-012] ALIQUOTA STANDARD: 22% sul PKP (Penghasilan Kena Pajak) Introdotta con UU 7/2021 (HPP) — in vigore dal 2022. (In precedenza era prevista una riduzione al 20% poi abolita)"
+      },
+      {
+        "source_id": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+        "citation_number": 6,
+        "cited_text": "QUANDO POTREBBE APPLICARSI: Una PT PMA in fase di avvio con omzet molto basso nel primo anno Attività di consulenza/IT con omzet < 4,8 miliardi Ma è consigliato verificare con un konsultan pajak ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CONFRONTO REGIMI FISCALI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ REGIME NORMALE PPH BADAN 22%: Base: 22% sull'utile netto (PKP = omzet - biaya deducibili) Adatto per: PT PMA con margini elevati E costi documentabili Vantaggio: se omzet/costi elevati, il 22% sul PROFITTO può essere inferiore al 0,5% sull'OMZET Svantaggio: necessità di pembukuan formale completa"
+      },
+      {
+        "source_id": "0d9003d1-8ce6-4d2a-8265-977447482979",
+        "citation_number": 7,
+        "cited_text": "CRITERIO 183 GIORNI (keberadaan di Indonesia): Se il WNA soggiorna > 183 giorni in un anno fiscale in Indonesia → diventa PENDUDUK → tassato con PPh 21 (aliquote progressive) Se soggiorna ≤ 183 giorni → NON PENDUDUK → tassato con PPh 26 (flat 20% o ridotto da tax treaty) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PPH 21 — STRUTTURA E ALIQUOTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1 Redditi soggetti a PPh 21 Gaji (stipendio mensile) Tunjangan (indennità: trasporto, makan, jabatan) Bonus, THR (Tunjangan Hari Raya — tredicesima festività islamica) Honorarium, komisi (onorari, provvigioni) Penghasilan direktur (compenso del direktur) Uang pensiun (pensione)"
+      },
+      {
+        "source_id": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+        "citation_number": 8,
+        "cited_text": "PERDITE FISCALI NON UTILIZZATE: Le perdite riportabili (kompensasi kerugian) non utilizzate al momento della pembubaran NON sono rimborsabili né trasferibili. Vanno perdute. [TAX-024] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ INCENTIVI FISKAL SPECIALI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1 Tax Holiday (PP 78/2019) Per investimenti strategici di grande scala in settori industria pionir: Pengurangan PPh Badan: 50%-100% per 5-20 anni [TAX-077] Soglia minima investimento: Rp 100 miliardi (100 miliardi IDR) Settori: industria farmaceutica, petrokimia, elektronik, teknologi tinggi NON applicabile alla maggior parte delle PT PMA a Bali (turismo, F&B, servizi)"
+      },
+      {
+        "source_id": "0d9003d1-8ce6-4d2a-8265-977447482979",
+        "citation_number": 9,
+        "cited_text": "3.2 Riduzione per Tax Treaty L'aliquota del 20% può essere ridotta se esiste un PERJANJIAN PENGHINDARAN PAJAK BERGANDA (P3B — Tax Treaty / DTT) tra Indonesia e il paese di residenza del percettore. [TAX-045] ESEMPI DI ALIQUOTE RIDOTTE PPH 26 SU STIPENDI (P3B): Indonesia–Italia: 15% (art. redditi lavoro dipendente) Indonesia–Australia: 15% Indonesia–Francia: 15% Indonesia–Germania: 15% Indonesia–Singapore: 15% Indonesia–Paesi Bassi: 10% Indonesia–Japan: 15% Indonesia–UK: 15% Per beneficiare della riduzione, il dipendente WNA deve presentare COD (Certificate of Domicile) del paese di residenza fiscale, emesso dall'autorità fiscale del paese. [TAX-046]"
+      },
+      {
+        "source_id": "806c21a0-d4f8-493d-a433-acb786466322",
+        "citation_number": 10,
+        "cited_text": "P3B INDONESIA-ITALIA — PUNTI CHIAVE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Rilevante per clienti italiani di Bali Zero: [TAX-069] DIVIDENDI (Art. 10): Aliquota ridotta: 10% se beneficiario detiene ≥ 25% del capitale Aliquota ridotta: 15% negli altri casi Aliquota standard senza P3B: 20% INTERESSI (Art. 11): Aliquota ridotta: 10% su tutti gli interessi Aliquota standard senza P3B: 20% ROYALTIES (Art. 12): Aliquota ridotta: 10-15% (dipende dal tipo di royalty) Aliquota standard senza P3B: 20%"
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 11,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ DJP ONLINE E E-FILING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Tutti i report fiscali sono obbligatoriamente elettronici (e-Filing): PORTALI DJP: pajak.go.id — Portale principale DJP [TAX-007] efin.pajak.go.id — Attivazione EFIN (Electronic Filing Identification Number) coretax.pajak.go.id — Nuovo sistema CoreTax (2025 → obbligatorio) EFIN (Electronic Filing Identification Number): L'EFIN è il codice di autenticazione per il filing elettronico. Deve essere richiesto al KPP competente dalla PT PMA. Senza EFIN non è possibile presentare SPT online. [TAX-009]"
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 12,
+        "cited_text": "CORETAX (2025): Il DJP ha introdotto il sistema CoreTax che unifica tutte le funzioni: NPWP registration e-SPT (tutti i tipi) e-Faktur (fatture IVA) Pembayaran pajak (pagamento imposte) Monitoring rimborsivo La migrazione a CoreTax è stata graduale nel 2024-2025. Bali Zero assiste nella configurazione di CoreTax per i propri clienti. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PENALITÀ E SANZIONI ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 13,
+        "cited_text": "È l'equivalente indonesiano del Codice Fiscale/Partita IVA italiano e della Tax ID number anglosassone. SOGGETTI OBBLIGATI AL NPWP: Tutte le PT (Perseroan Terbatas), incluse PT PMA [TAX-001] Persone fisiche residenti con reddito superiore al PTKP Direttori stranieri (WNA) che lavorano in Indonesia con KITAS lavorativo Qualsiasi entità commerciale registrata in Indonesia FORMATO NPWP: 16 cifre (formato nuovo dal 2024, PMK 112/2022) [TAX-002] Formato precedente: XX.XXX.XXX.X-XXX.XXX (15 cifre) Formato nuovo: corrisponde al NIK per persone fisiche, codice univoco per badan I vecchi NPWP restano validi per un periodo di transizione"
+      },
+      {
+        "source_id": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+        "citation_number": 14,
+        "cited_text": "controlled transactions involving intangibles?  ☐ No ☐ No Comparable uncontrolled transaction method and tangible asset and intangible asset valuation are the appropriate methods for transactions involving intangibles such as royalty or transfer of intangible asset. For special transactions involving intangible, proofs should be submitted regarding: a. the existence of intangible assets economically and legally; b. types of intangible assets; c. value of intangible assets; d. parties who legally owns the intangible assets;"
+      },
+      {
+        "source_id": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+        "citation_number": 15,
+        "cited_text": "be published as part of jurisdiction’s transfer pricing country profile. ☐ No Indonesia does not have any provisions concerning HTVI at this moment. However, Indonesia uses the OECD TPG in practice when resolving tax disputes, including articles on HTVI if such transaction causes tax dispute. Indonesia has established a legal framework under the provisions of PMK-172. Transfer Pricing (TP) Method Provision As outlined in Article 9, Paragraph 1 of PMK-172, Indonesia recognizes the valuation of intangible assets as part of its Transfer Pricing (TP) framework. Any"
+      },
+      {
+        "source_id": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+        "citation_number": 16,
+        "cited_text": "or extended statute of limitations for HTVI transactions. Instead, it follows the general rules set forth in Indonesia’s tax laws regarding the period in which transfer pricing adjustments can be made. According to Article 13(1) of Law No. 6 of 1983 on General Provisions and Tax Procedures (UU KUP), as amended by Law No. 7 of 2021 on the Harmonization of Tax Regulations, tax authorities in Indonesia may issue tax assessments, including transfer pricing adjustments, within five years from the end of the tax"
+      },
+      {
+        "source_id": "aa5a6e2a-ffff-4747-a36d-63d8860be233",
+        "citation_number": 17,
+        "cited_text": "year in which the tax obligation arose. Law No. 6 of 1983 on General Provisions and Tax Procedures (UU KUP lastly amended by Law No. 7 Year 2021 on Harmonization of Tax Regulations. 18 Can taxpayers request a bilateral or multilateral advance pricing agreement (“APA”) for transactions falling within the scope of the HTVI approach under your domestic transfer pricing framework? ☒ Yes ☐ No Yes. APAs are well-suited too for addressing Hard-to-Value Intangibles (HTVI) transactions, as they facilitate cooperation between taxpayers and tax authorities,"
+      },
+      {
+        "source_id": "1c465196-5417-4a3d-92ff-032beeaa4aa6",
+        "citation_number": 18,
+        "cited_text": "Mancata registrazione NPWP: multa Rp 100.000 - Rp 1.000.000 [TAX-010] Ritardo presentazione SPT: SPT Masa (mensile): Rp 100.000 per mese di ritardo SPT Tahunan Badan: Rp 1.000.000 per anno di ritardo Omessa dichiarazione: sanzione del 200% dell'imposta non dichiarata Omesso pagamento: interessi del 2% al mese + sanzione del 50% Investigazione tributaria: possibile per mancato filing ripetuto. Blocco del NIB in casi estremi. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ NOTE OPERATIVE BALI ZERO"
+      }
+    ]
+  }
+}

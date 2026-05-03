@@ -1,0 +1,226 @@
+CAPITAL REQUIREMENTS — REQUISITI DI CAPITALE PER PT PMA IN INDONESIA
+MODAL DASAR, MODAL DISETOR E STRUTTURA AZIONARIA
+GUIDA NORMATIVA 2024-2025
+
+Guida normativa verificata | Basata su Perpres 49/2021 e UU 40/2007
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. I DUE CONCETTI DI CAPITALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il diritto societario indonesiano distingue due concetti di capitale:
+
+MODAL DASAR (Capitale Autorizzato):
+L'importo totale del capitale che la PT è autorizzata ad emettere
+ai propri azionisti, secondo quanto dichiarato nell'atto costitutivo.
+È il "tetto" teorico della capitalizzazione aziendale. [COM-008]
+Non deve essere interamente versato al momento della costituzione.
+
+MODAL DISETOR (Capitale Versato/Sottoscritto):
+Il capitale effettivamente versato dai soci e accreditato
+sul conto bancario della PT. [COM-009]
+Deve essere versato in contanti reali — non in natura (kecuali
+diversamente autorizzato e documentato).
+
+RELAZIONE STANDARD:
+Modal Disetor ≥ 25% del Modal Dasar [COM-007]
+
+Quindi: Modal Dasar = Rp 10 miliardi → Modal Disetor min = Rp 2,5 miliardi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. IMPORTI MINIMI PER PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Per le PT PMA (con partecipazione straniera), Perpres 49/2021 fissa:
+
+MODAL DASAR MINIMO: Rp 10.000.000.000 (dieci miliardi di Rupiah)
+Equivalente approssimativo: ~€570.000 / ~$620.000 USD [COM-008]
+
+MODAL DISETOR MINIMO: Rp 2.500.000.000 (due miliardi e mezzo di Rupiah)
+Equivalente approssimativo: ~€143.000 / ~$155.000 USD [COM-009]
+Questo è il capitale che deve essere depositato sul conto della PT.
+
+CONFRONTO CON PT LOKAL:
+PT Lokal: Modal Dasar min Rp 50 juta (cinquanta milioni)
+PT PMA:   Modal Dasar min Rp 10 miliardi (duecento volte più alto)
+
+La differenza riflette la politica indonesiana di richiedere agli
+investitori stranieri una soglia minima di impegno finanziario.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. IL VERSAMENTO DEL CAPITAL — COME FUNZIONA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Conto bancario
+
+Il Modal Disetor deve essere versato ESCLUSIVAMENTE sul conto bancario
+intestato alla PT PMA. [COM-048]
+Non è valido:
+- Versamento sul conto personale del direttore
+- Versamento sul conto di una holding straniera
+- Dichiarazione di versamento senza movimentazione bancaria effettiva
+
+Il conto deve essere intestato alla PT (non al direttore personalmente).
+Le banche richiedono tipicamente il NIB e il SK Kemenkumham
+prima di aprire il conto aziendale.
+
+3.2 Timing del versamento
+
+L'atto costitutivo (akta pendirian) dichiara il modal dasar e disetor.
+Il versamento del modal disetor avviene nella pratica:
+- Al momento dell'apertura del conto bancario aziendale
+- Dopo l'ottenimento del NIB (o contestualmente)
+- Prima della dichiarazione nell'LKPM
+
+3.3 Fonte del capitale
+
+Il capitale può provenire da:
+- Fondi personali del socio straniero trasferiti dall'estero
+- Fondi del socio straniero già presenti in Indonesia (conto personale)
+- Combinazione di apporti da più soci
+
+DOCUMENTAZIONE BANCARIA:
+Gli estratti conto devono mostrare il versamento del modal disetor
+in modo tracciabile. Questo è richiesto da BKPM per verifiche
+e dalla banca per apertura conto.
+
+3.4 Autenticità del capitale
+
+CRITICO: Il capitale versato deve essere AUTENTICO.
+Alcune pratiche illegali da evitare:
+- Versare il capitale e ritirarlo subito (movimentazione fittizia)
+- Accordi di "prestito" del capitale tra soci per fini di registrazione
+- Documentare un capitale che fisicamente non è mai esistito
+
+Bali Zero non assiste in strutture non conformi. Il capitale
+deve essere reale e rimanere sul conto aziendale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. STRUTTURA AZIONARIA — COME DISTRIBUIRE LE QUOTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 Numero minimo di azionisti
+
+La PT deve avere almeno 2 azionisti. [COM-002]
+Non esiste un limite massimo.
+
+Gli azionisti possono essere:
+- Persone fisiche straniere (WNA) [COM-006]
+- Persone fisiche indonesiane (WNI) [COM-006]
+- Persone giuridiche (aziende) — sia straniere che indonesiane
+- Combinazione mista (WNA + WNI)
+
+4.2 Strutture comuni per clienti WNA Bali Zero
+
+STRUTTURA A — 100% straniero (per settori TERBUKA):
+2 soci WNA (es. coniugi, soci commerciali), 100% WNA
+Esempio: Socio WNA 1 = 99%, Socio WNA 2 = 1%
+
+STRUTTURA B — Maggioranza straniera (per settori TERBUKA):
+1 socio WNA + 1 socio WNI locale (es. partner di fiducia)
+Esempio: WNA 51%, WNI 49%
+
+STRUTTURA C — WNI + WNA (per settori TERBATAS con cap):
+Se il settore ha cap al 49% per WNA:
+Esempio: WNA 49%, WNI 51%
+
+STRUTTURA D — Solo WNI ma con direttore WNA:
+Il WNA è direktur (non azionista) — possible ma non conferisce
+proprietà. Utile quando un WNA gestisce ma non possiede.
+
+4.3 Azionisti giuridici
+
+Un'azienda straniera può essere azionista di una PT PMA.
+In questo caso, la società madre straniera detiene le quote,
+e deve fornire i propri documenti societari tradotti e
+apostillati al notaio.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. AUMENTO DI CAPITALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Per aumentare il modal dasar oltre quanto dichiarato nell'akta:
+1. Delibera RUPS (assemblea azionisti) [COM-035]
+2. Akta perubahan (modifica statuto) da notaio
+3. Approvazione Kemenkumham se il modal dasar aumenta
+4. Versamento del nuovo capital sul conto aziendale
+5. Aggiornamento OSS
+
+Il modal dasar nell'akta può essere superiore al minimo
+(es. Rp 20 miliardi) — questo è normale per aziende che pianificano
+crescita futura. Il modal disetor rimane min 25% di quello dichiarato.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. KITAS INVESTOR — COLLEGAMENTO CON IL CAPITALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il KITAS Investor (C1 convertito o domanda diretta) richiede che
+il WNA abbia effettuato un investimento di almeno Rp 1.000.000.000
+(un miliardo di Rupiah) in una PT PMA operante in Indonesia.
+
+RELAZIONE CON IL MODAL DISETOR:
+Questo Rp 1 miliardo deve essere documentato tramite:
+- Quote detenute nella PT PMA (valorizzate al prezzo di acquisto)
+- O versamento capitale addizionale documentato
+
+Il modal disetor minimo (Rp 2,5 miliardi) supera già la soglia
+del KITAS Investor (Rp 1 miliardo), quindi una PT PMA correttamente
+capitalizzata abilita anche la richiesta del KITAS Investor.
+
+ATTENZIONE: Il KITAS Investor è un percorso separato dal KITAS
+lavorativo (ITAS Direktur). Richiedono pratiche e documentazioni
+diverse — consultare la guida visa separata.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. DOMANDE FREQUENTI SUL CAPITALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Il Modal Dasar di Rp 10 miliardi deve essere tutto versato subito?
+R: No. Solo il Modal Disetor (25% = Rp 2,5 miliardi) deve essere
+   effettivamente versato. I restanti Rp 7,5 miliardi rappresentano
+   il capitale autorizzato ma non ancora emesso.
+
+D: Posso aprire il conto bancario prima di avere il NIB?
+R: Generalmente no. La banca richiede SK Kemenkumham + NIB.
+   Quindi il conto si apre dopo il NIB, e poi si versa il capitale.
+
+D: Cosa succede se non raggiungo subito i Rp 2,5 miliardi?
+R: Il notaio deve dichiarare nell'akta un modal disetor ≥ Rp 2,5 miliardi.
+   Se la liquidità non è disponibile subito, alcuni clienti dichiarano
+   il valore nell'akta e versano effettivamente nei mesi successivi.
+   Ma Bali Zero raccomanda di avere la liquidità reale disponibile.
+
+D: Il capital può essere in valuta estera (EUR, USD)?
+R: L'akta è in IDR, ma il versamento può avvenire tramite trasferimento
+   internazionale (cambiato in IDR dalla banca). La banca emetterà
+   documenti di cambio che documentano l'origine estera.
+
+D: Posso usare il capitale subito dopo il versamento per le spese aziendali?
+R: Sì. Una volta versato, il capitale è a disposizione dell'azienda
+   per le proprie attività operative. Non è "bloccato" — è working capital.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-002, COM-006, COM-007, COM-008, COM-009, COM-035, COM-048
+
+Base normativa: Perpres 49/2021 (capital requirements PT PMA),
+UU 40/2007 Art. 32-33 (modal dasar e disetor), UU 25/2007 (investimenti).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

@@ -1,0 +1,705 @@
+ALIH STATUS, APPLICAZIONE DALL'ESTERO E AUTO GATE
+QUANDO IL CLIENTE DEVE ASPETTARE FUORI DALL'INDONESIA
+GUIDA OPERATIVA 2024-2025
+
+Guida normativa verificata | Aggiornata a UU 6/2011, PP 31/2013, Permenkumham 22/2023
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+1. INQUADRAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema indonesiano dei permessi di soggiorno prevede due categorie principali
+di status per gli stranieri:
+
+  - ITK (Izin Tinggal Kunjungan) — permesso di soggiorno per visitatori,
+    valido per soggiorni brevi o temporanei [IMM-268].
+
+  - ITB (Izin Tinggal Terbatas) — il KITAS, permesso di soggiorno limitato
+    per stranieri che intendono risiedere e operare in Indonesia per un periodo
+    prolungato [IMM-269]. Viene rilasciato dall'ufficiale dell'immigrazione
+    competente [IMM-114] ed è la base giuridica per qualsiasi permesso di
+    soggiorno strutturato [IMM-113].
+
+La transizione da ITK a ITB può avvenire in due modi distinti:
+
+  a) ALIH STATUS (cambio di status): il cliente rimane fisicamente in Indonesia
+     durante l'intero processo. Il cambio avviene per via amministrativa interna.
+
+  b) APPLICAZIONE OFFSHORE: il cliente deve uscire dall'Indonesia, completare
+     il processo di approvazione mentre si trova all'estero, ricevere l'e-visa,
+     e rientrare con il nuovo status già pronto per l'attivazione.
+
+La scelta tra le due vie dipende dal tipo di KITAS richiesto, dalla situazione
+normativa del cliente e dai requisiti specifici del visto. Questa guida chiarisce
+quando si applica ciascun percorso, i tempi, le procedure, e il ruolo del sistema
+Auto Gate nel processo.
+
+Nota sui visti ante-vigenza: i visti e permessi emessi prima dell'entrata in
+vigore delle nuove normative restano validi fino alla loro naturale scadenza [IMM-356].
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. ALIH STATUS (CAMBIO DI STATUS) — SENZA USCIRE DALL'INDONESIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Cos'è l'alih status
+────────────────────────────────────────────────────────────────────────
+
+L'alih status è il procedimento amministrativo attraverso cui uno straniero
+titolare di un permesso di soggiorno per visitatori (ITK) ottiene la conversione
+del proprio status in permesso di soggiorno limitato (ITB/KITAS) senza abbandonare
+il territorio indonesiano.
+
+Il fondamento normativo è esplicito: "Il permesso di soggiorno limitato può essere
+concesso anche mediante cambio di status dal permesso di soggiorno per visitatori"
+[IMM-345]. Questo istituto evita al cliente il disagio e i costi di un viaggio
+all'estero, purché i requisiti normativi siano soddisfatti.
+
+Il vantaggio operativo è significativo: il cliente può continuare la propria vita
+quotidiana a Bali mentre la pratica viene istruita, senza interruzioni dovute a
+viaggi internazionali.
+
+2.2 Chi può fare alih status (categorie ammesse)
+────────────────────────────────────────────────────────────────────────
+
+Le categorie di stranieri ammesse all'alih status sono tassativamente elencate
+dalla normativa [IMM-235]:
+
+  1. Stranieri che svolgono attività religiose o kemanusiaan (umanitarie)
+  2. Lavoratori stranieri (TKA) con sponsor datore di lavoro regolare
+  3. Investitori stranieri (PMA, PT, CV)
+  4. Titolari di Second Home Visa (lansia e non)
+  5. Coniugi di cittadini indonesiani
+  6. Figli di cittadini indonesiani o di titolari di KITAS
+
+In termini pratici per la clientela Bali Zero, i visti kunjungan più comuni
+da cui è possibile fare alih status includono:
+
+  - C1  (visto turistico / kunjungan wisata)
+  - C18 (visto sociale budaya)
+  - D2  (visto lavoro temporaneo)
+  - D12 (visto second home)
+  - E23 (lavoratore straniero TKA) — con condizioni specifiche, vedi nota
+  - B211A (visto on arrival / VoA)
+
+Nota importante: per il KITAS E23 TKA, l'alih status è teoricamente previsto
+ma nella prassi operativa l'approvazione RPTKA deve essere già stata ottenuta
+prima di poter avviare l'alih status. Se la pratica RPTKA è ancora in corso,
+il cliente potrebbe dover attendere all'estero. Vedi sezione 3.
+
+2.3 Chi NON può fare alih status
+────────────────────────────────────────────────────────────────────────
+
+L'alih status è esplicitamente escluso per alcune categorie [IMM-234]:
+
+  1. Titolari di permesso di navigazione in acque indonesiane (permesso acque)
+  2. Stranieri la cui permanenza è incompatibile con la concessione di ITB
+  3. Stranieri entrati con visto di transito
+  4. Stranieri in situazione di irregolarità documentale (overstay non sanato)
+
+Situazioni particolari:
+  - Il cliente con ITK scaduto che ha presentato richiesta di alih status prima
+    della scadenza NON è considerato in overstay per il periodo di istruzione
+    della pratica [IMM-327].
+  - Il cliente che ha già un provvedimento di allontanamento o espulsione
+    pendente non può accedere all'alih status.
+
+2.4 Procedura alih status (tempi, ufficio competente)
+────────────────────────────────────────────────────────────────────────
+
+La procedura si articola nelle seguenti fasi:
+
+FASE 1 — Raccolta documentazione e presentazione domanda
+  Il cliente (o il suo sponsor/agente) raccoglie la documentazione necessaria
+  in base al tipo di KITAS richiesto e presenta la domanda presso il Kantor
+  Imigrasi competente (per Bali: Kantor Imigrasi Kelas I TPI Denpasar).
+
+FASE 2 — Verifica dei requisiti da parte del Capo Ufficio Regionale
+  Il Capo Ufficio Regionale (Kepala Kantor Wilayah) verifica la sussistenza
+  dei requisiti per il cambio di status [IMM-222] e trasmette la richiesta
+  di approvazione entro 3 giorni lavorativi [IMM-223].
+
+FASE 3 — Approvazione del Direttore Generale
+  Il Direttore Generale dell'Immigrazione (Dirjen Imigrasi) completa il cambio
+  di status entro 5 giorni lavorativi dalla ricezione della richiesta [IMM-226]
+  ed emette il decreto di approvazione [IMM-241].
+
+FASE 4 — Completamento e rilascio
+  Il cambio di status viene completato entro 3 giorni lavorativi dall'approvazione
+  del Direttore Generale [IMM-245]. Al cliente viene rilasciato il nuovo ITB/KITAS.
+
+RIEPILOGO TEMPI MINIMI (alih status via amministrativa ordinaria):
+  - Istruzione e trasmissione:  3 giorni lavorativi (Kanwil)
+  - Approvazione Dirjen:        5 giorni lavorativi
+  - Completamento rilascio:     3 giorni lavorativi
+  ─────────────────────────────────────────────────
+  TOTALE INDICATIVO:            11 giorni lavorativi (~2-3 settimane di calendario)
+
+Nella prassi operativa a Bali, l'intero processo richiede tipicamente 3-5 settimane
+considerando i tempi reali di lavorazione degli uffici e l'eventuale richiesta di
+documentazione integrativa.
+
+2.5 Tipi di visto che supportano alih status verso KITAS
+────────────────────────────────────────────────────────────────────────
+
+La tabella seguente riepiloga i visti kunjungan più comuni e la loro compatibilità
+con l'alih status verso le principali categorie di KITAS:
+
+  Visto di partenza   | Verso KITAS E28A (inv.) | Verso KITAS E33G (remote) | Verso KITAS E23 (TKA)
+  ────────────────────┼─────────────────────────┼───────────────────────────┼───────────────────────
+  C1 (tourist)        | Possibile               | Possibile (prassi variabile)| Raramente
+  C18 (social)        | Possibile               | Possibile                  | Raramente
+  D2 (lavoro temp.)   | N/A                     | N/A                        | Possibile (pref.)
+  D12 (second home)   | N/A (già secondo itb)   | N/A                        | N/A
+  B211A (VoA)         | Possibile               | Possibile                  | No (VoA non conv.)
+
+Nota: "prassi variabile" indica che la normativa lo prevede ma la prassi locale
+degli uffici immigrazione di Bali può differire. Bali Zero verifica caso per caso.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. APPLICAZIONE OFFSHORE — QUANDO IL CLIENTE DEVE USCIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Cos'è l'applicazione offshore
+────────────────────────────────────────────────────────────────────────
+
+L'applicazione offshore è il processo attraverso cui l'e-visa per il KITAS viene
+emessa mentre il cliente si trova fisicamente fuori dall'Indonesia. Il cliente
+riceve l'e-visa via email (o tramite l'agente), può quindi acquistare il biglietto
+di rientro, e all'arrivo in Indonesia il KITAS viene attivato dall'ufficiale
+dell'immigrazione al punto di ingresso.
+
+Questo processo è strutturalmente diverso dall'alih status: nell'alih status il
+permesso viene convertito internamente; nell'applicazione offshore il cliente
+rientra con un nuovo documento già validato, e l'attivazione è un atto formale
+di registrazione all'ingresso.
+
+3.2 Perché è necessario essere fuori dall'Indonesia
+────────────────────────────────────────────────────────────────────────
+
+Le ragioni per cui alcuni tipi di KITAS richiedono applicazione offshore sono
+di natura normativa e procedurale:
+
+  a) RPTKA/sponsor non ancora approvato al momento in cui il cliente è in
+     Indonesia: la normativa prevede che l'e-visa TKA venga emessa a fronte
+     di un RPTKA già approvato [IMM-401, IMM-402]. Se l'approvazione arriva
+     dopo la scadenza del visto corrente del cliente, il cliente deve essere
+     già uscito dall'Indonesia.
+
+  b) Natura del visto: alcuni visti richiedono per definizione l'ingresso
+     dall'estero come condizione di attivazione. L'e-visa viene emessa dal
+     sistema informatico dell'immigrazione e il cliente deve presentarsi
+     a un punto di ingresso internazionale per l'attivazione.
+
+  c) Impossibilità di alih status dal visto corrente: se il cliente è in
+     Indonesia con un visto non convertibile (es. VoA, transito, o un visto
+     incompatibile con la categoria KITAS richiesta), deve uscire per poter
+     poi rientrare con il nuovo status.
+
+  d) Prassi amministrativa per KITAS TKA di nuova emissione: per i lavoratori
+     stranieri di nuova assunzione (non già presenti in Indonesia con sponsor),
+     il flusso standard prevede l'ingresso con e-visa dall'estero.
+
+3.3 Tipi di KITAS che richiedono applicazione offshore
+────────────────────────────────────────────────────────────────────────
+
+I seguenti tipi di KITAS richiedono tipicamente (o comunemente nella prassi)
+applicazione offshore:
+
+  E23 — KITAS Tenaga Kerja Asing (TKA) — Lavoratore straniero
+    Disciplinato da PP 34/2021 [IMM-399]. Il datore di lavoro presenta il
+    RPTKA tramite il portale Molina [IMM-401]. L'IMTA è stato abolito:
+    l'approvazione RPTKA sostituisce il precedente IMTA [IMM-402].
+    Se il cliente è in Indonesia mentre il RPTKA è in approvazione, può
+    attendere; ma se la sua permanenza scade prima dell'approvazione,
+    deve uscire. Una volta approvato il RPTKA, l'e-visa viene emessa e
+    il cliente rientra attivando il KITAS al punto di ingresso.
+
+  E28A — KITAS Investor (investitore PT PMA / PT PMDN con partecipazione)
+    Richiede che l'atto costitutivo della società e l'iscrizione al OSS
+    siano completati. Se questi processi non sono terminati mentre il
+    cliente è in Indonesia, o se il suo visto corrente non è convertibile,
+    si procede offshore.
+
+  E33G — KITAS Remote Work (Digital Nomad Visa)
+    Introdotto con Permenkumham 22/2023. Il cliente deve dimostrare di
+    lavorare per un'azienda straniera. La conversione da C1/C18 è
+    possibile via alih status, ma se il visto è scaduto o non convertibile,
+    l'applicazione avviene offshore.
+
+3.4 Il flusso step-by-step (applicazione offshore)
+────────────────────────────────────────────────────────────────────────
+
+Di seguito il flusso operativo standard per un'applicazione offshore di KITAS
+(es. E23 TKA, con RPTKA in approvazione):
+
+  STEP 1 — Avvio pratica mentre il cliente è in Indonesia
+    Il cliente si rivolge a Bali Zero. Vengono raccolti tutti i documenti
+    necessari (passaporto, foto, CV, contratto di lavoro per TKA, ecc.).
+    Bali Zero avvia la pratica RPTKA tramite il portale Molina [IMM-401].
+
+  STEP 2 — Monitoraggio scadenza visto corrente
+    Bali Zero monitora la scadenza del visto corrente del cliente. Se il
+    RPTKA non sarà approvato prima della scadenza, viene pianificata l'uscita.
+
+  STEP 3 — Uscita dall'Indonesia (pianificata)
+    Il cliente acquista un biglietto per il paese vicino prescelto (Singapore,
+    Malaysia, Australia — vedi sezione 3.6). L'uscita avviene prima della
+    scadenza del visto corrente [IMM-327]: in questo modo non si configura
+    overstay. L'Auto Gate registra elettronicamente l'uscita (vedi sezione 4).
+
+  STEP 4 — Attesa nel paese estero
+    Il cliente è all'estero. Bali Zero continua a lavorare sulla pratica.
+    Il cliente non ha obblighi particolari se non mantenersi aggiornato
+    con l'agente e tenersi pronto a ricevere l'e-visa.
+
+  STEP 5 — Approvazione RPTKA / completamento pratica
+    Il Ministero del Lavoro approva il RPTKA [IMM-401]. Il sistema genera
+    l'autorizzazione che sostituisce il precedente IMTA [IMM-402]. Bali Zero
+    riceve la notifica dell'approvazione.
+
+  STEP 6 — Emissione e-visa KITAS
+    Con RPTKA approvato, il sistema dell'immigrazione indonesiana emette
+    l'e-visa per il KITAS (es. E23). Bali Zero trasmette l'e-visa al cliente.
+
+  STEP 7 — Rientro in Indonesia
+    Il cliente prenota il volo di rientro verso Indonesia (Bali — Ngurah Rai,
+    o Jakarta — Soekarno-Hatta). Presenta l'e-visa al punto di ingresso.
+
+  STEP 8 — Attivazione KITAS all'ingresso
+    L'ufficiale dell'immigrazione al punto di ingresso verifica l'e-visa e
+    attiva il KITAS [IMM-114]. Il cliente riceve il permesso di soggiorno
+    limitato (ITB). L'Auto Gate registra l'ingresso con il nuovo status.
+
+3.5 Tempi di attesa all'estero
+────────────────────────────────────────────────────────────────────────
+
+I tempi di attesa all'estero dipendono dal tipo di KITAS e dallo stato della
+pratica al momento dell'uscita dall'Indonesia:
+
+  SCENARIO A — Pratica quasi completata (RPTKA in fase finale):
+    Attesa tipica: 3-7 giorni lavorativi
+    Il cliente parte quando manca poco alla fine. L'e-visa arriva rapidamente.
+
+  SCENARIO B — Pratica in corso (RPTKA approvazione 2-3 settimane):
+    Attesa tipica: 10-20 giorni di calendario
+    Il cliente deve pianificare un soggiorno di 2-3 settimane nel paese estero.
+
+  SCENARIO C — Pratica appena avviata (cliente partito anticipatamente):
+    Attesa tipica: 3-6 settimane
+    Il cliente è partito perché il visto scadeva. L'intera pratica si completa
+    mentre è all'estero. Questa è la situazione meno confortevole ma a volte
+    inevitabile.
+
+  KITAS E33G (Remote Work) — se alih status non possibile:
+    Attesa tipica: 7-14 giorni
+    Processo più snello rispetto al TKA perché non richiede RPTKA.
+
+Raccomandazione operativa Bali Zero: il cliente deve essere informato in anticipo
+sui tempi realistici e deve pianificare il soggiorno all'estero con un margine
+del 50% rispetto alla stima minima, per assorbire eventuali ritardi burocratici.
+
+3.6 Dove aspettare (paesi consigliati)
+────────────────────────────────────────────────────────────────────────
+
+I clienti Bali Zero che devono attendere all'estero scelgono tipicamente:
+
+  SINGAPORE (più comune)
+    - Volo da Bali (Ngurah Rai): 2h 30min — 3h
+    - Visto: no visto per UE/USA/AUS (90 giorni liberi)
+    - Infrastruttura: eccellente, costo elevato
+    - Adatto per: soggiorni brevi (3-10 giorni), clienti che vogliono comfort
+    - Collegamento tipico: Bali → Singapore → Bali (volo diretto)
+
+  KUALA LUMPUR, MALAYSIA (molto comune — opzione economica)
+    - Volo da Bali: 2h - 2h 30min
+    - Visto: no visto per UE/USA/AUS (90 giorni liberi)
+    - Infrastruttura: buona, costo contenuto
+    - Adatto per: soggiorni più lunghi (10-30 giorni), clienti con budget ridotto
+    - Collegamento tipico: Bali → Kuala Lumpur (KL) → Bali
+
+  AUSTRALIA — Perth, Darwin (per clienti australiani)
+    - Volo da Bali: 2h 30min - 3h (Perth), 2h (Darwin)
+    - Adatto per: clienti australiani con casa o famiglia in Australia
+    - Soggiorno tipico: più lungo, spesso 3-4 settimane
+
+  THAILANDIA — Bangkok (alternativa)
+    - Volo da Bali: 4h - 4h 30min
+    - Adatto per: clienti che preferiscono la Thailandia, soggiorni più lunghi
+
+  TIMOR EST (Dili) — opzione meno comune
+    - Volo da Bali: 1h 30min (via scalo)
+    - Visto: on arrival per molte nazionalità
+    - Adatto per: soggiorni brevissimi (3-5 giorni), se pratica quasi conclusa
+    - Nota: infrastruttura limitata, non consigliata per soggiorni lunghi
+
+Raccomandazione: il "Bali Run" standard è Bali → Kuala Lumpur → Bali. È economico,
+veloce, e funziona bene per attese di 1-3 settimane. Singapore è preferita per
+chi necessita di infrastruttura professionale (riunioni, lavoro da remoto).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. AUTO GATE — IL SISTEMA DI RILEVAMENTO USCITE/ENTRATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 Cos'è l'Auto Gate
+────────────────────────────────────────────────────────────────────────
+
+L'Auto Gate è il sistema automatizzato di controllo alla frontiera (Automated
+Border Control — ABC) installato nei principali aeroporti internazionali
+dell'Indonesia, tra cui:
+
+  - Bandara Internasional Soekarno-Hatta (CGK) — Jakarta
+  - Bandara Internasional I Gusti Ngurah Rai (DPS) — Bali
+  - Bandara Internasionale Juanda (SUB) — Surabaya
+  - Bandara Kualanamu (KNO) — Medan
+
+Il sistema legge elettronicamente i dati del passaporto (chip RFID per i
+documenti biometrici), verifica l'identità del viaggiatore e registra in tempo
+reale l'uscita o l'ingresso nel database dell'Imigrasi (Sistem Informasi
+Keimigrasian — SIKIM).
+
+Per i viaggiatori stranieri con passaporti biometrici idonei (UE, USA, AUS,
+UK, JP, ecc.), l'Auto Gate può essere utilizzato in uscita e, in alcuni
+aeroporti, anche in ingresso (funzione limitata per stranieri).
+
+4.2 Come viene usato nel processo KITAS
+────────────────────────────────────────────────────────────────────────
+
+Nel contesto del processo di applicazione offshore per il KITAS, l'Auto Gate
+svolge un ruolo operativo preciso:
+
+  a) REGISTRAZIONE USCITA: quando il cliente passa dall'Auto Gate in uscita,
+     il sistema SIKIM aggiorna immediatamente il suo status: il cliente risulta
+     "fuori dal territorio indonesiano". Questa informazione è accessibile
+     in tempo reale dagli operatori dell'Imigrasi e dagli sponsor/agenti
+     abilitati.
+
+  b) NOTIFICA ALL'AGENTE: nella prassi operativa con sponsor registrato
+     (es. PT PMA come sponsor per KITAS investitore, o azienda locale per
+     TKA), l'agente o il sponsor riceve la conferma che il cliente è uscito.
+     Questo è il segnale operativo per procedere con l'emissione dell'e-visa.
+
+  c) SBLOCCO PROCESSO E-VISA: per alcune categorie di KITAS, il sistema
+     dell'immigrazione non emette l'e-visa finché il cliente risulta ancora
+     presente in Indonesia (perché il processo di conversione dovrebbe
+     avvenire via alih status). Una volta registrata l'uscita tramite Auto Gate,
+     il blocco tecnico viene rimosso e l'e-visa può essere emessa.
+
+4.3 Cosa succede quando il cliente passa dall'Auto Gate
+────────────────────────────────────────────────────────────────────────
+
+SCENARIO TIPICO — Cliente che esce con pratica in corso:
+
+  T+0  Cliente passa l'Auto Gate a Ngurah Rai (DPS) in uscita.
+       Il passaporto viene letto. L'uscita è registrata nel SIKIM.
+
+  T+0  Il sistema aggiorna immediatamente lo status: il cliente è fuori
+       dall'Indonesia.
+
+  T+ore Bali Zero riceve la conferma (visibile nel portale sponsor o tramite
+       comunicazione del cliente stesso: "sono atterrato a KL").
+
+  T+1-3 gg  Se la pratica era già pronta, Bali Zero procede a richiedere
+             l'emissione dell'e-visa. L'ufficio competente emette il documento.
+
+  T+2-5 gg  Il cliente riceve l'e-visa via email.
+
+  T+var  Il cliente acquista il biglietto di rientro e rientra in Indonesia.
+
+  Rientro  All'aeroporto indonesiano, il cliente si presenta al controllo
+           immigrazione con passaporto + e-visa. L'ufficiale verifica i documenti
+           e attiva il KITAS nel sistema. Il cliente riceve il timbro di ingresso
+           con il nuovo status ITB.
+
+IMPORTANTE: il semplice attraversamento dell'Auto Gate non attiva il KITAS.
+L'attivazione avviene al rientro, al controllo immigrazione, con presentazione
+dell'e-visa valida. L'Auto Gate all'uscita è il trigger procedurale che sblocca
+l'emissione dell'e-visa, non l'attivazione del permesso.
+
+Per i passaporti non biometrici o non compatibili con l'Auto Gate, il controllo
+avviene comunque al banco manuale dell'immigrazione, con effetto identico ai
+fini della registrazione SIKIM.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. TABELLA DECISIONALE: ALIH STATUS VS OFFSHORE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La tabella seguente guida la decisione sul percorso da intraprendere per il
+cliente, in base alla situazione di partenza e al KITAS di destinazione.
+
+  Situazione                                  | Alih Status | Offshore  | Note
+  ────────────────────────────────────────────┼─────────────┼───────────┼────────────────────────
+  C1 → E33G (Remote Work), prima scadenza     | Possibile   | No        | Se visto valido e docs OK
+  C1 → E33G (Remote Work), visto scaduto      | No          | Necessario| Cliente già uscito o uscita pianificata
+  C1 → E28A (Investitore), pratica completata | Possibile   | No        | OSS/PT pronti
+  C1 → E28A (Investitore), pratica in corso   | Attesa      | Eventuale | Dipende da timing scadenza C1
+  C18 → E28A (Investitore)                    | Possibile   | No        | Come C1
+  D2 → E23 (TKA), RPTKA approvato             | Possibile   | No        | Se visto ancora valido
+  D2 → E23 (TKA), RPTKA in approvazione       | Attesa      | Eventuale | Pianificare uscita se D2 scade
+  Qualsiasi → E23 (TKA), cliente senza sponsor| No          | Necessario| Sponsor deve avviare RPTKA dall'estero
+  VoA/B211A → qualsiasi KITAS                 | No          | Necessario| VoA non convertibile via alih status
+  KITAS scaduto + rinnovo                     | N/A         | Eventuale | Rinnovo interno possibile se tempestivo
+  ITK scaduto (overstay sanabile)             | Condizionato| Preferibile| Dipende da gravità della situazione
+  Titolare permesso acque                     | Vietato     | Necessario| Escluso per legge [IMM-234]
+
+  Legenda:
+    Possibile   = alih status fattibile, non serve uscire dall'Indonesia
+    No          = questa via non è percorribile
+    Necessario  = il cliente DEVE uscire dall'Indonesia
+    Eventuale   = dipende dal timing della scadenza del visto corrente
+    Attesa      = si può aspettare in Indonesia se il visto regge; altrimenti offshore
+    Condizionato = possibile solo se soddisfatte condizioni aggiuntive
+    N/A         = non applicabile a questa categoria
+
+Nota metodologica: questa tabella riflette la normativa vigente (UU 6/2011,
+PP 31/2013, Permenkumham 22/2023) e la prassi operativa degli uffici immigrazione
+di Bali. Bali Zero verifica sempre caso per caso la situazione specifica del cliente
+prima di dare indicazioni definitive.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. SCENARI PRATICI BALI ZERO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scenario A: Cliente con C1 → vuole KITAS E33G Remote Work
+────────────────────────────────────────────────────────────────────────
+
+PROFILO: Marco, italiano, 34 anni, freelance designer. Vive a Bali da 4 mesi
+con visto C1 (60 giorni + una proroga da 30 giorni). Ha 25 giorni prima della
+scadenza del visto. Vuole il KITAS E33G per lavorare legalmente da Bali per
+clienti europei.
+
+ANALISI:
+  - Visto corrente: C1, ancora valido per 25 giorni
+  - KITAS target: E33G Remote Work
+  - Categoria del cliente: rientra nelle categorie ammesse all'alih status [IMM-235]
+  - Alih status C1 → E33G: possibile, se la documentazione è completa
+
+DOCUMENTAZIONE RICHIESTA:
+  - Passaporto valido (minimo 18 mesi residui consigliati)
+  - Contratto con azienda straniera (o lettere clienti, con fatture)
+  - Bank statement (ultimi 3 mesi, saldo minimo indicativo $2.000/mese)
+  - NPWP (se già in possesso, altrimenti si ottiene durante il processo)
+  - Foto, dati anagrafici completi
+
+PERCORSO — ALIH STATUS:
+  Giorno 1:    Marco contatta Bali Zero. Raccolta documenti.
+  Giorno 2-3:  Bali Zero verifica completezza docs e avvia pratica presso
+               Kantor Imigrasi Denpasar.
+  Giorno 4-8:  Istruzione presso Kanwil, verifica requisiti [IMM-222],
+               trasmissione richiesta entro 3 gg lavorativi [IMM-223].
+  Giorno 9-15: Approvazione Direttore Generale entro 5 gg lavorativi [IMM-226].
+               Emissione decreto [IMM-241].
+  Giorno 16-19: Completamento cambio status entro 3 gg lavorativi [IMM-245].
+  Giorno 20:   Marco ritira il KITAS E33G. Rimasto in Indonesia per tutto il processo.
+
+RISCHIO: Se la pratica non viene completata entro i 25 giorni di visto residuo,
+il cliente NON è in overstay se ha presentato richiesta prima della scadenza [IMM-327].
+Ma Bali Zero avvia sempre con sufficiente anticipo per non arrivare a questa situazione.
+
+ESITO: Marco ottiene il KITAS E33G senza uscire dall'Indonesia. Durata tipica
+del processo: 3-4 settimane dalla raccolta documenti completa.
+
+────────────────────────────────────────────────────────────────────────
+
+Scenario B: Cliente con D2 → vuole KITAS E23 (TKA)
+────────────────────────────────────────────────────────────────────────
+
+PROFILO: Thomas, tedesco, 41 anni, manager. È stato assunto da una PT PMA a Bali
+per dirigere le operazioni. È arrivato in Indonesia con visto D2 (visto lavoro
+temporaneo) 45 giorni fa. Il suo datore di lavoro ha avviato la pratica RPTKA
+tramite il portale Molina [IMM-401], ma l'approvazione richiederà ancora 3-4 settimane.
+Il visto D2 scade tra 15 giorni.
+
+ANALISI:
+  - Visto corrente: D2, scade tra 15 giorni
+  - KITAS target: E23 TKA
+  - RPTKA: in approvazione, non ancora concluso
+  - Alih status immediato: non possibile perché RPTKA non ancora approvato
+  - Soluzione: uscita pianificata, attesa in Malaysia, rientro con e-visa E23
+
+PERCORSO — OFFSHORE:
+  Oggi:         Bali Zero valuta la situazione. RPTKA in corso [IMM-401, IMM-399].
+                Stima approvazione: 3-4 settimane. Visto scade tra 15 giorni.
+                Decisione: Thomas deve uscire prima della scadenza.
+
+  Giorno 3:     Bali Zero e Thomas pianificano l'uscita per il Giorno 10 (5 giorni
+                prima della scadenza, margine di sicurezza).
+
+  Giorno 10:    Thomas vola Bali → Kuala Lumpur. L'Auto Gate DPS registra
+                l'uscita nel sistema SIKIM. Thomas è ora "fuori dall'Indonesia".
+
+  Giorno 10-35: Thomas è a Kuala Lumpur. Lavora da remoto (il suo contratto
+                lo permette). Bali Zero monitora lo stato dell'RPTKA sul portale
+                Molina. Il datore di lavoro PT PMA fornisce aggiornamenti.
+
+  Giorno 32:    RPTKA approvato dal Kemenaker. L'IMTA è stato abolito [IMM-402]:
+                l'approvazione RPTKA sostituisce ogni precedente autorizzazione.
+
+  Giorno 33:    Bali Zero richiede emissione e-visa E23 per Thomas.
+
+  Giorno 35:    E-visa E23 emessa. Bali Zero la trasmette a Thomas via email.
+
+  Giorno 37:    Thomas prenota il volo KL → Bali.
+
+  Giorno 39:    Thomas arriva a Ngurah Rai (DPS). Si presenta al banco immigrazione
+                con passaporto + e-visa E23. L'ufficiale verifica [IMM-114] e attiva
+                il KITAS E23. Thomas è ora titolare di ITB/KITAS E23.
+
+DURATA TOTALE: 39 giorni (di cui 29 all'estero in Malaysia)
+COSTO INDICATIVO SOGGIORNO KL: 800-1.500 EUR (dipende dalla sistemazione)
+
+NOTA OPERATIVA: Bali Zero suggerisce sempre a Thomas di portare con sé a KL copia
+del contratto, della pratica RPTKA in corso e dei documenti societari del suo datore
+di lavoro, in caso di richieste al punto di ingresso indonesiano al rientro.
+
+────────────────────────────────────────────────────────────────────────
+
+Scenario C: Cliente con C1 → vuole KITAS E28A (Investitore)
+────────────────────────────────────────────────────────────────────────
+
+PROFILO: Sophie, francese, 47 anni. Ha deciso di aprire una PT PMA a Bali per
+una piccola attività di retreat yoga. È in Indonesia con visto C1, 40 giorni
+residui. La PT PMA è stata costituita 3 settimane fa. L'iscrizione OSS è
+completata. Sophie vuole il KITAS E28A come investitore.
+
+ANALISI:
+  - Visto corrente: C1, 40 giorni residui
+  - KITAS target: E28A Investitore
+  - PT PMA: costituita e registrata OSS
+  - Quota investimento: verificata e depositata
+  - Alih status: possibile perché i requisiti sono soddisfatti [IMM-235]
+
+PERCORSO — ALIH STATUS:
+  Giorno 1:    Bali Zero raccoglie i documenti: atto PT PMA, NIB (OSS),
+               NPWP società, NPWP personale Sophie, passaporto, foto,
+               proof of investment (estratto conto bancario società).
+
+  Giorno 2:    Avvio pratica alih status presso Kantor Imigrasi Denpasar.
+               Sophie non deve fare nulla di particolare — continua la sua vita
+               a Bali normalmente.
+
+  Giorno 4-7:  Kanwil verifica i requisiti [IMM-222] e trasmette entro 3 gg
+               lavorativi [IMM-223].
+
+  Giorno 8-14: Direttore Generale approva entro 5 gg lavorativi [IMM-226]
+               ed emette il decreto [IMM-241].
+
+  Giorno 15-18: Completamento cambio status entro 3 gg lavorativi [IMM-245].
+
+  Giorno 19:   Sophie ritira il KITAS E28A Investitore. È rimasta in Indonesia
+               per tutto il processo. Il suo C1 aveva ancora 21 giorni al
+               momento del ritiro — nessuna criticità.
+
+ESITO: Processo completato internamente, nessun viaggio all'estero necessario.
+Durata tipica: 3-4 settimane. Sophie può ora sponsorizzare altri KITAS (es. staff).
+
+VARIANTE — Se OSS non fosse stato pronto:
+  Se la PT PMA non avesse ancora il NIB al momento della richiesta, Bali Zero
+  avrebbe suggerito di attendere il completamento OSS prima di avviare la pratica
+  alih status (per evitare rigetti) oppure di pianificare un'uscita offshore
+  se il C1 fosse stato in scadenza imminente.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. NOTE OPERATIVE BALI ZERO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1 Quando avviare la pratica
+────────────────────────────────────────────────────────────────────────
+
+Regola fondamentale: avviare la pratica con ALMENO 45-60 giorni di anticipo
+rispetto alla scadenza del visto corrente. Questo vale sia per l'alih status
+(che richiede ~3-5 settimane) sia per l'applicazione offshore (che può richiedere
+4-8 settimane tra RPTKA e e-visa). Avviare tardi significa quasi certamente
+dover uscire dall'Indonesia anche in casi che avrebbero permesso alih status.
+
+7.2 La regola sull'overstay
+────────────────────────────────────────────────────────────────────────
+
+Se il cliente ha presentato richiesta di cambio status prima della scadenza del
+visto, non si configura overstay durante il periodo di istruzione della pratica
+[IMM-327]. Tuttavia, Bali Zero non consiglia MAI di fare affidamento su questa
+protezione come strategia pianificata. È una tutela normativa per i casi limite,
+non un'alternativa alla pianificazione anticipata.
+
+7.3 Comunicazione con il cliente durante l'attesa all'estero
+────────────────────────────────────────────────────────────────────────
+
+Bali Zero mantiene il cliente aggiornato con aggiornamenti settimanali (o più
+frequenti nelle fasi critiche) tramite:
+  - WhatsApp (canale principale)
+  - Email (comunicazioni formali)
+  - Portale cliente kita.balizero.com (stato della pratica in tempo reale)
+
+Il cliente deve sempre comunicare a Bali Zero:
+  a) Il momento esatto dell'uscita dall'Indonesia (con screenshot/foto del timbro
+     o conferma Auto Gate)
+  b) L'indirizzo e i contatti nel paese dove si trova
+  c) La disponibilità a presentarsi in aeroporto entro 24-48 ore dalla ricezione
+     dell'e-visa (per evitare di restare all'estero più del necessario)
+
+7.4 Auto Gate — passaporti non compatibili
+────────────────────────────────────────────────────────────────────────
+
+I passaporti non biometrici o di paesi non inclusi nell'accordo Auto Gate
+Indonesia devono passare dal banco manuale. L'effetto ai fini della registrazione
+SIKIM è identico — l'uscita viene comunque registrata. Il cliente non deve
+preoccuparsi: l'importante è che l'uscita venga registrata, indipendentemente
+dal canale (Auto Gate o banco manuale).
+
+7.5 Rientro in Indonesia — cosa avere con sé
+────────────────────────────────────────────────────────────────────────
+
+Al rientro con e-visa KITAS, il cliente deve avere con sé:
+  - Passaporto originale (non scaduto)
+  - E-visa stampata (o copia digitale accessibile offline)
+  - Lettera dello sponsor (per TKA: lettera del datore di lavoro PT PMA)
+  - Prova della sistemazione a Bali (per investitore/remote work)
+  - Ultimi estratti conto bancari (per remote work/investitore)
+
+L'ufficiale dell'immigrazione al rientro potrebbe richiedere documentazione
+aggiuntiva a sua discrezione. Essere preparati riduce il rischio di ritardi
+al banco immigrazione.
+
+7.6 Validità del visto ante-vigenza
+────────────────────────────────────────────────────────────────────────
+
+I visti e i permessi emessi prima dell'entrata in vigore delle normative più
+recenti (inclusa Permenkumham 22/2023) restano validi fino alla loro naturale
+scadenza [IMM-356]. I clienti che hanno ricevuto un KITAS in base a normative
+precedenti non devono fare nulla di immediato — il loro permesso è valido.
+La nuova normativa si applica alle nuove richieste e ai rinnovi.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM IDS UTILIZZATI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  IMM-113  Visto come base per il permesso di soggiorno
+  IMM-114  Permesso di soggiorno rilasciato da ufficiale immigrazione
+  IMM-222  Verifica requisiti cambio di status da Capo Ufficio Regionale
+  IMM-223  Richiesta approvazione cambio status entro 3 giorni lavorativi
+  IMM-226  Direttore Generale completa cambio status entro 5 giorni lavorativi
+  IMM-234  Cambio di status escluso per titolari permesso acque e categorie specifiche
+  IMM-235  Categorie ammesse al cambio status
+  IMM-241  Direttore Generale emette decreto approvazione cambio status
+  IMM-245  Cambio status completato entro 3 giorni lavorativi dall'approvazione
+  IMM-268  ITK = permesso kunjungan per soggiorni brevi
+  IMM-269  ITB = KITAS, permesso soggiorno temporaneo
+  IMM-327  Non è overstay se richiesta presentata prima della scadenza
+  IMM-345  Il permesso di soggiorno limitato può essere concesso mediante cambio di status
+  IMM-356  Visti emessi prima dell'entrata in vigore rimangono validi fino a scadenza
+  IMM-399  PP 34/2021 disciplina condizioni impiego TKA
+  IMM-401  Datore lavoro presenta RPTKA tramite portale Molina
+  IMM-402  IMTA abolito, approvazione RPTKA sostituisce IMTA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

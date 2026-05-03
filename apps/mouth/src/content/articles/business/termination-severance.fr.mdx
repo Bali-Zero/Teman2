@@ -1,0 +1,614 @@
+---
+title: "Employee Termination & Severance Indonesia 2026"
+slug: "termination-severance"
+description: "How to terminate employees in Indonesia legally. Severance pay calculations, procedures, and compliance requirements."
+excerpt: "Terminating employees in Indonesia requires specific procedures. Here's the complete guide to severance."
+category: "business"
+publishedAt: "2026-01-15"
+coverImage: "/static/insights/business/termination-severance.jpg"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Legal Advisor"
+featured: false
+image:
+  src: "/static/insights/business/termination.jpg"
+  alt: "Employee termination Indonesia"
+seo:
+  title: "Employee Termination Severance Indonesia 2026 | Guide"
+  description: "Complete guide to employee termination and severance in Indonesia. Legal procedures and calculations."
+  keywords:
+    - termination indonesia
+    - severance pay
+    - PHK indonesia
+readingTime: 12
+difficulty: "advanced"
+aiGenerated: true
+kbSources:
+  - collection: "legal_docs"
+    documentsUsed: 18
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "labor-law-guide"
+  - "hiring-indonesian-employees"
+  - "pt-pma-registration-guide"
+tableOfContents: true
+seoTitle: "Employee Termination Indonesia 2026 | Severance Guide"
+seoDescription: "Indonesian termination and severance law: legal procedures, severance calculations (up to 9 months salary), notice periods, and PHK process for employers."
+aiOptimization:
+  primaryQuestion: "How do I legally terminate an employee in Indonesia?"
+  answerSnippet: "Indonesian termination (PHK) requires valid grounds, bipartite negotiation, and potentially Industrial Relations Court approval. Severance: up to 9 months salary plus service pay (up to 10 months) and compensation rights. PKWTT employees have stronger protections than PKWT."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "PHI (Industrial Relations Court)"
+    - type: "Regulation"
+      name: "UU 13/2003 on Manpower"
+    - type: "Regulation"
+      name: "PP 35/2021 on Employment Agreements"
+faq:
+  - question: "How is severance calculated in Indonesia?"
+    answer: "Severance (Uang Pesangon): 1 month salary per year of service, max 9 months. Service Pay (UPMK): 2 months for 3-6 years, up to 10 months for 24+ years. Plus compensation for unused leave and return travel. Multipliers vary by termination reason (1x or 2x)."
+  - question: "Can I terminate an employee for poor performance?"
+    answer: "Yes, but with documentation. You must provide 3 written warnings (surat peringatan) over 6 months, offer improvement opportunities, and attempt bipartite negotiation. If unresolved, file at Industrial Relations Court. Severance is still owed (1x multiplier)."
+  - question: "What is the process for mass layoffs in Indonesia?"
+    answer: "Mass layoffs (PHK Massal) require notification to Disnaker 30 days in advance, bipartite negotiation with workers/union, and potentially tripartite mediation. Full severance must be paid. Companies must prove legitimate business reason (economic downturn, restructuring)."
+contentStructure:
+  hasHowTo: true
+  hasFAQ: true
+  hasTable: true
+tags:
+  - termination
+  - severance
+  - HR
+  - labor law
+  - PHK Indonesia
+  - severance calculation
+  - employee termination
+  - industrial relations
+  - PKWT PKWTT termination
+  - surat peringatan
+canonicalUrl: "https://balizero.com/business/termination-severance"
+ogImage: "/static/insights/business/termination-severance.jpg"
+ogType: "article"
+twitterCard: "summary_large_image"
+locale: "fr"
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  JourneyMap,
+  InfoCard,
+  Checklist,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Licenciement d'Employés & Indemnités en Indonesia 2026
+
+Le licenciement d'employés en Indonesia (PHK - Pemutusan Hubungan Kerja) exige le respect de procédures légales spécifiques et le paiement d'indemnités appropriées.
+
+## Types de Licenciement
+
+<ComparisonTable
+  title="Catégories de Licenciement"
+  description="Différents types de cessation d'emploi"
+  items={[
+    {
+      name: "Initiée par l'Employeur",
+      subtitle: "Décision de l'entreprise",
+      values: {
+        Examples: "Licenciement économique, performances insuffisantes",
+        Severance: "Complètes ou partielles",
+        Notice: "Obligatoire",
+        Process: "Procédure formelle",
+      },
+    },
+    {
+      name: "Démission de l'Employé",
+      subtitle: "Volontaire",
+      values: {
+        Examples: "Choix de l'employé",
+        Severance: "Compensation uniquement",
+        Notice: "Généralement 30 jours",
+        Process: "Lettre de démission",
+      },
+    },
+    {
+      name: "Fin de Contrat",
+      subtitle: "Expiration du PKWT",
+      values: {
+        Examples: "Fin du terme contractuel",
+        Severance: "Paiement de compensation",
+        Notice: "Selon le contrat",
+        Process: "Automatique sauf renouvellement",
+      },
+    },
+    {
+      name: "Faute Grave",
+      subtitle: "Licenciement immédiat",
+      values: {
+        Examples: "Vol, violence, fraude",
+        Severance: "Aucune (généralement)",
+        Notice: "Non requis",
+        Process: "Enquête requise",
+      },
+      highlight: true,
+    },
+  ]}
+/>
+
+---
+
+## Composantes des Indemnités
+
+<InfoCard variant="note" title="Trois Composants">
+Les indemnités de licenciement en Indonesia comportent généralement **trois composantes** :
+
+1.  **Uang Pesangon (UP)** - Indemnité de base
+2.  **Uang Penghargaan Masa Kerja (UPMK)** - Indemnité d'ancienneté
+3.  **Uang Penggantian Hak (UPH)** - Compensation pour les avantages non utilisés
+
+Le montant dépend de la raison du licenciement et des années de service.
+
+</InfoCard>
+
+---
+
+## Calculateur d'Indemnités
+
+<Calculator
+  title="Estimation des Indemnités"
+  description="Calculer le paiement potentiel des indemnités de licenciement"
+  fields={[
+    {
+      id: "salary",
+      label: "Salaire Mensuel (IDR)",
+      type: "number",
+      defaultValue: 15000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "years",
+      label: "Années de Service",
+      type: "number",
+      defaultValue: 5,
+      min: 0,
+      max: 30,
+      suffix: "années"
+    },
+    {
+      id: "reason",
+      label: "Motif de Licenciement",
+      type: "select",
+      options: [
+        { value: "redundancy", label: "Licenciement économique/Efficacité" },
+        { value: "closure", label: "Fermeture d'Entreprise" },
+        { value: "performance", label: "Performances Insuffisantes" },
+        { value: "misconduct", label: "Faute Grave" },
+        { value: "resignation", label: "Démission" },
+        { value: "retirement", label: "Retraite" }
+      ],
+      defaultValue: "redundancy"
+    },
+    {
+      id: "leave",
+      label: "Congés Annuels Non Pris (jours)",
+      type: "number",
+      defaultValue: 5,
+      min: 0,
+      max: 24,
+      suffix: "jours"
+    }
+  ]}
+  calculateResult={(values) => {
+    const salary = Number(values.salary);
+    const years = Number(values.years);
+    const leave = Number(values.leave);
+
+    // UP (Pesangon) table - max 9 months
+    const upTable = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const upMonths = years >= 8 ? 9 : upTable[Math.min(years, 8)] || 0;
+
+    // UPMK table - long service
+    let upmkMonths = 0;
+    if (years >= 3 && years < 6) upmkMonths = 2;
+    else if (years >= 6 && years < 9) upmkMonths = 3;
+    else if (years >= 9 && years < 12) upmkMonths = 4;
+    else if (years >= 12 && years < 15) upmkMonths = 5;
+    else if (years >= 15 && years < 18) upmkMonths = 6;
+    else if (years >= 18 && years < 21) upmkMonths = 7;
+    else if (years >= 21 && years < 24) upmkMonths = 8;
+    else if (years >= 24) upmkMonths = 10;
+
+    // Multipliers based on reason
+    let upMultiplier = 1;
+    let upmkMultiplier = 1;
+
+    switch (values.reason) {
+      case "redundancy":
+        upMultiplier = 1;
+        upmkMultiplier = 1;
+        break;
+      case "closure":
+        upMultiplier = 1;
+        upmkMultiplier = 1;
+        break;
+      case "performance":
+        upMultiplier = 0.5;
+        upmkMultiplier = 1;
+        break;
+      case "misconduct":
+        upMultiplier = 0;
+        upmkMultiplier = 0;
+        break;
+      case "resignation":
+        upMultiplier = 0;
+        upmkMultiplier = 0;
+        break;
+      case "retirement":
+        upMultiplier = 1.75;
+        upmkMultiplier = 1;
+        break;
+    }
+
+    const up = salary * upMonths * upMultiplier;
+    const upmk = salary * upmkMonths * upmkMultiplier;
+
+    // UPH - unused leave and other entitlements
+    const dailySalary = salary / 30;
+    const leaveCompensation = dailySalary * leave;
+    const housingMedical = (up + upmk) * 0.15; // 15% estimate
+    const uph = leaveCompensation + housingMedical;
+
+    const total = up + upmk + uph;
+
+    return {
+      total: Math.round(total),
+      breakdown: [
+        { label: "Pesangon (UP)", amount: Math.round(up) },
+        { label: "Ancienneté (UPMK)", amount: Math.round(upmk) },
+        { label: "Compensation Congés", amount: Math.round(leaveCompensation) },
+        { label: "Logement/Médical (15%)", amount: Math.round(housingMedical) },
+        { label: "Total des Indemnités", amount: Math.round(total) }
+      ],
+      currency: "IDR",
+      note: `UP: ${upMonths} months × ${upMultiplier}, UPMK: ${upmkMonths} months`
+    };
+
+}}
+/>
+
+---
+
+## Tableaux des Indemnités
+
+### Uang Pesangon (UP) - Indemnité de Base
+
+| Période de Service | Mois   |
+| ------------------ | ------ |
+| < 1 an             | 1 mois |
+| 1 à < 2 ans        | 2 mois |
+| 2 à < 3 ans        | 3 mois |
+| 3 à < 4 ans        | 4 mois |
+| 4 à < 5 ans        | 5 mois |
+| 5 à < 6 ans        | 6 mois |
+| 6 à < 7 ans        | 7 mois |
+| 7 à < 8 ans        | 8 mois |
+| 8+ ans             | 9 mois |
+
+### UPMK - Ancienneté
+
+| Période de Service | Mois    |
+| ------------------ | ------- |
+| 3 à < 6 ans        | 2 mois  |
+| 6 à < 9 ans        | 3 mois  |
+| 9 à < 12 ans       | 4 mois  |
+| 12 à < 15 ans      | 5 mois  |
+| 15 à < 18 ans      | 6 mois  |
+| 18 à < 21 ans      | 7 mois  |
+| 21 à < 24 ans      | 8 mois  |
+| 24+ ans            | 10 mois |
+
+---
+
+## Indemnités par Motif
+
+<ComparisonTable
+  title="Droits aux Indemnités"
+  description="Basé sur le motif de licenciement"
+  items={[
+    {
+      name: "Fermeture d'Entreprise",
+      values: {
+        UP: "1× complète",
+        UPMK: "1× complète",
+        UPH: "Oui",
+      },
+    },
+    {
+      name: "Licenciement économique",
+      values: {
+        UP: "1× complète",
+        UPMK: "1× complète",
+        UPH: "Oui",
+      },
+    },
+    {
+      name: "Pertes de l'entreprise (2 ans)",
+      values: {
+        UP: "0.5×",
+        UPMK: "1× complète",
+        UPH: "Oui",
+      },
+    },
+    {
+      name: "Force Majeure",
+      values: {
+        UP: "0.5×",
+        UPMK: "1× complète",
+        UPH: "Oui",
+      },
+    },
+    {
+      name: "Retraite",
+      values: {
+        UP: "1.75×",
+        UPMK: "1× complète",
+        UPH: "Oui",
+      },
+    },
+    {
+      name: "Faute Grave",
+      values: {
+        UP: "Aucune",
+        UPMK: "Aucune",
+        UPH: "Seulement les congés non pris",
+      },
+    },
+    {
+      name: "Démission",
+      values: {
+        UP: "Aucune",
+        UPMK: "Compensation uniquement",
+        UPH: "Congés non pris",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Procédure de Licenciement
+
+<JourneyMap
+  title="Procédure de Licenciement"
+  description="Étapes pour un licenciement légal"
+  estimatedTotal="2-8 semaines"
+  steps={[
+    {
+      id: "grounds",
+      title: "Établir les Motifs",
+      description: "Documenter la raison",
+      duration: "En cours",
+      status: "required",
+      tips: [
+        "Documentation des performances",
+        "Lettres d'avertissement (le cas échéant)",
+        "Justification commerciale",
+        "Examen juridique",
+      ],
+    },
+    {
+      id: "bipartite",
+      title: "Négociation Bipartite",
+      description: "Discussion directe",
+      duration: "Max 30 jours",
+      status: "required",
+      tips: [
+        "Rencontrer l'employé/le syndicat",
+        "Tenter un accord mutuel",
+        "Documenter toutes les discussions",
+        "Signer l'accord si conclu",
+      ],
+    },
+    {
+      id: "tripartite",
+      title: "Tripartite (si nécessaire)",
+      description: "Médiation du bureau de la main-d'œuvre",
+      duration: "30 jours",
+      status: "required",
+      tips: [
+        "Si la bipartite échoue",
+        "Faire une demande à Disnaker",
+        "Médiation/conciliation",
+        "Rechercher une recommandation",
+      ],
+    },
+    {
+      id: "court",
+      title: "Tribunal Industriel (si nécessaire)",
+      description: "Procédures PHI",
+      duration: "Semaines-mois",
+      status: "required",
+      tips: [
+        "Si aucun accord n'est trouvé",
+        "Déposer une requête auprès du tribunal PHI",
+        "Présenter le cas",
+        "Attendre la décision",
+      ],
+    },
+    {
+      id: "payment",
+      title: "Paiement des Indemnités",
+      description: "Payer les droits",
+      duration: "Au moment du licenciement",
+      status: "final",
+      tips: [
+        "Calculer tous les composants",
+        "Préparer la documentation",
+        "Traiter le paiement",
+        "Obtenir des reçus",
+      ],
+    },
+  ]}
+/>
+
+---
+
+## Système d'Avertissement
+
+<InfoCard variant="warning" title="Discipline Progressive">
+Pour les problèmes de performance/conduite, utilisez une discipline progressive :
+
+1.  **Premier avertissement (SP1)** - Écrit, valable 6 mois
+2.  **Deuxième avertissement (SP2)** - Écrit, valable 6 mois
+3.  **Troisième avertissement (SP3)** - Dernier avertissement
+
+Après le SP3, le licenciement est possible avec des indemnités réduites.
+
+**Note :** En cas de faute grave, le licenciement immédiat est possible sans avertissements.
+
+</InfoCard>
+
+---
+
+## Faute Grave
+
+### Qu'est-ce qui est qualifié ?
+
+<Checklist
+  title="Exemples de Faute Grave"
+  description="Motifs de licenciement immédiat"
+  persistKey="misconduct-checklist"
+  items={[
+    {
+      id: "fraud",
+      label: "Fraude ou détournement de fonds",
+      description: "Vol des actifs de l'entreprise",
+      required: false,
+      category: "criminal",
+    },
+    {
+      id: "violence",
+      label: "Violence ou menaces",
+      description: "Agression physique, menaces",
+      required: false,
+      category: "criminal",
+    },
+    {
+      id: "drugs",
+      label: "Consommation de drogues sur le lieu de travail",
+      description: "Possession ou usage",
+      required: false,
+      category: "criminal",
+    },
+    {
+      id: "secrets",
+      label: "Divulgation de secrets commerciaux",
+      description: "Fuite d'informations confidentielles",
+      required: false,
+      category: "breach",
+    },
+    {
+      id: "gambling",
+      label: "Jeu sur le lieu de travail",
+      description: "Pendant les heures de travail",
+      required: false,
+      category: "policy",
+    },
+    {
+      id: "absent",
+      label: "Absent 5+ jours sans préavis",
+      description: "Jours consécutifs",
+      required: false,
+      category: "attendance",
+    },
+    {
+      id: "immoral",
+      label: "Actes immoraux sur le lieu de travail",
+      description: "Harcèlement sexuel, etc.",
+      required: false,
+      category: "policy",
+    },
+  ]}
+  categories={[
+    { id: "criminal", label: "Pénal", color: "red" },
+    { id: "breach", label: "Manquement Contractuel", color: "amber" },
+    { id: "policy", label: "Violation de la Politique", color: "purple" },
+    { id: "attendance", label: "Assiduité", color: "blue" },
+  ]}
+  showProgress={false}
+/>
+
+---
+
+## Compensation PKWT
+
+Pour les contrats à durée déterminée (PKWT), à l'expiration :
+
+### Formule de Compensation
+
+| Durée du Contrat       | Compensation        |
+| ---------------------- | ------------------- |
+| Chaque mois de service | 1 jour de salaire   |
+| Exemple : 12 mois      | 12 jours de salaire |
+| Exemple : 24 mois      | 24 jours de salaire |
+
+<InfoCard variant="note" title="Résiliation Anticipée du PKWT">
+  Si le PKWT est résilié prématurément par l'employeur : - Doit payer la valeur
+  restante du contrat - Plus une compensation pour la période de service - Sauf
+  en cas de faute grave
+</InfoCard>
+
+---
+
+## Documentation
+
+### Documents Requis
+
+| Document                | Objet                       |
+| ----------------------- | --------------------------- |
+| Lettre de licenciement  | Notification officielle     |
+| Calcul des indemnités   | Détail                      |
+| Procès-verbal bipartite | Compte-rendu de réunion     |
+| Accord                  | Consentement mutuel         |
+| Reçu                    | Preuve de paiement          |
+| Lettre de référence     | Pour l'employé (facultatif) |
+
+---
+
+## Erreurs Courantes
+
+| Erreur                            | Impact                                 |
+| --------------------------------- | -------------------------------------- |
+| Pas d'avertissements écrits       | Impossible de prouver la cause         |
+| Ignorer la bipartite              | Procédure invalide                     |
+| Sous-payer les indemnités         | Revendications légales                 |
+| Licenciement immédiat sans motifs | Doit réintégrer ou payer intégralement |
+| Absence de documentation          | Position juridique faible              |
+
+---
+
+## Questions Fréquentes
+
+<AskZantara
+  context="Licenciement d'employés Indonésie, indemnités de licenciement, PHK, droit du travail licenciement"
+  placeholder="Posez vos questions sur le licenciement et les indemnités..."
+  suggestedQuestions={[
+    "Combien d'indemnités pour 5 ans de service ?",
+    "Puis-je licencier sans indemnités ?",
+    "Quel est le processus de licenciement ?",
+    "Les employés sous PKWT reçoivent-ils des indemnités ?",
+  ]}
+/>
+
+---
+
+## Articles Connexes
+
+- [Guide du Droit du Travail](/insights/business/labor-law-guide)
+- [Embaucher des Employés Indonésiens](/insights/business/hiring-indonesian-employees)
+- [Guide d'Installation de PT PMA](/insights/business/pt-pma-setup-guide)

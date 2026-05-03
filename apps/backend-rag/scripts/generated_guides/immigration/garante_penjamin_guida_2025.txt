@@ -1,0 +1,401 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GUIDA AL SISTEMA DEL GARANTE / PENJAMIN IN INDONESIA
+  Aggiornata al 2025 — include Permenimipas 5/2025
+  Fonte normativa: PP 31/2013 · Permenkumham 29/2021 · Permenkumham 11/2024 · Permenimipas 5/2025
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREMESSA — AGGIORNAMENTO NORMATIVO 2025
+
+Le regole sui garanti (penjamin) per visti e permessi di soggiorno sono ora
+disciplinate da Permenimipas 5/2025, che ha abrogato Permenkumham 36/2021
+[IMM-366]. Questa guida integra la disciplina consolidata di PP 31/2013,
+Permenkumham 29/2021 e Permenkumham 11/2024 con le novità introdotte dal
+nuovo regolamento ministeriale emesso dal Ministero dell'Immigrazione e
+Correzione Penitenziaria (Kementerian Imigrasi dan Pemasyarakatan, Kemenimipas).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. CHI E' IL GARANTE (PENJAMIN)?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il garante (penjamin) è una persona o una corporazione responsabile della
+presenza e delle attività degli stranieri nel territorio indonesiano [IMM-017].
+Questa definizione originaria di PP 31/2013 è stata confermata e precisata da
+Permenkumham 11/2024: un garante è una persona o una società responsabile della
+permanenza e delle attività dello straniero nel territorio indonesiano [IMM-271].
+
+In sintesi, il penjamin si assume formalmente la responsabilità legale del
+comportamento, della presenza e della conformità dello straniero alle leggi
+indonesiane durante il periodo di permanenza coperto dal visto o dal permesso
+di soggiorno.
+
+TIPOLOGIE DI GARANTE:
+
+a) Garante individuale (penjamin perseorangan)
+   Un garante individuale di una persona straniera deve essere un cittadino
+   indonesiano [IMM-347]. Non può quindi essere un altro straniero.
+
+b) Garante persona giuridica / corporazione (penjamin korporasi)
+   Può essere una società registrata in Indonesia (PT, CV), un'agenzia
+   governativa, un'organizzazione internazionale, o un ente istituzionale
+   autorizzato a svolgere attività in Indonesia. Non è richiesto che i soci
+   o il legale rappresentante della società siano cittadini indonesiani,
+   purché la società stessa sia formalmente registrata e operante in Indonesia.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. QUANDO E' OBBLIGATORIO AVERE UN GARANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Alcuni stranieri devono avere un garante che garantisca la loro permanenza nel
+territorio indonesiano [IMM-247]. L'obbligo si applica in linea generale a tutti
+i titolari di KITAS (Izin Tinggal Terbatas — permesso di soggiorno limitato) e
+KITAP (Izin Tinggal Tetap — permesso di soggiorno permanente).
+
+TIPOLOGIE DI VISTO/PERMESSO CON GARANTE OBBLIGATORIO:
+
+- KITAS lavoro (E23): il garante è l'azienda datrice di lavoro [IMM-005,
+  IMM-363]. L'azienda presenta il Piano di Utilizzo TKA (RPTKA) approvato dal
+  Ministro del Lavoro [IMM-005] e agisce come sponsor/garante dell'intero
+  periodo lavorativo. Il documento IMTA come documento fisico separato è stato
+  abolito da PP 34/2021, sostituito dall'approvazione del RPTKA combinata con
+  il pagamento della tassa DKP-TKA pari a USD 100 per lavoratore per mese
+  [IMM-360, IMM-361].
+
+- KITAS per soggiorno limitato generico: è richiesta una lettera di garanzia
+  dal garante, insieme al passaporto valido, per le richieste di Autorizzazione
+  di Soggiorno Limitato [IMM-128].
+
+- KITAP (permesso permanente): la richiesta di cambio di stato da permesso di
+  soggiorno limitato a permesso permanente deve essere presentata dal garante
+  all'Ufficio Immigrazione competente [IMM-075]. Il rinnovo del KITAP deve
+  essere presentato dallo straniero, dal garante o dal responsabile tramite
+  applicazione allegando la documentazione prevista [IMM-169].
+
+- Visto di soggiorno limitato quinquennale (5 anni): è richiesta prova di
+  garanzia immigratoria [IMM-310].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. CASI IN CUI IL GARANTE NON E' RICHIESTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La normativa prevede diverse esenzioni dall'obbligo di avere un garante:
+
+a) Stranieri coniugati con cittadini indonesiani
+   Non è richiesto un garante per stranieri coniugati con cittadini indonesiani
+   [IMM-248, IMM-348]. Questa esenzione si applica sia a Permenkumham 29/2021
+   sia a Permenkumham 11/2024.
+
+b) Investitori stranieri (E28A, E33G)
+   Non è richiesto un garante per investitori stranieri che investono in
+   Indonesia [IMM-249, IMM-349]. Gli investitori operano senza un garante
+   tradizionale, ma in sostituzione versano una garanzia finanziaria (jaminan
+   keimigrasian) [IMM-251].
+
+   Il Visa E28A (investor) richiede un investimento minimo di 10 miliardi di
+   rupiah o il possesso di obbligazioni statali [IMM-004].
+
+   Gli investitori stranieri devono impegnare investimenti di almeno 2,5 milioni
+   di dollari entro 90 giorni dalla concessione del permesso di soggiorno
+   limitato [IMM-311].
+
+   Lo straniero investor individuale che intende costituire una società in
+   Indonesia deve impegnarsi con un capitale minimo di USD 5.000.000, da
+   realizzarsi entro 90 giorni dalla concessione del KITAS [IMM-312]. Deve
+   altresì presentare prova di garanzia sotto forma di dichiarazione di
+   impegno a costituire la società [IMM-322].
+
+c) KITAS digital nomad / lavoro da remoto (E33G)
+   Il KITAS per lavoratori da remoto (digital nomad) utilizza l'indice E33G,
+   introdotto da PP 40/2023. Il titolare deve avere un datore di lavoro
+   registrato fuori dall'Indonesia e un salario minimo di USD 60.000 annui.
+   E' vietato lavorare per aziende indonesiane o generare reddito locale
+   [IMM-364]. Anche in questo caso si applica la garanzia finanziaria
+   in sostituzione del garante tradizionale.
+
+d) Reciprocità internazionale
+   L'obbligo di avere un garante è esentato per cittadini di paesi che
+   forniscono reciprocamente l'esenzione dalla garanzia [IMM-350].
+
+e) Repatriazione
+   L'esenzione dall'obbligo di garante può applicarsi ai permessi di soggiorno
+   per repatriazione [IMM-351].
+
+f) Sostituzione con garanzia immigratoria
+   Le esenzioni dall'obbligo di garante possono essere sostituite da una
+   Garanzia Immigrazione (Jaminan Keimigrasian) [IMM-352]. La Garanzia
+   Immigrazione è uno strumento dell'Ufficiale Immigrazione per valutare
+   selettivamente l'idoneità e l'utilità della presenza di stranieri in
+   Indonesia [IMM-353].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. LA GARANZIA IMMIGRATORIA (JAMINAN KEIMIGRASIAN)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La garanzia di immigrazione è denaro o altra forma come sostituto del garante
+[IMM-272]. Si tratta di un deposito finanziario che lo straniero versa a
+garanzia della propria conformità agli obblighi immigrativi.
+
+DEPOSITO E GESTIONE:
+
+La garanzia immigratoria deve essere versata su un conto di deposito presso
+la Direzione Generale dell'Immigrazione [IMM-252]. Lo straniero versa la
+garanzia immigratoria su un conto designato [IMM-260]. Deve essere versata
+prima che lo straniero entri nel territorio indonesiano [IMM-253]. L'importo
+della garanzia immigratoria è fissato dal Ministro [IMM-261].
+
+UTILIZZI DELLA GARANZIA:
+
+La garanzia immigratoria può essere utilizzata per:
+- Il rimpatrio dello straniero [IMM-254];
+- I costi dello straniero che rimane dopo la scadenza del permesso, fino a 60
+  giorni [IMM-255];
+- Il pagamento di altri costi relativi agli obblighi immigrativi [IMM-256].
+
+DURATA E RESTITUZIONE:
+
+La durata della garanzia immigratoria coincide con la durata del permesso di
+soggiorno dello straniero [IMM-257]. Se il permesso scade e la garanzia non
+è utilizzata, deve essere restituita allo straniero [IMM-258]. Lo straniero
+può richiedere il prelievo della garanzia dopo aver ottenuto il permesso di
+lasciare l'Indonesia [IMM-259].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. OBBLIGHI E RESPONSABILITA' DEL GARANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il garante si assume responsabilità legale formale nei confronti delle
+autorità immigratorie indonesiane. Tra i principali obblighi:
+
+a) Presentazione delle domande
+   Le richieste di KITAS e di proroga del KITAP possono essere presentate dal
+   garante per conto dello straniero [IMM-169]. Se i requisiti sono incompleti,
+   il Capo dell'Ufficio Immigrazione restituisce il fascicolo al garante con
+   ricevuta indicante le ragioni [IMM-143]. In caso di documentazione
+   incompleta nel KITAP, i documenti vengono restituiti allo straniero, al
+   garante o al responsabile al primo ricevimento [IMM-171].
+
+b) Consegna elettronica del permesso
+   Il permesso di soggiorno è inviato elettronicamente allo straniero, al
+   garante o al responsabile [IMM-330].
+
+c) Obbligo di espulsione alla cessazione della garanzia
+   Il garante o responsabile è obbligato a far uscire lo straniero dal
+   territorio indonesiano e a restituire il permesso di soggiorno permanente
+   alla cessazione del rapporto di garanzia [IMM-175].
+
+d) Segnalazione all'Ufficio Immigrazione
+   Il garante o responsabile di uno straniero che desidera terminare la
+   garanzia deve segnalarlo all'Ufficio Immigrazione che ha emesso il permesso
+   di soggiorno permanente per procedere all'estinzione dello stesso [IMM-174].
+
+e) Segnalazione tramite applicazione
+   La segnalazione del permesso di soggiorno permanente deve essere effettuata
+   attraverso applicazione allegando il passaporto valido e il permesso di
+   soggiorno permanente [IMM-178].
+
+f) Lettera di garanzia (surat penjaminan)
+   Per le richieste di KITAS, deve essere fornita una lettera di garanzia dal
+   garante, insieme al passaporto valido e alla raccomandazione dell'Agenzia
+   di Intelligenza di Stato se richiesta [IMM-128]. La richiesta in certi
+   contesti deve essere presentata allegando passaporto valido, permesso di
+   soggiorno, prova di garanzia se applicabile, e dichiarazione dei motivi
+   [IMM-325].
+
+g) Responsabilità sulle domande di equipaggi navali
+   La richiesta per equipaggi navali deve essere accompagnata da lettera di
+   agenzia navale, elenco dell'equipaggio, lettera di garanzia, passaporto
+   valido e raccomandazione dell'ente competente [IMM-157].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. VIGILANZA IMIGRASI SUI GARANTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+L'Ufficio Immigrazione indonesiano esercita una funzione di sorveglianza
+(pengawasan) che si estende anche ai garanti degli stranieri.
+
+AMBITO DELLA SORVEGLIANZA:
+
+Il Ministero dell'Immigrazione effettua la sorveglianza sull'immigrazione che
+comprende il controllo sia dei cittadini indonesiani sia degli stranieri
+[IMM-084]. La sorveglianza nei confronti degli stranieri avviene durante la
+richiesta di visto, l'ingresso/uscita dal territorio, il rilascio di permessi
+di soggiorno e le attività nel territorio [IMM-086].
+
+La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo
+per i garanti di stranieri titolari di permesso di soggiorno temporaneo (KITAS)
+o permanente (KITAP) [IMM-100].
+
+SORVEGLIANZA SUI GARANTI PERSONA GIURIDICA:
+
+La sorveglianza dei garanti persone giuridiche (korporasi) verifica:
+- La documentazione societaria;
+- La presenza e l'attività dello straniero garantito;
+- Il domicilio del garante;
+- La capacità del garante di assumersi la responsabilità [IMM-101].
+
+TIPOLOGIE DI CONTROLLO:
+
+La sorveglianza avviene attraverso due canali:
+
+1. Controllo amministrativo: raccolta, elaborazione e presentazione di dati e
+   informazioni riguardanti i servizi di immigrazione, il movimento degli
+   stranieri e le decisioni di detenzione [IMM-091].
+
+2. Controllo sul campo: verifica della presenza degli stranieri, delle loro
+   attività e della completezza dei documenti di viaggio o permessi di
+   soggiorno [IMM-092]. Può essere effettuato periodicamente o quando
+   necessario [IMM-102].
+
+Il controllo sul campo nei confronti degli stranieri richiede normalmente un
+ordine scritto preventivo. Tuttavia, in circostanze particolari, il controllo
+può essere effettuato senza ordine scritto [IMM-094]. In tal caso, l'ufficiale
+di immigrazione deve segnalare al funzionario competente entro un giorno per
+approvazione [IMM-095].
+
+CONTROLLO SUL CAMPO IN CASI PARTICOLARI:
+
+Il controllo di immigrazione sul campo può essere facoltativo, secondo la
+valutazione del Capo dell'Ufficio Immigrazione [IMM-218]. Diventa obbligatorio
+se la richiesta si basa su matrimonio misto tra straniero e cittadino
+indonesiano [IMM-221].
+
+I dati degli stranieri ospitati devono essere consegnati all'ufficiale di
+immigrazione ai fini della sorveglianza [IMM-099]. La sorveglianza su stranieri
+che richiedono visti è effettuata dalla presentazione della richiesta fino
+all'uso del visto per il viaggio [IMM-104].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. COME TERMINARE LA GARANZIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La cessazione del rapporto di garanzia può avvenire per diverse ragioni:
+dimissioni del lavoratore, fine del contratto, scadenza del permesso,
+cambiamento di sponsor, o decisione volontaria del garante.
+
+PROCEDURA DI CESSAZIONE:
+
+1. Segnalazione del garante all'Ufficio Immigrazione
+   Il garante o responsabile di uno straniero che desidera terminare la
+   garanzia deve segnalare all'Ufficio Immigrazione che ha emesso il permesso
+   di soggiorno permanente per procedere all'estinzione dello stesso [IMM-174].
+   La segnalazione deve essere effettuata attraverso l'applicazione allegando
+   il passaporto valido e il permesso di soggiorno permanente [IMM-178].
+
+2. Obbligo di far uscire lo straniero
+   Una volta terminata la garanzia, il garante o responsabile è obbligato a
+   far uscire lo straniero dal territorio indonesiano e a restituire il
+   permesso di soggiorno permanente [IMM-175].
+
+3. Obblighi dello straniero
+   Lo straniero è obbligato a lasciare il territorio indonesiano, restituire
+   il permesso di soggiorno permanente ed effettuare lo scioglimento della
+   garanzia immigratoria [IMM-176].
+
+4. Restituzione della garanzia immigratoria
+   Se il permesso scade e la garanzia finanziaria non è stata utilizzata, deve
+   essere restituita allo straniero [IMM-258]. Il prelievo può essere
+   richiesto dopo aver ottenuto il permesso di lasciare l'Indonesia [IMM-259].
+
+RICHIESTA DI ESENZIONE DAL PERMESSO DI SOGGIORNO:
+
+La richiesta scritta per l'esenzione dal permesso di soggiorno (es. per
+procedimenti giudiziari in corso) deve includere passaporto, sentenza finale
+del procedimento, documento d'identità del garante e lettere di garanzia
+[IMM-198].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. CASI PRATICI PER TIPO DI VISTO / PERMESSO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KITAS LAVORATORE STRANIERO (TKA — Tenaga Kerja Asing, indice E23):
+
+Il garante è l'azienda datrice di lavoro (PT, CV o altro ente datore di
+lavoro). Il sistema degli indici visa è stato rinnovato da Permenkumham
+22/2023: il KITAS per lavoratore straniero usa ora l'indice E23; il vecchio
+indice E31 è obsoleto [IMM-363]. Il datore di lavoro deve preventivamente
+ottenere l'approvazione del Piano di Utilizzo TKA (RPTKA) dal Ministro del
+Lavoro [IMM-005]. Il documento IMTA come documento fisico separato è stato
+abolito, sostituito dall'approvazione del RPTKA e dal pagamento della tassa
+DKP-TKA di USD 100 per lavoratore per mese [IMM-360, IMM-361].
+
+KITAS INVESTITORE (E28A):
+
+Non è richiesto un garante tradizionale [IMM-249]. L'investitore versa invece
+una garanzia immigratoria [IMM-251]. Il Visa E28A richiede un investimento
+minimo di 10 miliardi di rupiah o il possesso di obbligazioni statali [IMM-004].
+Per il permesso di soggiorno limitato di 5 anni è richiesta prova di garanzia
+immigratoria [IMM-310].
+
+KITAS DIGITAL NOMAD / LAVORO DA REMOTO (E33G):
+
+Non è richiesto un garante tradizionale. Il titolare deve avere un datore di
+lavoro registrato fuori dall'Indonesia e un salario minimo di USD 60.000 annui;
+è vietato lavorare per aziende indonesiane o generare reddito locale [IMM-364].
+Si applica la garanzia finanziaria in sostituzione del garante [IMM-352].
+
+KITAP (IZIN TINGGAL TETAP — PERMESSO PERMANENTE):
+
+Il garante presenta la richiesta di cambio di stato da KITAS a KITAP all'Ufficio
+Immigrazione [IMM-075]. Le proroghe successive del KITAP possono essere
+presentate dallo straniero, dal garante o dal responsabile [IMM-169].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. QUADRO NORMATIVO DI RIFERIMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- UU 6/2011 sull'immigrazione: legge-quadro
+- PP 31/2013: Regolamento attuativo — definizioni, sorveglianza, procedura
+  [IMM-017, IMM-084, IMM-085, IMM-086, IMM-091, IMM-092, IMM-094, IMM-095,
+   IMM-099, IMM-100, IMM-101, IMM-102, IMM-103, IMM-104]
+- PP 34/2021: Abolizione IMTA, introduzione DKP-TKA [IMM-360, IMM-361]
+- PP 40/2023 e PP 63/2023: KITAS digital nomad (E33G) [IMM-364]
+- Permenkumham 22/2023: Nuovo sistema indici visa, E23 per TKA [IMM-363, IMM-004]
+- Permenkumham 29/2021: Procedura rilascio KITAS/KITAP, obblighi garante
+  [IMM-128, IMM-143, IMM-157, IMM-169, IMM-174, IMM-175, IMM-176, IMM-178,
+   IMM-198, IMM-247, IMM-248, IMM-249, IMM-251, IMM-252, IMM-253, IMM-254,
+   IMM-255, IMM-256, IMM-257, IMM-258, IMM-259, IMM-260, IMM-261]
+- Permenkumham 11/2024: Aggiornamento definizioni e garanzia immigratoria
+  [IMM-271, IMM-272, IMM-310, IMM-322, IMM-325, IMM-330, IMM-347, IMM-348,
+   IMM-349, IMM-350, IMM-351, IMM-352, IMM-353]
+- Permenimipas 5/2025: Nuova disciplina del garante — ha abrogato
+  Permenkumham 36/2021 [IMM-366]
+- SE Kemnaker SE-3/836/2026: RPTKA obbligatorio per TKA [IMM-005]
+
+NOTA: Il PP 31/1994 sulla sorveglianza degli stranieri e sui provvedimenti di
+immigrazione è stato abrogato e non è più applicabile [IMM-107].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. RIEPILOGO RAPIDO — CHI HA BISOGNO DEL GARANTE?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Tipo di straniero                       | Garante richiesto?
+  ─────────────────────────────────────── | ──────────────────────────────────
+  Lavoratore straniero (TKA, E23)         | SI — l'azienda datrice di lavoro
+  Coniuge di cittadino indonesiano        | NO [IMM-248]
+  Investitore (E28A, E33G)               | NO — garanzia finanziaria [IMM-249]
+  Digital nomad (E33G)                   | NO — garanzia finanziaria [IMM-364]
+  Cittadino di paese con reciprocità      | NO [IMM-350]
+  Repatriato                             | NO (possibile esenzione) [IMM-351]
+  KITAS generico                         | SI — individuale o corporazione
+  KITAP                                  | SI — garante presenta la domanda
+  ─────────────────────────────────────── | ──────────────────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI
+
+IMM-004, IMM-005, IMM-017, IMM-075, IMM-084, IMM-085, IMM-086, IMM-087,
+IMM-091, IMM-092, IMM-094, IMM-095, IMM-099, IMM-100, IMM-101, IMM-102,
+IMM-103, IMM-104, IMM-107, IMM-128, IMM-143, IMM-157, IMM-169, IMM-171,
+IMM-174, IMM-175, IMM-176, IMM-178, IMM-198, IMM-218, IMM-221, IMM-247,
+IMM-248, IMM-249, IMM-251, IMM-252, IMM-253, IMM-254, IMM-255, IMM-256,
+IMM-257, IMM-258, IMM-259, IMM-260, IMM-261, IMM-271, IMM-272, IMM-310,
+IMM-311, IMM-312, IMM-322, IMM-325, IMM-330, IMM-347, IMM-348, IMM-349,
+IMM-350, IMM-351, IMM-352, IMM-353, IMM-360, IMM-361, IMM-363, IMM-364,
+IMM-366
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Guida generata da: Sistema Nuzantara / Bali Zero
+Data: 2025-2026 | Normativa aggiornata a: Permenimipas 5/2025
+DISCLAIMER: Questa guida ha scopo informativo. Per pratiche specifiche
+consultare sempre un professionista legale o lo staff Bali Zero.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

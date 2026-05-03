@@ -1,0 +1,1216 @@
+[
+  {
+    "code": "55104",
+    "title": "AKTIVITAS HOTEL BINTANG DUA",
+    "description": "Kelompok ini mencakup kegiatan penyediaan akomodasi yang\nbiasanya berbasis harian atau mingguan, untuk tinggal dalam jangka\nwaktu yang singkat, memenuhi ketentuan sebagai hotel bintang dua,\nserta menggunakan sebagian atau seluruh bangunan.\nKelompok ini mencakup penyediaan akomodasi yang dilengkapi\ndengan perabot di ruang tamu dan suite. Berbagai layanan tambahan\ndapat disediakan seperti pembersihan dan merapikan tempat tidur\nharian, layanan makanan dan minuman, layanan binatu, serta\nfasilitas konferensi dan konvensi. Aktivitas di kelompok ini secara\numum ditandai dengan penyediaan layanan pelanggan/customer\nservice secara langsung di tempat.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Hotel Bintang meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
+          "Memiliki Sertifikat laik sehat"
+        ],
+        "pb_umku": [
+          "- Sertifikat laik sehat - Surat Keterangan Penjualan Langsung Minuman Beralkohol (SKPL) A atau B dan C"
+        ],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": ["Dokumen penilaian mandiri Kesiapan Penerapan Standar"],
+        "jangka_waktu": "14 Hari",
+        "kewajiban": [
+          "Memiliki sertifikat standar usaha pariwisata dari LSPr",
+          "Memiliki Sertifikat laik sehat",
+          "Dalam hal mempekerja -kan TKA, wajib memiliki dokumen pengesahan Rencana Penggunaan"
+        ],
+        "pb_umku": [
+          "- Sertifikat laik sehat - Surat Keterangan Penjualan Langsung Minuman Beralkohol (SKPL) A atau B dan C"
+        ],
+        "parameter": "Seluruh",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": ["Dokumen Penilaian Mandiri Kesiapan Penerapan Standar"],
+        "jangka_waktu": "14 Hari",
+        "kewajiban": [
+          "Memiliki Sertifikat laik sehat",
+          "Memiliki sertifikat standar usaha pariwisata dari LSPr"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
+        "parameter": "Seluruh",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "CODICE_RINUMERATO",
+    "old_code_2020": "55110",
+    "mapping_note": "Manual fix: Hotel Bintang Dua → Hotel Bintang"
+  },
+  {
+    "code": "55105",
+    "title": "AKTIVITAS HOTEL BINTANG SATU",
+    "description": "Kelompok ini mencakup kegiatan penyediaan akomodasi yang\nbiasanya berbasis harian atau mingguan, untuk tinggal dalam jangka\nwaktu yang singkat, memenuhi ketentuan sebagai hotel bintang satu,\nserta menggunakan sebagian atau seluruh bangunan.\nKelompok ini mencakup penyediaan akomodasi yang dilengkapi\ndengan perabot di ruang tamu dan suite. Berbagai layanan tambahan\ndapat disediakan seperti pembersihan dan merapikan tempat tidur\nharian, layanan makanan dan minuman, layanan binatu, serta\nfasilitas konferensi dan konvensi. Aktivitas di kelompok ini secara\numum ditandai dengan penyediaan layanan pelanggan/customer\nservice secara langsung di tempat.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Hotel Bintang meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
+          "Memiliki Sertifikat laik sehat"
+        ],
+        "pb_umku": [
+          "- Sertifikat laik sehat - Surat Keterangan Penjualan Langsung Minuman Beralkohol (SKPL) A atau B dan C"
+        ],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": ["Dokumen penilaian mandiri Kesiapan Penerapan Standar"],
+        "jangka_waktu": "14 Hari",
+        "kewajiban": [
+          "Memiliki sertifikat standar usaha pariwisata dari LSPr",
+          "Memiliki Sertifikat laik sehat",
+          "Dalam hal mempekerja -kan TKA, wajib memiliki dokumen pengesahan Rencana Penggunaan"
+        ],
+        "pb_umku": [
+          "- Sertifikat laik sehat - Surat Keterangan Penjualan Langsung Minuman Beralkohol (SKPL) A atau B dan C"
+        ],
+        "parameter": "Seluruh",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "CODICE_RINUMERATO",
+    "old_code_2020": "55110",
+    "mapping_note": "PP28 usa codice KBLI 2020 55110 (Hotel Bintang...). Match: 94%"
+  },
+  {
+    "code": "55400",
+    "title": "AKTIVITAS JASA INTERMEDIASI AKOMODASI",
+    "description": "Kelompok ini mencakup intermediasi seluruh jenis akomodasi dengan\nmempertemukan klien dan penyedia layanan dengan balas jasa atau\nkomisi tertentu. Kegiatan intermediasi ini dapat dilakukan pada\nplatform digital atau melalui saluranl nondigital (telepon, po s, dll).\nBalas jasa atau komisi dapat diterima baik dari klien atau penyedia\nakomodasi. Pendapatan untuk kegiatan intermediasi dapat mencakup\nsumber pendapatan lain, seperti pendapatan dari penjualan ruang\niklan.\nKelompok ini juga mencakup\n- jasa pertukaran time-share;\n- jasa pemesanan akomodasi.\nKelompok ini tidak mencakup\n- kegiatan yang mengkombinasikan akomodasi, liburan, dan",
+    "scale_licensing": [],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "BPS_ONLY"
+  },
+  {
+    "code": "56304",
+    "title": "AKTIVITAS KEDAI MINUMAN",
+    "description": "Kelompok ini mencakup penyediaan jasa pelayanan minum yang\nutamanya menyajikan minuman siap dikonsumsi yang melalui proses\npembuatan di tempat tetap yang dapat dipindah -pindahkan atau\ndibongkar pasang, biasanya dengan menggunakan tenda, seperti\nkedai kopi dan kedai jus.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki Label Higiene Sanitasi Pangan (HSP)",
+          "Menyampaikan laporan kegiatan secara berkala",
+          "Menyampaikan dokumen penerapan standar"
+        ],
+        "pb_umku": ["Label Higiene Sanitasi Pangan (HSP)"],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "77100",
+    "title": "PENYEWAAN DAN SEWA GUNA USAHA KENDARAAN BERMOTOR",
+    "description": "Kelompok ini mencakup kegiatan penyewaan dan sewa guna usaha\ntanpa hak opsi (operational leasing) berbagai jenis kendaraan\nbermotor alat transportasi darat, seperti mobil penumpang tanpa\nsopir, truk, karavan bermotor, trailer (kereta gandeng), dan kendaraan\nrekreasi. Kelompok ini juga mencakup kegiatan penyewaan dan sewa\nguna usaha operasional untuk mobil pribadi tanpa sopir dan sepeda\nmotor. Kelompok ini tidak mencakup\n- penyewaan atau sewa guna usaha tanpa hak opsi alat transportasi\ndarat dengan operatornya, lihat subgolongan 4922 dan 4923;\n- penyewaan sepeda, lihat kelompok 77210;\n- penyewaan perahu motor, lihat kelompok 77312.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota Seluruh",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "77311",
+    "title": "PENYEWAAN DAN SEWA GUNA USAHA ALAT TRANSPORTASI DARAT",
+    "description": "BUKAN KENDARAAN BERMOTOR\nKelompok ini mencakup kegiatan penyewaan dan sewa guna usaha\ntanpa hak opsi (operational leasing) tanpa operator untuk semua jenis\nalat transportasi darat bukan kendaraan bermotor seperti kendaraan\nmelalui jalur rel misalnya kereta api, kereta listrik, dan  kereta\nmonorel. Kelompok ini juga mencakup penyewaan karavan tidak\nbermotor.\nKelompok ini tidak mencakup\n- penyewaan alat transportasi darat berupa kendaraan bermotor",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota Seluruh",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "79901",
+    "title": "JASA INFORMASI PARIWISATA",
+    "description": "Kelompok ini mencakup kegiatan penyediaan informasi mengenai\nobjek dan sarana pariwisata, jasa pariwisata, transportasi dan\ninformasi lain yang diperlukan oleh wisatawan. Penyebaran informasi\ntentang usaha pariwisata atau informasi lain yang diperlukan\nwisatawan dapat dilakukan melalui media cetak, elektronik, atau\nmedia komunikasi lainnya, termasuk informasi layanan pemesanan,\nakomodasi, makanan, penerbangan, angkutan darat, dan angkutan\nlaut.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
+        "pb_umku": [],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
+        "pb_umku": [],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE"
+  },
+  {
+    "code": "93111",
+    "title": "FASILITAS STADION",
+    "description": "Kelompok ini mencakup penyediaan tempat dan fasilitas untuk\nolahraga sepak bola, hoki, kriket/cricket, bisbol/baseball, jai -alai,\natletik (lari, lempar lompat dan lain -lain) sebagai kegiatan pokok.\nPenyelenggaraan sekolah/pendidikan olahraga sepak bola, ho ki,\nkriket, bisbol, jai-alai, atletik (lari, lempar lompat dan lain -lain) yang\ndikelola sendiri dicakup dalam kelompok ini.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki sertifikat standar yang diterbitkan oleh LSPr (khusus PMA)",
+          "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Fasilitas Stadion meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
+          "Memiliki sertifikat laik sehat"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "93210",
+    "title": "AKTIVITAS TAMAN BERTEMA DAN TAMAN HIBURAN",
+    "description": "Kelompok ini mencakup kegiatan taman hiburan dan taman bertema\nyang dicirikan oleh pengoperasian berbagai atraksi secara permanen\ndan berbasis lokasi, seperti wahana mekanis, komidi putar,\npermainan, galeri tembak, pertunjukan, pameran bertema, dan\ntempat piknik, yang disediakan berdasarkan arahan ekonomi dan\noperasional dari operator pusat. Taman-taman ini biasanya terletak di\narea yang dibatasi secara struktural, dan pelanggan harus membayar\ntiket masuk.\nKelompok ini juga mencakup\n- aktivitas taman akuatik/air.\nKelompok ini tidak mencakup\n- pengoperasian perjudian dan permainan lotre, lihat subgolongan",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Menengah", "Besar"],
+        "kategori_risiko": "Tinggi",
+        "perizinan": "NIB dan Izin",
+        "persyaratan": [
+          "Memiliki Penilaian Mandiri Kesiapan Penerapan Standar"
+        ],
+        "jangka_waktu": "14 Hari",
+        "kewajiban": [
+          "Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
+          "Memiliki Sertifikat laik sehat"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
+        "parameter": "Seluruh",
+        "kewenangan": "Menteri/ Kepala Badan",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true,
+        "dati_inferiti": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki Sertifikat Laik Sehat",
+          "Memiliki sertifikat standar yang diterbitkan oleh LSPr (khusus PMA)",
+          "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Aktivitas Taman Bertema atau Taman Hiburan Lainnya meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat"],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE",
+    "mapping_note": "Cleaned: removed invalid ['93210']"
+  },
+  {
+    "code": "96100",
+    "title": "AKTIVITAS PENCUCIAN DAN PEMBERSIHAN PRODUK TEKSTIL DAN",
+    "description": "BULU\nKelompok ini mencakup\n- pencucian dan dry cleaning, penyetrikaan, dll., dari semua jenis\npakaian (termasuk bulu) dan tekstil, yang disediakan oleh\nperalatan mekanis, dengan tangan atau dengan mesin yang\ndioperasikan dengan koin, baik untuk masyarakat umum atau\nuntuk klien industri atau komersial;\n- pengambilan dan pengiriman cucian;\n- pencucian karpet dan permadani serta pembersihan gorden dan\ntirai, baik di tempat klien atau tidak;\n- penyediaan jasa pencucian dan pembersihan kering, penyetrikaan,\npenyetrikaan, dll., untuk semua jenis pakaian (termasuk bulu) dan\ntekstil, gabungan jasa penyewaan dan perawatan termasuk\npencucian dan pembersihan tekstil, misalnya linen, seragam kerja\ndan barang-barang terkait lainnya;\n- layanan penyediaan popok yang dapat digunakan kembali.\nKelompok ini tidak mencakup\n- perbaikan dan perubahan pakaian lihat subgolongan 9529;\n- penyewaan pakaian selain seragam kerja, yang pencuciannya",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten /Kota",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": ["Menyampaikan laporan kegiatan secara berkala"],
+        "pb_umku": [],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki sertifikat standar usaha pariwisata dari LSPr (khusus PMA);",
+          "Memiliki Dokumen Penilaian Mandiri Kesiapan Penerapan Standar usaha Aktivitas Kebugaran Lainnya meliputi Sarana, Struktur Organisasi dan SDM, Pelayanan, Produk usaha dan Sistem Manajemen Usaha",
+          "Memiliki Sertifikat Laik Sehat (SLS)"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
+        "parameter": "Seluruh",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [
+          "Memiliki Penilaian Mandiri Kesiapan Penerapan Standar"
+        ],
+        "jangka_waktu": "14 Hari",
+        "kewajiban": [
+          "Memiliki Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
+          "Memiliki Sertifikat Laik Sehat (SLS)"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
+        "parameter": "Seluruh",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Tinggi",
+        "perizinan": "NIB dan",
+        "persyaratan": [
+          "Memiliki Penilaian Mandiri Kesiapan Penerapan Standar",
+          "Sertifikat kompetensi tenaga medis"
+        ],
+        "jangka_waktu": "-",
+        "kewajiban": [
+          "Memiliki Sertifikat Standar Usaha Pariwisata yang diterbitkan oleh LSPr",
+          "Memiliki Sertifikat Laik Sehat (SLS)"
+        ],
+        "pb_umku": ["Sertifikat Laik Sehat (SLS)"],
+        "parameter": "Seluruh",
+        "kewenangan": "Menteri/Kepa",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": false
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE"
+  },
+  {
+    "code": "47111",
+    "title": "PERDAGANGAN ECERAN BERBAGAI MACAM BARANG YANG",
+    "description": "UTAMANYA MAKANAN, MINUMAN, ATAU TEMBAKAU DENGAN\nSISTEM SWALAYAN\nKelompok ini mencakup perdagangan eceran berbagai jenis barang\nkebutuhan yang utamanya bahan makanan, makanan, minuman,\natau tembakau dengan harga yang sudah ditentukan serta pembeli\nmengambil dan membayar sendiri kepada kasir (self\nservice/swalayan). Di samping itu, kegiatan ini juga dapat melakukan\nperdagangan eceran beberapa barang bukan makanan seperti perabot\nrumah tangga, mainan anak -anak, obat-obatan, alat kesehatan, dan\npakaian, namun tetap didominasi oleh barang makanan, minuman,\natau tembakau misalnya minimarket, supermarket, atau hipermarket.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Pendirian sesuai dengan ketentuan peraturan perundang-undangan di bidang Toko Swalayan",
+          "Memenuhi ketentuan pembatasan kepemilikan gerai/outlet Toko Swalayan sesuai dengan ketentuan peraturan perundang-undangan di bidang Toko Swalayan.",
+          "Memiliki kemitraan dengan usaha mikro atau usaha kecil",
+          "Menyampaikan laporan kepada Menteri Perdagangan sesuai dengan ketentuan peraturan perundang-undangan",
+          "Memenuhi ketentuan jam operasional yang ditetapkan sesuai dengan ketentuan peraturan perundang-undangan",
+          "Mengikutsertakan Pelaku Usaha mikro, kecil, dan menengah dalam melakukan kerjasama pasokan barang.",
+          "Menyediakan barang dagangan produk dalam negeri",
+          "Dalam hal menggunakan merek Toko Swalayan sendiri, Toko Swalayan: a. Bertanggungjawab terhadap barang dagangannya telah memenuhi ketentuan peraturan perundang-undangan di bidang kekayaan intelektual b. Membina pengembangan produk dan merek sendiri bagi barang dagangan untuk Usaha Mikro, Kecil dan Menengah"
+        ],
+        "pb_umku": [
+          "- Penetapan Pusat Penyedia Bahan Baku dan/atau Bahan Penolong - Izin Edar Kosmetik - Rekomendasi Sebagai Pemohon Notifikasi Kosmetik - Sertifikat Pemenuhan Komitmen Sistem Manajemen Keamanan Pangan Olahan di Sarana Peredaran - Sertifikat Pemenuhan Standar Sistem Manajemen Keamanan Pangan Olahan di Sarana Peredaran - Persetujuan Pelaksanaan Uji Praklinik Kosmetik - Persetujuan Pelaksanaan Uji Klinik Kosmetik - Sertifikat Penerapan Penanganan Yang Baik Pangan Segar Asal Tumbuhan (SPPBPSAT) - Izin Edar PSAT Produksi Luar Negeri (PSAT-PL) - Izin Edar PSAT Produksi Dalam Negeri (PSAT-PD) - Registrasi PSAT Produksi Dalam Negeri Usaha Kecil (PSATPDUK) - Registrasi Produk Hewan - Sertifikasi Nomor Kontrol Veterine"
+        ],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBATAS",
+    "pma_max_foreign": 0,
+    "pma_conditions": "UMKM only",
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "47192",
+    "title": "PERDAGANGAN ECERAN BERBAGAI MACAM BARANG YANG",
+    "description": "UTAMANYA BUKAN MAKANAN, MINUMAN, ATAU TEMBAKAU SELAIN\nDENGAN SISTEM SWALAYAN\nKelompok ini mencakup perdagangan eceran berbagai jenis barang\nyang utamanya bukan makanan, minuman atau tembakau\nselaindengan sistem swalayan. Pada umumnya, barang -barang yang\ndiperdagangkan antara lain pakaian, perabot rumah tangga,\nperhiasan, mainan ana k-anak dan kosmetik, yang terintegrasi di\nbawah satu pengelolaan, misalnya toko barang kelontong.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [
+          "Penetapan Pusat Penyedia Bahan Baku dan/atau Bahan Penolong"
+        ],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "47901",
+    "title": "PLATFORM DIGITAL INTERMEDIASI PERDAGANGAN ECERAN",
+    "description": "Kelompok ini mencakup pengoperasian platform digital (misalnya\nsitus web, aplikasi seluler) yang memfasilitasi perdagangan eceran\nantara penjual dan pembeli untuk pemesanan suatu barang\nberdasarkan imbalan atau komisi tanpa penyediaan atau mengambil\nkepemilikan barang yang diintermediasikan. Balas jasa atau komisi\ndapat diterima dari pihak penjual atau pembeli.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [
+          "- Penetapan Pusat Penyedia Bahan Baku dan/atau Bahan Penolong - Izin Edar Kosmetik - Rekomendasi Sebagai Pemohon Notifikasi Kosmetik - Sertifikat Pemenuhan Standar Sistem Manajemen Keamanan Pangan Olahan di Sarana Peredaran - Persetujuan Pelaksanaan Uji Praklinik Kosmetik - Persetujuan Pelaksanaan Uji Klinik Kosmetik - Sertifikat Penerapan Penanganan Yang Baik Pangan Segar Asal Tumbuhan (SPPBPSAT) - Izin Edar PSAT Produksi Dalam Negeri (PSAT-PD) - Registrasi PSAT Produksi Dalam Negeri Usaha Kecil (PSATPDUK)"
+        ],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE"
+  },
+  {
+    "code": "63101",
+    "title": "AKTIVITAS PENGOLAHAN DATA",
+    "description": "Kelompok ini mencakup aktivitas pengolahan dan tabulasi berbagai\njenis data, termasuk big data (baik terstruktur, semi terstruktur,\nmaupun tidak terstruktur) dan data citra satelit atau penginderaan\njauh. Aktivitas ini mencakup sebagian atau seluruh tahapa n\npengolahan data, meliputi\n- persiapan data (misalnya entri data, migrasi data, pembersihan\ndata, dan normalisasi data);\n- pengembangan algoritma untuk penyimpanan dan pengolahan\ndata;\n- pengolahan data dan pembuatan laporan khusus berdasarkan\ndata yang disediakan oleh klien/pemilik data, yang dilakukan oleh\ndata controller atau data processor, termasuk pengolahan data\nmenggunakan blockchain atau distributed ledger technology\n(DLT).\nKelompok ini juga mencakup aktivitas pembagian fasilitas komputasi\nuntuk pemrosesan dan analisis data, digitalisasi dokumen (untuk\nkeperluan pengolahan data lebih lanjut), pengelolaan data besar (big\ndata management), dan penyediaan layanan informasi dari data yang\ndiolah.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil", "Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Memiliki SOP keamanan data dan sistem elektronik dan",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab./Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa",
+          "Memiliki dokumen perjanjian kerja antara perusahaan dengan tenaga kerja kompeten untuk memberikan jasa yang berstatus pegawai tetap atau pegawai kontrak minimal 1 tahun, dengan jumlah pegawai paling sedikit: 2 orang level manajer, 2 orang level profesional/sup ervisor 4 orang level teknis/ operasional/ staf",
+          "Memiliki dokumen bagan alur bisnis proses penjualan jasa",
+          "Memiliki dokumen berupa: a) daftar peralatan prasarana pendukung dan b) foto peralatan prasarana pendukung"
+        ],
+        "jangka_waktu": "7 Hari",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Memiliki SOP keamanan data dan sistem elektronik dan",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil", "Menengah"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat dan proses penyelenggaraan jasa, sesuai peraturan perundang-undangan",
+          "Memiliki SOP keamanan data dan sistem elektronik",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa",
+          "Memiliki sertifikat kalibrasi untuk peralatan yang berfungsi untuk mengukur",
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa"
+        ],
+        "pb_umku": [
+          "- Izin Penetapan Industri Pertahanan - Izin Produksi Alat Peralatan Pertahanan dan Keamanan - Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan (Certificate of Approval Facility Worthiness of Defence Production): Moda Darat, Moda Laut dan/atau Moda Udara"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab./ Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./ Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE"
+  },
+  {
+    "code": "63102",
+    "title": "AKTIVITAS PENYEDIAAN INFRASTRUKTUR KOMPUTASI, HOSTING,",
+    "description": "DAN AKTIVITAS TERKAIT\nKelompok ini mencakup aktivitas penyediaan infrastruktur komputasi\ndan hosting, serta berbagai jasa terkait lainnya yang mendukung\naktivitas pengelolaan dan distribusi data secara digital, termasuk\npenyediaan infrastruktur komputasi awan (cloud computing),  seperti\nlayanan Infrastructure as a Service (Iaas) dan Platform as a Service\n(PaaS); penyediaan layanan hosting, seperti web hosting, hosting\nlayanan streaming (tanpa mengelola atau mengkurasi konten), dan\naplikasi hosting.\nKelompok ini juga mencakup penyediaan fasilitas mainframe secara\nbersama (time sharing) kepada klien, penyewaan ruang server dan\njaringan dalam pusat data (data center colocation), penyimpanan data\ndan dokumen secara elektronik untuk keperluan akses terbatas, serta\nlayanan penyimpanan data komputer lainnya.\nKelompok ini tidak mencakup aktivitas pengolahan data dan entri data",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil", "Menengah"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat dan proses penyelenggaraan jasa, sesuai peraturan perundang-undangan",
+          "Memiliki SOP keamanan data dan sistem elektronik",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa",
+          "Memiliki sertifikat kalibrasi untuk peralatan yang berfungsi untuk mengukur",
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa"
+        ],
+        "pb_umku": [
+          "- Izin Penetapan Industri Pertahanan - Izin Produksi Alat Peralatan Pertahanan dan Keamanan - Sertifikat Persetujuan Kelaikan Fasilitas Produksi Pertahanan (Certificate of Approval Facility Worthiness of Defence Production): Moda Darat, Moda Laut dan/atau Moda Udara"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab./ Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./ Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa",
+          "Memiliki dokumen perjanjian kerja antara perusahaan dengan tenaga kerja kompeten untuk memberikan jasa yang berstatus pegawai tetap atau pegawai kontrak minimal 1 tahun, dengan jumlah pegawai paling sedikit: 2 orang level manajer, 2 orang level profesional/ supervisor 4 orang level teknis/ operasional/ staf",
+          "Memiliki dokumen bagan alur bisnis proses penjualan jasa",
+          "Memiliki dokumen berupa: a) spesifikasi mesin dan/atau daftar peralatan, sebagai sarana penunjang b) foto mesin/ peralatan, sebagai sarana penunjang"
+        ],
+        "jangka_waktu": "7 Hari",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat dan proses penyelenggaraan jasa, sesuai peraturan perundang-undangan",
+          "Memiliki SOP keamanan data dan sistem elektronik",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa",
+          "Memiliki sertifikat kalibrasi untuk peralatan yang berfungsi untuk mengukur"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil", "Menengah"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa",
+          "Memiliki dokumen perjanjian kerja antara perusahaan dengan tenaga kerja kompeten untuk memberikan jasa yang berstatus pegawai tetap atau pegawai kontrak minimal 1 tahun, dengan jumlah pegawai paling sedikit: a) Industri skala kecil: 1 orang level teknis/ operasional/ staf b) Industri skala menengah: 1 orang level manajer, 1 orang level profesional/ supervisor, dan 1 orang level teknis/ operasional/ staf",
+          "Memiliki dokumen bagan alur bisnis proses penjualan jasa",
+          "Memiliki dokumen berupa: a) daftar peralatan prasarana pendukung dan b) foto peralatan prasarana pendukung"
+        ],
+        "jangka_waktu": "7 Hari",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Memiliki dokumen SOP layanan purna jual pemberian jasa dan",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab./Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "",
+        "persyaratan": [
+          "Memiliki dokumen struktur organisasi yang memuat ketersediaan SDM dengan kompetensi teknis sesuai usaha jasa",
+          "Memiliki dokumen perjanjian kerja antara perusahaan dengan tenaga kerja kompeten untuk memberikan jasa yang berstatus pegawai tetap atau pegawai kontrak minimal 1 tahun, dengan jumlah pegawai paling sedikit: 2 orang level manajer, 2 orang level profesional/ supervisor 4 orang level teknis/ operasional/ staf",
+          "Memiliki dokumen bagan alur bisnis proses penjualan jasa",
+          "Memiliki dokumen berupa: a) daftar peralatan prasarana pen-dukung dan b) foto peralatan prasarana pen-dukung"
+        ],
+        "jangka_waktu": "7 Hari",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Memiliki dokumen SOP layanan purna jual pemberian jasa dan",
+          "Memiliki sertifikat pelatihan kompetensi SDM penyedia jasa"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Mikro"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan data dan/atau informasi secara berkala kepada lembaga pemerintah yang menyelenggarakan urusan pemerintah di bidang statistik dan/atau menyampaikan data / informasi perusahaan dan kegiatan usaha sewaktuwaktu dalam rangka pembinaan dan pengawasan dalam hal: a. Diperlukan data mutakhir, akurat dan cepat b. Data yang diminta tidak tercakup dalam data dan /atau informasi yang disampaikan kepada lembaga pemerintah yang menyelenggarakan urusan pemerintahan di bidang statistik",
+          "Memiliki Surat Tanda Terdaftar Penyelenggara Sistem Elektronik yang diterbitkan oleh kementerian yang menyelenggarakan urusan pemerintahan di bidang komunikasi dan informatika",
+          "Memiliki layanan pengaduan konsumen berupa nomor kontak dan/atau alamat surat elektronik (email)",
+          "Menayangkan layanan pengaduan konsumen yang memuat informasi kontak pengaduan konsumen oleh unit kerja di lingkungan"
+        ],
+        "pb_umku": [
+          "- Tanda Daftar Penyelenggara Sistem Elektronik Farmasi (PSEF) - Tanda Daftar Penyelenggara Sistem Elektronik Farmasi (PSEF) Distribusi - Sertifikat Cara Distribusi Obat yang Baik (CDOB) - Sertifikat Pemenuhan Standar Sistem Manajemen Keamanan Pangan Olahan di Sarana Peredaran"
+        ],
+        "parameter": "Seluruh",
+        "kewenangan": "Menteri/ Kepala Badan",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Tinggi",
+        "perizinan": "",
+        "persyaratan": [
+          "Surat Tanda Terdaftar Penyelenggara Sistem Elektronik yang diterbitkan oleh kementerian yang menyelenggarakan urusan pemerintahan di bidang komunikasi dan informatika",
+          "Alamat website dan/atau nama aplikasi",
+          "Layanan pengaduan konsumen berupa nomor kontak dan/atau alamat surat elektronik (email)",
+          "Layanan pengaduan konsumen yang memuat informasi kontak pengaduan konsumen oleh unit kerja di lingkungan Kementerian Perdagangan yang membidangi perlindungan konsumen dan tertib niaga",
+          "Dalam hal sistem elektronik berbentuk aplikasi mobile, wajib menyediakan sistem elektronik berbasis situs atau web yang identic (mirroring) dengan sistem elektronik berbasis aplikasi mobile"
+        ],
+        "jangka_waktu": "",
+        "kewajiban": [
+          "Kementerian Perdagangan yang membidangi perlindungan konsumen dan tertib niaga",
+          "Menyampaikan data dan/atau informasi secara berkala kepada lembaga pemerintah yang menyelenggarakan urusan pemerintah di bidang statistik dan/atau menyampaikan data/ informasi perusahaan dan kegiatan usaha sewaktuwaktu dalam rangka pembinaan dan pengawasan dalam hal: a. Diperlukan data mutakhir, akurat dan cepat b. Data yang diminta tidak tercakup dalam data dan /atau informasi yang disampaikan kepada lembaga pemerintah yang menyelenggarakan urusan pemerintahan di bidang statistik",
+          "Menyimpan data dan informasi PMSE yang terkait dengan transaksi keuangan dalam jangka waktu paling singkat 10 (sepuluh) tahun terhitung dan data dan informasi PMSE yang tidak terkait dengan transaksi keuangan dalam jangka waktu paling singkat 5 (lima) tahun sejak data dan informasi diperoleh",
+          "Memenuhi ketentuan persyaratan teknis yang ditetapkan oleh instansi terkait dan memperoleh Sertifikat Keandalan sesuai dengan ketentuan peraturan perundang-undangan",
+          "Menyediakan sarana kontrol teknologi dan/atau sarana penerimaan laporan atau aduan masyarakat terhadap keberadaan konten informasi elektronik ilegal ataupun penyalahgunaan ruang pada sistem elektronik yang dikelolanya sesuai dengan ketentuan peraturan perundang-undangan",
+          ". Memiliki atau menyediakan mekanisme yang dapat memastikan pengembalian dana konsumen apabila terjadi pembatalan pembelian oleh konsumen",
+          "Menyajikan syarat penggunaan atau perjanjian lisensi kepada penggunanya untuk melakukan pemanfaatan sesuai dengan ketentuan peraturan perundang-undangan",
+          "Menyediakan kontrak elektronik yang dapat diunduh dan/atau disimpan oleh konsumen",
+          "Memberikan jangka waktu paling sedikit 2 (dua) Hari untuk penukaran barang dan/atau jasa, atau pembatalan pembelian, terhitung sejak barang dan/atau jasa diterima oleh Konsumen",
+          "Mengutamakan penggunaan nama domain tingkat tinggi Indonesia bagi sistem elektronik yang berbentuk situs",
+          "Menyediakan pusat atau unit pengembangan di dalam negeri secara mandiri atau dapat bekerja sama dengan instansi atau badan usaha dalam negeri"
+        ],
+        "pb_umku": [],
+        "parameter": "Seluruh",
+        "kewenangan": "",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": false
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE",
+    "mapping_note": "Cleaned: removed invalid ['63102']"
+  },
+  {
+    "code": "73100",
+    "title": "AKTIVITAS PERIKLANAN",
+    "description": "Kelompok ini mencakup kegiatan pembuatan kampanye iklan dan\npenempatan iklan, penciptaan identitas merek, pengembangan merek,\npengelolaan kampanye, dan pengembangan materi kreatif iklan,\nseperti pada terbitan berkala, koran, surat kabar, radio, televisi,\ninternet, media digital atau media lainnya untuk konten bidang\nkeolahragaan maupun bidang lainnya, serta perancangan struktur\nlokasi tampilan. Aktivitas periklanan ini umumnya disediakan oleh\nbiro periklanan dan perwakilan media.\nKelompok ini mencakup:\n- pembuatan dan pelaksanaan kampanye iklan pada bidang\nkeolahragaan dan bidang lainnya, meliputi:\n- pembuatan dan penempatan iklan di koran/surat kabar dan\nterbitan berkala, di ratdio dan televisi, melalui internet serta media\nlainnya;\n- pembuatan dan penempatan iklan di luar ruangan, misalnya pada\npapan reklame, papan pengumuman, panel, jenis poster dan\ngambar, selebaran, pamflet, edaran, brosur dan frame, iklan\njendela, penataan/dekorasi etalase, dan iklan mobil dan bus;\n- perwakilan media, yaitu penjualan ruang dan waktu untuk\nberbagai macam media untuk penempatan iklan;\n- iklan udara (aerial advertising)\n- distribusi atau pengiriman materi atau contoh iklan;\n- penyediaan ruang iklan pada papan reklame dan sejenisnya;\n- pembuatan stan dan struktur pameran serta lokasi iklan lainnya;\n- pelaksanaan kampanye pemasaran dan jasa periklanan lainnya\nyang ditujukan untuk menarik dan mempertahankan pelanggan\npada bidang keolahragaan dan bidang lainnya, meliputi:\n- promosi produk;\n- pemasaran di tempat penjualan (point of sale);\n- iklan melalui surat langsung (direct mail);\n- konsultasi pemasaran sebagai bagian dari periklanan.\nKelompok ini tidak mencakup\n- penerbitan materi iklan, lihat subgolongan 5819;\n- produksi pesan komersial untuk radio, televisi, dan film, lihat",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan laporan kegiatan usaha kepada Menteri Perdagangan"
+        ],
+        "pb_umku": [],
+        "parameter": "Provinsi Daerah Khusus Jakarta Kabupaten / Kota Seluruh",
+        "kewenangan": "Gubernur Daerah Khusus Jakarta",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBATAS",
+    "pma_max_foreign": 49,
+    "pma_conditions": "Kemitraan dengan badan usaha dalam negeri",
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "74192",
+    "title": "AKTIVITAS DESAIN GRAFIS/KOMUNIKASI VISUAL",
+    "description": "Kelompok ini mencakup\n- kegiatan penyediaan jasa desain komunikasi visual/desain grafis,\nbaik secara manual maupun digital, baik statis (tidak bergerak)\nmaupun dinamis (bergerak, interaktif), pada media cetak, layar\n(gawai, tv, komputer, layar LED, dan sejenisnya), baik luring,\ndaring, maupun virtual, yang berhubungan dengan pembuatan\nmateri dengan fungsi identifikasi, informasi dan persuasi yang\ndiimplementasikan pada identitas jenama (brand), logo, desain\niklan, infografik, dan stasioneri;\n- pembuatan desain komunikasi (berupa poster, brosur, buku atau\nmaterial tercetak lainnya) untuk profil, situs web, aplikasi, media\nsosial, materi laporan, presentasi, dan desain material promosi\nlainnya;\n- desain kemasan (packaging), terutama desain permukaan\nkemasan;\n- desain grafis lingkungan untuk papan pameran/acara, displai\nproduk, papan promosi (billboard), penunjuk arah (wayfinding),\nsistem tanda (signage), penanda bangunan/retail, dan sebagainya.\nKelompok ini juga mencakup kegiatan perancangan identitas visual\njenama (brand), termasuk riset, penyusunan strategi jenama, sampai\nperancangan visual logo/identitas, penyusunan panduan standarisasi\npenggunaan identitas visual/logo jenama, penyediaan jasa\npembuatan tulisan huruf (lettering), perancangan rupa huruf\n(typeface), dan pembuatan ilustrasi.\nKelompok ini tidak mencakup\n- aktivitas desain grafis berbasis komputer untuk animasi, lihat",
+    "scale_licensing": [],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "BPS_ONLY"
+  },
+  {
+    "code": "85510",
+    "title": "PENDIDIKAN OLAHRAGA DAN REKREASI",
+    "description": "Kelompok ini mencakup penyelenggaraan pelatihan dalam kegiatan\nkeolahragaan bagi sekelompok individu, seperti dalam kamp atau\nsekolah. Kelompok ini juga mencakup kamp pelatihan olahraga harian\nmaupun bermalam. Pelatihan dapat diselenggarakan dalam berbagai\nlingkungan, seperti fasilitas pelatihan milik penyelenggara atau klien,\nlembaga pendidikan, atau melalui cara lain termasuk internet.\nPelatihan ini menawarkan struktur pendidikan yang terarah, seperti\nhubungan peserta didik dan pengajar, yang dirancang kh usus untuk\npendidikan dan pembelajaran. Namun, pelatihan ini tidak\nmenghasilkan kualifikasi pada jenjang pendidikan dari prasekolah\nhingga tersier.\nKelompok ini mencakup pelatihan olahraga (baseball, basket, cricket,\nsepak bola dan lain -lain); pelatihan olahraga yang diselenggarakan\noleh kamp atau sekolah; pelatihan senam; pelatihan berkuda;\npelatihan renang; pelatihan panjat tebing; pelatihan selanca r;\nkegiatan yang dilakukan oleh instruktur, pengajar, pelatih, atau\nasisten pelatih olahraga profesional; pelatihan seni bela diri, pelatihan\npermainan kartu (seperti bridge), kursus permainan papan, pelatihan\nyoga, pelatihan olahraga elektronik.\nKelompok ini tidak mencakup\n- kegiatan yang diselenggarakan oleh sekolah tinggi, perguruan",
+    "scale_licensing": [],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "BPS_ONLY"
+  },
+  {
+    "code": "85579",
+    "title": "PELATIHAN KERJA SWASTA LAINNYA",
+    "description": "Kelompok ini mencakup kegiatan pelatihan kerja lainnya yang\ndiselenggarakan swasta yang belum dicakup dalam kelompok 85571\ns.d. 85578, termasuk pendidikan dan pelatihan bagi pekerja luar\nnegeri atau migran, bidang metodologi pelatihan kerja, kesehatan dan\nkeselamatan kerja (K3), ketenaganukliran atau yang berhubungan\ndengan radiasi dan radioaktif, pelatihan motivasi, pengembangan diri,\npengembangan karir, neuro language programming, dan lainnya yang\ndiselenggarakan oleh swasta.",
+    "scale_licensing": [],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "BPS_ONLY"
+  },
+  {
+    "code": "69201",
+    "title": "AKTIVITAS AKUNTANSI, PEMBUKUAN, DAN PEMERIKSA",
+    "description": "Kelompok ini mencakup kegiatan penyediaan jasa pembukuan\nakuntansi keuangan, pembukuan akuntansi penggajian dan lainnya,\npenyusunan dan analisis laporan keuangan, persiapan atau\npengauditan laporan keuangan, serta pengujian laporan dan\nsertifikasi keakuratannya.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Menyampaikan LKPM melalui Sistem OSS per triwulan",
+          "Konsultan kekayaan intelektual yang bekerja pada kantor konsultan kekayaan intelektual wajib mendapatkan Surat Keputusan Pengangkatan Konsultan Kekayaan Intelektual dari Menteri Hukum cq. Direktur Jenderal KI, sesuai ketentuan perundang-undangan"
+        ],
+        "pb_umku": [],
+        "parameter": "Seluruh",
+        "kewenangan": "Menteri/ Kepala Badan",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "16291",
+    "title": "INDUSTRI BARANG ANYAMAN DARI ROTAN DAN BAMBU",
+    "description": "Kelompok ini mencakup kegiatan pembuatan macam -macam barang\nanyaman yang bahan utamanya rotan atau bambu, seperti tikar,\nwebbing, lampit, kipas tangan, bilik/gedek, dan produk tas anyaman\nseperti tas wanita dan tas laptop.\nKelompok ini tidak mencakup\n- pembuatan sandal/sepatu dengan sol dari berbagai material dan",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian; dan",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan , sesuai peraturan perundang-undangan."
+        ],
+        "pb_umku": [
+          "- Sertifikat Tingkat Komponen Dalam Negeri - Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri - Pertimbangan Teknis Pembebasan Bea Masuk dalam rangka Penelitian dan Pengembangan"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab./Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian;",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan , sesuai peraturan perundang-undangan;",
+          "Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Surat Angkutan Kayu Rakyat (SAKR); atau c) Persetujuan Impor dalam hal bahan baku asal impor, sesuai ketentuan pada masingmasing jenis perizinan berusaha pengelolaan kehutanan dan penebangan;",
+          "Memiliki dokumen Standar Operasional Prosedur (SOP) yang terdokumenta si paling sedikit meliputi pengadaan, penerimaan dan penyimpanan bahan baku, proses produksi, pengemasan, penyimpanan barang jadi, distribusi dan layanan pada pelanggan; dan",
+          "Memiliki: (a) Dokumen panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshootin g); atau (b)Layanan garansi malfungsi barang hasil produksi, yang membuktikan komitmen pelayanan minimal kepada pelanggan."
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab./Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian;",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan , sesuai peraturan perundang-undangan;",
+          "Memiliki dokumen legalitas bahan baku, berupa: a) Surat Keterangan Sahnya Hasil Hutan (SKSHH); b) Surat Angkutan Kayu Rakyat (SAKR); atau c) Persetujuan Impor dalam hal bahan baku asal impor, sesuai ketentuan pada masingmasing jenis perizinan berusaha pengelolaan kehutanan dan penebangan;",
+          "Memiliki dokumen Standar Operasional Prosedur (SOP) yang terdokumenta si paling sedikit meliputi pengadaan, penerimaan dan penyimpanan bahan baku, proses produksi, pengemasan, penyimpanan barang jadi, distribusi dan layanan pada pelanggan;",
+          "Memiliki: (a) Dokumen panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshootin g); atau (b). Layanan garansi malfungsi barang hasil produksi, yang membuktikan komitmen pelayanan minimal kepada pelanggan;",
+          "Memiliki Sertifikat Sistem Managemen Mutu (ISO 9001)."
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  },
+  {
+    "code": "23961",
+    "title": "INDUSTRI BARANG DARI BATU MARMER",
+    "description": "Kelompok ini mencakup kegiatan pembuatan berbagai macam barang\ndari batu marmer untuk:\n- keperluan rumah tangga dan pajangan, seperti daun meja,\nornamen, dan patung dari marmer;\n- keperluan bahan bangunan, seperti ubin dan bak mandi dari\nmarmer; serta\n- keperluan furnitur, seperti meja dan kursi dari marmer.",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshooting) b. Kartu/surat/kode elektronik garansi malfungsi barang hasil produksi yang membuktikan komitmen pelayanan minimal kepada pelanggan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik"
+        ],
+        "pb_umku": [
+          "- Sertifikat Tingkat Komponen Dalam Negeri - Pertimbangan Teknis Pembebasan Bea Masuk Dalam Rangka Penelitian Dan Pengembangan - Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab / Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab /Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Menengah"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshooting) b. Kartu/surat/kode elektronik garansi malfungsi barang hasil produksi yang membuktikan komitmen pelayanan minimal kepada pelanggan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik",
+          "Memiliki dokumen berupa SOP evakuasi bencana, termasuk penataan rambu keselamatan kerja"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab / Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab / Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Menengah Tinggi",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [
+          "Memiliki dokumen rencana penggunaan jenis, spesifikasi, jumlah, dan asal dari bahan baku, serta sumber dan jumlah/ besaran dari energi dan air baku, yang dibutuhkan untuk menjalankan kegiatan usaha industri dalam 1 (satu) siklus produksi atau selamalamanya 6 (enam) bulan ke depan",
+          "Memiliki dokumen berupa: a. Spesifikasi mesin dan/atau daftar peralatan b. Foto mesin/ peralatan c. Perjanjian jual beli/sewa yang membuktikan: 1) Penguasaan (kepemilikan/ sewa) mesin untuk menghasilkan produk industri material bangunan dan konstruksi serta peralatan pengujian kualitas produk 2) Kesesuaian kapasitas produksi terpasang pada data usaha",
+          "Memiliki dokumen struktur organisasi SDM minimal terdiri dari: a. Pimpinan perusahaan b. Bagian produksi dan/atau quality control c. Bagian pemasaran",
+          "Memiliki dokumen bagan alur: a. Pengadaan, penerimaan, penyimpanan bahan baku b. Proses produksi c. Proses quality control d. Pengemasan, penyimpanan, pengangkutan dan distribusi hasil produksi",
+          "Memiliki dokumen berupa foto yang membuktikan tersedianya Fasilitas penanganan kecelakaan kerja, ruang istirahat bagi pekerja",
+          "Memiliki dokumen perencanaan tata letak Fasilitas pabrik/ plant layout facilities, yang membuktikan tersedianya: a. Ruang produksi khusus b. Ruang quality control"
+        ],
+        "jangka_waktu": "7 Hari",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshooting) b. Kartu/surat/kode elektronik garansi malfungsi barang hasil produksi yang membuktikan komitmen pelayanan minimal kepada pelanggan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik",
+          "Memiliki dokumen berupa SOP evakuasi bencana, termasuk penataan rambu keselamatan kerja",
+          "Memiliki sertifikat Sistem Manajemen Mutu (ISO 9001)"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Kecil"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshooting) b. Kartu/surat/kode elektronik garansi malfungsi barang hasil produksi yang membuktikan komitmen pelayanan minimal kepada pelanggan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik"
+        ],
+        "pb_umku": [
+          "- Sertifikat Tingkat Komponen Dalam Negeri - Pertimbangan Teknis Pembebasan Bea Masuk Dalam Rangka Penelitian Dan Pengembangan - Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab / Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab /Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Menengah"],
+        "kategori_risiko": "Rendah",
+        "perizinan": "NIB",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki: a. Buku panduan penggunaan barang hasil produksi (meliputi perawatan, penanganan troubleshooting) b. Kartu/surat/kode elektronik garansi malfungsi barang hasil produksi yang membuktikan komitmen pelayanan minimal kepada pelanggan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik",
+          "Memiliki dokumen berupa SOP evakuasi bencana, termasuk penataan rambu keselamatan kerja"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab / Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab / Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_CON_AGGREGAZIONE"
+  },
+  {
+    "code": "32112",
+    "title": "INDUSTRI PERHIASAN DARI LOGAM MULIA",
+    "description": "Kelompok ini mencakup kegiatan pembuatan barang -barang\nperhiasan yang bahan utamanya dari logam mulia (emas, platina, dan\nperak) dan dikenakan pada tubuh, pakaian manusia, dan/atau hewan\npiaraan, seperti cincin, kalung, gelang, anting, bros, ikat pinggang,\ndan kancing, termasuk bagian dan perlengkapannya.\nKelompok ini tidak mencakup kegiatan pembuatan perhiasan imitasi,",
+    "scale_licensing": [
+      {
+        "skala_usaha": ["Kecil"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik"
+        ],
+        "pb_umku": [
+          "- Sertifikat Tingkat Komponen Dalam Negeri - Pertimbangan Teknis Pembebasan Bea Masuk Dalam Rangka Penelitian Dan Pengembangan - Surat Pendaftaran Bahan Berbahaya - Surat Persetujuan Penilaian TKDN Penggunaan Mesin Produksi Dalam Negeri"
+        ],
+        "parameter": "Lokasi industrinya berada pada Kab./Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Menengah"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik",
+          "Memiliki dokumen berupa SOP evakuasi bencana, termasuk penataan rambu keselamatan kerja"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Kab. / Kota bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Kab./Kota Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Bupati/Walikota",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      },
+      {
+        "skala_usaha": ["Besar"],
+        "kategori_risiko": "Menengah Rendah",
+        "perizinan": "NIB dan Sertifikat Standar",
+        "persyaratan": [],
+        "jangka_waktu": "Otomatis",
+        "kewajiban": [
+          "Memiliki bukti penyampaian wajib Data Industri tervalidasi setiap 6 (enam) bulan sekali sesuai peraturan perundang-undangan di bidang perindustrian",
+          "Menjamin keamanan dan keselamatan alat, proses, hasil produksi, penyimpanan, serta pengangkutan, sesuai peraturan perundang-undangan",
+          "Memiliki dokumen hasil kalibrasi peralatan quality control secara periodik atau hasil uji laboratorium independen atas produk yang dihasilkan secara periodik",
+          "Memiliki dokumen berupa SOP evakuasi bencana, termasuk penataan rambu keselamatan kerja",
+          "Memiliki sertifikat Sistem Manajemen Mutu (ISO 9001)"
+        ],
+        "pb_umku": [],
+        "parameter": "Lokasi industrinya berada pada Provinsi bersangkutan Lokasi industrinya berada dalam satu hamparan lintas antar Provinsi",
+        "kewenangan": "Gubernur Menteri/ Kepala Badan",
+        "sanksi_peringatan": "Peringatan tertulis",
+        "sanksi_denda": "Denda administratif",
+        "sanksi_penghentian": "Penghentian sementara kegiatan usaha",
+        "sanksi_pencabutan": "Pencabutan persyaratan dasar, PB, dan/atau PB UMKU",
+        "fiktif_positif": true
+      }
+    ],
+    "pma_status": "TERBUKA",
+    "pma_max_foreign": 100,
+    "pma_conditions": null,
+    "pma_source": "Perpres 10/2021, 49/2021, 14/2024",
+    "mapping_status": "MATCH_LANGSUNG"
+  }
+]

@@ -1,0 +1,125 @@
+# ZANTARA RAG Backend - PRODUCTION DEPENDENCIES (Optimized for <8GB)
+# Removes heavy ML packages that aren't used in production (OpenAI API for embeddings)
+# Last updated: 2026-01-18 - Security updates: python-jose, fastapi, openai, requests
+
+# Core Framework
+fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility and security fixes
+uvicorn[standard]>=0.40.0  # Upgraded for async improvements
+pydantic>=2.12.5
+pydantic-settings>=2.5.2
+python-multipart>=0.0.22  # Security fix: arbitrary file write
+
+# MCP Protocol (Critical for Client Handshake)
+mcp>=1.25.0
+anyio>=4.5.0
+
+# Vector Database
+qdrant-client>=1.12.0
+
+# AI API Clients (optimized for resolution speed)
+openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
+anthropic>=0.75.0  # Updated for httpx 0.28+ compatibility
+google-genai>=1.56.0  # Unified SDK (replaces google-generativeai)
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+google-cloud-storage>=2.10.0
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-anthropic>=1.0.0
+langchain-openai>=1.0.0
+langgraph>=0.0.1
+langgraph-checkpoint-postgres>=2.0.0
+
+# PII Detection (UU PDP compliance)
+presidio-analyzer>=2.2.362
+presidio-anonymizer>=2.2.362
+
+# Document Processing (lightweight)
+openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
+email-validator>=2.2.0
+pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
+reportlab>=4.2.0  # PDF generation for invoices (lightweight alternative to WeasyPrint)
+beautifulsoup4>=4.14.3  # Security and stability updates
+python-magic>=0.4.27  # MIME type detection from file content
+
+# OCR (Gemini Vision based - same as passport box)
+# Uses google-genai already included above
+pdfplumber>=0.11.0
+pdfminer.six>=20251107
+ebooklib>=0.20
+python-docx>=1.1.0
+
+# HTTP/Network
+httpx>=0.28.1,<1.0.0
+requests>=2.32.4  # Security: .netrc credential leak fix
+aiohttp>=3.13.3  # Security: zip bomb, directory traversal, DoS fixes
+urllib3>=2.0.0
+
+# Authentication
+PyJWT>=2.12.0  # Security fix: CVE-2026-32597 crit header validation
+python-jose[cryptography]>=3.4.0  # CVE-2024-33663, CVE-2024-33664 fixed in 3.4.0
+bcrypt>=5.0.0  # Security and performance improvements
+passlib[bcrypt]>=1.7.4
+
+# Database
+asyncpg>=0.31.0  # Performance and security improvements
+psycopg2-binary>=2.9.9
+redis>=7.1.0  # Security updates and new features
+sqlmodel>=0.0.31  # Bug fixes and compatibility updates
+
+# Compression
+brotli-asgi>=1.4.0  # Brotli compression middleware (replaces GZip, ~20% better compression)
+
+# Utilities
+python-dotenv>=1.0.0
+loguru>=0.7.2
+pytz>=2024.2
+packaging>=23.2,<26
+psutil>=5.9.0  # Required for app/metrics.py performance monitoring
+structlog>=25.5.0  # Security and feature updates
+slowapi>=0.1.9  # Rate limiting for FastAPI
+
+# Observability
+prometheus-fastapi-instrumentator>=6.1.0
+sentry-sdk[fastapi]>=2.0.0  # Error monitoring
+
+# XML/HTML Processing
+lxml>=5.3.0
+
+# ML/Math
+scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
+
+# REMOVED FOR SIZE OPTIMIZATION:
+# - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings
+# - playwright (500MB+ with browsers) - not needed for API
+# - datasets (large with PyTorch dependencies)
+# - EbookLib (rarely used)
+# - fake-useragent (not needed)
+# - pre-commit, ruff, pytest (dev tools)
+# - pandas (large, optional for this app)
+# Force rebuild 2026-02-13_00:12:41
+python-json-logger>=2.0.0
+aiosmtplib>=3.0.0
+apscheduler==3.11.2
+
+# Security: setuptools fixes for CVE-2024-6345, PYSEC-2025-49, PYSEC-2022-43012
+setuptools>=78.1.1
+langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes
+
+# Langfuse + OpenInference instrumentation (PR #312, prod runtime — was
+# missing in requirements-prod.txt so observability silently no-op'd in
+# production even with LANGFUSE_*_KEY secrets set on Fly).
+# Phase 0 of OpenLLMetry expansion. See docs/oss-injections-2026-04-26.md.
+langfuse>=2.60.0,<4.0.0  # LLM observability, OTEL-based v2+
+openinference-instrumentation-anthropic>=0.1.14  # Anthropic SDK auto-trace
+openinference-instrumentation-google-genai>=0.1.16  # Auto-trace Gemini SDK
+openinference-instrumentation-openai>=0.1.45  # Auto-trace OpenAI-compat (DeepSeek, Ollama)
+
+# Monorepo workspace package: cell-core (DNA-recording — Genome, Experience,
+# Skill, Metabolic, HGT). Editable install; path is resolved relative to the
+# working directory where `pip install -r` runs. In the Dockerfile that is
+# `/app/apps/backend-rag/`, which resolves `../../packages/cell-core` to
+# `/app/packages/cell-core` (copied earlier in the builder stage).
+-e ../../packages/cell-core

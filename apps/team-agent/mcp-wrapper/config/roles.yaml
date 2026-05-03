@@ -1,0 +1,57 @@
+roles:
+  visa_specialist:
+    description: "Visa consultants — immigration, KITAS, permits"
+    tools:
+      - "get_visa_details"
+      - "list_visa_types"
+      - "get_portal_visa_status"
+      - "track_compliance"
+      - "get_compliance_alerts"
+      - "get_expiry_alerts"
+      - "get_client"
+      - "get_client_timeline"
+      - "list_clients"
+      - "search_kbli"
+      - "ask_legal"
+      - "recall_similar"
+      - "search_intel"
+      - "compose_article"
+      - "publish_article"
+      - "log_interaction"
+      - "update_client"
+      - "create_practice"
+      - "submit_scraper_job"
+
+  tax_consultant:
+    description: "Tax consultants — SPT, LKPM, compliance"
+    tools:
+      - "ask_legal"
+      - "track_compliance"
+      - "get_compliance_alerts"
+      - "get_compliance_summary"
+      - "get_revenue_analytics"
+      - "get_client"
+      - "get_client_compliance"
+      - "list_clients"
+      - "recall_similar"
+      - "search_intel"
+      - "log_interaction"
+
+  company_setup:
+    description: "Company formation — PT PMA, CV, KBLI"
+    tools:
+      - "search_kbli"
+      - "inspect_kbli"
+      - "chat_kbli"
+      - "create_practice"
+      - "ask_legal"
+      - "get_client"
+      - "list_clients"
+      - "calculate_pricing"
+      - "recall_similar"
+      - "log_interaction"
+
+  admin:
+    description: "Full access — board members"
+    tools:
+      - "*"

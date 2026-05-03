@@ -1,0 +1,2 @@
+{"type":"jurisdiction","id":"jur:ID","name":"Republik Indonesia","kind":"country","parent_id":null,"valid_from":"1945-08-17","valid_to":null,"codes":{"iso":"ID"},"sources":["https://www.bps.go.id/"]}
+{"type":"jurisdiction","id":"jur:ID-31","name":"Daerah Khusus Ibukota Jakarta","kind":"province","parent_id":"jur:ID","valid_from":null,"valid_to":null,"codes":{"bps":"31","kemendagri":"31"},"sources":["https://www.bps.go.id/","https://kemendagri.go.id/"]}

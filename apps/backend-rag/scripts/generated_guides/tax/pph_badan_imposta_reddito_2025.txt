@@ -1,0 +1,280 @@
+PPH BADAN — IMPOSTA SUL REDDITO SOCIETARIO
+GUIDA COMPLETA PER PT PMA IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su UU 36/2008 (PPh), UU 7/2021 (HPP), PP 55/2022
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È IL PPH BADAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il PPh Badan (Pajak Penghasilan Badan) è l'imposta sui redditi delle
+persone giuridiche — equivalente alla tassa societaria (corporate tax).
+
+Colpisce tutti i redditi netti prodotti da una PT PMA nel corso
+dell'anno fiscale (Januari – Desember). [TAX-011]
+
+BASE IMPONIBILE:
+Reddito lordo − Biaya yang diperkenankan (costi deducibili) = PKP
+(Penghasilan Kena Pajak = reddito imponibile)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. ALIQUOTE PPH BADAN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Aliquota standard [TAX-012]
+
+ALIQUOTA STANDARD: 22% sul PKP (Penghasilan Kena Pajak)
+Introdotta con UU 7/2021 (HPP) — in vigore dal 2022.
+(In precedenza era prevista una riduzione al 20% poi abolita)
+
+Questa aliquota si applica a TUTTE le badan usaha (persone giuridiche)
+incluse le PT PMA, indipendentemente dalla dimensione.
+
+2.2 Aliquota ridotta per PMK Kecil/Menengah
+
+Le UMKM (Usaha Mikro Kecil Menengah — PMI indonesiane) con omzet annuo
+≤ Rp 4,8 miliardi possono applicare il regime PPh Final 0,5%:
+- 0,5% sul fatturato lordo (bukan sul profitto)
+- Regime forfettario, non scalabile con i costi reali
+- Valido per massimo 7 anni per PT/CV [TAX-013]
+
+ATTENZIONE: Le PT PMA generalmente NON rientrano in questo regime
+perché il requisito del capitale minimo (Rp 10 miliardi) implica
+un'operatività oltre il threshold UMKM.
+
+2.3 Tariffa ridotta per quotate in borsa
+
+PT che quotano almeno il 40% delle azioni alla Bursa Efek Indonesia (BEI):
+aliquota ridotta del 3%: quindi 22% − 3% = 19%.
+Non applicabile alla maggior parte delle PT PMA (non quotate).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. COSTI DEDUCIBILI (BIAYA YANG DIPERKENANKAN)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sono deducibili dal reddito imponibile:
+
+COSTI OPERATIVI: [TAX-014]
+- Gaji dan upah (stipendi dipendenti)
+- Biaya sewa (affitti: ufficio, villa, locale)
+- Biaya utilitas (elettricità, acqua, internet)
+- Biaya pemasaran (marketing, advertising)
+- Biaya transportasi (costi di trasporto documentati)
+- Penyusutan (ammortamento cespiti)
+- Bunga pinjaman (interessi su finanziamenti bancari)
+
+COSTI AMMINISTRATIVI:
+- Honorarium notaio, legale, commercialista
+- Biaya perizinan (costi licenze, NIB, TDUP)
+- Asuransi bisnis (assicurazioni aziendali)
+- Biaya pendidikan karyawan (formazione dipendenti)
+
+NON DEDUCIBILI: [TAX-015]
+- Dividen yang dibayarkan (dividendi distribuiti agli azionisti)
+- PPh yang dibayar sendiri (la stessa PPh Badan non è deducibile)
+- Sumbangan/donazioni (eccetto donazioni specificamente previste dalla legge)
+- Biaya untuk keperluan pribadi (spese personali dei soci)
+- Pengeluaran modal (spese in conto capitale — da capitalizzare)
+- Kerugian tidak terdokumentasi (perdite non documentate)
+
+REGOLA D'ORO: Ogni costo deducibile DEVE essere documentato con:
+- Faktur pajak (fattura fiscale) o nota (ricevuta)
+- Bukti pembayaran (prova di pagamento)
+- Dokumentasi bisnis (contratto, ordine di lavoro, ecc.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PPH 25 — ACCONTO MENSILE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il PPh Badan non si paga tutto a fine anno: si versa mensilmente
+tramite il meccanismo PPh 25 (angsuran — acconto). [TAX-016]
+
+CALCOLO PPH 25:
+PPh 25 mensile = PPh terutang tahun lalu / 12
+(Imposta dovuta anno precedente diviso 12)
+
+Per l'anno di primo esercizio o al cambio di regime:
+- Si usa una stima dell'utile atteso
+- Il commercialista calcola l'acconto prudenziale
+
+SCADENZA: Il 15 del mese successivo (es. acconto gennaio → 15 febbraio).
+
+CODICE SETOR PAJAK: 411126-200
+
+Se a fine anno il PPh Badan effettivo supera gli acconti versati
+→ KURANG BAYAR (conguaglio a pagamento entro 30 aprile)
+
+Se il PPh Badan effettivo è inferiore agli acconti
+→ LEBIH BAYAR (credito fiscale — rimborso o compensazione) [TAX-017]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. SPT TAHUNAN BADAN — DICHIARAZIONE ANNUALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Scadenza e modalità
+
+SCADENZA: 30 aprile dell'anno successivo all'esercizio [TAX-018]
+(es. per l'anno fiscale 2024 → entro 30 aprile 2025)
+
+MODALITÀ: Esclusivamente e-Filing via DJP Online / CoreTax [TAX-007]
+Modulo: SPT Tahunan PPh Badan (1771 o versione CoreTax)
+
+5.2 Documenti allegati obbligatori
+
+- Laporan keuangan (bilancio d'esercizio):
+  Stato patrimoniale + Conto economico
+  Non obbligatoriamente certificato da revisore indipendente
+  per PT PMA con omzet < Rp 50 miliardi [TAX-019]
+
+- Daftar nominatif biaya (elenco analitico dei costi principali)
+- Daftar penyusutan (prospetto ammortamenti)
+- Transfer Pricing Documentation (se applicabile — vedi sezione 7)
+- Rekonsiliasi fiskal (riconciliazione fiscale tra utile contabile e imponibile)
+- Laporan ekuitas (prospetto patrimonio netto)
+
+5.3 Ritenute accreditate (kredit pajak)
+
+Dall'imposta lorda vanno detratti:
+- PPh 25 (acconti mensili versati)
+- PPh 22 (ritenuta su importazioni, se applicabile)
+- PPh 23 accreditabile (ritenute subite da clienti su servizi)
+- Kredit pajak LN (credito per imposte pagate all'estero)
+
+5.4 Proroghe
+
+Non esistono proroghe automatiche per la SPT Tahunan Badan.
+È possibile presentare richiesta formale di proroga (perpanjangan)
+al KPP competente PRIMA della scadenza del 30 aprile. [TAX-020]
+Proroga massima: 2 mesi aggiuntivi (fino al 30 giugno)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. REGIME PEMBUKUAN — OBBLIGHI CONTABILI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tutte le PT PMA sono obbligate alla PEMBUKUAN (contabilità formale):
+[TAX-021]
+
+OBBLIGHI:
+- Registrazione di tutte le transazioni in libri contabili (buku besar)
+- Laporan keuangan annuale (stato patrimoniale + conto economico)
+- Penyimpanan dokumen: 10 anni per libri contabili, 5 anni per fatture
+
+CONFRONTO CON PENCATATAN (regime semplificato):
+Il regime Pencatatan è ammesso SOLO per:
+- UMKM con omzet ≤ Rp 4,8 miliardi
+- Orang pribadi (persone fisiche) non esercenti attività d'impresa
+
+Le PT PMA, essendo badan hukum, sono SEMPRE in regime Pembukuan.
+
+ANNO FISCALE:
+L'anno fiscale standard è Januari – Desember.
+Le PT possono scegliere un anno fiscale diverso (es. April–Marzo)
+ma devono comunicarlo preventivamente al DJP. [TAX-022]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. TRANSFER PRICING — OBBLIGHI PER PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se la PT PMA effettua transazioni con PIHAK BERELASI (parti correlate —
+es. società madre estera, filiali, soci) deve rispettare le regole
+di Transfer Pricing (TP). [TAX-023]
+
+PRINCIPIO FONDAMENTALE: arm's length principle (kewajaran dan kelaziman)
+Le transazioni intercompany devono avvenire a prezzi di mercato.
+
+SOGLIA OBBLIGATORIA (PMK 213/2016):
+Obbligo di TP Documentation se:
+- Transaksi dengan pihak berelasi > IDR 50 miliardi/anno, OPPURE
+- Pembayaran ke tax haven countries > IDR 10 miliardi/anno, OPPURE
+- Qualsiasi transazione con entità in paesi a bassa fiscalità
+
+DOCUMENTI TP RICHIESTI:
+1. Dokumen Induk (Master File) — profilo gruppo multinazionale
+2. Dokumen Lokal (Local File) — dettaglio transazioni in Indonesia
+3. Laporan per negara (Country-by-Country Report) — solo per gruppi
+   con omzet consolidato > IDR 11 trilioni
+
+PRESENTAZIONE: Allegata alla SPT Tahunan Badan o su richiesta DJP.
+
+Per le piccole PT PMA con operatività solo in Indonesia e limitati
+rapporti intercompany, l'obbligo TP spesso non scatta.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. ESEMPI PRATICI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8.1 Esempio ristorante PT PMA (anno fiscale 2024)
+
+Omzet (fatturato): Rp 2.400.000.000 (2,4 miliardi)
+Biaya deducibili: Rp 1.920.000.000 (1,92 miliardi — 80% revenue)
+Laba kotor (PKP): Rp 480.000.000
+
+PPh Badan: 22% × Rp 480.000.000 = Rp 105.600.000
+
+PPh 25 mensile: Rp 105.600.000 / 12 = Rp 8.800.000/mese
+(stimato dall'anno precedente o da stima prospettica)
+
+8.2 Esempio villa turistica PT PMA (primo anno, perdita)
+
+Omzet: Rp 600.000.000 (ancora in fase di avvio)
+Biaya deducibili: Rp 900.000.000 (investimenti, staff, setup)
+Rugi (perdita fiscale): Rp 300.000.000
+
+PPh Badan: 0 (nessun PKP positivo)
+La perdita può essere riportata in avanti (kompensasi kerugian)
+per massimo 5 anni fiscali successivi. [TAX-024]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PIANIFICAZIONE FISCALE:
+La pianificazione fiscale (tax planning) legale permette di ottimizzare
+il carico fiscale attraverso:
+- Corretta deducibilità dei costi
+- Timing di riconoscimento ricavi/costi
+- Strutturazione dei contratti con parti correlate
+Bali Zero non assiste in tax evasion ma supporta la pianificazione legale.
+
+COMMERCIALISTA CERTIFICATO:
+Si raccomanda di affidare la gestione PPh Badan a un KONSULTAN PAJAK
+certificato (kartu izin praktik DJP). Il consulente fiscale firma
+anche la SPT Tahunan come responsabile.
+
+REVISIONE CONTABILE:
+Per PT PMA con omzet > Rp 50 miliardi o con specifici obblighi
+regolatori (banche, assicurazioni), il bilancio deve essere certificato
+da KAP (Kantor Akuntan Publik — revisore indipendente). [TAX-025]
+Per le PT PMA di dimensioni medie operative a Bali, non è obbligatorio.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-011, TAX-012, TAX-013, TAX-014, TAX-015, TAX-016, TAX-017,
+TAX-018, TAX-019, TAX-020, TAX-021, TAX-022, TAX-023, TAX-024, TAX-025
+
+Base normativa: UU 36/2008 (PPh), UU 7/2021 (HPP), PP 55/2022,
+PMK 213/2016 (Transfer Pricing), PMK 18/2021 (ketentuan perpajakan).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

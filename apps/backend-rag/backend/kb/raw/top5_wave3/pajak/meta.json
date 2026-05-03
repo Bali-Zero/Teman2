@@ -1,0 +1,16 @@
+{
+  "source_id": "pajak",
+  "name": "Direktorat Jenderal Pajak (CoreTax)",
+  "base_url": "https://pajak.go.id/",
+  "pages": [
+    {
+      "url": "https://pajak.go.id",
+      "status": 200,
+      "bytes": 135752,
+      "file": "pajak.go.id.html"
+    }
+  ],
+  "errors": [],
+  "fetched_at": "2026-04-21T21:45:11.237021+00:00",
+  "playwright_invocations_for_source": 0
+}

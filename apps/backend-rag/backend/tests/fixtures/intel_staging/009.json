@@ -1,0 +1,8 @@
+{
+  "title": "",
+  "url": "https://imigrasi.go.id/update",
+  "published_at": "2026-04-10",
+  "body_text": "This article has a valid URL and body but the title is empty, which should cause it to fail Tier 1 regex validation and be rejected outright.",
+  "source_domain": "imigrasi.go.id",
+  "expected_status": "rejected"
+}

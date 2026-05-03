@@ -1,0 +1,90 @@
+/* Scan Line */
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--sg-periwinkle);
+  opacity: 0.15;
+  animation: scan-line 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Pulse Ring (click shockwave) */
+@keyframes pulse-ring-copper {
+  0% { width: 0; height: 0; opacity: 0.6; border-color: var(--sg-copper); }
+  100% { width: 160px; height: 160px; opacity: 0; border-color: var(--sg-copper); }
+}
+
+@keyframes pulse-ring-periwinkle {
+  0% { width: 0; height: 0; opacity: 0.3; border-color: var(--sg-periwinkle); }
+  100% { width: 240px; height: 240px; opacity: 0; border-color: var(--sg-periwinkle); }
+}
+
+/* Pylon Pulse */
+@keyframes pylon-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pylon-pulse-fast {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Sphere Pulse */
+@keyframes sphere-pulse {
+  0%, 100% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+}
+
+/* Redacted Reveal */
+@keyframes redacted-glitch {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+  100% { transform: translateX(0); }
+}
+
+/* Transition Dive (L1→L2 motion blur) */
+@keyframes radial-blur {
+  0% { filter: blur(0px); }
+  30% { filter: blur(6px); }
+  70% { filter: blur(4px); }
+  100% { filter: blur(0px); }
+}
+
+.transition-dive {
+  animation: radial-blur 1.8s ease-in-out;
+}
+
+/* Connection Line Draw */
+@keyframes draw-line {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Node Appear */
+@keyframes node-appear {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Pylon Emerge */
+@keyframes pylon-emerge {
+  from { transform: scaleY(0); transform-origin: bottom; }
+  to { transform: scaleY(1); transform-origin: bottom; }
+}
+
+/* Ascending Particles (anomaly) */
+@keyframes particle-ascend {
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-60px) scale(0.3); opacity: 0; }
+}

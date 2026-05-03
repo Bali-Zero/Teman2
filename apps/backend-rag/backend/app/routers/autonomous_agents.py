@@ -1,0 +1,824 @@
+"""
+TIER 1 AUTONOMOUS AGENTS - HTTP Endpoints
+Provides HTTP API for orchestrator to trigger autonomous agents
+
+Agents:
+1. Conversation Quality Trainer
+2. Client LTV Predictor & Nurturing
+3. Knowledge Graph Builder
+"""
+
+import logging
+
+# Import autonomous agents
+from datetime import datetime, timezone
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from pydantic import BaseModel
+
+from backend.agents.agents.client_value_predictor import ClientValuePredictor
+from backend.agents.agents.conversation_trainer import ConversationTrainer
+from backend.agents.agents.knowledge_graph_builder import KnowledgeGraphBuilder
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/autonomous-agents", tags=["autonomous-tier1"])
+
+# Agent execution status tracking
+agent_executions: dict[str, dict[str, Any]] = {}
+
+
+class AgentExecutionResponse(BaseModel):
+    execution_id: str
+    agent_name: str
+    status: str  # 'started', 'running', 'completed', 'failed'
+    message: str
+    started_at: str
+    completed_at: str | None = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
+
+
+# ============================================================================
+# CONVERSATION QUALITY TRAINER
+# ============================================================================
+
+
+async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> Any:
+    """Background task for conversation trainer execution"""
+    try:
+        logger.info(f"🤖 Starting Conversation Trainer (execution_id: {execution_id})")
+
+        agent_executions[execution_id]["status"] = "running"
+
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
+
+        db_pool = getattr(app.state, "db_pool", None)
+
+        trainer = ConversationTrainer(db_pool=db_pool)
+
+        # Analyze winning patterns
+        analysis = await trainer.analyze_winning_patterns(days_back=days_back)
+
+        if not analysis:
+            agent_executions[execution_id].update(
+                {
+                    "status": "completed",
+                    "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                    "result": {"message": "No high-rated conversations found"},
+                },
+            )
+            return
+
+        # Generate improved prompt
+        improved_prompt = await trainer.generate_prompt_update(analysis)
+
+        # Create PR
+        pr_branch = await trainer.create_improvement_pr(improved_prompt, analysis)
+
+        agent_executions[execution_id].update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "result": {
+                    "insights_found": len(analysis),
+                    "improved_prompt_chars": len(improved_prompt),
+                    "pr_branch": pr_branch,
+                    "message": "Conversation analysis complete, PR created",
+                },
+            },
+        )
+
+        logger.info(f"✅ Conversation Trainer completed (execution_id: {execution_id})")
+
+    except Exception as e:
+        logger.error(f"❌ Conversation Trainer failed: {e}", exc_info=True)
+        agent_executions[execution_id].update(
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/conversation-trainer/run", response_model=AgentExecutionResponse)
+async def run_conversation_trainer(
+    background_tasks: BackgroundTasks,
+    days_back: int = Query(default=7, ge=1, le=365, description="Days to look back (1-365)"),
+) -> AgentExecutionResponse:
+    """
+    🤖 Run Conversation Quality Trainer Agent
+
+    Analyzes high-rated conversations and generates prompt improvements
+
+    Args:
+        days_back: Number of days to look back for conversations (default: 7)
+
+    Returns:
+        Execution status (agent runs in background)
+    """
+    execution_id = f"conv_trainer_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
+
+    agent_executions[execution_id] = {
+        "agent_name": "conversation_trainer",
+        "status": "started",
+        "message": f"Conversation Trainer started (analyzing last {days_back} days)",
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+        "days_back": days_back,
+    }
+
+    # Run agent in background
+    background_tasks.add_task(_run_conversation_trainer_task, execution_id, days_back)
+
+    # Return immediately
+    execution_data = agent_executions[execution_id].copy()
+    execution_data["execution_id"] = execution_id
+    execution_data["message"] = "Agent execution started in background"
+    return AgentExecutionResponse(**execution_data)
+
+
+# ============================================================================
+# CLIENT LTV PREDICTOR & NURTURING
+# ============================================================================
+
+
+async def _run_client_value_predictor_task(execution_id: str) -> None:
+    """Background task for client value predictor execution"""
+    try:
+        logger.info(f"💰 Starting Client Value Predictor (execution_id: {execution_id})")
+
+        agent_executions[execution_id]["status"] = "running"
+
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
+
+        db_pool = getattr(app.state, "db_pool", None)
+
+        predictor = ClientValuePredictor(db_pool=db_pool)
+
+        # Run daily nurturing cycle
+        results = await predictor.run_daily_nurturing()
+
+        agent_executions[execution_id].update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "result": {
+                    "vip_nurtured": results["vip_nurtured"],
+                    "high_risk_contacted": results["high_risk_contacted"],
+                    "total_messages_sent": results["total_messages_sent"],
+                    "errors": len(results["errors"]),
+                    "message": "Client nurturing complete",
+                },
+            },
+        )
+
+        logger.info(f"✅ Client Value Predictor completed (execution_id: {execution_id})")
+
+    except Exception as e:
+        logger.error(f"❌ Client Value Predictor failed: {e}", exc_info=True)
+        agent_executions[execution_id].update(
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/client-value-predictor/run", response_model=AgentExecutionResponse)
+async def run_client_value_predictor(background_tasks: BackgroundTasks) -> AgentExecutionResponse:
+    """
+    💰 Run Client LTV Predictor & Nurturing Agent
+
+    Scores all clients and sends personalized nurturing messages to:
+    - VIP clients (LTV > 80)
+    - High-risk clients (LTV < 30 and inactive > 30 days)
+
+    Returns:
+        Execution status (agent runs in background)
+    """
+    execution_id = f"client_predictor_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
+
+    agent_executions[execution_id] = {
+        "agent_name": "client_value_predictor",
+        "status": "started",
+        "message": "Client Value Predictor started (calculating LTV scores)",
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+    }
+
+    # Run agent in background
+    background_tasks.add_task(_run_client_value_predictor_task, execution_id)
+
+    # Return immediately
+    execution_data = agent_executions[execution_id].copy()
+    execution_data["execution_id"] = execution_id
+    execution_data["message"] = "Agent execution started in background"
+    return AgentExecutionResponse(**execution_data)
+
+
+# ============================================================================
+# KNOWLEDGE GRAPH BUILDER
+# ============================================================================
+
+
+async def _run_knowledge_graph_builder_task(
+    execution_id: str, days_back: int, init_schema: bool,
+) -> None:
+    """Background task for knowledge graph builder execution"""
+    try:
+        logger.info(f"🕸️ Starting Knowledge Graph Builder (execution_id: {execution_id})")
+
+        agent_executions[execution_id]["status"] = "running"
+
+        # Get db_pool from backend.app.state
+        from backend.app.main_cloud import app
+
+        db_pool = getattr(app.state, "db_pool", None)
+
+        builder = KnowledgeGraphBuilder(db_pool=db_pool)
+
+        # Initialize schema if requested
+        if init_schema:
+            await builder.init_graph_schema()
+            logger.info("✅ Knowledge graph schema initialized")
+
+        # Build graph from conversations
+        await builder.build_graph_from_all_conversations(days_back=days_back)
+
+        # Get insights
+        insights = await builder.get_entity_insights(top_n=10)
+
+        agent_executions[execution_id].update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "result": {
+                    "top_entities_count": len(insights["top_entities"]),
+                    "hubs_count": len(insights["hubs"]),
+                    "relationship_types_count": len(insights["relationship_types"]),
+                    "top_entities": insights["top_entities"][:5],
+                    "top_hubs": insights["hubs"][:5],
+                    "message": "Knowledge graph updated",
+                },
+            },
+        )
+
+        logger.info(f"✅ Knowledge Graph Builder completed (execution_id: {execution_id})")
+
+    except Exception as e:
+        logger.error(f"❌ Knowledge Graph Builder failed: {e}", exc_info=True)
+        agent_executions[execution_id].update(
+            {
+                "status": "failed",
+                "completed_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+                "error": str(e),
+            },
+        )
+
+
+@router.post("/knowledge-graph-builder/run", response_model=AgentExecutionResponse)
+async def run_knowledge_graph_builder(
+    background_tasks: BackgroundTasks,
+    days_back: int = Query(default=30, ge=1, le=365, description="Days to look back (1-365)"),
+    init_schema: bool = Query(default=False, description="Initialize database schema"),
+) -> AgentExecutionResponse:
+    """
+    🕸️ Run Knowledge Graph Builder Agent
+
+    Extracts entities and relationships from conversations and builds knowledge graph
+
+    Args:
+        days_back: Number of days to look back for conversations (default: 30)
+        init_schema: Initialize database schema (default: False)
+
+    Returns:
+        Execution status (agent runs in background)
+    """
+    execution_id = f"kg_builder_{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d_%H%M%S_%f')}"
+
+    agent_executions[execution_id] = {
+        "agent_name": "knowledge_graph_builder",
+        "status": "started",
+        "message": f"Knowledge Graph Builder started (processing last {days_back} days)",
+        "started_at": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+        "days_back": days_back,
+        "init_schema": init_schema,
+    }
+
+    # Run agent in background
+    background_tasks.add_task(
+        _run_knowledge_graph_builder_task, execution_id, days_back, init_schema,
+    )
+
+    # Return immediately
+    execution_data = agent_executions[execution_id].copy()
+    execution_data["execution_id"] = execution_id
+    execution_data["message"] = "Agent execution started in background"
+    return AgentExecutionResponse(**execution_data)
+
+
+# ============================================================================
+# KNOWLEDGE GRAPH - CONTROLLED EXTRACTION FROM QDRANT
+# ============================================================================
+
+
+@router.get("/knowledge-graph/extract-sample")
+async def extract_kg_sample(
+    collection: str = Query(default="legal_unified", description="Qdrant collection name"),
+    sample_size: int = Query(default=50, ge=10, le=200, description="Number of chunks to sample"),
+) -> dict[str, Any]:
+    """
+    🔬 Extract KG sample from Qdrant for review (DRY RUN)
+
+    Extracts entities and relationships from a sample of chunks
+    WITHOUT persisting to database. For review before commit.
+
+    Returns entities and relationships found for human approval.
+    """
+    import re
+
+    from backend.app.main_cloud import app
+
+    retriever = getattr(app.state, "retriever", None)
+    if not retriever or not retriever.client:
+        raise HTTPException(status_code=503, detail="Qdrant not available")
+
+    qdrant = retriever.client
+
+    # Entity patterns
+    ENTITY_PATTERNS = {
+        "legal_entity": [
+            r"\b(PT\s+PMA)\b",
+            r"\b(PT\s+PMDN)\b",
+            r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b",
+            r"\b(Firma)\b",
+            r"\b(Koperasi)\b",
+            r"\b(Yayasan)\b",
+        ],
+        "permit": [
+            r"\b(NIB)\b",
+            r"\b(SIUP)\b",
+            r"\b(TDP)\b",
+            r"\b(NPWP)\b",
+            r"\b(IMTA)\b",
+            r"\b(RPTKA)\b",
+        ],
+        "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
+        "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
+        "kbli": [r"\bKBLI\s+(\d{5})\b"],
+    }
+
+    RELATIONSHIP_KEYWORDS = {
+        "REQUIRES": ["memerlukan", "membutuhkan", "requires", "needs", "wajib"],
+        "COSTS": ["biaya", "tarif", "cost", "Rp"],
+        "DURATION": ["hari", "bulan", "tahun", "days", "months", "years"],
+    }
+
+    try:
+        # Scroll chunks
+        results = qdrant.scroll(
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
+        )
+        chunks = results[0]
+
+        # Extract entities
+        all_entities = {}
+        all_relationships = []
+
+        for chunk in chunks:
+            text = chunk.payload.get("text", "") or chunk.payload.get("content", "") or ""
+            chunk_id = str(chunk.id)
+
+            if not text:
+                continue
+
+            chunk_entities = []
+            for entity_type, patterns in ENTITY_PATTERNS.items():
+                for pattern in patterns:
+                    matches = re.findall(pattern, text, re.IGNORECASE)
+                    for match in matches:
+                        name = match.strip().upper() if isinstance(match, str) else match[0].upper()
+                        entity_id = f"{entity_type}_{name.replace(' ', '_').lower()}"
+
+                        if entity_id not in all_entities:
+                            all_entities[entity_id] = {
+                                "entity_id": entity_id,
+                                "entity_type": entity_type,
+                                "name": name,
+                                "mentions": 0,
+                                "source_chunks": [],
+                            }
+                        all_entities[entity_id]["mentions"] += 1
+                        if chunk_id not in all_entities[entity_id]["source_chunks"]:
+                            all_entities[entity_id]["source_chunks"].append(chunk_id)
+                        chunk_entities.append(entity_id)
+
+            # Infer relationships within same chunk
+            if len(chunk_entities) >= 2:
+                for rel_type, keywords in RELATIONSHIP_KEYWORDS.items():
+                    if any(kw.lower() in text.lower() for kw in keywords):
+                        for i, e1 in enumerate(chunk_entities):
+                            for e2 in chunk_entities[i + 1 :]:
+                                rel_id = f"{e1}_{rel_type}_{e2}"
+                                if rel_id not in [r["relationship_id"] for r in all_relationships]:
+                                    all_relationships.append(
+                                        {
+                                            "relationship_id": rel_id,
+                                            "source": e1,
+                                            "target": e2,
+                                            "type": rel_type,
+                                            "confidence": 0.7,
+                                        },
+                                    )
+
+        # Sort by mentions
+        sorted_entities = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
+
+        # Entity type distribution
+        type_dist = {}
+        for e in sorted_entities:
+            t = e["entity_type"]
+            type_dist[t] = type_dist.get(t, 0) + 1
+
+        return {
+            "status": "dry_run",
+            "collection": collection,
+            "chunks_processed": len(chunks),
+            "entities_found": len(sorted_entities),
+            "relationships_inferred": len(all_relationships),
+            "entity_type_distribution": type_dist,
+            "top_entities": sorted_entities[:30],
+            "sample_relationships": all_relationships[:20],
+            "message": "Review above. Call /knowledge-graph/persist-sample to commit to DB.",
+        }
+
+    except Exception as e:
+        logger.error(f"KG sample extraction failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/knowledge-graph/persist-sample")
+async def persist_kg_sample(
+    collection: str = Query(default="legal_unified"),
+    sample_size: int = Query(default=50, ge=10, le=200),
+) -> dict[str, Any]:
+    """
+    💾 Persist KG sample to database (LIVE)
+
+    Extracts and persists entities/relationships to PostgreSQL.
+    Run /extract-sample first to review!
+    """
+    import re
+
+    from backend.app.main_cloud import app
+    from backend.services.autonomous_agents.knowledge_graph_builder import (
+        Entity,
+        KnowledgeGraphBuilder,
+    )
+
+    retriever = getattr(app.state, "retriever", None)
+    db_pool = getattr(app.state, "db_pool", None)
+
+    if not retriever or not retriever.client:
+        raise HTTPException(status_code=503, detail="Qdrant not available")
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    qdrant = retriever.client
+    kg_builder = KnowledgeGraphBuilder(db_pool=db_pool)
+
+    # Same extraction logic as above
+    ENTITY_PATTERNS = {
+        "legal_entity": [
+            r"\b(PT\s+PMA)\b",
+            r"\b(PT\s+PMDN)\b",
+            r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b",
+            r"\b(Firma)\b",
+            r"\b(Koperasi)\b",
+            r"\b(Yayasan)\b",
+        ],
+        "permit": [
+            r"\b(NIB)\b",
+            r"\b(SIUP)\b",
+            r"\b(TDP)\b",
+            r"\b(NPWP)\b",
+            r"\b(IMTA)\b",
+            r"\b(RPTKA)\b",
+        ],
+        "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
+        "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
+        "kbli": [r"\bKBLI\s+(\d{5})\b"],
+    }
+
+    try:
+        results = qdrant.scroll(
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
+        )
+        chunks = results[0]
+
+        entities_added = 0
+        relationships_added = 0
+
+        for chunk in chunks:
+            text = chunk.payload.get("text", "") or chunk.payload.get("content", "") or ""
+            chunk_id = str(chunk.id)
+
+            if not text:
+                continue
+
+            for entity_type, patterns in ENTITY_PATTERNS.items():
+                for pattern in patterns:
+                    matches = re.findall(pattern, text, re.IGNORECASE)
+                    for match in matches:
+                        name = match.strip().upper() if isinstance(match, str) else match[0].upper()
+                        entity_id = f"{entity_type}_{name.replace(' ', '_').lower()}"
+
+                        entity = Entity(
+                            entity_id=entity_id,
+                            entity_type=entity_type,
+                            name=name,
+                            description=f"Extracted from {collection}",
+                            source_collection=collection,
+                            confidence=0.9,
+                            source_chunk_ids=[chunk_id],
+                        )
+                        await kg_builder.add_entity(entity)
+                        entities_added += 1
+
+        return {
+            "status": "persisted",
+            "collection": collection,
+            "chunks_processed": len(chunks),
+            "entities_added": entities_added,
+            "relationships_added": relationships_added,
+            "message": "Knowledge Graph populated successfully!",
+        }
+
+    except Exception as e:
+        logger.error(f"KG persist failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# ============================================================================
+# AGENT STATUS & MANAGEMENT
+# ============================================================================
+
+
+@router.get("/status")
+async def get_autonomous_agents_status() -> dict[str, Any]:
+    """
+    Get status of all Tier 1 autonomous agents with execution statistics
+
+    Returns:
+        Agent capabilities, execution statistics, and recent executions
+        Format matches frontend AgentStatus interface
+    """
+
+    # Helper function to get next_run from scheduler
+    def get_next_run_from_scheduler(agent_id: str) -> str | None:
+        """Get next scheduled run time for an agent from the scheduler"""
+        try:
+            from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
+
+            scheduler = get_autonomous_scheduler()
+            status = scheduler.get_status()
+
+            # Map agent_id to scheduler task name (they match in our case)
+            task_info = status.get("tasks", {}).get(agent_id)
+
+            if task_info and task_info.get("enabled") and task_info.get("last_run"):
+                from datetime import datetime, timedelta
+
+                last_run = datetime.fromisoformat(task_info["last_run"])
+                interval = task_info.get("interval_seconds", 0)
+
+                if interval > 0:
+                    next_run = last_run + timedelta(seconds=interval)
+                    return next_run.isoformat()
+
+            return None
+        except Exception as e:
+            logger.debug(f"Could not get next_run from scheduler: {e}")
+            return None
+
+    # Helper function to get agent execution stats
+    def get_agent_stats(agent_id: str) -> dict[str, Any]:
+        """Calculate execution statistics for an agent"""
+        # Filter executions for this agent
+        agent_execs = [
+            (exec_id, data)
+            for exec_id, data in agent_executions.items()
+            if data.get("agent_name") == agent_id
+        ]
+
+        if not agent_execs:
+            return {
+                "status": "idle",
+                "last_run": None,
+                "next_run": get_next_run_from_scheduler(agent_id),
+                "success_rate": None,
+                "total_runs": 0,
+                "latest_result": None,
+            }
+
+        # Sort by started_at (most recent first)
+        agent_execs.sort(key=lambda x: x[1].get("started_at", ""), reverse=True)
+
+        # Get latest execution
+        latest_exec_id, latest_exec = agent_execs[0]
+
+        # Determine status
+        latest_status = latest_exec.get("status", "idle")
+        if latest_status == "running":
+            status = "running"
+        elif latest_status == "failed":
+            status = "error"
+        else:
+            status = "idle"
+
+        # Calculate success rate
+        total_runs = len(agent_execs)
+        successful_runs = sum(1 for _, data in agent_execs if data.get("status") == "completed")
+        success_rate = (successful_runs / total_runs * 100) if total_runs > 0 else None
+
+        # Get last_run timestamp
+        last_run = latest_exec.get("completed_at") or latest_exec.get("started_at")
+
+        # Get latest_result
+        latest_result = latest_exec.get("result")
+
+        return {
+            "status": status,
+            "last_run": last_run,
+            "next_run": get_next_run_from_scheduler(agent_id),
+            "success_rate": round(success_rate, 1) if success_rate is not None else None,
+            "total_runs": total_runs,
+            "latest_result": latest_result,
+        }
+
+    # Agent definitions with stats
+    agents_data = [
+        {
+            "name": "Conversation Quality Trainer",
+            "description": "Learns from successful conversations and improves prompts",
+            **get_agent_stats("conversation_trainer"),
+        },
+        {
+            "name": "Client LTV Predictor & Nurturer",
+            "description": "Predicts client value and sends personalized nurturing messages",
+            **get_agent_stats("client_value_predictor"),
+        },
+        {
+            "name": "Knowledge Graph Builder",
+            "description": "Extracts entities and relationships from all data sources",
+            **get_agent_stats("knowledge_graph_builder"),
+        },
+    ]
+
+    return {
+        "success": True,
+        "tier": 1,
+        "total_agents": 3,
+        "agents": agents_data,
+        "recent_executions": len(agent_executions),
+        "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+    }
+
+
+@router.get("/executions/{execution_id}", response_model=AgentExecutionResponse)
+async def get_execution_status(execution_id: str) -> AgentExecutionResponse:
+    """
+    Get status of a specific agent execution
+
+    Args:
+        execution_id: Execution ID returned by agent run endpoint
+
+    Returns:
+        Execution details and result
+    """
+    if execution_id not in agent_executions:
+        raise HTTPException(status_code=404, detail="Execution not found")
+
+    execution_data = agent_executions[execution_id].copy()
+    execution_data["execution_id"] = execution_id
+    return AgentExecutionResponse(**execution_data)
+
+
+@router.get("/executions")
+async def list_executions(limit: int = 20) -> dict[str, Any]:
+    """
+    List recent agent executions
+
+    Args:
+        limit: Maximum number of executions to return (default: 20)
+
+    Returns:
+        List of recent executions
+    """
+    executions = sorted(
+        agent_executions.items(), key=lambda x: x[1].get("started_at", ""), reverse=True,
+    )[:limit]
+
+    return {
+        "success": True,
+        "executions": [{**data, "execution_id": exec_id} for exec_id, data in executions],
+        "total": len(agent_executions),
+    }
+
+
+# ============================================================================
+# AUTONOMOUS SCHEDULER STATUS & CONTROL
+# ============================================================================
+
+
+@router.get("/scheduler/status")
+async def get_scheduler_status() -> dict[str, Any]:
+    """
+    🤖 Get status of the Autonomous Scheduler and all registered tasks
+
+    Returns:
+        Scheduler status with task details:
+        - running: Whether scheduler is active
+        - task_count: Number of registered tasks
+        - tasks: Details of each task (intervals, run counts, errors)
+    """
+    try:
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
+
+        scheduler = get_autonomous_scheduler()
+        status = scheduler.get_status()
+
+        return {
+            "success": True,
+            "scheduler": status,
+            "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Failed to get scheduler status: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+        }
+
+
+@router.post("/scheduler/task/{task_name}/enable")
+async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
+    """
+    ✅ Enable a scheduled task
+
+    Args:
+        task_name: Name of the task to enable
+    """
+    try:
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
+
+        scheduler = get_autonomous_scheduler()
+        success = scheduler.enable_task(task_name)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Task '{task_name}' enabled",
+                "task_name": task_name,
+            }
+        raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to enable task: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/scheduler/task/{task_name}/disable")
+async def disable_scheduler_task(task_name: str) -> dict[str, Any]:
+    """
+    ⏸️ Disable a scheduled task
+
+    Args:
+        task_name: Name of the task to disable
+    """
+    try:
+        from backend.services.misc.autonomous_scheduler import get_autonomous_scheduler
+
+        scheduler = get_autonomous_scheduler()
+        success = scheduler.disable_task(task_name)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Task '{task_name}' disabled",
+                "task_name": task_name,
+            }
+        raise HTTPException(status_code=404, detail=f"Task '{task_name}' not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to disable task: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e

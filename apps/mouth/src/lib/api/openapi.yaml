@@ -1,0 +1,1187 @@
+openapi: 3.0.3
+info:
+  title: Bali Zero API
+  description: |
+    API completa per i servizi di Bali Zero:
+    - Visa & Immigration (KITAS, KITAP, estensioni)
+    - Business Setup (PT PMA, OSS-RBA, KBLI)
+    - Tax Consulting (PPh, PPN, NPWP)
+    - CRM & Portal Management
+
+    ## Autenticazione
+    Tutte le API richiedono autenticazione tramite:
+    - Cookie httpOnly `nz_access_token` (metodo principale)
+    - Header `Authorization: Bearer <token>` (fallback)
+    - Header `X-API-Key` (per integrazioni)
+
+    ## Rate Limiting
+    - 100 requests/minuto per utente autenticato
+    - 10 requests/minuto per IP anonimo
+
+    ## Ambiente
+    - **Production**: https://nuzantara-rag.fly.dev
+    - **Frontend**: https://nuzantara-mouth.vercel.app
+  version: 1.0.0
+  contact:
+    name: Bali Zero Support
+    url: https://balizero.com
+    email: support@balizero.com
+  license:
+    name: Proprietary
+    url: https://balizero.com/terms
+
+servers:
+  - url: https://nuzantara-rag.fly.dev
+    description: Production (Singapore - Fly.io)
+  - url: http://localhost:8000
+    description: Development (Local Backend)
+
+tags:
+  - name: Auth
+    description: Autenticazione e gestione profilo
+  - name: Portal
+    description: Client portal operations
+  - name: Chat
+    description: AI conversational interface
+  - name: CRM
+    description: Customer relationship management
+  - name: Drive
+    description: Google Drive integration
+  - name: Admin
+    description: Admin-only operations
+
+paths:
+  # ============================================================================
+  # AUTH
+  # ============================================================================
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login utente
+      description: |
+        Autentica un utente con email e PIN (6 cifre).
+        Restituisce JWT token e setta httpOnly cookie.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, pin]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: client@example.com
+                pin:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  example: "123456"
+                  description: PIN a 6 cifre
+      responses:
+        "200":
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: httpOnly cookie con JWT token
+              schema:
+                type: string
+                example: nz_access_token=eyJhbGc...; HttpOnly; Secure; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout utente
+      description: Invalida il token JWT e rimuove il cookie
+      operationId: logout
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logout successful
+
+  /api/auth/profile:
+    get:
+      tags: [Auth]
+      summary: Get user profile
+      description: Ottiene il profilo dell'utente autenticato
+      operationId: getProfile
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ============================================================================
+  # PORTAL (Client-facing)
+  # ============================================================================
+  /api/portal/dashboard:
+    get:
+      tags: [Portal]
+      summary: Get client dashboard
+      description: |
+        Dashboard overview per il client portal:
+        - Visa status (attivo, scadenza)
+        - Company status (PT PMA, licenze)
+        - Tax obligations (scadenze)
+        - Documents (totale, pending)
+        - Messages (non letti)
+      operationId: getPortalDashboard
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalDashboard"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/portal/timeline:
+    get:
+      tags: [Portal]
+      summary: Get activity timeline
+      description: Timeline completa di tutte le attività (pratiche, documenti, messaggi)
+      operationId: getPortalTimeline
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        "200":
+          description: Timeline events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      timeline:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/TimelineEvent"
+
+  /api/portal/visa:
+    get:
+      tags: [Portal]
+      summary: Get visa status
+      description: Dettagli visa corrente + storico
+      operationId: getVisaStatus
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Visa information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisaInfo"
+
+  /api/portal/messages:
+    get:
+      tags: [Portal]
+      summary: Get messages
+      description: Messaggi tra client e team
+      operationId: getPortalMessages
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Messages list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagesResponse"
+    post:
+      tags: [Portal]
+      summary: Send message
+      description: Invia messaggio al team
+      operationId: sendPortalMessage
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: "#/components/schemas/PortalMessage"
+
+  # ============================================================================
+  # CHAT (AI Streaming)
+  # ============================================================================
+  /api/agentic-rag/stream:
+    post:
+      tags: [Chat]
+      summary: Send chat message (streaming)
+      description: |
+        Endpoint SSE per chat streaming con AI.
+
+        **Features:**
+        - Server-Sent Events (SSE)
+        - ReAct reasoning steps
+        - Tool calls (calculator, pricing, team_knowledge)
+        - Vision support (images)
+        - Conversation history
+        - Citations & sources
+
+        **Event Types:**
+        - `token` - Token di risposta
+        - `thinking` - AI reasoning
+        - `tool_call` - Tool invocation
+        - `observation` - Tool result
+        - `sources` - Citations
+        - `metadata` - Execution stats
+        - `image` - Generated image URL
+        - `error` - Error message
+      operationId: sendChatMessageStream
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, user_id]
+              properties:
+                query:
+                  type: string
+                  example: Come funziona il KITAS investor?
+                user_id:
+                  type: string
+                  example: client@example.com
+                session_id:
+                  type: string
+                  format: uuid
+                  description: UUID sessione per conversation history
+                enable_vision:
+                  type: boolean
+                  default: false
+                images:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      base64:
+                        type: string
+                        description: Base64 encoded image
+                      name:
+                        type: string
+                conversation_history:
+                  type: array
+                  description: Ultimi 200 messaggi per context
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, assistant]
+                      content:
+                        type: string
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                example: |
+                  data: {"type":"thinking","data":"Analyzing query..."}
+
+                  data: {"type":"token","content":"Il KITAS"}
+
+                  data: {"type":"token","content":" investor"}
+
+                  data: {"type":"sources","data":[{"title":"Visa Oracle","content":"..."}]}
+
+                  data: [DONE]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/agentic-rag/query:
+    post:
+      tags: [Chat]
+      summary: Send chat message (non-streaming)
+      description: Versione non-streaming del chat endpoint
+      operationId: sendChatMessage
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query, user_id]
+              properties:
+                query:
+                  type: string
+                user_id:
+                  type: string
+                enable_vision:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Complete response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgenticQueryResponse"
+
+  # ============================================================================
+  # CRM (Team-facing)
+  # ============================================================================
+  /api/crm/clients:
+    get:
+      tags: [CRM]
+      summary: Get all clients
+      description: Lista clienti con filtri e ricerca
+      operationId: getClients
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, email, phone
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Clients list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      tags: [CRM]
+      summary: Create client
+      description: Crea nuovo cliente
+      operationId: createClient
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: created_by
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "200":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /api/crm/clients/{id}:
+    get:
+      tags: [CRM]
+      summary: Get client by ID
+      operationId: getClient
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/crm/practices:
+    get:
+      tags: [CRM]
+      summary: Get all practices
+      description: Lista pratiche con filtri RBAC (admins vedono tutto, team solo assigned)
+      operationId: getPractices
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [inquiry, quotation_sent, in_progress, completed, cancelled]
+        - name: assigned_to
+          in: query
+          schema:
+            type: string
+        - name: client_id
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Practices list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Practice"
+
+  /api/crm/practices/{id}:
+    get:
+      tags: [CRM]
+      summary: Get practice by ID
+      operationId: getPractice
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Practice details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Practice"
+    patch:
+      tags: [CRM]
+      summary: Update practice
+      operationId: updatePractice
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: updated_by
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                priority:
+                  type: string
+                quoted_price:
+                  type: number
+                actual_price:
+                  type: number
+                payment_status:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Practice updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Practice"
+
+  /api/crm/interactions:
+    get:
+      tags: [CRM]
+      summary: Get interactions
+      description: WhatsApp messages, calls, notes, etc.
+      operationId: getInteractions
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: interaction_type
+          in: query
+          schema:
+            type: string
+            enum: [chat, email, whatsapp, call, meeting, note]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Interactions list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Interaction"
+
+  # ============================================================================
+  # GOOGLE DRIVE
+  # ============================================================================
+  /api/clients/{id}/create-drive-folder:
+    post:
+      tags: [Drive]
+      summary: Create Google Drive folder structure
+      description: |
+        Crea struttura cartelle standardizzata per cliente:
+        - 01_Immigration
+        - 02_Business
+        - 03_Tax
+        - 04_Personal
+        - 05_Internal
+      operationId: createDriveFolder
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  root_folder_id:
+                    type: string
+                  root_folder_url:
+                    type: string
+                  folders:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        url:
+                          type: string
+
+  /api/clients/{id}/drive-folder/{folderName}/upload:
+    post:
+      tags: [Drive]
+      summary: Upload file to folder
+      operationId: uploadFileToDrive
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: folderName
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              [01_Immigration, 02_Business, 03_Tax, 04_Personal, 05_Internal]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  file_id:
+                    type: string
+                  download_url:
+                    type: string
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: nz_access_token
+      description: httpOnly JWT cookie (metodo principale)
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token in Authorization header (fallback)
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key per integrazioni
+
+  schemas:
+    # ========================================================================
+    # AUTH SCHEMAS
+    # ========================================================================
+    LoginResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            token_type:
+              type: string
+              example: bearer
+            expiresIn:
+              type: integer
+              example: 86400
+              description: Token expiration in seconds (24h)
+            user:
+              $ref: "#/components/schemas/UserProfile"
+            csrfToken:
+              type: string
+              description: CSRF token per protezione
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, employee, client]
+        avatar_url:
+          type: string
+          nullable: true
+
+    # ========================================================================
+    # PORTAL SCHEMAS
+    # ========================================================================
+    PortalDashboard:
+      type: object
+      properties:
+        visa:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [active, pending, warning, expired, none]
+            type:
+              type: string
+              nullable: true
+            expiryDate:
+              type: string
+              format: date
+              nullable: true
+            daysRemaining:
+              type: integer
+              nullable: true
+        company:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [active, pending, none]
+            primaryCompanyName:
+              type: string
+              nullable: true
+            totalCompanies:
+              type: integer
+        taxes:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [compliant, attention, overdue]
+            nextDeadline:
+              type: string
+              format: date
+              nullable: true
+        documents:
+          type: object
+          properties:
+            total:
+              type: integer
+            pending:
+              type: integer
+        messages:
+          type: object
+          properties:
+            unread:
+              type: integer
+
+    VisaInfo:
+      type: object
+      properties:
+        current:
+          type: object
+          nullable: true
+          properties:
+            type:
+              type: string
+              example: KITAS Investor
+            status:
+              type: string
+              enum: [active, pending, expired]
+            issueDate:
+              type: string
+              format: date
+            expiryDate:
+              type: string
+              format: date
+            daysRemaining:
+              type: integer
+            permitNumber:
+              type: string
+            sponsor:
+              type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              period:
+                type: string
+              status:
+                type: string
+
+    MessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalMessage"
+        total:
+          type: integer
+        unreadCount:
+          type: integer
+
+    PortalMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        direction:
+          type: string
+          enum: [client_to_team, team_to_client]
+        sentBy:
+          type: string
+        subject:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+        subject:
+          type: string
+        practiceId:
+          type: integer
+
+    TimelineEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            [practice_update, document_upload, message_sent, payment_received]
+        title:
+          type: string
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+
+    # ========================================================================
+    # CHAT SCHEMAS
+    # ========================================================================
+    AgenticQueryResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              content:
+                type: string
+        context_length:
+          type: integer
+        execution_time:
+          type: number
+        route_used:
+          type: string
+          nullable: true
+        tools_called:
+          type: integer
+        total_steps:
+          type: integer
+
+    # ========================================================================
+    # CRM SCHEMAS
+    # ========================================================================
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        whatsapp:
+          type: string
+        nationality:
+          type: string
+        passport_number:
+          type: string
+        status:
+          type: string
+          enum: [lead, active, completed, lost, inactive, prospect]
+        client_type:
+          type: string
+          enum: [individual, company]
+        assigned_to:
+          type: string
+        google_drive_folder_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CreateClientRequest:
+      type: object
+      required: [full_name]
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        whatsapp:
+          type: string
+        nationality:
+          type: string
+        passport_number:
+          type: string
+        client_type:
+          type: string
+          enum: [individual, company]
+          default: individual
+        status:
+          type: string
+          enum: [lead, active]
+          default: lead
+        assigned_to:
+          type: string
+        notes:
+          type: string
+
+    Practice:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+          format: uuid
+        client_id:
+          type: integer
+        client_name:
+          type: string
+        practice_type_id:
+          type: integer
+        practice_type_name:
+          type: string
+        practice_type_code:
+          type: string
+          example: KITAS_INVESTOR
+        status:
+          type: string
+          enum: [inquiry, quotation_sent, in_progress, completed, cancelled]
+        priority:
+          type: string
+          enum: [normal, high, urgent]
+        quoted_price:
+          type: number
+        actual_price:
+          type: number
+        payment_status:
+          type: string
+          enum: [pending, partial, paid, refunded]
+        assigned_to:
+          type: string
+        start_date:
+          type: string
+          format: date
+        completion_date:
+          type: string
+          format: date
+          nullable: true
+        expiry_date:
+          type: string
+          format: date
+          nullable: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Interaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        client_id:
+          type: integer
+        client_name:
+          type: string
+        practice_id:
+          type: integer
+          nullable: true
+        interaction_type:
+          type: string
+          enum: [chat, email, whatsapp, call, meeting, note]
+        channel:
+          type: string
+        subject:
+          type: string
+        summary:
+          type: string
+        sentiment:
+          type: string
+          enum: [positive, neutral, negative, urgent]
+        team_member:
+          type: string
+        direction:
+          type: string
+          enum: [inbound, outbound]
+        interaction_date:
+          type: string
+          format: date-time
+        read_receipt:
+          type: boolean
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Token mancante o invalido
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Unauthorized
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Not found
+
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: Rate limit exceeded
+              retry_after:
+                type: integer
+                description: Seconds to wait before retry
+
+security:
+  - cookieAuth: []
+  - bearerAuth: []

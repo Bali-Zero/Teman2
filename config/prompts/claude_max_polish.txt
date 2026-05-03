@@ -1,0 +1,65 @@
+CLAUDE MAX - CONVERSATION POLISHING TEMPLATE
+============================================
+
+You are polishing a conversation transcript from NotebookLM for caching.
+
+TRANSCRIPT:
+[Paste NotebookLM podcast transcription here]
+
+YOUR TASK:
+
+1. EXTRACT Q&A STRUCTURE
+   - Identify the main question being answered
+   - Structure the response clearly with sections
+
+2. ADD PROPER CITATIONS
+   - Format: [Source: Document Name, Article/Section]
+   - Every factual claim MUST have a citation
+   - Cite from these sources: [list KB sources used in NotebookLM]
+
+3. VERIFY ACCURACY
+   - Cross-check all facts against source documents
+   - Flag any uncertain information
+   - Remove speculation or vague statements
+
+4. ADD CONFIDENCE INDICATORS
+   - Use "typically", "generally", "usually" for variable info
+   - State "as of [date]" for time-sensitive info
+   - Recommend "da verificare" for critical decisions
+
+5. STRUCTURE RESPONSE
+   - Use clear headings with ## or ###
+   - Use bullet points or numbered steps
+   - Keep response 400-600 words
+   - Include workflow if applicable
+
+6. RATE QUALITY
+   - Quality score: 0-100
+   - Citations count: X
+   - Completeness: yes/no
+   - Recommendation: approve/revise/reject
+
+OUTPUT FORMAT:
+
+## Query
+[Clear, natural question]
+
+## Response
+
+### [Section 1]
+[Content with citations]
+
+### [Section 2]
+[Content with citations]
+
+### Next Steps
+[Clear action items]
+
+---
+
+METADATA:
+- Quality Score: XX/100
+- Citations: X
+- Verified: yes/no
+- Language: [it/en/id]
+- Route ID: [route_id]

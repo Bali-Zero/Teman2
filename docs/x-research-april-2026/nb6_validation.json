@@ -1,0 +1,166 @@
+{
+  "value": {
+    "answer": "**1) Certificazione Halal (Prodotti Alimentari):** ERRATO riguardo alle esenzioni. Ai sensi della normativa UU 33/2014 e del PP 39/2021, la certificazione Halal è rigorosamente obbligatoria dal 18 ottobre 2024 per le PT PMA su larga scala (Usaha Besar) nel settore alimentare e dell'ospitalità, e non vi è alcuna esenzione pratica per i ristoranti situati in aree turistiche a Bali [1]. Il processo di certificazione si svolge digitalmente tramite il portale SIHALAL ed ha una validità di 4 anni [1].\n\n**2) Licenza per Alcolici (SIUP-MB categorie A/B/C):** CONFERMATO. Per operare legalmente in Indonesia, la vendita di alcolici non è coperta dal normale NIB dell'OSS, ma richiede un permesso specifico (SIUP-MB) che suddivide le bevande in Golongan A (sotto il 5%), Golongan B (5-20%) e Golongan C (oltre il 20%) [2].\n\n**3) Conformità Ambientale (SPPL vs AMDAL):** CONFERMATO. A seguito delle riforme post-Omnibus Law (UU 6/2023) e del PP 22/2021, all'interno del sistema OSS-RBA, l'AMDAL è un'analisi richiesta esclusivamente per i progetti con un impatto ambientale severo e su larga scala (es. sviluppi superiori a 10 ettari) [3]. Le attività commerciali a basso rischio della PT PMA richiedono invece il caricamento di un semplice SPPL [3, 4]. \n\n**4) Registrazione Marchi (DJKI 6-18 mesi):** PARZIALMENTE CONFERMATO. Le normative confermano che la protezione della proprietà intellettuale per la PT PMA si effettua presso la Direzione Generale della Proprietà Intellettuale (DJKI) e garantisce una tutela legale rinnovabile di 10 anni [5]. Tuttavia, non vi sono dati documentati nelle fonti attuali che certifichino la tempistica di lavorazione esatta di 6-18 mesi.\n\n**5) Licenze di Importazione (API-U e API-P):** ERRATO per le normative attuali. Sebbene storicamente le PT PMA dovessero richiedere l'API-U per il commercio generale e l'API-P per le materie prime destinate alla produzione interna [6], i profondi cambiamenti post-Omnibus Law al sistema di licensing hanno stabilito che il Numero di Identificazione Aziendale (NIB) generato dal sistema OSS funziona automaticamente anche come API-U o API-P, rimuovendo l'obbligo di ottenere permessi separati dal Ministero del Commercio [7].\n\n**6) BPJS Kesehatan (5% del salario):** CONFERMATO ma richiede specifiche di compliance. Il premio ammonta al 5% del salario lordo, con il 4% a carico della PT PMA e l'1% trattenuto in busta paga al dipendente, con un limite massimo di calcolo fissato a 12.000.000 IDR mensili [8-10]. L'inquadramento tra WNI e WNA è però differente: l'iscrizione per i dipendenti locali (WNI) è tassativamente obbligatoria entro 30 giorni dall'assunzione, mentre i lavoratori stranieri (WNA) con visto lavorativo sono tenuti all'iscrizione solo dopo 6 mesi di impiego in Indonesia [8, 11, 12].\n\n**7) Salario Minimo (UMK) Badung 2026 a circa 3.8M:** CONFERMATO. In base alla UU Ketenagakerjaan e al decreto governativo PP 36/2021, l'UMK per il 2026 nella reggenza di Badung (che include Kuta, Seminyak e Canggu) è di 3.791.002,57 IDR al mese [13, 14]. Questo è un limite invalicabile per il personale locale (WNI) con meno di 1 anno di servizio e pagare un importo inferiore costituisce un reato penale ai sensi della Omnibus Law UU 6/2023 [14-16]. Ai dipendenti stranieri (WNA) questa soglia non si applica, poiché la normativa sull'impiego di espatriati (Permenaker 8/2021) impone che i WNA siano inquadrati con contratti a tempo determinato (PKWT) per specifiche funzioni di expertise con retribuzioni nettamente superiori necessarie per l'approvazione del RPTKA [17, 18].",
+    "conversation_id": "4fabb6ba-10af-4158-bb5a-1e5280ad4e6e",
+    "sources_used": [
+      "1c3c4614-f585-4d39-85b6-636a30c67898",
+      "20f2b7b2-da20-43ac-8ff4-6a21ac7bfc3d",
+      "8f50b50f-4ee9-423f-bd27-16edf02b8ec0",
+      "bcbca6b2-2597-47fc-9466-8ea191580b8c",
+      "ca3e72b5-5ad5-4721-af04-c80b442314f0",
+      "7cb742c5-2350-4984-a068-7d532c614620",
+      "5e61fff9-beb2-4266-9899-910d0687bd93",
+      "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+      "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+      "b2459893-2051-461a-8c03-895768052b45",
+      "3d1531ab-1c9d-4501-bb5d-b209c9e64ef6"
+    ],
+    "citations": {
+      "1": "1c3c4614-f585-4d39-85b6-636a30c67898",
+      "2": "1c3c4614-f585-4d39-85b6-636a30c67898",
+      "3": "20f2b7b2-da20-43ac-8ff4-6a21ac7bfc3d",
+      "4": "8f50b50f-4ee9-423f-bd27-16edf02b8ec0",
+      "5": "bcbca6b2-2597-47fc-9466-8ea191580b8c",
+      "6": "ca3e72b5-5ad5-4721-af04-c80b442314f0",
+      "7": "ca3e72b5-5ad5-4721-af04-c80b442314f0",
+      "8": "7cb742c5-2350-4984-a068-7d532c614620",
+      "9": "5e61fff9-beb2-4266-9899-910d0687bd93",
+      "10": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+      "11": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+      "12": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+      "13": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+      "14": "b2459893-2051-461a-8c03-895768052b45",
+      "15": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+      "16": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+      "17": "3d1531ab-1c9d-4501-bb5d-b209c9e64ef6",
+      "18": "3d1531ab-1c9d-4501-bb5d-b209c9e64ef6"
+    },
+    "references": [
+      {
+        "source_id": "1c3c4614-f585-4d39-85b6-636a30c67898",
+        "citation_number": 1,
+        "cited_text": "OPS-027 — Halal Certification (Mandatory from October 2024) Mandatory since October 18, 2024 for Large-Scale PT PMA (Usaha Besar) in food, beverage, and related hospitality. Regulatory basis: UU 33/2014 tentang Jaminan Produk Halal, PP 39/2021. Process: Self-register on SIHALAL portal (ptsp.halal.go.id or ahu.go.id halal module) Fill self-declare form for halal commitment Verification by LPH (Lembaga Pemeriksa Halal) — accredited Halal Inspection Body (e.g., LPPOM MUI, or government-authorized LPH) Auditor visits premises, reviews ingredients, suppliers, production process BPJPH (Badan Penyelenggara Jaminan Produk Halal) issues Sertifikat Halal Cost: IDR 5,000,000–15,000,000 depending on product range and number of production facilities. Validity: 4 years. The Halal label must appear on all product packaging. Non-compliance for mandatory category: administrative fine up to IDR 2 billion (UU 33/2014 Pasal 56). Source: UU 33/2014, PP 39/2021, BPJPH regulations."
+      },
+      {
+        "source_id": "1c3c4614-f585-4d39-85b6-636a30c67898",
+        "citation_number": 2,
+        "cited_text": "OPS-025 — SIUP-MB (Alcohol Sales License) Procedure SIUP-MB (Surat Izin Usaha Perdagangan Minuman Beralkohol) — required for any PT PMA selling alcoholic beverages. Classifications: Class A: beer and wine containing <5% ABV Class B: alcohol-containing beverages 5%–20% ABV (wines, spirits mixers) Class C: beverages >20% ABV (spirits, whisky, rum, gin, vodka) Each class requires a separate license. Required documents: NIB with F&B KBLI code, Sertifikat Laik Sehat (SLS), recommendation letter from Satpol PP (local civil service police), zoning confirmation (must be Pink/Commercial zone per local RDTR), copy of establishment deed. Filing through: DPMPTSP Kabupaten (e.g., DPMPTSP Badung for Seminyak/Kuta area). Government fee: Rp 0 (free), processing 14–30 days. Validity: 3 years. Renewal application: must be filed 3 months before expiry. Operating without SIUP-MB: Satpol PP can confiscate stock and seal premises. Source: Permendag 20/2021, local Perda."
+      },
+      {
+        "source_id": "20f2b7b2-da20-43ac-8ff4-6a21ac7bfc3d",
+        "citation_number": 3,
+        "cited_text": "Real Story: An Uluwatu Beach Club's Supply Chain Pivot Meet Marc, a 44-year-old entrepreneur from France who owns a high-traffic beach club in Uluwatu. Marc's business was built on high-volume cocktails and premium bottled water, but in late 2025, he faced a grueling audit during his environmental license renewal. The district authorities pointed out that his beach club was generating nearly 200 kilograms of plastic waste daily, much of which was non-recyclable single-use bottles prohibited under Bali's CL 9/2025."
+      },
+      {
+        "source_id": "8f50b50f-4ee9-423f-bd27-16edf02b8ec0",
+        "citation_number": 4,
+        "cited_text": "Example 2: Groundwater extraction (36001) is fully closed to foreign entities to protect natural resources and local supply. 3. OSS-RBA Risk Categories and Licence Requirements Under the Risk-Based Licensing (OSS-RBA) framework, every KBLI is assigned a risk category that dictates what documents are required after incorporation. <cited_table>",
+        "cited_table": {
+          "num_columns": 4,
+          "rows": [
+            [
+              "Risk Category",
+              "Description",
+              "Required Licences",
+              "Example KBLI"
+            ],
+            [
+              "Low Risk",
+              "Minimal impact on safety/environment",
+              "NIB only",
+              "70209 (Consulting)"
+            ],
+            [
+              "Medium Risk (Self-Declared)",
+              "Moderate risk; self-assessed",
+              "NIB + Standard Certificate (Self-Declared)",
+              "68200 (Property Leasing)"
+            ],
+            [
+              "Medium Risk (Verified)",
+              "Moderate risk requiring verification",
+              "NIB + Verified Standard Certificate",
+              "56101 (Restaurant), 55900 (Villa/Hotel)"
+            ],
+            [
+              "High Risk",
+              "Significant environmental/safety impact",
+              "NIB + Standard Certificate + Business Licence/Environmental Permit",
+              "68111 (Property Development), 41011 (Construction)"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "bcbca6b2-2597-47fc-9466-8ea191580b8c",
+        "citation_number": 5,
+        "cited_text": "](https://indonesia.incorp.asia/services/retirement-visa-indonesia/) [ Overseas Visas Obtain a visa for outbound travel Learn more ](https://indonesia.incorp.asia/services/overseas-visa/) [ View all services Learn more ](https://indonesia.incorp.asia/services/) Product Registration [ Halal Certification Obtain halal certification for your products Learn more ](https://indonesia.incorp.asia/services/halal-certificate-indonesia/) [ Food & Beverage Get certified for the Indonesian food & beverage market Learn more"
+      },
+      {
+        "source_id": "ca3e72b5-5ad5-4721-af04-c80b442314f0",
+        "citation_number": 6,
+        "cited_text": "PMA and PMDN companies can only import if they obtain an import license. This may be a general importer identification number (“API-U”) issued to importers which import goods for trading or transfer to other parties, or a producer importer identification number (“API-P”) issued to importers which import goods for own internal consumption or use, such as raw and supporting materials and/or to support production in manufacturing activities. Goods imported using API-P are prohibited from being traded or transferred unless the capital goods were new when imported under an API-P and have been used for at least two years from the date of import customs notification."
+      },
+      {
+        "source_id": "ca3e72b5-5ad5-4721-af04-c80b442314f0",
+        "citation_number": 7,
+        "cited_text": "Import licensing revisions As part of the implementation of the OSS system outlined in Chapter 6, the MoT issued Regulation No. 36/2023 regarding Import Policies and Arrangements as lastly amended by Regulation No. 8/2024 regarding The Third Amendment on MoT Regulation No. 36/2023, which revoked previous Regulations No. 20/2021 and No. 75/2018. Key changes include the use of business identification number (“NIB”) as API-U or API-P. By obtaining NIB, importers are no longer required to obtain API from the MoT."
+      },
+      {
+        "source_id": "7cb742c5-2350-4984-a068-7d532c614620",
+        "citation_number": 8,
+        "cited_text": "Employers must calculate and deduct contributions from employees' salaries while ensuring timely payments to BPJS. BPJS Registration & Contribution Requirements Who Must Register? All businesses operating in Indonesia must register their employees for both BPJS Kesehatan and BPJS Ketenagakerjaan . Foreign workers with contracts of six months or more are also required to participate. Employer Contribution Breakdown BPJS Kesehatan : 5% of salary (4% employer, 1% employee). BPJS Ketenagakerjaan : 5.7% of salary (varies based on insurance type)."
+      },
+      {
+        "source_id": "5e61fff9-beb2-4266-9899-910d0687bd93",
+        "citation_number": 9,
+        "cited_text": "BPJS Complete Contribution Guide for PT PMA — Indonesia 2025 OPS-001 — BPJS Kesehatan Rates BPJS Kesehatan employer contribution: 4% of gross monthly salary. Employee contribution: 1% of gross monthly salary. Salary ceiling for calculation: IDR 12,000,000/month (contributions capped at this base regardless of actual salary). Maximum employer monthly payment per employee: IDR 480,000. Registration mandatory within 30 days of hiring the first employee. Registration portal: bpjs-kesehatan.go.id. Source: Perpres 64/2020, Perpres 82/2018."
+      },
+      {
+        "source_id": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+        "citation_number": 10,
+        "cited_text": "Salario massimo soggetto a contributo BPJS Kesehatan: Rp 12.000.000/mese (anche se il dipendente guadagna di più, il contributo è capped a questo importo) Salario minimo: UMP in vigore Massimo contributo mensile datore: Rp 480.000/mese per dipendente Massimo contributo mensile dipendente: Rp 120.000/mese Copertura familiare: Il contributo copre il dipendente + coniuge + fino a 3 figli Per figli aggiuntivi (4° figlio in poi): 1% aggiuntivo a carico dipendente per figlio Il datore NON è obbligato a coprire i familiari oltre il nucleo standard"
+      },
+      {
+        "source_id": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+        "citation_number": 11,
+        "cited_text": "CLAIM ID: OPS-039 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SEZIONE 10 — BPJS KESEHATAN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ BPJS Kesehatan è il sistema di assicurazione sanitaria nazionale (JKN). Obbligatorio per tutti i dipendenti del settore privato, inclusi PT PMA. Aliquote: DATORE DI LAVORO: 4% del salario mensile DIPENDENTE:        1% del salario mensile (trattenuta in busta paga) Totale: 5% del salario mensile Limiti di calcolo:"
+      },
+      {
+        "source_id": "40c31f59-7f64-40c5-8c73-83fbb33e1049",
+        "citation_number": 12,
+        "cited_text": "ITAS/Visa Lavorativa e IMTA: ITAS (Izin Tinggal Terbatas) per soggiorno lavorativo: processo distinto dal RPTKA IMTA (Izin Mempekerjakan Tenaga Kerja Asing): ex-autorizzazione lavoro ora denominata Notifikasi TKA nel sistema OSS post-Cipta Kerja Processo online: evisa.imigrasi.go.id per ITAS lavorativo La PT PMA è sponsor (penjamin) e garante giuridico del WNA Obblighi BPJS per WNA: BPJS Kesehatan: obbligatoria (dal 2026 senza esenzioni di default) BPJS Ketenagakerjaan JKK, JKM: obbligatoria BPJS JP (pensione): esonerabile se il WNA dimostra copertura pensionistica nel paese d'origine con reciprocità bilaterale (accordi limitati — verificare caso per caso)"
+      },
+      {
+        "source_id": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+        "citation_number": 13,
+        "cited_text": "The highest statutory earnings in Bali for 2026 are found in Badung Regency, home to premium areas like Seminyak, Canggu, and Uluwatu. The breakdown is as follows: Badung: Rp3.791.002,57 Denpasar: Rp3.499.878,78 Gianyar: Rp3.316.798,48 Tabanan: Rp3.287.678,87 For the remaining regencies—Klungkung, Karangasem, Bangli, Jembrana, and Buleleng—the UMK is set equal to the provincial floor at Rp3.207.459 . Business owners must verify their company's legal domicile to determine which rate applies. A villa management company registered in Denpasar but operating in Badung may face complex compliance questions regarding where the work is performed, requiring careful contract drafting."
+      },
+      {
+        "source_id": "b2459893-2051-461a-8c03-895768052b45",
+        "citation_number": 14,
+        "cited_text": "Indonesian Employment Law for Foreign Business Owners — PT PMA 2025 OPS-008 — Bali Minimum Wages 2026 UMP Bali (Upah Minimum Provinsi) 2026: IDR 3,207,459/month (effective January 1, 2026, increase ~7.04% from 2025). UMK (Regency Minimum Wages) are always equal to or higher than UMP: UMK Badung 2026: IDR 3,791,002.57/month (highest in Bali — covers Kuta, Seminyak, Canggu, Nusa Dua) UMK Denpasar 2026: IDR 3,461,292.00/month UMK Gianyar 2026: IDR 3,296,395.36/month UMK Tabanan, Buleleng, Klungkung, Bangli, Karangasem: closer to UMP floor UMSK (Sectoral Minimum Wage) Badung — Hotel 4-5 bintang: IDR 3,828,912.60/month. Employers must pay whichever is highest (UMP / UMK / UMSK by sector). Criminal penalty for below-minimum payment: UU 6/2023 Pasal 185 — up to IDR 500 million fine AND 5 years imprisonment. Source: Kepgub Bali 2025 re UMK 2026."
+      },
+      {
+        "source_id": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+        "citation_number": 15,
+        "cited_text": "Who is Eligible? Coverage and Legal Framework A common misconception among foreign employers is that the lowest permissible pay applies to every single staff member regardless of tenure. Legally, the base salary is designed as a safety net for workers with less than one year of service. It applies to monthly paid workers and prohibits employers from paying a basic wage plus fixed allowances that total less than the applicable UMP or UMK. For employees with more than one year of service, the law mandates that companies implement a Structure and Scale of Wages (Struktur dan Skala Upah). This means salaries should theoretically be above the base rate, scaled according to productivity, tenure, and responsibility. While the Bali Minimum Wage sets the entry-level standard, paying experienced staff at exactly this rate can lead to internal friction and is generally discouraged by the Manpower Office (Disnaker) regulations."
+      },
+      {
+        "source_id": "703a5979-7beb-4b88-9510-1a1ae71c2cb3",
+        "citation_number": 16,
+        "cited_text": "Penalties for Non-Compliance The Indonesian government has tightened enforcement regarding the provincial wage standard. Under the Omnibus Law and subsequent regulations, paying below the compensation floor is considered a crime, not just a civil dispute. Penalties can include imprisonment for up to four years or fines of up to Rp 400 million. Administrative sanctions are more common and immediate. These can range from written warnings to the restriction of business activities (Pembatasan Kegiatan Usaha). For foreign investors, compliance is scrutinized during visa renewals and permit audits. If a dispute reaches the Industrial Relations Court and the employer is found to have paid below the mandated floor, they will be forced to pay the difference retroactively for the entire period of underpayment, plus potential damages."
+      },
+      {
+        "source_id": "3d1531ab-1c9d-4501-bb5d-b209c9e64ef6",
+        "citation_number": 17,
+        "cited_text": "RPTKA E IMTA — PERMESSI DI LAVORO PER DIRETTORI E DIPENDENTI STRANIERI IN PT PMA Tenaga Kerja Asing: Pianificazione, Autorizzazione e Compliance INDONESIA 2024-2025 Guida normativa verificata | Basata su UU No. 13/2003 (Ketenagakerjaan), UU No. 6/2023 (Cipta Kerja), PP No. 34/2021, Permenaker No. 8/2021 Prodotta da Bali Zero / Zantara Intelligence ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ INDICE Inquadramento normativo — Il quadro legale del TKA in Indonesia RPTKA — Definizione, obblighi e contenuto Chi è esente dall'RPTKA Posizioni vietate ai TKA (Daftar Jabatan Terlarang) IMTA — Izin Mempekerjakan Tenaga Kerja Asing TKI Pendamping — Il requisito del lavoratore indonesiano di affiancamento DPKK — Il contributo mensile per ogni TKA Piattaforma TKA-Online — Procedura digitale Timeline e tempistiche complete Direttore WNA vs Komisaris WNA — Differenze fondamentali Rinnovi: ciclo annuale RPTKA-IMTA-KITAS Sanzioni per violazioni Casi pratici — Scenari ricorrenti Base normativa Claim IDs utilizzati"
+      },
+      {
+        "source_id": "3d1531ab-1c9d-4501-bb5d-b209c9e64ef6",
+        "citation_number": 18,
+        "cited_text": "TOTALE STIMATO: 3-5 settimane dalla presentazione completa della domanda Fattori che allungano i tempi: Documenti esteri non apostillati o non tradotti da traduttore giurato Jabatan non chiaramente correlata al KBLI principale della PT Pendamping non ancora assunto o non reperibile per verifica Errori nel NPWP aziendale (causa rifiuto automatico del sistema) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ DIRETTORE WNA VS KOMISARIS WNA — DIFFERENZE FONDAMENTALI ─────────────────────┼─────────────────┼────────────────── Ruolo               │ Esecutivo       │ Sorveglianza Gestione operativa  │ Sì              │ No (vietata) RPTKA richiesto     │ SÌ              │ No IMTA richiesto      │ SÌ              │ No KITAS richiesto     │ Sì (Kitas TKA) │ Sì (KITAS Investor) Firma contratti     │ Sì              │ No (solo in Akta) Atti giuridici      │ Piena capacità │ Solo RUPS Responsabilità      │ Personale       │ Limitata al dolo DPKK (USD 100/mo)  │ SÌ              │ No"
+      }
+    ]
+  }
+}

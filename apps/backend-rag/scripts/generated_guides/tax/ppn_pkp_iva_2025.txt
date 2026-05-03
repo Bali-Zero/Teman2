@@ -1,0 +1,254 @@
+PPN E PKP — IVA INDONESIANA E REGISTRAZIONE
+GUIDA COMPLETA PER PT PMA IN INDONESIA
+2024-2025
+
+Guida normativa verificata | Basata su UU 42/2009 (PPN), UU 7/2021 (HPP), PP 44/2022
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHE COS'È LA PPN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La PPN (Pajak Pertambahan Nilai) è l'IVA indonesiana — un'imposta
+indiretta sui consumi applicata alla vendita di beni e servizi. [TAX-026]
+
+A differenza dell'IVA europea, in Indonesia la PPN non è un obbligo
+automatico per tutte le imprese: solo i PKP (Pengusaha Kena Pajak)
+registrati hanno l'obbligo di addebitare, raccogliere e versare la PPN.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. ALIQUOTE PPN
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Aliquota standard [TAX-027]
+
+ALIQUOTA STANDARD: 11% (dal 1° aprile 2022)
+Introdotta con UU 7/2021 (HPP) — aumentata dal precedente 10%.
+Previsto ulteriore aumento al 12% dal 1° gennaio 2025.
+
+AGGIORNAMENTO 2025: Con PMK 131/2024, l'aliquota è rimasta all'11%
+per la maggior parte dei beni/servizi, con applicazione del 12%
+solo per beni/servizi di lusso (barang mewah).
+
+2.2 Aliquote speciali
+
+TARIF NOL (0%): [TAX-028]
+- Ekspor barang kena pajak (export di beni imponibili)
+- Ekspor BKP tidak berwujud (export servizi intellettuali)
+- Ekspor jasa kena pajak (export di servizi)
+
+TARIF KHUSUS (aliquote ridotte specifiche):
+- Jasa konstruksi (servizi costruzione): 2,2% sulle strutture semplici
+- Jasa pendidikan (servizi educazione): esenzione in molti casi
+- Jasa kesehatan (servizi sanitari): esenzione
+
+ESENTI DA PPN (NON JKP/BKP): [TAX-029]
+- Barang kebutuhan pokok (generi alimentari di prima necessità: riso, mais, sagu)
+- Jasa keuangan (servizi finanziari: prestiti, assicurazioni)
+- Jasa asuransi (servizi assicurativi)
+- Jasa pendidikan (servizi educazione formale)
+- Jasa kesehatan umum (servizi sanitari pubblici)
+- Hasil pertanian (prodotti agricoli non trasformati)
+- Jasa pemerintah (servizi pubblici governativi)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. PKP — CHI DEVE REGISTRARSI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Soglia obbligatoria
+
+L'iscrizione a PKP (Pengusaha Kena Pajak) è OBBLIGATORIA se: [TAX-030]
+Peredaran bruto (fatturato lordo) > Rp 4.800.000.000/anno
+(quattro miliardi e ottocento milioni — circa €275.000)
+
+SCADENZA: La PT deve registrarsi come PKP entro la fine del mese
+successivo al mese in cui ha superato la soglia.
+Es: supera soglia in luglio → registrarsi entro 31 agosto.
+
+3.2 Registrazione volontaria
+
+Una PT PMA può registrarsi come PKP VOLONTARIAMENTE anche prima
+di raggiungere la soglia di Rp 4,8 miliardi. [TAX-031]
+
+VANTAGGI della registrazione anticipata:
+- Possibilità di scaricare PPN pagata sugli acquisti (PM — Pajak Masukan)
+- Credibilità commerciale verso fornitori/clienti PKP
+- Accesso a procedure di rimborso IVA su investimenti iniziali
+
+SVANTAGGI:
+- Obblighi amministrativi aggiuntivi (e-Faktur, SPT Masa PPN mensile)
+- Maggiore complessità gestionale
+
+3.3 Come registrarsi PKP
+
+Presentare domanda al KPP competente o via CoreTax DJP Online:
+- Formulir pengukuhan PKP (modulo registrazione PKP)
+- NPWP Badan della PT PMA
+- Akta pendirian + SK Kemenkumham
+- NIB
+- Surat keterangan tempat usaha (certificazione sede operativa)
+- Survey del KPP (visita ispettiva dell'ufficio fiscale alla sede)
+
+Dopo la verifica: il KPP rilascia il SPPKP
+(Surat Pengukuhan Pengusaha Kena Pajak) entro 3-5 giorni lavorativi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. MECCANISMO PPN — COME FUNZIONA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema PPN funziona con il meccanismo PENGKREDITAN PAJAK
+(credito d'imposta): [TAX-032]
+
+PPN DA PAGARE = PM (Pajak Keluaran) − PM (Pajak Masukan)
+
+PAJAK KELUARAN (PK) — PPN a Debito:
+PPN addebitata ai propri clienti sulle vendite/servizi
+(11% del prezzo imponibile)
+
+PAJAK MASUKAN (PM) — PPN a Credito:
+PPN pagata ai propri fornitori sugli acquisti
+(da PKP fornitori con e-Faktur valida)
+
+Se PK > PM → KURANG BAYAR (da versare entro il 25 del mese successivo)
+Se PK < PM → LEBIH BAYAR (credito IVA — rimborso o compensazione) [TAX-033]
+
+ESEMPIO RISTORANTE PKP:
+Revenue mensile: Rp 200.000.000
+PPN incassata (PK): 11% × Rp 200.000.000 = Rp 22.000.000
+PPN pagata su acquisti (PM): Rp 15.000.000
+PPN da versare: Rp 22.000.000 − Rp 15.000.000 = Rp 7.000.000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. E-FAKTUR — FATTURA IVA ELETTRONICA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ogni PKP ha l'obbligo di emettere FAKTUR PAJAK (fattura IVA)
+per ogni BKP/JKP (bene o servizio soggetto a PPN). [TAX-034]
+
+DAL 2016: tutte le fatture PPN devono essere in formato E-FAKTUR
+(fattura elettronica) emessa tramite software DJP (e-Faktur/CoreTax).
+
+NUMERO SERI FAKTUR PAJAK (NSFP):
+Il DJP assegna blocchi di NSFP (Nomor Seri Faktur Pajak) pre-approvati.
+Il PKP deve richiedere i numeri prima di poter emettere fatture.
+
+TIPI DI FAKTUR PAJAK:
+- Faktur Pajak Standar: per BKP/JKP a operazioni normali
+- Faktur Pajak Sederhana: per operasi ritel (al dettaglio a clienti finali)
+- Faktur Pajak Gabungan: fattura cumulativa mensile per transazioni ripetute
+- Nota Retur: nota di credito per reso merci
+
+OBBLIGHI E-FAKTUR:
+- Emissione entro il giorno in cui avviene la consegna/prestazione
+- Upload al sistema DJP entro 15 giorni dall'emissione
+- Non uploadare entro 15 giorni → faktur dianggap tidak ada (non valida ai fini PM) [TAX-035]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. SPT MASA PPN — DICHIARAZIONE IVA MENSILE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il PKP deve presentare OGNI MESE la SPT Masa PPN (dichiarazione IVA):
+[TAX-036]
+
+SCADENZA PRESENTAZIONE: entro il 25 del mese successivo
+(es. per il mese di gennaio → entro 25 febbraio)
+
+SCADENZA PAGAMENTO: entro il 25 del mese successivo
+(coincide con la presentazione)
+
+MODALITÀ: e-Filing tramite DJP Online / CoreTax — no formato cartaceo
+
+Il SPT Masa PPN include:
+- Daftar Faktur Keluaran (tutte le fatture emesse nel mese)
+- Daftar Faktur Masukan (tutte le fatture ricevute da fornitori PKP)
+- Rekonsiliasi PK vs PM
+- Import/export PPN se applicabile
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. PPN E SETTORE TURISTICO BALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Settori TERKENA PPN (soggetti IVA) a Bali:
+- Ristoranti e bar (se PKP registrato): PPN 11% su cibo/bevande [TAX-037]
+- Hotel e villa con PKP: PPN 11% sui pernottamenti
+- Spa e servizi benessere: PPN 11% se PKP
+- Agenzia viaggi: PPN 11% sulle commissioni
+- Servizi consulenza/IT: PPN 11% se PKP
+
+NOTA IMPORTANTE — VILLA TURISTICA:
+Per le ville con PKP, la PPN si applica al canone di affitto.
+Tuttavia, se la villa non supera Rp 4,8 miliardi/anno, non è obbligatoria
+la registrazione PKP e non si addebita PPN al cliente finale.
+Molte ville operano senza PKP per restare competitive sui prezzi.
+
+RISTORANTE CON PKP:
+L'aggiunta del 11% PPN al conto del ristorante è visibile al cliente.
+Alcuni ristoranti preferiscono incorporare il costo nel prezzo (prezzi
+IVA inclusa) piuttosto che aggiungerla separatamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. PPnBM — IMPOSTA SUI BENI DI LUSSO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La PPnBM (Pajak Penjualan atas Barang Mewah) è un'imposta aggiuntiva
+sui beni di lusso, separata dalla PPN standard. [TAX-038]
+
+ALIQUOTE PPnBM: 10% - 200% a seconda della categoria.
+
+Applicabile a:
+- Kendaraan bermotor mewah (veicoli di lusso, se importati)
+- Barang mewah lainnya (altri beni di lusso come gioielli, yacht, jet privati)
+- Hunian mewah (immobili di lusso con harga > soglia DJP)
+
+NON rilevante per la maggior parte delle PT PMA operative a Bali
+in settori turismo, ristorazione, consulenza, IT.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+REGISTRAZIONE PKP: Bali Zero non include automaticamente la registrazione
+PKP nel pacchetto PT PMA. Si registra PKP solo se necessario (omzet
+vicino alla soglia o strategia di rimborso IVA su investimenti iniziali).
+
+GESTIONE E-FAKTUR: È indispensabile un software gestionale (accounting)
+integrato con e-Faktur per gestire le fatture IVA correttamente.
+Bali Zero raccomanda soluzioni come Accurate Online, Jurnal.id o SIFAKTUR.
+
+RIMBORSO IVA SU INVESTIMENTI:
+Le PT PMA in fase pre-operativa con grandi investimenti (arredamento villa,
+attrezzatura ristorante) possono accumulare PM > PK → LEBIH BAYAR.
+Il rimborso IVA è possibile ma richiede audit DJP (pemeriksaan pajak)
+e può richiedere 6-12 mesi. [TAX-039]
+Alternativa: compensazione con altri debiti fiscali.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-026, TAX-027, TAX-028, TAX-029, TAX-030, TAX-031, TAX-032,
+TAX-033, TAX-034, TAX-035, TAX-036, TAX-037, TAX-038, TAX-039
+
+Base normativa: UU 42/2009 (PPN), UU 7/2021 (HPP),
+PP 44/2022 (PPN barang kebutuhan pokok), PMK 131/2024 (tarif PPN 12%),
+PER-03/PJ/2022 (e-Faktur).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

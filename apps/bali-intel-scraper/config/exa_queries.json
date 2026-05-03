@@ -1,0 +1,179 @@
+{
+  "version": "4.1.0",
+  "max_age_hours": 72,
+  "default_num_results": 10,
+  "search_type": "auto",
+  "user_location": "ID",
+  "livecrawl": "fallback",
+  "moderation": true,
+  "highlights": {
+    "num_sentences": 3,
+    "highlights_per_url": 2
+  },
+  "exclude_domains": [
+    "pinterest.com",
+    "facebook.com",
+    "tiktok.com",
+    "instagram.com",
+    "tripadvisor.com",
+    "booking.com",
+    "airbnb.com",
+    "agoda.com",
+    "expedia.com",
+    "youtube.com"
+  ],
+  "_budget_note": "17 queries/run × 30 days = 510 searches/month (free tier: 1000)",
+  "queries": [
+    { "_comment": "=== NEWS (9 queries × 10 results) ===" },
+
+    {
+      "name": "visa_immigration_news",
+      "query": "Recent news article about changes to Indonesia visa regulations, new visa categories, immigration policy updates, or foreign worker permit requirements in 2025 and 2026",
+      "highlights_query": "visa regulation changes new rules",
+      "include_text": ["Indonesia"],
+      "category": "immigration",
+      "tier": "T2"
+    },
+    {
+      "name": "golden_visa_investor",
+      "query": "Indonesia golden visa program or investor visa for foreign nationals, including second home visa, retirement visa, and long-stay permit options in Bali",
+      "highlights_query": "golden visa investor requirements",
+      "include_text": ["visa"],
+      "category": "immigration",
+      "tier": "T1"
+    },
+    {
+      "name": "bali_business_investment",
+      "query": "News or analysis about foreign investment opportunities in Bali, including property ownership rules, real estate market trends, villa investment, and PT PMA company setup for foreigners in Indonesia",
+      "highlights_query": "foreign investment property business Bali",
+      "category": "business",
+      "tier": "T2"
+    },
+    {
+      "name": "indonesia_company_formation",
+      "query": "Guide or news about starting a business in Indonesia as a foreigner, PMA company registration, OSS licensing system changes, KBLI business classification updates, and minimum investment requirements",
+      "highlights_query": "PMA company formation registration requirements",
+      "include_text": ["Indonesia"],
+      "category": "business_regulations",
+      "tier": "T2"
+    },
+    {
+      "name": "digital_nomad_remote_work",
+      "query": "Article about Indonesia digital nomad visa program, remote worker regulations, freelancer tax obligations, or expat cost of living and coworking trends in Bali",
+      "highlights_query": "digital nomad visa remote work tax",
+      "category": "tax",
+      "tier": "T2"
+    },
+    {
+      "name": "indonesia_tax_reform",
+      "query": "Indonesia tax regulation changes, new tax law for foreign residents, crypto taxation, VAT updates, or tax treaty modifications affecting expatriates and foreign-owned companies",
+      "highlights_query": "tax regulation reform foreign resident",
+      "include_text": ["Indonesia"],
+      "category": "tax",
+      "tier": "T2"
+    },
+    {
+      "name": "ai_indonesia_sea",
+      "query": "News about artificial intelligence adoption, AI startups, government AI strategy, or technology regulation in Indonesia and Southeast Asia, including data protection and privacy laws",
+      "highlights_query": "AI technology Indonesia regulation startup",
+      "category": "emerging_trends",
+      "tier": "T2"
+    },
+    {
+      "name": "ai_global_breakthroughs",
+      "query": "Breaking news about major AI breakthroughs, new large language model releases, AI regulation developments from EU or US, or significant AI industry funding announcements",
+      "highlights_query": "AI breakthrough model release announcement",
+      "category": "emerging_trends",
+      "tier": "T2"
+    },
+    {
+      "name": "indonesia_economy_policy",
+      "query": "Indonesia macroeconomic policy updates, rupiah exchange rate analysis, Bank Indonesia interest rate decisions, or government stimulus programs affecting foreign businesses and investors",
+      "highlights_query": "Indonesia economy policy investment impact",
+      "include_text": ["Indonesia"],
+      "category": "business_regulations",
+      "tier": "T2"
+    },
+    {
+      "name": "ojk_financial_regulation",
+      "query": "OJK Indonesia new regulation on financial services, fintech licensing, investment protection, or foreign bank and insurance company requirements in Indonesia",
+      "highlights_query": "OJK regulation fintech investment license",
+      "include_text": ["Indonesia"],
+      "category": "business_regulations",
+      "tier": "T2"
+    },
+    {
+      "name": "kominfo_digital_regulation",
+      "query": "Indonesia digital regulation news, data protection law update, PSE registration requirement, platform blocking, or internet governance policy by Kominfo ministry",
+      "highlights_query": "Kominfo digital regulation data protection",
+      "include_text": ["Indonesia"],
+      "category": "business_regulations",
+      "tier": "T2"
+    },
+
+    { "_comment": "=== PERSONAL SITES / BLOGS (1 query × 10 results) ===" },
+
+    {
+      "name": "bali_expat_community",
+      "query": "News or blog post about expat life in Bali, foreigner community updates, Bali infrastructure development, new regulations affecting foreign residents, or cultural integration stories",
+      "highlights_query": "expat Bali foreign resident community",
+      "include_text": ["Bali"],
+      "exa_category": "personal site",
+      "category": "lifestyle",
+      "tier": "T3"
+    },
+
+    {
+      "_comment": "=== X/SOCIAL PERSPECTIVES — converted from 'tweet' (deprecated 2026-03) to 'news' ==="
+    },
+
+    {
+      "name": "tweet_immigration_lawyers",
+      "query": "Indonesia immigration lawyer or consultant blog post about visa regulation updates, new permit requirements, or foreigner compliance tips for 2025-2026",
+      "highlights_query": "visa regulation update Indonesia foreigner",
+      "exa_category": "news",
+      "category": "immigration",
+      "tier": "T3",
+      "num_results": 5
+    },
+    {
+      "name": "tweet_bali_expat_voices",
+      "query": "Personal experience article or blog post about expat life in Bali, living costs, visa challenges, or starting a business as a foreigner in Indonesia",
+      "highlights_query": "Bali expat visa cost experience",
+      "exa_category": "news",
+      "category": "lifestyle",
+      "tier": "T3",
+      "num_results": 5
+    },
+    {
+      "name": "tweet_indonesia_tax_experts",
+      "query": "Indonesia tax specialist or accounting firm article about tax compliance updates, foreign company obligations, or VAT and PPh changes affecting expat businesses",
+      "highlights_query": "tax regulation update foreign company Indonesia",
+      "exa_category": "news",
+      "category": "tax",
+      "tier": "T3",
+      "num_results": 5
+    },
+    {
+      "name": "tweet_indonesia_startup_ai",
+      "query": "Indonesia tech startup news, AI investment announcement, digital economy growth story, or fintech innovation coverage from Southeast Asia",
+      "highlights_query": "AI startup funding Indonesia tech digital",
+      "exa_category": "news",
+      "category": "emerging_trends",
+      "tier": "T3",
+      "num_results": 5
+    },
+
+    { "_comment": "=== RESEARCH PAPERS (1 query × 5 results) ===" },
+
+    {
+      "name": "indonesia_research_papers",
+      "query": "Academic research paper or policy brief about Indonesia foreign direct investment, economic development, digital economy growth, or regulatory framework analysis",
+      "highlights_query": "Indonesia FDI policy economic analysis",
+      "exa_category": "research paper",
+      "category": "business_regulations",
+      "tier": "T3",
+      "num_results": 5
+    }
+  ]
+}

@@ -1,0 +1,202 @@
+FAQ FISCALE BALI ZERO
+DOMANDE FREQUENTI DEI CLIENTI WNA SULLE TASSE IN INDONESIA
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+Basata su casistica reale clienti
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE A — OBBLIGHI DI BASE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Appena costituita la PT PMA, devo già pagare tasse?
+R: Non immediatamente. Gli obblighi scattano progressivamente:
+   - NPWP Badan: ottenere entro 1 mese dal NIB (solo registrazione)
+   - PPh 25 mensile: si calcola sull'anno precedente — il primo anno
+     può essere zero se non c'è storico o se si stima perdita
+   - SPT Tahunan: prima dichiarazione solo alla fine del primo anno fiscale
+   - PPN/PKP: solo se omzet supera Rp 4,8 miliardi OPPURE registrazione volontaria
+   Il primo anno tipicamente ha adempimenti ridotti. [TAX-003][TAX-006]
+
+D: Devo pagare tasse in Indonesia E nel mio paese?
+R: Dipende dalla tua residenza fiscale. Se sei PENDUDUK Indonesia
+   (>183 giorni/anno o KITAP), sei soggetto a tassazione indonesiana
+   sul reddito mondiale. Il P3B con il tuo paese evita la doppia
+   tassazione — puoi detrarre le imposte pagate in Indonesia dalle
+   tasse dovute nel paese d'origine (e viceversa). [TAX-065][TAX-070]
+
+D: Devo fare la dichiarazione dei redditi personale in Indonesia?
+R: Se hai un NPWP Pribadi (personale) SÌ — SPT Tahunan Pribadi
+   entro 31 marzo ogni anno. Se sei non penduduk (< 183 gg/anno)
+   e il reddito indonesiano è solo stipendio su cui PPh 26 è stata
+   trattenuta, non hai l'obbligo di SPT Tahunan. [TAX-005][TAX-041]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE B — QUANTO SI PAGA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Quale percentuale di tasse paga una PT PMA sull'utile?
+R: Il 22% sull'utile imponibile (PKP). Ma si paga solo se si fa utile.
+   Se l'azienda è in perdita → nessuna imposta. La perdita si può
+   riportare ai 5 anni successivi. [TAX-011][TAX-012][TAX-024]
+
+D: Se guadagno Rp 100 milioni di utile, pago esattamente 22 milioni?
+R: In linea di principio sì: 22% × 100 juta = 22 juta.
+   Nella pratica, si considerano tutte le deduzioni (costi) PRIMA
+   di arrivare all'utile imponibile. Se il tuo utile CONTABILE è
+   100 juta ma ci sono costi non deducibili fiscalmente, l'utile
+   FISCALE (PKP) potrebbe essere leggermente diverso. [TAX-014][TAX-061]
+
+D: Quanto paga il mio direttore straniero in tasse?
+R: Dipende da:
+   a) Se è PENDUDUK (>183 gg): PPh 21 progressivo sul netto (5-35%)
+   b) Se non penduduk: PPh 26 flat 20% sul lordo (o ridotto se P3B)
+   Esempio: stipendio Rp 20 juta/mese, non penduduk italiano:
+   PPh 26 ridotta (P3B) = 15% × 20 juta = Rp 3 juta/mese ritenuta. [TAX-041][TAX-069]
+
+D: Devo caricare la PPN (IVA) sul conto ai miei clienti?
+R: Solo se sei registrato come PKP (omzet > Rp 4,8 miliardi OPPURE
+   registrazione volontaria). Se non sei PKP, i tuoi prezzi sono già
+   "IVA inclusa" (in realtà senza IVA). Molti ristoranti e ville a Bali
+   operano senza PKP e non aggiungono IVA al conto. [TAX-030][TAX-037]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE C — GESTIONE PRATICHE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Ho bisogno di un commercialista? Non posso fare da solo?
+R: Tecnicamente puoi fare da solo tramite DJP Online/CoreTax.
+   In pratica è molto consigliato affidarsi a un konsultan pajak
+   certificato o a uno studio commercialista locale. I motivi:
+   - Il sistema e-Filing è in bahasa Indonesia
+   - Gli errori nelle dichiarazioni portano sanzioni
+   - Le regole cambiano frequentemente (HPP 2021, CoreTax 2025)
+   - Per PT PMA con transazioni intercompany: OBBLIGATORIA documentazione TP
+   Bali Zero offre servizi di tax compliance mensile. [TAX-059]
+
+D: Quante dichiarazioni devo presentare ogni anno?
+R: Una PT PMA senza PKP presenta tipicamente:
+   - 12 SPT Masa PPh 21/26 (mensili)
+   - 12 SPT Masa PPh 25 (pagamenti — tecnicamente il PPh 25 si versa
+     ma la dichiarazione è inglobata nella tahunan)
+   - 12 SPT Masa PPh 23 (mensili — se ci sono pagamenti soggetti)
+   - 1 SPT Tahunan Badan (annuale entro 30 aprile)
+   TOTALE: potenzialmente 25-37 filing/anno.
+   Con PKP: aggiungere 12 SPT Masa PPN. [TAX-006][TAX-018]
+
+D: Cosa succede se dimentico di presentare una dichiarazione?
+R: Sanzione per mancata presentazione SPT Masa: Rp 100.000/mese.
+   Per SPT Tahunan Badan: Rp 1.000.000.
+   Se si scopre un'omissione: sanzione del 200% dell'imposta non
+   dichiarata + interessi del 2%/mese. [TAX-010]
+
+D: Posso usare un indirizzo estero per la corrispondenza fiscale?
+R: No. Il domicilio fiscale della PT PMA è la sede legale registrata
+   in Indonesia (l'indirizzo del NIB). Tutte le comunicazioni DJP
+   arrivano a quell'indirizzo. Per questo è importante avere un
+   Virtual Office con servizio di gestione posta. [TAX-003]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE D — BUSTA PAGA E DIPENDENTI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Ho 3 dipendenti WNI. Che obblighi ho sulla busta paga?
+R: Per ogni dipendente WNI:
+   1. Calcolare e trattenere PPh 21 mensile [TAX-043]
+   2. Versare PPh 21 al DJP entro il 10/15 del mese successivo
+   3. Iscriverli a BPJS Ketenagakerjaan e Kesehatan [TAX-050]
+   4. Versare BPJS entro il 15 del mese
+   5. Presentare SPT Masa PPh 21 mensile
+   6. A fine anno: rilasciare Bukti Potong 1721-A1 entro 28 febbraio [TAX-049]
+
+D: Devo pagare il THR (tredicesima islamica)?
+R: SÌ se hai dipendenti con contratto permanente (PKWTT).
+   THR = 1 mese di stipendio se il dipendente ha > 1 anno di anzianità.
+   Se < 1 anno: THR proporzionale (mesi lavorati/12 × stipendio).
+   Il THR è un costo DEDUCIBILE ai fini PPh Badan.
+   Il THR è soggetto a PPh 21 (come stipendio straordinario). [TAX-014]
+
+D: Il mio cuoco è un freelance — che tasse ci sono?
+R: Se il cuoco è un INDIVIDUO WNI (bukan pegawai tetap):
+   La PT PMA trattiene PPh 21 sul compenso: aliquota progressiva
+   su 50% del compenso lordo (norma per jasa bukan pegawai). [TAX-047]
+   Se invece è una PT o CV di catering: trattieni PPh 23 al 2%.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE E — CHIUSURA E SITUAZIONI SPECIALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Se chiudo la PT PMA, ho obblighi fiscali?
+R: SÌ. Prima della cancellazione formale, la PT PMA deve: [TAX-072]
+   1. Presentare SPT Tahunan Badan per l'ultimo anno (fino alla chiusura)
+   2. Presentare SPT Masa per tutti i mesi fino alla chiusura
+   3. Ottenere SURAT KETERANGAN NIHIL (certificazione zero debiti) dal DJP
+   4. Presentare al KPP richiesta di PENGHAPUSAN NPWP
+   Solo dopo cancellazione NPWP si può completare la cancellazione al Kemenkumham.
+
+D: Ho portato soldi dall'estero per costituire il capitale. Pago tasse su quello?
+R: Il capitale versato (modal disetor) NON è un reddito — è un
+   conferimento dei soci. Non è soggetto a imposte in Indonesia.
+   Tuttavia, il trasferimento internazionale è soggetto a:
+   - Segnalazione alla BI (Bank Indonesia) se > USD 100.000
+   - Documentazione bancaria per provare l'origine dei fondi [TAX-073]
+   Non c'è imposizione fiscale sul trasferimento del capitale in sé.
+
+D: Posso trasferire gli utili all'estero (rimpatrio dividendi)?
+R: SÌ. Il rimpatrio dei dividendi verso l'estero è legale per le PT PMA.
+   Obblighi:
+   - PPh 26 sui dividendi (20% o aliquota P3B ridotta) [TAX-041][TAX-065]
+   - Laporan ke BKPM per investimenti sopra soglia (LKPM)
+   - Segnalazione BI per valute > USD 100.000
+   Non ci sono restrizioni valutarie sui dividendi per PT PMA. [TAX-073]
+
+D: Devo fare la dichiarazione fiscale anche se non ho fatto nulla nell'anno?
+R: SÌ. Anche con omzet zero (azienda inattiva), la PT PMA deve
+   presentare SPT Tahunan Badan con "NIHIL" (zero). [TAX-006]
+   Non presentarla porta comunque la sanzione di Rp 1.000.000.
+   Se l'azienda è totalmente inoperativa, valutare la chiusura formale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE F — COSTI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+D: Quanto costa un commercialista per la gestione fiscale mensile?
+R: I costi variano in base alla complessità della PT PMA.
+   Consultare il PricingTool Bali Zero per i costi aggiornati del
+   servizio di tax compliance mensile (SPT Masa + BPJS reporting).
+   Valori indicativi di mercato a Bali: vedi PricingTool.
+
+D: Il commercialista costa di più se mi registra come PKP?
+R: Sì. La gestione PKP (PPN mensile + e-Faktur) aggiunge complessità.
+   Consultare il PricingTool per la differenza di costo tra gestione
+   base e gestione PKP.
+
+D: La SPT Tahunan Badan costa extra rispetto alla gestione mensile?
+R: Sì, è solitamente fatturata separatamente — è il report più
+   completo e richiede più ore di lavoro (bilancio, rekonsiliasi fiskal,
+   ecc.). Consultare il PricingTool per il costo SPT Tahunan Badan.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-003, TAX-005, TAX-006, TAX-010, TAX-011, TAX-012, TAX-014,
+TAX-018, TAX-024, TAX-030, TAX-037, TAX-041, TAX-043, TAX-046,
+TAX-047, TAX-049, TAX-050, TAX-059, TAX-065, TAX-069, TAX-070,
+TAX-071, TAX-072, TAX-073
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

@@ -1,0 +1,244 @@
+SPT TAHUNAN E CALENDARIO FISCALE
+SCADENZE ANNUALI E MENSILI PER PT PMA IN INDONESIA
+2024-2025
+
+Guida operativa | Basata su UU 28/2007 (KUP), UU 7/2021 (HPP), KMK terkait
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CALENDARIO FISCALE MENSILE — PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ogni mese, la PT PMA deve rispettare queste scadenze fiscali: [TAX-059]
+
+ENTRO IL 10 DEL MESE SUCCESSIVO (pagamenti):
+- Versamento PPh 21 (ritenuta stipendi dipendenti WNI/WNA penduduk)
+- Versamento PPh 26 (ritenuta compensi WNA non penduduk)
+- Versamento PPh 23 (ritenuta su servizi, dividendi, royalties)
+- Versamento PPh 4(2) Final (sewa tanah/bangunan, se applicabile)
+- Nota: con CoreTax 2025, alcune scadenze slittano al 15
+
+ENTRO IL 15 DEL MESE SUCCESSIVO:
+- Versamento PPh 25 (acconto mensile PPh Badan)
+- Versamento BPJS Ketenagakerjaan e Kesehatan
+- Versamento PPN (se PKP registrato) — ora anche SPT Masa PPN
+
+ENTRO IL 20 DEL MESE SUCCESSIVO (dichiarazioni/report):
+- Presentazione SPT Masa PPh 21/26 (e-Filing)
+- Presentazione SPT Masa PPh 23
+- Presentazione SPT Masa PPh 4(2)
+
+ENTRO IL 25 DEL MESE SUCCESSIVO:
+- Presentazione SPT Masa PPN (se PKP)
+- Pagamento PPN kurang bayar (se applicabile)
+
+DURANTE IL MESE:
+- Emissione e-Faktur entro giorno della transazione
+- Upload e-Faktur al DJP entro 15 giorni dall'emissione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. CALENDARIO FISCALE ANNUALE — PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENNAIO - FEBBRAIO:
+- Persiapan laporan keuangan tahunan (bilancio annuale)
+- Rekonsiliasi fiskal (riconciliazione contabile-fiscale)
+- Entro 28 febbraio: Rilascio Bukti Potong 1721-A1/A2 ai dipendenti
+
+MARET (MARZO):
+- Entro 31 marzo: SPT Tahunan Pribadi (dipendenti con PPh 21)
+- Persiapan SPT Tahunan Badan
+
+APRIL (APRILE):
+- Entro 30 APRILE: SPT TAHUNAN BADAN [TAX-018]
+  ⚠️ SCADENZA CRITICA per ogni PT PMA
+  Include: bilancio allegato, rekonsiliasi fiskal, daftar penyusutan
+  Modulo: 1771 (o CoreTax equivalente)
+
+GIUGNO (se proroga):
+- Entro 30 giugno: SPT Tahunan Badan con proroga (se approvata)
+
+LKPM (non fiscale ma correlato — ogni trimestre):
+- Q1 (Januari-Maret): entro 7 April
+- Q2 (April-Juni): entro 7 Juli
+- Q3 (Juli-September): entro 7 Oktober
+- Q4 (Oktober-Desember): entro 7 Januari
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. SPT TAHUNAN BADAN — DETTAGLIO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Formulir SPT 1771
+
+La SPT Tahunan Badan usa il Formulir 1771 (o versione CoreTax). [TAX-060]
+
+COMPONENTI:
+- Formulir Induk 1771: riepilogo PKP e imposta dovuta
+- Lampiran I: Penghasilan neto dalam negeri
+- Lampiran II: Penghasilan lainnya
+- Lampiran III: Kredit pajak (PPh 22, 23, 25 accreditabili)
+- Lampiran IV: PPh Final (non creditabile)
+- Lampiran V: Daftar pemegang saham dan direksi
+- Lampiran VI: Daftar penyertaan modal anak perusahaan
+- Lampiran Khusus 1A: Daftar penyusutan dan amortisasi
+- Lampiran Khusus 8A: Rekonsiliasi fiskal (dettaglio differenze contabile vs fiscale)
+- Laporan keuangan (bilancio allegato)
+
+3.2 Rekonsiliasi Fiskal
+
+La riconciliazione fiskal è OBBLIGATORIA: [TAX-061]
+Illustra le differenze tra:
+- Laba akuntansi (utile di bilancio secondo PSAK)
+- PKP/Laba fiskal (utile imponibile secondo legge fiscale)
+
+Differenze tipiche:
+KOREKSI POSITIF (aumentano il PKP fiscale):
+- Biaya tidak dapat dikurangkan (spese non deducibili per DJP)
+- Penyusutan beda metode (ammortamenti calcolati in modo diverso)
+- Denda (sanzioni e penali non deducibili)
+- Sumbangan (donazioni non previste dalla legge)
+
+KOREKSI NEGATIF (riducono il PKP fiscale):
+- Penghasilan tidak kena pajak (redditi esenti)
+- Dividen dikecualikan (dividendi esclusi HPP 2021)
+
+3.3 Lampiran Khusus Transfer Pricing
+
+Se la PT PMA ha transazioni con pihak berelasi (parti correlate)
+sopra la soglia: allegare TP documentation. [TAX-023]
+Vedi guida Transfer Pricing separata.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. SPT PEMBETULAN — CORREZIONE DICHIARAZIONI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se una SPT (mensile o annuale) contiene errori, è possibile presentare
+una SPT PEMBETULAN (dichiarazione rettificativa): [TAX-062]
+
+SCADENZA: Entro 2 tahun dari akhir masa pajak (2 anni dalla scadenza
+della dichiarazione originaria). Dopo i 2 anni, solo con persetujuan DJP.
+
+MODALITÀ: e-Filing via CoreTax/DJP Online, selezionare "PEMBETULAN"
+
+SE LA RETTIFICA AUMENTA IL DEBITO:
+- Pagare la differenza con sanksi bunga 2%/bulan (interessi di mora)
+
+SE LA RETTIFICA RIDUCE IL DEBITO:
+- Il credito risultante può essere dikompensasikan (compensato) o
+  dimohonkan pengembalian (rimborsato), ma richiede verifica DJP.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. PEMERIKSAAN PAJAK — AUDIT FISCALE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il DJP può sottoporre la PT PMA a PEMERIKSAAN (verifica fiscale): [TAX-063]
+
+TIPI DI PEMERIKSAAN:
+1. Pemeriksaan Rutin: standard, di routine post-SPT
+2. Pemeriksaan Khusus: su segnalazione di anomalie o su richiesta rimborso
+3. Pemeriksaan Bukper (Bukti Permulaan): se sospettata frode fiscale
+
+TRIGGER COMUNI PER AUDIT:
+- Richiesta rimborso IVA (LEBIH BAYAR PPN)
+- Richiesta rimborso PPh Badan (LEBIH BAYAR PPh 29)
+- Anomalie significative rispetto all'anno precedente
+- Transazioni intercompany con parti correlate
+- Selezionati random dal sistema DJP
+
+DURATA: fino a 6 mesi per pemeriksaan rutin,
+fino a 12 mesi per pemeriksaan khusus.
+
+DIRITTI DEL CONTRIBUENTE:
+- Ricevere Surat Pemberitahuan Pemeriksaan prima dell'inizio
+- Presentare dokumen dan penjelasan
+- Ricevere Surat Pemberitahuan Hasil Pemeriksaan (SPHP) prima della chiusura
+- Mengajukan keberatan (ricorso) entro 3 mesi dalla SKPKB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. KREDIT PAJAK — MECCANISMO ACCREDITAMENTO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Al momento della SPT Tahunan Badan, le ritenute subite nell'anno
+vengono ACCREDITATE contro l'imposta dovuta: [TAX-064]
+
+PPh Badan terutang (22% × PKP)
+− PPh 22 (ritenute su importazioni, se applicabile)
+− PPh 23 subita (ritenute da clienti su propri servizi)
+− PPh 25 versati (acconti mensili)
+− Kredit pajak luar negeri (imposte pagate all'estero, se P3B)
+= PPh 29 (KURANG BAYAR) → da pagare entro 30 aprile
+  oppure
+= LEBIH BAYAR → rimborso o kompensasi
+
+PPH 23 SUBITA:
+Se la PT PMA fornisce servizi a un'altra badan (es. consulenza, design),
+il cliente trattiene il 2% PPh 23 dal pagamento.
+Il bukti potong PPh 23 ricevuto è CREDITABILE nella SPT Tahunan Badan.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. CHECKLIST FISCALE ANNUALE PT PMA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+□ Raccogliere tutti i bukti potong ricevuti (PPh 23 da clienti)
+□ Riconciliare PPh 25 versati (acconti mensili)
+□ Compilare laporan keuangan (bilancio)
+□ Preparare rekonsiliasi fiskal
+□ Calcolare PKP e PPh Badan
+□ Calcolare kurang/lebih bayar
+□ Se PKP: riconciliare PPN tahunan
+□ Se Transfer Pricing: preparare TP documentation
+□ Presentare SPT Tahunan Badan via CoreTax (entro 30 aprile)
+□ Pagare PPh 29 se kurang bayar (entro 30 aprile)
+□ Archiviare tutti i dokumen pendukung per 5-10 anni [TAX-008]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GESTIONE MENSILE RACCOMANDATA:
+Affidarsi a un commercialista locale per:
+- Filing mensile di tutti i SPT Masa (21/26, 23, 25, PPN se PKP)
+- Tenuta dei libri contabili (pembukuan)
+- Emissione bukti potong ai fornitori/dipendenti
+
+Bali Zero offre pacchetti di tax compliance mensili. Consultare
+il PricingTool per i costi del servizio.
+
+PRIMO ANNO OPERATIVO:
+Una PT PMA nel primo anno ha spesso PPh 25 nullo o basso
+(nessun anno precedente come riferimento per il calcolo acconto).
+Il primo anno può anche essere in perdita (rugi fiskal) se gli investimenti
+iniziali superano i ricavi: la perdita si riporta fino a 5 anni. [TAX-024]
+
+CORE TAX 2025:
+Con l'introduzione di CoreTax nel 2025, tutte le procedure fiscali
+digitali sono unificate in un unico sistema. La curva di apprendimento
+iniziale richiede supporto di personale esperto.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+TAX-008, TAX-018, TAX-023, TAX-024, TAX-059, TAX-060, TAX-061,
+TAX-062, TAX-063, TAX-064
+
+Base normativa: UU 28/2007 (KUP), UU 36/2008 (PPh),
+PER-14/PJ/2013 (SPT elektronik), PMK 9/2021 (pembetulan SPT).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

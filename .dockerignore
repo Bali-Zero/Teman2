@@ -1,0 +1,53 @@
+# Build context: monorepo root (used by flyctl deploy --dockerfile apps/backend-rag/Dockerfile)
+# Whitelist approach: exclude everything, then re-include what the backend image needs.
+
+*
+
+# Backend-rag (the Docker image)
+!apps/backend-rag/backend/
+!apps/backend-rag/scripts/
+!apps/backend-rag/training-data/
+!apps/backend-rag/requirements-prod.txt
+!apps/backend-rag/requirements.txt
+!apps/backend-rag/Dockerfile
+!apps/backend-rag/*.py
+
+# cell-core package (editable install target)
+!packages/cell-core/
+
+# Exclude noise inside included dirs
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.DS_Store
+**/*.log
+**/.pytest_cache/
+**/.venv/
+**/venv/
+**/node_modules/
+
+# Tests and dev-only files (not needed in runtime image)
+apps/backend-rag/backend/tests/
+apps/backend-rag/backend/.env*
+packages/cell-core/tests/
+
+# Secrets (defense in depth)
+**/google_credentials.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/.env
+**/.env.*
+
+# Large binaries
+**/*.pdf
+**/*.docx
+**/*.xlsx
+**/*.zip
+**/*.tar.gz
+**/*.jpg
+**/*.png
+**/*.gif
+**/*.mp4
+**/*.mov

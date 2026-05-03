@@ -1,0 +1,71 @@
+/**
+ * Zone and category color palettes for PrimeMap3D.
+ * Zone colors are hex values because they paint the Maps 3D element directly
+ * (the Google Maps API accepts only raw hex, not CSS variables). Category
+ * colors are Tailwind class strings because they decorate UI badges, not map
+ * geometry.
+ */
+
+export const ZONE_COLORS: Record<string, string> = {
+  "K-1": "#E8472A",
+  "K-2": "#E8472A",
+  "K-3": "#E8472A",
+  "C-1": "#F0826E",
+  "C-2": "#F0826E",
+  W: "#FFA5FF",
+  "W-1": "#FFA5FF",
+  "W-2": "#FF85F5",
+  "R-2": "#FF7D00",
+  "R-3": "#FF9D30",
+  "R-4": "#FFB860",
+  "P-1": "#C8C83C",
+  "P-2": "#D4D44A",
+  "P-3": "#C8C83C",
+  "P-4": "#BEB82E",
+  KT: "#A855F7",
+  KPI: "#690000",
+  "SPU-1": "#D4845A",
+  "SPU-2": "#D4845A",
+  "SPU-3": "#D4845A",
+  "SPU-4": "#D4845A",
+  HL: "#224027",
+  "KS-4": "#224027",
+  THR: "#224027",
+  TWA: "#224027",
+  EM: "#2D966E",
+  PS: "#05D7D7",
+  SS: "#05D7D7",
+  SP: "#05D7D7",
+  LS: "#F59E0B",
+  CB: "#B45309",
+  "RTH-2": "#3BA062",
+  "RTH-3": "#3BA062",
+  "RTH-4": "#3BA062",
+  "RTH-5": "#3BA062",
+  "RTH-7": "#6B7280",
+  "RTH-8": "#3BA062",
+  RTNH: "#9CA3AF",
+  BA: "#97DBF2",
+  BJ: "#9CA3AF",
+  TR: "#6B7280",
+  HK: "#9B00FF",
+  "PL-3": "#6B7280",
+  "PL-4": "#6B7280",
+  PTL: "#6B7280",
+  "IK-1": "#507DD2",
+};
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  "F&B": "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  Hospitality: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  Wellness: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  Property: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+  Retail: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  Creative: "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  Technology: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
+  Education: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
+  Services: "bg-slate-500/20 text-slate-300 border-slate-500/30",
+  Industry: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  Finance: "bg-teal-500/20 text-teal-300 border-teal-500/30",
+  Healthcare: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+};

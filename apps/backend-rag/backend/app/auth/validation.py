@@ -1,0 +1,149 @@
+"""
+Unified Authentication Validation Module
+Consolidates auth validation logic from main_cloud.py, hybrid_auth.py, and auth.py
+
+This module provides a single source of truth for authentication validation,
+eliminating code duplication across the codebase.
+"""
+
+import logging
+from typing import Any
+
+from jose import JWTError, jwt
+
+from backend.app.core.config import settings
+from backend.app.services.api_key_auth import APIKeyAuth
+
+logger = logging.getLogger(__name__)
+
+# Initialize API key auth service
+_api_key_auth = APIKeyAuth()
+
+
+async def validate_api_key(api_key: str | None, conn: Any | None = None) -> dict[str, Any] | None:
+    """
+    Validate API key for service-to-service authentication.
+
+    S03: Uses enhanced DB-backed resolution when connection available,
+    falls back to legacy in-memory validation otherwise.
+
+    Args:
+        api_key: API key string to validate
+        conn: Optional asyncpg connection for DB-backed resolution
+
+    Returns:
+        User context dict if valid, None otherwise
+    """
+    if not api_key:
+        return None
+
+    # S03: Use enhanced DB-backed validation when connection available
+    user_context = await _api_key_auth.validate_api_key_enhanced(api_key, conn)
+    if user_context:
+        logger.info("✅ API key authentication successful")
+        return user_context
+
+    logger.warning(f"❌ Invalid API key: {api_key[:8]}... (masked)")
+    return None
+
+
+async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
+    """
+    Validate JWT tokens locally using the shared secret.
+
+    S03: Two-phase expiry enforcement via jwt_enforce_expiry flag.
+    """
+    if not token:
+        return None
+
+    try:
+        # S03: Two-phase JWT expiry enforcement
+        verify_exp = getattr(settings, "jwt_enforce_expiry", False)
+        payload = jwt.decode(
+            token, settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+            options={"verify_exp": verify_exp},
+        )
+
+        user_id = payload.get("sub") or payload.get("userId")
+        email = payload.get("email")
+
+        if user_id and email:
+            logger.info(f"✅ Local JWT validation successful for {email}")
+            user_ctx: dict[str, Any] = {
+                "id": user_id,
+                "email": email,
+                "role": payload.get("role", "member"),
+                "name": payload.get("name", email.split("@")[0]),
+                "auth_method": "jwt_local",
+                "status": "active",
+            }
+
+            # S03: Audit mode — flag expired tokens without rejecting
+            if not verify_exp:
+                exp = payload.get("exp")
+                if exp:
+                    from datetime import datetime, timezone
+                    if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
+                        logger.warning(
+                            f"S03_AUDIT: Expired token in validation for {email} "
+                            f"(jti={payload.get('jti', 'none')})"
+                        )
+                        user_ctx["_warn_expired"] = True
+
+            return user_ctx
+
+    except JWTError as e:
+        logger.debug(f"Local JWT validation failed: {e}")
+    except Exception as e:
+        logger.warning(f"Unexpected error during local JWT validation: {e}")
+
+    return None
+
+
+async def validate_auth_mixed(
+    authorization: str | None = None,
+    auth_token: str | None = None,
+    x_api_key: str | None = None,
+) -> dict[str, Any] | None:
+    """
+    Enhanced authentication supporting both JWT and API keys.
+
+    Priority order:
+    1. Authorization: Bearer <JWT_TOKEN>
+    2. auth_token parameter
+    3. X-API-Key header
+
+    Returns user profile when any authentication method succeeds.
+
+    Args:
+        authorization: Authorization header value (Bearer token)
+        auth_token: Token parameter (alternative to Authorization header)
+        x_api_key: X-API-Key header value
+
+    Returns:
+        User context dict if authenticated, None otherwise
+    """
+    # Try JWT token authentication first
+    token_value = None
+    if authorization:
+        if not authorization.startswith("Bearer "):
+            logger.warning("Invalid authorization header format")
+        else:
+            token_value = authorization.split(" ", 1)[1].strip()
+    elif auth_token:
+        token_value = auth_token.strip()
+
+    if token_value:
+        user = await validate_auth_token(token_value)
+        if user:
+            user["auth_method"] = "jwt"
+            return user
+
+    # Try API key authentication if JWT failed
+    if x_api_key:
+        user = await validate_api_key(x_api_key)
+        if user:
+            return user
+
+    return None

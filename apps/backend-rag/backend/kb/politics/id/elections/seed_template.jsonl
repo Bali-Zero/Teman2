@@ -1,0 +1,1 @@
+{"type":"election","id":"election:id-YYYY","date":"2004-07-05","level":"national","scope":"Presidential","jurisdiction_id":null,"contests":[{"office":"President","district":null,"results":[{"candidate_id":"person:local:example","party_id":"party:local:example","votes":0,"pct":0.0}]}],"turnout_pct":0.0,"sources":["https://example.org/source"]}

@@ -1,0 +1,63 @@
+{
+  "value": {
+    "answer": "As an expert in Indonesian company formation and PMA investments, I must clarify that the specific claims regarding the Italy-Indonesia Double Taxation Agreement (P3B) — including the dates of signature (Feb 18, 1990), Italian ratification (Law 707/1994), and the specific capped rates for dividends, interest, royalties, and Permanent Establishment (PE) timeframes under Articles 5, 10, 11, and 12 — are **not present in the provided sources**. You will need to independently verify those specific treaty details. \n\nHowever, based on the current post-Omnibus Law Indonesian regulatory framework provided in the sources, here is what can be confirmed regarding foreign taxation and PT PMA structures:\n\n*   **Applicability of DTAs on Dividends:** The sources confirm that the withholding tax on dividends paid to foreign taxpayers (who do not constitute a Permanent Establishment/BUT in Indonesia) is generally 10%, or a lower rate if stipulated by an applicable double taxation avoidance agreement (*perjanjian penghindaran pajak berganda yang berlaku*) [1, 2]. \n*   **PT PMA vs. Permanent Establishment (BUT):** A PT PMA (Foreign Investment Company) is a separate legal entity (*badan hukum*) established as a limited liability company under Indonesian Company Law (UU No. 40 of 2007) and domiciled within Indonesia [3-5]. As a separate domestic legal entity, it is an Indonesian resident corporate taxpayer. Conversely, the sources define a Permanent Establishment (*bentuk usaha tetap*) as the structure used by foreign business entities operating directly in Indonesia without incorporating a PT PMA (such as foreign entities in upstream oil and gas or foreign airlines) [5, 6]. \n*   **Post-Omnibus Law PMA Capital Rules:** If a foreign investor utilizes a PT PMA to hold shares and operate in Indonesia, the entity is strictly governed by the updated capital mandates under BKPM Regulation No. 5 of 2025. The total investment commitment must be greater than IDR 10 billion per 5-digit KBLI code and per location (excluding land and buildings), with a minimum paid-up capital (*Modal Disetor*) of IDR 2.5 billion [7, 8].\n*   **KBLI PMA Status:** Any business activity conducted by the PT PMA must be mapped to a KBLI code and verified against the Positive Investment List (Perpres No. 10 of 2021). The sector must be classified as **TERBUKA** (100% open for PMA) or **TERBATAS** (restricted foreign ownership), as **TERTUTUP** sectors are strictly prohibited for foreign investors.",
+    "conversation_id": "cd8add2e-e29c-4bc3-ae11-45d6f2cc0bd4",
+    "sources_used": [
+      "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "ebdd09a6-79eb-4216-b728-a555c487368f"
+    ],
+    "citations": {
+      "1": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "2": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "3": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "4": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "5": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "6": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "7": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "8": "ebdd09a6-79eb-4216-b728-a555c487368f"
+    },
+    "references": [
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 1,
+        "cited_text": "c. pengenaan Pajak Penghasilan atas dividen yang dibayarkan kepada Wajib Pajak luar negeri selain bentuk usaha tetap di Indonesia sebesar 10% (sepuluh persen), atau tarif yang lebih rendah menurut perjanjian penghindaran pajak berganda yang berlaku; dan d. kompensasi kerugian yang lebih lama dari 5 (lima) tahun tetapi tidak lebih dari 10 (sepuluh) tahun dengan ketentuan sebagai berikut: 1. tambahan 1 (satu) tahun untuk Penanaman Modal sebagaimana dimaksud dalam Pasal 2 ayat (1) Peraturan Pemerintah Nomor 78 Tahun 2019 tentang Fasilitas Pajak Penghasilan untuk Penanaman Modal di Bidang-bidang Usaha Tertentu dan/atau di Daerah-daerah Tertentu yang dilakukan Wajib Pajak;"
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 2,
+        "cited_text": "c. pengenaan Pajak Penghasilan atas dividen yang dibayarkan kepada Wajib Pajak luar negeri selain bentuk usaha tetap di Indonesia sebesar 10% (sepuluh persen), atau tarif yang lebih rendah menurut perjanjian penghindaran pajak berganda yang berlaku; dan d. kompensasi kerugian selama 10 (sepuluh) tahun. - 517 - KETIGA KEEMPAT KELIMA KEENAM KETUJUH KEDELAPAN : Fasilitas Pajak Penghasilan sebagaimana dimaksud pada Diktum KEDUA hanya diberikan untuk aktiva yang diperoleh dalam rangka Penanaman Modal sebagaimana dimaksud dalam Penanaman Modal Wajib Pajak berdasarkan Nomor Induk Berusaha (NIB) Nomor yang diterbitkan oleh Lembaga OSS dengan Nomor Kegiatan Usaha"
+      },
+      {
+        "source_id": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+        "citation_number": 3,
+        "cited_text": "Business structures for foreign investors Indonesia's regulatory framework provides foreign investors with two primary structures for establishing a presence in the country: Foreign-owned limited liability company (PT PMA), which is a legal entity established under Indonesian law Representative office (RO), which is not a separate legal entity but a non-commercial extension of the foreign parent company Foreign-owned limited liability company (PT PMA) PT PMA is a type of subsidiary that represents the standard structure for foreign investors seeking to generate revenue and establish long-term operations in Indonesia. This entity functions as a legal person separate from its shareholders, providing liability protection and operational autonomy, and is governed by Law No. 40 of 2007 (as amended by the Job Creation Law) and its implementing regulations."
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 4,
+        "cited_text": "(8) (9) badan layanan umum; b. badan layanan umum daerah; dan c. badan hukum milik negara. Kegiatan usaha yang dilakukan oleh orang perseorangan sebagaimana dimaksud pada ayat (2) dikategorikan ke dalam PMDN. Kegiatan usaha yang dilakukan oleh badan usaha sebagaimana dimaksud pada ayat (3) dapat dikategorikan ke dalam PMDN atau PMA. (10) Kegiatan usaha yang dilakukan oleh badan usaha luar negeri sebagaimana dimaksud pada ayat (4) dikategorikan ke dalam PMA. (11) PMA sebagaimana dimaksud pada ayat (9) wajib dalam bentuk perseroan terbatas berdasarkan hukum Indonesia"
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 5,
+        "cited_text": "23- dan berkedudukan di dalam wilayah Negara Kesatuan Republik Indonesia. (12) Dalam hal badan usaha yang sebagian atau seluruh sahamnya dimiliki oleh orang perseorangan dan/atau badan usaha asing, maka pemberian perlindungan dan kepastian hukum terhadap badan usaha tersebut ditentukan berdasarkan nasionalitas pemilik badan usaha. (13) Untuk orang perseorangan asing, ditentukan dengan paspor yang diterbitkan secara sah yang dipakai pada saat pendirian badan usaha di Indonesia, tidak termasuk pemegang izin tinggal tetap (permanent resident) suatu negara."
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 6,
+        "cited_text": "(14) Untuk badan usaha asing, menggunakan rekaman anggaran dasar (article of association/incorporation) badan usaha tersebut yang telah dilegalisir oleh otoritas apostille yang berkompeten dan/atau kantor perwakilan Republik Indonesia di negara asal badan usaha asing tersebut. (15) Pelaku Usaha badan usaha luar negeri yang melakukan kegiatan usaha hulu minyak dan gas bumi sebagaimana dimaksud pada ayat (4) huruf a berbentuk: a. b. perseroan terbatas; atau bentuk usaha tetap. (16) Pelaku Usaha badan usaha luar negeri yang melakukan kegiatan usaha transportasi udara sebagaimana dimaksud pada ayat (4) huruf b berbentuk bentuk usaha tetap."
+      },
+      {
+        "source_id": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+        "citation_number": 7,
+        "cited_text": "Foreign ownership in a PT PMA ranges from partial to 100%, depending on the business sector's classification under the Positive Investment List. Sectors not subject to restrictions permit full foreign ownership, while others specify maximum foreign ownership percentages or mandate partnerships with Indonesian entities. Capital requirements Under BKPM Regulation No. 5 of 2025, PT PMA entities must comply with the following capital and investment requirements: Minimum total investment of more than IDR 10,000,000,000 (ten billion rupiah) per business activity (per KBLI and per project location), excluding land and buildings Minimum issued and paid-up capital of IDR 2,500,000,000 (two billion five hundred million rupiah) per company"
+      },
+      {
+        "source_id": "ebdd09a6-79eb-4216-b728-a555c487368f",
+        "citation_number": 8,
+        "cited_text": "lebih besar dari Rp10.000.000.000,00 (sepuluh miliar rupiah), di luar tanah dan bangunan. (3) Ketentuan sebagaimana dimaksud pada ayat (2) dikecualikan untuk kegiatan usaha: a. perdagangan besar per 4 (empat) digit awal KBLI, total investasinya lebih besar dari Rp10.000.000.OO0,00 (sepuluh miliar rupiah) di luar tanah dan bangunan; b. jasa PRESIDEN REPUBLIK INDONESIA - 119 - b. jasa makanan dan minuman sepanjang terbuka untuk Penanaman Modal Asing per 2 (dua) digit awal KBLI per 1 (satu) titik lokasi usaha, total investasinya lebih besar dari Rp10.000.000.000,00 (sepuluh miliar"
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+# Additional dependencies for testing
+# Install with: pip install -r requirements-test.txt
+
+# Test containers for integration tests
+testcontainers[postgres]>=4.0.0
+testcontainers[compose]>=4.0.0
+
+# Additional test utilities
+pytest-mock>=3.12.0
+pytest-timeout>=2.2.0  # For timeout support (install separately if needed)
+httpx>=0.27.2  # For async HTTP testing

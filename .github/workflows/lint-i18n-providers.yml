@@ -1,0 +1,31 @@
+name: Lint i18n providers
+
+# Catches the white-screen regression pattern from PR #273: a component
+# imports useTranslation() under apps/mouth/src/app/ without an ancestor
+# I18nProvider in its layout chain. Refs: P1-10 in
+# docs/audits/2026-04-29-zero-crash-audit/09_intervention_plan.md.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mouth/src/app/**'
+      - 'apps/mouth/src/i18n/**'
+      - 'scripts/lint_i18n_providers.sh'
+      - 'tests/lint/test_i18n_providers.sh'
+      - '.github/workflows/lint-i18n-providers.yml'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Run synthetic test suite
+        run: bash tests/lint/test_i18n_providers.sh
+
+      - name: Run lint on apps/mouth/src/app
+        run: bash scripts/lint_i18n_providers.sh

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KBLI Presentation: {kbli_code}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Playfair+Display:wght@700&display=swap');
+        
+        @page {{
+            size: 1920px 1080px;
+            margin: 0;
+        }}
+
+        body {{
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: #111;
+            color: white;
+            overflow: hidden;
+        }}
+
+        .slide {{
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 100px 150px;
+            box-sizing: border-box;
+        }}
+
+        /* Dynamic Backgrounds */
+        .bg-image {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            filter: brightness(0.4);
+        }}
+
+        .content {{
+            position: relative;
+            z-index: 10;
+        }}
+
+        /* Typography */
+        h1 {{
+            font-family: 'Playfair Display', serif;
+            font-size: 96px;
+            margin: 0 0 30px 0;
+            color: #D4AF37; /* Gold */
+            line-height: 1.1;
+        }}
+
+        h2 {{
+            font-family: 'Playfair Display', serif;
+            font-size: 64px;
+            margin: 0 0 40px 0;
+            color: white;
+            border-left: 10px solid #D4AF37;
+            padding-left: 40px;
+        }}
+
+        p {{
+            font-size: 32px;
+            line-height: 1.6;
+            color: #e5e7eb;
+            max-width: 1200px;
+        }}
+
+        ul {{
+            list-style: none;
+            padding: 0;
+        }}
+
+        li {{
+            font-size: 32px;
+            margin-bottom: 20px;
+            padding-left: 50px;
+            position: relative;
+        }}
+
+        li::before {{
+            content: "•";
+            color: #D4AF37;
+            position: absolute;
+            left: 0;
+            font-size: 1.5em;
+            line-height: 1;
+        }}
+
+        /* Card Layout for Stats */
+        .grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 60px;
+            margin-top: 60px;
+        }}
+
+        .card {{
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+
+        .card-value {{
+            font-size: 64px;
+            font-weight: 800;
+            color: #D4AF37;
+            display: block;
+        }}
+
+        .card-label {{
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #9ca3af;
+        }}
+
+        /* Footer */
+        .footer {{
+            position: absolute;
+            bottom: 50px;
+            left: 150px;
+            right: 150px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            color: #666;
+            z-index: 10;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 20px;
+        }}
+
+        .watermark {{
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            font-size: 24px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            z-index: 10;
+        }}
+    </style>
+</head>
+<body>
+
+    <!-- SLIDE 1: TITLE -->
+    <div class="slide">
+        <img class="bg-image" src="https://image.pollinations.ai/prompt/{img_title}?width=1920&height=1080&nologo=true" alt="Background">
+        <div class="watermark">BALI ZERO INTELLIGENCE</div>
+        <div class="content">
+            <p style="text-transform: uppercase; letter-spacing: 5px; font-size: 24px; color: #aaa;">Business Classification Review</p>
+            <h1>{kbli_title}</h1>
+            <p style="font-size: 48px; color: white;">Code: <span style="color: #D4AF37;">{kbli_code}</span></p>
+            <div style="margin-top: 60px; display: inline-block; padding: 20px 40px; background: #D4AF37; color: #111; font-weight: bold; font-size: 24px; text-transform: uppercase;">
+                Investor Briefing 2026
+            </div>
+        </div>
+        <div class="footer">
+            <span>Confidential & Proprietary</span>
+            <span>nuzantara.com</span>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: THE OPPORTUNITY -->
+    <div class="slide">
+        <img class="bg-image" src="https://image.pollinations.ai/prompt/{img_opportunity}?width=1920&height=1080&nologo=true" alt="Background">
+        <div class="watermark">MARKET INSIGHT</div>
+        <div class="content">
+            <h2>The Opportunity</h2>
+            <p>{slide_opportunity_text}</p>
+            
+            <div class="grid">
+                <div class="card">
+                    <span class="card-value">{risk_level}</span>
+                    <span class="card-label">Risk Profile</span>
+                </div>
+                <div class="card">
+                    <span class="card-value">{foreign_ownership}</span>
+                    <span class="card-label">Foreign Ownership</span>
+                </div>
+                <div class="card">
+                    <span class="card-value">{processing_time}</span>
+                    <span class="card-label">Setup Time</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: REQUIREMENTS -->
+    <div class="slide">
+        <img class="bg-image" src="https://image.pollinations.ai/prompt/{img_requirements}?width=1920&height=1080&nologo=true" alt="Background">
+        <div class="watermark">COMPLIANCE</div>
+        <div class="content">
+            <h2>Critical Requirements</h2>
+            <div style="background: rgba(0,0,0,0.6); padding: 40px; border-radius: 10px; border-left: 5px solid #CE1126;">
+                <ul>
+                    {slide_requirements_bullets}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: ROADMAP -->
+    <div class="slide">
+        <img class="bg-image" src="https://image.pollinations.ai/prompt/{img_roadmap}?width=1920&height=1080&nologo=true" alt="Background">
+        <div class="watermark">EXECUTION</div>
+        <div class="content">
+            <h2>Licensing Roadmap</h2>
+            <div style="display: flex; gap: 40px; margin-top: 50px;">
+                {slide_roadmap_steps}
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

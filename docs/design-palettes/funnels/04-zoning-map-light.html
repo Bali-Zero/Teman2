@@ -1,0 +1,2054 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bali Zero — Bali Zoning Map · Property Due Diligence (Light)</title>
+<style>
+/* =========================================================
+ *  Palette D LIGHT — warm neutral 2026
+ *  Inspired by: Notion Light (#f7f7f5), Stripe (#f6f9fc)
+ * ========================================================= */
+:root {
+  --bz-base: #f8f7f4;
+  --bz-base-cinematic: #f0efeb;
+  --bz-surface: #ffffff;
+  --bz-surface-elevated: #f2f1ed;
+  --bz-surface-hover: #eeedea;
+  --bz-surface-active: #e8e7e3;
+
+  --bz-primary: #e0243f;
+  --bz-primary-hover: #c81e38;
+  --bz-primary-active: #b01a32;
+  --bz-primary-muted: rgba(224,36,63,.08);
+  --bz-primary-subtle: rgba(224,36,63,.04);
+  --bz-primary-border: rgba(224,36,63,.3);
+  --bz-primary-glow: rgba(224,36,63,.12);
+
+  --bz-text-pure: #1a1a1a;
+  --bz-text-primary: #2d2d2d;
+  --bz-text-secondary: #6b6b6b;
+  --bz-text-muted: #999999;
+  --bz-text-faint: #c4c4c4;
+
+  --bz-border: rgba(0,0,0,.08);
+  --bz-border-hover: rgba(0,0,0,.14);
+  --bz-border-strong: rgba(0,0,0,.2);
+
+  --bz-success: #0d9668;
+  --bz-warning: #d97706;
+  --bz-info: #2563eb;
+  --bz-danger: #dc2626;
+  --bz-success-muted: rgba(13,150,104,.08);
+  --bz-warning-muted: rgba(217,119,6,.08);
+  --bz-info-muted: rgba(37,99,235,.08);
+  --bz-danger-muted: rgba(220,38,38,.08);
+
+  --bz-font-sans: 'Inter','Inter Variable',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --bz-font-mono: 'JetBrains Mono','SF Mono',Monaco,'Courier New',monospace;
+
+  --bz-radius-sm: 4px;
+  --bz-radius-md: 6px;
+  --bz-radius-lg: 8px;
+  --bz-radius-xl: 12px;
+  --bz-radius-2xl: 16px;
+  --bz-radius-3xl: 24px;
+
+  --bz-shadow-md: 0 4px 12px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
+  --bz-shadow-lg: 0 10px 30px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+
+  --bz-transition-fast: 120ms cubic-bezier(.4,0,.2,1);
+  --bz-transition-base: 200ms cubic-bezier(.4,0,.2,1);
+  --bz-ease-out: cubic-bezier(.22,1,.36,1);
+
+  /* Property vertical accent — deeper for light bg */
+  --cat-property: #7a62c0;
+  --cat-property-muted: rgba(122,98,192,.08);
+  --cat-property-border: rgba(122,98,192,.25);
+
+  /* Zone classification colors — deeper for light contrast */
+  --zone-green: #0d9668;
+  --zone-green-bg: rgba(13,150,104,.1);
+  --zone-amber: #d97706;
+  --zone-amber-bg: rgba(217,119,6,.1);
+  --zone-red: #dc2626;
+  --zone-red-bg: rgba(220,38,38,.1);
+  --zone-black: #e8e7e3;
+  --zone-black-border: rgba(0,0,0,.12);
+}
+
+/* @property for pulse animation */
+@property --pulse-scale {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: light; scroll-behavior: smooth; }
+
+body {
+  background-color: var(--bz-base);
+  color: var(--bz-text-primary);
+  font-family: var(--bz-font-sans);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+  min-height: 100vh;
+  position: relative;
+}
+body > * { position: relative; z-index: 3; }
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+/* A11y — focus ring */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bz-base),
+    0 0 0 4px var(--cat-property),
+    0 0 16px rgba(152,128,216,.3);
+  border-radius: 6px;
+}
+
+/* A11y — reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Grain overlay SVG (hidden) */
+svg#grain-filter { position: absolute; width: 0; height: 0; }
+
+/* =========================================================
+ *  NAVIGATION BAR
+ * ========================================================= */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--bz-border);
+  background: color-mix(in srgb, var(--bz-surface) 65%, transparent);
+  backdrop-filter: blur(20px) saturate(140%);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.nav-logo img { height: 32px; }
+.nav-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 14px;
+  color: var(--bz-text-secondary);
+  transition: color var(--bz-transition-fast);
+}
+.nav-links a:hover { color: var(--bz-text-primary); }
+.nav-links a.active { color: var(--cat-property); }
+
+/* =========================================================
+ *  HERO SECTION — Zoning Map Tool
+ * ========================================================= */
+.hero-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 48px 32px 24px;
+}
+.hero-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--cat-property-muted);
+  border: 1px solid var(--cat-property-border);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cat-property);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 20px;
+}
+.hero-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cat-property);
+}
+.hero-title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  color: var(--bz-text-pure);
+}
+.hero-title em {
+  font-style: normal;
+  color: var(--cat-property);
+}
+.hero-subtitle {
+  font-size: 16px;
+  color: var(--bz-text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* =========================================================
+ *  MAP CONTAINER — 60/40 layout
+ * ========================================================= */
+.map-container {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  max-width: 1280px;
+  margin: 0 auto;
+  min-height: 560px;
+  border-radius: var(--bz-radius-2xl);
+  overflow: hidden;
+  border: 1px solid var(--bz-border);
+  background: var(--bz-surface);
+  box-shadow: var(--bz-shadow-lg);
+}
+
+/* Map area */
+.map-area {
+  position: relative;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bz-base);
+  background-image: radial-gradient(circle, rgba(0,0,0,.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.map-search {
+  flex: 1;
+  position: relative;
+}
+.map-search input {
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-lg);
+  color: var(--bz-text-primary);
+  font-family: var(--bz-font-sans);
+  font-size: 14px;
+  transition: border-color var(--bz-transition-fast);
+}
+.map-search input::placeholder { color: var(--bz-text-faint); }
+.map-search input:focus {
+  border-color: var(--cat-property-border);
+}
+.map-search .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--bz-text-muted);
+  pointer-events: none;
+}
+
+.map-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.map-presets button {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bz-text-secondary);
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: 100px;
+  transition: all var(--bz-transition-fast);
+  white-space: nowrap;
+}
+.map-presets button:hover {
+  color: var(--bz-text-primary);
+  border-color: var(--bz-border-hover);
+  background: var(--bz-surface-hover);
+}
+.map-presets button.active {
+  color: var(--cat-property);
+  border-color: var(--cat-property-border);
+  background: var(--cat-property-muted);
+}
+
+/* SVG Map */
+.map-svg-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+#bali-map {
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+}
+#bali-map .kabupaten {
+  fill: var(--bz-surface-elevated);
+  stroke: var(--bz-border-hover);
+  stroke-width: 1;
+  cursor: pointer;
+  transition: fill 0.3s ease, stroke 0.3s ease, opacity 0.3s ease;
+}
+#bali-map .kabupaten:hover {
+  fill: var(--bz-surface-active);
+  stroke: var(--cat-property-border);
+}
+#bali-map .kabupaten.selected {
+  stroke: var(--cat-property);
+  stroke-width: 2;
+}
+#bali-map .kabupaten.dimmed {
+  opacity: 0.3;
+}
+
+/* Zone fill classes */
+#bali-map .kabupaten.zone-green { fill: var(--zone-green-bg); stroke: var(--zone-green); }
+#bali-map .kabupaten.zone-amber { fill: var(--zone-amber-bg); stroke: var(--zone-amber); }
+#bali-map .kabupaten.zone-red { fill: var(--zone-red-bg); stroke: var(--zone-red); }
+#bali-map .kabupaten.zone-black { fill: rgba(0,0,0,.04); stroke: var(--bz-primary-border); }
+
+/* Location pins */
+.location-pin {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.location-pin:hover { transform: scale(1.3); }
+.location-pin circle.pin-outer {
+  fill: var(--cat-property);
+  opacity: 0.3;
+}
+.location-pin circle.pin-inner {
+  fill: var(--cat-property);
+}
+.location-pin.active circle.pin-outer {
+  animation: pin-pulse 2s ease-in-out infinite;
+}
+@keyframes pin-pulse {
+  0%, 100% { r: 8; opacity: 0.3; }
+  50% { r: 12; opacity: 0.1; }
+}
+
+/* Map label */
+.map-label {
+  font-family: var(--bz-font-sans);
+  font-size: 9px;
+  fill: var(--bz-text-faint);
+  text-anchor: middle;
+  pointer-events: none;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Click prompt */
+.map-prompt {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--bz-surface) 80%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--bz-border);
+  border-radius: 100px;
+  font-size: 12px;
+  color: var(--bz-text-secondary);
+  white-space: nowrap;
+  transition: opacity 0.3s ease;
+}
+.map-prompt.hidden { opacity: 0; pointer-events: none; }
+.map-prompt .cursor-icon { color: var(--cat-property); }
+
+/* =========================================================
+ *  SIDE PANEL — Analysis results
+ * ========================================================= */
+.side-panel {
+  background: color-mix(in srgb, var(--bz-surface) 85%, transparent);
+  backdrop-filter: blur(20px) saturate(140%);
+  border-left: 1px solid var(--bz-border);
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: opacity 0.3s ease;
+}
+
+/* Empty state */
+.panel-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  padding: 32px 16px;
+}
+.panel-empty .empty-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--cat-property-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cat-property);
+  font-size: 20px;
+}
+.panel-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--bz-text-primary);
+}
+.panel-empty p {
+  font-size: 13px;
+  color: var(--bz-text-muted);
+  line-height: 1.5;
+  max-width: 260px;
+}
+
+/* Analysis state */
+.panel-analysis { display: none; flex-direction: column; gap: 16px; }
+.panel-analysis.active { display: flex; }
+
+/* Zone header */
+.zone-header {
+  padding: 16px;
+  border-radius: var(--bz-radius-xl);
+  border: 1px solid var(--bz-border);
+}
+.zone-location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.zone-location .pin-icon { color: var(--cat-property); font-size: 16px; }
+.zone-location h2 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.zone-location .kabupaten-label {
+  font-size: 12px;
+  color: var(--bz-text-muted);
+  font-weight: 400;
+}
+
+.zone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--bz-radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.zone-badge .zone-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.zone-badge.green { background: var(--zone-green-bg); color: var(--zone-green); }
+.zone-badge.green .zone-dot { background: var(--zone-green); }
+.zone-badge.amber { background: var(--zone-amber-bg); color: var(--zone-amber); }
+.zone-badge.amber .zone-dot { background: var(--zone-amber); }
+.zone-badge.red { background: var(--zone-red-bg); color: var(--zone-red); }
+.zone-badge.red .zone-dot { background: var(--zone-red); }
+.zone-badge.black { background: rgba(0,0,0,.05); color: var(--bz-text-secondary); border: 1px solid var(--bz-border); }
+.zone-badge.black .zone-dot { background: var(--bz-text-muted); }
+
+.zone-subtitle {
+  font-size: 13px;
+  color: var(--bz-text-secondary);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* Scam warning banner */
+.scam-warning {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bz-primary-subtle);
+  border: 1px solid rgba(255,45,76,.2);
+  border-radius: var(--bz-radius-lg);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--bz-text-secondary);
+}
+.scam-warning .warn-icon {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  color: var(--bz-primary);
+  margin-top: 1px;
+}
+.scam-warning strong { color: var(--bz-primary); }
+
+/* Foreign ownership status */
+.ownership-card {
+  padding: 14px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+}
+.ownership-card h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bz-text-muted);
+  margin-bottom: 10px;
+}
+.ownership-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.ownership-row:not(:last-child) {
+  border-bottom: 1px solid var(--bz-border);
+}
+.ownership-row .label { color: var(--bz-text-secondary); }
+.ownership-row .value { font-weight: 600; }
+.ownership-row .value.ok { color: var(--bz-success); }
+.ownership-row .value.warn { color: var(--bz-warning); }
+.ownership-row .value.banned { color: var(--bz-primary); }
+
+/* Legal term badge */
+.legal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+  position: relative;
+}
+.legal-badge .indo-term {
+  font-family: var(--bz-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: var(--cat-property-muted);
+  border: 1px solid var(--cat-property-border);
+  border-radius: var(--bz-radius-sm);
+  color: var(--cat-property);
+}
+.legal-badge .eng-term {
+  font-size: 12px;
+  color: var(--bz-text-secondary);
+}
+.legal-badge .tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  padding: 10px 12px;
+  background: var(--bz-surface-elevated);
+  border: 1px solid var(--bz-border-hover);
+  border-radius: var(--bz-radius-lg);
+  box-shadow: var(--bz-shadow-lg);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--bz-text-secondary);
+  z-index: 50;
+}
+.legal-badge:hover .tooltip,
+.legal-badge:focus .tooltip { display: block; }
+
+/* PBG risk meter */
+.pbg-card {
+  padding: 14px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+}
+.pbg-card h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bz-text-muted);
+  margin-bottom: 10px;
+}
+.pbg-meter {
+  height: 6px;
+  background: var(--bz-surface-active);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.pbg-meter .fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s var(--bz-ease-out);
+}
+.pbg-meter .fill.low { background: var(--bz-success); }
+.pbg-meter .fill.medium { background: var(--bz-warning); }
+.pbg-meter .fill.high { background: var(--bz-danger); }
+
+.pbg-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.pbg-meta .risk-label { font-weight: 600; }
+.pbg-meta .risk-label.low { color: var(--bz-success); }
+.pbg-meta .risk-label.medium { color: var(--bz-warning); }
+.pbg-meta .risk-label.high { color: var(--bz-danger); }
+.pbg-meta .risk-stat { color: var(--bz-text-muted); }
+
+.pbg-notes {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--bz-text-muted);
+  line-height: 1.5;
+}
+
+/* Action items */
+.actions-card {
+  padding: 14px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+}
+.actions-card h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bz-text-muted);
+  margin-bottom: 10px;
+}
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.action-item:not(:last-child) {
+  border-bottom: 1px solid var(--bz-border);
+}
+.action-num {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--cat-property-muted);
+  color: var(--cat-property);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.action-text { color: var(--bz-text-secondary); line-height: 1.4; }
+.action-price {
+  font-family: var(--bz-font-mono);
+  font-size: 11px;
+  color: var(--bz-text-muted);
+  margin-top: 2px;
+}
+
+/* DD CTA */
+.dd-cta {
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(152,128,216,.08), rgba(152,128,216,.03));
+  border: 1px solid var(--cat-property-border);
+  border-radius: var(--bz-radius-xl);
+  text-align: center;
+}
+.dd-price {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--bz-text-pure);
+  margin-bottom: 4px;
+}
+.dd-price .currency {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bz-text-secondary);
+}
+.dd-timeline {
+  font-size: 12px;
+  color: var(--bz-text-muted);
+  margin-bottom: 14px;
+}
+
+.btn-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  background: #25D366;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: var(--bz-radius-lg);
+  transition: background var(--bz-transition-fast), transform 0.15s;
+}
+.btn-whatsapp:hover {
+  background: #1fb855;
+  transform: translateY(-1px);
+}
+.btn-whatsapp:active { transform: translateY(0); }
+
+/* Case study link */
+.case-study-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-lg);
+  font-size: 13px;
+  color: var(--bz-text-secondary);
+  transition: border-color var(--bz-transition-fast), background var(--bz-transition-fast);
+  cursor: pointer;
+  text-decoration: none;
+}
+.case-study-link:hover {
+  border-color: var(--bz-border-hover);
+  background: var(--bz-surface-hover);
+}
+.case-study-link .cs-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bz-text-muted);
+  margin-bottom: 2px;
+}
+.case-study-link .cs-title {
+  font-weight: 600;
+  color: var(--bz-text-primary);
+}
+.case-study-link .arrow { color: var(--bz-text-faint); margin-left: auto; }
+
+/* Lead capture */
+.lead-capture {
+  padding: 14px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+}
+.lead-capture h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bz-text-secondary);
+  margin-bottom: 8px;
+}
+.lead-capture .lead-input {
+  display: flex;
+  gap: 8px;
+}
+.lead-capture input[type="email"] {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bz-base);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-md);
+  color: var(--bz-text-primary);
+  font-family: var(--bz-font-sans);
+  font-size: 13px;
+}
+.lead-capture input[type="email"]::placeholder { color: var(--bz-text-faint); }
+.lead-capture input[type="email"]:focus { border-color: var(--cat-property-border); }
+.lead-capture .btn-send {
+  padding: 8px 14px;
+  background: var(--cat-property);
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: var(--bz-radius-md);
+  transition: background var(--bz-transition-fast);
+  white-space: nowrap;
+}
+.lead-capture .btn-send:hover { background: #8a6fd0; }
+.lead-capture .lead-note {
+  font-size: 11px;
+  color: var(--bz-text-faint);
+  margin-top: 6px;
+}
+
+/* Black zone integrity state */
+.black-zone-banner {
+  padding: 16px;
+  background: rgba(255,45,76,.06);
+  border: 1px solid rgba(255,45,76,.2);
+  border-radius: var(--bz-radius-xl);
+  text-align: center;
+}
+.black-zone-banner .bz-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.black-zone-banner h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--bz-primary);
+  margin-bottom: 6px;
+}
+.black-zone-banner p {
+  font-size: 13px;
+  color: var(--bz-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.black-zone-banner .alt-text {
+  font-size: 12px;
+  color: var(--bz-text-muted);
+}
+
+/* Error state */
+.error-state {
+  padding: 16px;
+  text-align: center;
+}
+.error-state h3 {
+  font-size: 14px;
+  color: var(--bz-text-secondary);
+  margin-bottom: 6px;
+}
+.error-state p {
+  font-size: 12px;
+  color: var(--bz-text-muted);
+  line-height: 1.5;
+}
+
+/* Source citation */
+.source-cite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 11px;
+  color: var(--bz-text-faint);
+  border-top: 1px solid var(--bz-border);
+}
+.source-cite a {
+  color: var(--cat-property);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* =========================================================
+ *  STAT STRIP below map
+ * ========================================================= */
+.stat-strip {
+  max-width: 1280px;
+  margin: 24px auto;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.stat-card {
+  padding: 16px;
+  background: color-mix(in srgb, var(--bz-surface) 65%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+  text-align: center;
+}
+.stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  font-family: var(--bz-font-mono);
+  letter-spacing: -0.03em;
+  color: var(--bz-text-pure);
+  margin-bottom: 4px;
+}
+.stat-card .stat-value .accent { color: var(--bz-primary); }
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--bz-text-muted);
+}
+
+/* =========================================================
+ *  TRUST SECTION — below stats
+ * ========================================================= */
+.trust-section {
+  max-width: 1280px;
+  margin: 32px auto;
+  padding: 0 32px;
+}
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.trust-card {
+  padding: 20px;
+  background: var(--bz-surface);
+  border: 1px solid var(--bz-border);
+  border-radius: var(--bz-radius-xl);
+  transition: transform 0.25s var(--bz-ease-out), box-shadow 0.25s var(--bz-ease-out), border-color 0.25s;
+}
+.trust-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--bz-border-hover);
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+.trust-card .tc-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--bz-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.trust-card .tc-icon.violet { background: var(--cat-property-muted); color: var(--cat-property); }
+.trust-card .tc-icon.green { background: var(--bz-success-muted); color: var(--bz-success); }
+.trust-card .tc-icon.blue { background: var(--bz-info-muted); color: var(--bz-info); }
+.trust-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.trust-card p {
+  font-size: 13px;
+  color: var(--bz-text-muted);
+  line-height: 1.5;
+}
+
+/* =========================================================
+ *  FOOTER
+ * ========================================================= */
+.page-footer {
+  max-width: 1280px;
+  margin: 48px auto 0;
+  padding: 24px 32px;
+  border-top: 1px solid var(--bz-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--bz-text-faint);
+}
+.page-footer a { color: var(--bz-text-muted); }
+.page-footer a:hover { color: var(--bz-text-primary); }
+
+/* =========================================================
+ *  AUTOCOMPLETE DROPDOWN
+ * ========================================================= */
+.autocomplete-list {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--bz-surface-elevated);
+  border: 1px solid var(--bz-border-hover);
+  border-radius: var(--bz-radius-lg);
+  box-shadow: var(--bz-shadow-lg);
+  z-index: 60;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.autocomplete-list.open { display: block; }
+.autocomplete-item {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--bz-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background var(--bz-transition-fast);
+}
+.autocomplete-item:hover,
+.autocomplete-item.highlighted {
+  background: var(--bz-surface-active);
+  color: var(--bz-text-primary);
+}
+.autocomplete-item .ac-zone {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--bz-radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ac-zone.green { background: var(--zone-green-bg); color: var(--zone-green); }
+.ac-zone.amber { background: var(--zone-amber-bg); color: var(--zone-amber); }
+.ac-zone.red { background: var(--zone-red-bg); color: var(--zone-red); }
+.ac-zone.black { background: rgba(0,0,0,.05); color: var(--bz-text-muted); }
+
+/* =========================================================
+ *  RESPONSIVE
+ * ========================================================= */
+@media (max-width: 768px) {
+  .map-container {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .map-area {
+    min-height: 280px;
+    padding: 16px;
+  }
+  .side-panel {
+    border-left: none;
+    border-top: 1px solid var(--bz-border);
+    max-height: 60vh;
+  }
+  .map-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .map-presets {
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stat-strip {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 16px;
+  }
+  .trust-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero-section { padding: 32px 16px 16px; }
+  .nav-bar { padding: 12px 16px; }
+  .nav-links { display: none; }
+  .trust-section { padding: 0 16px; }
+  .page-footer { padding: 24px 16px; flex-direction: column; gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .stat-strip { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-card .stat-value { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Grain filter SVG -->
+<svg id="grain-filter" aria-hidden="true">
+  <filter id="bz-grain">
+    <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .18 0"/>
+  </filter>
+</svg>
+
+<!-- ============================================================
+     NAVIGATION
+     ============================================================ -->
+<nav class="nav-bar" role="navigation" aria-label="Main navigation">
+  <div class="nav-logo">
+    <img src="../balizero-logo.png" alt="Bali Zero" style="height:80px;">
+  </div>
+  <ul class="nav-links">
+    <li><a href="#">Services</a></li>
+    <li><a href="#" class="active">Property</a></li>
+    <li><a href="#">KBLI</a></li>
+    <li><a href="#">Workspace</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+</nav>
+
+<!-- ============================================================
+     HERO — Title + context
+     ============================================================ -->
+<section class="hero-section">
+  <div class="hero-header">
+    <div class="hero-badge"><span class="dot"></span> Property Due Diligence</div>
+    <h1 class="hero-title">Bali Zoning <em>Verification</em></h1>
+    <p class="hero-subtitle">Check any location in Bali for foreign ownership rules, zoning restrictions, and building permit risks. Before you invest USD 200K+, verify the zone.</p>
+  </div>
+</section>
+
+<!-- ============================================================
+     MAP CONTAINER — 60/40 layout
+     ============================================================ -->
+<main class="map-container" role="main">
+  <!-- Map area (60%) -->
+  <div class="map-area">
+    <div class="map-toolbar">
+      <div class="map-search">
+        <span class="search-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="11" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </span>
+        <input type="text" id="search-input" placeholder="Type an address or area..." aria-label="Search location in Bali" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="autocomplete-list" aria-activedescendant="">
+        <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="Location suggestions"></div>
+      </div>
+      <div class="map-presets" role="group" aria-label="Popular locations">
+        <button data-location="canggu" aria-label="Canggu">Canggu</button>
+        <button data-location="uluwatu" aria-label="Uluwatu">Uluwatu</button>
+        <button data-location="ubud" aria-label="Ubud">Ubud</button>
+        <button data-location="sanur" aria-label="Sanur">Sanur</button>
+        <button data-location="seminyak" aria-label="Seminyak">Seminyak</button>
+      </div>
+    </div>
+
+    <div class="map-svg-wrapper">
+      <!-- Bali SVG Map — hand-drawn stylized paths for 9 kabupaten -->
+      <svg id="bali-map" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive map of Bali showing 9 kabupaten regions">
+        <title>Bali Zoning Map</title>
+        <desc>Interactive map of Bali's 9 districts (kabupaten). Click a region or location pin to see zoning information for foreign property buyers.</desc>
+
+        <!-- Geo-accurate kabupaten paths (derived from GADM/TopoJSON data) -->
+        <path class="kabupaten" id="kab-jembrana" data-kabupaten="jembrana" tabindex="0" role="button" aria-label="Jembrana kabupaten"
+              d="M41.0,73.9 L39.4,76.0 L39.2,80.9 L41.7,84.0 L53.7,85.2 L61.7,83.6 L68.5,86.4 L70.7,88.8 L76.4,88.6 L83.8,82.5 L96.1,85.5 L101.2,83.0 L107.6,81.8 L114.9,76.4 L125.6,76.4 L131.6,79.5 L133.6,79.2 L139.2,86.0 L143.0,92.7 L150.5,95.3 L154.4,98.0 L163.2,96.4 L166.9,96.8 L173.4,100.1 L176.9,94.4 L177.9,89.9 L184.0,85.8 L193.5,90.8 L198.4,94.0 L210.4,97.0 L215.0,100.6 L219.1,108.3 L223.7,111.0 L226.8,114.5 L230.7,113.0 L232.0,110.6 L238.3,111.6 L243.9,109.3 L250.7,113.5 L247.1,115.9 L248.8,118.2 L248.4,121.6 L250.8,122.8 L250.1,126.2 L252.8,131.6 L251.8,137.7 L255.3,138.7 L253.8,142.0 L254.9,145.5 L263.6,147.7 L265.3,146.6 L276.4,149.0 L279.0,146.6 L283.0,147.9 L292.0,153.9 L297.4,156.5 L300.9,164.4 L316.4,167.7 L319.2,171.1 L317.4,176.0 L313.4,181.8 L314.2,190.5 L312.2,198.7 L309.0,201.1 L308.8,203.7 L307.0,204.8 L300.2,201.7 L269.8,192.7 L262.7,191.3 L255.7,190.9 L251.1,188.9 L250.6,187.0 L244.4,184.9 L241.1,181.2 L215.2,175.6 L201.9,173.5 L191.2,173.8 L170.3,175.0 L159.9,176.1 L142.5,178.7 L136.9,178.7 L126.9,176.9 L116.5,175.9 L112.3,174.0 L108.9,170.3 L109.4,168.5 L103.3,163.1 L97.9,160.3 L92.5,155.7 L90.5,151.4 L81.1,147.9 L77.7,145.4 L76.1,142.1 L76.8,135.8 L61.9,124.5 L55.9,120.6 L52.0,113.4 L47.2,107.1 L42.1,101.9 L38.8,100.1 L34.4,93.9 L29.0,79.5 L25.0,74.6 L28.4,68.9 L32.7,70.0 L35.8,74.0 L41.0,73.9 Z"/>
+        <path class="kabupaten" id="kab-tabanan" data-kabupaten="tabanan" tabindex="0" role="button" aria-label="Tabanan kabupaten"
+              d="M416.3,280.4 L409.4,273.8 L407.4,268.9 L399.9,261.2 L392.8,255.7 L386.4,252.6 L376.6,246.3 L368.5,242.4 L362.2,238.0 L357.7,236.2 L355.2,232.1 L343.2,224.1 L333.4,219.2 L330.6,218.5 L325.4,213.6 L318.3,209.0 L310.7,205.8 L308.8,203.7 L309.0,201.1 L312.2,198.7 L314.2,190.5 L313.4,181.8 L317.4,176.0 L319.2,171.1 L316.4,167.7 L317.8,159.4 L320.1,156.1 L327.1,158.4 L330.0,155.5 L332.1,151.1 L331.8,147.9 L334.7,144.7 L333.6,141.8 L336.2,135.4 L338.4,133.0 L346.8,129.9 L346.3,125.8 L351.5,128.0 L353.1,130.5 L361.1,133.4 L364.7,135.7 L369.6,134.6 L372.4,131.2 L377.4,131.3 L383.9,134.0 L386.8,133.8 L392.7,135.6 L400.9,136.2 L409.3,135.8 L412.9,133.8 L417.3,134.0 L418.0,130.4 L422.1,130.5 L427.4,133.8 L430.7,134.4 L431.7,127.6 L437.2,117.5 L442.6,115.5 L444.3,113.4 L454.0,110.8 L460.1,105.1 L465.4,106.6 L467.0,108.1 L467.6,115.1 L466.1,118.1 L476.3,128.5 L479.6,134.8 L480.0,140.8 L482.2,145.1 L476.7,146.3 L477.2,153.0 L474.1,156.6 L476.3,163.2 L480.4,166.0 L479.8,169.4 L481.5,171.5 L482.2,178.1 L481.1,179.7 L484.4,187.3 L485.5,192.4 L481.7,200.9 L477.0,206.5 L477.8,211.9 L476.6,215.1 L472.2,214.6 L474.6,207.5 L473.3,203.2 L474.8,201.0 L474.2,195.7 L465.8,195.6 L460.4,201.4 L463.4,204.2 L461.5,214.1 L465.1,214.7 L464.7,219.8 L458.9,227.5 L458.2,231.1 L454.7,235.1 L452.9,242.6 L446.0,255.2 L445.5,259.9 L448.9,261.1 L449.1,264.8 L445.8,265.2 L444.0,268.3 L433.6,268.0 L428.1,269.3 L426.2,271.8 L420.8,274.6 L416.3,280.4 Z"/>
+        <path class="kabupaten" id="kab-badung" data-kabupaten="badung" tabindex="0" role="button" aria-label="Badung kabupaten"
+              d="M497.6,264.2 L490.4,262.5 L477.2,265.6 L463.4,271.4 L464.3,289.7 L463.4,297.6 L463.4,305.2 L467.6,313.8 L469.6,325.5 L464.0,335.4 L473.9,345.1 L485.2,346.5 L485.6,340.6 L489.0,335.5 L491.0,346.6 L493.6,358.3 L485.8,367.5 L457.7,375.0 L423.3,373.5 L407.2,364.3 L418.6,358.1 L427.6,350.5 L443.0,344.1 L457.2,337.6 L451.0,329.5 L457.2,319.6 L452.6,307.7 L439.0,293.6 L419.2,283.6 L420.8,274.6 L428.1,269.3 L444.0,268.3 L449.1,264.8 L445.5,259.9 L452.9,242.6 L458.2,231.1 L464.7,219.8 L461.5,214.1 L460.4,201.4 L474.2,195.7 L473.3,203.2 L472.2,214.6 L477.8,211.9 L481.7,200.9 L484.4,187.3 L482.2,178.1 L479.8,169.4 L476.3,163.2 L477.2,153.0 L482.2,145.1 L479.6,134.8 L466.1,118.1 L467.0,108.1 L474.5,106.7 L494.3,105.1 L505.2,114.2 L502.1,122.1 L503.2,131.7 L501.2,144.5 L499.9,149.8 L496.8,159.8 L490.0,171.1 L491.8,182.7 L492.7,193.9 L499.9,204.4 L500.6,218.0 L497.6,223.7 L494.2,235.0 L498.1,241.2 L504.2,257.8 L497.6,264.2 Z"/>
+        <path class="kabupaten" id="kab-denpasar" data-kabupaten="denpasar" tabindex="0" role="button" aria-label="Denpasar kabupaten"
+              d="M497.6,264.2 L499.9,265.6 L501.7,270.1 L507.8,274.5 L510.6,280.5 L515.8,282.7 L519.2,286.6 L515.3,288.6 L511.3,292.8 L510.8,294.8 L513.4,298.5 L512.8,300.7 L514.4,307.1 L512.3,311.9 L507.5,314.1 L501.9,313.6 L498.1,316.4 L491.5,317.6 L492.7,319.5 L498.1,318.3 L504.0,322.7 L498.4,328.1 L491.8,332.0 L485.6,329.5 L487.8,323.1 L483.3,320.7 L482.0,324.9 L482.2,329.6 L478.7,329.1 L481.1,322.6 L477.8,321.9 L469.6,325.5 L467.8,324.5 L467.6,313.8 L463.2,308.0 L463.4,305.2 L460.6,300.5 L463.4,297.6 L460.4,291.1 L464.3,289.7 L464.5,285.6 L463.4,271.4 L473.8,269.6 L477.2,265.6 L483.7,262.6 L490.4,262.5 L496.2,261.1 L497.6,264.2 Z"/>
+        <path class="kabupaten" id="kab-gianyar" data-kabupaten="gianyar" tabindex="0" role="button" aria-label="Gianyar kabupaten"
+              d="M567.5,229.1 L569.1,230.6 L571.8,245.4 L575.1,249.2 L575.4,253.1 L568.3,255.0 L564.4,257.4 L561.2,261.9 L557.2,263.0 L548.9,267.3 L545.6,270.9 L535.5,275.0 L532.8,278.6 L519.2,286.6 L515.8,282.7 L510.6,280.5 L507.8,274.5 L501.7,270.1 L499.9,265.6 L504.2,257.8 L504.1,252.9 L498.1,241.2 L495.7,240.0 L494.2,235.0 L493.2,227.6 L497.6,223.7 L497.4,221.1 L500.6,218.0 L500.9,209.3 L499.9,204.4 L495.8,200.5 L492.7,193.9 L494.6,187.5 L491.8,182.7 L491.8,173.0 L490.0,171.1 L495.8,164.0 L496.8,159.8 L495.3,156.7 L499.9,149.8 L504.1,148.0 L501.2,144.5 L505.1,137.4 L509.7,137.7 L512.7,140.6 L516.7,141.0 L524.7,137.0 L528.5,138.1 L530.2,145.3 L536.1,146.2 L538.5,143.3 L550.6,144.6 L549.7,147.9 L551.9,151.2 L550.6,159.8 L555.2,160.4 L555.3,168.7 L551.7,177.0 L551.8,181.6 L547.2,188.0 L544.0,190.6 L548.3,198.5 L549.7,204.4 L548.4,207.0 L550.1,213.0 L549.8,217.2 L551.4,221.9 L550.9,225.6 L555.0,229.9 L560.5,230.9 L567.5,229.1 Z"/>
+        <path class="kabupaten" id="kab-bangli" data-kabupaten="bangli" tabindex="0" role="button" aria-label="Bangli kabupaten"
+              d="M613.7,78.1 L620.5,81.7 L623.4,86.4 L619.5,88.4 L614.9,94.5 L618.8,98.0 L618.7,101.5 L620.9,104.1 L626.1,105.2 L624.5,109.1 L621.3,109.9 L615.7,114.2 L610.1,116.3 L611.0,120.0 L607.6,124.5 L605.6,131.9 L603.2,134.2 L601.7,140.5 L597.7,140.9 L598.5,147.7 L591.5,151.6 L591.8,155.9 L590.1,158.0 L597.5,173.4 L601.3,175.5 L601.5,180.5 L599.2,194.1 L593.8,200.4 L589.5,201.2 L583.7,205.2 L583.0,202.9 L577.3,203.4 L573.5,208.3 L574.1,210.5 L567.9,216.6 L566.8,222.7 L565.1,224.1 L567.5,229.1 L560.5,230.9 L555.0,229.9 L550.9,225.6 L551.4,221.9 L549.8,217.2 L550.1,213.0 L548.4,207.0 L549.7,204.4 L548.3,198.5 L544.0,190.6 L547.2,188.0 L551.8,181.6 L551.7,177.0 L555.3,168.7 L555.2,160.4 L550.6,159.8 L551.9,151.2 L549.7,147.9 L550.6,144.6 L538.5,143.3 L536.1,146.2 L530.2,145.3 L528.5,138.1 L524.7,137.0 L516.7,141.0 L512.7,140.6 L509.7,137.7 L505.1,137.4 L503.2,131.7 L500.7,128.8 L502.1,122.1 L504.7,117.7 L505.2,114.2 L497.9,106.0 L494.3,105.1 L497.0,101.1 L500.5,91.5 L501.7,84.1 L500.0,81.1 L501.3,74.6 L507.7,76.6 L513.8,71.0 L516.9,71.5 L521.7,69.1 L525.2,73.5 L529.3,72.6 L534.4,74.6 L540.7,70.5 L543.7,67.0 L543.6,63.7 L547.6,61.9 L552.2,66.5 L555.6,64.5 L556.8,61.4 L564.0,64.9 L573.7,66.3 L571.8,69.5 L574.6,72.4 L578.3,70.3 L581.4,72.3 L581.5,74.7 L587.0,76.8 L586.5,80.2 L592.1,81.6 L609.1,81.3 L610.0,78.7 L613.7,78.1 Z"/>
+        <path class="kabupaten" id="kab-klungkung" data-kabupaten="klungkung" tabindex="0" role="button" aria-label="Klungkung kabupaten"
+              d="M687.3,296.2 L693.0,298.5 L697.4,302.4 L700.7,311.3 L706.7,315.9 L707.4,319.4 L716.7,325.3 L721.8,330.3 L724.4,334.2 L723.6,335.8 L726.2,339.6 L722.7,341.2 L715.5,346.4 L713.1,349.3 L713.0,356.4 L708.9,357.0 L703.0,361.8 L699.6,361.4 L696.1,358.7 L690.5,357.6 L678.2,353.3 L671.5,352.0 L667.8,352.9 L663.7,346.4 L657.3,342.7 L652.9,342.7 L649.2,340.2 L642.9,338.1 L636.6,331.8 L630.0,329.9 L622.4,330.2 L624.9,325.2 L620.4,318.4 L627.0,316.1 L626.0,314.0 L629.9,311.1 L630.3,309.0 L634.4,307.1 L637.5,302.9 L643.1,301.5 L644.8,297.3 L649.7,296.3 L660.0,298.5 L668.3,298.8 L687.3,296.2 Z"/>
+        <path class="kabupaten" id="kab-karangasem" data-kabupaten="karangasem" tabindex="0" role="button" aria-label="Karangasem kabupaten"
+              d="M638.8,242.5 L639.4,239.1 L636.4,236.5 L637.2,228.9 L633.0,223.8 L626.6,221.3 L612.5,228.3 L602.5,230.5 L598.0,233.2 L596.1,230.6 L595.9,225.8 L601.3,223.8 L601.3,220.8 L598.0,213.8 L600.9,208.6 L596.0,208.3 L586.9,212.3 L589.3,207.0 L593.2,204.1 L593.8,200.4 L599.2,194.1 L601.5,180.5 L601.3,175.5 L597.5,173.4 L590.1,158.0 L591.8,155.9 L591.5,151.6 L598.5,147.7 L597.7,140.9 L601.7,140.5 L603.2,134.2 L605.6,131.9 L607.6,124.5 L611.0,120.0 L610.1,116.3 L615.7,114.2 L621.3,109.9 L624.5,109.1 L626.1,105.2 L620.9,104.1 L618.7,101.5 L618.8,98.0 L614.9,94.5 L619.5,88.4 L623.4,86.4 L620.5,81.7 L613.7,78.1 L617.5,74.4 L625.8,71.5 L626.9,73.0 L634.5,76.8 L640.6,77.1 L644.8,80.5 L651.3,83.0 L655.3,87.9 L666.2,93.2 L685.3,100.5 L689.3,104.1 L698.3,110.8 L706.9,121.3 L709.7,122.2 L714.9,127.4 L720.0,130.4 L721.6,134.2 L727.7,142.0 L734.3,145.8 L747.1,147.5 L750.5,150.0 L757.2,151.8 L761.8,155.1 L767.2,156.9 L770.0,162.0 L773.5,164.1 L775.0,170.9 L774.8,175.3 L771.0,180.0 L768.5,181.2 L764.5,187.3 L761.5,189.7 L751.7,195.4 L744.5,197.3 L730.3,203.0 L727.8,207.6 L720.1,212.4 L715.6,221.2 L698.1,226.5 L685.3,222.6 L677.4,222.2 L673.4,220.2 L668.7,220.3 L658.4,223.9 L655.4,227.8 L659.2,232.4 L657.1,233.6 L656.0,238.1 L638.8,242.5 Z"/>
+        <path class="kabupaten" id="kab-buleleng" data-kabupaten="buleleng" tabindex="0" role="button" aria-label="Buleleng kabupaten"
+              d="M625.8,71.5 L610.0,78.7 L586.5,80.2 L581.4,72.3 L571.8,69.5 L556.8,61.4 L547.6,61.9 L540.7,70.5 L525.2,73.5 L513.8,71.0 L500.0,81.1 L497.0,101.1 L474.5,106.7 L454.0,110.8 L437.2,117.5 L427.4,133.8 L417.3,134.0 L400.9,136.2 L383.9,134.0 L369.6,134.6 L353.1,130.5 L346.8,129.9 L333.6,141.8 L332.1,151.1 L320.1,156.1 L300.9,164.4 L283.0,147.9 L265.3,146.6 L253.8,142.0 L252.8,131.6 L248.4,121.6 L250.7,113.5 L232.0,110.6 L223.7,111.0 L210.4,97.0 L184.0,85.8 L173.4,100.1 L154.4,98.0 L139.2,86.0 L125.6,76.4 L101.2,83.0 L76.4,88.6 L61.7,83.6 L39.2,80.9 L46.1,71.0 L32.9,67.4 L25.7,50.8 L36.7,38.7 L61.4,40.1 L75.3,61.6 L81.8,65.6 L111.5,51.6 L119.8,58.2 L135.4,53.9 L150.4,56.3 L166.3,63.1 L187.7,66.4 L212.2,73.0 L243.2,78.5 L254.5,83.0 L268.1,83.6 L295.5,81.2 L308.5,79.5 L331.3,78.5 L361.3,74.5 L372.6,69.1 L388.1,59.0 L400.2,49.8 L425.6,34.8 L451.3,26.1 L477.9,30.2 L515.3,37.6 L539.3,44.8 L560.6,50.5 L580.5,57.4 L602.3,65.2 L625.8,71.5 Z"/>
+
+        <!-- Kabupaten labels -->
+        <text class="map-label" x="172" y="129">Jembrana</text>
+        <text class="map-label" x="411" y="184">Tabanan</text>
+        <text class="map-label" x="472" y="246">Badung</text>
+        <text class="map-label" x="490" y="310">Denpasar</text>
+        <text class="map-label" x="528" y="207">Gianyar</text>
+        <text class="map-label" x="563" y="122">Bangli</text>
+        <text class="map-label" x="674" y="328">Klungkung</text>
+        <text class="map-label" x="658" y="164">Karangasem</text>
+        <text class="map-label" x="321" y="86">Buleleng</text>
+
+        <!-- Location pins (10 demo presets, geo-positioned) -->
+        <g class="location-pin" data-location="canggu" tabindex="0" role="button" aria-label="Canggu, Pererenan — click for zoning info">
+          <circle class="pin-outer" cx="434" cy="287" r="8"/>
+          <circle class="pin-inner" cx="434" cy="287" r="4"/>
+        </g>
+        <g class="location-pin" data-location="seminyak" tabindex="0" role="button" aria-label="Seminyak — click for zoning info">
+          <circle class="pin-outer" cx="452" cy="304" r="8"/>
+          <circle class="pin-inner" cx="452" cy="304" r="4"/>
+        </g>
+        <g class="location-pin" data-location="uluwatu" tabindex="0" role="button" aria-label="Uluwatu — click for zoning info">
+          <circle class="pin-outer" cx="411" cy="362" r="8"/>
+          <circle class="pin-inner" cx="411" cy="362" r="4"/>
+        </g>
+        <g class="location-pin" data-location="ubud" tabindex="0" role="button" aria-label="Ubud — click for zoning info">
+          <circle class="pin-outer" cx="522" cy="224" r="8"/>
+          <circle class="pin-inner" cx="522" cy="224" r="4"/>
+        </g>
+        <g class="location-pin" data-location="sanur" tabindex="0" role="button" aria-label="Sanur — click for zoning info">
+          <circle class="pin-outer" cx="516" cy="309" r="8"/>
+          <circle class="pin-inner" cx="516" cy="309" r="4"/>
+        </g>
+        <g class="location-pin" data-location="kuta" tabindex="0" role="button" aria-label="Kuta — click for zoning info">
+          <circle class="pin-outer" cx="458" cy="322" r="8"/>
+          <circle class="pin-inner" cx="458" cy="322" r="4"/>
+        </g>
+        <g class="location-pin" data-location="nusa_dua" tabindex="0" role="button" aria-label="Nusa Dua — click for zoning info">
+          <circle class="pin-outer" cx="493" cy="353" r="8"/>
+          <circle class="pin-inner" cx="493" cy="353" r="4"/>
+        </g>
+        <g class="location-pin" data-location="tabanan_subak" tabindex="0" role="button" aria-label="Tabanan Rice Terraces — click for zoning info">
+          <circle class="pin-outer" cx="464" cy="162" r="8"/>
+          <circle class="pin-inner" cx="464" cy="162" r="4"/>
+        </g>
+        <g class="location-pin" data-location="amed" tabindex="0" role="button" aria-label="Amed — click for zoning info">
+          <circle class="pin-outer" cx="739" cy="153" r="8"/>
+          <circle class="pin-inner" cx="739" cy="153" r="4"/>
+        </g>
+        <g class="location-pin" data-location="lovina" tabindex="0" role="button" aria-label="Lovina — click for zoning info">
+          <circle class="pin-outer" cx="370" cy="69" r="8"/>
+          <circle class="pin-inner" cx="370" cy="69" r="4"/>
+        </g>
+      </svg>
+
+      <div class="map-prompt" id="map-prompt">
+        <span class="cursor-icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1L6 13L8 8L13 6L1 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </span>
+        Click a region or pin to check zoning
+      </div>
+    </div>
+  </div>
+
+  <!-- Side panel (40%) -->
+  <aside class="side-panel" role="complementary" aria-label="Zoning analysis panel" aria-live="polite">
+    <!-- Empty state -->
+    <div class="panel-empty" id="panel-empty">
+      <div class="empty-icon" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      </div>
+      <h3>Select a location</h3>
+      <p>Click a region on the map, use the search, or pick a popular location to see foreign ownership rules and zoning data.</p>
+    </div>
+
+    <!-- Analysis results (hidden by default) -->
+    <div class="panel-analysis" id="panel-analysis">
+      <!-- Zone header -->
+      <div class="zone-header" id="zone-header">
+        <div class="zone-location">
+          <span class="pin-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1C5.24 1 3 3.24 3 6c0 3.5 5 9 5 9s5-5.5 5-9c0-2.76-2.24-5-5-5z" fill="currentColor"/></svg>
+          </span>
+          <div>
+            <h2 id="zone-title">—</h2>
+            <span class="kabupaten-label" id="zone-kabupaten">—</span>
+          </div>
+        </div>
+        <div id="zone-badge-container"></div>
+        <p class="zone-subtitle" id="zone-description">—</p>
+      </div>
+
+      <!-- Hak Milik scam warning (always visible) -->
+      <div class="scam-warning" role="alert">
+        <span class="warn-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1L1 16h16L9 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><line x1="9" y1="7" x2="9" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="13.5" r="0.75" fill="currentColor"/></svg>
+        </span>
+        <div>
+          <strong>Hak Milik (Freehold) = illegal for foreigners.</strong> If anyone offers you freehold title, it is either a scam or a nominee arrangement with zero legal protection. Only Hak Pakai or HGB via PT PMA are legal.
+        </div>
+      </div>
+
+      <!-- Foreign ownership status -->
+      <div class="ownership-card" id="ownership-card">
+        <h4>Foreign Ownership Status</h4>
+        <div id="ownership-rows"></div>
+      </div>
+
+      <!-- PBG Risk -->
+      <div class="pbg-card" id="pbg-card">
+        <h4>
+          <span class="legal-badge" tabindex="0">
+            <span class="indo-term">PBG</span>
+            <span class="eng-term">Building Permit Risk</span>
+            <span class="tooltip">Persetujuan Bangunan Gedung — the construction approval required before building. Replaced the old IMB system. Average processing: 4-8 months in Bali.</span>
+          </span>
+        </h4>
+        <div class="pbg-meter"><div class="fill" id="pbg-fill"></div></div>
+        <div class="pbg-meta">
+          <span class="risk-label" id="pbg-risk-label">—</span>
+          <span class="risk-stat" id="pbg-risk-stat">—</span>
+        </div>
+        <p class="pbg-notes" id="pbg-notes">—</p>
+      </div>
+
+      <!-- Action items -->
+      <div class="actions-card" id="actions-card">
+        <h4>What to Verify</h4>
+        <div id="action-items"></div>
+      </div>
+
+      <!-- DD CTA -->
+      <div class="dd-cta" id="dd-cta">
+        <div class="dd-price"><span class="currency">USD</span> 850</div>
+        <div class="dd-timeline">Full Due Diligence report — 7-day delivery</div>
+        <a href="#" id="wa-cta" class="btn-whatsapp" target="_blank" rel="noopener noreferrer">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15.5 2.5C13.8 0.8 11.5 0 9 0C4 0 0 4 0 9c0 1.6.4 3.1 1.2 4.5L0 18l4.6-1.2C6 17.6 7.5 18 9 18c5 0 9-4 9-9 0-2.5-.8-4.7-2.5-6.5z" fill="currentColor"/><path d="M6.5 5.2c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.4.1-.7.3-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.1 1.6 2.5 3.9 3.4.5.2 1 .4 1.3.5.5.2 1 .1 1.4.1.4-.1 1.3-.5 1.5-1s.2-1 .1-1.1c-.1-.1-.2-.2-.5-.3-.2-.1-1.3-.6-1.5-.7s-.4-.1-.5.1c-.2.2-.6.7-.7.9-.1.1-.3.2-.5.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5.1-.1.2-.3.4-.4.1-.1.2-.2.2-.4.1-.1 0-.3 0-.4-.1-.1-.5-1.3-.7-1.8z" fill="#ffffff"/></svg>
+          Talk to Our Legal Team
+        </a>
+      </div>
+
+      <!-- Case study link -->
+      <a class="case-study-link" href="#" id="case-study-link">
+        <div>
+          <div class="cs-label">Case Study</div>
+          <div class="cs-title">How we caught a USD 220K fake freehold in Pandawa</div>
+        </div>
+        <span class="arrow" aria-hidden="true">&rarr;</span>
+      </a>
+
+      <!-- Lead capture -->
+      <div class="lead-capture" id="lead-capture">
+        <h4>Get a free 1-page zoning summary</h4>
+        <div class="lead-input">
+          <input type="email" id="lead-email" placeholder="your@email.com" aria-label="Email for zoning summary">
+          <button class="btn-send" id="lead-submit">Send</button>
+        </div>
+        <p class="lead-note">Free PDF with zone classification + 3 regulatory citations for this location.</p>
+      </div>
+
+      <!-- Parcel-level disclaimer -->
+      <div class="source-cite" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <span style="color:var(--bz-text-muted);font-size:10px;">This is regional zoning data — parcel-level verification requires an official site survey and certificate check.</span>
+      </div>
+
+      <!-- Source citation with timestamp -->
+      <div class="source-cite">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1"/><line x1="6" y1="4" x2="6" y2="8" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="6" cy="3" r="0.5" fill="currentColor"/></svg>
+        <span>Data: <span id="source-rdtr">RDTR Badung 2023</span> · Updated <span id="source-date">Q1 2026</span> · <a href="https://gistaru.atrbpn.go.id" target="_blank" rel="noopener">Verify on GISTARU</a></span>
+      </div>
+
+      <!-- Black zone state (hidden by default) -->
+      <div class="black-zone-banner" id="black-zone-banner" style="display:none;">
+        <div class="bz-icon" aria-hidden="true">&#x26D4;</div>
+        <h3>Do Not Buy Here as a Foreigner</h3>
+        <p>This location falls within a protected/restricted zone where foreign development is not permitted under any legal structure. This is not a matter of paperwork — it is a hard legal prohibition.</p>
+        <p class="alt-text">Consider nearby zones where development is permitted. We can help you find compliant alternatives.</p>
+      </div>
+    </div>
+
+    <!-- Error state (hidden by default) -->
+    <div class="error-state" id="error-state" style="display:none;">
+      <h3>No zone data available</h3>
+      <p>We don't have zoning information for this specific address yet. Try selecting a region on the map or one of the popular locations.</p>
+    </div>
+  </aside>
+</main>
+
+<!-- ============================================================
+     STAT STRIP
+     ============================================================ -->
+<section class="stat-strip" aria-label="Key statistics">
+  <div class="stat-card">
+    <div class="stat-value">10,500<span class="accent">+</span></div>
+    <div class="stat-label">Nominee properties at risk in Bali</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value"><span class="accent">$</span>10.4B</div>
+    <div class="stat-label">At-risk foreign investment</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">340<span class="accent">+</span></div>
+    <div class="stat-label">Clients purchased safely with us</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">7<span class="accent">d</span></div>
+    <div class="stat-label">Average DD report delivery</div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TRUST SECTION
+     ============================================================ -->
+<section class="trust-section" aria-label="Why trust Bali Zero">
+  <div class="trust-grid">
+    <div class="trust-card">
+      <div class="tc-icon violet" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1L11.5 6.5L17 7.5L13 11.5L14 17L9 14.5L4 17L5 11.5L1 7.5L6.5 6.5L9 1Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>Every certificate read manually</h3>
+      <p>We don't rely on agent claims. Our legal team reads every sertifikat, checks every RDTR map, and verifies every PBG status directly with the BPN office.</p>
+    </div>
+    <div class="trust-card">
+      <div class="tc-icon green" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M15 4.5L7 13.5L3 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h3>5,000+ clients since 2018</h3>
+      <p>From studio apartments to beachfront villas. We've seen every scam, every loophole, and every legitimate pathway. Our data is battle-tested.</p>
+    </div>
+    <div class="trust-card">
+      <div class="tc-icon blue" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="2" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M6 4V2.5C6 1.67 6.67 1 7.5 1h3c.83 0 1.5.67 1.5 1.5V4" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="1.5"/></svg>
+      </div>
+      <h3>Flat fee, no surprises</h3>
+      <p>USD 850 for a complete due diligence report. Includes title verification, zoning check, PBG feasibility, ownership structure review, and 3 alternative recommendations.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="page-footer">
+  <span>&copy; 2026 Bali Zero. All rights reserved.</span>
+  <span>
+    <a href="https://balizero.com/services/property">Property Services</a> &middot;
+    <a href="https://balizero.com/services/visa">Visa</a> &middot;
+    <a href="https://balizero.com/services/company">Company Setup</a>
+  </span>
+</footer>
+
+<!-- ============================================================
+     JAVASCRIPT — Pure vanilla, no libraries
+     ============================================================ -->
+<script>
+(function() {
+  'use strict';
+
+  // ── DEMO LOCATION DATA ──────────────────────────────────
+  const LOCATIONS = {
+    canggu: {
+      name: 'Canggu, Pererenan',
+      kabupaten: 'Badung',
+      zone: 'amber',
+      zoneLabel: 'Zona Pariwisata mixed with Sempadan Sungai',
+      zonePlain: 'Tourism zone with river buffer restrictions',
+      description: 'Popular area for villa development, but river setback rules and cultural building regulations apply. Mixed zoning means some parcels allow tourism, others are buffer zones.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25-30yr' }
+      },
+      pbg: {
+        risk: 'medium',
+        percent: 55,
+        stat: '34% rejection rate in 2025',
+        notes: 'Common rejection causes: setback violations near Sungai Petanu, flat roof designs (must use traditional linmas style), and height exceeding 12m limit.'
+      },
+      actions: [
+        { text: 'Verify the certificate type — demand to see the original sertifikat, not a copy', price: 'Included in DD' },
+        { text: 'Check the RDTR classification for your specific parcel on GISTARU', price: 'Included in DD' },
+        { text: 'Audit PBG history — has a permit ever been applied for or rejected on this land?', price: 'Included in DD' }
+      ],
+      source: 'RDTR Badung 2023 (Perbup No. 28/2023)'
+    },
+
+    seminyak: {
+      name: 'Seminyak, Petitenget',
+      kabupaten: 'Badung',
+      zone: 'amber',
+      zoneLabel: 'Zona Perdagangan dan Jasa',
+      zonePlain: 'Commercial and tourism zone',
+      description: 'Highly developed commercial area. Most land already built upon. New construction requires compliance with Badung density limits. Land prices: USD 800-2000/sqm.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25-30yr' }
+      },
+      pbg: {
+        risk: 'low',
+        percent: 25,
+        stat: '18% rejection rate in 2025',
+        notes: 'Established commercial zone with clear precedent. Main risks: height restrictions near temple compounds and parking requirements.'
+      },
+      actions: [
+        { text: 'Verify land boundaries — Seminyak plots are often smaller than advertised', price: 'Included in DD' },
+        { text: 'Check for ongoing disputes — high-value area attracts competing claims', price: 'Included in DD' },
+        { text: 'Confirm commercial zoning vs tourism-only — affects what business you can operate', price: 'Included in DD' }
+      ],
+      source: 'RDTR Badung 2023'
+    },
+
+    uluwatu: {
+      name: 'Uluwatu, Pecatu',
+      kabupaten: 'Badung',
+      zone: 'amber',
+      zoneLabel: 'Zona Pariwisata with Sempadan Pantai',
+      zonePlain: 'Tourism zone with coastal buffer',
+      description: 'Clifftop area with strict coastal setback (Sempadan Pantai) requirements. The Bingin demolitions of July 2025 showed the government enforces these rules.',
+      ownership: {
+        'Hak Pakai': { status: 'warn', label: 'Check coastal buffer' },
+        'HGB via PT PMA': { status: 'warn', label: 'Must verify setbacks' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25yr typical' }
+      },
+      pbg: {
+        risk: 'high',
+        percent: 80,
+        stat: '67% rejection rate near cliffs',
+        notes: 'Coastal buffer zone (Sempadan Pantai) is strictly enforced. The Bingin demolitions (July 2025) destroyed villas built within the buffer. Government is actively enforcing setback rules.'
+      },
+      actions: [
+        { text: 'Measure exact distance from cliff edge — Sempadan Pantai buffer is 100m minimum', price: 'Included in DD' },
+        { text: 'Check if any structures on adjacent land were demolished in the 2025 enforcement', price: 'Included in DD' },
+        { text: 'Verify that the land is NOT within the Uluwatu Temple sacred buffer (Suci zone)', price: 'Included in DD' }
+      ],
+      source: 'RDTR Badung 2023 + Pemprov Bali enforcement records'
+    },
+
+    ubud: {
+      name: 'Ubud, Tegallalang',
+      kabupaten: 'Gianyar',
+      zone: 'red',
+      zoneLabel: 'Zona Pertanian (Subak Heritage)',
+      zonePlain: 'Agricultural zone — rice paddy heritage',
+      description: 'UNESCO-adjacent cultural landscape. Subak (traditional irrigation) zones are heritage-protected. Conversion to residential/commercial is extremely difficult and politically sensitive.',
+      ownership: {
+        'Hak Pakai': { status: 'warn', label: 'Restricted — agriculture only' },
+        'HGB via PT PMA': { status: 'warn', label: 'Conversion required (rare)' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'warn', label: 'Limited — must stay agricultural' }
+      },
+      pbg: {
+        risk: 'high',
+        percent: 85,
+        stat: 'Near-impossible for new villa construction',
+        notes: 'Subak zones are protected under Perda Prov. Bali No. 4/2026 (Protection of Productive Land). Converting rice paddy to residential requires banjar approval + kabupaten waiver — process takes 12-24 months and frequently fails.'
+      },
+      actions: [
+        { text: 'Confirm Subak boundaries — not all Ubud land is Subak, check RDTR Gianyar for parcel detail', price: 'Included in DD' },
+        { text: 'Ask the seller if conversion has already been approved — if not, budget 12-24 months', price: 'Included in DD' },
+        { text: 'Consider leasing an existing structure instead of building new — lower risk, faster timeline', price: 'Included in DD' }
+      ],
+      source: 'RDTR Gianyar 2023 + Perda Prov. Bali No. 4/2026'
+    },
+
+    sanur: {
+      name: 'Sanur, Denpasar Selatan',
+      kabupaten: 'Denpasar',
+      zone: 'green',
+      zoneLabel: 'Zona Permukiman Kepadatan Sedang',
+      zonePlain: 'Medium-density residential zone',
+      description: 'Established residential neighborhood with clear zoning and good precedent for foreign-owned villas via PT PMA. Lower risk than most Bali locations.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted — most common here' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25-30yr' }
+      },
+      pbg: {
+        risk: 'low',
+        percent: 20,
+        stat: '12% rejection rate — lowest in south Bali',
+        notes: 'Well-established residential zone with clear precedent. Main compliance issue: building height max 15m and maintaining Balinese architectural elements (angkul-angkul entrance).'
+      },
+      actions: [
+        { text: 'Standard title verification — Sanur has fewer land disputes than other areas', price: 'Included in DD' },
+        { text: 'Check for flood zone proximity — some areas near mangrove are flood-prone', price: 'Included in DD' },
+        { text: 'Verify neighborhood density — some blocks are approaching the max building ratio', price: 'Included in DD' }
+      ],
+      source: 'RDTR Denpasar 2023'
+    },
+
+    kuta: {
+      name: 'Kuta, Tuban',
+      kabupaten: 'Badung',
+      zone: 'amber',
+      zoneLabel: 'Zona Perdagangan dan Jasa',
+      zonePlain: 'Commercial zone — saturated',
+      description: 'Heavily developed commercial zone near the airport. Almost no vacant land. Existing buildings available for lease or purchase via PT PMA structure.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 20-25yr' }
+      },
+      pbg: {
+        risk: 'medium',
+        percent: 40,
+        stat: '22% rejection rate',
+        notes: 'Dense area — new construction limited by parking and setback requirements. Airport flight path restrictions apply to building height in some blocks.'
+      },
+      actions: [
+        { text: 'Check airport noise zone — flight path affects building restrictions and property value', price: 'Included in DD' },
+        { text: 'Verify commercial license type — not all Kuta parcels allow accommodation businesses', price: 'Included in DD' },
+        { text: 'Confirm building age and SLF status — older buildings may lack required safety certificate', price: 'Included in DD' }
+      ],
+      source: 'RDTR Badung 2023'
+    },
+
+    nusa_dua: {
+      name: 'Nusa Dua, ITDC Area',
+      kabupaten: 'Badung',
+      zone: 'green',
+      zoneLabel: 'Zona Pariwisata Terpadu',
+      zonePlain: 'Integrated tourism zone — well-regulated',
+      description: 'Government-planned tourism zone with clear regulations, maintained infrastructure, and strong enforcement. Lower risk for foreign investors. Premium land prices.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted — preferred structure' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available from ITDC, 30-50yr' }
+      },
+      pbg: {
+        risk: 'low',
+        percent: 15,
+        stat: '8% rejection rate — lowest in Bali',
+        notes: 'ITDC-managed zone with streamlined permit process. Building codes are strict but well-documented. Most rejections are due to environmental impact assessment failures.'
+      },
+      actions: [
+        { text: 'Verify ITDC lease terms — some parcels have development deadlines and usage restrictions', price: 'Included in DD' },
+        { text: 'Confirm environmental impact assessment (AMDAL) status for your project type', price: 'Included in DD' },
+        { text: 'Check competition density — the ITDC controls how many similar businesses operate nearby', price: 'Included in DD' }
+      ],
+      source: 'RDTR Badung 2023 + ITDC Development Guidelines'
+    },
+
+    tabanan_subak: {
+      name: 'Tabanan, Jatiluwih',
+      kabupaten: 'Tabanan',
+      zone: 'black',
+      zoneLabel: 'Zona Lindung — UNESCO World Heritage Buffer',
+      zonePlain: 'Protected zone — NO development permitted',
+      description: 'UNESCO World Heritage Cultural Landscape. Jatiluwih rice terraces are under the highest level of protection. No construction, no conversion, no exceptions.',
+      ownership: {
+        'Hak Pakai': { status: 'banned', label: 'Not available' },
+        'HGB via PT PMA': { status: 'banned', label: 'Not available' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'banned', label: 'Not available' }
+      },
+      pbg: {
+        risk: 'high',
+        percent: 100,
+        stat: '100% rejection — protected zone',
+        notes: 'UNESCO World Heritage Buffer zone. Construction is prohibited by both national and provincial law. Any attempt to build will be demolished. This is not a gray area.'
+      },
+      actions: [
+        { text: 'DO NOT proceed with any purchase intent in this zone', price: '—' },
+        { text: 'Consider Tabanan town center (12km south) — residential zones available with lower land prices', price: 'Free consultation' },
+        { text: 'If you have already paid a deposit, contact our legal team immediately', price: 'Free initial assessment' }
+      ],
+      source: 'RTRW Tabanan 2022 + UNESCO World Heritage designation',
+      isBlackZone: true
+    },
+
+    amed: {
+      name: 'Amed, Karangasem',
+      kabupaten: 'Karangasem',
+      zone: 'amber',
+      zoneLabel: 'Zona Pariwisata with Sempadan Pantai',
+      zonePlain: 'Tourism zone with coastal restrictions',
+      description: 'Emerging tourism area in northeast Bali. Less developed, lower land prices, but infrastructure is limited. Coastal buffer rules apply. Mt. Agung eruption risk zone.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25yr typical' }
+      },
+      pbg: {
+        risk: 'medium',
+        percent: 45,
+        stat: '28% rejection rate',
+        notes: 'Coastal setback enforcement is increasing. Mt. Agung disaster mitigation zone may affect some parcels — check KRB (Kawasan Rawan Bencana) map for volcanic risk classification.'
+      },
+      actions: [
+        { text: 'Check KRB volcanic hazard zone — some Amed areas are in the Mt. Agung danger radius', price: 'Included in DD' },
+        { text: 'Verify water and road access — infrastructure in east Bali is less reliable', price: 'Included in DD' },
+        { text: 'Confirm coastal buffer compliance — 100m from high tide line', price: 'Included in DD' }
+      ],
+      source: 'RDTR Karangasem 2023'
+    },
+
+    lovina: {
+      name: 'Lovina, Buleleng',
+      kabupaten: 'Buleleng',
+      zone: 'green',
+      zoneLabel: 'Zona Permukiman Kepadatan Rendah',
+      zonePlain: 'Low-density residential zone',
+      description: 'Quiet north coast area with low land prices and relaxed zoning. Less tourism pressure means less competition for permits. Good for long-term residential projects.',
+      ownership: {
+        'Hak Pakai': { status: 'ok', label: 'Permitted' },
+        'HGB via PT PMA': { status: 'ok', label: 'Permitted' },
+        'Hak Milik': { status: 'banned', label: 'Illegal for foreigners' },
+        'Leasehold': { status: 'ok', label: 'Available, 25-30yr' }
+      },
+      pbg: {
+        risk: 'low',
+        percent: 18,
+        stat: '10% rejection rate',
+        notes: 'Low-density zone with minimal construction pressure. Traditional building rules apply but are less strictly enforced than in south Bali. Main risk: road access quality.'
+      },
+      actions: [
+        { text: 'Verify road access quality — some Lovina areas have unpaved access roads', price: 'Included in DD' },
+        { text: 'Check for environmental protection along the coast — dolphin habitat protection zones exist', price: 'Included in DD' },
+        { text: 'Confirm water supply — north Bali has seasonal water shortages', price: 'Included in DD' }
+      ],
+      source: 'RDTR Buleleng 2023'
+    }
+  };
+
+  // ── DOM REFERENCES ──────────────────────────────────────
+  const searchInput = document.getElementById('search-input');
+  const autocompleteList = document.getElementById('autocomplete-list');
+  const panelEmpty = document.getElementById('panel-empty');
+  const panelAnalysis = document.getElementById('panel-analysis');
+  const errorState = document.getElementById('error-state');
+  const mapPrompt = document.getElementById('map-prompt');
+
+  const zoneTitle = document.getElementById('zone-title');
+  const zoneKabupaten = document.getElementById('zone-kabupaten');
+  const zoneBadgeContainer = document.getElementById('zone-badge-container');
+  const zoneDescription = document.getElementById('zone-description');
+  const ownershipRows = document.getElementById('ownership-rows');
+  const pbgFill = document.getElementById('pbg-fill');
+  const pbgRiskLabel = document.getElementById('pbg-risk-label');
+  const pbgRiskStat = document.getElementById('pbg-risk-stat');
+  const pbgNotes = document.getElementById('pbg-notes');
+  const actionItems = document.getElementById('action-items');
+  const sourceRdtr = document.getElementById('source-rdtr');
+  const blackZoneBanner = document.getElementById('black-zone-banner');
+  const ddCta = document.getElementById('dd-cta');
+  const caseStudyLink = document.getElementById('case-study-link');
+  const leadCapture = document.getElementById('lead-capture');
+  const zoneHeader = document.getElementById('zone-header');
+  const scamWarning = document.querySelector('.scam-warning');
+  const ownershipCard = document.getElementById('ownership-card');
+  const pbgCard = document.getElementById('pbg-card');
+  const actionsCard = document.getElementById('actions-card');
+  const sourceCite = document.querySelector('.source-cite');
+
+  let activeLocation = null;
+  let highlightedIndex = -1;
+
+  // ── KABUPATEN → LOCATION MAPPING ───────────────────────
+  const kabupatenLocations = {
+    badung: ['canggu', 'seminyak', 'uluwatu', 'kuta', 'nusa_dua'],
+    denpasar: ['sanur'],
+    gianyar: ['ubud'],
+    tabanan: ['tabanan_subak'],
+    karangasem: ['amed'],
+    buleleng: ['lovina'],
+    bangli: [],
+    klungkung: [],
+    jembrana: []
+  };
+
+  // ── SELECT LOCATION ─────────────────────────────────────
+  function selectLocation(locationId) {
+    const loc = LOCATIONS[locationId];
+    if (!loc) {
+      showError();
+      return;
+    }
+
+    activeLocation = locationId;
+
+    // Update map visuals
+    document.querySelectorAll('.kabupaten').forEach(el => {
+      el.classList.remove('selected', 'dimmed', 'zone-green', 'zone-amber', 'zone-red', 'zone-black');
+    });
+    document.querySelectorAll('.location-pin').forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // Highlight the kabupaten
+    const kabKey = loc.kabupaten.toLowerCase();
+    const kabEl = document.getElementById('kab-' + kabKey);
+    if (kabEl) {
+      kabEl.classList.add('selected', 'zone-' + loc.zone);
+      // Dim others
+      document.querySelectorAll('.kabupaten').forEach(el => {
+        if (el !== kabEl) el.classList.add('dimmed');
+      });
+    }
+
+    // Activate pin
+    const pin = document.querySelector(`.location-pin[data-location="${locationId}"]`);
+    if (pin) pin.classList.add('active');
+
+    // Update preset buttons
+    document.querySelectorAll('.map-presets button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.location === locationId);
+    });
+
+    // Hide prompt
+    mapPrompt.classList.add('hidden');
+
+    // Show panel
+    panelEmpty.style.display = 'none';
+    errorState.style.display = 'none';
+    panelAnalysis.classList.add('active');
+
+    // Fill zone header
+    zoneTitle.textContent = loc.name;
+    zoneKabupaten.textContent = loc.kabupaten + ' Kabupaten';
+    zoneDescription.textContent = loc.description;
+
+    // Zone badge
+    const badgeLabels = {
+      green: 'Permitted Zone',
+      amber: 'Conditional Zone',
+      red: 'Restricted Zone',
+      black: 'Prohibited Zone'
+    };
+    zoneBadgeContainer.innerHTML = `
+      <span class="zone-badge ${loc.zone}">
+        <span class="zone-dot"></span>
+        ${badgeLabels[loc.zone]}
+      </span>
+      <span style="margin-left:8px;font-size:12px;color:var(--bz-text-muted);">${loc.zonePlain}</span>
+    `;
+
+    // Ownership rows with inline explanations
+    const ownershipExplain = {
+      'Hak Pakai': 'Right to Use — for foreign residents, up to 80 years',
+      'HGB via PT PMA': 'Right to Build — via foreign-owned company, up to 80 years',
+      'Hak Milik': 'Freehold — Indonesian citizens ONLY. Never legal for foreigners.',
+      'Leasehold': 'Lease agreement — simplest structure, 25-99 year terms'
+    };
+    ownershipRows.innerHTML = '';
+    for (const [key, val] of Object.entries(loc.ownership)) {
+      const row = document.createElement('div');
+      row.className = 'ownership-row';
+      row.style.flexDirection = 'column';
+      row.style.gap = '2px';
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="label">${key}</span>
+          <span class="value ${val.status}">${val.label}</span>
+        </div>
+        <span style="font-size:10px;color:var(--bz-text-faint);line-height:1.3;">${ownershipExplain[key] || ''}</span>
+      `;
+      ownershipRows.appendChild(row);
+    }
+
+    // PBG
+    pbgFill.className = 'fill ' + loc.pbg.risk;
+    pbgFill.style.width = loc.pbg.percent + '%';
+    pbgRiskLabel.className = 'risk-label ' + loc.pbg.risk;
+    pbgRiskLabel.textContent = loc.pbg.risk.charAt(0).toUpperCase() + loc.pbg.risk.slice(1) + ' Risk';
+    pbgRiskStat.textContent = loc.pbg.stat;
+    pbgNotes.textContent = loc.pbg.notes;
+
+    // Action items
+    actionItems.innerHTML = '';
+    loc.actions.forEach((act, i) => {
+      const item = document.createElement('div');
+      item.className = 'action-item';
+      item.innerHTML = `
+        <span class="action-num">${i + 1}</span>
+        <div>
+          <div class="action-text">${act.text}</div>
+          <div class="action-price">${act.price}</div>
+        </div>
+      `;
+      actionItems.appendChild(item);
+    });
+
+    // Source
+    sourceRdtr.textContent = loc.source;
+
+    // Black zone handling
+    if (loc.isBlackZone) {
+      blackZoneBanner.style.display = 'block';
+      ddCta.style.display = 'none';
+      caseStudyLink.style.display = 'none';
+      leadCapture.style.display = 'none';
+      scamWarning.style.display = 'flex';
+      ownershipCard.style.display = 'block';
+      pbgCard.style.display = 'block';
+      actionsCard.style.display = 'block';
+      sourceCite.style.display = 'flex';
+    } else {
+      blackZoneBanner.style.display = 'none';
+      ddCta.style.display = 'block';
+      caseStudyLink.style.display = 'flex';
+      leadCapture.style.display = 'block';
+      scamWarning.style.display = 'flex';
+      ownershipCard.style.display = 'block';
+      pbgCard.style.display = 'block';
+      actionsCard.style.display = 'block';
+      sourceCite.style.display = 'flex';
+    }
+
+    // WhatsApp pre-filled message
+    const waCta = document.getElementById('wa-cta');
+    if (waCta) {
+      const waMsg = encodeURIComponent(`Hi, I'm interested in a Due Diligence report for a property in ${loc.name}, ${loc.kabupaten}, Bali. The zone shows as "${loc.zonePlain}". Can you help?`);
+      waCta.href = `https://wa.me/6281234567890?text=${waMsg}`;
+    }
+
+    // Scroll panel to top
+    document.querySelector('.side-panel').scrollTop = 0;
+
+    // Close autocomplete
+    autocompleteList.classList.remove('open');
+    searchInput.value = loc.name;
+  }
+
+  function showError() {
+    panelEmpty.style.display = 'none';
+    panelAnalysis.classList.remove('active');
+    errorState.style.display = 'block';
+  }
+
+  function resetPanel() {
+    panelEmpty.style.display = 'flex';
+    panelAnalysis.classList.remove('active');
+    errorState.style.display = 'none';
+    mapPrompt.classList.remove('hidden');
+    activeLocation = null;
+
+    document.querySelectorAll('.kabupaten').forEach(el => {
+      el.classList.remove('selected', 'dimmed', 'zone-green', 'zone-amber', 'zone-red', 'zone-black');
+    });
+    document.querySelectorAll('.location-pin').forEach(el => {
+      el.classList.remove('active');
+    });
+    document.querySelectorAll('.map-presets button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    searchInput.value = '';
+  }
+
+  // ── AUTOCOMPLETE ────────────────────────────────────────
+  function showAutocomplete(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) {
+      autocompleteList.classList.remove('open');
+      return;
+    }
+
+    const matches = Object.entries(LOCATIONS).filter(([id, loc]) => {
+      return loc.name.toLowerCase().includes(q) ||
+             loc.kabupaten.toLowerCase().includes(q) ||
+             loc.zonePlain.toLowerCase().includes(q);
+    });
+
+    if (matches.length === 0) {
+      autocompleteList.innerHTML = '<div class="autocomplete-item" style="color:var(--bz-text-faint);">No matching locations</div>';
+      autocompleteList.classList.add('open');
+      return;
+    }
+
+    autocompleteList.innerHTML = matches.map(([id, loc], i) => `
+      <div class="autocomplete-item" data-location="${id}" role="option" id="ac-item-${i}">
+        <span class="ac-zone ${loc.zone}">${loc.zone === 'black' ? 'PROHIBITED' : loc.zone.toUpperCase()}</span>
+        <span>${loc.name}</span>
+      </div>
+    `).join('');
+
+    autocompleteList.classList.add('open');
+    searchInput.setAttribute('aria-expanded', 'true');
+    highlightedIndex = -1;
+  }
+
+  searchInput.addEventListener('input', (e) => {
+    showAutocomplete(e.target.value);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    const items = autocompleteList.querySelectorAll('.autocomplete-item[data-location]');
+    if (!items.length) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      highlightedIndex = Math.min(highlightedIndex + 1, items.length - 1);
+      updateHighlight(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlightedIndex = Math.max(highlightedIndex - 1, 0);
+      updateHighlight(items);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && items[highlightedIndex]) {
+        selectLocation(items[highlightedIndex].dataset.location);
+      }
+    } else if (e.key === 'Escape') {
+      autocompleteList.classList.remove('open');
+      searchInput.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  function updateHighlight(items) {
+    items.forEach((item, i) => {
+      item.classList.toggle('highlighted', i === highlightedIndex);
+    });
+    if (highlightedIndex >= 0) {
+      searchInput.setAttribute('aria-activedescendant', 'ac-item-' + highlightedIndex);
+    }
+  }
+
+  autocompleteList.addEventListener('click', (e) => {
+    const item = e.target.closest('.autocomplete-item[data-location]');
+    if (item) selectLocation(item.dataset.location);
+  });
+
+  // Close autocomplete on outside click
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.map-search')) {
+      autocompleteList.classList.remove('open');
+      searchInput.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  // ── PRESET BUTTONS ──────────────────────────────────────
+  document.querySelectorAll('.map-presets button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectLocation(btn.dataset.location);
+    });
+  });
+
+  // ── SVG KABUPATEN CLICKS ────────────────────────────────
+  document.querySelectorAll('.kabupaten').forEach(path => {
+    path.addEventListener('click', () => {
+      const kab = path.dataset.kabupaten;
+      const locations = kabupatenLocations[kab];
+      if (locations && locations.length > 0) {
+        selectLocation(locations[0]);
+      } else {
+        // No demo location for this kabupaten
+        showError();
+      }
+    });
+
+    path.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        path.click();
+      }
+    });
+  });
+
+  // ── SVG LOCATION PIN CLICKS ─────────────────────────────
+  document.querySelectorAll('.location-pin').forEach(pin => {
+    pin.addEventListener('click', () => {
+      selectLocation(pin.dataset.location);
+    });
+
+    pin.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        pin.click();
+      }
+    });
+  });
+
+  // ── LEAD CAPTURE ────────────────────────────────────────
+  document.getElementById('lead-submit').addEventListener('click', () => {
+    const email = document.getElementById('lead-email').value;
+    if (email && email.includes('@')) {
+      const btn = document.getElementById('lead-submit');
+      btn.textContent = 'Sent!';
+      btn.style.background = 'var(--bz-success)';
+      setTimeout(() => {
+        btn.textContent = 'Send';
+        btn.style.background = '';
+      }, 2000);
+    }
+  });
+
+  // ── INITIAL STATE: pulse Canggu pin ─────────────────────
+  const cangguPin = document.querySelector('.location-pin[data-location="canggu"]');
+  if (cangguPin) cangguPin.classList.add('active');
+
+})();
+</script>
+</body>
+</html>

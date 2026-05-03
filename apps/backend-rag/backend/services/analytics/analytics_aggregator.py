@@ -1,0 +1,665 @@
+"""
+Analytics Aggregator Service
+Aggregates data from PostgreSQL, Qdrant, Prometheus metrics for the analytics dashboard.
+"""
+
+import logging
+import time
+from typing import Any
+
+import asyncpg
+import httpx
+import psutil
+
+logger = logging.getLogger(__name__)
+
+
+# Stats models (moved from analytics router - no longer exported there)
+class OverviewStats:
+    """Overview statistics for dashboard."""
+
+    def __init__(self) -> None:
+        self.conversations_today = 0
+        self.conversations_week = 0
+        self.users_active = 0
+        self.revenue_pipeline = 0.0
+        self.uptime_seconds = 0.0
+        self.services_total = 0
+        self.services_healthy = 0
+
+
+class RAGStats:
+    """RAG pipeline statistics."""
+
+    def __init__(self) -> None:
+        self.queries_today = 0
+        self.avg_latency_ms = 0.0
+        self.embedding_latency_ms = 0.0
+        self.search_latency_ms = 0.0
+        self.rerank_latency_ms = 0.0
+        self.llm_latency_ms = 0.0
+        self.top_queries: list[dict] = []
+        self.cache_hit_rate = 0.0
+
+
+class CRMStats:
+    """CRM statistics."""
+
+    def __init__(self) -> None:
+        self.clients_by_status: dict[str, int] = {}
+        self.clients_total = 0
+        self.clients_active = 0
+        self.practices_by_status: dict[str, int] = {}
+        self.practices_total = 0
+        self.revenue_quoted = 0.0
+        self.revenue_paid = 0.0
+        self.renewals_30_days = 0
+        self.renewals_60_days = 0
+        self.renewals_90_days = 0
+        self.documents_pending = 0
+
+
+class TeamStats:
+    """Team productivity statistics."""
+
+    def __init__(self) -> None:
+        self.hours_today = 0.0
+        self.hours_week = 0.0
+        self.conversations_by_agent: dict[str, int] = {}
+        self.active_sessions = 0
+        self.action_items_open = 0
+
+
+class SystemStats:
+    """System health statistics."""
+
+    def __init__(self) -> None:
+        self.cpu_percent = 0.0
+        self.memory_mb = 0.0
+        self.memory_percent = 0.0
+        self.db_connections_active = 0
+        self.db_connections_idle = 0
+        self.services: list[dict] = []
+
+
+class AnalyticsAggregator:
+    """
+    Aggregates analytics data from multiple sources:
+    - PostgreSQL (conversations, CRM, team data)
+    - Qdrant (vector database stats)
+    - App metrics (system health, performance)
+    """
+
+    def __init__(self, app_state: Any) -> None:
+        """
+        Initialize aggregator with app state.
+
+        Args:
+            app_state: FastAPI app.state containing service instances
+        """
+        self.app_state = app_state
+        self._boot_time = getattr(app_state, "boot_time", time.time())
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the shared async client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=10.0,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the internal async client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+        logger.info("AnalyticsAggregator HTTP client closed.")
+
+    async def _get_db_pool(self) -> Any:
+        """Get database connection pool from app state"""
+        pool = getattr(self.app_state, "db_pool", None)
+        if not pool:
+            # Try memory service
+            memory_service = getattr(self.app_state, "memory_service", None)
+            if memory_service:
+                pool = getattr(memory_service, "pool", None)
+        return pool
+
+    # =========================================================================
+    # OVERVIEW STATS
+    # =========================================================================
+
+    async def get_overview_stats(self) -> dict:
+        """Get overview statistics"""
+        stats = OverviewStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Conversations today
+                    stats.conversations_today = (
+                        await conn.fetchval(
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE",
+                        )
+                        or 0
+                    )
+
+                    # Conversations this week
+                    stats.conversations_week = (
+                        await conn.fetchval(
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'",
+                        )
+                        or 0
+                    )
+
+                    # Active users (users with activity in last 24h)
+                    stats.users_active = (
+                        await conn.fetchval(
+                            "SELECT COUNT(DISTINCT user_id) FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'",
+                        )
+                        or 0
+                    )
+
+                    # Revenue pipeline (sum of quoted prices for active practices)
+                    stats.revenue_pipeline = float(
+                        await conn.fetchval(
+                            """SELECT COALESCE(SUM(quoted_price), 0) FROM practices
+                        WHERE status NOT IN ('completed', 'cancelled')""",
+                        )
+                        or 0,
+                    )
+
+            # Uptime
+            stats.uptime_seconds = time.time() - self._boot_time
+
+            # Services health
+            health_monitor = getattr(self.app_state, "health_monitor", None)
+            if health_monitor:
+                service_states = getattr(health_monitor, "_service_states", {})
+                stats.services_total = len(service_states)
+                stats.services_healthy = sum(
+                    1 for s in service_states.values() if s.get("healthy", False)
+                )
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching overview stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching overview stats")
+
+        return stats
+
+    # =========================================================================
+    # RAG STATS
+    # =========================================================================
+
+    async def get_rag_stats(self) -> dict:
+        """Get RAG pipeline statistics"""
+        stats = RAGStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Query analytics
+                    row = await conn.fetchrow("""
+                        SELECT
+                            COUNT(*) as total,
+                            AVG(response_time_ms) as avg_latency,
+                            AVG(COALESCE((metadata->'routing_stats'->>'embedding')::float, 0)) as avg_embedding,
+                            AVG(COALESCE((metadata->'routing_stats'->>'search')::float, 0)) as avg_search,
+                            AVG(COALESCE((metadata->'routing_stats'->>'rerank')::float, 0)) as avg_rerank,
+                            AVG(COALESCE((metadata->'routing_stats'->>'llm')::float, 0)) as avg_llm
+                        FROM query_analytics
+                        WHERE created_at >= CURRENT_DATE
+                    """)
+                    if row:
+                        stats.queries_today = row["total"] or 0
+                        stats.avg_latency_ms = float(row["avg_latency"] or 0)
+
+                        # Populate granular latencies if available (convert seconds to ms if stored as seconds in orchestrator)
+                        # Orchestrator stores timings in SECONDS (time.time difference).
+                        # Dashboard expects MS. We multiply by 1000.
+                        stats.embedding_latency_ms = float(row["avg_embedding"] or 0) * 1000
+                        stats.search_latency_ms = float(row["avg_search"] or 0) * 1000
+                        stats.rerank_latency_ms = float(row["avg_rerank"] or 0) * 1000
+                        stats.llm_latency_ms = float(row["avg_llm"] or 0) * 1000
+
+                    # Top queries (last 7 days)
+                    top_queries = await conn.fetch("""
+                        SELECT query_text, COUNT(*) as count
+                        FROM query_analytics
+                        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                        GROUP BY query_text
+                        ORDER BY count DESC
+                        LIMIT 10
+                    """)
+                    stats.top_queries = [
+                        {"query": q["query_text"][:100], "count": q["count"]} for q in top_queries
+                    ]
+
+            # Get cache hit rate from Prometheus counters
+            try:
+                from backend.app.metrics import cache_hits, cache_misses
+
+                hits = cache_hits._value.get()
+                misses = cache_misses._value.get()
+                total = hits + misses
+                stats.cache_hit_rate = round(hits / total, 3) if total > 0 else 0.0
+            except (ImportError, AttributeError) as e:
+                logger.debug("Cache hit rate calculation skipped: %s", e)
+                stats.cache_hit_rate = 0.0
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching RAG stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching RAG stats")
+
+        return stats
+
+    # =========================================================================
+    # CRM STATS
+    # =========================================================================
+
+    async def get_crm_stats(self) -> dict:
+        """Get CRM statistics"""
+        stats = CRMStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Clients by status
+                    client_rows = await conn.fetch("""
+                        SELECT status, COUNT(*) as count
+                        FROM clients
+                        GROUP BY status
+                    """)
+                    stats.clients_by_status = {r["status"]: r["count"] for r in client_rows}
+                    stats.clients_total = sum(stats.clients_by_status.values())
+                    stats.clients_active = stats.clients_by_status.get("active", 0)
+
+                    # Practices by status
+                    practice_rows = await conn.fetch("""
+                        SELECT status, COUNT(*) as count
+                        FROM practices
+                        GROUP BY status
+                    """)
+                    stats.practices_by_status = {r["status"]: r["count"] for r in practice_rows}
+                    stats.practices_total = sum(stats.practices_by_status.values())
+
+                    # Revenue
+                    revenue_row = await conn.fetchrow("""
+                        SELECT
+                            COALESCE(SUM(quoted_price), 0) as quoted,
+                            COALESCE(SUM(paid_amount), 0) as paid
+                        FROM practices
+                        WHERE status NOT IN ('cancelled')
+                    """)
+                    if revenue_row:
+                        stats.revenue_quoted = float(revenue_row["quoted"])
+                        stats.revenue_paid = float(revenue_row["paid"])
+
+                    # Renewals
+                    stats.renewals_30_days = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM practices
+                        WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '30 days'
+                        AND next_renewal_date > CURRENT_DATE
+                        AND status NOT IN ('completed', 'cancelled')
+                    """)
+                        or 0
+                    )
+
+                    stats.renewals_60_days = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM practices
+                        WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '60 days'
+                        AND next_renewal_date > CURRENT_DATE + INTERVAL '30 days'
+                        AND status NOT IN ('completed', 'cancelled')
+                    """)
+                        or 0
+                    )
+
+                    stats.renewals_90_days = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM practices
+                        WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '90 days'
+                        AND next_renewal_date > CURRENT_DATE + INTERVAL '60 days'
+                        AND status NOT IN ('completed', 'cancelled')
+                    """)
+                        or 0
+                    )
+
+                    # Pending documents
+                    stats.documents_pending = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM documents
+                        WHERE status = 'pending'
+                    """)
+                        or 0
+                    )
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching CRM stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching CRM stats")
+
+        return stats
+
+    # =========================================================================
+    # TEAM STATS
+    # =========================================================================
+
+    async def get_team_stats(self) -> dict:
+        """Get team productivity statistics"""
+        stats = TeamStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Hours worked today
+                    stats.hours_today = float(
+                        await conn.fetchval("""
+                        SELECT COALESCE(SUM(duration_minutes), 0) / 60.0
+                        FROM team_work_sessions
+                        WHERE session_start >= CURRENT_DATE
+                    """)
+                        or 0,
+                    )
+
+                    # Hours worked this week
+                    stats.hours_week = float(
+                        await conn.fetchval("""
+                        SELECT COALESCE(SUM(duration_minutes), 0) / 60.0
+                        FROM team_work_sessions
+                        WHERE session_start >= CURRENT_DATE - INTERVAL '7 days'
+                    """)
+                        or 0,
+                    )
+
+                    # Conversations by agent
+                    agent_rows = await conn.fetch("""
+                        SELECT team_member, COUNT(*) as count
+                        FROM interactions
+                        WHERE interaction_date >= CURRENT_DATE - INTERVAL '7 days'
+                        AND team_member IS NOT NULL
+                        GROUP BY team_member
+                    """)
+                    stats.conversations_by_agent = {
+                        r["team_member"]: r["count"] for r in agent_rows
+                    }
+
+                    # Active sessions
+                    stats.active_sessions = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM team_work_sessions
+                        WHERE status = 'active'
+                    """)
+                        or 0
+                    )
+
+                    # Open action items
+                    stats.action_items_open = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM interactions
+                        WHERE action_items IS NOT NULL
+                        AND action_items != '[]'::jsonb
+                    """)
+                        or 0
+                    )
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching team stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching team stats")
+
+        return stats
+
+    # =========================================================================
+    # SYSTEM STATS
+    # =========================================================================
+
+    async def get_system_stats(self) -> dict:
+        """Get system health statistics"""
+        stats = SystemStats()
+
+        try:
+            # System metrics via psutil
+            stats.cpu_percent = psutil.cpu_percent(interval=0.1)
+            memory = psutil.virtual_memory()
+            stats.memory_mb = memory.used / (1024 * 1024)
+            stats.memory_percent = memory.percent
+
+            # Database connections
+            pool = await self._get_db_pool()
+            if pool:
+                stats.db_connections_active = pool.get_size() - pool.get_idle_size()
+                stats.db_connections_idle = pool.get_idle_size()
+
+            # Services health
+            services = []
+            health_monitor = getattr(self.app_state, "health_monitor", None)
+            if health_monitor:
+                service_states = getattr(health_monitor, "_service_states", {})
+                for name, state in service_states.items():
+                    services.append(
+                        {
+                            "name": name,
+                            "healthy": state.get("healthy", False),
+                            "last_check": state.get("last_check", ""),
+                            "error": state.get("error", ""),
+                        },
+                    )
+            stats.services = services
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching system stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching system stats")
+
+        return stats
+
+    # =========================================================================
+    # QDRANT STATS
+    # =========================================================================
+
+    async def get_qdrant_stats(self) -> dict:
+        """Get Qdrant vector database statistics using direct HTTP calls"""
+        from backend.app.core.config import settings
+        from backend.app.routers.analytics import QdrantStats
+
+        stats = QdrantStats()
+
+        try:
+            # Use direct HTTP calls (same approach as /health endpoint)
+            headers = {}
+            if settings.qdrant_api_key:
+                headers["api-key"] = settings.qdrant_api_key
+
+            client = self._get_client()
+            # Get all collections
+            response = await client.get(
+                f"{settings.qdrant_url}/collections",
+                headers=headers,
+            )
+            response.raise_for_status()
+            collections_data = response.json().get("result", {}).get("collections", [])
+
+            collections = []
+            total_docs = 0
+
+            for coll in collections_data:
+                coll_name = coll.get("name")
+                if coll_name:
+                    try:
+                        coll_response = await client.get(
+                            f"{settings.qdrant_url}/collections/{coll_name}",
+                            headers=headers,
+                        )
+                        coll_response.raise_for_status()
+                        coll_info = coll_response.json().get("result", {})
+                        count = coll_info.get("points_count", 0)
+                        status = coll_info.get("status", "unknown")
+                        total_docs += count
+                        collections.append(
+                            {"name": coll_name, "documents": count, "status": status},
+                        )
+                    except httpx.HTTPError as e:
+                        logger.warning("HTTP error for collection %s: %s", coll_name, e)
+                        collections.append({"name": coll_name, "documents": 0, "status": "unknown"})
+
+            stats.total_documents = total_docs
+            stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
+
+        except httpx.HTTPError as e:
+            logger.warning("HTTP error fetching Qdrant stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching Qdrant stats")
+
+        return stats
+
+    # =========================================================================
+    # FEEDBACK STATS
+    # =========================================================================
+
+    async def get_feedback_stats(self) -> dict:
+        """Get feedback and quality statistics"""
+        from backend.app.routers.analytics import FeedbackStats
+
+        stats = FeedbackStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Average rating
+                    stats.avg_rating = float(
+                        await conn.fetchval("""
+                        SELECT COALESCE(AVG(rating), 0)::numeric(3,2)
+                        FROM conversation_ratings
+                        WHERE created_at >= NOW() - INTERVAL '30 days'
+                    """)
+                        or 0,
+                    )
+
+                    # Rating distribution
+                    dist_rows = await conn.fetch("""
+                        SELECT rating, COUNT(*) as count
+                        FROM conversation_ratings
+                        WHERE created_at >= NOW() - INTERVAL '30 days'
+                        GROUP BY rating
+                    """)
+                    stats.rating_distribution = {str(r["rating"]): r["count"] for r in dist_rows}
+                    stats.total_ratings = sum(stats.rating_distribution.values())
+
+                    # Negative feedback
+                    stats.negative_feedback_count = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM conversation_ratings
+                        WHERE rating <= 2
+                        AND created_at >= NOW() - INTERVAL '30 days'
+                    """)
+                        or 0
+                    )
+
+                    # Recent negative feedback
+                    negative = await conn.fetch("""
+                        SELECT session_id, rating, feedback_text, created_at
+                        FROM conversation_ratings
+                        WHERE rating <= 2
+                        ORDER BY created_at DESC
+                        LIMIT 5
+                    """)
+                    stats.recent_negative_feedback = [
+                        {
+                            "session_id": str(r["session_id"]),
+                            "rating": r["rating"],
+                            "feedback": r["feedback_text"][:100] if r["feedback_text"] else "",
+                            "date": r["created_at"].isoformat() if r["created_at"] else "",
+                        }
+                        for r in negative
+                    ]
+
+                    # Quality trend (last 7 days)
+                    trend = await conn.fetch("""
+                        SELECT DATE(created_at) as date, AVG(rating)::numeric(3,2) as avg
+                        FROM conversation_ratings
+                        WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+                        GROUP BY DATE(created_at)
+                        ORDER BY date
+                    """)
+                    stats.quality_trend = [
+                        {"date": r["date"].isoformat(), "rating": float(r["avg"])} for r in trend
+                    ]
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching feedback stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching feedback stats")
+
+        return stats
+
+    # =========================================================================
+    # ALERT STATS
+    # =========================================================================
+
+    async def get_alert_stats(self) -> dict:
+        """Get alert and error statistics"""
+        from backend.app.routers.analytics import AlertStats
+
+        stats = AlertStats()
+
+        try:
+            pool = await self._get_db_pool()
+            if pool:
+                async with pool.acquire() as conn:
+                    # Auth failures today
+                    stats.auth_failures_today = (
+                        await conn.fetchval("""
+                        SELECT COUNT(*) FROM auth_audit_log
+                        WHERE success = false
+                        AND created_at >= CURRENT_DATE
+                    """)
+                        or 0
+                    )
+
+                    # Recent errors from audit
+                    errors = await conn.fetch("""
+                        SELECT action, email, failure_reason, created_at
+                        FROM auth_audit_log
+                        WHERE success = false
+                        ORDER BY created_at DESC
+                        LIMIT 10
+                    """)
+                    stats.recent_errors = [
+                        {
+                            "action": r["action"],
+                            "email": r["email"],
+                            "reason": r["failure_reason"],
+                            "time": r["created_at"].isoformat() if r["created_at"] else "",
+                        }
+                        for r in errors
+                    ]
+
+            # Active alerts from health monitor
+            health_monitor = getattr(self.app_state, "health_monitor", None)
+            if health_monitor:
+                active = getattr(health_monitor, "_active_alerts", [])
+                stats.active_alerts = [
+                    {
+                        "service": a.get("service"),
+                        "message": a.get("message"),
+                        "severity": a.get("severity"),
+                    }
+                    for a in active[:10]
+                ]
+
+        except (asyncpg.PostgresError, OSError) as e:
+            logger.warning("DB error fetching alert stats: %s", e)
+        except Exception as e:
+            logger.exception("Unexpected error fetching alert stats")
+
+        return stats

@@ -1,0 +1,266 @@
+version: '3.8'
+
+services:
+  # Main API Server (Optimized Image)
+  # NOTE: Includes InMemoryTaskQueue for background tasks
+  api:
+    image: bali-intel:optimized
+    container_name: bali-intel-api
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    environment:
+      - APP_ENV=production
+      - DEBUG=false
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bali_intel
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_POOL_SIZE=20
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - LOG_LEVEL=INFO
+      - METRICS_ENABLED=true
+      - SCRAPE_HEADLESS=true
+      - SCRAPE_MAX_CONCURRENT=10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bali-intel
+    volumes:
+      - ./data:/app/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '100m'
+        max-file: '3'
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bali-intel-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=bali_intel
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - '5433:5432'
+    networks:
+      - bali-intel
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: bali-intel-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6380:6379'
+    networks:
+      - bali-intel
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Prometheus Metrics
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: bali-intel-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - '9091:9090'
+    networks:
+      - bali-intel
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+
+  # Grafana Dashboards
+  grafana:
+    image: grafana/grafana:10.3.0
+    container_name: bali-intel-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - '3002:3000'
+    networks:
+      - bali-intel
+    depends_on:
+      - prometheus
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: bali-intel-redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - '9121:9121'
+    networks:
+      - bali-intel
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: bali-intel-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/bali_intel?sslmode=disable
+    ports:
+      - '9187:9187'
+    networks:
+      - bali-intel
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # Node Exporter (host metrics: CPU, RAM, disk)
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: bali-intel-node-exporter
+    restart: unless-stopped
+    ports:
+      - '9100:9100'
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - bali-intel
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # Blackbox Exporter (HTTP probes for external services)
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: bali-intel-blackbox-exporter
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - '9115:9115'
+    networks:
+      - bali-intel
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Cron Metrics Exporter (reads ~/logs/cron/*.jsonl)
+  cron-exporter:
+    build:
+      context: ../../scripts/exporters
+      dockerfile: Dockerfile
+    container_name: bali-intel-cron-exporter
+    restart: unless-stopped
+    environment:
+      - CRON_LOG_DIR=/logs/cron
+      - EXPORTER_PORT=9101
+    ports:
+      - '9101:9101'
+    volumes:
+      - ${HOME}/logs/cron:/logs/cron:ro
+    networks:
+      - bali-intel
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: bali-intel-nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - bali-intel
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  bali-intel:
+    driver: bridge

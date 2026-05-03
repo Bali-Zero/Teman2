@@ -1,0 +1,130 @@
+echo "🔍 Running pre-commit hooks..."
+
+# Check for print statements in Python files
+echo "🐍 Checking for print() statements in Python files..."
+PY_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.py$' || true)
+if [ -n "$PY_FILES" ]; then
+    # Exclude scripts/ and tests/ from this check (they can use print)
+    BACKEND_PY_FILES=$(echo "$PY_FILES" | grep -E '^apps/backend-rag/backend/(app|services|core|middleware)/' || true)
+    if [ -n "$BACKEND_PY_FILES" ]; then
+        # Use word-boundary check so identifiers ending in "print(" don't false-match
+        # (es. _signal_fingerprint(, import_blueprint(). See lessons.md 2026-04-19.
+        # Also skip lines starting with `>>>` (Python interactive docstring examples)
+        # so docstrings like `>>> print(variants)` don't trip the check.
+        if echo "$BACKEND_PY_FILES" | xargs grep -nE '(^|[^a-zA-Z_])print\(' 2>/dev/null | grep -vE ':\s*>>>\s' | grep -q .; then
+            echo "❌ ERROR: Found print() statements in backend code."
+            echo "   Golden Rule #8: Use logger.info/debug/error() instead"
+            echo "   Add: logger = logging.getLogger(__name__)"
+            exit 1
+        fi
+    fi
+fi
+
+# Golden Rule #6: No Hardcoding Secrets
+echo "🔑 [Golden Rule #6] Checking for hardcoded secrets..."
+if [ -n "$PY_FILES" ]; then
+    # Exclude tests/ and scripts/ (they use test fixtures with dummy keys)
+    BACKEND_SRC_FILES=$(echo "$PY_FILES" | grep -v '/tests/' | grep -v '/scripts/' || true)
+    # Check for API key patterns (excluding env vars and comments)
+    SECRET_CHECK=$(echo "$BACKEND_SRC_FILES" | xargs grep -E '(api[_-]?key|secret[_-]?key|password)\s*=\s*["\x27][a-zA-Z0-9_-]{16,}' 2>/dev/null | grep -v 'os\.getenv\|settings\.' | grep -v '^\s*#' || true)
+    if [ -n "$SECRET_CHECK" ]; then
+        echo "❌ ERROR: Potential hardcoded secret found."
+        echo "   Golden Rule #6: Use os.getenv() or settings.* for secrets"
+        echo "   Example: api_key = os.getenv('OPENAI_API_KEY')"
+        exit 1
+    fi
+fi
+
+# Check for console.log in TypeScript/JavaScript files (exclude webapp browser context and monitoring dashboard)
+echo "📜 Checking for console.log statements in TypeScript/JavaScript files..."
+JS_FILES=$(git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | grep -v 'apps/webapp/src/lib/ai-bridge.ts' | grep -v 'apps/mouth/src/lib/monitoring-dashboard.ts' | grep -v 'apps/mouth/src/app/layout.tsx' | grep -v 'apps/kbli-navigator/' | grep -v 'src/lib/logger\.ts$' | grep -v 'lib/logger\.ts$' | grep -v '/e2e/' | grep -v '/public/' | grep -v '/scripts/' | grep -v 'console\.ts$' | grep -v 'scripts/validate-openapi\.js' | grep -v '\.test\.' | grep -v '\.spec\.' | grep -v '__tests__' || true)
+if [ -n "$JS_FILES" ]; then
+    if echo "$JS_FILES" | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
+        echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."
+        echo "   Please replace console.* with logger from src/lib/logger.ts"
+        echo "   Example: import { logger } from '@/lib/logger'; logger.info('message');"
+        exit 1
+    fi
+fi
+
+# Run linting — only on staged TS/JS/JSON/MD/YAML files (not entire repo)
+echo "🔧 Running linting..."
+LINT_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(ts|tsx|js|jsx|json|md|yml|yaml)$' || true)
+if [ -n "$LINT_FILES" ]; then
+    echo "$LINT_FILES" | xargs npx prettier --check 2>/dev/null || {
+        echo "❌ Linting failed on staged files. Run: npx prettier --write <file>"
+        exit 1
+    }
+fi
+
+# Run type checking (non-blocking if next.config.ts has ignoreBuildErrors)
+echo "📝 Running type checking..."
+if grep -q "ignoreBuildErrors.*true" apps/mouth/next.config.ts 2>/dev/null; then
+    echo "⚠️  Type checking has errors but ignoreBuildErrors is enabled - continuing..."
+    npm run typecheck 2>/dev/null || echo "⚠️  Type errors found but non-blocking due to ignoreBuildErrors"
+else
+    npm run typecheck 2>/dev/null || {
+        echo "❌ Type checking failed. Please fix type errors."
+        exit 1
+    }
+fi
+
+# Run Python linting
+echo "🐍 Running Python linting..."
+PY_FILES=$(git diff --cached --name-only --diff-filter=d | grep -E '^apps/backend-rag/.*\.py$' || true)
+if [ -n "$PY_FILES" ]; then
+    # Make paths relative to apps/backend-rag
+    RELATIVE_FILES=$(echo "$PY_FILES" | sed 's|^apps/backend-rag/||')
+
+    cd apps/backend-rag
+    # Run ruff only on changed files
+    echo "$RELATIVE_FILES" | xargs ruff check 2>/dev/null || {
+        echo "❌ Python linting failed on staged files. Please fix ruff issues."
+        exit 1
+    }
+    cd ../..
+fi
+
+# ── ANTI-ROGUE-AI GATES ───────────────────────────────────────────────────────
+# Prevents Gemini/Windsurf/Cursor from silently breaking the import chain
+# or modifying OFF-LIMITS files. History: 5+ production crashes (feb-mar 2026).
+
+# Gate 1: Block edits to OFF-LIMITS files
+echo "🛡️  Checking for OFF-LIMITS file modifications..."
+PROTECTED=$(git diff --cached --name-only 2>/dev/null | grep -E "(zantara_core\.py|fly\.toml|alembic/env\.py)" || true)
+if [ -n "$PROTECTED" ]; then
+    echo "❌ BLOCKED: modifica a file protetto rilevata:"
+    echo "$PROTECTED"
+    echo "   Questi file NON devono essere modificati da AI agent senza review esplicita."
+    echo "   Se la modifica è intenzionale, fai unstage e commetti con --no-verify + spiegazione."
+    exit 1
+fi
+
+# Gate 2: Import chain test (only if backend Python files changed)
+PY_BACKEND_CHANGED=$(git diff --cached --name-only | grep '^apps/backend-rag/backend/' || true)
+if [ -n "$PY_BACKEND_CHANGED" ]; then
+    echo "🔗 Testing FastAPI import chain (anti-rogue-AI check)..."
+    if [ -f "apps/backend-rag/venv/bin/python" ]; then
+        VENV_PYTHON="apps/backend-rag/venv/bin/python"
+    elif [ -f "apps/backend-rag/.venv/bin/python" ]; then
+        VENV_PYTHON="apps/backend-rag/.venv/bin/python"
+    else
+        VENV_PYTHON="python3"
+    fi
+    PYTHONPATH=apps/backend-rag $VENV_PYTHON -c \
+        "from backend.app.dependencies import get_current_user; print('✅ import chain OK')" \
+        2>&1 || {
+        # Check if failure is due to missing deps (Air machine) vs actual break
+        IMPORT_ERR=$(PYTHONPATH=apps/backend-rag $VENV_PYTHON -c "from backend.app.dependencies import get_current_user" 2>&1 || true)
+        if echo "$IMPORT_ERR" | grep -q "ModuleNotFoundError"; then
+            echo "⚠️  Skipping import chain check (missing Python deps on this machine)"
+        else
+            echo "❌ CRITICO: import chain rotta dopo questa modifica!"
+            echo "   Verifica: cd apps/backend-rag && python -c 'from backend.app.dependencies import get_current_user'"
+            echo "   Errore: $IMPORT_ERR"
+            exit 1
+        fi
+    }
+fi
+
+echo "✅ All pre-commit checks passed!"

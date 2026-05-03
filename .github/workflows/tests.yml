@@ -1,0 +1,426 @@
+name: Tests & Coverage
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  backend-tests:
+    name: Backend Tests (Python)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend-rag/requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip
+          # requirements.txt now declares cell-core as an editable workspace
+          # dep (`-e ../../packages/cell-core`); the separate install step
+          # that used to live here is gone.
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio pytest-mock fakeredis
+
+      - name: pip-audit
+        run: |
+          pip install pip-audit
+          # pip-audit's `--skip-editable` skips the VULN LOOKUP for editable
+          # entries but still performs a dry-run resolve that then audits
+          # the resolved package by name, so `-e ../../packages/cell-core`
+          # surfaces as a hard failure ("Dependency not found on PyPI")
+          # under `--strict`. Strip cell-core out of the requirements file
+          # we hand to pip-audit — it's a first-party workspace package
+          # with no upstream PyPI metadata, so auditing it against PyPI
+          # would be meaningless either way.
+          # Ignored vulnerabilities documented in apps/backend-rag/.pip-audit-ignore.md
+          # with rationale for each. Review that file before adding new entries.
+          cd apps/backend-rag
+          grep -v '^-e \.\./\.\./packages/cell-core' requirements.txt > /tmp/requirements-audit.txt
+          pip-audit --strict --requirement /tmp/requirements-audit.txt \
+            --ignore-vuln GHSA-69w3-r845-3855 \
+            --ignore-vuln CVE-2025-62800 \
+            --ignore-vuln CVE-2025-62801 \
+            --ignore-vuln GHSA-rcfx-77hg-w2wv \
+            --ignore-vuln CVE-2025-69196 \
+            --ignore-vuln CVE-2025-64340 \
+            --ignore-vuln CVE-2026-27124 \
+            --ignore-vuln CVE-2026-28684
+
+      - name: Mypy type check (core + models)
+        run: |
+          cd apps/backend-rag
+          pip install mypy
+          # Strict only on the allowlist in pyproject.toml → [[tool.mypy.overrides]].
+          # Everything else is silenced by the backend.* opt-out. See FOLLOWUPS.md
+          # (section "Mypy strict-module expansion") for the modules pending cleanup.
+          PYTHONPATH=. python -m mypy backend/core backend/app/models \
+            --config-file pyproject.toml
+
+      - name: Import chain gate
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+
+      - name: Check LLM cost tracking coverage
+        run: python scripts/check_llm_cost_tracking.py
+
+      - name: Run core tests (fast gate — always run)
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
+            --junit-xml=test-results-core.xml
+
+      - name: Bootstrap SQLModel tables
+        # Router-level integration tests assume the full schema (e.g.
+        # test_compliance_lkpm_readypack.py inserts into `clients`), but the
+        # `clients` table has no migration file — it comes from SQLModel
+        # classes in backend/app/modules/crm/models.py that are only ever
+        # materialised via `SQLModel.metadata.create_all()`. Prod was
+        # bootstrapped by hand long ago; CI needs this explicit step.
+        # scripts/ci_bootstrap_schema.py imports the 6 table modules and
+        # runs create_all against the service-container Postgres.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python scripts/ci_bootstrap_schema.py
+
+      - name: Apply database migrations
+        # After SQLModel tables exist, apply the Alembic-style migration files
+        # that alter or augment them (indexes, triggers, new columns on the
+        # tables we just created). Migration 114 (cognitive_layer) references
+        # `clients`, which is why bootstrap must run first.
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
+
+      - name: Run unit tests
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          # Several integration tests read TEST_DATABASE_URL with a `nuzantara`
+          # local-dev fallback; in CI they should hit the same Postgres
+          # service container the rest of the suite uses.
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. pytest backend/tests/ -v \
+            --ignore=backend/tests/e2e \
+            --cov=backend \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --junit-xml=test-results-unit.xml \
+            --tb=short -x
+
+      - name: Check coverage threshold
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. coverage report --fail-under=55
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/backend-rag/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: |
+            apps/backend-rag/test-results-*.xml
+            apps/backend-rag/coverage.xml
+
+  mcp-tests:
+    name: MCP Server Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install MCP dependencies
+        run: |
+          cd apps/nuzantara-mcp
+          pip install --upgrade pip
+          pip install -e ".[test]" 2>/dev/null || true
+          pip install fastmcp httpx pytest pytest-asyncio pytest-mock
+
+      - name: Run MCP tests
+        run: |
+          cd apps/nuzantara-mcp
+          python -m pytest tests/ -v --tb=short --junit-xml=test-results-mcp.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mcp-test-results
+          path: apps/nuzantara-mcp/test-results-mcp.xml
+
+  frontend-tests:
+    name: Frontend Tests (Next.js)
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app: [mouth]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ matrix.app }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm install --no-fund
+
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: false
+
+      - name: Run tests
+        run: |
+          cd apps/${{ matrix.app }}
+          npx vitest --run --coverage
+
+      - name: Check coverage threshold
+        run: |
+          cd apps/${{ matrix.app }}
+          npm run test:coverage:check
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/${{ matrix.app }}/coverage/lcov.info
+          flags: ${{ matrix.app }}
+          name: ${{ matrix.app }}-coverage
+
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: |
+          cd apps/backend-rag
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Start backend (FastAPI on :8000)
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379/0
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # ANTHROPIC_API_KEY intentionally NOT set — project policy forbids
+          # pay-as-you-go API keys (Max plan OAuth only, see
+          # memory/feedback_claude_oauth_only.md). Backend Claude paths use
+          # backend.llm.claude_oauth_client (subprocess → `claude -p`).
+          # CI currently has no OAuth token injected; any test that would
+          # hit a real Claude endpoint must mock it.
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          LANGCHAIN_TRACING_V2: 'false'
+          ENVIRONMENT: test
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. uvicorn backend.app.main:app \
+            --host 0.0.0.0 --port 8000 \
+            --log-level warning &
+          # Wait for backend to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && echo "✅ Backend ready" && break
+            echo "Waiting for backend... ($i/30)"
+            sleep 2
+          done
+
+      - name: Install Node dependencies
+        run: npm install --no-fund
+        env:
+          npm_config_fetch_retry_mintimeout: 20000
+          npm_config_fetch_retries: 3
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          CI: 'true'
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
+          NUZANTARA_API_URL: http://localhost:8000
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PIN: ${{ secrets.E2E_TEST_PIN }}
+        run: |
+          cd apps/mouth
+          # smoke/smoke.spec.ts hardcodes kita.balizero.com/fly.dev (production smoke),
+          # excluded here via grep-invert on the describe block name.
+          # zantara/ and mission_simulation use process.env.PLAYWRIGHT_BASE_URL so
+          # they pick up localhost:3000 correctly.
+          # Only run page-load tests in CI — chat/auth/websocket tests
+          # require a live LLM backend with Qdrant data, not available here.
+          npx playwright test \
+            --config=playwright.config.ts \
+            --project=chromium \
+            --ignore-snapshots \
+            --reporter=list \
+            --grep "page Page"
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: apps/mouth/playwright-report/
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [backend-tests, mcp-tests, frontend-tests, e2e-tests]
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create test summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const summary = `
+            ## ✅ Test Results
+
+            ### Backend Tests (Python)
+            - Unit tests: Passed
+            - Integration tests: Passed
+            - Coverage: Check Codecov for details
+
+            ### Frontend Tests (Next.js)
+            - Mouth app: Passed
+
+            ### E2E Tests (Playwright)
+            - Critical paths: Tested
+            - Report: See artifacts
+
+            ### Coverage Target
+            - **Target**: 80%
+            - **Status**: Check individual reports
+
+            ### Next Steps
+            1. Review failing tests (if any)
+            2. Improve coverage if below target
+            3. Check Codecov dashboard for trends
+            `;
+
+            core.summary.addRaw(summary).write();

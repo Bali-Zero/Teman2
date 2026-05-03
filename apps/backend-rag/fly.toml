@@ -1,0 +1,90 @@
+# fly.toml app configuration file generated for nuzantara-rag on 2025-11-22T18:00:25+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'nuzantara-rag'
+primary_region = 'sin'
+
+[build]
+  dockerfile = 'Dockerfile'
+  build_target = ''
+
+[deploy]
+  strategy = 'rolling'
+  release_command = "sh -c 'python -m backend.db.migrate apply-all'"
+  # RE-ENABLED 2026-04-06: migration_manager hardened with advisory lock + orphan tolerance
+  # Previously disabled for omnichannel deploy bug (commit 1253542d4) — root cause: orphan migration files
+  # Safety: migrations_v2/ currently empty, advisory lock prevents concurrent runs during rolling deploy
+
+[processes]
+  # --timeout-worker-healthcheck 600: presidio/torch/transformers import chain
+  # takes ~7min on shared-cpu-1x (1 vCPU); default 5s was killing workers during
+  # import (2026-04-12 incident). Also see grace_period below.
+  api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2 --timeout-worker-healthcheck 600"
+  rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1 --timeout-worker-healthcheck 600"
+
+[env]
+  ENVIRONMENT = 'production'
+  EMBEDDING_PROVIDER = 'openai'
+  LOG_LEVEL = 'INFO'
+  PORT = '8080'
+  # QDRANT_URL set via fly secrets (Qdrant Cloud)
+  PYTHONUNBUFFERED = '1'
+  RAG_WORKER_URL = 'http://rag.process.nuzantara-rag.internal:8080'
+  ZANTARA_ALLOWED_ORIGINS = 'https://balizero.com,https://www.balizero.com,https://kita.balizero.com,https://www.kita.balizero.com,https://mail.balizero.com,https://calendar.balizero.com,https://drive.balizero.com,https://knowledge.balizero.com,https://nuzantara-mouth.vercel.app'
+  # SQLite persistence paths (mounted volume /data on api process, PR #75)
+  EXPERIENCE_DB_PATH = '/data/experience.db'
+  METABOLIC_DB_PATH = '/data/organism_metrics.db'
+
+[[mounts]]
+  source = 'nuzantara_rag_data'
+  destination = '/data'
+  processes = ['rag']
+
+[[mounts]]
+  source = 'nuzantara_api_data'
+  destination = '/data'
+  processes = ['api']
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  kill_timeout = 60
+  processes = ['api']
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '10s'
+    # grace_period 600s: matches --timeout-worker-healthcheck above; cold-start
+    # import on shared-cpu-1x takes ~7min due to presidio/torch chain (see
+    # [processes] comment). Smaller values cause Fly to mark the machine
+    # unhealthy mid-import (2026-04-12 incident).
+    grace_period = '600s'
+    method = 'GET'
+    path = '/health/ready'
+
+[[services]]
+  internal_port = 8080
+  protocol = 'tcp'
+  processes = ['rag']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  processes = ['api']
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 2
+  processes = ['rag']

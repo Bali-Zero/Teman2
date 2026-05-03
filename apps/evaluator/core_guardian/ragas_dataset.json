@@ -1,0 +1,506 @@
+{
+  "version": "1.0",
+  "description": "100 Q&A pairs for RAGAS evaluation of Nuzantara RAG system",
+  "pairs": [
+    {
+      "domain": "kbli",
+      "question": "Apa kode KBLI untuk restoran?",
+      "ground_truth": "KBLI 56101 - Restoran"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apakah bisnis hotel bisa PMA?",
+      "ground_truth": "Ya, KBLI 55111 terbuka untuk PMA"
+    },
+    {
+      "domain": "kbli",
+      "question": "Kode KBLI untuk konsultan IT?",
+      "ground_truth": "KBLI 62011 - Aktivitas Pemrograman Komputer"
+    },
+    {
+      "domain": "kbli",
+      "question": "Kategori risiko untuk toko retail?",
+      "ground_truth": "Risiko rendah untuk perdagangan eceran umum"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apa beda KBLI 2020 dan 2025?",
+      "ground_truth": "KBLI 2025 memperbarui klasifikasi dengan sektor digital baru"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk villa rental di Bali?",
+      "ground_truth": "KBLI 55120 - Penyediaan Akomodasi Jangka Pendek"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apakah KBLI 46100 terbuka untuk asing?",
+      "ground_truth": "Tergantung sub-klasifikasi dan Daftar Positif Investasi"
+    },
+    {
+      "domain": "kbli",
+      "question": "Berapa skala usaha untuk KBLI perdagangan besar?",
+      "ground_truth": "Skala usaha mikro sampai besar tergantung omzet"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk sekolah bahasa?",
+      "ground_truth": "KBLI 85493 - Pendidikan Kursus Bahasa"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apa KBLI untuk digital marketing agency?",
+      "ground_truth": "KBLI 73100 - Periklanan"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk spa dan wellness?",
+      "ground_truth": "KBLI 96122 - Aktivitas Spa"
+    },
+    {
+      "domain": "kbli",
+      "question": "Berapa kode KBLI yang ada di database?",
+      "ground_truth": "Lebih dari 1500 kode KBLI"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk ekspor kerajinan tangan?",
+      "ground_truth": "KBLI 46900 - Perdagangan Besar Berbagai Macam Barang"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apakah usaha laundry perlu NIB?",
+      "ground_truth": "Ya, semua usaha memerlukan NIB melalui OSS"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk perusahaan konstruksi?",
+      "ground_truth": "KBLI 41011 - Konstruksi Gedung Tempat Tinggal"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apa KBLI untuk jasa fotografi?",
+      "ground_truth": "KBLI 74201 - Aktivitas Fotografi"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI yoga studio di Bali?",
+      "ground_truth": "KBLI 93111 - Pengelolaan Fasilitas Olahraga"
+    },
+    {
+      "domain": "kbli",
+      "question": "Apakah KBLI 10710 terbuka untuk PMA?",
+      "ground_truth": "KBLI 10710 Roti dan Kue terbuka untuk PMA"
+    },
+    {
+      "domain": "kbli",
+      "question": "KBLI untuk aplikasi mobile development?",
+      "ground_truth": "KBLI 62011 - Aktivitas Pemrograman Komputer"
+    },
+    {
+      "domain": "kbli",
+      "question": "Sektor apa yang paling banyak KBLI?",
+      "ground_truth": "Sektor perdagangan dan manufaktur"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa persyaratan KITAS investor?",
+      "ground_truth": "Investasi minimal, RPTKA, sponsor perusahaan PMA"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa lama proses KITAP?",
+      "ground_truth": "KITAP 5 tahun setelah KITAS berturut-turut"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa itu visa B211A?",
+      "ground_truth": "Visa kunjungan single entry untuk berbagai tujuan"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa biaya perpanjangan KITAS?",
+      "ground_truth": "Tergantung jenis KITAS dan sponsor"
+    },
+    {
+      "domain": "visa",
+      "question": "Apakah digital nomad bisa dapat KITAS?",
+      "ground_truth": "Ada visa Second Home atau B211A untuk remote worker"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa beda KITAS dan KITAP?",
+      "ground_truth": "KITAS izin tinggal terbatas 1-2 tahun, KITAP tetap 5 tahun"
+    },
+    {
+      "domain": "visa",
+      "question": "Visa apa untuk menikah dengan WNI?",
+      "ground_truth": "KITAS pasangan WNI melalui sponsor suami/istri"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa lama visa on arrival Indonesia?",
+      "ground_truth": "30 hari, bisa diperpanjang 1x 30 hari"
+    },
+    {
+      "domain": "visa",
+      "question": "Apakah perlu RPTKA untuk KITAS kerja?",
+      "ground_truth": "Ya, RPTKA wajib untuk izin kerja asing"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa persyaratan visa pensiun Indonesia?",
+      "ground_truth": "Usia 55+, bukti pensiun/asuransi, surat sponsor"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa lama proses visa investor?",
+      "ground_truth": "Sekitar 2-4 minggu tergantung kelengkapan dokumen"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa itu IMTA?",
+      "ground_truth": "Izin Mempekerjakan Tenaga Kerja Asing"
+    },
+    {
+      "domain": "visa",
+      "question": "Dokumen apa saja untuk KITAS kerja?",
+      "ground_truth": "Paspor, foto, RPTKA, sponsor company, CV, ijazah"
+    },
+    {
+      "domain": "visa",
+      "question": "Apakah KITAS bisa kerja di perusahaan lain?",
+      "ground_truth": "Tidak, KITAS terikat dengan sponsor perusahaan tertentu"
+    },
+    {
+      "domain": "visa",
+      "question": "Visa apa untuk buka usaha di Bali?",
+      "ground_truth": "KITAS investor melalui PT PMA"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa minimum investasi untuk visa investor?",
+      "ground_truth": "Rp 10 miliar atau sesuai ketentuan BKPM"
+    },
+    {
+      "domain": "visa",
+      "question": "Apakah visa pelajar bisa kerja paruh waktu?",
+      "ground_truth": "Tidak, visa pelajar hanya untuk studi"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa itu exit permit only?",
+      "ground_truth": "EPO adalah izin keluar tanpa kembali, KITAS dibatalkan"
+    },
+    {
+      "domain": "visa",
+      "question": "Berapa lama visa sosial budaya?",
+      "ground_truth": "60 hari, dapat diperpanjang hingga 180 hari"
+    },
+    {
+      "domain": "visa",
+      "question": "Apa persyaratan Second Home Visa?",
+      "ground_truth": "Bukti dana minimal, asuransi kesehatan, tidak bekerja di Indonesia"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu PT PMA?",
+      "ground_truth": "Perseroan Terbatas Penanaman Modal Asing, perusahaan dengan investasi asing"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa modal minimum PT PMA?",
+      "ground_truth": "Rp 10 miliar modal dasar, Rp 2.5 miliar disetor"
+    },
+    {
+      "domain": "company",
+      "question": "Apa beda CV dan PT?",
+      "ground_truth": "CV persekutuan komanditer tanpa badan hukum, PT berbadan hukum"
+    },
+    {
+      "domain": "company",
+      "question": "Apakah WNA bisa punya CV?",
+      "ground_truth": "Tidak, WNA harus melalui PT PMA"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa lama proses pendirian PT PMA?",
+      "ground_truth": "Sekitar 4-8 minggu dengan kelengkapan dokumen"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu OSS RBA?",
+      "ground_truth": "Online Single Submission Risk Based Approach untuk perizinan usaha"
+    },
+    {
+      "domain": "company",
+      "question": "Dokumen apa untuk pendirian PT?",
+      "ground_truth": "KTP pendiri, NPWP, domisili, anggaran dasar"
+    },
+    {
+      "domain": "company",
+      "question": "Apakah perlu kantor fisik untuk PT PMA?",
+      "ground_truth": "Ya, perlu domisili perusahaan yang sah"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa jumlah minimal pemegang saham PT?",
+      "ground_truth": "Minimal 2 pemegang saham"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu akta pendirian?",
+      "ground_truth": "Dokumen notaris yang mencatat pendirian perusahaan"
+    },
+    {
+      "domain": "company",
+      "question": "Bagaimana mengubah KBLI di OSS?",
+      "ground_truth": "Melalui perubahan NIB di sistem OSS"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu UD?",
+      "ground_truth": "Usaha Dagang, bentuk usaha perseorangan"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa biaya notaris untuk PT PMA?",
+      "ground_truth": "Bervariasi tergantung notaris dan kompleksitas"
+    },
+    {
+      "domain": "company",
+      "question": "Apakah PT PMA bisa 100% saham asing?",
+      "ground_truth": "Tergantung bidang usaha, ada yang wajib kemitraan domestik"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu SK Kemenkumham?",
+      "ground_truth": "Surat Keputusan pengesahan badan hukum dari Kemenkumham"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa minimum direksi PT PMA?",
+      "ground_truth": "Minimal 1 direktur dan 1 komisaris"
+    },
+    {
+      "domain": "company",
+      "question": "Apakah nominee arrangement legal?",
+      "ground_truth": "Nominee arrangement ilegal menurut hukum Indonesia"
+    },
+    {
+      "domain": "company",
+      "question": "Apa TDP itu?",
+      "ground_truth": "Tanda Daftar Perusahaan, sekarang digantikan NIB"
+    },
+    {
+      "domain": "company",
+      "question": "Berapa pajak perusahaan PT?",
+      "ground_truth": "PPh Badan 22% dari penghasilan kena pajak"
+    },
+    {
+      "domain": "company",
+      "question": "Apa itu SIUP?",
+      "ground_truth": "Surat Izin Usaha Perdagangan, sekarang melalui OSS"
+    },
+    {
+      "domain": "tax",
+      "question": "Berapa tarif PPh 21 karyawan?",
+      "ground_truth": "Progresif: 5%-35% sesuai penghasilan kena pajak"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu BPJS Ketenagakerjaan?",
+      "ground_truth": "Jaminan sosial tenaga kerja mencakup JKK, JKM, JHT, JP"
+    },
+    {
+      "domain": "tax",
+      "question": "Berapa iuran BPJS Kesehatan?",
+      "ground_truth": "5% dari gaji, 4% dibayar pemberi kerja, 1% pekerja"
+    },
+    {
+      "domain": "tax",
+      "question": "Kapan deadline pelaporan SPT tahunan?",
+      "ground_truth": "31 Maret untuk orang pribadi, 30 April untuk badan"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu THR?",
+      "ground_truth": "Tunjangan Hari Raya, wajib dibayar minimal 1 bulan gaji"
+    },
+    {
+      "domain": "tax",
+      "question": "Berapa PTKP terbaru?",
+      "ground_truth": "Rp 54 juta per tahun untuk wajib pajak pribadi"
+    },
+    {
+      "domain": "tax",
+      "question": "Apakah WNA perlu NPWP?",
+      "ground_truth": "Ya, jika memiliki penghasilan di Indonesia"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu PPN?",
+      "ground_truth": "Pajak Pertambahan Nilai, tarif 11%"
+    },
+    {
+      "domain": "tax",
+      "question": "Bagaimana menghitung PPh 21 karyawan asing?",
+      "ground_truth": "Sesuai status SPDN/SPLN dan tarif progresif"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu faktur pajak?",
+      "ground_truth": "Bukti pungutan PPN yang dibuat PKP"
+    },
+    {
+      "domain": "tax",
+      "question": "Berapa tarif PPh final UMKM?",
+      "ground_truth": "0.5% dari omzet bruto untuk omzet di bawah Rp 4.8 miliar"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu withholding tax?",
+      "ground_truth": "Pajak yang dipotong pihak pembayar atas pembayaran tertentu"
+    },
+    {
+      "domain": "tax",
+      "question": "Kapan harus bayar BPJS TK?",
+      "ground_truth": "Setiap bulan, paling lambat tanggal 15"
+    },
+    {
+      "domain": "tax",
+      "question": "Berapa denda telat lapor SPT?",
+      "ground_truth": "Rp 100.000 untuk orang pribadi, Rp 1.000.000 untuk badan"
+    },
+    {
+      "domain": "tax",
+      "question": "Apa itu e-Billing pajak?",
+      "ground_truth": "Sistem pembayaran pajak elektronik melalui DJP Online"
+    },
+    {
+      "domain": "property",
+      "question": "Apakah WNA bisa beli properti di Bali?",
+      "ground_truth": "WNA bisa Hak Pakai, tidak bisa Hak Milik (SHM)"
+    },
+    {
+      "domain": "property",
+      "question": "Apa itu SHM?",
+      "ground_truth": "Sertifikat Hak Milik, hak terkuat atas tanah di Indonesia"
+    },
+    {
+      "domain": "property",
+      "question": "Berapa lama Hak Pakai untuk WNA?",
+      "ground_truth": "30 tahun, dapat diperpanjang 20+20 tahun"
+    },
+    {
+      "domain": "property",
+      "question": "Apa itu HGB?",
+      "ground_truth": "Hak Guna Bangunan, hak mendirikan bangunan di atas tanah"
+    },
+    {
+      "domain": "property",
+      "question": "Apakah perlu IMB untuk renovasi?",
+      "ground_truth": "Ya, perlu PBG (pengganti IMB) untuk renovasi signifikan"
+    },
+    {
+      "domain": "property",
+      "question": "Apa zonasi di Bali?",
+      "ground_truth": "Pembagian wilayah berdasarkan peruntukan: wisata, pertanian, permukiman"
+    },
+    {
+      "domain": "property",
+      "question": "Berapa pajak beli properti di Bali?",
+      "ground_truth": "BPHTB 5% dari NJOP dikurangi NPOPTKP"
+    },
+    {
+      "domain": "property",
+      "question": "Apa itu PPJB?",
+      "ground_truth": "Perjanjian Pengikatan Jual Beli, pra-AJB"
+    },
+    {
+      "domain": "property",
+      "question": "Apakah PT PMA bisa punya tanah?",
+      "ground_truth": "PT PMA bisa HGB atau Hak Pakai, tidak SHM"
+    },
+    {
+      "domain": "property",
+      "question": "Apa itu AJB?",
+      "ground_truth": "Akta Jual Beli, dokumen resmi transfer hak properti"
+    },
+    {
+      "domain": "property",
+      "question": "Berapa biaya notaris jual beli properti?",
+      "ground_truth": "Sekitar 1-2.5% dari nilai transaksi"
+    },
+    {
+      "domain": "property",
+      "question": "Apa risiko nominee property?",
+      "ground_truth": "Ilegal, bisa dibatalkan pengadilan, kehilangan investasi"
+    },
+    {
+      "domain": "property",
+      "question": "Berapa PBB di Bali?",
+      "ground_truth": "0.1-0.3% dari NJOP tergantung kabupaten"
+    },
+    {
+      "domain": "property",
+      "question": "Apa itu SHGB?",
+      "ground_truth": "Sertifikat Hak Guna Bangunan, 30 tahun dapat diperpanjang"
+    },
+    {
+      "domain": "property",
+      "question": "Apakah perlu cek zonasi sebelum beli tanah?",
+      "ground_truth": "Ya, wajib cek RDTR/RTRW untuk peruntukan lahan"
+    },
+    {
+      "domain": "general",
+      "question": "Apa layanan Bali Zero?",
+      "ground_truth": "Jasa pendirian perusahaan, visa, pajak, properti di Bali"
+    },
+    {
+      "domain": "general",
+      "question": "Di mana kantor Bali Zero?",
+      "ground_truth": "Bali, Indonesia"
+    },
+    {
+      "domain": "general",
+      "question": "Siapa Zantara?",
+      "ground_truth": "Asisten AI Bali Zero untuk layanan bisnis Indonesia"
+    },
+    {
+      "domain": "general",
+      "question": "Bahasa apa yang didukung Zantara?",
+      "ground_truth": "Indonesia, Inggris, Italia, dan bahasa lainnya"
+    },
+    {
+      "domain": "general",
+      "question": "Bagaimana menghubungi Bali Zero?",
+      "ground_truth": "Melalui website, WhatsApp, atau Telegram"
+    },
+    {
+      "domain": "general",
+      "question": "Apakah Bali Zero bisa bantu pendirian perusahaan?",
+      "ground_truth": "Ya, layanan pendirian PT PMA dan badan usaha lainnya"
+    },
+    {
+      "domain": "general",
+      "question": "Berapa lama biasanya proses visa melalui Bali Zero?",
+      "ground_truth": "Tergantung jenis visa, biasanya 2-8 minggu"
+    },
+    {
+      "domain": "general",
+      "question": "Apakah ada konsultasi gratis?",
+      "ground_truth": "Silakan hubungi tim untuk informasi konsultasi"
+    },
+    {
+      "domain": "general",
+      "question": "Apa yang dimaksud dengan workspace di Bali Zero?",
+      "ground_truth": "Platform online untuk mengelola dokumen dan layanan"
+    },
+    {
+      "domain": "general",
+      "question": "Apakah Bali Zero melayani seluruh Indonesia?",
+      "ground_truth": "Fokus di Bali dengan layanan yang mencakup Indonesia"
+    }
+  ]
+}

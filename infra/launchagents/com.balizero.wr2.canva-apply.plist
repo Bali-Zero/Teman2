@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.wr2.canva-apply</string>
+	<key>Program</key>
+	<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+		<string>scripts/wr2_canva_desktop_apply.py</string>
+	</array>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wr2_canva_apply.launchd.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wr2_canva_apply.launchd.out.log</string>
+</dict>
+</plist>

@@ -1,0 +1,24 @@
+name: Root Guard
+
+on:
+  pull_request:
+    # Run on every PR — the check is fast (~0.2s) and catches root-pollution
+    # attempts that slip past pre-commit (e.g. someone commits with --no-verify).
+  push:
+    branches: [main]
+
+jobs:
+  root-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check repo root against whitelist
+        run: python scripts/root_guard.py --check

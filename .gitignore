@@ -1,0 +1,620 @@
+# ========================================
+# NUZANTARA PRIME - ROOT .GITIGNORE
+# ========================================
+
+# IDE Files
+.cursor/
+.idea/
+
+# Lighthouse CI local reports
+.lighthouseci/
+
+# MCP config (contains API keys)
+.mcp.json
+
+# VSCode (allow settings.json for team, exclude personal files)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Python
+__pycache__/
+*.py[cod]
+uv.lock
+.venv/
+**/.venv/
+# apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
+# apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
+# that tests import at collection time — CI needs them in the repo.
+# Ignore everything under data/ EXCEPT evaluation/, which we carve out.
+apps/backend-rag/data/*
+!apps/backend-rag/data/evaluation/
+# Prevent recursive apps structure
+apps/backend-rag/apps/
+check_ingest.py
+run_ingest.py
+# scripts/*.py  <-- REMOVED BLANKET IGNORE to allow tracking useful root scripts
+scripts/smoke_test_quick.py
+scripts/verify_json.py
+test_playwright.py
+test_playwright.pylass
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+test-results/
+test_results/
+testsprite_tests/tmp/
+
+# Next.js / Frontend
+.next/
+out/
+build/
+dist/
+.vercel/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Reports
+reports/
+*.md.report
+*.json.report
+sentinel-results/
+deep-analysis-results/
+
+# Environment (never commit real secrets)
+.env*
+!.env.example
+!.env.sample
+!.env.template
+!.env.test
+.envrc
+
+# IDE (duplicate section cleaned — primary block is at top)
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets & keys (never commit)
+*.pem
+*.key
+*.p12
+*.pfx
+*.der
+*.crt
+*.cer
+*.jwk
+*credentials*.json
+!*credentials*.example.json
+google_credentials.json
+
+# AI/dev tooling (local state)
+.cursor/
+.libs/
+**/.claude/settings.local.json
+**/.claude/locks/
+**/.claude/handovers/
+
+# Security scanners (local output)
+.scannerwork/
+
+# Service account keys (CRITICAL: never commit)
+service-account-key.json
+*service-account-key*.json
+*service_account_key*.json
+
+# Local secrets directory (keep only docs)
+.secrets/*
+!.secrets/README.md
+
+# Root-local env and secret files
+.env.combined
+service-account.json
+google-credentials.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+nuzantara.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+.AppleDouble
+
+# Data & Artifacts
+data/temp/
+data/*.json
+data/*.log
+data/qdrant_production_snapshots/
+data/flyio-export-*/
+data/kg_production_export/
+data/hgt_coordinator/
+benchmark_results/
+carousel-bali-traffic/output/
+carousel-bali-traffic/images/
+
+# Large/local datasets (keep out of git)
+nuzantara_laws/apps/scraper/data/raw_laws_local/Unified_Knowledge_Base/
+
+# Node
+node_modules/
+.pnpm-store/
+.pnpm-debug.log
+
+# Docker
+# Misc
+*.tar.gz
+*.zip
+*.rar
+conv/generated/
+
+# CodeQL & Security Scans
+codeql-db/
+codeql-results/
+*.sarif
+
+# Model files (large)
+*.gguf
+*.safetensors
+*.bin
+/models/
+ZANTARA_JAKSEL/models/
+
+# Generated documentation
+docs/*.log
+docs/*.json
+docs/generated/
+
+# Image files - ignore globally to avoid AI context pollution
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.JPG
+*.JPEG
+*.PNG
+*.GIF
+*.WEBP
+*.HEIC
+
+# BUT allow images in frontend public folder (needed for website)
+!apps/mouth/public/**/*.jpg
+!apps/mouth/public/**/*.jpeg
+!apps/mouth/public/**/*.png
+!apps/mouth/public/**/*.gif
+!apps/mouth/public/**/*.webp
+
+coverage.json
+# Auto-generated Playwright extensions
+.playwright-mcp/
+apps/mouth/coverage/
+lint_*.txt
+
+# ========================================
+# LOCAL DEVELOPMENT & TEMP FILES
+# ========================================
+
+# Cursor IDE
+.cursorignore
+
+# Root-local artifacts and session output
+.CLAUDE.md.swp
+.next/
+.vercel/
+.playwright-mcp/
+snapshots/
+test_results/
+venv/
+__pycache__/
+.ruff_cache/
+"Client Portal Login UPGRADED"/
+prime-*.png
+prime_*.png
+
+# Backup directories
+backups/
+
+# Deployment logs and scripts (local only)
+deployment_logs.txt
+verification_logs_final.txt
+verify_logs.txt
+DEPLOYMENT.md
+QUICK_DEPLOY.md
+EMERGENCY-CLEANUP.sh
+deploy.sh
+nuzantara_full_context.txt
+
+# Intel scraper temp data
+apps/bali-intel-scraper/data/pending_articles/
+apps/bali-intel-scraper/data/previews/
+apps/bali-intel-scraper/data/images/image_context_*.json
+apps/bali-intel-scraper/scripts/data/
+
+# Session docs (local development)
+docs/sessions/
+
+# Railway migration leftovers
+railway_ignore/
+env.production
+.vercel
+.env*.local
+
+# ========================================
+# SECURITY FIXES (2026-01-11)
+# ========================================
+scripts/data/nuzantara_key.json
+scripts/data/sa_nuzantara.json
+scripts/data/temp_creds.json
+scripts/data/*_key.json
+scripts/data/*_creds.json
+
+test_github_token.py
+apps/mouth/SESSION_2026_01_19_SUMMARY.md
+apps/mouth/QUICK_ARTICLE_PUBLISHING.md
+apps/backend-rag/backend/db/migrations_legacy_archive/044_google_drive_oauth_tokens.sql
+
+# OAuth tokens (secrets)
+apps/backend-rag/oauth_tokens.json
+apps/backend-rag/scripts/generate_oauth_token.py
+apps/backend-rag/scripts/setup_oauth_token.py
+OVERLORD_LOG.md
+data/exports/legal_unified_hybrid_*.json
+
+# ========================================
+# OPENCLAW / AI WORKSPACE FILES
+# ========================================
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+.clawhub/
+.geminiignore
+GEMINI.md
+WORKSPACE.md
+
+# ClawHub installed skills (managed by clawhub CLI, not source-controlled)
+skills/deepwiki/
+skills/gog/
+skills/gogcli/
+skills/google-calendar/
+skills/google-workspace-mcp/
+skills/perplexity-deep-search/
+skills/senior-devops/
+skills/skillvet/
+skills/tdd-guide/
+skills/test-runner/
+
+# Generated markdown docs (one-off reports, not project docs)
+BRIEF_KB_ARCHITECTURE_REASONING.md
+CHANGELOG.md
+LOGGER_REMOTE_COMPLETE.txt
+SENTRY_AND_LOGGER_COMPLETE.md
+SENTRY_DEPLOYMENT_SUCCESS.txt
+SUPER_KNOWLEDGE_GRAPH_STRATEGY.md
+VERCEL_*.md
+WINDSURF_PHASE2_PATCH.md
+WORKSPACE_CLEANUP_COMPLETE.md
+
+# Frontend generated docs
+apps/mouth/OPTIMIZATION_GUIDE.md
+apps/mouth/docs/DOCUMENTS_OPTIMIZATION.md
+apps/mouth/docs/PORTAL_HOOKS.md
+
+# KBLI backup JSONs (large, only track the canonical file)
+source_documents/KBLI_2025_FINAL_CLEAN.backup_*.json
+
+# ========================================
+# UTILITY SCRIPTS (one-off, not tracked)
+# ========================================
+apps/backend-rag/backend/scripts/add_*.py
+apps/backend-rag/backend/scripts/create_portal_*.py
+apps/backend-rag/backend/scripts/create_portal_*.sh
+apps/backend-rag/backend/scripts/check_portal_*.py
+apps/backend-rag/backend/scripts/update_portal_*.sql
+apps/backend-rag/backend/scripts/kg_query.py
+apps/backend-rag/backend/scripts/search_client.py
+
+# Temp upload folders
+.tmp.driveupload/
+
+# Lock files (use package-lock.json instead)
+pnpm-lock.yaml
+
+# Gemini CLI project config (local only)
+.gemini/
+
+# Syncthing artifacts
+*.sync-conflict-*
+.stfolder
+.stignore
+.stversions/
+
+# GIS/scraping one-off scripts (not part of project)
+mission_*.py
+scan_geonode*.json
+scan_rosetta.json
+scan_interactive.json
+heist_catalog.json
+
+# Misc root artifacts
+AI_CONFIG_DEPLOYMENT_LOG.md
+npm
+*.png.sync-conflict-*
+apps/backend-rag/MagicMock/
+apps/backend-rag/scripts/zantara_expert_test.py
+.antigravity/
+.launchd-test
+.sync-test
+.syncthing-restart-test
+
+# Test/QA reports (local only)
+PRODUCTION_LIVE_TEST_REPORT_*.md
+WEBAPP_COMMUNICATION_TEST_REPORT_*.md
+ZANTARA_RESPONSE_QUALITY_ISSUES_*.md
+
+# Homunculus AI workspace
+.homunculus/
+
+# One-off verification scripts
+verify_homepage.mjs
+apps/backend-rag/.venv/
+
+# KBLI temporary files and utilities
+apps/backend-rag/backend/app/routers/*.before-claude
+harvested_zones/
+main.py
+!apps/cell/cell/main.py
+master_building_codes_complete.json
+service_roi_calculator.py
+service_zone_finder.py
+
+# API keys
+sk-*
+
+
+# Temporary files
+codebase_parts/
+openclaw
+
+.aider*
+.claude/
+.serena/
+OPENCLAW_MASTER_GUIDE_2026.md
+
+# ========================================
+# CLEANUP 2026-03-07
+# ========================================
+
+# Scraper temp data & chrome profile
+apps/bali-intel-scraper/data/.chrome-profile/
+apps/bali-intel-scraper/data/intel_output_latest.json
+apps/bali-intel-scraper/data/pipeline/
+apps/bali-intel-scraper/data/enriched/
+apps/bali-intel-scraper/data/review_*.txt
+
+# Dead scraper Dockerfiles (removed)
+apps/bali-intel-scraper/Dockerfile.fetcher
+apps/bali-intel-scraper/Dockerfile.optimized
+
+# Client dossiers (one-off, local only)
+DOSSIER_*.md
+
+# CRM utility script outputs (data in Fly.io DB)
+scripts/*_report.json
+scripts/*_log.json
+
+# Fly.io staging config (local only)
+apps/backend-rag/fly.staging.toml
+
+# CRM utility scripts (local one-off operations, not part of product)
+scripts/clients_cleanup.py
+scripts/company_crm_extract.py
+scripts/drive_reorganize.py
+scripts/gap1_dedup_individual_crm.py
+scripts/gap2_link_drive_to_crm.py
+scripts/gap3_populate_portal_data.py
+scripts/import_companies_from_report.py
+scripts/ocr_batch_pipeline.py
+scripts/populate_client_company_links.py
+scripts/reextract_companies.py
+scripts/drive_reorganize_report.json
+
+# Translate script (runs via LaunchAgent, not part of main pipeline)
+apps/bali-intel-scraper/scripts/translate_articles.py
+ai-dispatch-output/
+.ai-dispatch-cache/
+.superpowers/
+
+# ========================================
+# CLEANUP 2026-03-24
+# ========================================
+
+# Local utility scripts (not part of product)
+list_httpx.sh
+start_air_agents.sh
+
+# External repos accidentally in workspace
+My-Portfolio/
+
+# Competitor/research data (generated, not source)
+competitor_*.csv
+competitor_*.jsonl
+competitor_*.txt
+expat_urls.csv
+biznews_urls.csv
+*.pptx
+compliance_report_*.pdf
+
+# OpenCode / alternative AI tools
+.opencode/
+opencode.json
+
+# n8n workflows (local automation, not tracked)
+n8n-workflows/
+
+# Scraper scraped data (regenerated by cron)
+apps/bali-intel-scraper/data/scraped/
+
+# Venv (both naming conventions)
+venv/
+.venv/
+.worktrees/
+apps/backend-rag/venv/
+
+# ========================================
+# CLEANUP 2026-03-28 — Untracked binaries, state, generated
+# ========================================
+
+# Large PDFs — serve from Google Drive / Vercel Blob, not git
+apps/mouth/public/blueprints/*.pdf
+apps/mouth/public/files/visa/*.pdf
+apps/mouth/public/audio/*.mp3
+apps/mouth/public/videos/*.mp4
+apps/kbli-navigator/public/*.mp4
+apps/backend-rag/data/assets/*.pdf
+data/kb_sources/**/*.pdf
+data/kbli_pdfs/
+docs/team-guides/*.pdf
+
+# KBLI JSON duplicates (keep only source_documents canonical)
+apps/mouth/data/KBLI_2025_FINAL_CLEAN.json
+apps/kbli-navigator/data/kbli-2025.json
+apps/backend-rag/source_documents/
+
+# Generated/state JSON files
+apps/backend-rag/coverage_report.json
+apps/backend-rag/coverage_response_processor.json
+apps/backend-rag/scripts/ready_to_curl.json
+apps/backend-rag/openapi.json
+apps/evaluator/articles_indexing_state.json
+apps/evaluator/indexing_state.json
+apps/evaluator/nlm_nb*_*.json
+apps/evaluator/nlm_nb*_*.jsonl
+apps/evaluator/nlm_deep_research/*_state.json
+apps/evaluator/nlm_deep_research/coverage_matrix.json
+apps/mouth/scripts/kbli_data_backup.json
+apps/mouth/scripts/kbli_english_keywords.json
+scripts/.rag_canary/
+
+# Agent/tool runtime state (local only)
+.agent/
+.clawhub/
+.serena/
+.superpowers/
+.openclaw/
+.opencode/
+.homunculus/
+.ai-dispatch-cache/
+
+# Data exports and snapshots
+data/exports/
+data/kbli_2025_export/
+data/scraping/
+data/source_documents/PP*.pdf
+data/source_documents/kbli_2020_official.json
+
+# Training data (ingested into Qdrant, not needed in git)
+apps/backend-rag/training-data/
+
+# Package lock files in sub-apps (root handles dependencies)
+apps/*/package-lock.json
+apps/team-agent/bridge/package-lock.json
+
+# Backend test/state artifacts
+apps/backend-rag/business-testing/
+apps/backend-rag/reports/
+
+# Canva script output
+scripts/canva/output/
+
+# NLM handoff files
+apps/evaluator/handoff/
+.windsurf/
+apps/mouth/public/kbli-navigator/images/base64_data.txt
+apps/mouth/public/llms-full.txt
+apps/evaluator/indexing_state.json
+tmp_notebooklm/
+
+# Temporary batch processing scripts (root-level)
+batch*_processing/
+batch*_db_upsert.py
+batch*_extraction.py
+batch*_pdfs/
+check_columns.py
+check_documents.py
+list_tables.py
+download_batch*.py
+data/batch*/
+data/doc_*.pdf
+scripts/create_missing_batch*.py
+scripts/db_verify_batch*.py
+scripts/download_batch*.py
+scripts/process_batch*.py
+scripts/verify_batch*.py
+scripts/inspect_schema.py
+apps/mouth/public/temp_*.png
+.worktrees/
+apps/backend-rag/scripts/output/
+
+# Runtime artifacts / local backups
+apps/cell/data/.ai_intel_last_harvest
+apps/mouth/public/assets/logo/_pre-fix-backup-*/
+# WR2 runtime path (logs, output zips, .env, .venv) — used by canva_renderer + intel_publisher
+apps/war-room/
+# Per-app Jest/Vitest coverage outputs
+apps/admin-dashboard/coverage/
+packages/core/coverage/
+# SQLite write-ahead log + shared memory (runtime, regenerated)
+data/seo_cell/*.db-wal
+data/seo_cell/*.db-shm
+
+# F1 baseline artifacts (large screenshots/JSON dumps)
+.artifacts/
+
+# Root-level scratch dumps (PII / one-off API responses); blocked by root_guard
+# but adding here so a stray `git add .` from a working dir won't reintroduce them.
+/Nuzantara/
+/api-news.txt
+/api-*.txt

@@ -1,0 +1,24 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="leadGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Circle background -->
+  <circle cx="100" cy="100" r="100" fill="url(#leadGradient)"/>
+
+  <!-- User icon -->
+  <g fill="white" opacity="0.9">
+    <!-- Head -->
+    <circle cx="100" cy="75" r="25"/>
+    <!-- Body -->
+    <path d="M 100 105 Q 75 105 60 120 Q 50 130 50 145 L 50 160 Q 50 170 60 170 L 140 170 Q 150 170 150 160 L 150 145 Q 150 130 140 120 Q 125 105 100 105 Z"/>
+  </g>
+
+  <!-- Badge "LEAD" -->
+  <rect x="120" y="145" width="65" height="25" rx="12" fill="#4299e1"/>
+  <text x="152.5" y="162" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="white" text-anchor="middle">LEAD</text>
+</svg>

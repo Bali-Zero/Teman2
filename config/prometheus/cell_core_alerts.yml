@@ -1,0 +1,87 @@
+# Cell-Core Observability Alert Rules
+# Organo: config/prometheus → produces alert rules → consumed by Prometheus Alertmanager
+# 8 alerts covering pulse lifecycle, homeostasis, genome, and trend anomalies
+
+groups:
+  - name: cell_core
+    interval: 60s
+    rules:
+      # CRITICAL: Cell in sustained degraded state for 5+ minutes
+      - alert: CellSustainedDegraded
+        expr: cell_trend_sustained_degraded == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cell {{ $labels.cell }} in sustained degraded state"
+          description: "Cell {{ $labels.cell }} has been degraded for 5+ consecutive pulses. Check sensors and effectors."
+
+      # CRITICAL: Cell has stopped pulsing (down)
+      - alert: CellNoPulse
+        expr: time() - cell_pulse_last_timestamp > 300
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cell {{ $labels.cell }} has not pulsed in 5 minutes"
+          description: "Expected pulse every 60s. Cell may be crashed or halted."
+
+      # WARNING: High stress sustained
+      - alert: CellHighStress
+        expr: cell_homeostasis_stress > 0.8
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cell {{ $labels.cell }} stress at {{ $value | humanize }}"
+          description: "Stress above 0.8 for 3+ minutes. Cell may need intervention."
+
+      # WARNING: Energy depleted
+      - alert: CellLowEnergy
+        expr: cell_homeostasis_energy < 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cell {{ $labels.cell }} energy depleted ({{ $value | humanize }})"
+          description: "Energy below 0.2 for 5+ minutes. Actions are being throttled."
+
+      # WARNING: Slow pulse (P95 > 5s)
+      - alert: CellSlowPulse
+        expr: histogram_quantile(0.95, rate(cell_pulse_duration_seconds_bucket[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cell {{ $labels.cell }} P95 pulse duration > 5s"
+          description: "Pulse lifecycle taking too long. Check slow phases."
+
+      # WARNING: Health status flapping
+      - alert: CellFlapping
+        expr: cell_trend_flapping == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cell {{ $labels.cell }} health is flapping"
+          description: "Health status alternating rapidly between green and non-green."
+
+      # INFO: Response time drifting upward
+      - alert: CellMonotonicDrift
+        expr: cell_trend_monotonic_drift == 1
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Cell {{ $labels.cell }} response time drifting upward"
+          description: "Response time has been monotonically increasing. May indicate degradation."
+
+      # INFO: Genome shrinking rapidly
+      - alert: CellGenomeShrinking
+        expr: delta(cell_genome_active[1h]) < -10
+        for: 0s
+        labels:
+          severity: info
+        annotations:
+          summary: "Cell {{ $labels.cell }} lost 10+ active genome entries in 1h"
+          description: "Skills being silenced faster than recorded. Check decay parameters."

@@ -1,0 +1,27 @@
+[project]
+name = "nuzantara-browser-core"
+version = "0.1.0"
+description = "Shared stealth Playwright browser manager for Nuzantara apps"
+requires-python = ">=3.11"
+dependencies = ["playwright>=1.40"]
+
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["browser_core*"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
+markers = [
+    "integration: tests that launch real Chromium (run with: pytest -m integration)",
+    "stealth: tests that hit bot.sannysoft.com (run with: pytest -m stealth)",
+]

@@ -1,0 +1,110 @@
+/*
+ * Layer 1 — Primitives
+ * Raw design token values. Never reference these directly from components.
+ * Components read semantic tokens (layer 2), which are mapped from these.
+ *
+ * Cap: ≤80 variable declarations (success criterion §10.1).
+ * Count this file with:  grep -cE "^\s*--" primitives.css
+ */
+
+:root {
+  /* ─── Color — Brand scales ───────────────────────────────── */
+  --color-red-50: #fff1f3;
+  --color-red-100: #ffd9df;
+  --color-red-300: #ff7d91;
+  --color-red-500: #ff2d4c;
+  --color-red-700: #c40020;
+  --color-red-900: #7a0013;
+
+  --color-gold-50: #fff8e6;
+  --color-gold-100: #ffe9b3;
+  --color-gold-300: #ffc666;
+  --color-gold-500: #f59e0b;
+  --color-gold-700: #a86a00;
+  --color-gold-900: #5c3a00;
+
+  --color-cyan-50: #ecfeff;
+  --color-cyan-100: #a5f3fc;
+  --color-cyan-300: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-700: #0e7490;
+  --color-cyan-900: #164e63;
+
+  --color-green-50: #f0fdf4;
+  --color-green-100: #bbf7d0;
+  --color-green-300: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-700: #15803d;
+  --color-green-900: #14532d;
+
+  --color-purple-500: #8b5cf6;
+  --color-purple-700: #6d28d9;
+
+  /* ─── Color — Neutrals (true grays) ───────────────────────── */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f4f4f5;
+  --color-neutral-300: #d4d4d8;
+  --color-neutral-500: #71717a;
+  --color-neutral-700: #3f3f46;
+  --color-neutral-900: #18181b;
+  --color-neutral-950: #09090b;
+  --color-black: #040406;
+
+  /* ─── Color — Utility (state, distinct from funnel accents) ─ */
+  --color-state-success: #10b981;
+  --color-state-warning: #f59e0b;
+  --color-state-danger: #ef4444;
+  --color-state-info: #3b82f6;
+
+  /* ─── Typography ──────────────────────────────────────────── */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-display: var(--font-sans);
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-4xl: 3rem;
+  --text-6xl: 4.5rem;
+  --text-8xl: 6rem;
+
+  /* ─── Space (4-based) ─────────────────────────────────────── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  /* ─── Radii ───────────────────────────────────────────────── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-full: 9999px;
+
+  /* ─── Motion ──────────────────────────────────────────────── */
+  --motion-duration-fast: 150ms;
+  --motion-duration-standard: 250ms;
+  --motion-duration-slow: 400ms;
+  --motion-duration-shimmer: 4000ms;
+
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Reduced motion — shimmer/aurora resolve to 0s; grain stays static. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration-shimmer: 0s;
+    --motion-duration-slow: 0s;
+  }
+}

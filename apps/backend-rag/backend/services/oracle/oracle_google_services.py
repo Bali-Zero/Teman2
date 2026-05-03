@@ -1,0 +1,192 @@
+"""
+Oracle Google Services
+Manages Google Gemini AI and Drive integration for Oracle endpoints
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
+"""
+
+import json
+import logging
+from typing import Any
+
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.services.oracle.oracle_config import oracle_config
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleServices:
+    """Google Cloud services manager for Oracle endpoints"""
+
+    def __init__(self) -> None:
+        self._gemini_initialized = False
+        self._drive_service = None
+        self._genai_client: GenAIClient | None = None
+        # Services are now lazily initialized to prevent gRPC fork safety issues
+        # self._initialize_services()
+
+    def _ensure_services_initialized(self) -> None:
+        """Initialize Google Gemini and Drive services if not already done"""
+        if self._genai_client is None:
+            try:
+                # Initialize GenAI client (only if API key is available)
+                api_key = oracle_config.google_api_key
+                if api_key and GENAI_AVAILABLE:
+                    from backend.llm.genai_client import GenAIClient
+
+                    self._genai_client = GenAIClient(api_key=api_key)
+                    self._gemini_initialized = self._genai_client.is_available
+                    if self._gemini_initialized:
+                        logger.info("✅ Google Gemini AI initialized successfully (new SDK)")
+                else:
+                    logger.warning(
+                        "⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled",
+                    )
+                    self._gemini_initialized = False
+
+                # Initialize Drive Service
+                self._initialize_drive_service()
+
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize Google services: {e}")
+                logger.warning(
+                    "⚠️ Continuing without Google services - some Oracle features may be unavailable",
+                )
+                self._gemini_initialized = False
+                self._drive_service = None
+
+    def _initialize_drive_service(self) -> None:
+        """Initialize Google Drive service using service account"""
+        import base64
+        import os
+
+        try:
+            creds_json = oracle_config.google_credentials_json
+            creds_dict = None
+
+            # Try to parse credentials (supports both raw JSON and base64-encoded)
+            if creds_json and creds_json not in ("{}", ""):
+                try:
+                    # First try: raw JSON
+                    creds_dict = json.loads(creds_json)
+                except json.JSONDecodeError:
+                    # Second try: base64-encoded JSON (like TeamDriveService)
+                    try:
+                        decoded = base64.b64decode(creds_json).decode("utf-8")
+                        creds_dict = json.loads(decoded)
+                        logger.info("✅ Loaded Google credentials from base64-encoded env var")
+                    except Exception as e:
+                        logger.debug(f"Google creds base64 decode failed: {e}")
+
+            # Create credentials from dict or fallback to file
+            if creds_dict and creds_dict.get("type") == "service_account":
+                credentials = service_account.Credentials.from_service_account_info(
+                    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                )
+            elif os.path.exists("google_credentials.json"):
+                logger.info("ℹ️ Using google_credentials.json file for Drive credentials")
+                credentials = service_account.Credentials.from_service_account_file(
+                    "google_credentials.json",
+                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                )
+            else:
+                logger.warning(
+                    "⚠️ No Google credentials found - Drive service disabled. "
+                    "Set GOOGLE_SERVICE_ACCOUNT_JSON or add google_credentials.json",
+                )
+                self._drive_service = None
+                return
+
+            self._drive_service = build("drive", "v3", credentials=credentials)
+            logger.info("✅ Google Drive service initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Error initializing Google Drive service: {e}")
+            self._drive_service = None
+
+    @property
+    def gemini_available(self) -> bool:
+        """Check if Gemini is available"""
+        self._ensure_services_initialized()
+        return self._gemini_initialized
+
+    @property
+    def drive_service(self) -> Any:
+        """Get Drive service instance"""
+        self._ensure_services_initialized()
+        return self._drive_service
+
+    @property
+    def genai_client(self) -> GenAIClient | None:
+        """Get the GenAI client instance for direct API calls"""
+        self._ensure_services_initialized()
+        return self._genai_client
+
+    def get_model_name(self, model_name: str = "gemini-2.0-flash-lite") -> str:
+        """Get a valid model name, stripping 'models/' prefix if present.
+
+        Args:
+            model_name: Requested model name
+
+        Returns:
+            Normalized model name (without 'models/' prefix)
+        """
+        # Strip 'models/' prefix for new SDK compatibility
+        return model_name.replace("models/", "")
+
+    def get_gemini_model_name(self, model_name: str = "gemini-2.0-flash-lite") -> str:
+        """Get Gemini model name for use with GenAIClient.
+
+        Note: This method now returns a model name string instead of a model instance.
+        Use the genai_client property to make API calls with this model name.
+
+        Args:
+            model_name: Requested model name
+
+        Returns:
+            Normalized model name string
+        """
+        if not self._gemini_initialized:
+            raise RuntimeError("Gemini AI not initialized")
+
+        return self.get_model_name(model_name)
+
+    def get_zantara_model_name(self, use_case: str = "legal_reasoning") -> str:
+        """
+        Get the best Gemini model name for specific ZANTARA use cases.
+
+        Note: This method now returns a model name string instead of a model instance.
+        Use the genai_client property to make API calls with this model name.
+
+        Args:
+            use_case: Type of task
+                - "legal_reasoning": Complex legal analysis
+                - "personality_translation": Fast personality conversion
+                - "multilingual": Multi-language support
+                - "document_analysis": Deep document understanding
+
+        Returns:
+            Model name string for use with GenAIClient
+        """
+        if not self._gemini_initialized:
+            raise RuntimeError("Gemini AI not initialized")
+
+        # Model recommendations by use case (all use Flash for unlimited quota)
+        model_mapping = {
+            "legal_reasoning": "gemini-2.0-flash-lite",
+            "personality_translation": "gemini-2.0-flash-lite",
+            "multilingual": "gemini-2.0-flash-lite",
+            "document_analysis": "gemini-2.0-flash-lite",
+        }
+
+        model_name = model_mapping.get(use_case, "gemini-2.0-flash-lite")
+        logger.info(f"🧠 Using {model_name} for {use_case}")
+        return model_name
+
+
+# Initialize Google services singleton
+google_services = GoogleServices()

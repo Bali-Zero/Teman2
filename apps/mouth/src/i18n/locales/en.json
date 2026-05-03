@@ -1,0 +1,293 @@
+{
+  "common": {
+    "nav": {
+      "news": "News",
+      "services": "Services",
+      "team": "Team",
+      "contact": "Contact",
+      "language": "Language"
+    },
+    "footer": {
+      "description": "Your trusted partner for business, immigration, and life in Indonesia. Expert guidance for every step of your journey.",
+      "copyright": "Bali Zero. All rights reserved.",
+      "services": "Services",
+      "news": "News",
+      "contact": "Contact"
+    },
+    "cta": {
+      "contactUs": "Contact Us",
+      "viewServices": "View Services",
+      "whatsappUs": "WhatsApp Us",
+      "askZantaraAi": "Ask Zantara AI",
+      "askNow": "Ask Now",
+      "sendMessage": "Send Message via WhatsApp",
+      "sending": "Sending...",
+      "sendAnother": "Send another message",
+      "readMore": "Read more",
+      "viewDetails": "View details & pricing",
+      "viewFullTeam": "View full team",
+      "learnMore": "Learn more"
+    },
+    "error": "Something went wrong. Please refresh the page."
+  },
+  "home": {
+    "hero": {
+      "title": "Decode Indonesia.",
+      "titleAccent": "Thrive",
+      "titleSuffix": "here",
+      "subtitle": "Legal, immigration, fiscal & business intelligence for Indonesia.",
+      "subtitleAccent": "Forged by Zantara AI."
+    },
+    "newsletter": {
+      "title": "Subscribe to the latest Indonesia Insights",
+      "subtitle": "Expert analysis delivered to your inbox",
+      "placeholder": "Email address",
+      "orContinueWith": "Or continue with"
+    },
+    "topics": {
+      "title": "Topics",
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Tax & Legal",
+      "property": "Property",
+      "lifestyle": "Lifestyle"
+    },
+    "kbli": {
+      "sectionTitle": "KBLI Navigator",
+      "sectionSubtitle": "Find and explore Indonesian business classification codes"
+    },
+    "insights": {
+      "latestTitle": "Latest Insights",
+      "featuredTitle": "Featured"
+    },
+    "zantaraAi": {
+      "title": "Zantara AI",
+      "role": "AI Bridge",
+      "description": "Your 24/7 intelligent assistant. Zantara AI helps you get instant answers about visas, company setup, taxes, and more — bridging you to the right expert when you need human support.",
+      "shortDescription": "Your 24/7 intelligent assistant"
+    },
+    "categories": {
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Tax & Legal",
+      "property": "Property",
+      "lifestyle": "Lifestyle"
+    }
+  },
+  "contact": {
+    "hero": {
+      "label": "Contact Us",
+      "title": "Let's Start Your",
+      "titleAccent": "Indonesian Journey",
+      "subtitle": "Have questions about visas, company setup, or taxes? We're here to help. Get in touch and we'll respond within 24 hours."
+    },
+    "info": {
+      "getInTouch": "Get in Touch",
+      "whatsapp": "WhatsApp",
+      "whatsappDesc": "Fastest response - usually within minutes",
+      "email": "Email",
+      "emailDesc": "For detailed inquiries and documents",
+      "instagram": "Instagram",
+      "instagramDesc": "Follow us for updates and tips",
+      "officeLocation": "Office Location",
+      "officeDesc": "By appointment only",
+      "officeAddress": "Kerobokan, Bali",
+      "officeNote": "Exact location shared upon appointment"
+    },
+    "hours": {
+      "title": "Office Hours",
+      "monFri": "Monday - Friday",
+      "monFriHours": "9:00 AM - 5:00 PM",
+      "saturday": "Saturday",
+      "saturdayHours": "10:00 AM - 2:00 PM",
+      "sunday": "Sunday",
+      "sundayClosed": "Closed",
+      "timezone": "Timezone: WITA (Bali Time, UTC+8)"
+    },
+    "form": {
+      "title": "Send Us a Message",
+      "fullName": "Full Name",
+      "emailAddress": "Email Address",
+      "phone": "Phone Number",
+      "service": "Service Interested In",
+      "servicePlaceholder": "Select a service...",
+      "serviceVisa": "Visa Services",
+      "serviceCompany": "Company Setup",
+      "serviceTax": "Tax Consulting",
+      "serviceRealEstate": "Real Estate",
+      "serviceMultiple": "Multiple Services",
+      "serviceOther": "Other",
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your needs...",
+      "responseTime": "We'll respond within 24 hours"
+    },
+    "success": {
+      "title": "Message Sent!",
+      "description": "We've opened WhatsApp with your message. If it didn't open, please contact us directly."
+    },
+    "aiCta": {
+      "title": "Need Instant Answers?",
+      "description": "Get immediate help with visas, company setup, taxes, and more from our AI assistant. Available 24/7 with instant responses.",
+      "button": "Ask Zantara AI Now"
+    }
+  },
+  "team": {
+    "hero": {
+      "label": "Our Team",
+      "title": "Meet the",
+      "titleAccent": "Experts",
+      "titleSuffix": "Behind Your Success",
+      "subtitle": "A dedicated team of visa specialists, tax consultants, and business advisors committed to making your Indonesian journey seamless."
+    },
+    "sections": {
+      "leadership": "Leadership",
+      "leadershipDesc": "Guiding our vision and ensuring excellence in every service we provide.",
+      "setupTeam": "Setup Team",
+      "setupTeamDesc": "Company formation, visa processing, and business consulting experts.",
+      "taxDepartment": "Tax Department",
+      "taxDepartmentDesc": "Certified tax professionals ensuring your compliance and optimization.",
+      "accounting": "Accounting",
+      "accountingDesc": "Managing financial operations with precision and reliability.",
+      "supportMarketing": "Support & Marketing",
+      "supportMarketingDesc": "Keeping you connected and informed throughout your journey.",
+      "external": "(External)"
+    },
+    "ai": {
+      "title": "Zantara AI",
+      "role": "AI Bridge",
+      "description": "Your 24/7 intelligent assistant. Zantara AI helps you get instant answers about visas, company setup, taxes, and more — bridging you to the right expert when you need human support."
+    },
+    "cta": {
+      "title": "Ready to Work With Us?",
+      "description": "Get in touch with our team for a free consultation. We're here to help you navigate Indonesia with confidence."
+    }
+  },
+  "services": {
+    "hero": {
+      "label": "Our Services",
+      "title": "Build Your",
+      "titleAccent": "Indonesian Dream",
+      "titleSuffix": "with Confidence",
+      "subtitle": "From Zero to Infinity. We handle visas, company setup, taxes, and property — so you can focus on what matters most."
+    },
+    "reviews": {
+      "reviewCount": "700+ reviews",
+      "onGoogleMaps": "on Google Maps"
+    },
+    "grid": {
+      "title": "Our Services & Pricing",
+      "subtitle": "Transparent pricing with no hidden fees. All prices in IDR.",
+      "startingFrom": "Starting from",
+      "contactForQuote": "Contact for quote"
+    },
+    "process": {
+      "title": "How It Works",
+      "subtitle": "Simple, transparent, professional",
+      "step1Title": "Consultation",
+      "step1Desc": "Free initial call to understand your needs",
+      "step2Title": "Proposal",
+      "step2Desc": "Clear timeline and transparent pricing",
+      "step3Title": "Execution",
+      "step3Desc": "We handle all paperwork and processes",
+      "step4Title": "Delivery",
+      "step4Desc": "Receive your documents and ongoing support"
+    },
+    "teamSection": {
+      "title": "Meet Our Team",
+      "subtitle": "A dedicated team of visa specialists, tax consultants, and business advisors."
+    },
+    "cta": {
+      "title": "Ready to Start?",
+      "subtitle": "Get a free consultation with our experts. We'll guide you through the process and give you a clear timeline and quote."
+    },
+    "contactInfo": {
+      "office": "Office",
+      "hours": "Hours",
+      "hoursValue": "Mon-Fri 9am-6pm",
+      "response": "Response",
+      "responseValue": "Within 24 hours",
+      "languages": "Languages",
+      "languagesValue": "EN, ID, IT"
+    },
+    "serviceNames": {
+      "visa": "Visa & Immigration",
+      "company": "Company Setup & Licenses",
+      "tax": "Tax Consulting",
+      "property": "Real Estate Services"
+    },
+    "serviceTaglines": {
+      "visa": "Complete visa solutions for living and working in Indonesia",
+      "company": "From licenses to structure — launch your business fast",
+      "tax": "Navigate Indonesia's tax system with confidence",
+      "property": "Secure property with legal clarity and guidance"
+    }
+  },
+  "news": {
+    "allNews": "All News",
+    "latestInsights": "Latest Insights",
+    "featured": "Featured",
+    "readMore": "Read more",
+    "minuteRead": "min read",
+    "categories": {
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Tax & Legal",
+      "property": "Property",
+      "lifestyle": "Lifestyle",
+      "tech": "Tech",
+      "baliNews": "Bali News",
+      "visas": "Visas & Immigration",
+      "taxes": "Taxes & Compliance",
+      "living": "Living in Indonesia",
+      "trends": "Trends & Insights"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visas, permits, and everything you need to know about relocating to Indonesia.",
+      "business": "Company setup, licensing, KBLI codes, and doing business in Indonesia.",
+      "taxLegal": "Tax obligations, legal compliance, and regulatory updates.",
+      "property": "Real estate, property ownership, and investment opportunities in Bali.",
+      "lifestyle": "Living in Bali, culture, community, and quality of life.",
+      "tech": "Digital nomad life, tech industry, and remote work in Indonesia.",
+      "baliNews": "Breaking news, culture, events, and stories from Bali and Indonesia.",
+      "visas": "Visas, permits, and everything you need to know about relocating to Indonesia.",
+      "taxes": "Tax obligations, legal compliance, and regulatory updates.",
+      "living": "Living in Bali, culture, community, driving, healthcare, and daily life.",
+      "trends": "Digital economy, tech industry, emerging regulations, and market insights."
+    }
+  },
+  "portal": {
+    "login": {
+      "forgot_password": "Forgot PIN?",
+      "errors": {
+        "invalid_credentials": "Wrong email or PIN. Please try again.",
+        "account_locked": "Account locked for security. Contact team@balizero.com.",
+        "rate_limited": "Too many attempts. Retry in {{seconds}} seconds.",
+        "invalid_2fa": "Invalid 2FA code.",
+        "network_error": "Connection lost. Check your network and retry.",
+        "email_not_found": "Email not found.",
+        "server_error": "Server error. Retry in a few minutes.",
+        "maintenance": "Maintenance in progress. Please return later."
+      }
+    },
+    "forgot_password": {
+      "title": "Recover access",
+      "sent": "We received your request. Our team will contact you."
+    }
+  },
+  "book": {
+    "stats": {
+      "clientsServed": "Clients served",
+      "yearsOfHistory": "Years of history",
+      "kbliNavigatorCodes": "KBLI Navigator codes",
+      "aiChannelsActive": "AI channels active"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Initializing..."
+    },
+    "errors": {
+      "network": "Network error"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+    "rules": [
+        {"text": "Never modify DNA", "priority": 1},
+        {"text": "Never send OSINT data outside Pro", "priority": 2},
+        {"text": "Never import anthropic/openai/google-generativeai SDK", "priority": 3},
+        {"text": "Never deploy to cloud", "priority": 4},
+        {"text": "If broken, log and retry with progressive hints", "priority": 5}
+    ],
+    "constraints": {
+        "max_daily_budget_usd": 5.0,
+        "max_cost_per_investigation_usd": 0.5,
+        "max_retry_per_agent": 3,
+        "osint_destinations": ["garuda:raw", "telegram:zero"]
+    }
+}

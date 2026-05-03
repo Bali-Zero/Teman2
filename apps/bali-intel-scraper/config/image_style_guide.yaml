@@ -1,0 +1,360 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# BALIZERO VISUAL IDENTITY - Image Style Guide
+# ═══════════════════════════════════════════════════════════════════════════
+# NOT stock photos. NOT generic tropical imagery. NOT AI-looking synthetic.
+# Museum-quality photographic art with a distinctly Balinese soul.
+
+identity:
+  brand_essence: "The Insider Intelligente - sophistication meets island wisdom"
+  visual_tagline: "Where Swiss precision meets Balinese soul"
+  quality_standard: "Every image should be poster-worthy"
+
+philosophy:
+  core: "Visual METAPHORS, not literal illustrations"
+  emotion: "Make viewers stop scrolling. Make them FEEL something."
+  uniqueness: "Distinctly Balinese, universally sophisticated"
+  test: "Would you hang this on your wall?"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SIGNATURE BALIZERO ELEMENTS - Our Visual DNA
+# ═══════════════════════════════════════════════════════════════════════════
+
+signature_elements:
+  lighting:
+    description: "Bali's unique golden hour - warmer and more amber than Mediterranean"
+    specific_moments:
+      - "First light on Mount Agung with pink-orange gradient sky"
+      - "Crepuscular rays breaking through tropical clouds after rain"
+      - "Dappled light through palm fronds creating natural bokeh"
+      - "Blue hour at Uluwatu with cliff silhouettes"
+      - "Candlelit temple ceremonies with warm tungsten glow"
+      - "Mist rising from rice terraces at 6am"
+
+  textures_unique_to_bali:
+    - name: "Volcanic stone patina"
+      description: "Weathered black volcanic stone with centuries of moss and rain erosion"
+      where: "Temple walls, ancient statues, mountain paths"
+
+    - name: "Traditional woodwork"
+      description: "Hand-carved teak and jackfruit wood with visible chisel marks from master craftsmen"
+      where: "Joglo beams, door frames, furniture"
+
+    - name: "Aged bronze"
+      description: "Ceremonial objects with natural verdigris green-brown patina"
+      where: "Gamelan instruments, temple bells, offering bowls"
+
+    - name: "Palm fiber textures"
+      description: "Woven coconut fiber (ijuk) and palm rope with organic patterns"
+      where: "Traditional roofs, rope details, baskets"
+
+    - name: "Living moss"
+      description: "Brilliant green moss growing on stone and wood"
+      where: "Temple statues, forest paths, water features"
+
+  water_elements:
+    - "Mirror-still rice paddy reflections at dawn (no ripples)"
+    - "Infinity pool edge dissolving into jungle or ocean horizon"
+    - "Uluwatu waves with spray catching golden backlighting"
+    - "Sacred spring water at Tirta Empul with floating flower petals"
+    - "Morning dew droplets on banana leaves and tropical flowers"
+    - "Steam rising from volcanic hot springs"
+
+  cultural_details_done_right:
+    description: "Artistically composed, NOT tourist snapshots"
+    examples:
+      - name: "Canang sari offerings"
+        good: "Close-up detail of fresh frangipane on woven tray, morning light"
+        bad: "Random offering on sidewalk from tourist angle"
+
+      - name: "Temple ceremonies"
+        good: "Silhouetted procession at golden hour, umbrellas against sky"
+        bad: "Crowded ceremony with tourists visible"
+
+      - name: "Traditional crafts"
+        good: "Weathered hands of master craftsman, extreme detail, story in the lines"
+        bad: "Generic artisan at work pose"
+
+      - name: "Architecture"
+        good: "Dramatic angle of temple gate framing sky or landscape"
+        bad: "Straight-on postcard shot"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CATEGORY-SPECIFIC VISUAL LANGUAGE
+# ═══════════════════════════════════════════════════════════════════════════
+
+categories:
+  immigration:
+    concept: "The threshold moment - standing at the edge of transformation"
+    emotional_core: "Hope, new beginnings, the courage to cross"
+    color_palette:
+      primary: "Transition from cool mist to warm gold"
+      accent: "Temple stone grey, jungle emerald"
+
+    unique_shots:
+      - description: "Temple gate threshold"
+        details: "Pura Lempuyang 'Gates of Heaven' style - viewer standing at threshold, darkness of stone frame behind, golden light and clouds ahead. NOT the cliché tourist photo, but from inside looking out."
+
+      - description: "Jungle bridge emergence"
+        details: "Traditional bamboo or rope bridge emerging from dense morning mist, leading toward clearing where sunlight breaks through. Symbolizes the journey from uncertainty to clarity."
+
+      - description: "Volcanic sand footprints"
+        details: "Single set of footprints on Bali's distinctive BLACK volcanic sand, leading toward crystal turquoise water at dawn. Fresh, just made. Journey forward."
+
+      - description: "Jukung at first light"
+        details: "Traditional Balinese outrigger boat with fresh canang sari offering on bow, still in calm water, ready to set sail. First golden rays touching the sail."
+
+      - description: "Ascending temple steps"
+        details: "Ancient moss-covered stone steps ascending through mist toward unseen summit. Morning light creating god rays through trees."
+
+    absolutely_forbidden:
+      - "Passport stamps or pages"
+      - "Visa documents of any kind"
+      - "Airport/airplane imagery"
+      - "Suitcases or luggage"
+      - "Immigration queues"
+      - "Flags (any nationality)"
+      - "Welcome signs"
+
+  business:
+    concept: "Rooted growth - the banyan tree philosophy"
+    emotional_core: "Sustainable prosperity, craft over hustle, long-term vision"
+    color_palette:
+      primary: "Rich earth tones, jungle emerald"
+      accent: "Golden sunlight, aged wood brown"
+
+    unique_shots:
+      - description: "Banyan tree architecture"
+        details: "Massive banyan tree (like Monkey Forest sacred tree) with aerial roots creating natural pillars. Golden light filtering through leaves. Symbol of business built on strong roots that keeps growing."
+
+      - description: "Subak irrigation wisdom"
+        details: "Tegallalang rice terraces showing the ancient water-sharing system - water flowing from one terrace to next. Morning mist rising. Ancient sustainable business model."
+
+      - description: "Master craftsman hands"
+        details: "Extreme close-up of silversmith's hands in Celuk village. Decades of experience visible in every line. Perfect focus on the work, soft focus on face in background."
+
+      - description: "Harbor at sunrise"
+        details: "Sanur harbor with traditional jukung boats and modern boats side by side. Sun rising over Mount Agung in background. Old and new coexisting."
+
+      - description: "Coffee transformation"
+        details: "Kintamani coffee cherries drying in sun, with finished roasted beans nearby. The transformation process. Raw potential becoming refined value."
+
+    absolutely_forbidden:
+      - "Graphs or charts"
+      - "Arrows pointing up"
+      - "Handshakes"
+      - "People in suits"
+      - "Office buildings"
+      - "Laptops or computers"
+      - "Meeting rooms"
+      - "Generic 'success' imagery"
+
+  tax:
+    concept: "Perfect balance - the harmony that enables prosperity"
+    emotional_core: "Clarity, fairness, precision without coldness"
+    color_palette:
+      primary: "Serene blues, balanced light"
+      accent: "Antique gold, bronze patina"
+
+    unique_shots:
+      - description: "Merchant's balance"
+        details: "Antique Chinese trading scale (dacin) with brass weights, weathered by centuries of Silk Road trade. Dramatic side lighting. Perfect equilibrium."
+
+      - description: "Water temple distribution"
+        details: "Tirta Empul sacred spring showing water dividing equally into multiple channels. The subak system as metaphor for fair distribution. Morning mist."
+
+      - description: "Illuminated path"
+        details: "Stone labyrinth at ancient temple viewed from above. Most paths in shadow, one golden path clearly lit by morning sun. Clarity through complexity."
+
+      - description: "Perfect ripples"
+        details: "Water drops falling into temple stone basin, creating perfect concentric circles. Moment of impact frozen. Cause and effect."
+
+      - description: "Natural yin-yang"
+        details: "Aerial shot where black volcanic sand beach meets white coral sand. Natural formation creating balance symbol. Drone perspective."
+
+    absolutely_forbidden:
+      - "Calculators"
+      - "Money (cash, coins)"
+      - "Tax forms or documents"
+      - "Spreadsheets"
+      - "Receipts"
+      - "Stressed people"
+      - "Red ink or negative imagery"
+
+  property:
+    concept: "Where dreams take root - home as sanctuary"
+    emotional_core: "Aspiration, belonging, the art of living"
+    color_palette:
+      primary: "Warm teak tones, tropical greens"
+      accent: "Pool blue, sunset amber, white linen"
+
+    unique_shots:
+      - description: "Jungle villa aerial"
+        details: "Dusk aerial shot: contemporary villa with infinity pool edge dissolving into jungle canopy. Warm interior lights just turning on. Last golden light on treetops."
+
+      - description: "Old meets new architecture"
+        details: "Detail shot: 200-year-old joglo beam joint meeting contemporary glass wall. Two eras of craftsmanship. Texture contrast."
+
+      - description: "Garden threshold"
+        details: "View through traditional Balinese carved stone doorway (candi bentar) into tropical garden. Frame within frame. Invitation to enter."
+
+      - description: "Rice paddy reflection"
+        details: "Modern villa reflected perfectly in still rice paddy at blue hour. Traditional and contemporary coexisting. Mirror-still water."
+
+      - description: "Roof craft"
+        details: "Master craftsman fitting traditional alang-alang (palm fiber) roof on contemporary structure. Ancient skill serving modern design. Golden light on his work."
+
+    absolutely_forbidden:
+      - "For Sale/Sold signs"
+      - "House keys"
+      - "Contracts or paperwork"
+      - "Real estate agents"
+      - "Blueprints or floor plans"
+      - "Price tags"
+      - "Generic property photos"
+
+  lifestyle:
+    concept: "The art of living well - intentional, beautiful, balanced"
+    emotional_core: "Freedom, quality, mindfulness without pretension"
+    color_palette:
+      primary: "Vibrant tropical saturation"
+      accent: "Ocean teal, sunset coral, jungle green"
+
+    unique_shots:
+      - description: "Surf temple"
+        details: "Vintage single-fin surfboard (weathered, authentic) leaning against moss-covered temple wall. Golden hour side light. Two passions in one frame."
+
+      - description: "Morning ritual"
+        details: "Steaming kopi tubruk in ceramic cup on reclaimed teak table. Mount Agung soft-focused in background through open pavilion. The daily ritual."
+
+      - description: "Cliff yoga"
+        details: "Single yoga silhouette on Uluwatu cliff edge at sunset. Sun directly behind creating halo effect. Not a class, not a pose for camera. Solitary practice."
+
+      - description: "Market geometry"
+        details: "Traditional market at dawn: pyramids of mangosteen, rambutan, salak arranged by vendors with artistic precision. Colors and geometry. Before the crowds."
+
+      - description: "Healing hands"
+        details: "Balinese healer's (balian) weathered hands preparing jamu or traditional medicine. Fresh herbs, grinding stone, morning light. Ancient wellness."
+
+    absolutely_forbidden:
+      - "Cocktails with umbrellas"
+      - "Tourist crowds"
+      - "Instagram poses"
+      - "Generic yoga class"
+      - "Resort pool with people"
+      - "Party scenes"
+      - "Shopping bags"
+
+  legal:
+    concept: "Ancient wisdom meets modern clarity"
+    emotional_core: "Protection, resolution, the weight of justice"
+    color_palette:
+      primary: "Dignified amber and shadow"
+      accent: "Aged paper cream, bronze, dark wood"
+
+    unique_shots:
+      - description: "Manuscript library"
+        details: "Ancient lontar palm leaf manuscripts in traditional storage. Single beam of candlelight or morning sun illuminating one text. Repository of wisdom."
+
+      - description: "Kris and map"
+        details: "Ceremonial kris (dagger, symbol of protection) laid across antique nautical map of Indonesian archipelago. Dramatic lighting. Heritage and navigation."
+
+      - description: "Guardian in mist"
+        details: "Stone Garuda or dvarapala (temple guardian statue) emerging from morning mist. Protector made visible. Monumental scale."
+
+      - description: "Banjar meeting"
+        details: "Empty traditional bale banjar (village meeting pavilion) under sacred banyan tree. Where community justice happens. Morning light, waiting for council."
+
+      - description: "Denpasar courthouse"
+        details: "Architectural detail of Denpasar courthouse showing traditional Balinese design elements. Justice system with cultural roots. Strong symmetry."
+
+    absolutely_forbidden:
+      - "Western courtrooms"
+      - "Standard gavels"
+      - "Prison bars or cells"
+      - "Handcuffs"
+      - "Angry confrontation"
+      - "Judges in Western robes"
+      - "Legal document close-ups"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TECHNICAL SPECIFICATIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+technical:
+  resolution: "8K ultra-detailed"
+  aspect_ratio: "16:9 (landscape, article header)"
+  style: "Ultra-realistic photography, NOT illustration"
+  quality_markers:
+    - "Subtle film grain (organic, not digital noise)"
+    - "Natural depth of field"
+    - "Accurate color science"
+    - "No HDR over-processing"
+    - "No over-saturation"
+
+  composition_rules:
+    - "Rule of thirds (subject at intersection points)"
+    - "Leading lines toward focal point"
+    - "Negative space for text overlay (usually upper third)"
+    - "Frame within frame when possible"
+    - "Foreground interest for depth"
+
+  lighting_reference: "Cinematographic (Denis Villeneuve, Roger Deakins)"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ABSOLUTE FORBIDDEN LIST - NEVER INCLUDE
+# ═══════════════════════════════════════════════════════════════════════════
+
+forbidden_global:
+  stock_photo_cliches:
+    - "Graphs or charts of any kind"
+    - "Arrows pointing up (growth cliché)"
+    - "Handshakes (business cliché)"
+    - "People in suits"
+    - "Thumbs up gestures"
+    - "Fake smiles looking at camera"
+    - "Laptop on beach"
+    - "Coffee cup with laptop"
+
+  immigration_cliches:
+    - "Passport stamps"
+    - "Visa documents"
+    - "Airport scenes"
+    - "Suitcases"
+    - "Flags"
+    - "Welcome signs"
+
+  finance_cliches:
+    - "Piles of money"
+    - "Gold coins"
+    - "Calculators"
+    - "Piggy banks"
+    - "Dollar signs"
+
+  property_cliches:
+    - "House keys"
+    - "For Sale signs"
+    - "Real estate agents"
+    - "Sold stickers"
+
+  quality_failures:
+    - "AI-looking synthetic images"
+    - "Over-processed HDR"
+    - "Obvious compositing"
+    - "Watermarks or text"
+    - "Generic stock aesthetic"
+    - "Forgettable imagery"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# QUALITY CHECKLIST - Before Approval
+# ═══════════════════════════════════════════════════════════════════════════
+
+quality_check:
+  must_pass_all:
+    - "Does it tell a story without words?"
+    - "Would you hang it on your wall?"
+    - "Is it memorable after 5 seconds?"
+    - "Does it avoid ALL clichés on forbidden list?"
+    - "Is it distinctly Balinese, not generic tropical?"
+    - "Does it evoke emotion, not just inform?"
+    - "Is it museum/gallery quality?"
+    - "Would National Geographic or Condé Nast publish it?"

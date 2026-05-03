@@ -1,0 +1,34 @@
+{
+  "name": "@balizero/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bali Zero design system foundation — tokens, primitives, and shared components.",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./index.ts",
+    "./tokens/index.css": "./tokens/index.css",
+    "./tailwind/theme.css": "./tailwind/theme.css",
+    "./effects/grain.css": "./effects/grain.css",
+    "./effects/shimmer.css": "./effects/shimmer.css",
+    "./fonts/inter": "./fonts/inter.ts",
+    "./components/BZLogo": "./components/BZLogo.tsx",
+    "./components/NavShell": "./components/NavShell.tsx",
+    "./components/ThemeProvider": "./components/ThemeProvider.tsx",
+    "./components/ProgressRing": "./components/ProgressRing.tsx",
+    "./components/DeadlineBadge": "./components/DeadlineBadge.tsx",
+    "./components/TrustBand": "./components/TrustBand.tsx",
+    "./components/CTAHandoff": "./components/CTAHandoff.tsx",
+    "./components/FunnelFrame": "./components/FunnelFrame.tsx",
+    "./components/MatterCard": "./components/MatterCard.tsx",
+    "./components/CommandPalette": "./components/CommandPalette.tsx",
+    "./components/ContextPanel": "./components/ContextPanel.tsx",
+    "./utils": "./utils/index.ts",
+    "./auth": "./auth/index.ts",
+    "./analytics": "./analytics/index.ts"
+  },
+  "dependencies": {}
+}

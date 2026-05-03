@@ -1,0 +1,498 @@
+# Prometheus Alert Rules for Nuzantara RAG Platform
+# Aligned with metrics from backend/app/metrics.py
+# Severity: critical (on-call), warning (team-slack), info (default-receiver)
+
+groups:
+  # ============================================================
+  # 1. SERVICE HEALTH — Is the app alive and responding?
+  # ============================================================
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job="nuzantara-rag"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'nuzantara-rag is DOWN'
+          description: 'The backend has been unreachable for 2 minutes. Check Fly.io machines.'
+
+      - alert: HighMemoryUsage
+        expr: zantara_memory_usage_mb > 1600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Memory usage > 1.6 GB (limit: 2 GB)'
+          description: 'RSS is {{ $value }}MB. OOM kill imminent on 2GB Fly.io VM.'
+
+      - alert: HighCpuUsage
+        expr: zantara_cpu_usage_percent > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'CPU usage sustained above 85%'
+          description: 'CPU at {{ $value }}% for 10 minutes. May cause request timeouts.'
+
+      - alert: UptimeReset
+        expr: zantara_system_uptime_seconds < 120
+        for: 0s
+        labels:
+          severity: info
+        annotations:
+          summary: 'Service just restarted'
+          description: 'nuzantara-rag uptime is {{ $value }}s — likely a deploy or crash restart.'
+
+  # ============================================================
+  # 2. HTTP & LATENCY — Are requests healthy?
+  # ============================================================
+  - name: http_performance
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(zantara_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(zantara_http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'HTTP 5xx error rate > 5%'
+          description: '{{ $value | humanizePercentage }} of requests are returning 5xx errors.'
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95, sum(rate(zantara_request_duration_seconds_bucket[5m])) by (le))
+          > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'P95 request latency > 10s'
+          description: '95th percentile latency is {{ $value }}s. Check AI/DB backends.'
+
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99, sum(rate(zantara_request_duration_seconds_bucket[5m])) by (le))
+          > 30
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'P99 request latency > 30s'
+          description: '99th percentile latency is {{ $value }}s. Likely timeout cascading.'
+
+  # ============================================================
+  # 3. DATABASE — Connection pool and query health
+  # ============================================================
+  - name: database
+    interval: 30s
+    rules:
+      - alert: DbPoolExhausted
+        expr: |
+          (zantara_db_pool_size{service="main"} - zantara_db_pool_idle{service="main"})
+          / zantara_db_pool_size{service="main"} > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'DB connection pool > 90% saturated'
+          description: 'Active connections near pool limit. New queries will queue/fail.'
+
+      - alert: DbSlowQueries
+        expr: |
+          histogram_quantile(0.95, rate(zantara_db_query_duration_seconds_bucket[5m]))
+          > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'P95 DB query duration > 2s'
+          description: 'Database queries are slow (P95: {{ $value }}s). Check missing indexes or lock contention.'
+
+  # ============================================================
+  # 4. RAG PIPELINE — Core AI response quality
+  # ============================================================
+  - name: rag_pipeline
+    interval: 60s
+    rules:
+      - alert: RAGPipelineSlow
+        expr: |
+          histogram_quantile(0.95, rate(zantara_rag_pipeline_duration_seconds_bucket[10m]))
+          > 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'RAG pipeline P95 > 15s'
+          description: 'End-to-end RAG latency is {{ $value }}s. Check embedding, search, and reranking stages.'
+
+      - alert: HighAbstainRate
+        expr: |
+          (
+            sum(rate(zantara_abstain_decision_total[30m]))
+            / (sum(rate(zantara_rag_queries_total[30m])) > 0)
+          ) > 0.3
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'ABSTAIN rate > 30% over 30min'
+          description: '{{ $value | humanizePercentage }} of queries are being abstained. Check evidence scoring or retrieval quality.'
+
+      - alert: SearchFailuresHigh
+        expr: |
+          rate(zantara_search_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Search failures > 0.1/s'
+          description: 'Vector search is failing. Check Qdrant connectivity and collection health.'
+
+      - alert: LowEvidenceScores
+        expr: |
+          histogram_quantile(0.5, rate(zantara_rag_evidence_score_bucket[1h]))
+          < 0.15
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Median evidence score < 0.15 (ABSTAIN threshold)'
+          description: 'More than half of queries score below ABSTAIN. Retrieval may be degraded.'
+
+      - alert: EmbeddingGenerationSlow
+        expr: |
+          histogram_quantile(0.95, rate(zantara_rag_embedding_duration_seconds_bucket[5m]))
+          > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Embedding generation P95 > 3s'
+          description: 'OpenAI embedding API is slow ({{ $value }}s). May cascade to RAG pipeline.'
+
+  # ============================================================
+  # 5. LLM & AI — Token usage, cost, latency
+  # ============================================================
+  - name: llm_ai
+    interval: 60s
+    rules:
+      - alert: LLMHighLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(zantara_ai_latency_seconds_bucket[5m])) by (le, model))
+          > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'LLM P95 latency > 20s (model: {{ $labels.model }})'
+          description: 'AI response generation is very slow. Check provider status or switch models.'
+
+      - alert: LLMCostSpike
+        expr: |
+          sum(increase(zantara_llm_cost_usd_total[1h])) > 5
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: 'LLM API cost > $5 in the last hour'
+          description: 'Hourly spend: ${{ $value }}. Investigate unusual traffic or prompt explosion.'
+
+      - alert: LLMCostCritical
+        expr: |
+          sum(increase(zantara_llm_cost_usd_total[1h])) > 20
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: 'LLM API cost > $20 in the last hour'
+          description: 'URGENT: ${{ $value }}/hour. Possible runaway loop or abuse. Consider rate limiting.'
+
+      - alert: LLMFallbacksHigh
+        expr: |
+          sum(rate(zantara_rag_fallback_count_total[30m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'LLM fallbacks triggered frequently'
+          description: 'Primary model is failing and falling back. Check API key validity and provider status.'
+
+      - alert: Tier1FallbackSpiking
+        expr: |
+          sum(rate(zantara_tier1_fallback_activated_total[15m])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Tier 1 (General Intelligence) fallback rate spiking'
+          description: 'Many queries hitting the fallback path. RAG pipeline may be degraded.'
+
+  # ============================================================
+  # 6. CACHE — Redis and FAQ cache health
+  # ============================================================
+  - name: cache
+    interval: 60s
+    rules:
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(zantara_cache_hits_total[15m])
+            / (rate(zantara_cache_hits_total[15m]) + rate(zantara_cache_misses_total[15m]))
+          ) < 0.1
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Cache hit rate < 10%'
+          description: 'Cache hit rate: {{ $value | humanizePercentage }}. Redis may be down or TTLs too short.'
+
+      - alert: FAQCacheErrors
+        expr: |
+          rate(zantara_faq_cache_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'FAQ cache errors (Redis connection failures)'
+          description: 'FAQ cache hitting Redis errors. Check Redis connectivity.'
+
+  # ============================================================
+  # 7. CRM — Client operations
+  # ============================================================
+  - name: crm
+    interval: 60s
+    rules:
+      - alert: CRMHighErrorRate
+        expr: |
+          (
+            sum(rate(zantara_crm_client_operations_total{status="error"}[15m]))
+            / sum(rate(zantara_crm_client_operations_total[15m]))
+          ) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'CRM operation error rate > 10%'
+          description: '{{ $value | humanizePercentage }} of CRM operations are failing.'
+
+      - alert: CRMValidationErrors
+        expr: |
+          sum(rate(zantara_crm_validation_errors_total[1h])) > 1
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: 'CRM validation errors elevated'
+          description: 'Frequent data validation failures. Check auto-CRM extraction quality.'
+
+  # ============================================================
+  # 8. STREAMING & ERROR HANDLING
+  # ============================================================
+  - name: streaming
+    interval: 30s
+    rules:
+      - alert: StreamFatalErrors
+        expr: |
+          rate(zantara_stream_fatal_error_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Fatal streaming errors detected'
+          description: 'SSE stream is experiencing fatal errors. Users may see broken responses.'
+
+      - alert: StreamValidationFailures
+        expr: |
+          rate(zantara_stream_event_validation_failed_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High stream event validation failures'
+          description: 'Stream events failing validation at {{ $value }}/s.'
+
+  # ============================================================
+  # 9. LOCK CONTENTION & RACE CONDITIONS
+  # ============================================================
+  - name: concurrency
+    interval: 30s
+    rules:
+      - alert: MemoryLockTimeouts
+        expr: |
+          sum(rate(zantara_memory_lock_timeout_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Memory lock timeouts detected'
+          description: 'Lock contention on user memory operations. Possible concurrent access issues.'
+
+      - alert: CacheDbConsistencyErrors
+        expr: |
+          sum(rate(zantara_cache_db_consistency_errors_total[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Cache-DB consistency errors'
+          description: 'Data inconsistency between cache and database. Stale data may be served.'
+
+  # ============================================================
+  # 10. INGESTION & DATA PIPELINE
+  # ============================================================
+  - name: ingestion
+    interval: 60s
+    rules:
+      - alert: HighIngestionFailureRate
+        expr: |
+          zantara_ingestion_failure_rate > 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Document ingestion failure rate > 20%'
+          description: 'Ingestion failure rate at {{ $value }}%. Check parsing errors and source health.'
+
+      - alert: ParsingErrorsSpiking
+        expr: |
+          sum(rate(zantara_parsing_errors_total[15m])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Document parsing errors elevated'
+          description: 'Parsing errors at {{ $value }}/s. Check file format changes or corrupt uploads.'
+
+      - alert: VectorStorageSlow
+        expr: |
+          histogram_quantile(0.95, rate(zantara_vector_storage_duration_seconds_bucket[5m]))
+          > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Qdrant vector storage P95 > 5s'
+          description: 'Vector upserts are slow ({{ $value }}s). Check Qdrant load and collection sizes.'
+
+  # ============================================================
+  # 11. ARTICLE COMPOSER
+  # ============================================================
+  - name: article_composer
+    interval: 30s
+    rules:
+      - alert: ArticleComposerHighErrorRate
+        expr: |
+          rate(article_compose_requests_total{status=~"error|api_error|json_error"}[5m])
+          / rate(article_compose_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: article_composer
+        annotations:
+          summary: 'Article Composer error rate > 10%'
+          description: '{{ $value | humanizePercentage }} of compose requests are failing.'
+
+      - alert: ArticleComposerHighCosts
+        expr: |
+          sum(increase(claude_api_cost_cents[1h])) / 100 > 10
+        for: 1h
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: 'Article Composer API costs > $10/hour'
+          description: 'Current cost: ${{ $value }}/hour.'
+
+      - alert: ArticleComposerSlow
+        expr: |
+          histogram_quantile(0.95, rate(article_compose_duration_seconds_bucket[5m])) > 30
+        for: 10m
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: 'Article Composer P95 > 30s'
+          description: 'Article generation is very slow.'
+
+  # ============================================================
+  # 12. INTEL & SCRAPER PIPELINE
+  # ============================================================
+  - name: intel_pipeline
+    interval: 60s
+    rules:
+      - alert: HighDuplicateRate
+        expr: |
+          (
+            sum(rate(zantara_intel_articles_duplicates_total[1h]))
+            / (sum(rate(zantara_intel_articles_submitted_total[1h])) > 0)
+          ) > 0.5
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: 'Intel duplicate rate > 50%'
+          description: '{{ $value | humanizePercentage }} of scraped articles are duplicates. Sources may need refresh.'
+
+      - alert: ScraperNormalizationErrors
+        expr: |
+          sum(rate(zantara_scraper_normalization_errors_total[1h])) > 0.5
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Scraper normalization errors elevated'
+          description: 'Data normalization failures at {{ $value }}/s. Source format may have changed.'
+
+  # ============================================================
+  # 13. PORTAL ENDPOINTS
+  # ============================================================
+  - name: portal
+    interval: 60s
+    rules:
+      - alert: PortalTaxEndpointErrors
+        expr: |
+          (
+            sum(rate(portal_tax_requests_total{status="error"}[15m]))
+            / sum(rate(portal_tax_requests_total[15m]))
+          ) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Portal tax endpoint error rate > 20%'
+          description: 'Tax portal requests failing at {{ $value | humanizePercentage }}.'
+
+      - alert: PortalVisaEndpointErrors
+        expr: |
+          (
+            sum(rate(portal_visa_requests_total{status="error"}[15m]))
+            / sum(rate(portal_visa_requests_total[15m]))
+          ) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Portal visa endpoint error rate > 20%'
+          description: 'Visa portal requests failing at {{ $value | humanizePercentage }}.'
+
+  # ============================================================
+  # 14. SECURITY — Public endpoint anomalies
+  # ============================================================
+  - name: security
+    interval: 60s
+    rules:
+      - alert: PublicEndpointAbuseDetected
+        expr: |
+          sum(rate(zantara_public_endpoint_access_total[5m])) by (endpoint) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High traffic on public endpoint: {{ $labels.endpoint }}'
+          description: '{{ $value }} req/s on unauthenticated endpoint. Possible scraping or abuse.'

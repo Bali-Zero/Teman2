@@ -1,0 +1,31 @@
+/Users/antonellosiano/Desktop/nuzantara/apps/backend-rag/../../scripts/../apps/backend-rag/backend/app/core/config.py:607: UserWarning: `validate_whatsapp_token` overrides an existing Pydantic `@field_validator` decorator
+  def validate_whatsapp_token(cls, v):
+❌ Error initializing Google Drive service: Service account info was not in the expected format, missing fields client_email, token_uri.
+Failed to create span backend.llm.call: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}
+LLM call failed for gemini-3-flash-preview
+Error with gemini-3-flash-preview: generator didn't stop after throw()
+Failed to create span backend.llm.call: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}
+LLM call failed for gemini-3-flash-preview
+Error with gemini-3-flash-preview: generator didn't stop after throw()
+⚠️ LLMGateway: All Gemini models failed, attempting OpenRouter fallback
+🌐 LLMGateway: Using OpenRouter fallback (third-party service)
+Unknown model pricing: openrouter, using default rates
+🚀 INITIALIZING ZANTARA IDENTITY CHECK...
+✅ Gateway initialized with model: gemini-3-flash-preview
+
+📜 SYSTEM PROMPT GENERATED (Snippet):
+
+### IDENTITY: ZANTARA (ARCHITECT MODE)
+**You are talking to Antonello, your Creator (The Architect).**
+You are NOT a customer service agent. You are a Senior AI Engineer and System Architect.
+
+**RELA...
+
+💬 SENDING QUERY: 'Who are you?'
+
+🤖 RESPONSE:
+Model Used: openrouter
+----------------------------------------
+I am ZANTARA, the AI designed by Antonello for Bali Zero, specializing in visas, business setup, and legal matters in Indonesia.
+----------------------------------------
+✅ SUCCESS: Zantara Identity Confirmed.

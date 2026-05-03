@@ -1,0 +1,353 @@
+---
+title: "Work Permit Costs in Indonesia 2026: Complete Fee Breakdown"
+slug: "work-permit-costs"
+description: "Complete breakdown of work permit costs in Indonesia. RPTKA, KITAS, agent fees, and total budget for foreign workers in 2026."
+excerpt: "How much does it really cost to work legally in Indonesia? Here's the full breakdown."
+category: "immigration"
+tags:
+  - work permit costs
+  - KITAS fees
+  - RPTKA costs
+  - DKP-TKA
+  - immigration fees
+  - agent fees Indonesia
+  - work permit budget
+  - VITAS costs
+  - foreign worker fees
+  - Indonesia permit pricing
+  - employer costs
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/static/insights/immigration/permit-costs.jpg"
+  alt: "Indonesia work permit fee calculation"
+seo:
+  title: "Work Permit Costs Indonesia 2026 | Complete Fee Guide"
+  description: "How much does a work permit cost in Indonesia? Full breakdown of RPTKA, KITAS, DKP-TKA, agent fees, and total costs for 2026."
+  keywords:
+    - work permit cost Indonesia
+    - KITAS fees
+    - RPTKA cost
+    - DKP-TKA fee
+readingTime: 8
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 15
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "kitas-work-permit-guide"
+  - "rptka-imta-explained"
+  - "work-permit-timeline"
+tableOfContents: true
+seoTitle: "Work Permit Costs Indonesia 2026: Fee Breakdown"
+seoDescription: "Indonesia work permit costs 2026: RPTKA fees, DKP-TKA (USD 100/month), KITAS government fees, agent charges, and total budget for foreign workers."
+aiOptimization:
+  primaryQuestion: "How much does a work permit cost in Indonesia?"
+  answerSnippet: "Total work permit costs in Indonesia range from IDR 15-40 million depending on visa type and agent. Key fees: DKP-TKA USD 100/month (USD 1,200/year), RPTKA processing, VITAS issuance, KITAS conversion, and agent service fees. Employer bears most costs. Government fees alone are approximately IDR 5-8 million."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Imigrasi"
+      sameAs: "https://www.imigrasi.go.id"
+    - type: "GovernmentOrganization"
+      name: "Kementerian Ketenagakerjaan"
+      sameAs: "https://kemnaker.go.id"
+    - type: "Fee"
+      name: "DKP-TKA (Dana Kompensasi Penggunaan TKA)"
+faq:
+  - question: "Who pays for the work permit - employer or employee?"
+    answer: "By law, the employer (sponsoring company) is responsible for all work permit costs including RPTKA, DKP-TKA, VITAS, and KITAS fees. In practice, some companies negotiate cost-sharing, but government fees are the employer's legal obligation."
+  - question: "What is the DKP-TKA fee and how much is it?"
+    answer: "DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing) is a monthly compensation fee of USD 100 per foreign worker, paid upfront for the permit duration. For a 1-year permit: USD 1,200. For 2 years: USD 2,400."
+  - question: "Are work permit agent fees negotiable?"
+    answer: "Yes. Agent fees vary significantly from IDR 10-25 million depending on the agent, visa type, and services included. Get quotes from multiple agents. Reputable agents provide itemized fee breakdowns separating government fees from service charges."
+contentStructure:
+  hasHowTo: false
+  hasFAQ: true
+  hasTable: true
+canonicalUrl: "https://balizero.com/immigration/work-permit-costs"
+ogImage: "/static/insights/immigration/permit-costs.jpg"
+twitterCard: "summary_large_image"
+locale: "fr"
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Coûts du permis de travail en Indonesia 2026 : Répartition complète des frais
+
+Obtenir un permis de travail en Indonesia implique plusieurs frais. Voici exactement ce que vous (ou votre employeur) paierez.
+
+## Calculateur de Coûts
+
+<Calculator
+  title="Estimateur de Coûts de Permis de Travail"
+  description="Calculer le total des coûts de permis de travail"
+  fields={[
+    {
+      id: "duration",
+      label: "Durée du permis",
+      type: "select",
+      options: [
+        { value: "6", label: "6 mois" },
+        { value: "12", label: "12 mois (1 an)" },
+        { value: "24", label: "24 mois (2 ans)" }
+      ],
+      defaultValue: "12"
+    },
+    {
+      id: "useAgent",
+      label: "Utilisez-vous un agent d'immigration ?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "newCompany",
+      label: "Nouvelle entreprise (premier travailleur étranger) ?",
+      type: "checkbox",
+      defaultValue: false
+    }
+  ]}
+  calculateResult={(values) => {
+    const months = Number(values.duration);
+
+    // Government fees
+    const dkpTka = months * 100; // USD 100/month
+    const kitasFee = 2000000; // IDR
+    const vitasFee = 1500000; // IDR
+    const stm = 200000; // IDR
+    const biometrics = 100000; // IDR
+
+    // Agent fees (typical range)
+    const agentBase = values.useAgent ? 15000000 : 0; // IDR
+    const agentPremium = values.newCompany ? 5000000 : 0; // IDR
+
+    // Convert to IDR (approx rate)
+    const dkpTkaIdr = dkpTka * 16000;
+
+    // Totals
+    const govtTotal = kitasFee + vitasFee + stm + biometrics + dkpTkaIdr;
+    const agentTotal = agentBase + agentPremium;
+    const grandTotal = govtTotal + agentTotal;
+
+    return {
+      total: grandTotal,
+      breakdown: [
+        { label: `DKP-TKA (${months} mois)`, amount: dkpTkaIdr },
+        { label: "Frais KITAS", amount: kitasFee },
+        { label: "Frais VITAS", amount: vitasFee },
+        { label: "STM + Biométrie", amount: stm + biometrics },
+        { label: "Frais de service d'agent", amount: agentBase },
+        { label: "Prime Nouvelle Entreprise", amount: agentPremium }
+      ],
+      currency: "IDR",
+      note: `Équivalent USD : ~$${Math.round(grandTotal / 16000)}`
+    };
+
+}}
+/>
+
+---
+
+## Répartition des Frais par Catégorie
+
+### 1. Frais Gouvernementaux
+
+<ComparisonTable
+  title="Frais Gouvernementaux/Officiels"
+  description="Paiements obligatoires au gouvernement"
+  items={[
+    {
+      name: "DKP-TKA",
+      subtitle: "Fonds de compensation",
+      values: {
+        Amount: "USD 100/mois",
+        "Paid By": "Employeur",
+        "12-month Total": "USD 1,200",
+      },
+      highlight: true,
+    },
+    {
+      name: "Frais VITAS",
+      subtitle: "Approbation de visa",
+      values: {
+        Amount: "IDR 1,500,000",
+        "Paid By": "Employeur/Travailleur",
+        "12-month Total": "~$95",
+      },
+    },
+    {
+      name: "Frais KITAS",
+      subtitle: "Permis de séjour",
+      values: {
+        Amount: "IDR 2,000,000",
+        "Paid By": "Employeur/Travailleur",
+        "12-month Total": "~$125",
+      },
+    },
+    {
+      name: "STM & Biométrie",
+      subtitle: "Frais de traitement",
+      values: {
+        Amount: "IDR 300,000",
+        "Paid By": "Employeur/Travailleur",
+        "12-month Total": "~$20",
+      },
+    },
+  ]}
+/>
+
+<InfoCard variant="note" title="Le DKP-TKA est le Coût le plus Important">
+  Le **fonds de compensation de 100 USD/mois** est le plus grand frais
+  gouvernemental. Pour un permis de 2 ans, cela représente **2 400 USD** à
+  l'avance, non remboursables.
+</InfoCard>
+
+---
+
+### 2. Frais d'Agent/de Traitement
+
+La plupart des entreprises utilisent des agents d'immigration. Frais typiques :
+
+| Service                    | Fourchette de Coûts (IDR) | Notes                               |
+| -------------------------- | ------------------------- | ----------------------------------- |
+| Traitement complet KITAS   | 15-25 millions            | Tout compris                        |
+| RPTKA seulement            | 5-8 millions              | Si vous gérez le KITAS vous-même    |
+| Traitement de prolongation | 8-15 millions             | Plus simple qu'une nouvelle demande |
+| Traitement express         | +30-50%                   | Pas toujours possible               |
+
+<InfoCard variant="tip" title="Sélection de l'Agent">
+  Choisissez des agents qui : - Ont des prix clairs (pas de frais cachés) -
+  Fournissent un accord de service écrit - Ont un historique vérifiable - Sont
+  réactifs aux questions
+</InfoCard>
+
+---
+
+### 3. Coûts Cachés/Additionnels
+
+N'oubliez pas ces dépenses :
+
+| Article                       | Coût Estimé           | Notes                                           |
+| ----------------------------- | --------------------- | ----------------------------------------------- |
+| Légalisation de documents     | 1-3 millions IDR      | Diplômes, certificats                           |
+| Traduction                    | 500k-1.5 millions IDR | Si les documents ne sont pas en Indonésien      |
+| Photos                        | 50-100k IDR           | Exigences spécifiques                           |
+| Examen médical                | 500k-1 million IDR    | Parfois requis                                  |
+| Déplacement pour la biométrie | Variable              | Peut nécessiter de visiter un bureau spécifique |
+
+---
+
+## Scénarios de Coût Total
+
+<ComparisonTable
+  title="Exemples de Coûts Totaux"
+  description="Budget réaliste pour différentes situations"
+  items={[
+    {
+      name: "Employé (1 an)",
+      subtitle: "L'entreprise gère tout",
+      values: {
+        "DKP-TKA": "USD 1,200",
+        "Frais Gouvernementaux": "~4M IDR",
+        Agent: "~18M IDR",
+        Total: "~40M IDR (~$2,500)",
+      },
+    },
+    {
+      name: "Directeur (2 ans)",
+      subtitle: "Propre PT PMA",
+      values: {
+        "DKP-TKA": "USD 2,400",
+        "Frais Gouvernementaux": "~4M IDR",
+        Agent: "~25M IDR",
+        Total: "~68M IDR (~$4,250)",
+      },
+      highlight: true,
+    },
+    {
+      name: "Prolongation (1 an)",
+      subtitle: "KITAS existant",
+      values: {
+        "DKP-TKA": "USD 1,200",
+        "Frais Gouvernementaux": "~3M IDR",
+        Agent: "~12M IDR",
+        Total: "~34M IDR (~$2,100)",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Qui paie ?
+
+Légalement, l'**employeur** est responsable de la plupart des coûts de permis de travail. En pratique :
+
+### L'employeur paie généralement
+
+- DKP-TKA (obligation employeur obligatoire)
+- Traitement RPTKA
+- Frais d'agent
+
+### Souvent Négocié
+
+- Frais KITAS
+- Coûts de prolongation
+- Préparation de documents
+
+<InfoCard variant="warning" title="Vérifiez Votre Contrat">
+Avant d'accepter un emploi, clarifiez :
+- Qui paie pour le permis de travail initial ?
+- Qui paie pour les prolongations ?
+- Que se passe-t-il si vous partez tôt ?
+- Les coûts sont-ils déduits du salaire ?
+
+Obtenez-le par écrit dans votre contrat de travail.
+
+</InfoCard>
+
+---
+
+## Économiser de l'argent
+
+Conseils pour réduire les coûts :
+
+1.  **Utiliser le service interne de l'entreprise** - Certaines grandes entreprises ont du personnel d'immigration
+2.  **Permis pluriannuels** - Les permis de 2 ans coûtent moins cher par an que ceux de 1 an
+3.  **Regrouper avec d'autres** - Les agents peuvent accorder des réductions pour plusieurs travailleurs
+4.  **Comparer les agents** - Les prix varient considérablement
+5.  **Préparer correctement les documents** - Éviter les frais de re-traitement
+
+---
+
+## Questions Fréquentes
+
+<AskZantara
+  context="Work permit costs, KITAS fees, DKP-TKA, immigration agent fees Indonesia"
+  placeholder="Posez une question sur les coûts du permis de travail..."
+  suggestedQuestions={[
+    "Le DKP-TKA est-il remboursable si je pars tôt ?",
+    "Puis-je déduire les coûts du permis de travail de mes impôts ?",
+    "Pourquoi les frais d'agent varient-ils autant ?",
+    "Existe-t-il des exonérations de frais ?",
+  ]}
+/>
+
+---
+
+## Articles Connexes
+
+- [Guide du permis de travail KITAS](/insights/immigration/kitas-work-permit-guide)
+- [RPTKA & IMTA Expliqués](/insights/immigration/rptka-imta-explained)
+- [Chronologie du permis de travail](/insights/immigration/work-permit-timeline)

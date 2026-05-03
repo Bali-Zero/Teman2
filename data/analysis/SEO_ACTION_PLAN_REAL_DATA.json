@@ -1,0 +1,207 @@
+{
+  "generated_at": "2026-04-10",
+  "date_range": {
+    "start": "2026-04-03",
+    "end": "2026-04-10"
+  },
+  "site_url": "https://balizero.com",
+  "data_sources": {
+    "gsc": "real",
+    "analytics": "real"
+  },
+  "gsc_summary": {
+    "total_queries": 22,
+    "top_queries": [
+      {
+        "query": "bali zero",
+        "clicks": 6,
+        "impressions": 29,
+        "ctr": 0.2069,
+        "position": 1.8
+      },
+      {
+        "query": "bali zero visa",
+        "clicks": 1,
+        "impressions": 5,
+        "ctr": 0.2,
+        "position": 1.8
+      },
+      {
+        "query": "balizero",
+        "clicks": 1,
+        "impressions": 8,
+        "ctr": 0.125,
+        "position": 1.5
+      },
+      {
+        "query": "\"constitutional ai 2.0\"",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 9
+      },
+      {
+        "query": "\"constitutional ai 2.0\" anthropic",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 8
+      },
+      {
+        "query": "alcohol license",
+        "clicks": 0,
+        "impressions": 4,
+        "ctr": 0,
+        "position": 71.8
+      },
+      {
+        "query": "balazuocom",
+        "clicks": 0,
+        "impressions": 7,
+        "ctr": 0,
+        "position": 3
+      },
+      {
+        "query": "business license indonesia",
+        "clicks": 0,
+        "impressions": 7,
+        "ctr": 0,
+        "position": 50.6
+      },
+      {
+        "query": "business license outsourcing",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 41
+      },
+      {
+        "query": "business license service",
+        "clicks": 0,
+        "impressions": 1,
+        "ctr": 0,
+        "position": 27
+      }
+    ],
+    "kbli_related_queries": []
+  },
+  "kbli_audit": {
+    "total_codes": 1563,
+    "sample_codes": [
+      "01111",
+      "01112",
+      "01113",
+      "01114",
+      "01115"
+    ]
+  },
+  "critical_gaps": [
+    {
+      "query": "alcohol license",
+      "clicks": 0,
+      "impressions": 4,
+      "ctr": 0,
+      "position": 71.8
+    },
+    {
+      "query": "business license indonesia",
+      "clicks": 0,
+      "impressions": 7,
+      "ctr": 0,
+      "position": 50.6
+    },
+    {
+      "query": "business license outsourcing",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 41
+    },
+    {
+      "query": "business license service",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 27
+    },
+    {
+      "query": "company registration bali",
+      "clicks": 0,
+      "impressions": 13,
+      "ctr": 0,
+      "position": 15.3
+    },
+    {
+      "query": "food and beverage registration services in indonesia",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 27
+    },
+    {
+      "query": "foreign driving license conversion indonesia",
+      "clicks": 0,
+      "impressions": 8,
+      "ctr": 0,
+      "position": 12.4
+    },
+    {
+      "query": "indonesia business license",
+      "clicks": 0,
+      "impressions": 5,
+      "ctr": 0,
+      "position": 27.8
+    },
+    {
+      "query": "zerra visa assistance",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 33
+    }
+  ],
+  "action_items": [
+    {
+      "priority": "HIGH",
+      "action": "Submit 1,563 KBLI URLs to Google Indexing API",
+      "reason": "Only 0 KBLI queries visible in GSC top 50"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Add FAQ Schema to all KBLI Gold pages",
+      "reason": "Structured data increases CTR for AI-cited queries"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Fix 9 queries with position >10 and 0 clicks",
+      "reason": "High impression / zero click = metadata or content gap"
+    },
+    {
+      "priority": "LOW",
+      "action": "Update llms.txt with latest service pricing",
+      "reason": "AI crawlers (GPT, Gemini) reference llms.txt for structured answers"
+    }
+  ],
+  "analytics_data": {
+    "dimensionHeaders": [
+      {
+        "name": "pagePath"
+      }
+    ],
+    "metricHeaders": [
+      {
+        "name": "sessions",
+        "type": "TYPE_INTEGER"
+      },
+      {
+        "name": "bounceRate",
+        "type": "TYPE_FLOAT"
+      }
+    ],
+    "metadata": {
+      "currencyCode": "USD",
+      "timeZone": "Etc/GMT-8"
+    },
+    "kind": "analyticsData#runReport"
+  }
+}

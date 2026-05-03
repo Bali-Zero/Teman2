@@ -1,0 +1,245 @@
+"""
+Audio Service with Hybrid Provider Strategy
+
+Priority:
+1. Pollinations.ai (FREE, no API key)
+2. OpenAI (fallback, requires API key)
+
+This provides cost savings when Pollinations works,
+with reliable fallback to OpenAI when needed.
+"""
+
+import logging
+from urllib.parse import quote
+
+import httpx
+from openai import AsyncOpenAI
+
+from backend.app.core.config import settings
+from backend.services.observability import llm_cost_tracked, set_usage
+
+logger = logging.getLogger(__name__)
+
+# Pollinations.ai API endpoints (FREE, no API key required)
+POLLINATIONS_TTS_URL = "https://text.pollinations.ai"
+POLLINATIONS_STT_URL = "https://text.pollinations.ai/openai"
+
+
+class AudioService:
+    """
+    Hybrid Audio Service: Pollinations (free) with OpenAI fallback.
+
+    TTS: Pollinations GET endpoint -> OpenAI fallback (5s timeout for fast response)
+    STT: OpenAI Whisper (more reliable for transcription)
+    """
+
+    def __init__(self) -> None:
+        # Short timeout for TTS - fallback to OpenAI quickly if Pollinations is slow
+        # Golden Rule #10: lazy-init via property; lifespan close() wired
+        # in app_factory.lifespan via app.state.audio_service.
+        self._http_client: httpx.AsyncClient | None = None
+        self.tts_timeout = 5.0  # Fast fallback to OpenAI for TTS
+
+        # OpenAI client for fallback and STT
+        self.openai_api_key = settings.openai_api_key
+        if self.openai_api_key:
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+            logger.info("AudioService initialized: Pollinations (primary) + OpenAI (fallback)")
+        else:
+            self.openai_client = None
+            logger.warning("AudioService: OpenAI not available (no API key), Pollinations only")
+
+    async def transcribe_audio(
+        self, file_path_or_buffer, model: str = "whisper-1", language: str | None = None,
+    ) -> str:
+        """
+        Transcribe audio to text.
+
+        Uses OpenAI Whisper for reliability (STT is critical for user experience).
+        """
+        if not self.openai_client:
+            raise ValueError("STT requires OpenAI API key")
+
+        try:
+            # Route file-path case through the cost-tracked private method.
+            # Buffer case calls OpenAI directly (duration unavailable from stream).
+            if isinstance(file_path_or_buffer, str):
+                return await self._openai_stt(
+                    file_path=file_path_or_buffer,
+                    duration_seconds=0,
+                    language=language,
+                )
+            else:
+                transcript = await self.openai_client.audio.transcriptions.create(
+                    model=model, file=file_path_or_buffer, language=language,
+                )
+                return transcript.text
+
+        except Exception as e:
+            logger.error(f"Audio transcription failed: {e}")
+            raise e
+
+    async def generate_speech(
+        self,
+        text: str,
+        voice: str = "alloy",
+        model: str = "tts-1",
+        output_path: str | None = None,
+    ) -> bytes:
+        """
+        Generate speech from text.
+
+        Strategy:
+        1. Try Pollinations (FREE)
+        2. Fallback to OpenAI if Pollinations fails
+        """
+        # Validate voice
+        valid_voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
+        if voice not in valid_voices:
+            voice = "alloy"
+
+        # Try Pollinations first (FREE)
+        try:
+            audio_content = await self._pollinations_tts(text, voice)
+            if audio_content:
+                logger.info(f"TTS via Pollinations (FREE): {len(text)} chars, voice={voice}")
+                if output_path:
+                    with open(output_path, "wb") as f:
+                        f.write(audio_content)
+                    return output_path
+                return audio_content
+        except Exception as e:
+            logger.warning(f"Pollinations TTS failed, trying OpenAI fallback: {e}")
+
+        # Fallback to OpenAI
+        if self.openai_client:
+            try:
+                audio_content = await self._openai_tts(text=text, voice=voice, model=model)
+                logger.info(f"TTS via OpenAI (fallback): {len(text)} chars, voice={voice}")
+                if output_path:
+                    with open(output_path, "wb") as f:
+                        f.write(audio_content)
+                    return output_path
+                return audio_content
+            except Exception as e:
+                logger.error(f"OpenAI TTS also failed: {e}")
+                raise e
+        else:
+            raise ValueError("All TTS providers failed and OpenAI fallback not available")
+
+    async def _pollinations_tts(self, text: str, voice: str) -> bytes | None:
+        """
+        Generate speech using Pollinations.ai (FREE).
+
+        Note: Pollinations has rate limits and may be unreliable.
+        Returns None if request fails.
+        """
+        try:
+            # URL encode the text - use safe chars for better compatibility
+            encoded_text = quote(text, safe="")
+
+            # Build TTS URL
+            url = f"{POLLINATIONS_TTS_URL}/{encoded_text}"
+            params = {"model": "openai-audio", "voice": voice}
+
+            logger.debug(f"Pollinations TTS request: voice={voice}, text_len={len(text)}")
+
+            response = await self.http_client.get(url, params=params, timeout=self.tts_timeout)
+
+            if response.status_code != 200:
+                logger.warning(f"Pollinations TTS returned {response.status_code}")
+                return None
+
+            # Verify it's actually audio (not JSON error)
+            content_type = response.headers.get("content-type", "")
+            if "audio" not in content_type and "octet-stream" not in content_type:
+                # Might be JSON error response
+                try:
+                    error_data = response.json()
+                    logger.warning(f"Pollinations returned JSON instead of audio: {error_data}")
+                except (ValueError, httpx.DecodingError):
+                    logger.debug("Pollinations returned non-audio, non-JSON response")
+                return None
+
+            return response.content
+
+        except httpx.TimeoutException:
+            logger.warning("Pollinations TTS timeout")
+            return None
+        except Exception as e:
+            logger.warning(f"Pollinations TTS error: {e}")
+            return None
+
+    @llm_cost_tracked(provider="openai_audio", static_model="tts-1")
+    async def _openai_tts(self, *, text: str, voice: str, model: str = "tts-1") -> bytes:
+        """
+        Generate speech using OpenAI TTS (cost-tracked).
+
+        Pricing unit: $15 / 1M characters (input_tokens = len(text)).
+        """
+        set_usage(input_tokens=len(text), output_tokens=0)
+        response = await self.openai_client.audio.speech.create(
+            model=model, voice=voice, input=text,
+        )
+        return response.content
+
+    @llm_cost_tracked(provider="openai_audio", static_model="whisper-1")
+    async def _openai_stt(
+        self,
+        *,
+        file_path: str,
+        duration_seconds: float = 0,
+        language: str | None = None,
+    ) -> str:
+        """
+        Transcribe audio using OpenAI Whisper from a file path (cost-tracked).
+
+        Pricing unit: $0.006 / 60 s (input_tokens = int(duration_seconds)).
+        When duration_seconds is unknown, pass 0 — cost is recorded as $0
+        rather than blocking the call.
+        """
+        set_usage(input_tokens=int(duration_seconds), output_tokens=0)
+        with open(file_path, "rb") as f:
+            resp = await self.openai_client.audio.transcriptions.create(
+                model="whisper-1", file=f, language=language,
+            )
+        text = resp.text
+        # Update output_tokens now that we know the transcription length.
+        set_usage(input_tokens=int(duration_seconds), output_tokens=len(text) // 4)
+        return text
+
+    @property
+    def http_client(self) -> httpx.AsyncClient:
+        """Lazy-init persistent AsyncClient (Golden Rule #10).
+
+        Re-creates the client if previously closed, but only when the
+        attribute is an actual ``httpx.AsyncClient`` — unit tests inject
+        ``AsyncMock`` instances whose ``is_closed`` is itself a mock and
+        would otherwise spuriously trigger re-creation.
+        """
+        c = self._http_client
+        if c is None or (isinstance(c, httpx.AsyncClient) and c.is_closed):
+            self._http_client = httpx.AsyncClient(timeout=10.0)
+        return self._http_client
+
+    @http_client.setter
+    def http_client(self, value: httpx.AsyncClient | None) -> None:
+        """Setter for unit tests that inject a mock AsyncClient."""
+        self._http_client = value
+
+    async def close(self):
+        """Close the HTTP client."""
+        if self._http_client is not None and not self._http_client.is_closed:
+            await self._http_client.aclose()
+        self._http_client = None
+
+
+# Singleton instance
+_audio_service: AudioService | None = None
+
+
+def get_audio_service() -> AudioService:
+    global _audio_service
+    if _audio_service is None:
+        _audio_service = AudioService()
+    return _audio_service

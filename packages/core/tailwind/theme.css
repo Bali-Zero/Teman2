@@ -1,0 +1,53 @@
+/*
+ * Tailwind v4 @theme block — maps semantic tokens to Tailwind utility generators.
+ * Must be imported AFTER tokens/index.css so the var() references resolve.
+ *
+ * Usage in consumer (apps/mouth/src/app/globals.css):
+ *   @import 'tailwindcss';
+ *   @import '.../packages/core/tokens/index.css';
+ *   @import '.../packages/core/tailwind/theme.css';
+ *   @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+ */
+
+@theme {
+  /* Colors — generate bg-*, text-*, border-*, ring-* utilities */
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent: var(--accent-funnel);
+  --color-accent-text: var(--accent-funnel-text);
+  --color-accent-zantara: var(--accent-zantara);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-sand: var(--accent-sand);
+  --color-accent-gold-muted: var(--accent-gold-muted);
+  --color-accent-blue-editorial: var(--accent-blue-editorial);
+  --color-accent-sage: var(--accent-sage);
+  --color-accent-pink-editorial: var(--accent-pink-editorial);
+  --color-accent-red-brand: var(--accent-red-brand);
+  --color-surface-editorial-base: var(--surface-editorial-base);
+  --color-surface-editorial-elevated: var(--surface-editorial-elevated);
+  --color-surface-deep: var(--surface-deep);
+  --color-text-silver: var(--text-silver);
+  --color-text-muted-cool: var(--text-muted-cool);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  /* Typography */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Radii */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-full: var(--radius-full);
+
+  /* Motion */
+  --ease-standard: var(--motion-ease-standard);
+  --ease-emphasized: var(--motion-ease-emphasized);
+}

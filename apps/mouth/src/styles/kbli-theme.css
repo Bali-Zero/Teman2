@@ -1,0 +1,175 @@
+/* =============================================================
+   KBLI Navigator Theme — God Tier Anthracite
+   Used by globals.css and KBLI components
+   ============================================================= */
+
+:root {
+  /* Base backgrounds — God Tier Anthracite */
+  --kbli-bg-base: #1d273b;
+  --kbli-bg-elevated: #243047;
+  --kbli-bg-surface: #2a3655;
+  --kbli-bg-surface-hover: #2f3d5e;
+  --kbli-bg-card: rgba(29, 39, 59, 0.85);
+  --kbli-bg-card-hover: rgba(36, 48, 71, 0.9);
+  --kbli-bg-input: rgba(29, 39, 59, 0.8);
+  --kbli-bg-primary: #1d273b;
+  --kbli-bg-secondary: #243047;
+
+  /* Accent — warm terracotta/copper */
+  --kbli-accent: #d4845a;
+  --kbli-accent-hover: #c07348;
+  --kbli-accent-glow: rgba(212, 132, 90, 0.3);
+  --kbli-accent-subtle: rgba(212, 132, 90, 0.1);
+  --kbli-accent-muted: rgba(212, 132, 90, 0.15);
+
+  /* Secondary accent — periwinkle */
+  --kbli-accent2: #8b9cf7;
+  --kbli-accent2-glow: rgba(139, 156, 247, 0.25);
+
+  /* Amber for highlights */
+  --kbli-amber: #e8a849;
+  --kbli-amber-glow: rgba(232, 168, 73, 0.3);
+
+  /* Text */
+  --kbli-text-primary: #ececec;
+  --kbli-text-secondary: #a8a8a8;
+  --kbli-text-muted: #8a8a8a;
+
+  /* Borders */
+  --kbli-border: rgba(255, 255, 255, 0.08);
+  --kbli-border-hover: rgba(255, 255, 255, 0.15);
+  --kbli-border-accent: rgba(212, 132, 90, 0.25);
+
+  /* PMA status colors */
+  --kbli-pma-open: #5ec490;
+  --kbli-pma-open-bg: rgba(94, 196, 144, 0.1);
+  --kbli-pma-restricted: #e8a849;
+  --kbli-pma-restricted-bg: rgba(232, 168, 73, 0.1);
+  --kbli-pma-closed: #e8716c;
+  --kbli-pma-closed-bg: rgba(232, 113, 108, 0.1);
+
+  /* Risk level colors */
+  --kbli-risk-low: #5ec490;
+  --kbli-risk-medium-low: #6ba3e8;
+  --kbli-risk-medium-high: #e8a849;
+  --kbli-risk-high: #e8716c;
+
+  /* Zantara AI accent */
+  --kbli-zantara: #8b9cf7;
+  --kbli-zantara-bg: rgba(139, 156, 247, 0.1);
+  --kbli-zantara-glow: 0 0 20px rgba(139, 156, 247, 0.15);
+
+  /* Transition mapping colors */
+  --kbli-map-unchanged: #6b7280;
+  --kbli-map-renamed: #6ba3e8;
+  --kbli-map-merged: #e8a849;
+  --kbli-map-new: #5ec490;
+
+  /* Shadows */
+  --kbli-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--kbli-border);
+  --kbli-shadow-card-hover:
+    0 4px 12px rgba(0, 0, 0, 0.2), 0 16px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px var(--kbli-border-hover), 0 0 30px rgba(212, 132, 90, 0.04);
+  --kbli-shadow-glow: 0 0 20px rgba(212, 132, 90, 0.15), 0 0 60px rgba(212, 132, 90, 0.05);
+
+  /* Radii */
+  --kbli-radius-sm: 6px;
+  --kbli-radius-md: 10px;
+  --kbli-radius-lg: 14px;
+  --kbli-radius-xl: 20px;
+}
+
+/* =============================================================
+   KBLI Prose — Editorial bullet list styling
+   Turns markdown bullets into discrete card-rows
+   ============================================================= */
+
+.kbli-prose ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kbli-prose ul li {
+  position: relative;
+  padding: 10px 16px 10px 28px;
+  border-radius: 10px;
+  background: var(--kbli-bg-surface);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--kbli-text-secondary);
+}
+
+.kbli-prose ul li::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 18px;
+  width: 5px;
+  height: 5px;
+  border-radius: 2px;
+  background: var(--kbli-accent);
+  opacity: 0.6;
+}
+
+.kbli-prose ul li strong {
+  color: var(--kbli-text-primary);
+  font-weight: 600;
+}
+
+.kbli-prose p {
+  color: var(--kbli-text-secondary);
+  line-height: 1.8;
+  margin: 8px 0;
+}
+
+.kbli-prose p strong {
+  color: var(--kbli-text-primary);
+  font-weight: 600;
+}
+
+.kbli-prose p:first-child {
+  margin-top: 0;
+}
+
+.kbli-prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* =============================================================
+   Indonesian Flag Title Animation — white ↔ red dynamic sweep
+   ============================================================= */
+
+.kbli-flag-title {
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #ffffff 20%,
+    #dc2626 40%,
+    #ef4444 55%,
+    #dc2626 70%,
+    #ffffff 90%,
+    #ffffff 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: kbli-flag-sweep 6s ease-in-out infinite;
+}
+
+@keyframes kbli-flag-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  50% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}

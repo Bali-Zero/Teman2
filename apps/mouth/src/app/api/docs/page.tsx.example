@@ -1,0 +1,65 @@
+'use client';
+
+/**
+ * Swagger UI Page (Optional)
+ * 
+ * IMPORTANT: This file requires additional dependencies:
+ * 
+ *   cd apps/mouth
+ *   pnpm add swagger-ui-react
+ *   pnpm add -D @types/swagger-ui-react
+ * 
+ * Once installed, rename this file to `page.tsx` to activate.
+ * 
+ * Route: /api/docs
+ */
+
+import dynamic from 'next/dynamic';
+import 'swagger-ui-react/swagger-ui.css';
+
+// Dynamically import SwaggerUI (client-side only)
+const SwaggerUI = dynamic(() => import('swagger-ui-react'), { ssr: false });
+
+export default function ApiDocsPage() {
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="border-b bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="container mx-auto px-6 py-8">
+          <h1 className="text-4xl font-bold mb-2">Bali Zero API Documentation</h1>
+          <p className="text-blue-100">
+            Complete API reference for visa, business, and tax services
+          </p>
+        </div>
+      </div>
+
+      {/* Swagger UI */}
+      <div className="container mx-auto px-6 py-8">
+        <SwaggerUI 
+          url="/api/docs/openapi.yaml"
+          docExpansion="list"
+          defaultModelsExpandDepth={1}
+          displayRequestDuration={true}
+          filter={true}
+          persistAuthorization={true}
+          tryItOutEnabled={true}
+        />
+      </div>
+
+      {/* Footer */}
+      <div className="border-t mt-12 py-6 text-center text-gray-600">
+        <p>
+          Built with ❤️ by Bali Zero • {' '}
+          <a 
+            href="https://balizero.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Visit Website
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

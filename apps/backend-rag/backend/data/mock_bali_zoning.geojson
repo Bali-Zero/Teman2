@@ -1,0 +1,51 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "Badung",
+        "subdistrict": "Canggu",
+        "zoning_type": "Tourism / Commercial",
+        "allowed_kbli": ["56101", "55110", "68111"],
+        "avg_price_per_are": 2500000000,
+        "risk_score": 0.2
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.132, -8.648],
+            [115.145, -8.648],
+            [115.145, -8.655],
+            [115.132, -8.655],
+            [115.132, -8.648]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "district": "Badung",
+        "subdistrict": "Pererenan",
+        "zoning_type": "Green Zone / Agricultural",
+        "allowed_kbli": ["01121", "01122"],
+        "avg_price_per_are": 1500000000,
+        "risk_score": 0.8
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.12, -8.635],
+            [115.13, -8.635],
+            [115.13, -8.645],
+            [115.12, -8.645],
+            [115.12, -8.635]
+          ]
+        ]
+      }
+    }
+  ]
+}

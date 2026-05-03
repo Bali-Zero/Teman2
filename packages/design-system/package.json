@@ -1,0 +1,9 @@
+{
+  "name": "@nuzantara/design-system",
+  "version": "0.1.0",
+  "description": "Canonical design tokens for Bali Zero / Nuzantara UI",
+  "exports": {
+    "./tokens": "./tokens/bz-tokens.css"
+  },
+  "files": ["tokens/"]
+}

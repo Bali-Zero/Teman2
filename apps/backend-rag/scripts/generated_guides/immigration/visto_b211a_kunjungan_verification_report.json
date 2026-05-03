@@ -1,0 +1,190 @@
+{
+  "total_claims": 36,
+  "verified_count": 36,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-268",
+      "verdict": "FAITHFUL",
+      "reason": "L'autorizzazione di soggiorno per visita è un permesso concesso agli stranieri p"
+    },
+    {
+      "claim_id": "IMM-115",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno per visitatori è concesso agli stranieri per soggiorni "
+    },
+    {
+      "claim_id": "IMM-279",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita adesivo è emesso per visti di una sola volta richiesti presso"
+    },
+    {
+      "claim_id": "IMM-278",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita pluriennale è disponibile in 6 durate: 60 giorni, 180 giorni,"
+    },
+    {
+      "claim_id": "IMM-287",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita in forma adesiva è emesso al punto di controllo dell'immigraz"
+    },
+    {
+      "claim_id": "IMM-280",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto adesivo all'arrivo è emesso dopo l'ottenimento del buono visto."
+    },
+    {
+      "claim_id": "IMM-001",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni straniero che entra in Indonesia deve essere in possesso di un visto valido"
+    },
+    {
+      "claim_id": "IMM-288",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita pluriennale può essere concesso per attività turistiche, fami"
+    },
+    {
+      "claim_id": "IMM-289",
+      "verdict": "FAITHFUL",
+      "reason": "Il rilascio del visto di visita pluriennale è effettuato da ufficiali autorizzat"
+    },
+    {
+      "claim_id": "IMM-086",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza sull'immigrazione nei confronti degli Stranieri avviene durante "
+    },
+    {
+      "claim_id": "IMM-104",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione su stranieri che richiedono visti è effettuata"
+    },
+    {
+      "claim_id": "IMM-025",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni straniero che entra nel territorio dell'Indonesia deve avere un visto valid"
+    },
+    {
+      "claim_id": "IMM-112",
+      "verdict": "FAITHFUL",
+      "reason": "Un passaporto straniero deve essere valido e rilasciato da un'autorità competent"
+    },
+    {
+      "claim_id": "IMM-128",
+      "verdict": "FAITHFUL",
+      "reason": "Per le richieste di Autorizzazione di Soggiorno Limitato, deve essere fornita un"
+    },
+    {
+      "claim_id": "IMM-017",
+      "verdict": "FAITHFUL",
+      "reason": "Un garante è una persona o una corporazione responsabile della presenza e delle "
+    },
+    {
+      "claim_id": "IMM-275",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita deve essere utilizzato entro 90 giorni dalla data di emission"
+    },
+    {
+      "claim_id": "IMM-328",
+      "verdict": "FAITHFUL",
+      "reason": "Il procedimento di concessione del permesso di soggiorno per visitatori comprend"
+    },
+    {
+      "claim_id": "IMM-329",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno deve essere completato entro 3 giorni lavorativi dal ri"
+    },
+    {
+      "claim_id": "IMM-330",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno è inviato elettronicamente allo straniero, garante o re"
+    },
+    {
+      "claim_id": "IMM-324",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di permesso di soggiorno per visitatori può essere presentata da st"
+    },
+    {
+      "claim_id": "IMM-282",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita pluriennale per la prima volta è rilasciato per durate massim"
+    },
+    {
+      "claim_id": "IMM-283",
+      "verdict": "FAITHFUL",
+      "reason": "Per ottenere il visto pluriennale di 10 anni, lo straniero deve aver precedentem"
+    },
+    {
+      "claim_id": "IMM-277",
+      "verdict": "FAITHFUL",
+      "reason": "Il visto di visita pluriennale ha una validità massima di 10 anni dalla data di "
+    },
+    {
+      "claim_id": "IMM-331",
+      "verdict": "FAITHFUL",
+      "reason": "Il rinnovo del permesso di soggiorno per visitatori può essere concesso a strani"
+    },
+    {
+      "claim_id": "IMM-339",
+      "verdict": "FAITHFUL",
+      "reason": "Il rinnovo del permesso di soggiorno per visitatori è gestito dal Capo Ufficio I"
+    },
+    {
+      "claim_id": "IMM-340",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di rinnovo può essere presentata al più presto 14 giorni e al più t"
+    },
+    {
+      "claim_id": "IMM-341",
+      "verdict": "FAITHFUL",
+      "reason": "Il rinnovo decorre dal primo giorno successivo alla data di scadenza del permess"
+    },
+    {
+      "claim_id": "IMM-327",
+      "verdict": "FAITHFUL",
+      "reason": "Se la richiesta è presentata e il pagamento effettuato prima della scadenza, non"
+    },
+    {
+      "claim_id": "IMM-222",
+      "verdict": "FAITHFUL",
+      "reason": "Il Capo Ufficio Regionale deve verificare la completezza e valutare i requisiti "
+    },
+    {
+      "claim_id": "IMM-073",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio stato di soggiorno è esclusa per coloro che detengono un "
+    },
+    {
+      "claim_id": "IMM-077",
+      "verdict": "FAITHFUL",
+      "reason": "Il cambio di stato è disponibile per religiosi, lavoratori, investitori, turisti"
+    },
+    {
+      "claim_id": "IMM-081",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio di stato a Permesso di soggiorno ufficiale deve essere pr"
+    },
+    {
+      "claim_id": "IMM-345",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno limitato può essere concesso anche mediante cambio di s"
+    },
+    {
+      "claim_id": "IMM-123",
+      "verdict": "FAITHFUL",
+      "reason": "Il pagamento delle spese di immigrazione è obbligatorio secondo le disposizioni "
+    },
+    {
+      "claim_id": "IMM-022",
+      "verdict": "FAITHFUL",
+      "reason": "La deportazione è l'azione forzata di espulsione di uno straniero dal territorio"
+    },
+    {
+      "claim_id": "IMM-028",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni straniero che esce dal territorio dell'Indonesia deve possedere un Document"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

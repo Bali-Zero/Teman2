@@ -1,0 +1,98 @@
+{
+  "ATR/BPN": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.258040",
+    "total_items": 0
+  },
+  "Jakarta Post - Visa News": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.297463",
+    "total_items": 0
+  },
+  "Bali Post": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.399467",
+    "total_items": 0
+  },
+  "Rumah.com Bali": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.406767",
+    "total_items": 0
+  },
+  "Kemnaker RI": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.415522",
+    "total_items": 0
+  },
+  "OSS Indonesia": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.528760",
+    "total_items": 0
+  },
+  "Imigrasi Indonesia": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.617536",
+    "total_items": 0
+  },
+  "Hukumonline": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.651935",
+    "total_items": 0
+  },
+  "Tribun Bali": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.761902",
+    "total_items": 0
+  },
+  "JDIH (Legal Database)": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:37.861084",
+    "total_items": 0
+  },
+  "Nusa Bali": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:38.071680",
+    "total_items": 0
+  },
+  "Lamudi Bali": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:38.240016",
+    "total_items": 0
+  },
+  "Eventbrite Bali": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:39.003344",
+    "total_items": 0
+  },
+  "KADIN": {
+    "success_count": 1,
+    "failure_count": 0,
+    "last_success": "2026-01-03T16:17:39.582160",
+    "total_items": 0
+  },
+  "Bali Advertiser Events": {
+    "success_count": 0,
+    "failure_count": 1,
+    "last_success": null,
+    "total_items": 0
+  },
+  "Indonesia Expat": {
+    "success_count": 0,
+    "failure_count": 1,
+    "last_success": null,
+    "total_items": 0
+  }
+}

@@ -1,0 +1,2194 @@
+{
+  "_doc": "Human-verified catalog of all automations. Used by generate_automations_excel.py to enrich auto-detected entries.",
+  "_updated": "2026-04-16",
+  "openclaw_pro": {
+    "core-guardian": {
+      "description": "Code quality auto-fix: ruff lint, import check, type annotations. Runs evaluator/core_guardian/cron_guardian.py in worktree.",
+      "produces": "Fix commits, lint report",
+      "consumes": "Git diff, ruff output",
+      "monitored_by": "Sentinel",
+      "uses_llm": "none (deterministic fixers)",
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["ruff (subprocess)", "git (branch/diff)"],
+      "apis_called": ["Telegram Bot API"]
+    },
+    "seo-guardian-observe": {
+      "description": "SEO observation cycle: check backend+frontend health, read coverage state, submit unindexed URLs to Google Indexing API, check KBLI indexing.",
+      "produces": "Indexed URLs, coverage metrics",
+      "consumes": "GSC API, coverage_state.json",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["curl (backend+frontend health)", "seo_auto_fixer.py"],
+      "apis_called": ["nuzantara-rag.fly.dev/health", "balizero.com", "Telegram Bot API"]
+    },
+    "seo-guardian-weekly": {
+      "description": "SEO weekly LEARN+REPORT via cron-agent LLM prompt (~/scripts/cron-agent-prompts/seo-guardian-weekly.txt). Legacy .py scripts removed 2026-04-20; responsibilities migrated to apps/evaluator/seo_cell/ (cell-core PulseLoop).",
+      "produces": "Weekly SEO report, patterns.json",
+      "consumes": "GSC metrics, apps/evaluator/seo_cell/ state",
+      "monitored_by": "Sentinel",
+      "uses_llm": "claude-sonnet-4-5 (override)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "cron-agent.sh (LLM prompt runner)",
+        "filesystem (state.json, patterns.json)"
+      ]
+    },
+    "system-doctor": {
+      "description": "System diagnostics: check backend, drive token, fly machine status, Redis, PG, Ollama, embeddings. Triage GREEN/YELLOW/RED. Auto-fix LOW-risk.",
+      "produces": "Diagnostic report, auto-fixes",
+      "consumes": "Health endpoints, system state",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp-advanced.check_system_health",
+        "mcporter:nuzantara-mcp-advanced.get_fly_logs",
+        "mcporter:nuzantara-mcp.check_health_detailed",
+        "mcporter:nuzantara-mcp-advanced.execute_recovery_action",
+        "pytest",
+        "ssh air"
+      ],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "nuzantara-rag.fly.dev/api/admin/drive/health"
+      ]
+    },
+    "tech-orchestrator": {
+      "description": "Technical guardrails: blackout window check, deploy-in-progress check, diff-size gate, Core Guardian results review. Decides if deploy is safe.",
+      "produces": "Deploy decision, issue list",
+      "consumes": "Git diff, fly status, Core Guardian output",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.read_shared_memory",
+        "mcporter:nuzantara-mcp.write_shared_memory",
+        "claude CLI",
+        "gemini CLI",
+        "codex CLI",
+        "fly deploy",
+        "fly status",
+        "pytest",
+        "git diff"
+      ]
+    },
+    "compliance-ops": {
+      "description": "Compliance autopilot + practice lifecycle: check client doc expiry, send WhatsApp/Telegram alerts for critical (<=7d), check unpaid invoices >30d, stale practices.",
+      "produces": "Compliance alerts, Telegram summary",
+      "consumes": "CRM data via MCP tools",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.get_compliance_alerts",
+        "mcporter:nuzantara-mcp.get_expiry_alerts",
+        "mcporter:nuzantara-mcp.list_practices",
+        "mcporter:nuzantara-mcp.send_whatsapp"
+      ]
+    },
+    "daily-ops": {
+      "description": "Daily morning sweep: review overnight messages, CRM pipeline health, urgent deadlines, team hours/anomalies, send Telegram daily briefing.",
+      "produces": "Telegram daily briefing",
+      "consumes": "CRM, team hours, messages via MCP",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.list_clients",
+        "mcporter:nuzantara-mcp.list_practices",
+        "mcporter:nuzantara-mcp.get_team_hours",
+        "mcporter:nuzantara-mcp.get_critical_alerts",
+        "mcporter:nuzantara-mcp.send_whatsapp",
+        "mcporter:nuzantara-mcp.chain_daily_ops_autopilot"
+      ]
+    },
+    "client-health-monitor": {
+      "description": "Client health chain: re-engagement, stalled reminders, birthday greetings, surveys, churn risk detection. Saves summary for BIZ Orchestrator.",
+      "produces": "Client health summary → shared memory",
+      "consumes": "MCP chain_client_health_monitor",
+      "monitored_by": "Sentinel",
+      "uses_llm": "gemini-3-flash-preview (fallback chain)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.chain_client_health_monitor",
+        "mcporter:nuzantara-mcp.write_shared_memory",
+        "mcporter:nuzantara-mcp.get_burnout_indicators"
+      ]
+    },
+    "conversation-cleanup": {
+      "description": "Cleanup stale conversations in backend: warm backend, then execute cleanup via API.",
+      "produces": "Cleaned conversations",
+      "consumes": "Backend API",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["curl"],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "nuzantara-rag.fly.dev/api/admin/conversation-cleanup"
+      ]
+    },
+    "indexing-daily": {
+      "description": "Daily Google Search Console indexing: submit unindexed intel articles + KBLI pages to Indexing API.",
+      "produces": "Submitted URLs to Google",
+      "consumes": "GSC API, article list",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (coder)",
+      "tools_called": ["Google Indexing API", "kbli_indexing_submit.py"],
+      "apis_called": ["Google Indexing API (200/day)"]
+    },
+    "weekly-review": {
+      "description": "Weekly Monday review: business KPIs (revenue, clients, practices, compliance) + tech quality (ruff, coverage, deps, SEO, Fly costs). Unified Telegram report.",
+      "produces": "Telegram weekly report",
+      "consumes": "CRM, code quality, Fly.io metrics via MCP",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp.get_revenue_analytics",
+        "mcporter:nuzantara-mcp.get_team_productivity",
+        "mcporter:nuzantara-mcp.get_sla_compliance",
+        "mcporter:nuzantara-mcp.get_completion_rates",
+        "mcporter:nuzantara-mcp.list_clients",
+        "mcporter:nuzantara-mcp.get_qdrant_metrics"
+      ]
+    },
+    "weekly-dep-audit": {
+      "description": "pip-audit scan + auto-patch safe upgrades. Detects vulnerable Python dependencies.",
+      "produces": "Audit report, patched deps",
+      "consumes": "pyproject.toml, pip-audit",
+      "monitored_by": "Sentinel",
+      "uses_llm": "gemini-3-flash-preview (fallback chain)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [
+        "mcporter:nuzantara-mcp-advanced.check_deployment_readiness",
+        "pip list --outdated",
+        "npm audit",
+        "pip install --upgrade",
+        "npm audit fix"
+      ]
+    },
+    "portal-deadline-watchdog": {
+      "description": "Every 6h cron: scan visa/passport/practice expiries within 30 days, cross-join with notification_prefs (WA opt-in), send one WhatsApp reminder per (user, deadline) per 7-day window. Dedup via notification_log.",
+      "produces": "WhatsApp reminders, notification_log rows",
+      "consumes": "clients.visa_expiry, clients.passport_expiry, practices.expiry_date, notification_prefs, notification_log",
+      "monitored_by": "Sentinel",
+      "uses_llm": "none (deterministic)",
+      "llm_interface": "OpenClaw (main)",
+      "schedule": "*/6h",
+      "machine": "Pro",
+      "tools_called": [
+        "apps/backend-rag/scripts/portal_deadline_watchdog.py",
+        "WhatsAppService.send_message"
+      ],
+      "apis_called": ["Meta WhatsApp Cloud API"]
+    },
+    "learning-pipeline": {
+      "description": "Weekly learning: Phase 1 Conversation Trainer (extract patterns from recent chats), Phase 2 Knowledge Graph Builder (ingest entities+relationships).",
+      "produces": "Training data, KG entities",
+      "consumes": "Recent conversations, KG",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": [],
+      "apis_called": [
+        "localhost:18789/api/trigger/conversation-trainer",
+        "localhost:18789/api/trigger/knowledge-graph-builder"
+      ]
+    },
+    "t4-monitor-daily": {
+      "description": "T4 social media monitor: run run_t4_monitor.sh, check logs for anomalies.",
+      "produces": "Social media report",
+      "consumes": "T4 monitor script output",
+      "monitored_by": "Sentinel",
+      "uses_llm": "claude-haiku-4-5 (L3 filter)",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["nlm CLI (source add)", "httpx (RSS/web/Twitter fetch)"],
+      "apis_called": [
+        "Anthropic API (Haiku classifier)",
+        "Twitter API v2",
+        "RSS feeds (imigrasi.go.id)",
+        "Gov websites"
+      ]
+    },
+    "nlm-nb1-daily-refresh": {
+      "description": "NotebookLM NB-1 daily refresh: run nlm_nb1_daily_refresh.py to update codebase bundles in the architecture notebook.",
+      "produces": "Updated NB-1 sources",
+      "consumes": "Codebase files",
+      "monitored_by": "Sentinel",
+      "uses_llm": "qwen3.5:9b",
+      "llm_interface": "OpenClaw (main)",
+      "tools_called": ["nlm CLI (source list/delete/add)", "git log"],
+      "apis_called": ["Telegram Bot API"]
+    },
+    "nlm-nb3-company-setup": {
+      "description": "PLACEHOLDER — NB-3 Company Setup notebook refresh. Task empty, never configured.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task. Configure or decommission.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb4-tax-fiscal": {
+      "description": "PLACEHOLDER — NB-4 Tax & Fiscal notebook refresh. Task empty, never configured.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task. Has separate cron (run_nb4_pipeline.sh) that runs independently.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb5-property": {
+      "description": "PLACEHOLDER — NB-5 Property notebook refresh. Task empty, never configured.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task. Has separate cron (run_nb5_pipeline.sh).",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb6-ops-compliance": {
+      "description": "PLACEHOLDER — NB-6 Ops & Compliance notebook refresh. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb7-editorial": {
+      "description": "PLACEHOLDER — NB-7 Editorial notebook refresh. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb8-expat-life": {
+      "description": "PLACEHOLDER — NB-8 Expat Life notebook refresh. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-nb10-team-guides": {
+      "description": "PLACEHOLDER — NB-10 Team Guides notebook refresh. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": ["nlm CLI (notebook_query, source_snapshot)"],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "nlm-deep-research": {
+      "description": "PLACEHOLDER — Deep Research trigger via NLM. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": [
+        "nlm CLI (notebook_query, source_snapshot)",
+        "ollama/qwen3.5:9b (QueryDecomposer)"
+      ],
+      "status": "fixed (payload.kind→agentTurn)"
+    },
+    "cell-weekly-report": {
+      "description": "PLACEHOLDER — Cell organism weekly report. Task empty.",
+      "produces": "—",
+      "consumes": "—",
+      "notes": "Skipped: empty task.",
+      "tools_called": ["postgresql (CELL_DATABASE_URL)"],
+      "apis_called": ["Telegram Bot API"],
+      "status": "fixed (payload.kind→agentTurn)"
+    }
+  },
+  "openclaw_air": {
+    "ecosystem-healthcheck": {
+      "description": "Air ecosystem health: check all services (backend, PG, Redis, Qdrant, Ollama, frontends) and report status.",
+      "produces": "Health report",
+      "consumes": "Health endpoints",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "fly-health-30m": {
+      "description": "Fly.io health check every 30min: verify all 3 apps (rag, postgres, qdrant) are responding.",
+      "produces": "Health status",
+      "consumes": "Fly.io MCP",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "system-doctor": {
+      "description": "Air system doctor: diagnose local services, check logs, triage issues.",
+      "produces": "Diagnostic report",
+      "consumes": "Local services, logs",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "pg-sync": {
+      "description": "Daily PG sync: pg_dump from Fly.io production to Air local PG replica.",
+      "produces": "Local PG backup",
+      "consumes": "Fly.io PG tunnel",
+      "uses_llm": "—",
+      "llm_interface": "—"
+    },
+    "pg-sync-verify": {
+      "description": "Verify PG sync: compare row counts and schema between Fly and Air replica.",
+      "produces": "Verification report",
+      "consumes": "PG sync output",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "intel-pipeline-scraping": {
+      "description": "Intel pipeline: orchestrate daily scraping of news/regulation sources for business intelligence.",
+      "produces": "Scraped articles → backend",
+      "consumes": "Source list, scraper scripts",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "intel-pipeline-retry": {
+      "description": "Intel retry: re-scrape failed sources from the daily pipeline.",
+      "produces": "Recovered articles",
+      "consumes": "Failed source list",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "source-enrichment-weekly": {
+      "description": "Weekly source enrichment: discover new scraping sources, validate existing ones.",
+      "produces": "Updated source registry",
+      "consumes": "Source registry, web search",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "nuz-intel-radar": {
+      "description": "Intel radar (hourly, Pro): tier-rotated web search (L1/L2/L3 by hour-of-day WITA) for Bali Zero business intelligence. Persists to intel_radar_findings (Postgres) when INTEL_RADAR_PERSIST_DB=true; no Telegram (digest moved to nuz-intel-radar-daily-digest).",
+      "produces": "intel_radar_findings rows (canonical_url UNIQUE)",
+      "consumes": "Brave Search API, DuckDuckGo fallback",
+      "uses_llm": "none",
+      "llm_interface": "n/a"
+    },
+    "nuz-intel-radar-daily-digest": {
+      "description": "Intel radar daily digest (18:00 WITA, Pro): reads intel_radar_findings WHERE processed=false AND observed_at>NOW()-24h, sends 1 Telegram digest grouped by tier, marks processed=true, emits NOTIFY intel_radar_batch_ready for downstream scraper.",
+      "produces": "Telegram digest, intel_radar_findings.processed=true, NOTIFY intel_radar_batch_ready",
+      "consumes": "intel_radar_findings",
+      "uses_llm": "none",
+      "llm_interface": "n/a"
+    },
+    "nuz-normativa-daily": {
+      "description": "Daily normativa check: scan Indonesian government sites for regulation changes affecting visa/tax/company services.",
+      "produces": "Regulation change alerts",
+      "consumes": "Government sites",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "nuz-codebase-audit": {
+      "description": "Codebase audit: check ruff violations, test coverage, dependency vulnerabilities, dead code, stale branches.",
+      "produces": "Audit report",
+      "consumes": "Git, ruff, pip-audit, coverage",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    },
+    "nuz-weekly-report": {
+      "description": "Air weekly report: summarize Air node health, cron status, disk usage, service uptime for the week.",
+      "produces": "Weekly Air report",
+      "consumes": "Air metrics, logs",
+      "uses_llm": "qwen3:4b",
+      "llm_interface": "OpenClaw (main)"
+    }
+  },
+  "launchagents": {
+    "ai.openclaw.gateway": {
+      "description": "OpenClaw gateway: WebSocket server (port 18789) that routes agent tasks to models. Heart of the OpenClaw runtime.",
+      "type": "daemon",
+      "produces": "Agent task execution",
+      "consumes": "Cron jobs, Telegram messages",
+      "notes": "Pro and Air each run their own gateway."
+    },
+    "ai.openclaw.node": {
+      "description": "OpenClaw node: connects to local gateway, executes agent turns.",
+      "type": "daemon",
+      "produces": "Agent responses",
+      "consumes": "Gateway tasks"
+    },
+    "ai.openclaw.monitor-air": {
+      "description": "Monitor Air node from Pro: SSH heartbeat check, verify services running.",
+      "produces": "Air health status",
+      "consumes": "SSH connection to Air"
+    },
+    "ai.openclaw.tunnel": {
+      "description": "AutoSSH tunnel: persistent SSH tunnel for cross-node communication.",
+      "type": "daemon",
+      "produces": "Network tunnel",
+      "consumes": "SSH"
+    },
+    "com.balizero.nlm-bridge": {
+      "description": "NLM HTTP Bridge: FastAPI server (port 18790) wrapping NotebookLM. Allows Fly.io backend to query NLM notebooks via HMAC-authenticated HTTP.",
+      "type": "daemon",
+      "produces": "NLM query results via HTTP",
+      "consumes": "NotebookLM API",
+      "uses_llm": "—",
+      "notes": "Health: /nlm/health"
+    },
+    "com.balizero.post-publish-webhook": {
+      "description": "Post-publish webhook server (port 7788): receives Vercel deploy notifications, triggers content indexing pipeline.",
+      "type": "daemon",
+      "produces": "Index trigger events",
+      "consumes": "Vercel webhooks"
+    },
+    "com.balizero.post-publish-poller": {
+      "description": "Post-publish poller: checks for newly published articles, triggers translation and SEO indexing.",
+      "produces": "New article events",
+      "consumes": "Frontend article list"
+    },
+    "com.balizero.client-value-predictor": {
+      "description": "Client value predictor: ML scoring of client lifetime value based on practice history and engagement.",
+      "produces": "Client value scores",
+      "consumes": "CRM data",
+      "schedule": "09:00 WITA"
+    },
+    "com.balizero.intel.nightly": {
+      "description": "Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regulation harvesting. Runs LOCALLY on Pro only. Reads from intel_radar_findings (Postgres) when INTEL_RADAR_PERSIST_DB=true (PR-1 §B), then enriches each article with live_news_score (0-100) + liveness_tier (breaking/developing/evergreen) + live_news_reasons via Claude CLI.",
+      "produces": "Scraped articles → backend; intel_radar_findings.scraper_picked=true; live_news_score on each enriched article",
+      "consumes": "Source config, scraper scripts, intel_radar_findings (Postgres)",
+      "schedule": "01:00 WITA (nightly)"
+    },
+    "com.balizero.renewal-alerts": {
+      "description": "Renewal alerts: check all client visa/permit expiry dates, send alerts for upcoming expirations (30/14/7 days).",
+      "produces": "Expiry alert emails/Telegram",
+      "consumes": "CRM practice data",
+      "schedule": "08:00 WITA"
+    },
+    "com.balizero.translate.hourly": {
+      "description": "Hourly article translation: translate new MDX articles to Indonesian, Italian, Russian, French using Ollama gemma4:e4b.",
+      "produces": "Translated .id.mdx, .it.mdx files",
+      "consumes": "English MDX articles",
+      "uses_llm": "gemma4:e4b",
+      "llm_interface": "Ollama API",
+      "schedule": "ogni ora :30"
+    },
+    "com.cell.organism": {
+      "description": "Cell organism: autonomous PulseLoop agent. Sense→Think→Act→Reflect→Dream→Mature. Monitors system health, sends Telegram alerts, accumulates skills.",
+      "type": "daemon",
+      "produces": "Health alerts, episodic memory, skills",
+      "consumes": "All sensors (HTTP, DB, Qdrant, Redis, Ollama, cron, Vercel)",
+      "uses_llm": "qwen3.5:9b (Tier 0) / gemma4:26b (Tier 1)",
+      "llm_interface": "Ollama API"
+    },
+    "com.claude-max-api": {
+      "description": "Claude MAX API proxy: local HTTP proxy that routes Claude API calls through the MAX subscription for zero-cost inference.",
+      "type": "daemon",
+      "produces": "Claude API responses",
+      "consumes": "Claude MAX subscription"
+    },
+    "com.nuzantara.automap-server": {
+      "description": "Automap server: automation mapping service that tracks all running automations and their relationships.",
+      "type": "daemon",
+      "produces": "Automation topology API",
+      "consumes": "LaunchAgent states, cron output"
+    },
+    "com.nuzantara.automap-telegram": {
+      "description": "Automap Telegram bot: sends automation status updates and alerts to Telegram.",
+      "type": "daemon",
+      "produces": "Telegram notifications",
+      "consumes": "Automap server data"
+    },
+    "com.nuzantara.automap-watchdog": {
+      "description": "Automap watchdog: monitors automap-server and automap-telegram health, restarts if down.",
+      "produces": "Watchdog restart events",
+      "consumes": "Automap server health"
+    },
+    "com.nuzantara.automations-reference": {
+      "description": "Nightly doc generator: scans live system state (crontab, launchctl, registry, sentinel) and regenerates docs/AUTOMATIONS_REFERENCE.md.",
+      "produces": "AUTOMATIONS_REFERENCE.md",
+      "consumes": "crontab, launchctl, job_registry, sentinel_status, circuit_breakers",
+      "schedule": "23:15 WITA"
+    },
+    "com.nuzantara.disk-monitor": {
+      "description": "Disk usage monitor: check root disk >85%, log dir >500MB, single log >50MB. Alerts via Telegram with 6h cooldown.",
+      "produces": "Disk alerts",
+      "consumes": "df, du"
+    },
+    "com.nuzantara.dlq-autopilot": {
+      "description": "DLQ Autopilot: processes dead-letter-queue entries autonomously. Pipeline: preflight → Claude CLI reasoning → retry/aider-fix/codex-fix/escalate.",
+      "produces": "Auto-fixes, escalation tasks",
+      "consumes": "dlq.json, Claude CLI, Aider, Codex",
+      "uses_llm": "claude --print",
+      "llm_interface": "Claude CLI"
+    },
+    "com.nuzantara.launchagent-state-bridge": {
+      "description": "LaunchAgent state bridge: reads launchctl list output and writes state files for Sentinel to monitor LaunchAgents.",
+      "produces": "State JSON files",
+      "consumes": "launchctl list"
+    },
+    "com.nuzantara.nuz-sync": {
+      "description": "nuz-sync: fast-forward git sync between Pro and Air. Pulls changes every 2 minutes. FF-only, no auto-push.",
+      "produces": "Synced git repos",
+      "consumes": "Git remote"
+    },
+    "com.nuzantara.nuz-sync-watchdog": {
+      "description": "nuz-sync watchdog: monitors nuz-sync health, restarts if stuck or dead. Self-healing every 10 minutes.",
+      "produces": "Watchdog restarts",
+      "consumes": "nuz-sync process status"
+    },
+    "com.nuzantara.prime-tunnel": {
+      "description": "Cloudflared tunnel: persistent tunnel to prime.balizero.com for 3D map service.",
+      "type": "daemon",
+      "produces": "HTTPS tunnel",
+      "consumes": "Cloudflare Argo"
+    },
+    "com.nuzantara.qwen-code-review": {
+      "description": "Daily code review: git diff last 24h analyzed by qwen3:8b via Ollama. Writes markdown reports, creates GitHub issues for CRITICAL/HIGH.",
+      "produces": "Code review reports, GitHub issues",
+      "consumes": "Git diff, Ollama API",
+      "uses_llm": "qwen3:8b",
+      "llm_interface": "Ollama API",
+      "notes": "NOT LOADED — enable with launchctl load",
+      "schedule": "10:00 WITA"
+    },
+    "com.nuzantara.sentinel": {
+      "description": "Nuzantara Sentinel: 4-tier self-healing automation monitor. Classifies failures (regex + Claude CLI), retries, dispatches Aider/Codex fixes, escalates.",
+      "produces": "Circuit breaker states, DLQ entries, auto-fixes, Telegram alerts",
+      "consumes": "Job states, logs, Claude CLI",
+      "uses_llm": "claude --print",
+      "llm_interface": "Claude CLI"
+    },
+    "com.nuzantara.vector-reindex-check": {
+      "description": "Vector reindex checker: detects if Qdrant collections have drifted from source data, flags for re-indexing.",
+      "produces": "Reindex alerts",
+      "consumes": "Qdrant collection stats, PG row counts",
+      "schedule": "Lun 09:00 WITA"
+    },
+    "com.nuzantara.zombie-hunter": {
+      "description": "Zombie process hunter: kills orphaned Python/Node processes that consume resources. Runs every minute.",
+      "produces": "Killed zombie PIDs",
+      "consumes": "ps aux"
+    },
+    "com.nuzantara.ollama-warm-pin": {
+      "description": "Ollama warm-pin: loads the designated warm model at boot from MODEL_TOPOLOGY.json with keep_alive=-1.",
+      "produces": "Warm model in GPU RAM",
+      "consumes": "MODEL_TOPOLOGY.json, Ollama API"
+    },
+    "com.garuda.consumer.daily": {
+      "description": "Mata Garuda KG consumer: reads garuda:raw Redis stream, processes intelligence into Knowledge Graph entities.",
+      "produces": "KG entities (Neo4j)",
+      "consumes": "garuda:raw Redis stream",
+      "schedule": "06:15 WITA"
+    },
+    "com.garuda.gap-detector.twice-daily": {
+      "description": "Mata Garuda gap detector: runs 8 Cypher queries against Neo4j to find holes in the Knowledge Graph. Publishes nexus:gaps.",
+      "produces": "Gap reports → nexus:gaps Redis stream",
+      "consumes": "Neo4j Knowledge Graph",
+      "schedule": "07:00 + 18:00 WITA"
+    },
+    "com.matagaruda.sentinel.daily": {
+      "description": "Mata Garuda sentinel: daily health check of the graph intelligence pipeline (scraper, consumer, Neo4j, gap detector).",
+      "produces": "Pipeline health report",
+      "consumes": "Garuda pipeline state",
+      "schedule": "02:00 WITA"
+    },
+    "com.matagaruda.watcher.daily": {
+      "description": "Mata Garuda watcher: monitors KG data freshness and alerts if entities become stale.",
+      "produces": "Staleness alerts",
+      "consumes": "Neo4j timestamps",
+      "schedule": "06:00 WITA"
+    },
+    "com.nuzantara.fly-pg-tunnel": {
+      "description": "Fly.io PG tunnel: persistent fly proxy for Air to access production PostgreSQL on Fly.io.",
+      "type": "daemon",
+      "produces": "PG tunnel (port 15432)",
+      "consumes": "Fly.io auth"
+    },
+    "com.nuzantara.guardian-ragas": {
+      "description": "RAGAS evaluation guardian: periodic RAG quality assessment using RAGAS framework.",
+      "produces": "RAGAS scores",
+      "consumes": "RAG pipeline output, golden QA set"
+    },
+    "com.nuzantara.guardian-redteam": {
+      "description": "Red team guardian: adversarial testing of RAG responses to detect hallucination and security issues.",
+      "produces": "Red team report",
+      "consumes": "RAG pipeline"
+    },
+    "com.nuzantara.guardian-seo": {
+      "description": "SEO guardian (Air): independent SEO monitoring and KBLI indexing from the Air node.",
+      "produces": "SEO metrics, indexing submissions",
+      "consumes": "GSC API, article list"
+    },
+    "com.nuzantara.nightly-sync": {
+      "description": "Nightly git sync: comprehensive Pro→Air sync at night, more thorough than the 2-minute nuz-sync.",
+      "produces": "Synced repos",
+      "consumes": "Git remote"
+    },
+    "com.openclaw.monitor-pro": {
+      "description": "Monitor Pro node from Air: checks Pro heartbeat, verifies Pro services are running.",
+      "produces": "Pro health status from Air perspective",
+      "consumes": "SSH connection to Pro"
+    },
+    "com.user.docker-health-check": {
+      "description": "Docker health check: verify Colima/Docker containers (Qdrant, PG) are running on Air.",
+      "produces": "Container health status",
+      "consumes": "docker ps"
+    },
+    "com.user.weekly-cleanup": {
+      "description": "Weekly cleanup: prune old logs, temp files, Docker images, brew cache on Air.",
+      "produces": "Freed disk space",
+      "consumes": "File system"
+    },
+    "homebrew.mxcl.ollama": {
+      "description": "Ollama server: local LLM inference engine on Apple Silicon. Serves models via HTTP API on port 11434.",
+      "type": "daemon",
+      "produces": "LLM inference API",
+      "consumes": "GPU RAM",
+      "notes": "Pro: 48GB (MLX eligible). Air: 16GB (Metal only)."
+    },
+    "homebrew.mxcl.postgresql@17": {
+      "description": "PostgreSQL 17: local database for MOS, cell memory, evaluator state, and Air PG replica.",
+      "type": "daemon",
+      "produces": "SQL database service",
+      "consumes": "Disk, RAM"
+    },
+    "homebrew.mxcl.redis": {
+      "description": "Redis: cache, session store, pub/sub for inter-agent communication (Redis Streams).",
+      "type": "daemon",
+      "produces": "Cache + message broker",
+      "consumes": "RAM"
+    },
+    "homebrew.mxcl.syncthing": {
+      "description": "Syncthing: bidirectional file sync between Pro and Air for .claude/ and .config/ directories.",
+      "type": "daemon",
+      "produces": "Synced config files",
+      "consumes": "Network bandwidth"
+    },
+    "com.matagaruda.bridge.adaptive": {
+      "description": "Mata Garuda bridge — bidirectional Pro<->Fly nerve. Pulls bridge_outbox events from Fly backend (GET /api/bridge/events), pushes intel.article_ready / enrichment.kb_entry to backend ingest endpoints. Runs every 60s.",
+      "type": "scheduled",
+      "produces": "Redis stream bridge:inbound, POST to backend",
+      "consumes": "GET /api/bridge/events, Redis stream bridge:outbound",
+      "uses_llm": "—",
+      "llm_interface": "—",
+      "tools_called": ["redis-cli (XADD/XREADGROUP/XACK)", "curl (GET/POST)"],
+      "apis_called": [
+        "nuzantara-rag.fly.dev/api/bridge/events",
+        "nuzantara-rag.fly.dev/api/bridge/ingest/*"
+      ],
+      "schedule": "every 60s"
+    },
+    "com.matagaruda.gap.consumer": {
+      "description": "Mata Garuda gap consumer — reads nexus:gaps stream (currently 552 entries), dispatches agents per gap type. Maps 7 of 8 gap types to lhkpn_harvester or regulation_watcher; missing_procurement deferred to Phase 2.",
+      "type": "scheduled",
+      "produces": "garuda:raw entries (via dispatched agents)",
+      "consumes": "Redis stream nexus:gaps",
+      "uses_llm": "claude --print (via dispatched agents)",
+      "llm_interface": "MetaChain CLI subprocess",
+      "tools_called": ["redis-cli (XREADGROUP/XACK)", "MetaChain run_with_lamarckian_feedback"],
+      "apis_called": [
+        "antv.kpk.go.id (via lhkpn_harvester)",
+        "peraturan.go.id (via regulation_watcher)"
+      ],
+      "schedule": "every 10min, 06:00-22:00 WITA"
+    }
+  },
+  "cron_scripts": {
+    "fly-health-check.sh": {
+      "description": "Fly.io health check: curl all 3 apps, verify HTTP 200, alert on failure. Every 30 min.",
+      "produces": "Health status → Telegram alert on failure",
+      "consumes": "Fly.io HTTP endpoints"
+    },
+    "fly-backup.sh": {
+      "description": "Daily backup: pg_dump from Fly.io production PG + Qdrant snapshot → Tigris S3.",
+      "produces": "PG dump + Qdrant snapshot on Tigris",
+      "consumes": "Fly.io PG tunnel, Qdrant API"
+    },
+    "fly-cost-alert.sh": {
+      "description": "Weekly Fly.io cost report: check billing, alert if costs exceed threshold.",
+      "produces": "Cost report → Telegram",
+      "consumes": "Fly.io API"
+    },
+    "fly-restart-loop-detector.sh": {
+      "description": "Detect Fly.io restart loops: if a machine restarts >3 times in 15 min, alert.",
+      "produces": "Restart loop alerts",
+      "consumes": "Fly.io machine events"
+    },
+    "drive-poll.sh": {
+      "description": "Google Drive poll: check for new files uploaded by clients, trigger ingestion pipeline.",
+      "produces": "New file events",
+      "consumes": "Google Drive API (page_token in system_settings)"
+    },
+    "expiry_alerter.py": {
+      "description": "Visa/permit expiry alerter: scan all active practices, send alerts for upcoming expirations.",
+      "produces": "Expiry alerts → Telegram",
+      "consumes": "Backend API practice data"
+    },
+    "translate-articles.py": {
+      "description": "Article translation: translate English MDX articles to ID/IT/RU/FR using Ollama gemma4:e4b. Hourly.",
+      "produces": "Translated MDX files",
+      "consumes": "English articles, Ollama API",
+      "uses_llm": "gemma4:e4b",
+      "llm_interface": "Ollama API"
+    },
+    "legal_radar.py": {
+      "description": "Legal radar: weekly scan of Indonesian legal databases for regulation changes affecting business services.",
+      "produces": "Legal change alerts",
+      "consumes": "Legal databases, web scraping"
+    },
+    "cert-monitor.sh": {
+      "description": "SSL certificate monitor: check all domain certificates, alert 14 days before expiry.",
+      "produces": "Cert expiry alerts",
+      "consumes": "Domain list, openssl s_client"
+    },
+    "disk-monitor.sh": {
+      "description": "Disk usage monitor: alert if root >85%, ~/logs/ >500MB, or any single log >50MB.",
+      "produces": "Disk alerts → Telegram",
+      "consumes": "df, du"
+    },
+    "openclaw-state-bridge.py": {
+      "description": "OpenClaw state bridge: reads OpenClaw cron job states, writes .last.json files for Sentinel to monitor.",
+      "produces": "State JSON files for Sentinel",
+      "consumes": "OpenClaw cron/jobs.json"
+    },
+    "mos-maintenance.sh": {
+      "description": "MOS maintenance: SQLite vacuum, FTS5 rebuild, backup rotation for Memory Operating System.",
+      "produces": "Optimized MOS database",
+      "consumes": "~/.claude/memory.db"
+    },
+    "sync-memory-to-nlm.sh": {
+      "description": "Weekly memory→NLM sync: export MOS memories to NotebookLM NB-14 for cross-session access.",
+      "produces": "NLM NB-14 sources",
+      "consumes": "MOS database, nlm CLI"
+    },
+    "sync-memory-ruslana.sh": {
+      "description": "Daily memory sync to Ruslana's node: SCP memory files for board member access.",
+      "produces": "Synced memory files on Ruslana node",
+      "consumes": "Memory files, SSH to ruslana"
+    },
+    "sync-damar.sh": {
+      "description": "Hourly sync to Damar's node: keep team member's environment updated.",
+      "produces": "Synced files on Damar node",
+      "consumes": "SSH to damar"
+    },
+    "ollama-warm-pin.sh": {
+      "description": "Ollama warm-pin: load warm model from MODEL_TOPOLOGY.json with keep_alive=-1 after Ollama restart.",
+      "produces": "Warm model in GPU RAM",
+      "consumes": "MODEL_TOPOLOGY.json, Ollama API"
+    },
+    "warmup-vision.sh": {
+      "description": "Vision model warmup: keep qwen2.5vl:7b warm during work hours for OCR/document processing.",
+      "produces": "Warm vision model",
+      "consumes": "Ollama API"
+    },
+    "intel-scraper-sentinel-bridge.sh": {
+      "description": "Intel scraper sentinel bridge: reads bali-intel-scraper output, writes state files for Sentinel monitoring.",
+      "produces": "State JSON for Sentinel",
+      "consumes": "Intel scraper logs"
+    },
+    "qwen-code-review.sh": {
+      "description": "Daily code review: analyze git diff with qwen3:8b via Ollama, write markdown report, create GitHub issues.",
+      "produces": "Code review reports, GitHub issues",
+      "consumes": "Git diff, Ollama API",
+      "uses_llm": "qwen3:8b",
+      "llm_interface": "Ollama API"
+    },
+    "auto_test.sh": {
+      "description": "Nightly auto-test: run backend test suite with Ollama during test window (01:00-06:05 WITA).",
+      "produces": "Test results → Telegram",
+      "consumes": "pytest, Ollama (qwen2.5)",
+      "uses_llm": "qwen2.5:latest",
+      "llm_interface": "Ollama API"
+    },
+    "auto_sentinel.sh": {
+      "description": "Nightly sentinel wrapper: runs the quality check sentinel on Air.",
+      "produces": "Sentinel report",
+      "consumes": "Backend tests, system state"
+    },
+    "auto_kb_ingest.sh": {
+      "description": "Daily KB ingest: run 3 spiders sequentially (visa agent, peraturan, putusan) for knowledge base.",
+      "produces": "KB entries (visa, laws, court decisions)",
+      "consumes": "Government websites, spider scripts"
+    },
+    "auto_judgement_day.sh": {
+      "description": "Sunday Judgement Day: comprehensive RAG quality evaluation using RAGAS framework.",
+      "produces": "RAGAS evaluation report",
+      "consumes": "RAG pipeline, golden QA set"
+    },
+    "rag_canary.py": {
+      "description": "RAG canary: embedding drift detection + golden query regression test. Alerts if embedding model changes.",
+      "produces": "Canary health status",
+      "consumes": "OpenAI embedding API, Qdrant"
+    },
+    "system_doctor.py": {
+      "description": "System doctor: unified health check across all services. Parses logs, checks endpoints, sends Telegram report.",
+      "produces": "System health report → Telegram",
+      "consumes": "All service endpoints, log files"
+    },
+    "seo_guardian_agent.py": {
+      "description": "SEO guardian agent: observe-first mode, check SEO coverage, KBLI indexing, submit URLs.",
+      "produces": "SEO metrics, indexing submissions",
+      "consumes": "GSC API, backend-rag venv"
+    },
+    "job_health.py": {
+      "description": "Job health dashboard: aggregate all job statuses, send summary report with alerts.",
+      "produces": "Job health report → Telegram",
+      "consumes": "Job state files, cron logs"
+    },
+    "ragas_eval.py": {
+      "description": "RAGAS evaluation: Saturday quality assessment of RAG pipeline using standard benchmarks.",
+      "produces": "RAGAS scores",
+      "consumes": "RAG pipeline, golden QA set"
+    },
+    "drive_token_watchdog.py": {
+      "description": "Drive token watchdog: check Google Drive OAuth token expiry, alert 7 days before expiration.",
+      "produces": "Token expiry alerts",
+      "consumes": "google_drive_tokens table"
+    },
+    "run_overnight.sh": {
+      "description": "Bali Zero Akta overnight: bulk process document extraction (akta, sertifikat, kontrak). Mac stays awake.",
+      "produces": "Extracted document data",
+      "consumes": "Document files, OCR pipeline"
+    },
+    "garuda-consumer.sh": {
+      "description": "Garuda KG consumer wrapper: triggers mata-garuda Redis stream consumer for Knowledge Graph ingestion.",
+      "produces": "KG entities",
+      "consumes": "garuda:raw Redis stream"
+    },
+    "garuda-gap-detector.sh": {
+      "description": "Garuda gap detector wrapper: runs 8 Cypher queries to find KG holes, publishes to nexus:gaps.",
+      "produces": "Gap reports",
+      "consumes": "Neo4j Knowledge Graph"
+    },
+    "knowledge-graph-builder.sh": {
+      "description": "Weekly KG builder: trigger knowledge-graph-builder OpenClaw job via cron-runner wrapper. Ingests entities into Neo4j.",
+      "produces": "KG entities (Neo4j)",
+      "consumes": "Conversation data, OpenClaw gateway"
+    },
+    "conversation-trainer.sh": {
+      "description": "Weekly conversation trainer: trigger conversation-trainer OpenClaw job via cron-runner wrapper. Extracts patterns from recent chats.",
+      "produces": "Training patterns",
+      "consumes": "Recent conversations, OpenClaw gateway"
+    },
+    ".py": {
+      "description": "Orphan crontab entry — incomplete script reference. Likely a broken entry.",
+      "notes": "AUDIT: remove or fix in crontab"
+    },
+    "API: /api/admin/practice/auto-create": {
+      "description": "Auto practice creator: POST to Fly.io API to auto-create practices for expiring visas at T-60 days.",
+      "produces": "New CRM practices",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/all": {
+      "description": "All notifiers: trigger visa expiry, unpaid invoices, stale practice alerts via backend API.",
+      "produces": "Client alerts (WhatsApp/email/Telegram)",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/birthday": {
+      "description": "Birthday notifier: send birthday greetings to clients via backend API.",
+      "produces": "Birthday greeting messages",
+      "consumes": "Fly.io backend API"
+    },
+    "API: /api/cron/notifiers/welcome-pending": {
+      "description": "Welcome pending: send welcome emails to new clients after 30min delay. Every 15min.",
+      "produces": "Welcome emails",
+      "consumes": "Fly.io backend API"
+    },
+    "audit_trail_cleanup.sh": {
+      "description": "Weekly audit trail cleanup: prune old audit log entries on Air.",
+      "produces": "Freed disk space",
+      "consumes": "Audit log files"
+    },
+    "crm_automation_engine.py": {
+      "description": "CRM automation engine: quality checks, document follow-up, renewal processing. Runs nightly on Air.",
+      "produces": "CRM updates, follow-up tasks",
+      "consumes": "Backend API CRM data"
+    },
+    "cron-wrapper.sh": {
+      "description": "Cron wrapper: universal wrapper that adds logging, locking, timeout, and Telegram alerts to any cron script.",
+      "produces": "Structured logs, state files",
+      "consumes": "Wrapped script output"
+    },
+    "fly-pg-backup.sh": {
+      "description": "Fly PG backup (Air): pg_dump from Fly.io PG tunnel to local backup. Separate from Pro fly-backup.sh.",
+      "produces": "PG dump file",
+      "consumes": "Fly.io PG tunnel (port 15432)"
+    },
+    "ollama_cron_window.sh": {
+      "description": "Ollama cron window: start/stop Ollama models for test window (01:00-06:05 WITA). Manages model loading/unloading.",
+      "produces": "Model load/unload events",
+      "consumes": "Ollama API"
+    },
+    "qdrant-snapshot.sh": {
+      "description": "Qdrant snapshot (Air): weekly Qdrant cloud snapshot to Tigris S3 backup.",
+      "produces": "Qdrant snapshot on Tigris",
+      "consumes": "Qdrant API"
+    },
+    "sync_owner_cashout_fly.sh": {
+      "description": "Owner cashout sync: Monday sync of owner weekly cashout data from Fly.io to local spreadsheet.",
+      "produces": "Updated cashout data",
+      "consumes": "Fly.io API, Google Sheets"
+    },
+    "cp ~/.claude/memory.db ~/.claude/backups/memory_$(date +\\%Y\\": {
+      "description": "MOS daily backup: copy memory.db to timestamped backup file.",
+      "produces": "Memory DB backup",
+      "consumes": "~/.claude/memory.db"
+    },
+    "find ~/.claude/backups -name \"memory_*.db\" -mtime +30 -delet": {
+      "description": "MOS backup pruning: delete memory backups older than 30 days.",
+      "produces": "Freed disk space",
+      "consumes": "~/.claude/backups/"
+    },
+    "sqlite3 ~/.claude/memory.db 'DELETE FROM memories WHERE ttl_": {
+      "description": "MOS TTL cleanup: delete expired memories (where julianday now > created_at + ttl_days).",
+      "produces": "Cleaned memory DB",
+      "consumes": "~/.claude/memory.db"
+    },
+    "echo '{\"job\":\"nlm_bridge\",\"ts\":'$(date +%s)',\"status\":\"ok\",\"": {
+      "description": "NLM bridge state writer: write heartbeat JSON for Sentinel to monitor NLM bridge daemon.",
+      "produces": "State JSON for Sentinel",
+      "consumes": "System clock"
+    },
+    "npm cache clean --force >> /tmp/cron-cache-cleanup.log 2>&1 ": {
+      "description": "Cache cleanup: npm + pip + brew cache purge. Runs 1st and 15th of each month.",
+      "produces": "Freed disk space",
+      "consumes": "npm/pip/brew caches"
+    },
+    "touch ~/.pro_heartbeat 2>/dev/null; ssh -o ConnectTimeout=3 ": {
+      "description": "Pro heartbeat: write timestamp locally + push to Air via SSH. Hourly dead-man switch.",
+      "produces": "Heartbeat file on both nodes",
+      "consumes": "SSH to Air"
+    },
+    "coverage_trend.py": {
+      "description": "Test coverage trend tracker: runs pytest --cov, stores rolling history, detects >2% regressions, sends Telegram alert. Writes .last.json for Sentinel.",
+      "system": "Sentinel",
+      "produces": "Coverage metrics, regression alerts",
+      "consumes": "pytest, coverage history file"
+    },
+    "docs_guardian.sh": {
+      "description": "Weekly docs hygiene: regenerates DOCS_INVENTORY.md (classify LIVE/STALE/ARCHIVED), detects DOCSYNC drift / broken links / orphans. Sends Telegram alert only on delta. Schedule: Sun 05:00 WITA.",
+      "produces": "docs/DOCS_INVENTORY.md (refreshed), Telegram alert on delta",
+      "consumes": "docs/**/*.md, CLAUDE.md, INDEX.md, SYMBIOSIS.md, VADEMECUM.md, apps/*/README.md"
+    },
+    "docs_history_analyzer.py": {
+      "description": "Monthly docs/** trend analysis: git log mining → DOCS_TRENDS.md. Surfaces quiet-live orphan candidates before 90d threshold. Orthogonal to weekly docs-guardian (state) vs this (evolution). Schedule: 1st of month 06:00 WITA.",
+      "produces": "docs/DOCS_TRENDS.md",
+      "consumes": "git log docs/**"
+    }
+  },
+  "nlm_pipelines": {
+    "run_nb1_refresh.sh": {
+      "description": "NLM NB-1 codebase refresh: bundle and upload latest code snapshots to architecture notebook.",
+      "produces": "Updated NB-1 sources",
+      "consumes": "Codebase, nlm CLI"
+    },
+    "run_nb2_pipeline.sh": {
+      "description": "NLM NB-2 Immigration: refresh visa/immigration regulation sources from latest data.",
+      "produces": "Updated NB-2 sources",
+      "consumes": "Backend data, nlm CLI"
+    },
+    "run_nb3_pipeline.sh": {
+      "description": "NLM NB-3 Company Setup: refresh PMA/company formation data sources.",
+      "produces": "Updated NB-3 sources",
+      "consumes": "Backend data, nlm CLI"
+    },
+    "run_nb4_pipeline.sh": {
+      "description": "NLM NB-4 Tax & Fiscal: refresh tax regulation and LKPM compliance data.",
+      "produces": "Updated NB-4 sources",
+      "consumes": "Tax data, nlm CLI"
+    },
+    "run_nb5_pipeline.sh": {
+      "description": "NLM NB-5 Property: refresh property/land ownership regulation data.",
+      "produces": "Updated NB-5 sources",
+      "consumes": "Property data, nlm CLI"
+    },
+    "run_nb6_pipeline.sh": {
+      "description": "NLM NB-6 Ops & Compliance: refresh operational compliance data.",
+      "produces": "Updated NB-6 sources",
+      "consumes": "Compliance data, nlm CLI"
+    },
+    "run_nb7_pipeline.sh": {
+      "description": "NLM NB-7 Editorial: refresh editorial content and style guide data.",
+      "produces": "Updated NB-7 sources",
+      "consumes": "Editorial data, nlm CLI"
+    },
+    "run_nb8_pipeline.sh": {
+      "description": "NLM NB-8 Expat Life: refresh expat lifestyle and practical guide data.",
+      "produces": "Updated NB-8 sources",
+      "consumes": "Expat data, nlm CLI"
+    },
+    "run_nb10_pipeline.sh": {
+      "description": "NLM NB-10 Team Guides: refresh internal team operation guides.",
+      "produces": "Updated NB-10 sources",
+      "consumes": "Team docs, nlm CLI"
+    },
+    "run_nb5_t4_monitor.sh": {
+      "description": "NB-5 T4 monitor: cross-notebook property+social media analysis.",
+      "produces": "Cross-analysis report",
+      "consumes": "NB-5, T4 data, nlm CLI"
+    },
+    "run_gap_scanner.sh": {
+      "description": "NLM gap scanner: test notebook coverage (Layer A), freshness (Layer B), and remediate gaps (Layer C) using Gemini search + nlm source add.",
+      "produces": "Coverage matrix, remediated gaps",
+      "consumes": "All NLM notebooks, Gemini search, nlm CLI"
+    },
+    "run_freshness_monitor.sh": {
+      "description": "NLM freshness monitor: check regulatory freshness by topic, trigger NLM research for STALE/GAP topics.",
+      "produces": "Freshness report, research triggers",
+      "consumes": "NLM notebooks, government sites, nlm CLI"
+    },
+    "run_multimodal.sh": {
+      "description": "NLM multimodal pipeline: process images, PDFs, and audio sources for notebook enrichment.",
+      "produces": "Multimodal NLM sources",
+      "consumes": "Media files, nlm CLI"
+    },
+    "run_heartbeat_check.sh": {
+      "description": "NLM heartbeat: verify all notebooks are responsive and source counts are stable. Digest mode sends daily summary.",
+      "produces": "NLM health report",
+      "consumes": "nlm CLI, notebook metadata"
+    },
+    "run_ops_briefing.sh": {
+      "description": "Monday ops briefing: cross-notebook query for weekly operational insights.",
+      "produces": "Weekly ops briefing",
+      "consumes": "Multiple NLM notebooks, nlm CLI"
+    },
+    "run_persona_validate.sh": {
+      "description": "Persona validation: verify Zantara AI persona consistency across notebooks.",
+      "produces": "Persona validation report",
+      "consumes": "NLM notebooks, persona config, nlm CLI"
+    },
+    "run_yt_monitor.sh": {
+      "description": "YouTube monitor: track relevant YouTube channels for new content about Bali business/immigration.",
+      "produces": "New video alerts",
+      "consumes": "YouTube feeds, nlm CLI"
+    },
+    "run_peraturan_ingestion.sh": {
+      "description": "Peraturan ingestion: ingest new Indonesian regulations into NLM notebooks.",
+      "produces": "Regulation sources in NLM",
+      "consumes": "Regulation data, nlm CLI"
+    },
+    "run_db_nlm_sync.sh": {
+      "description": "DB→NLM sync: sync database state changes to NotebookLM for real-time awareness.",
+      "produces": "Updated NLM sources from DB",
+      "consumes": "PG data, nlm CLI"
+    },
+    "run_t4_monitor.sh": {
+      "description": "T4 social media monitor: track social media mentions and sentiment for brand intelligence.",
+      "produces": "Social media report",
+      "consumes": "Social media feeds, nlm CLI"
+    }
+  },
+  "backend_services": {
+    "olympus_heartbeat": {
+      "description": "Olympus DB Guardian heartbeat: lightweight PG health check, connection pool stats, replication lag detection.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (300s)",
+      "produces": "Health metrics, PG stats",
+      "consumes": "PostgreSQL pg_stat_statements",
+      "monitored_by": "Health Monitor"
+    },
+    "olympus_pulse": {
+      "description": "Olympus DB Guardian full pulse: vacuum analysis, bloat intelligence, query regression detection (>30%), autovacuum advisor, partition-aware cleanup.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 6h",
+      "produces": "olympus_insights, PulseAction, alerts",
+      "consumes": "pg_stat_statements, pg_stat_user_tables, index stats",
+      "monitored_by": "Health Monitor"
+    },
+    "proactive_compliance_monitor": {
+      "description": "Proactive compliance: daily scan of all clients for document expiry, visa deadlines, LKPM due dates. Sends automated WhatsApp/Telegram alerts.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 24h (86400s)",
+      "produces": "Compliance alerts (WhatsApp/Telegram)",
+      "consumes": "CRM practices, client documents",
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — _init_background_services() commented out. Re-enable when omnichannel stabilization complete."
+    },
+    "practice_status_listener": {
+      "description": "Practice status listener: listens for CRM practice state changes via Redis pub/sub, triggers follow-up actions (reminders, escalations).",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (event-driven)",
+      "produces": "Practice state change events",
+      "consumes": "Redis pub/sub practice_status channel",
+      "monitored_by": "Health Monitor",
+      "uses_llm": "none",
+      "tools_called": [
+        "ProcessAutomationService",
+        "WaitingDocumentsService",
+        "InvoiceAutomationService",
+        "CompletedProcessService"
+      ],
+      "apis_called": ["Brevo/Zoho Email API"],
+      "emails_sent": "M4 payment confirmation, M5 milestones (on_process, submitted, approved, completed)"
+    },
+    "x_monitor_run_loop": {
+      "description": "X/Twitter monitor: polls Twitter API for keyword matches (Bali business, visa, immigration), stores matches for analysis.",
+      "system": "Garuda",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni N minuti (configurable)",
+      "produces": "Twitter match entries",
+      "consumes": "Twitter API v2 search/recent",
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — loops exist in code but no startup wiring in service_initializer.py. X/Twitter CRC also broken."
+    },
+    "x_monitor_digest_loop": {
+      "description": "X/Twitter digest: periodic summary of matched tweets, sends digest report.",
+      "system": "Garuda",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni N ore (configurable)",
+      "produces": "Twitter digest report",
+      "consumes": "Stored Twitter matches",
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — same as x_monitor_run_loop."
+    },
+    "health_monitor": {
+      "description": "Backend health monitor: checks all internal services (DB, Redis, Qdrant, Ollama tunnel, EventBus) every 60s. Core observability.",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 60s",
+      "produces": "Service health status, degradation alerts",
+      "consumes": "All internal service health endpoints",
+      "monitored_by": "Self (top-level monitor)"
+    },
+    "alert_service_digest": {
+      "description": "Alert digest: hourly aggregation of all alerts, sends condensed summary instead of individual notifications to prevent alert fatigue.",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni ora (next hour boundary)",
+      "produces": "Aggregated alert digest",
+      "consumes": "Individual alert events",
+      "monitored_by": "Health Monitor",
+      "notes": "Runs via legacy startup.py:43, not service_initializer.py. Verify if startup.py is still in the boot path."
+    },
+    "event_bus_listen": {
+      "description": "EventBus listener: Redis Streams consumer for inter-service communication. Routes events between services. Core nervous system.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (event-driven, ping 30s)",
+      "produces": "Routed events to subscribers",
+      "consumes": "Redis Streams (all channels)",
+      "monitored_by": "Health Monitor",
+      "uses_llm": "none",
+      "tools_called": [
+        "asyncpg LISTEN (dedicated connection)",
+        "PG channels: practice_changed, client_changed, compliance_alert"
+      ]
+    },
+    "team_timesheet_auto_logout": {
+      "description": "Team timesheet auto-logout: checks for expired work sessions every 5min, auto-closes sessions that exceeded 10h without checkout.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (300s)",
+      "produces": "Auto-closed timesheet sessions",
+      "consumes": "work_sessions table",
+      "monitored_by": "Health Monitor"
+    },
+    "autonomous_scheduler": {
+      "description": "Backend autonomous scheduler: runs short-interval tasks (<=5min) inside FastAPI process. Long-interval tasks migrated to OpenClaw. Currently: Backend Self-Healing Agent (5min health check).",
+      "system": "Sentinel",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 5min (per remaining tasks)",
+      "produces": "Self-healing actions",
+      "consumes": "Service health status",
+      "monitored_by": "Health Monitor",
+      "notes": "DISABLED — _init_background_services() commented out in service_initializer.py:1169. Only HealthMonitor runs."
+    },
+    "workflow_queue": {
+      "description": "Workflow job queue: PG SKIP LOCKED + LangGraph checkpointer. Processes async workflows (document generation, complex multi-step operations).",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (poll su tabella jobs)",
+      "produces": "Completed workflow results",
+      "consumes": "workflow_jobs table (PG SKIP LOCKED)",
+      "monitored_by": "Health Monitor"
+    },
+    "legal_full_ingestion": {
+      "description": "Legal document ingestion: background processing of legal documents via PG SKIP LOCKED queue. Parses, extracts, indexes into KB.",
+      "system": "Garuda",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (poll su coda)",
+      "produces": "KB entries (legal documents)",
+      "consumes": "legal_ingestion_queue table",
+      "monitored_by": "Health Monitor"
+    },
+    "attendance_monitor": {
+      "description": "Attendance monitor: scans team presence, detects anomalies (late check-in, missed checkout, overtime). Escalation loop + daily digest report.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "escalation periodico + digest 1x/giorno",
+      "produces": "Attendance alerts, daily digest",
+      "consumes": "work_sessions, team_members tables",
+      "monitored_by": "Health Monitor"
+    },
+    "daily_checkin_notifier": {
+      "description": "Daily checkin email: sends morning email to zero@balizero.com with team check-in status summary.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "1x/giorno 10:00 WITA",
+      "produces": "Daily checkin email",
+      "consumes": "work_sessions table",
+      "monitored_by": "Health Monitor"
+    },
+    "weekly_email_reporter": {
+      "description": "Weekly email report: sends Sunday digest with individual team member email activity metrics.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "Dom 16:00 WITA",
+      "produces": "Weekly team email report",
+      "consumes": "email_logs, team_members tables",
+      "monitored_by": "Health Monitor"
+    },
+    "notification_scheduler": {
+      "description": "Notification scheduler: generic notification dispatch engine. Processes queued notifications (email, WhatsApp, Telegram) with rate limiting.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo",
+      "produces": "Sent notifications",
+      "consumes": "notification_queue table",
+      "monitored_by": "Health Monitor"
+    },
+    "dlq_retry_channels": {
+      "description": "Channel DLQ retry: dead letter queue for failed channel messages (WhatsApp/Telegram/Instagram). Automatic retry with exponential backoff.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo",
+      "produces": "Retried channel messages",
+      "consumes": "channel_dlq table",
+      "monitored_by": "Health Monitor"
+    },
+    "database_health_check_loop": {
+      "description": "Database health check: verifies asyncpg pool is healthy every 15s. Detects stale connections, pool exhaustion, InterfaceError recovery.",
+      "system": "Olympus",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "ogni 15s",
+      "produces": "DB pool health status, auto-reconnect",
+      "consumes": "asyncpg pool stats",
+      "monitored_by": "Health Monitor"
+    },
+    "confirmation_pubsub_listener": {
+      "description": "Confirmation service pub/sub listener: persistent Redis subscriber on conf:resolutions channel. Resolves async confirmation Futures when agent confirmations arrive.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (Redis pub/sub)",
+      "produces": "Resolved confirmation Futures",
+      "consumes": "Redis channel conf:resolutions",
+      "monitored_by": "Health Monitor"
+    },
+    "websocket_redis_listener": {
+      "description": "WebSocket Redis bridge: persistent background task that relays Redis pub/sub messages to connected WebSocket clients for real-time UI updates.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (Redis→WebSocket bridge)",
+      "produces": "Real-time WebSocket messages to frontend",
+      "consumes": "Redis pub/sub channels",
+      "monitored_by": "Health Monitor"
+    },
+    "event_bus_client_changed": {
+      "description": "EventBus handler: reacts to PG NOTIFY client_changed. Invalidates CRM cache, stores cross-chain context, on INSERT creates Drive folder + logs CRM interaction.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY client_changed)",
+      "produces": "Cache invalidation, Drive folders, CRM interactions",
+      "consumes": "PG trigger on clients table (migration_076)",
+      "uses_llm": "none",
+      "tools_called": [
+        "cache_service.invalidate_cache",
+        "ServiceAccountDriveService.create_folder",
+        "PredictiveComplianceEngine.scan"
+      ],
+      "apis_called": ["Google Drive API (service account)", "PostgreSQL"]
+    },
+    "event_bus_practice_status_changed": {
+      "description": "EventBus handler: reacts to PG NOTIFY practice_changed. Invalidates practice cache, stores cross-chain context, on completion runs expiry check + predictive compliance scan.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY practice_changed)",
+      "produces": "Cache invalidation, expiry alerts, predictive compliance forecasts",
+      "consumes": "PG trigger on practices table (migration_075)",
+      "uses_llm": "none",
+      "tools_called": [
+        "cache_service.invalidate_cache",
+        "PredictiveComplianceEngine.scan",
+        "PricingService.get_pricing"
+      ],
+      "apis_called": ["PostgreSQL"]
+    },
+    "event_bus_compliance_alert": {
+      "description": "EventBus handler: reacts to PG NOTIFY compliance_alert. Stores cross-chain context, sends Telegram alert for high/critical severity, logs CRM interaction.",
+      "system": "Compliance",
+      "machine": "Fly.io",
+      "type": "event-handler",
+      "schedule": "event-driven (PG NOTIFY compliance_alert)",
+      "produces": "Telegram alerts, CRM interactions",
+      "consumes": "PG trigger on compliance checks (migration_076)",
+      "uses_llm": "none",
+      "tools_called": ["AlertService.send_alert"],
+      "apis_called": ["Telegram Bot API", "PostgreSQL"]
+    },
+    "redis_reconnect_loop": {
+      "description": "Redis manager auto-reconnect loop: persistent asyncio task that reconnects to Redis after disconnections with exponential backoff.",
+      "system": "Ops",
+      "machine": "Fly.io",
+      "type": "backend-loop",
+      "schedule": "continuo (on disconnect)",
+      "produces": "Restored Redis connection",
+      "consumes": "Redis connection state",
+      "uses_llm": "none",
+      "tools_called": [],
+      "apis_called": ["Redis (exponential backoff: 30s→60s→120s→300s)"]
+    },
+    "article_composer_cache_startup": {
+      "description": "Article composer cache initialization on FastAPI startup event. Loads cache for article composition pipeline.",
+      "system": "Content",
+      "machine": "Fly.io",
+      "type": "startup-hook",
+      "schedule": "once (at startup)",
+      "uses_llm": "none",
+      "tools_called": ["cache_service.initialize"],
+      "apis_called": ["Redis"]
+    },
+    "bali_intel_task_queue": {
+      "description": "Bali Intel Scraper distributed task queue: Celery-like async workers processing scraping, AI, cleanup, and report tasks. Multiple worker loops per instance.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)",
+      "produces": "Processed scrape/AI/report tasks",
+      "consumes": "Task queue submissions",
+      "uses_llm": "OpenAI or Anthropic (configurable)",
+      "tools_called": ["ScrapeTaskHandler", "AITaskHandler", "CleanupTaskHandler"],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
+    },
+    "bali_intel_proxy_health_check": {
+      "description": "Bali Intel Scraper proxy manager health check loop: persistent asyncio task monitoring proxy pool health and rotating proxies.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)",
+      "uses_llm": "none",
+      "tools_called": [],
+      "apis_called": ["httpbin.org/ip (health check)"]
+    },
+    "bali_intel_browser_pool_cleanup": {
+      "description": "Bali Intel Scraper browser pool cleanup loop: persistent asyncio task recycling stale browser contexts to prevent memory leaks.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (while scraper running)",
+      "uses_llm": "none",
+      "tools_called": ["Playwright (browser contexts)"],
+      "apis_called": []
+    },
+    "bali_intel_ai_batch_flush": {
+      "description": "Bali Intel Scraper AI engine batch flush: asyncio task that flushes accumulated AI processing batches after delay or on threshold.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "backend-loop",
+      "schedule": "continuo (batch threshold/delay)",
+      "uses_llm": "OpenAI or Anthropic (per provider)",
+      "tools_called": ["AIBatchProcessor"],
+      "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
+    },
+    "bali_intel_webhook_receiver": {
+      "description": "Bali Intel Scraper webhook endpoint POST /api/v1/webhook/balizero: receives external scraping events/callbacks.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "webhook",
+      "schedule": "event-driven (incoming POST)",
+      "uses_llm": "LLAMA (scoring) + Claude (validation/enrichment) + Gemini (images)",
+      "tools_called": ["IntelPipeline.process_batch", "GoogleNewsRSSFetcher"],
+      "apis_called": ["balizero.com/api/news", "Google News RSS"]
+    },
+    "bg_crm_practice_email": {
+      "description": "FastAPI BackgroundTask in crm_practices router: sends emails on practice status changes (M4/M5 milestone emails, confirmation emails).",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (practice update)",
+      "uses_llm": "none",
+      "tools_called": [
+        "WaitingDocumentsService",
+        "InvoiceAutomationService",
+        "CompletedProcessService",
+        "PortalNotificationService"
+      ],
+      "apis_called": ["Meta WhatsApp Cloud API", "Brevo/Zoho Email API", "Google Drive API"]
+    },
+    "bg_crm_client_welcome": {
+      "description": "FastAPI BackgroundTask in crm_clients router: sends welcome messages (WA + email) and schedules welcome email on new client creation.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (client creation)",
+      "uses_llm": "none",
+      "tools_called": [
+        "ServiceAccountDriveService.create_client_folder",
+        "welcome_whatsapp_service",
+        "PortalProfileService.ensure_portal_profile"
+      ],
+      "apis_called": ["Meta WhatsApp Cloud API", "Google Drive API", "Brevo Email API (queued)"]
+    },
+    "bg_whatsapp_async_processing": {
+      "description": "FastAPI BackgroundTask in whatsapp_chat router: handles async message processing for WhatsApp conversations.",
+      "system": "Channels",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (incoming WA message)",
+      "uses_llm": "Gemini 2.5 Flash (via RAG orchestrator)",
+      "tools_called": [
+        "whatsapp_triage_service",
+        "onboarding_detector",
+        "orchestrator.process_query (RAG)",
+        "whatsapp_service.send_message"
+      ],
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Telegram Bot API (logging)",
+        "Qdrant (vector search)"
+      ]
+    },
+    "bg_document_ocr": {
+      "description": "FastAPI BackgroundTask in crm_enhanced_documents router: runs OCR processing on uploaded client documents.",
+      "system": "CRM",
+      "machine": "Fly.io",
+      "type": "background-task",
+      "schedule": "event-driven (document upload)",
+      "uses_llm": "qwen2.5vl:7b (primary) → Gemini CLI (fallback) → Gemini 2.5 Flash API",
+      "tools_called": [
+        "ServiceAccountDriveService",
+        "auto_categorize_document",
+        "PortalNotificationService"
+      ],
+      "apis_called": ["Ollama local (qwen2.5vl:7b)", "Gemini API", "Google Drive API"]
+    }
+  },
+  "github_actions": {
+    "gh_docs_sync": {
+      "description": "GitHub Action: checks docs are in sync on push/PR. Validates documentation matches code state.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": ["actions/checkout@v4", "actions/setup-python@v5"],
+      "secrets_used": []
+    },
+    "gh_fly_deploy": {
+      "description": "GitHub Action: deploys backend to Fly.io on push to main. Multi-stage: lint, test, build, deploy rolling.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push to main",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/upload-artifact@v4",
+        "superfly/flyctl-actions/setup-flyctl@master"
+      ],
+      "apis_called": [
+        "Fly.io (deploy+rollback)",
+        "Telegram Bot API",
+        "nuzantara-rag.fly.dev (smoke test)"
+      ],
+      "secrets_used": [
+        "FLY_API_TOKEN",
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_OWNER_CHAT_ID",
+        "SMOKE_TEST_API_KEY"
+      ]
+    },
+    "gh_fly_secrets_check": {
+      "description": "GitHub Action: weekly Fly.io secrets health check. Verifies FLY_API_TOKEN validity, sends Telegram alert on failure.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "Monday 09:00 UTC (cron: 0 9 * * 1)",
+      "uses_llm": "none",
+      "tools_called": ["superfly/flyctl-actions/setup-flyctl@v2"],
+      "apis_called": ["Fly.io (auth whoami)", "Telegram Bot API"],
+      "secrets_used": ["FLY_API_TOKEN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_OWNER_CHAT_ID"]
+    },
+    "gh_intel_router_tests": {
+      "description": "GitHub Action: runs intel router tests on push/PR. Validates bali-intel-scraper API endpoints.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/upload-artifact@v4",
+        "actions/setup-node@v4"
+      ],
+      "secrets_used": []
+    },
+    "gh_security_scanning": {
+      "description": "GitHub Action: weekly Snyk security scan. Checks Python and Node.js dependencies for vulnerabilities.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "Sunday 00:00 UTC (cron: 0 0 * * 0)",
+      "uses_llm": "none",
+      "tools_called": [
+        "snyk/actions/python@master",
+        "snyk/actions/node@master",
+        "snyk/actions/docker@master",
+        "github/codeql-action/*@v3"
+      ],
+      "apis_called": ["Snyk", "GitHub CodeQL SARIF"],
+      "secrets_used": ["SNYK_TOKEN"]
+    },
+    "gh_semgrep_sast": {
+      "description": "GitHub Action: Bandit + ESLint SAST (Static Application Security Testing). Blocks PR on HIGH/CRITICAL findings.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": ["Bandit (Python SAST)", "ESLint + eslint-plugin-security"],
+      "secrets_used": [],
+      "notes": "Filename says semgrep but actually runs Bandit+ESLint"
+    },
+    "gh_sonarqube": {
+      "description": "GitHub Action: SonarQube code analysis. Python and Node.js quality gates.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "sonarsource/sonarqube-scan-action@master",
+        "sonarsource/sonarqube-quality-gate-action@master",
+        "codecov/codecov-action@v4"
+      ],
+      "apis_called": ["SonarCloud", "Codecov"],
+      "secrets_used": ["SONAR_TOKEN"]
+    },
+    "gh_tests": {
+      "description": "GitHub Action: main test suite. Runs pytest backend tests on push/PR with coverage gate.",
+      "system": "CI/CD",
+      "machine": "GitHub",
+      "type": "ci-workflow",
+      "schedule": "on push/PR",
+      "uses_llm": "none",
+      "tools_called": [
+        "actions/checkout@v4",
+        "actions/setup-python@v5",
+        "actions/setup-node@v4",
+        "codecov/codecov-action@v4"
+      ],
+      "apis_called": ["Codecov"],
+      "secrets_used": [
+        "QDRANT_URL",
+        "QDRANT_API_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "JWT_SECRET",
+        "E2E_TEST_EMAIL",
+        "E2E_TEST_PIN"
+      ]
+    }
+  },
+  "claude_code_hooks": {
+    "PostToolUse_edit_write_0": {
+      "description": "Claude Code hook: fires after Edit/Write tool. Post-processing on file modifications.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "PostToolUse_bash_1": {
+      "description": "Claude Code hook: fires after Bash tool execution. Post-processing on shell commands.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Bash)"
+    },
+    "PostToolUse_edit_write_2": {
+      "description": "Claude Code hook: second Edit/Write post-processor.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "PostToolUse_all_3": {
+      "description": "Claude Code hook: fires after all tool uses. Global post-processing.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after any tool)"
+    },
+    "PostToolUse_edit_write_4": {
+      "description": "Claude Code hook: third Edit/Write post-processor.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (after Edit/Write)"
+    },
+    "Notification_0": {
+      "description": "Claude Code hook: fires on notification events.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on notification)"
+    },
+    "PreToolUse_edit_write_0": {
+      "description": "Claude Code hook: fires before Edit/Write. Pre-validation on file modifications.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (before Edit/Write)"
+    },
+    "PreToolUse_bash_1": {
+      "description": "Claude Code hook: fires before Bash tool. Pre-validation on shell commands.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (before Bash)"
+    },
+    "Stop_all_0": {
+      "description": "Claude Code hook: fires on session stop. Cleanup and final actions.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on stop)"
+    },
+    "SessionStart_compact_0": {
+      "description": "Claude Code hook: fires on session start with compact matcher. Context loading.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on session start)"
+    },
+    "SessionStart_all_1": {
+      "description": "Claude Code hook: fires on all session starts. Global initialization.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on session start)"
+    },
+    "UserPromptSubmit_0": {
+      "description": "Claude Code hook: fires on user prompt submission. Pre-processing user input.",
+      "system": "DevTools",
+      "machine": "Pro",
+      "type": "hook",
+      "schedule": "event-driven (on user prompt)"
+    }
+  },
+  "home_scripts": {
+    "ai-intel-sentinel.sh": {
+      "description": "TCC-safe bridge for LaunchAgent — calls venv python directly, bypassing macOS TCC /Desktop restriction for intel sentinel.",
+      "system": "Intel",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "cron-runner.sh": {
+      "description": "macOS Sequoia com.apple.provenance bypass — wrapper that strips provenance quarantine before running cron scripts.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-wrapper",
+      "location": "~/scripts/"
+    },
+    "deadman-heartbeat.sh": {
+      "description": "Dead Man's Switch: Pro writes heartbeat file every 30s via LaunchAgent, Air checks. Cross-machine health monitoring.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-monitor",
+      "schedule": "ogni 30s (LaunchAgent)",
+      "location": "~/scripts/"
+    },
+    "comfyui-server.sh": {
+      "description": "ComfyUI server launcher script. Image generation server (manual start).",
+      "system": "AI",
+      "machine": "Pro",
+      "type": "shell-manual",
+      "location": "~/scripts/"
+    },
+    "gdrive-backup-all.sh": {
+      "description": "Google Drive backup orchestrator: runs PG + Qdrant + Intel Archive backups sequentially with summary + Telegram alert.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-orchestrator",
+      "location": "~/scripts/"
+    },
+    "gdrive-intel-archive.sh": {
+      "description": "Intel Scraper crawl cache → Google Drive (30TB). Archives full bali-intel-scraper/data/ directory.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "gdrive-pg-backup.sh": {
+      "description": "PostgreSQL backup → Google Drive (30TB). Secondary disaster recovery mirror of local PG backup.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "gdrive-qdrant-backup.sh": {
+      "description": "Qdrant snapshots → Google Drive (30TB). Mirrors latest local Qdrant snapshot archive.",
+      "system": "Backup",
+      "machine": "Air",
+      "type": "shell-backup",
+      "location": "~/scripts/"
+    },
+    "generate-automations-all.sh": {
+      "description": "Generates both AUTOMATIONS_REFERENCE.md and automations-inventory.xlsx. Called nightly at 23:15 by LaunchAgent.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-generator",
+      "schedule": "23:15 (via com.nuzantara.automations-reference)",
+      "location": "~/scripts/"
+    },
+    "mata-garuda-watcher.sh": {
+      "description": "TCC-safe launcher for Mata Garuda watcher LaunchAgent. Bridges launchd to repo scripts.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "warroom-wrapper.sh": {
+      "description": "TCC-safe War Room launcher for launchd. Bridges LaunchAgent to War Room pipeline scripts.",
+      "system": "Content",
+      "machine": "Pro",
+      "type": "shell-bridge",
+      "location": "~/scripts/"
+    },
+    "setup-grafana-cloud.sh": {
+      "description": "Setup script for Grafana Cloud monitoring integration. One-time installation.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-setup",
+      "location": "~/scripts/"
+    },
+    "setup-log-drain.sh": {
+      "description": "Setup script for log drain configuration. One-time installation.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "shell-setup",
+      "location": "~/scripts/"
+    }
+  },
+  "air_cron_extras": {
+    "API_lkpm_deadlines": {
+      "description": "Air cron: daily LKPM deadline notifier. Calls Fly.io backend POST /api/cron/notifiers/lkpm-deadlines at 07:00 WITA.",
+      "system": "Compliance",
+      "machine": "Air",
+      "type": "cron-api",
+      "schedule": "23:00 UTC daily (07:00 WITA)"
+    },
+    "run_db_nlm_sync.sh": {
+      "description": "Air cron: DB→NLM sync. Syncs database state to NotebookLM for knowledge grounding. Runs 20:30 UTC daily.",
+      "system": "NLM",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "20:30 UTC daily"
+    },
+    "run_t4_monitor.sh": {
+      "description": "Air cron: T4 social monitor execution. Runs every 6h alongside SEO guardian.",
+      "system": "Content",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "ogni 6h"
+    },
+    "weekly_ollama_restart": {
+      "description": "Air cron: weekly Ollama restart + re-pin warm model. Prevents memory drift. Sunday 05:00 WITA.",
+      "system": "AI",
+      "machine": "Air",
+      "type": "cron-maintenance",
+      "schedule": "Sunday 05:00"
+    },
+    "API_auto_practice_creator": {
+      "description": "Air cron: daily auto practice creator. Creates visa renewal practices at T-60 days before expiry. 07:30 WITA.",
+      "system": "CRM",
+      "machine": "Air",
+      "type": "cron-api",
+      "schedule": "07:30 WITA daily"
+    },
+    "metabolic_rollup": {
+      "description": "SYMBIOSIS Pillar 7 daily rollup. Collects 4 metabolic metrics (TTR, DO, IA, FE), stores in SQLite, pushes to Redis organism:metrics stream, sends Telegram report.",
+      "produces": "SQLite snapshots, Redis stream events, Telegram report, JSONL log",
+      "consumes": "cell_pulse_log (PG), kg_nodes/kg_edges (PG), cron JSONL, MOS SQLite, escalations JSONL",
+      "monitored_by": "CronSensor (metabolic_rollup: 24h)",
+      "uses_llm": "none (pure metrics computation)",
+      "system": "Organism",
+      "machine": "Air",
+      "type": "cron-script",
+      "schedule": "23:30 WITA daily",
+      "script": "scripts/metabolic_rollup.py"
+    }
+  },
+  "zombies": {
+    "ai.openclaw.monitor-air.DISABLED": {
+      "description": "DISABLED — Legacy LaunchAgent for monitoring Air node. Replaced by OpenClaw monitor.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "ai.openclaw.tunnel.DISABLED": {
+      "description": "DISABLED — Legacy autossh tunnel to Air. Replaced by direct SSH.",
+      "system": "Ops",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "com.balizero.seo-guardian-observe.disabled": {
+      "description": "DISABLED — Legacy launchd SEO observer. Replaced by OpenClaw seo-guardian-observe.",
+      "system": "SEO",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "com.balizero.seo-guardian-measure.disabled": {
+      "description": "DISABLED — Legacy launchd SEO measure. Replaced by OpenClaw seo-guardian-weekly.",
+      "system": "SEO",
+      "machine": "Pro",
+      "type": "zombie-launchd"
+    },
+    "auto_kg_quality.sh": {
+      "description": "ZOMBIE — Script exists but removed from crontab. Was weekly KG quality check.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "zombie-cron"
+    }
+  },
+  "mata_garuda_pipeline": {
+    "_doc": "Mata Garuda intelligence pipeline: 4-layer OSINT system. Layer 1=Harvest, Layer 2=Kognitif, Layer 3=Nexus, Layer 4=Action.",
+    "mg_sentinel_pulse": {
+      "description": "Mata Garuda Sentinel: daily full pulse (sense→think→act→reflect→dream→mature). Runs all 4 layers sequentially: harvest sources, normalize+score, digest via Claude CLI, publish + TG alert.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "02:00 WITA daily (com.matagaruda.sentinel.daily)",
+      "uses_llm": "Claude CLI (digest synthesis) + Ollama qwen3.5:9b (scoring)",
+      "tools_called": [
+        "run_sentinel_py.py",
+        "SentinelCell.pulse()",
+        "Claude CLI --print",
+        "Ollama scoring",
+        "Redis garuda:raw→garuda:enriched→garuda:digest"
+      ],
+      "apis_called": [
+        "Telegram Bot API",
+        "arXiv API",
+        "GitHub API",
+        "YouTube Data API",
+        "RSS feeds"
+      ],
+      "produces": "garuda:digest stream, TG intelligence briefing",
+      "consumes": "arXiv, RSS, GitHub trending, YouTube, regulation sites"
+    },
+    "mg_watcher": {
+      "description": "Mata Garuda Watcher: monitors regulation changes and KG data freshness. Alerts if entities become stale or new regulations detected.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "06:00 WITA daily (com.matagaruda.watcher.daily)",
+      "uses_llm": "none",
+      "tools_called": [
+        "run_watcher.sh",
+        "regulation_watcher agent",
+        "scraper_tools.check_regulation_source"
+      ],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
+      "produces": "Regulation change alerts, stale entity alerts",
+      "consumes": "Neo4j KG, government websites"
+    },
+    "mg_bridge_consumer": {
+      "description": "Garuda Bridge Consumer: reads garuda:raw Redis stream, processes intelligence items into Neo4j Knowledge Graph. Uses OSINT-Nexus venv (neo4j 6.1).",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "06:15 WITA daily (com.garuda.consumer.daily)",
+      "uses_llm": "none",
+      "tools_called": ["garuda-consumer.sh", "OSINT-Nexus venv python", "neo4j driver"],
+      "apis_called": ["Neo4j (localhost)", "Redis (garuda:raw stream)"],
+      "produces": "Neo4j nodes and edges from intelligence items",
+      "consumes": "Redis garuda:raw stream"
+    },
+    "mg_gap_detector": {
+      "description": "Garuda Gap Detector: runs 8 Cypher queries against Neo4j to find holes in the intelligence graph. Publishes tasks to nexus:gaps stream for future auto-enrichment.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "launchd-script",
+      "schedule": "07:00 + 18:00 WITA (com.garuda.gap-detector.twice-daily)",
+      "uses_llm": "none",
+      "tools_called": ["garuda-gap-detector.sh", "OSINT-Nexus venv python", "8 Cypher gap queries"],
+      "apis_called": ["Neo4j (localhost)", "Redis (nexus:gaps stream)"],
+      "produces": "nexus:gaps stream tasks (missing attributes, relations, stale data)",
+      "consumes": "Neo4j KG state"
+    },
+    "mg_task_consumer": {
+      "description": "Mata Garuda Task Consumer: reads research/enrichment tasks from Redis stream, dispatches to MG agents. Currently mostly log_only (agents for NIP, LHKPN, bio, org chart, LPSE planned).",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "on-demand",
+      "uses_llm": "none (dispatch only, agents use LLMs)",
+      "tools_called": ["task_tools.py", "Redis nexus:gaps stream", "DISPATCH_TABLE routing"],
+      "produces": "Dispatched agent tasks, audit log (task_dispatch.jsonl)",
+      "consumes": "nexus:gaps stream from gap detector"
+    },
+    "mg_worker_normalizer": {
+      "description": "Normalizer Worker: reads garuda:raw, deduplicates (SHA256), normalizes to common schema, stores in KB, publishes to garuda:enriched. Layer 2 Kognitif.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "none",
+      "tools_called": ["Redis garuda:raw→garuda:enriched", "SHA256 dedup", "KB SQLite"],
+      "produces": "garuda:enriched stream, KB entries",
+      "consumes": "garuda:raw stream"
+    },
+    "mg_worker_scorer": {
+      "description": "Relevance Scorer Worker: reads garuda:enriched, scores items 1-5 using Ollama (local, $0), triggers TG alert for items >= SCORE_SIGNAL. Layer 2 Kognitif.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "Ollama (scoring model)",
+      "tools_called": ["Redis garuda:enriched", "Ollama local API"],
+      "apis_called": ["Ollama localhost", "Telegram Bot API (high-score alerts)"],
+      "produces": "Scored intelligence items, TG alerts for high-value items",
+      "consumes": "garuda:enriched stream"
+    },
+    "mg_worker_nlm_feeder": {
+      "description": "NLM Feeder Worker: reads harvested items from KB, adds URLs to appropriate NLM notebooks. Layer 3 Nexus — after 30 days NLM has 300+ sources.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-worker",
+      "uses_llm": "none",
+      "tools_called": ["nlm CLI (source add)", "KB SQLite"],
+      "apis_called": ["NotebookLM (via nlm CLI)"],
+      "produces": "NLM sources added to domain notebooks",
+      "consumes": "KB harvested items"
+    },
+    "mg_ai_digest_agent": {
+      "description": "AI Digest Agent: reads KB + Redis data, synthesizes intelligence briefing via Claude CLI (one call), publishes to garuda:digest, sends TG alert.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI (--print, synthesis)",
+      "tools_called": [
+        "run_ai_digest.py",
+        "Claude CLI --print",
+        "knowledge_tools.py",
+        "Redis garuda:digest",
+        "tg_tools.py"
+      ],
+      "apis_called": ["Claude CLI (Anthropic subscription)", "Telegram Bot API"],
+      "produces": "Intelligence digest, garuda:digest stream entry, TG briefing",
+      "consumes": "KB data, garuda:enriched items"
+    },
+    "mg_regulation_watcher_agent": {
+      "description": "Regulation Watcher Agent: monitors Indonesian government regulation sites for changes relevant to Bali Zero services (visa, company, tax). GENOME-based self-evolving.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": ["scraper_tools.check_regulation_source", "feed_tools.py"],
+      "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
+      "produces": "Regulation change items → garuda:raw",
+      "consumes": "Government regulation websites"
+    },
+    "mg_twitter_harvester_agent": {
+      "description": "AI Twitter Harvester: monitors X/Twitter for Bali business/immigration/regulation keywords. GENOME-based.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": ["scraper_tools.py", "Twitter API v2"],
+      "apis_called": ["Twitter API v2"],
+      "produces": "Twitter intelligence items → garuda:raw",
+      "consumes": "Twitter keyword streams"
+    },
+    "mg_arxiv_harvester_agent": {
+      "description": "arXiv Harvester: harvests AI/ML papers relevant to intelligence operations.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["arxiv_tools.py", "arxiv_sensor.py"],
+      "apis_called": ["arXiv API"],
+      "produces": "Research papers → garuda:raw",
+      "consumes": "arXiv feeds"
+    },
+    "mg_github_harvester_agent": {
+      "description": "GitHub Trending Harvester: harvests trending repos relevant to OSINT/intelligence tooling.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["github_tools.py", "github_sensor.py"],
+      "apis_called": ["GitHub API"],
+      "produces": "GitHub trends → garuda:raw",
+      "consumes": "GitHub trending"
+    },
+    "mg_youtube_harvester_agent": {
+      "description": "YouTube Intel Harvester: harvests YouTube videos on Indonesia business/regulation topics.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["youtube_tools.py", "youtube_sensor.py"],
+      "apis_called": ["YouTube Data API"],
+      "produces": "Video intelligence → garuda:raw",
+      "consumes": "YouTube search/channels"
+    },
+    "mg_newsletter_harvester_agent": {
+      "description": "AI Newsletter Harvester: harvests newsletter/RSS sources for business intelligence.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["feed_tools.py", "rss_sensor.py"],
+      "apis_called": ["RSS feeds"],
+      "produces": "Newsletter items → garuda:raw",
+      "consumes": "RSS/newsletter feeds"
+    },
+    "mg_meta_agent": {
+      "description": "Meta Agent: Lamarckian self-evolution engine. Reviews agent GENOME performance, proposes mutations, spawns new agent variants. Uses Claude CLI for reasoning.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "meta-agent",
+      "uses_llm": "Claude CLI",
+      "tools_called": ["meta_tools.py", "lamarckian.py", "reflection.py", "Claude CLI --print"],
+      "produces": "Agent GENOME mutations, performance reflections",
+      "consumes": "Agent run logs, GENOME.md files"
+    },
+    "mg_source_health_agent": {
+      "description": "Source Health Agent: checks if data sources (URLs, APIs, RSS) are still alive and returning data. Marks dead sources.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "pipeline-agent",
+      "uses_llm": "none",
+      "tools_called": ["scraper_tools.py (HTTP probes)"],
+      "produces": "Source health status, dead source alerts",
+      "consumes": "Source registry"
+    },
+    "mg_lamarckian_evolution": {
+      "description": "Lamarckian runtime: runs evolution cycles on agent GENOMEs. Reflection→mutation→selection. Stored in SQLite KB.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "runtime",
+      "uses_llm": "Claude CLI (reflection + mutation proposals)",
+      "tools_called": ["lamarckian.py", "reflection.py", "CLIRuntime(model=claude)"],
+      "produces": "Evolved GENOME.md files, KB reflection entries",
+      "consumes": "Agent performance logs, current GENOMEs"
+    },
+    "mg_cli_runtime": {
+      "description": "CLI Runtime: subprocess wrapper for LLM CLIs (claude --print, gemini --prompt, codex). Aligned with bali-intel-scraper enricher pattern. Fallback: claude→gemini.",
+      "system": "Garuda",
+      "machine": "Pro",
+      "type": "runtime",
+      "uses_llm": "Claude CLI (primary) → Gemini CLI (fallback)",
+      "tools_called": ["subprocess: claude --print", "subprocess: gemini --prompt"],
+      "produces": "LLM responses for agents",
+      "consumes": "Agent prompts"
+    }
+  },
+  "intel_scraper_pipeline": {
+    "_doc": "Bali Intel Scraper: news/regulation scraping pipeline. Runs locally on Pro via OpenClaw at 03:00 WITA.",
+    "intel_stage1_scraping": {
+      "description": "Intel Pipeline Stage 1: scrapes 630+ news/regulation sources via Google News RSS + direct sites. Playwright browser pool.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "none",
+      "tools_called": ["GoogleNewsRSSFetcher", "browser_pool.py", "proxy_manager.py"],
+      "apis_called": ["Google News RSS", "600+ news/gov websites"],
+      "produces": "Raw scraped articles",
+      "consumes": "Source list (630+ URLs)"
+    },
+    "intel_stage2_scoring": {
+      "description": "Intel Pipeline Stage 2: LLAMA local scoring — fast relevance filtering ($0 cost).",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "LLAMA (local via Ollama)",
+      "tools_called": ["AIEngine (LLAMA provider)"],
+      "produces": "Scored articles (1-5)",
+      "consumes": "Raw scraped articles"
+    },
+    "intel_stage3_validation": {
+      "description": "Intel Pipeline Stage 3: Claude validation gate — intelligent quality filter.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Claude (Anthropic API)",
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
+      "produces": "Validated articles",
+      "consumes": "Scored articles (score >= threshold)"
+    },
+    "intel_stage4_enrichment": {
+      "description": "Intel Pipeline Stage 4: Claude Max enrichment — full article generation with SEO/AEO optimization.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Claude (Anthropic API, max context)",
+      "tools_called": ["AIEngine (Anthropic provider)"],
+      "apis_called": ["Anthropic Messages API"],
+      "produces": "Enriched full articles (MDX format)",
+      "consumes": "Validated articles"
+    },
+    "intel_stage5_images": {
+      "description": "Intel Pipeline Stage 5: Gemini image generation — cover images for published articles.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "Gemini (image generation)",
+      "apis_called": ["Gemini API (image gen)"],
+      "produces": "Cover images for articles",
+      "consumes": "Article metadata"
+    },
+    "intel_stage6_publish": {
+      "description": "Intel Pipeline Stage 6: publish to BaliZero website API + optional Telegram approval workflow.",
+      "system": "Intel",
+      "machine": "Pro (local)",
+      "type": "pipeline-stage",
+      "uses_llm": "none",
+      "tools_called": ["balizero.com/api/news (POST)"],
+      "apis_called": ["balizero.com/api/news", "Telegram Bot API (approval)"],
+      "produces": "Published articles on balizero.com",
+      "consumes": "Enriched articles + images"
+    },
+    "intel_nightly_orchestrator": {
+      "description": "Intel Nightly: LaunchAgent orchestrates the full pipeline at 01:00 WITA via OpenClaw. Triggers all 6 stages sequentially.",
+      "system": "Intel",
+      "machine": "Pro",
+      "type": "launchd-orchestrator",
+      "schedule": "01:00 WITA daily (com.balizero.intel.nightly)",
+      "uses_llm": "LLAMA + Claude + Gemini (via pipeline stages)",
+      "tools_called": ["OpenClaw gateway trigger", "bali-intel-scraper pipeline"],
+      "produces": "Published intel articles (~$0.06/article)",
+      "consumes": "630+ sources"
+    }
+  },
+  "agents": {
+    "lhkpn_harvester": {
+      "description": "Mata Garuda Layer 1 harvester for LHKPN wealth declarations (antv.kpk.go.id). Dispatched by gap_consumer for 4 gap types: missing_nip, missing_lhkpn, missing_angkatan, stale_official.",
+      "produces": "garuda:raw entries (type: harvest.lhkpn)",
+      "consumes": "antv.kpk.go.id HTTP, gap_consumer dispatch",
+      "uses_llm": "claude --print (via MetaChain)",
+      "llm_interface": "Claude CLI subprocess",
+      "tools_called": ["scrape_lhkpn_search()", "scrape_lhkpn_profile()", "stream_publish()"]
+    }
+  }
+}

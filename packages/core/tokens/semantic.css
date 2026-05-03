@@ -1,0 +1,146 @@
+/*
+ * Layer 2 — Semantic
+ * Intent-named tokens. Components read these; never read primitives directly.
+ * Theme files (layer 3) override surface/text/border values per theme.
+ *
+ * Funnel accent rule (design doc §3):
+ *   - Funnel-identity components (cards, CTAs) read --accent-funnel.
+ *     Element or ancestor MUST carry data-funnel="visa|kbli|tax|property".
+ *   - Funnel-agnostic components (nav, footer) must NOT read --accent-funnel.
+ *     Use --accent-zantara or neutral semantic tokens.
+ *   - Text rendering funnel color reads --accent-funnel-text
+ *     (contrast-verified variant, see §R7).
+ *
+ * Cap: ≤60 variable declarations (success criterion §10.1).
+ */
+
+:root {
+  /* ─── Funnel accent (default = Visa, remapped by data-funnel) ── */
+  --accent-funnel: var(--color-red-500);
+  --accent-funnel-text: var(--color-red-500);
+  --accent-zantara: var(--color-purple-500);
+
+  /* ─── Surface (theme overrides these in dark/light/editorial) ── */
+  --surface-base: var(--color-black);
+  --surface-raised: rgba(255, 255, 255, 0.025);
+  --surface-sunken: rgba(0, 0, 0, 0.4);
+  --surface-overlay: rgba(4, 4, 6, 0.55);
+  --surface-scrim: rgba(0, 0, 0, 0.7);
+
+  /* ─── Text ─────────────────────────────────────────────────── */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.5);
+  --text-tertiary: rgba(255, 255, 255, 0.25);
+  --text-on-accent: #ffffff;
+  --text-link: var(--accent-funnel-text);
+
+  /* ─── Border ───────────────────────────────────────────────── */
+  --border-subtle: rgba(255, 255, 255, 0.03);
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-focus: var(--accent-funnel);
+
+  /* ─── Chrome (nav, footer, fab — tokens shipped, components deferred §R9) ── */
+  --nav-bg: var(--surface-overlay);
+  --nav-border: var(--border-default);
+  --footer-bg: #0d0d12;
+  --footer-border: var(--border-default);
+  --footer-text: var(--text-tertiary);
+  --fab-bg-gradient: linear-gradient(
+    135deg,
+    var(--color-purple-700),
+    var(--color-purple-500)
+  );
+  --fab-fg: #ffffff;
+
+  /* ─── CTA ──────────────────────────────────────────────────── */
+  --cta-bg: var(--accent-funnel);
+  --cta-bg-hover: var(--accent-funnel);
+  --cta-fg: var(--text-on-accent);
+  --cta-shadow: 0 8px 32px
+    color-mix(in srgb, var(--accent-funnel) 35%, transparent);
+
+  /* ─── State (separate from funnels — "success green" ≠ "Property green") ── */
+  --state-success: var(--color-state-success);
+  --state-warning: var(--color-state-warning);
+  --state-danger: var(--color-state-danger);
+  --state-info: var(--color-state-info);
+
+  /* ─── Editorial accents (funnel-agnostic) ──────────────────────
+     Copper/sand/gold/blue palette used across non-funnel UI
+     (marketing, prime, blog, portal chrome). Introduced 2026-04-18
+     to absorb the 600+ Tailwind-arbitrary hex drift that organically
+     emerged for editorial surfaces where the 4 funnel accents are
+     inappropriate. Do NOT consume these from funnel-identity
+     components — those must read --accent-funnel. */
+  --accent-warm: #d4845a;
+  --accent-sand: #d4b483;
+  --accent-gold-muted: #c9a96e;
+  --accent-blue-editorial: #2251ff;
+  --accent-sage: #5cb88a;
+  --accent-pink-editorial: #c45c78;
+  --accent-red-brand: #c23c2c;
+  --surface-editorial-base: #0c0a05;
+  --surface-editorial-elevated: #1a1d24;
+  --surface-deep: #0f1115;
+  --text-silver: #e1e1e3;
+  --text-muted-cool: #9aa0ae;
+
+  /* ── Shipped-component aliases (2026-04-20) ──
+   * 9 components under packages/core/components/apps/ reference these
+   * three names as bare var(...) calls without fallbacks — before these
+   * aliases existed, they silently inherited parent values (muted text
+   * collapsed, borders invisible). Map them to canonical semantic
+   * tokens so intent is explicit and themes propagate correctly.
+   * TODO(task-12): remove aliases if components migrate to canonical names.
+   */
+  --color-text-muted: var(--text-secondary);
+  --color-border-subtle: var(--border-subtle);
+  --color-error: var(--state-danger, #ff5a5a);
+
+  /* ── Motion tokens (2026-04-20, visa-check redesign) ──
+   * Primitives ship --motion-duration-{fast,standard,slow} +
+   * --motion-ease-{standard,emphasized,decelerate}. We do NOT redeclare
+   * them — this layer only adds what the spec (docs/superpowers/specs/
+   * 2026-04-20-visa-check-ui-design.md §Motion invariants) needs on top:
+   *   --motion-duration-accent  new 200ms tier for red urgency cues
+   *                             (primitives fast=150ms is too brisk for
+   *                              the spec's "red elements feel faster";
+   *                              accent bridges 150↔250ms clearly)
+   *   --motion-duration-base    alias of primitive's standard (250ms)
+   *                             so the redesign vocabulary reads as
+   *                             "base/accent" without splitting values.
+   *   --motion-curve-editorial  cubic-bezier for editorial weight
+   *   --motion-curve-reveal     overshoot curve for one-shot reveals
+   * For fast (150ms) and slow (400ms) read the primitives directly.
+   */
+  --motion-duration-accent: 200ms;
+  --motion-duration-base: var(--motion-duration-standard);
+  --motion-curve-editorial: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --motion-curve-reveal: cubic-bezier(0.5, 0, 0.3, 1.2);
+}
+
+/* Per-funnel accent mapping — attribute-only selector so leaf scoping works
+   (design doc §3 Level 1 rule). Do NOT add combinators.
+   --text-on-accent is overridden per-funnel to keep CTA contrast >= 4.5:1 (AA).
+   Red allows white; gold/cyan/green require dark-text against bg. */
+[data-funnel="visa"] {
+  --accent-funnel: var(--color-red-500);
+  --accent-funnel-text: var(--color-red-500);
+  --text-on-accent: #1a0508;
+}
+[data-funnel="kbli"] {
+  --accent-funnel: #eab308;
+  --accent-funnel-text: #eab308;
+  --text-on-accent: #1a1208;
+}
+[data-funnel="tax"] {
+  --accent-funnel: var(--color-cyan-500);
+  --accent-funnel-text: var(--color-cyan-500);
+  --text-on-accent: #052028;
+}
+[data-funnel="property"] {
+  --accent-funnel: var(--color-green-500);
+  --accent-funnel-text: var(--color-green-500);
+  --text-on-accent: #052712;
+}

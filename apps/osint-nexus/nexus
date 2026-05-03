@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# OSINT Nexus CLI launcher
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$DIR/.venv/bin/activate"
+exec python -m osint_nexus.dossier.cli "$@"

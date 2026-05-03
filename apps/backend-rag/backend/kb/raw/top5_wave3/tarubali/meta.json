@@ -1,0 +1,16 @@
+{
+  "source_id": "tarubali",
+  "name": "Dinas Tata Ruang Bali (RTRW)",
+  "base_url": "https://tarubali.baliprov.go.id/",
+  "pages": [
+    {
+      "url": "https://tarubali.baliprov.go.id",
+      "status": 200,
+      "bytes": 171305,
+      "file": "tarubali.baliprov.go.id.html"
+    }
+  ],
+  "errors": [],
+  "fetched_at": "2026-04-21T21:45:14.574723+00:00",
+  "playwright_invocations_for_source": 0
+}

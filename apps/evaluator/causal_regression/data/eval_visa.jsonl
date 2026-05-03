@@ -1,0 +1,8 @@
+{"query_id": "V01_kitas_basics", "query": "What is a KITAS and how is it obtained", "expected_keywords": ["kitas", "permit", "residence"]}
+{"query_id": "V02_e23_work", "query": "E23 work visa for foreign workers", "expected_keywords": ["e23", "work", "rptka"]}
+{"query_id": "V03_bpjs_expat", "query": "BPJS Kesehatan registration for expats", "expected_keywords": ["bpjs", "kesehatan", "expat"]}
+{"query_id": "V04_ptpma_setup", "query": "Requirements to establish a PT PMA in Indonesia", "expected_keywords": ["pma", "capital", "foreign"]}
+{"query_id": "V05_kitap", "query": "When can a KITAS be converted to KITAP", "expected_keywords": ["kitap", "kitas", "status"]}
+{"query_id": "V06_dkp_tka", "query": "What is DKP-TKA and how is it paid", "expected_keywords": ["dkp", "tka", "monthly"]}
+{"query_id": "V07_rptka", "query": "Purpose of RPTKA for work permit", "expected_keywords": ["rptka", "work", "permit"]}
+{"query_id": "V08_e28_investor", "query": "E28 investor KITAS eligibility", "expected_keywords": ["e28", "investor", "kitas"]}

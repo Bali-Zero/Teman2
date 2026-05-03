@@ -1,0 +1,30 @@
+# GARUDA Curator Agent — OpenClaw cron configuration
+# Deploy: copy to ~/.openclaw/crons/garuda_curator.yaml
+# Or symlink: ln -s <project>/apps/zantara-media/config/openclaw_cron.yaml ~/.openclaw/crons/
+
+jobs:
+  # Daily indexer: 04:30 WITA (UTC+8) = 20:30 UTC
+  - name: garuda-indexer-daily
+    schedule: "30 20 * * *" # UTC — 04:30 WITA
+    command: >
+      cd /Users/nuzantara/Desktop/nuzantara/apps/zantara-media &&
+      source .venv/bin/activate &&
+      garuda-indexer --worker default
+    timeout: 3600 # 1 hour max
+    on_failure: telegram # Alert via Telegram on failure
+    description: "GARUDA daily Drive indexer — 04:30 WITA, 50 files/night"
+    enabled: true
+
+  # Weekly GC: Sunday 05:00 WITA (UTC+8) = Saturday 21:00 UTC
+  # NOTE: dow=6 (Saturday) in UTC, which rolls into Sunday 05:00 WITA due to +8h offset.
+  # Previous value "0 21 * * 0" incorrectly fired Monday 05:00 WITA (Sunday 21:00 UTC).
+  - name: garuda-gc-weekly
+    schedule: "0 21 * * 6" # UTC Saturday 21:00 = WITA Sunday 05:00
+    command: >
+      cd /Users/nuzantara/Desktop/nuzantara/apps/zantara-media &&
+      source .venv/bin/activate &&
+      garuda-gc --batch-size 100
+    timeout: 7200 # 2 hours max
+    on_failure: telegram
+    description: "GARUDA weekly tombstone GC — Sunday 05:00 WITA"
+    enabled: true

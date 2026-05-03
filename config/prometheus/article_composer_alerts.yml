@@ -1,0 +1,103 @@
+# Prometheus Alerting Rules for Article Composer
+# Place this file in your Prometheus rules directory
+
+groups:
+  - name: article_composer
+    interval: 30s
+    rules:
+      # Critical: High Error Rate
+      - alert: ArticleComposerHighErrorRate
+        expr: |
+          rate(article_compose_requests_total{status=~"error|api_error|json_error"}[5m]) / 
+          rate(article_compose_requests_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: article_composer
+        annotations:
+          summary: "Article Composer error rate > 10%"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://docs.example.com/runbooks/article-composer-high-error-rate"
+
+      # Critical: API Key Missing
+      - alert: ArticleComposerAPIKeyMissing
+        expr: |
+          up{job="nuzantara-rag"} == 1 AND
+          rate(article_compose_requests_total{status="error"}[5m]) > 0 AND
+          rate(article_compose_requests_total{status="api_error"}[5m]) / 
+          rate(article_compose_requests_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          component: article_composer
+        annotations:
+          summary: "Article Composer API key may be missing or invalid"
+          description: "More than 50% of requests are failing with API errors"
+          runbook_url: "https://docs.example.com/runbooks/article-composer-api-key"
+
+      # Warning: Low Cache Hit Rate
+      - alert: ArticleComposerLowCacheHitRate
+        expr: |
+          (
+            rate(article_cache_hits_total[5m]) / 
+            (rate(article_cache_hits_total[5m]) + rate(article_cache_misses_total[5m]))
+          ) < 0.2
+        for: 15m
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: "Article Composer cache hit rate < 20%"
+          description: "Cache hit rate is {{ $value | humanizePercentage }}. Consider checking Redis connection or cache TTL settings."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-cache"
+
+      # Warning: High API Costs
+      - alert: ArticleComposerHighCosts
+        expr: |
+          sum(increase(claude_api_cost_cents[1h])) / 100 > 10
+        for: 1h
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: "Article Composer API costs > $10/hour"
+          description: "Current cost: ${{ $value }} per hour. Consider enabling caching or reviewing usage patterns."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-costs"
+
+      # Warning: Slow Response Time
+      - alert: ArticleComposerSlowResponse
+        expr: |
+          histogram_quantile(0.95, article_compose_duration_seconds) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: "Article Composer 95th percentile response time > 10s"
+          description: "P95 response time is {{ $value }}s. Consider checking Claude API latency or enabling caching."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-performance"
+
+      # Warning: Rate Limit Exceeded
+      - alert: ArticleComposerRateLimitExceeded
+        expr: |
+          rate(article_compose_requests_total{status="rate_limit"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: article_composer
+        annotations:
+          summary: "Article Composer rate limit exceeded"
+          description: "Rate limit is being hit. Consider increasing limit or optimizing request patterns."
+          runbook_url: "https://docs.example.com/runbooks/article-composer-rate-limit"
+
+      # Info: High Request Volume
+      - alert: ArticleComposerHighVolume
+        expr: |
+          rate(article_compose_requests_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: info
+          component: article_composer
+        annotations:
+          summary: "Article Composer high request volume"
+          description: "Request rate is {{ $value }} requests/second. Monitor for performance issues."

@@ -1,0 +1,296 @@
+OSS, NIB E LICENZE SETTORIALI — SISTEMA DI REGISTRAZIONE IMPRESE
+GUIDA AL SINGLE SUBMISSION SYSTEM E AL RISK-BASED APPROACH
+INDONESIA 2025-2026
+
+Guida normativa verificata | Aggiornata a GR 28/2025 (PP 28/2025) e BKPM Reg 5/2025
+Prodotta da Bali Zero / Zantara Intelligence
+
+⚠️ AGGIORNAMENTO NORMATIVO (marzo 2026): Il TDUP (Tanda Daftar Usaha Pariwisata)
+non è più rilasciato come licenza locale autonoma dal Dinas Pariwisata. Dal GR
+28/2025 (PP 28/2025), le attività turistiche ottengono la PB UMKU (Perizinan
+Berusaha Untuk Menunjang Kegiatan Usaha) tramite OSS, con certificazione da
+parte di un LSPr (Lembaga Sertifikasi Profesi/Usaha) accreditato a livello
+nazionale. Fonte di verifica: claim NB3-C006/C007, GR 28/2025 + 6 fonti
+indipendenti (AGI Legal, Zenith, BPR, OSS-RBA guide, PP 28/2025 testo completo).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. COS'È OSS E PERCHÉ È IMPORTANTE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OSS (Online Single Submission) è la piattaforma digitale centralizzata
+del Governo indonesiano per la registrazione e il licensing delle imprese.
+
+URL ufficiale: https://oss.go.id
+
+Il sistema OSS è stato completamente rinnovato nel 2021 (OSS RBA) con
+l'introduzione del Risk Based Approach (RBA) in base a PP 5/2021.
+Dalla versione RBA, una singola piattaforma gestisce:
+
+- Registrazione dell'impresa (NIB)
+- Licenze per attività commerciale
+- Dichiarazione del piano di investimento
+- Reporting trimestrale LKPM
+- Aggiornamenti e modifiche dell'impresa
+
+PRIMA DI OSS: Il percorso di licenze era frammentato tra dozzine di
+uffici governativi diversi. OSS ha centralizzato e velocizzato
+notevolmente il processo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. IL NIB — NOMOR INDUK BERUSAHA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il NIB (Nomor Induk Berusaha) è il numero identificativo univoco
+dell'impresa rilasciato dal sistema OSS. [COM-014]
+
+COSA SOSTITUISCE IL NIB:
+Il NIB sostituisce e unifica tre documenti precedenti: [COM-013]
+- TDP (Tanda Daftar Perusahaan) — vecchio certificato di registrazione
+- API (Angka Pengenal Importir) — numero identificativo importatore
+- Hak Akses Kepabeanan — accesso ai servizi doganali
+
+Da quando è attivo OSS RBA (2021), il NIB è l'unico documento
+di identità commerciale necessario per qualsiasi azienda in Indonesia.
+
+TEMPI DI RILASCIO:
+Il NIB viene emesso automaticamente dal sistema OSS al completamento
+della registrazione: nessuna approvazione manuale necessaria. [COM-015]
+In pratica: compilazione del modulo + invio = NIB immediato.
+
+VALIDITÀ:
+Il NIB rimane valido finché l'azienda è attiva e rispetta
+i propri obblighi (LKPM per PT PMA, aggiornamenti dati, ecc.).
+La validità è permanente, non soggetta a rinnovo annuale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. IL SISTEMA RBA — RISK BASED APPROACH
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il Risk Based Approach (RBA) classifica ogni attività in 4 livelli
+di rischio che determinano quali licenze sono necessarie. [COM-016]
+
+LIVELLO 1 — RISIKO RENDAH (Rischio Basso)
+─────────────────────────────────────────
+Il solo NIB è sufficiente come autorizzazione a operare. [COM-017]
+Non è richiesta nessuna licenza aggiuntiva.
+
+Esempi di attività a rischio basso:
+- Consulenza aziendale generica (KBLI 70201)
+- Servizi IT / programmazione (KBLI 62010)
+- Traduzioni e interpretariato (KBLI 74300)
+- Artigianato e piccola manifattura non alimentare
+- Commercio all'ingrosso standard
+
+LIVELLO 2 — RISIKO MENENGAH RENDAH (Rischio Medio-Basso)
+──────────────────────────────────────────────────────────
+Richiede NIB + Sertifikat Standar autodichiarato. [COM-018]
+Il Sertifikat Standar viene generato automaticamente da OSS dopo
+la dichiarazione del rispetto degli standard da parte dell'imprenditore.
+Nessuna verifica fisica da parte del governo prima dell'avvio.
+In alcuni casi, un Sertifikat Standar può richiedere verifikasi
+(ispezione successiva all'avvio dell'attività).
+
+Esempi:
+- Ristorante (KBLI 56101)
+- Bar (KBLI 56103)
+- Guest house / pondok wisata (KBLI 55130)
+- Yoga studio / wellness (KBLI 93139)
+- Piccolo commercio al dettaglio
+
+LIVELLO 3 — RISIKO MENENGAH TINGGI (Rischio Medio-Alto)
+─────────────────────────────────────────────────────────
+Richiede NIB + Sertifikat Standar verificato.
+Il Sertifikat Standar deve essere verificato/approvato dall'autorità
+competente (DPMPTSP, Kementerian tematico) prima dell'avvio.
+Tempi: 3-14 giorni per la verifica.
+
+LIVELLO 4 — RISIKO TINGGI (Rischio Alto)
+──────────────────────────────────────────
+Richiede NIB + Izin formale rilasciato dall'autorità competente. [COM-019]
+L'Izin deve essere ottenuto prima di poter operare.
+Il processo richiede documentazione più estesa e verifica governativa.
+
+Esempi di attività ad alto rischio:
+- Clinica medica (KBLI 86102) → Izin Operasional Klinik
+- Laboratorio diagnostico → Izin laboratorium
+- Produzione farmaceutica → Izin BPOM
+- Scuola formale → Izin Pendirian Sekolah
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. PB UMKU — PERIZINAN BERUSAHA UNTUK MENUNJANG KEGIATAN USAHA
+   (ex TDUP — aggiornato GR 28/2025)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ NOTA TRANSIZIONE: Il TDUP (Tanda Daftar Usaha Pariwisata) NON ESISTE PIÙ
+come licenza locale autonoma rilasciata dal Dinas Pariwisata. Dal GR 28/2025
+(PP 28/2025), il sistema è stato sostituito dal PB UMKU tramite OSS + LSPr.
+Non recarsi al Dinas Pariwisata per richiedere un TDUP. [COM-040 aggiornato]
+
+COSA È LA PB UMKU:
+La PB UMKU (Perizinan Berusaha Untuk Menunjang Kegiatan Usaha) è la
+licenza di supporto all'attività turistica, gestita interamente tramite
+il sistema OSS. A differenza del vecchio TDUP locale, la PB UMKU richiede
+una certificazione da parte di un LSPr (Lembaga Sertifikasi Profesi/Usaha),
+ente di certificazione accreditato a livello nazionale.
+
+CHI DEVE OTTENERLA:
+- Alberghi, villa, guest house
+- Ristoranti e bar classificati come attività turistiche
+- Agenzie di viaggio e tour operator
+- Spa e centri benessere legati al turismo
+- Attrazioni e attività turistiche
+- Servizi di supporto al settore turistico
+
+COME SI OTTIENE (GR 28/2025):
+1. Registrazione su OSS (oss.go.id) con NIB già attivo
+2. Selezione del KBLI e del tipo di licenza turistica (PB UMKU)
+3. Caricamento documentazione richiesta tramite OSS
+4. Verifica e certificazione da parte di un LSPr accreditato
+   (il sistema OSS indica quale LSPr è competente per il settore)
+5. Rilascio del Sertifikat Standar Usaha Pariwisata da parte dell'LSPr
+
+TEMPI: Variabili — dipendono dal processo di audit LSPr.
+       Non paragonabili ai vecchi "3-7 giorni" del TDUP locale.
+       Il processo online OSS è più strutturato ma richiede audit fisico.
+
+DOCUMENTAZIONE TIPICA:
+- NIB
+- Akta pendirian + SK Kemenkumham
+- NPWP aziendale
+- Sertifikat standar OSS (se già ottenuto)
+- Deskripsi attività turistica + foto location
+- Documentazione per audit LSPr (varia per settore)
+
+NOTA LOCALE BALI:
+La transizione dal TDUP al sistema PB UMKU/LSPr potrebbe essere ancora
+in corso a livello operativo locale — alcuni uffici di Bali potrebbero
+ancora usare la terminologia "TDUP". La base normativa è chiara (GR 28/2025),
+ma verificare con il team Bali Zero lo stato attuale della transizione
+prima di indirizzare un cliente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. PROCEDURA COMPLETA PER OTTENERE NIB + LICENZE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PREREQUISITI:
+Prima di accedere a OSS per la registrazione PT PMA, devono essere
+già completati:
+1. Akta Pendirian da notaio
+2. SK Kemenkumham (approvazione come badan hukum)
+3. NPWP aziendale (o richiesta simultanea)
+
+STEP 1 — REGISTRAZIONE OSS:
+Accedere a oss.go.id → Daftar (registrazione) → Pilih Badan Usaha
+→ PT PMA → Inserire dati SK Kemenkumham
+
+STEP 2 — PROFILO AZIENDA:
+Compilare: nome PT, alamat (indirizzo registrato), kode pos,
+deskripsi singkat attività, NIK/Paspor direttore.
+
+STEP 3 — KBLI (Bidang Usaha):
+Inserire il/i codice/i KBLI dell'attività.
+OSS mostrerà automaticamente il livello di rischio (RBA)
+e le licenze necessarie per ogni KBLI.
+
+STEP 4 — RENCANA PENANAMAN MODAL:
+Dichiarare il piano di investimento: [COM-049]
+- Kapasitas produksi/layanan (capacità produttiva/servizi)
+- Total investasi (investimento totale pianificato)
+- Modal asing (quota straniera, coincide con quota WNA)
+- Asal modal asing (paese d'origine del capitale straniero)
+- Proyeksi tenaga kerja (dipendenti pianificati per i prossimi 3 anni)
+
+STEP 5 — VERIFICA E SUBMIT:
+Revisione dei dati inseriti → Submit
+OSS genera immediatamente il NIB (codice di 13 cifre).
+
+STEP 6 — PEMENUHAN PERSYARATAN DASAR:
+Dopo il NIB, OSS guida l'imprenditore nel completare
+i requisiti specifici per ogni KBLI (sertifikat standar, izin).
+Per attività Menengah Rendah: dichiarazione autodichiarata = completata.
+Per attività Tinggi: avviare iter per Izin formale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. MATRICE ESEMPI PRATICI BALI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KBLI    Attività                   Rischio RBA        Licenze necessarie
+──────────────────────────────────────────────────────────────────────────
+56101   Ristorante                 Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+55194   Vila turistica             Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+93139   Yoga/wellness studio       Rendah             NIB (+ PB UMKU se turismo) (*)
+62010   Sviluppo software          Rendah             NIB
+70201   Consulenza aziendale       Rendah             NIB
+47630   Negozio accessori          Rendah             NIB
+79120   Agenzia viaggi             Menengah Rendah    NIB + SS + PB UMKU/LSPr (*)
+86102   Clinica medica             Tinggi             NIB + Izin Operasionale
+85493   Scuola privata/corsi       Menengah Tinggi    NIB + SS verificato
+──────────────────────────────────────────────────────────────────────────
+SS = Sertifikat Standar
+(*) PB UMKU via OSS + certificazione LSPr — sostituisce il vecchio TDUP locale
+    (GR 28/2025). Non più dal Dinas Pariwisata.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. AGGIORNAMENTO OSS DOPO VARIAZIONI
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Alcune variazioni aziendali richiedono aggiornamento del NIB su OSS:
+
+- Cambio di indirizzo sede
+- Aggiunta/rimozione di KBLI (attività)
+- Modifica del piano di investimento
+- Cambio del direktur utama
+- Cambiamento significativo del capitale
+
+L'aggiornamento su OSS non è automatico — deve essere eseguito
+manualmente dal direktur dopo aver completato le modifiche formali
+(akta perubahan + SK Kemenkumham per le modifiche che lo richiedono).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CREDENZIALI OSS:
+Le credenziali OSS (email + password) sono fondamentali.
+Devono essere conservate in modo sicuro dal direktur.
+Senza accesso a OSS, non è possibile presentare LKPM,
+aggiornare i dati aziendali, o ottenere nuove licenze.
+
+KBLI ACCURACY:
+Scegliere il KBLI corretto è critico. Un KBLI errato:
+- Porta a licenze sbagliate
+- Può richiedere re-registrazione su OSS
+- Può creare problemi nella verifica TERBUKA/TERBATAS/TERTUTUP
+
+Bali Zero verifica sempre il KBLI corretto prima di procedere.
+
+LINGUA OSS:
+Il portale OSS è interamente in bahasa Indonesia.
+Il team Bali Zero supporta la compilazione per i clienti WNA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+COM-013, COM-014, COM-015, COM-016, COM-017, COM-018, COM-019, COM-040, COM-049
+
+Base normativa: GR 28/2025 / PP 28/2025 (PB UMKU, ex TDUP), PP 5/2021 (OSS RBA),
+Perpres 49/2021, UU 25/2007 Art. 25, BKPM Reg 5/2025.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2026-03-30 | Aggiornato da Zantara Intelligence (NLM NB-3)

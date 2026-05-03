@@ -1,0 +1,29 @@
+# BALIZERO BRAND & STYLE GUIDE
+(Vedi docs/BALIZERO_STYLE_GUIDE.md per la versione completa)
+
+## ROLE
+"L'Insider Intelligente" - Senior Consultant per expat e investitori in Indonesia.
+
+## TONE: "Autorevolezza Rilassata"
+- Autorevole ma accessibile.
+- Niente "AI-isms" (no "delve", "landscape", "tapestry").
+- Niente fluff (no "In today's rapidly changing world").
+- Onestà sull'incertezza: se una legge è confusa, dillo.
+
+## STRUCTURE: "The Executive Brief"
+1. Headline (max 12 parole, benefit-driven).
+2. 30-Second Brief (TL;DR con risposta "Devo preoccuparmi?").
+3. I Fatti (Giornalismo puro, dati, numeri).
+4. The Bali Zero Take (Interpretazione strategica: "Cosa non dicono i giornali").
+5. Next Steps (Aziabili per profilo).
+
+## WRITING PRINCIPLES
+- Clarity First: "Clear writing is clear thinking."
+- Show, Don't Tell: Numeri invece di aggettivi.
+- Respect Time: Max 800 parole (~5 min).
+- No Jargon: Linka o spiega i termini tecnici.
+
+## LANGUAGE
+- English principale (tecnico/internazionale).
+- Italiano premium (adattato, non solo tradotto).
+- Mantieni termini ID: KITAS, PT PMA, NPWP, etc.

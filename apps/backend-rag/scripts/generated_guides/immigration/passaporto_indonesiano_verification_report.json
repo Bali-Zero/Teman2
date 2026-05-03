@@ -1,0 +1,255 @@
+{
+  "total_claims": 49,
+  "verified_count": 49,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-013",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto indonesiano è un documento rilasciato dal governo indonesiano ai c"
+    },
+    {
+      "claim_id": "IMM-012",
+      "verdict": "FAITHFUL",
+      "reason": "Un documento di viaggio è un documento ufficiale rilasciato da autorità competen"
+    },
+    {
+      "claim_id": "IMM-023",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni persona che entra o esce dal territorio dell'Indonesia deve possedere un Do"
+    },
+    {
+      "claim_id": "IMM-030",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni cittadino indonesiano che entra nel territorio dell'Indonesia deve posseder"
+    },
+    {
+      "claim_id": "IMM-031",
+      "verdict": "FAITHFUL",
+      "reason": "Ogni cittadino indonesiano che esce dal territorio dell'Indonesia deve possedere"
+    },
+    {
+      "claim_id": "IMM-043",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto diplomatico deve essere emesso entro un massimo di 4 giorni lavora"
+    },
+    {
+      "claim_id": "IMM-044",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto diplomatico ha una validità massima di 5 anni dalla data di emissi"
+    },
+    {
+      "claim_id": "IMM-045",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto di servizio è concesso ai cittadini indonesiani per viaggi ufficia"
+    },
+    {
+      "claim_id": "IMM-046",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto di servizio è concesso ai dipendenti pubblici, membri delle Forze "
+    },
+    {
+      "claim_id": "IMM-047",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto di servizio può essere concesso ai coniugi di dipendenti pubblici "
+    },
+    {
+      "claim_id": "IMM-048",
+      "verdict": "FAITHFUL",
+      "reason": "L'uso del passaporto di servizio per viaggi ufficiali richiede un ordine di miss"
+    },
+    {
+      "claim_id": "IMM-049",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di passaporto di servizio deve includere una lettera dell'ente o is"
+    },
+    {
+      "claim_id": "IMM-050",
+      "verdict": "FAITHFUL",
+      "reason": "Per il passaporto di servizio è richiesto un ordine di missione o un'approvazion"
+    },
+    {
+      "claim_id": "IMM-051",
+      "verdict": "FAITHFUL",
+      "reason": "Per i coniugi è richiesta una copia certificata dell'atto di matrimonio nel rich"
+    },
+    {
+      "claim_id": "IMM-052",
+      "verdict": "FAITHFUL",
+      "reason": "Per i figli è richiesta una copia certificata dell'atto di nascita nel richieder"
+    },
+    {
+      "claim_id": "IMM-053",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto di servizio deve essere emesso entro un massimo di 4 giorni lavora"
+    },
+    {
+      "claim_id": "IMM-054",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto di servizio ha una validità massima di 5 anni dalla data di emissi"
+    },
+    {
+      "claim_id": "IMM-055",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto ordinario esiste in versione elettronica e non elettronica."
+    },
+    {
+      "claim_id": "IMM-056",
+      "verdict": "FAITHFUL",
+      "reason": "Per richiedere un passaporto ordinario è necessaria una carta d'identità valida."
+    },
+    {
+      "claim_id": "IMM-057",
+      "verdict": "FAITHFUL",
+      "reason": "Per richiedere un passaporto ordinario è necessario fornire il certificato di fa"
+    },
+    {
+      "claim_id": "IMM-058",
+      "verdict": "FAITHFUL",
+      "reason": "Per richiedere un passaporto ordinario è necessario fornire un atto di nascita, "
+    },
+    {
+      "claim_id": "IMM-059",
+      "verdict": "FAITHFUL",
+      "reason": "Per richiedere un passaporto ordinario, gli stranieri naturalizzati devono forni"
+    },
+    {
+      "claim_id": "IMM-060",
+      "verdict": "FAITHFUL",
+      "reason": "Per chi ha cambiato nome è necessario fornire un certificato di cambio nome emes"
+    },
+    {
+      "claim_id": "IMM-061",
+      "verdict": "FAITHFUL",
+      "reason": "Chi possiede già un passaporto deve fornire il passaporto precedente quando rich"
+    },
+    {
+      "claim_id": "IMM-062",
+      "verdict": "FAITHFUL",
+      "reason": "I cittadini indonesiani residenti all'estero devono presentare la richiesta di p"
+    },
+    {
+      "claim_id": "IMM-063",
+      "verdict": "FAITHFUL",
+      "reason": "I cittadini indonesiani residenti all'estero devono fornire un documento di resi"
+    },
+    {
+      "claim_id": "IMM-066",
+      "verdict": "FAITHFUL",
+      "reason": "L'emissione del passaporto ordinario comprende la verifica della completezza dei"
+    },
+    {
+      "claim_id": "IMM-067",
+      "verdict": "FAITHFUL",
+      "reason": "Per il passaporto ordinario è necessario pagare una tassa."
+    },
+    {
+      "claim_id": "IMM-068",
+      "verdict": "FAITHFUL",
+      "reason": "L'emissione del passaporto ordinario comprende la raccolta di fotografia e impro"
+    },
+    {
+      "claim_id": "IMM-069",
+      "verdict": "FAITHFUL",
+      "reason": "L'emissione del passaporto ordinario comprende un colloquio con il richiedente."
+    },
+    {
+      "claim_id": "IMM-070",
+      "verdict": "FAITHFUL",
+      "reason": "L'emissione del passaporto ordinario include anche verifica e adjudicazione."
+    },
+    {
+      "claim_id": "IMM-071",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto ordinario deve essere emesso entro un massimo di 4 giorni lavorati"
+    },
+    {
+      "claim_id": "IMM-064",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto ordinario ha una validità massima di 5 anni dalla data di emission"
+    },
+    {
+      "claim_id": "IMM-065",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto ordinario emesso per figli con cittadinanza doppia non può superar"
+    },
+    {
+      "claim_id": "IMM-032",
+      "verdict": "FAITHFUL",
+      "reason": "Il minore con cittadinanza doppia che entra o esce dal territorio dell'Indonesia"
+    },
+    {
+      "claim_id": "IMM-033",
+      "verdict": "FAITHFUL",
+      "reason": "Il minore con cittadinanza doppia deve utilizzare lo stesso passaporto sia per l"
+    },
+    {
+      "claim_id": "IMM-034",
+      "verdict": "FAITHFUL",
+      "reason": "Il minore con cittadinanza doppia che entra nel territorio con passaporto nazion"
+    },
+    {
+      "claim_id": "IMM-035",
+      "verdict": "FAITHFUL",
+      "reason": "Il minore con cittadinanza doppia che entra con passaporto nazionale è esentato "
+    },
+    {
+      "claim_id": "IMM-036",
+      "verdict": "FAITHFUL",
+      "reason": "L'esenzione dall'obbligo di visto, permesso di soggiorno e permesso di rientro è"
+    },
+    {
+      "claim_id": "IMM-112",
+      "verdict": "FAITHFUL",
+      "reason": "Un passaporto straniero deve essere valido e rilasciato da un'autorità competent"
+    },
+    {
+      "claim_id": "IMM-300",
+      "verdict": "FAITHFUL",
+      "reason": "Il passaporto deve essere valido per almeno 6 mesi al momento della domanda."
+    },
+    {
+      "claim_id": "IMM-231",
+      "verdict": "FAITHFUL",
+      "reason": "La durata del Permesso di Soggiorno Limitato non può superare la validità del Pa"
+    },
+    {
+      "claim_id": "IMM-098",
+      "verdict": "FAITHFUL",
+      "reason": "I dati degli stranieri ospitati devono includere nome completo, luogo e data di "
+    },
+    {
+      "claim_id": "IMM-128",
+      "verdict": "FAITHFUL",
+      "reason": "Per le richieste di Autorizzazione di Soggiorno Limitato, deve essere fornita un"
+    },
+    {
+      "claim_id": "IMM-209",
+      "verdict": "FAITHFUL",
+      "reason": "Per motivi umanitari, il permesso di soggiorno di emergenza si richiede fornendo"
+    },
+    {
+      "claim_id": "IMM-085",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza sull'immigrazione nei confronti dei cittadini indonesiani avvien"
+    },
+    {
+      "claim_id": "IMM-090",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza sul campo nei confronti dei cittadini indonesiani può essere eff"
+    },
+    {
+      "claim_id": "IMM-103",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione sui cittadini indonesiani che richiedono docum"
+    },
+    {
+      "claim_id": "IMM-109",
+      "verdict": "FAITHFUL",
+      "reason": "Il PP 36/1994 sui documenti di viaggio della Repubblica dell'Indonesia è abrogat"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

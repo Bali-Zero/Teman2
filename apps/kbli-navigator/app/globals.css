@@ -1,0 +1,168 @@
+@import "tailwindcss";
+@import "../styles/kbli-theme.css";
+
+:root {
+  /* Map design system vars to kbli theme */
+  --background: var(--kbli-bg-base);
+  --background-secondary: var(--kbli-bg-elevated);
+  --background-elevated: var(--kbli-bg-surface);
+  --background-hover: var(--kbli-bg-surface-hover);
+
+  --foreground: var(--kbli-text-primary);
+  --foreground-secondary: var(--kbli-text-secondary);
+  --foreground-muted: var(--kbli-text-muted);
+
+  --border: var(--kbli-border);
+  --border-hover: var(--kbli-border-hover);
+
+  --accent: var(--kbli-accent);
+  --accent-hover: var(--kbli-accent-hover);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--kbli-bg-base);
+  color: var(--kbli-text-primary);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Subtle ambient gradients — matches existing navigator */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 80% 60% at 15% 25%,
+      rgba(212, 132, 90, 0.04) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 60% 80% at 80% 75%,
+      rgba(139, 156, 247, 0.03) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 50% 5%,
+      rgba(94, 196, 144, 0.02) 0%,
+      transparent 40%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Noise texture overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Ensure content above pseudo-elements */
+#__next,
+main,
+[data-nextjs-scroll-focus-boundary] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Premium Liquid Animations */
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-aurora {
+  background-size: 200% 200%;
+  animation: aurora 8s ease infinite;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(212, 132, 90, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes holographic-spin {
+  0% { --border-angle: 0deg; }
+  100% { --border-angle: 360deg; }
+}
+
+.holographic-card {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.holographic-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 1.1rem;
+  background: conic-gradient(from var(--border-angle), transparent 20%, #d4845a, #a855f7, #3b82f6, transparent 80%);
+  animation: holographic-spin 3s linear infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.holographic-card:hover::before {
+  opacity: 1;
+}
+
+@keyframes progress-grow {
+  from { width: 0%; }
+}

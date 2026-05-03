@@ -1,0 +1,412 @@
+---
+title: "Rental Income Tax in Indonesia 2026: Landlord Guide"
+slug: "rental-income-tax"
+description: "How rental income is taxed in Indonesia. Tax rates, reporting requirements, and what foreign property owners need to know."
+excerpt: "Rental income in Indonesia taxed at 10% PPh Final — flat rate, no deductions. How it works for villa owners, foreign landlords, and short-term rentals in Bali."
+category: "property"
+tags:
+  - rental income tax
+  - property tax
+  - PPh final
+  - landlord tax
+  - rental tax Indonesia
+  - PPh 4 ayat 2
+  - withholding tax rental
+  - villa rental tax
+  - property income Bali
+  - tax reporting landlord
+  - final income tax
+  - rental property compliance
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: false
+image:
+  src: "/static/insights/property/rental-tax.jpg"
+  alt: "Rental income tax Indonesia"
+seo:
+  title: "Rental Income Tax Indonesia 2026 | Landlord Tax Guide"
+  description: "How rental income is taxed in Indonesia. Tax rates, collection methods, and obligations for property owners."
+  keywords:
+    - rental income tax indonesia
+    - landlord tax
+    - property rental tax
+readingTime: 8
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_docs"
+    documentsUsed: 14
+lastKbSync: "2026-01-15T10:00:00Z"
+seoTitle: "Rental Income Tax Indonesia 2026: 10% PPh Final, Reporting & Foreign Landlord Rules"
+seoDescription: "Indonesia taxes rental income at flat 10% PPh Final — withheld by tenant or paid directly. Foreign landlord rules, annual reporting, villa tax compliance in Bali 2026."
+aiOptimization:
+  primaryQuestion: "How is rental income taxed in Indonesia?"
+  answerSnippet: "Rental income in Indonesia is subject to 10% PPh Final tax on gross rental payments. Corporate tenants must withhold and remit the tax. Individual landlords self-report quarterly. This final tax applies to all property owners including foreigners. No deductions for expenses are allowed against PPh Final rental income."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Pajak"
+      sameAs: "https://www.pajak.go.id"
+    - type: "Country"
+      name: "Indonesia"
+      sameAs: "https://en.wikipedia.org/wiki/Indonesia"
+faq:
+  - question: "Do foreign landlords pay rental income tax in Indonesia?"
+    answer: "Yes. Foreign property owners earning rental income in Indonesia are subject to the same 10% PPh Final tax as Indonesian citizens. If the foreigner is a tax resident, they report and pay through the normal system. Non-residents may face 20% withholding tax under Article 26, unless reduced by a double tax agreement with their home country."
+  - question: "Can I deduct expenses against rental income tax in Indonesia?"
+    answer: "No. The 10% PPh Final on rental income is calculated on gross rental payments with no deductions allowed for property management fees, maintenance, depreciation, or other expenses. This simplifies compliance but means the effective tax rate on net income is higher than 10% when expenses are considered."
+  - question: "How do I report and pay rental income tax in Indonesia?"
+    answer: "If your tenant is a corporate entity, they withhold 10% and provide you with a bukti potong (withholding tax receipt). For individual tenants, you must self-assess, pay via e-Billing (generating a billing code on DJP Online), and report in your annual SPT. Payment is due by the 15th of the following month."
+contentStructure:
+  hasHowTo: true
+  hasFAQ: true
+  hasTable: true
+relatedArticles:
+  - "property-investment-guide"
+  - "villa-investment-guide"
+  - "indonesia-tax-guide-for-foreigners"
+tableOfContents: true
+canonicalUrl: "https://balizero.com/property/rental-income-tax"
+ogImage: "/static/insights/property/rental-tax.jpg"
+twitterCard: "summary_large_image"
+locale: "ru"
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  Checklist,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Налог на доходы от аренды в Indonesia 2026: Руководство для арендодателей
+
+Если вы сдаете недвижимость в Indonesia, вам необходимо понимать, как облагаются налогом доходы от аренды. Вот что нужно знать владельцам недвижимости.
+
+## Обзор налога на доходы от аренды
+
+<InfoCard variant="note" title="10% Final Tax">
+Доходы от аренды земли и зданий в Indonesia облагаются **10% окончательным подоходным налогом (PPh Final)** от валовой суммы аренды.
+
+"Окончательный" означает, что это полный налог — вы не добавляете его к другим своим доходам для прогрессивных ставок.
+
+</InfoCard>
+
+---
+
+## Как это работает
+
+### Ставка налога и база
+
+| Элемент        | Деталь                                  |
+| -------------- | --------------------------------------- |
+| Ставка налога  | 10%                                     |
+| Налоговая база | Валовая сумма полученной арендной платы |
+| Тип налога     | PPh Final (Статья 4(2))                 |
+| Вычеты         | Не допускаются                          |
+
+### Важные моменты
+
+- Рассчитывается на основе **валовой арендной платы** (без вычетов расходов)
+- **Окончательный** налог — не объединяется с другими доходами
+- Применяется ко всем видам аренды (жилая, коммерческая)
+- Единая ставка для физических и юридических лиц
+
+---
+
+## Калькулятор налога
+
+<Calculator
+  title="Rental Income Tax Calculator"
+  description="Calculate your rental tax liability"
+  fields={[
+    {
+      id: "monthlyRent",
+      label: "Monthly Rent (IDR)",
+      type: "number",
+      defaultValue: 25000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "occupancy",
+      label: "Occupancy Rate (%)",
+      type: "number",
+      defaultValue: 80,
+      min: 0,
+      max: 100,
+      suffix: "%"
+    }
+  ]}
+  calculateResult={(values) => {
+    const monthly = Number(values.monthlyRent);
+    const occupancy = Number(values.occupancy) / 100;
+
+    const monthsOccupied = 12 * occupancy;
+    const annualRent = monthly * monthsOccupied;
+    const annualTax = annualRent * 0.10;
+    const monthlyTax = annualTax / 12;
+    const netIncome = annualRent - annualTax;
+
+    return {
+      total: annualTax,
+      breakdown: [
+        { label: "Monthly Rent", amount: monthly },
+        { label: "Months Occupied", amount: monthsOccupied },
+        { label: "Annual Gross Rent", amount: annualRent },
+        { label: "Annual Tax (10%)", amount: annualTax },
+        { label: "Net Annual Income", amount: netIncome }
+      ],
+      currency: "IDR",
+      note: `Effective monthly tax: IDR ${Math.round(monthlyTax).toLocaleString()}`
+    };
+
+}}
+/>
+
+---
+
+## Кто собирает налог?
+
+### Корпоративные арендаторы (удержание)
+
+Если ваш арендатор — компания (налогоплательщик):
+
+1. Арендатор удерживает 10% из арендной платы
+2. Арендатор уплачивает налог правительству
+3. Арендатор предоставляет вам **Bukti Potong** (налоговая квитанция)
+4. Вы получаете чистую арендную плату (90%)
+
+<InfoCard variant="note" title="Bukti Potong - ваше доказательство">
+  Bukti Potong подтверждает уплату вашего налога. Сохраните его для своих
+  записей и включите в годовую налоговую декларацию.
+</InfoCard>
+
+### Индивидуальные арендаторы (самостоятельная уплата)
+
+Если ваш арендатор — физическое лицо:
+
+1. Вы получаете полную арендную плату (100%)
+2. **Вы** должны уплатить 10% налог
+3. Уплата через банк или налоговую инспекцию
+4. Отчет в годовой налоговой декларации
+
+---
+
+## Уплата и отчетность
+
+### Если вы платите самостоятельно
+
+<Checklist
+  title="Обязательства по самостоятельной уплате налога"
+  description="Когда вы должны уплачивать налог самостоятельно"
+  persistKey="rental-tax-checklist"
+  items={[
+    {
+      id: "calculate",
+      label: "Рассчитайте 10% налог от полученной арендной платы",
+      description: "За каждый платежный период",
+      required: true,
+      category: "calculate",
+    },
+    {
+      id: "payment",
+      label: "Уплатите налог до 15 числа следующего месяца",
+      description: "Через банк или электронную подачу",
+      required: true,
+      category: "payment",
+    },
+    {
+      id: "spt-monthly",
+      label: "Отчитывайтесь в ежемесячном SPT (применимо)",
+      description: "Для арендодателей-предпринимателей",
+      required: false,
+      category: "reporting",
+    },
+    {
+      id: "spt-annual",
+      label: "Включите в годовой SPT",
+      description: "Сообщите общий доход от аренды и уплаченный налог",
+      required: true,
+      category: "reporting",
+    },
+    {
+      id: "records",
+      label: "Сохраняйте квитанции об оплате",
+      description: "Номера NTPN для проверки",
+      required: true,
+      category: "records",
+    },
+  ]}
+  categories={[
+    { id: "calculate", label: "Рассчитать", color: "blue" },
+    { id: "payment", label: "Уплата", color: "green" },
+    { id: "reporting", label: "Отчетность", color: "amber" },
+    { id: "records", label: "Записи", color: "purple" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Различные сценарии аренды
+
+<ComparisonTable
+  title="Налог по типу аренды"
+  description="Как налог применяется к различным ситуациям"
+  items={[
+    {
+      name: "Долгосрочная жилая недвижимость",
+      subtitle: "Аренда дома или квартиры",
+      values: {
+        "Tax Rate": "10%",
+        Collection: "Обычно самостоятельная уплата",
+        Reporting: "Годовой SPT",
+      },
+    },
+    {
+      name: "Коммерческая недвижимость",
+      subtitle: "Офис, розничная торговля, склад",
+      values: {
+        "Tax Rate": "10%",
+        Collection: "Часто удерживается",
+        Reporting: "Годовой SPT",
+      },
+      highlight: true,
+    },
+    {
+      name: "Аренда виллы",
+      subtitle: "Краткосрочная аренда на время отпуска",
+      values: {
+        "Tax Rate": "10%",
+        Collection: "Самостоятельная уплата",
+        Reporting: "Годовой SPT",
+      },
+    },
+    {
+      name: "Через PT PMA",
+      subtitle: "Компания владеет недвижимостью",
+      values: {
+        "Tax Rate": "10%",
+        Collection: "Компания платит",
+        Reporting: "Корпоративный SPT",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Налогообложение аренды вилл
+
+Для краткосрочной/отпускной аренды:
+
+### Налог применяется к каждой аренде
+
+- 10% от каждого арендного платежа
+- Применяется даже к посуточным ставкам
+- Управляющая компания может собирать и платить
+
+### При использовании управляющей компании
+
+Многие владельцы вилл используют управляющие компании, которые:
+
+1. Собирают арендную плату с гостей
+2. Удерживают и уплачивают 10% налог
+3. Предоставляют вам документацию
+4. Занимаются отчетностью
+
+<InfoCard variant="tip" title="Уточните порядок налогообложения">
+  При найме управляющей компании для виллы уточните: - Кто платит 10% налог на
+  аренду? - Будут ли они предоставлять Bukti Potong? - Включен ли налог в их
+  структуру сборов?
+</InfoCard>
+
+---
+
+## Другие налоги на недвижимость
+
+Помимо налога на доходы от аренды, владельцы недвижимости также платят:
+
+### PBB (Налог на землю и здания)
+
+| Аспект     | Деталь                |
+| ---------- | --------------------- |
+| Ставка     | 0.1% - 0.3% от NJOP   |
+| Частота    | Ежегодно              |
+| Уплата     | До 31 августа         |
+| Кто платит | Владелец недвижимости |
+
+**NJOP** = Nilai Jual Objek Pajak (налогооблагаемая стоимость, часто ниже рыночной)
+
+### BPHTB (Налог на передачу)
+
+- 5% при покупке недвижимости
+- Уплачивается покупателем
+- Единовременно при покупке
+
+---
+
+## Особенности для иностранных владельцев
+
+### Если вы налоговый резидент
+
+Сообщайте о доходах от аренды в своей годовой SPT (Форма 1770):
+
+- Включите в раздел доходов
+- Укажите уже уплаченный налог
+- Без дополнительного налога (он является окончательным)
+
+### Если вы нерезидент
+
+- 10% окончательный налог по-прежнему применяется
+- Могут быть последствия по договору
+- Рассмотрите возможность получения формы DGT для уменьшения удержания по другим доходам
+
+<InfoCard variant="warning" title="Не игнорируйте налог на аренду">
+  Неуплата налога на доходы от аренды может привести к: - Недоимкам плюс
+  процентам - Штрафам до 200% - Проблемам с будущими сделками с недвижимостью -
+  Проблемам с продлением визы (если применимо)
+</InfoCard>
+
+---
+
+## Ведение учета
+
+Сохраняйте следующие записи:
+
+- Договоры аренды
+- Квитанции об оплате от арендаторов
+- Bukti Potong от корпоративных арендаторов
+- Квитанции об уплате налога (NTPN)
+- Документы о праве собственности
+
+**Срок хранения**: Храните 10 лет (период налоговой проверки)
+
+---
+
+## Частые вопросы
+
+<AskZantara
+  context="Rental income tax Indonesia, PPh final property, landlord tax, villa rental tax"
+  placeholder="Спросите о налоге на доходы от аренды..."
+  suggestedQuestions={[
+    "Могу ли я вычесть расходы на недвижимость?",
+    "Что делать, если арендатор не удерживает налог?",
+    "Как я могу уплатить налог онлайн?",
+    "Облагается ли доход от Airbnb налогом по-другому?",
+  ]}
+/>
+
+---
+
+## Связанные статьи
+
+- [Руководство по инвестициям в недвижимость](/insights/property/property-investment-guide)
+- [Руководство по инвестициям в виллы](/insights/property/villa-investment-guide)
+- [Руководство по налогам в Indonesia для иностранцев](/insights/tax-legal/indonesia-tax-guide-for-foreigners)

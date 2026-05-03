@@ -1,0 +1,40 @@
+/*
+ * Layer 3 — Theme: Operative Light
+ * Persona variant of light with extended surface tokens for portal UI.
+ * Contrast-adjusted Visa red for text (design §R7): red #ff2d4c fails 4.5:1
+ * on white (3.7:1) → shift to #d91e3f for text uses.
+ * Cap: ≤40 declarations.
+ */
+
+[data-theme="operative-light"] {
+  /* Aman/Alila/Kinfolk paper-stone — warm off-white with limestone undertone.
+     Reads as archival document + tropical light on plaster, avoiding the
+     Vercel/Tailwind #fafafa "developer default" cast. */
+  --surface-base: #f4f1ea;
+  --surface-raised: rgba(0, 0, 0, 0.02);
+  --surface-sunken: rgba(0, 0, 0, 0.04);
+  --surface-overlay: rgba(255, 255, 255, 0.72);
+  --surface-scrim: rgba(255, 255, 255, 0.85);
+
+  --text-primary: rgba(9, 9, 11, 0.92);
+  --text-secondary: rgba(9, 9, 11, 0.6);
+  --text-tertiary: rgba(9, 9, 11, 0.4);
+  --text-on-accent: #ffffff;
+
+  --border-subtle: rgba(9, 9, 11, 0.04);
+  --border-default: rgba(9, 9, 11, 0.08);
+  --border-strong: rgba(9, 9, 11, 0.18);
+
+  --nav-bg: rgba(255, 255, 255, 0.72);
+  --footer-bg: #f4f4f5;
+  --footer-text: var(--text-tertiary);
+
+  /* operative-light persona extensions (portal) */
+  --surface-matter: #faf9f7;
+  --surface-selected: rgba(212, 132, 90, 0.08);
+}
+
+/* Visa red: AA-failing on white → shifted for text. Shape color stays brand-true. */
+[data-theme="operative-light"] [data-funnel="visa"] {
+  --accent-funnel-text: #d91e3f;
+}

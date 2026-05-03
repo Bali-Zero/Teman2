@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.newsletter</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
+        <string>backend.services.newsletter.newsletter_cli</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/newsletter.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/newsletter.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!-- Canary Strada B (2026-04-20 → 2026-04-27): block Brevo send. -->
+        <!-- Remove this pair after day-7 review if canary gate passes.  -->
+        <key>NEWSLETTER_SKIP_SEND</key>
+        <string>1</string>
+        <key>WR2_CANARY</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

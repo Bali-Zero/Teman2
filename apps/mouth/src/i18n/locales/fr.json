@@ -1,0 +1,274 @@
+{
+  "common": {
+    "nav": {
+      "news": "Actualités",
+      "services": "Services",
+      "team": "Équipe",
+      "contact": "Contact",
+      "language": "Langue"
+    },
+    "footer": {
+      "description": "Votre partenaire de confiance pour le business, l'immigration et la vie en Indonésie. Un accompagnement expert à chaque étape.",
+      "copyright": "Bali Zero. Tous droits réservés.",
+      "services": "Services",
+      "news": "Actualités",
+      "contact": "Contact"
+    },
+    "cta": {
+      "contactUs": "Nous contacter",
+      "viewServices": "Voir les services",
+      "whatsappUs": "Écrire sur WhatsApp",
+      "askZantaraAi": "Demander à Zantara AI",
+      "askNow": "Demander maintenant",
+      "sendMessage": "Envoyer un message via WhatsApp",
+      "sending": "Envoi en cours...",
+      "sendAnother": "Envoyer un autre message",
+      "readMore": "Lire la suite",
+      "viewDetails": "Détails et tarifs",
+      "viewFullTeam": "Voir toute l'équipe",
+      "learnMore": "En savoir plus"
+    },
+    "error": "Une erreur s'est produite. Veuillez rafraîchir la page."
+  },
+  "home": {
+    "hero": {
+      "title": "Décryptez l'Indonésie.",
+      "titleAccent": "Prospérez",
+      "titleSuffix": "ici",
+      "subtitle": "Intelligence juridique, immigration, fiscale et business pour l'Indonésie.",
+      "subtitleAccent": "Propulsé par Zantara AI."
+    },
+    "newsletter": {
+      "title": "Abonnez-vous aux dernières analyses sur l'Indonésie",
+      "subtitle": "Analyses d'experts livrées dans votre boîte mail",
+      "placeholder": "Adresse e-mail",
+      "orContinueWith": "Ou continuer avec"
+    },
+    "topics": {
+      "title": "Thèmes",
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Fiscalité et droit",
+      "property": "Immobilier",
+      "lifestyle": "Lifestyle"
+    },
+    "kbli": {
+      "sectionTitle": "Navigateur KBLI",
+      "sectionSubtitle": "Recherchez et explorez les codes de classification des entreprises indonésiennes"
+    },
+    "insights": {
+      "latestTitle": "Dernières analyses",
+      "featuredTitle": "À la une"
+    },
+    "zantaraAi": {
+      "title": "Zantara AI",
+      "role": "Assistant IA",
+      "description": "Votre assistant intelligent 24h/24. Zantara AI vous aide à obtenir des réponses instantanées sur les visas, la création d'entreprise, les impôts et bien plus encore.",
+      "shortDescription": "Votre assistant intelligent 24h/24"
+    },
+    "categories": {
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Fiscalité et droit",
+      "property": "Immobilier",
+      "lifestyle": "Lifestyle"
+    }
+  },
+  "contact": {
+    "hero": {
+      "label": "Contact",
+      "title": "Commencez votre",
+      "titleAccent": "aventure indonésienne",
+      "subtitle": "Des questions sur les visas, la création d'entreprise ou les impôts ? Nous sommes là pour vous aider. Contactez-nous — réponse sous 24 heures."
+    },
+    "info": {
+      "getInTouch": "Contactez-nous",
+      "whatsapp": "WhatsApp",
+      "whatsappDesc": "Réponse la plus rapide — généralement en quelques minutes",
+      "email": "E-mail",
+      "emailDesc": "Pour les demandes détaillées et les documents",
+      "instagram": "Instagram",
+      "instagramDesc": "Suivez-nous pour les actualités et conseils",
+      "officeLocation": "Adresse du bureau",
+      "officeDesc": "Sur rendez-vous uniquement",
+      "officeAddress": "Kerobokan, Bali",
+      "officeNote": "Adresse exacte communiquée lors du rendez-vous"
+    },
+    "hours": {
+      "title": "Horaires d'ouverture",
+      "monFri": "Lundi - Vendredi",
+      "monFriHours": "9h00 - 17h00",
+      "saturday": "Samedi",
+      "saturdayHours": "10h00 - 14h00",
+      "sunday": "Dimanche",
+      "sundayClosed": "Fermé",
+      "timezone": "Fuseau horaire : WITA (Bali, UTC+8)"
+    },
+    "form": {
+      "title": "Envoyez-nous un message",
+      "fullName": "Nom complet",
+      "emailAddress": "Adresse e-mail",
+      "phone": "Numéro de téléphone",
+      "service": "Service souhaité",
+      "servicePlaceholder": "Sélectionnez un service...",
+      "serviceVisa": "Services visa",
+      "serviceCompany": "Création d'entreprise",
+      "serviceTax": "Conseil fiscal",
+      "serviceRealEstate": "Immobilier",
+      "serviceMultiple": "Plusieurs services",
+      "serviceOther": "Autre",
+      "message": "Message",
+      "messagePlaceholder": "Décrivez vos besoins...",
+      "responseTime": "Nous répondons sous 24 heures"
+    },
+    "success": {
+      "title": "Message envoyé !",
+      "description": "Nous avons ouvert WhatsApp avec votre message. S'il ne s'est pas ouvert, contactez-nous directement."
+    },
+    "aiCta": {
+      "title": "Besoin de réponses immédiates ?",
+      "description": "Obtenez une aide instantanée sur les visas, la création d'entreprise, les impôts et plus encore grâce à notre assistant IA. Disponible 24h/24.",
+      "button": "Demander à Zantara AI"
+    }
+  },
+  "team": {
+    "hero": {
+      "label": "Notre équipe",
+      "title": "Rencontrez les",
+      "titleAccent": "experts",
+      "titleSuffix": "de votre réussite",
+      "subtitle": "Une équipe dédiée de spécialistes en visas, consultants fiscaux et conseillers business, engagée à rendre votre parcours en Indonésie fluide."
+    },
+    "sections": {
+      "leadership": "Direction",
+      "leadershipDesc": "Guider notre vision et garantir l'excellence de chaque service.",
+      "setupTeam": "Équipe création",
+      "setupTeamDesc": "Experts en création d'entreprise, traitement de visas et conseil business.",
+      "taxDepartment": "Département fiscal",
+      "taxDepartmentDesc": "Professionnels fiscaux certifiés pour votre conformité et optimisation.",
+      "accounting": "Comptabilité",
+      "accountingDesc": "Gestion des opérations financières avec précision et fiabilité.",
+      "supportMarketing": "Support et marketing",
+      "supportMarketingDesc": "Vous accompagner et vous informer tout au long de votre parcours.",
+      "external": "(Externe)"
+    },
+    "ai": {
+      "title": "Zantara AI",
+      "role": "Assistant IA",
+      "description": "Votre assistant intelligent 24h/24. Zantara AI vous aide à obtenir des réponses instantanées sur les visas, la création d'entreprise, les impôts et bien plus encore."
+    },
+    "cta": {
+      "title": "Prêt à travailler avec nous ?",
+      "description": "Contactez notre équipe pour une consultation gratuite. Nous sommes là pour vous accompagner en Indonésie en toute confiance."
+    }
+  },
+  "services": {
+    "hero": {
+      "label": "Nos services",
+      "title": "Réalisez votre",
+      "titleAccent": "rêve indonésien",
+      "titleSuffix": "en toute confiance",
+      "subtitle": "De zéro à l'infini. Nous gérons les visas, la création d'entreprise, les impôts et l'immobilier — pour que vous puissiez vous concentrer sur l'essentiel."
+    },
+    "reviews": {
+      "reviewCount": "700+ avis",
+      "onGoogleMaps": "sur Google Maps"
+    },
+    "grid": {
+      "title": "Nos services et tarifs",
+      "subtitle": "Tarifs transparents sans frais cachés. Tous les prix en IDR.",
+      "startingFrom": "À partir de",
+      "contactForQuote": "Demander un devis"
+    },
+    "process": {
+      "title": "Comment ça marche",
+      "subtitle": "Simple, transparent, professionnel",
+      "step1Title": "Consultation",
+      "step1Desc": "Appel initial gratuit pour comprendre vos besoins",
+      "step2Title": "Proposition",
+      "step2Desc": "Délais clairs et tarifs transparents",
+      "step3Title": "Exécution",
+      "step3Desc": "Nous gérons toute la paperasse et les démarches",
+      "step4Title": "Livraison",
+      "step4Desc": "Recevez vos documents et un support continu"
+    },
+    "teamSection": {
+      "title": "Notre équipe",
+      "subtitle": "Spécialistes en visas, consultants fiscaux et conseillers business."
+    },
+    "cta": {
+      "title": "Prêt à commencer ?",
+      "subtitle": "Obtenez une consultation gratuite avec nos experts. Nous vous guiderons tout au long du processus avec des délais et devis clairs."
+    },
+    "contactInfo": {
+      "office": "Bureau",
+      "hours": "Horaires",
+      "hoursValue": "Lun-Ven 9h-18h",
+      "response": "Réponse",
+      "responseValue": "Sous 24 heures",
+      "languages": "Langues",
+      "languagesValue": "EN, ID, IT, RU, FR"
+    },
+    "serviceNames": {
+      "visa": "Visas et immigration",
+      "company": "Création d'entreprise et licences",
+      "tax": "Conseil fiscal",
+      "property": "Services immobiliers"
+    },
+    "serviceTaglines": {
+      "visa": "Solutions visa complètes pour vivre et travailler en Indonésie",
+      "company": "Des licences à la structure — lancez votre business rapidement",
+      "tax": "Naviguez le système fiscal indonésien en toute confiance",
+      "property": "Sécurisez votre bien immobilier avec une clarté juridique totale"
+    }
+  },
+  "news": {
+    "allNews": "Toutes les actualités",
+    "latestInsights": "Dernières analyses",
+    "featured": "À la une",
+    "readMore": "Lire la suite",
+    "minuteRead": "min de lecture",
+    "categories": {
+      "immigration": "Immigration",
+      "business": "Business",
+      "taxLegal": "Fiscalité et droit",
+      "property": "Immobilier",
+      "lifestyle": "Lifestyle",
+      "tech": "Tech",
+      "baliNews": "Actualités Bali",
+      "visas": "Visas et Immigration",
+      "taxes": "Fiscalité et Conformité",
+      "living": "Vivre en Indonésie",
+      "trends": "Tendances et Analyses"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visas, permis et tout ce que vous devez savoir pour vous installer en Indonésie.",
+      "business": "Création d'entreprise, licences, codes KBLI et commerce en Indonésie.",
+      "taxLegal": "Obligations fiscales, conformité juridique et mises à jour réglementaires.",
+      "property": "Immobilier, propriété et opportunités d'investissement à Bali.",
+      "lifestyle": "Vivre à Bali, culture, communauté et qualité de vie.",
+      "tech": "Vie de nomade numérique, industrie technologique et travail à distance en Indonésie.",
+      "baliNews": "Actualités, culture, événements et histoires de Bali et d'Indonésie.",
+      "visas": "Visas, permis et tout ce qu il faut savoir pour s installer en Indonésie.",
+      "taxes": "Obligations fiscales, conformité légale et mises à jour réglementaires.",
+      "living": "Vivre à Bali, culture, communauté, permis de conduire, santé et vie quotidienne.",
+      "trends": "Économie numérique, industrie tech, nouvelles réglementations et analyses de marché."
+    }
+  },
+  "book": {
+    "stats": {
+      "clientsServed": "Clients servis",
+      "yearsOfHistory": "Années d'histoire",
+      "kbliNavigatorCodes": "Codes KBLI Navigator",
+      "aiChannelsActive": "Canaux IA actifs"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Initialisation..."
+    },
+    "errors": {
+      "network": "Erreur réseau"
+    }
+  }
+}

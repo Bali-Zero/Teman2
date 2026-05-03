@@ -1,0 +1,80 @@
+# intel-scraper-cell (light) — Sprint 1 W1
+#
+# Reference: docs/audits/2026-05-02-cell-openclaw-brainstorm/99b_synthesis_v2.md
+# § "Sprint 1 — Intel Scraper light + HGT quarantine (1 settimana)".
+#
+# Light cell: keeps existing scraper code intact, wraps it with
+#   1. Genome scar registry (failure pattern accumulation)
+#   2. HGT publisher (structural pattern broadcast on confidence ≥0.7)
+#   3. ObservedShellBus event bridge (durable run trace)
+#
+# Validated against the 7 Leggi via packages/cell-core/cell_core/admission_test.py.
+# Run `pytest packages/cell-core/tests/test_admission.py -k intel_scraper -v`
+# before any structural change to this file.
+
+name: intel-scraper-cell
+version: 0.1.0
+level: L1
+runtime: cron-agent-python   # daily 03:00 WITA + intel-radar hourly + intel-feed-processor 2h
+owner: intel-team
+
+cell_class: cell
+
+# 7 Leggi declarations (consumed by AdmissionTest)
+exposes_gui: false
+llm_invocation: deepseek_api   # article_composer uses DeepSeek (~$0.01/query, NOT Anthropic — see Golden Rule #13)
+external_sources:
+  - imigrasi.go.id
+  - bps.go.id
+  - bali.tribunnews.com
+  - djp.go.id
+  - bi.go.id
+  - oss.go.id
+client_data_access: false   # OSINT blindato — never reads CRM / client PII
+publishes_via: pg_notify    # ObservedShellBus → events_outbox → pg_notify
+fallback_modes:
+  - postgres_down            # JSONL fallback in observed_shell.py
+  - redis_down               # HGT publisher returns False (skill stays in local genome)
+  - source_unreachable       # per-source scar recorded, run continues with remaining sources
+  - llm_provider_down        # article_composer skipped, raw findings still persisted
+  - schema_drift             # parser scar recorded, source quarantined for the run
+kill_switch: true            # disable via launchctl unload com.balizero.intel.nightly
+auto_publishes: false        # findings land in Qdrant + DB; carousel/Telegram require human gate
+depends_on_other_cell_decisions: false   # reads OSINT directly, not other cells' verdicts
+
+metrics:
+  - sources_attempted
+  - articles_found
+  - scars_added
+  - hgt_published_count
+  - duration_ms
+  - source_failure_rate
+
+# Event contracts (consumers can rely on these field names + types)
+event_contracts:
+  - name: intel.scraper.run
+    description: One row per scraper run (success | degraded | failed)
+    fields:
+      trace_id: uuid
+      status: enum(ok|degraded|failed)
+      sources_attempted: int
+      articles_found: int
+      scars_added: int
+      hgt_published_count: int
+      duration_ms: int
+      started_at: iso8601
+      finished_at: iso8601
+
+# SLA + ownership
+sla:
+  daily_run_window_wita: "03:00"
+  max_runtime_minutes: 120
+  health_signal: events_outbox row with status in {ok,degraded} within 24h
+  on_silent_failure: light-cell does NOT auto-restart; alert via cron-agent-python silence detector
+
+# Scar id namespace (for cross-run learning)
+scar_namespace_prefix: "intel.scraper"   # e.g. intel.scraper.imigrasi.rate_limit
+
+# HGT publishing rules (in addition to HGTPublisher.CONFIDENCE_THRESHOLD)
+hgt_publish_only_structural_patterns: true   # never publish article CONTENT (UU PDP scope)
+hgt_default_domain: news

@@ -1,0 +1,293 @@
+{
+  "common": {
+    "nav": {
+      "news": "Berita",
+      "services": "Layanan",
+      "team": "Tim",
+      "contact": "Kontak",
+      "language": "Bahasa"
+    },
+    "footer": {
+      "description": "Mitra terpercaya Anda untuk solusi bisnis, imigrasi, dan kehidupan di Indonesia. Panduan ahli untuk setiap langkah perjalanan Anda.",
+      "copyright": "Bali Zero. Hak cipta dilindungi.",
+      "services": "Layanan",
+      "news": "Berita",
+      "contact": "Kontak"
+    },
+    "cta": {
+      "contactUs": "Hubungi Kami",
+      "viewServices": "Lihat Layanan",
+      "whatsappUs": "Hubungi via WhatsApp",
+      "askZantaraAi": "Tanya Zantara AI",
+      "askNow": "Tanya Sekarang",
+      "sendMessage": "Kirim Pesan via WhatsApp",
+      "sending": "Mengirim...",
+      "sendAnother": "Kirim pesan lagi",
+      "readMore": "Baca selengkapnya",
+      "viewDetails": "Lihat detail & harga",
+      "viewFullTeam": "Lihat tim lengkap",
+      "learnMore": "Pelajari lebih lanjut"
+    },
+    "error": "Terjadi kesalahan. Silakan muat ulang halaman."
+  },
+  "home": {
+    "hero": {
+      "title": "Pahami Indonesia.",
+      "titleAccent": "Berkembang",
+      "titleSuffix": "di sini",
+      "subtitle": "Layanan hukum, imigrasi, fiskal & informasi bisnis untuk Indonesia.",
+      "subtitleAccent": "Didukung oleh Zantara AI."
+    },
+    "newsletter": {
+      "title": "Berlangganan Wawasan Indonesia Terbaru",
+      "subtitle": "Analisis ahli langsung ke kotak masuk Anda",
+      "placeholder": "Alamat email",
+      "orContinueWith": "Atau lanjutkan dengan"
+    },
+    "topics": {
+      "title": "Topik",
+      "immigration": "Imigrasi",
+      "business": "Bisnis",
+      "taxLegal": "Pajak & Hukum",
+      "property": "Properti",
+      "lifestyle": "Gaya Hidup"
+    },
+    "kbli": {
+      "sectionTitle": "Navigator KBLI",
+      "sectionSubtitle": "Cari dan jelajahi kode klasifikasi bisnis Indonesia"
+    },
+    "insights": {
+      "latestTitle": "Wawasan Terbaru",
+      "featuredTitle": "Unggulan"
+    },
+    "zantaraAi": {
+      "title": "Zantara AI",
+      "role": "Jembatan AI",
+      "description": "Asisten cerdas Anda 24/7. Zantara AI membantu Anda mendapatkan jawaban instan mengenai visa, pendirian perusahaan, pajak, dan lainnya — menghubungkan Anda dengan ahli yang tepat saat Anda memerlukan dukungan manusia.",
+      "shortDescription": "Asisten cerdas Anda 24/7"
+    },
+    "categories": {
+      "immigration": "Imigrasi",
+      "business": "Bisnis",
+      "taxLegal": "Pajak & Hukum",
+      "property": "Properti",
+      "lifestyle": "Gaya Hidup"
+    }
+  },
+  "contact": {
+    "hero": {
+      "label": "Hubungi Kami",
+      "title": "Mulai",
+      "titleAccent": "Perjalanan Anda di Indonesia",
+      "subtitle": "Punya pertanyaan tentang visa, pendirian perusahaan, atau pajak? Kami siap membantu. Hubungi kami dan kami akan merespons dalam waktu 24 jam."
+    },
+    "info": {
+      "getInTouch": "Hubungi Kami",
+      "whatsapp": "WhatsApp",
+      "whatsappDesc": "Respons tercepat - biasanya dalam hitungan menit",
+      "email": "Email",
+      "emailDesc": "Untuk pertanyaan mendalam dan dokumen",
+      "instagram": "Instagram",
+      "instagramDesc": "Ikuti kami untuk pembaruan dan tips",
+      "officeLocation": "Lokasi Kantor",
+      "officeDesc": "Hanya dengan janji temu",
+      "officeAddress": "Kerobokan, Bali",
+      "officeNote": "Lokasi tepat akan dibagikan setelah janji temu dibuat"
+    },
+    "hours": {
+      "title": "Jam Operasional",
+      "monFri": "Senin - Jumat",
+      "monFriHours": "09:00 - 17:00",
+      "saturday": "Sabtu",
+      "saturdayHours": "10:00 - 14:00",
+      "sunday": "Minggu",
+      "sundayClosed": "Tutup",
+      "timezone": "Zona Waktu: WITA (Waktu Bali, UTC+8)"
+    },
+    "form": {
+      "title": "Kirim Pesan",
+      "fullName": "Nama Lengkap",
+      "emailAddress": "Alamat Email",
+      "phone": "Nomor Telepon",
+      "service": "Layanan yang Diminati",
+      "servicePlaceholder": "Pilih layanan...",
+      "serviceVisa": "Layanan Visa",
+      "serviceCompany": "Pendirian Perusahaan",
+      "serviceTax": "Konsultasi Pajak",
+      "serviceRealEstate": "Properti",
+      "serviceMultiple": "Beberapa Layanan",
+      "serviceOther": "Lainnya",
+      "message": "Pesan",
+      "messagePlaceholder": "Ceritakan kebutuhan Anda...",
+      "responseTime": "Kami akan merespons dalam waktu 24 jam"
+    },
+    "success": {
+      "title": "Pesan Terkirim!",
+      "description": "Kami telah membuka WhatsApp dengan pesan Anda. Jika tidak terbuka, silakan hubungi kami secara langsung."
+    },
+    "aiCta": {
+      "title": "Butuh Jawaban Instan?",
+      "description": "Dapatkan bantuan langsung untuk visa, pendirian perusahaan, pajak, dan lainnya dari asisten AI kami. Tersedia 24/7 dengan respons seketika.",
+      "button": "Tanya Zantara AI Sekarang"
+    }
+  },
+  "team": {
+    "hero": {
+      "label": "Tim Kami",
+      "title": "Kenali Para",
+      "titleAccent": "Ahli",
+      "titleSuffix": "di Balik Kesuksesan Anda",
+      "subtitle": "Tim spesialis visa, konsultan pajak, dan penasihat bisnis yang berdedikasi untuk memastikan perjalanan Anda di Indonesia berjalan lancar."
+    },
+    "sections": {
+      "leadership": "Kepemimpinan",
+      "leadershipDesc": "Memandu visi kami dan memastikan keunggulan dalam setiap layanan yang kami berikan.",
+      "setupTeam": "Tim Setup",
+      "setupTeamDesc": "Ahli pendirian perusahaan, pemrosesan visa, dan konsultasi bisnis.",
+      "taxDepartment": "Departemen Pajak",
+      "taxDepartmentDesc": "Profesional pajak bersertifikat yang memastikan kepatuhan dan optimalisasi Anda.",
+      "accounting": "Akuntansi",
+      "accountingDesc": "Mengelola operasi keuangan dengan presisi dan keandalan.",
+      "supportMarketing": "Dukungan & Pemasaran",
+      "supportMarketingDesc": "Menjaga Anda tetap terhubung dan mendapatkan informasi sepanjang perjalanan Anda.",
+      "external": "(Eksternal)"
+    },
+    "ai": {
+      "title": "Zantara AI",
+      "role": "Jembatan AI",
+      "description": "Asisten cerdas Anda 24/7. Zantara AI membantu Anda mendapatkan jawaban instan mengenai visa, pendirian perusahaan, pajak, dan lainnya — menghubungkan Anda dengan ahli yang tepat saat Anda memerlukan dukungan manusia."
+    },
+    "cta": {
+      "title": "Siap Bekerja Sama Dengan Kami?",
+      "description": "Hubungi tim kami untuk konsultasi gratis. Kami siap membantu Anda menavigasi Indonesia dengan percaya diri."
+    }
+  },
+  "services": {
+    "hero": {
+      "label": "Layanan Kami",
+      "title": "Wujudkan",
+      "titleAccent": "Impian Anda di Indonesia",
+      "titleSuffix": "dengan Percaya Diri",
+      "subtitle": "Dari Nol hingga Tak Terbatas. Kami menangani visa, pendirian perusahaan, pajak, dan properti — agar Anda bisa fokus pada hal yang paling utama."
+    },
+    "reviews": {
+      "reviewCount": "700+ ulasan",
+      "onGoogleMaps": "di Google Maps"
+    },
+    "grid": {
+      "title": "Layanan & Harga Kami",
+      "subtitle": "Harga transparan tanpa biaya tersembunyi. Semua harga dalam IDR.",
+      "startingFrom": "Mulai dari",
+      "contactForQuote": "Hubungi untuk penawaran"
+    },
+    "process": {
+      "title": "Cara Kerjanya",
+      "subtitle": "Sederhana, transparan, profesional",
+      "step1Title": "Konsultasi",
+      "step1Desc": "Panggilan awal gratis untuk memahami kebutuhan Anda",
+      "step2Title": "Proposal",
+      "step2Desc": "Timeline yang jelas dan harga transparan",
+      "step3Title": "Eksekusi",
+      "step3Desc": "Kami menangani semua dokumen dan proses",
+      "step4Title": "Penyerahan",
+      "step4Desc": "Terima dokumen Anda dengan dukungan berkelanjutan"
+    },
+    "teamSection": {
+      "title": "Kenali Tim Kami",
+      "subtitle": "Tim spesialis visa, konsultan pajak, dan penasihat bisnis yang berdedikasi."
+    },
+    "cta": {
+      "title": "Siap Memulai?",
+      "subtitle": "Dapatkan konsultasi gratis dari para ahli kami. Kami akan memandu Anda melalui prosesnya dan memberikan timeline serta penawaran yang jelas."
+    },
+    "contactInfo": {
+      "office": "Kantor",
+      "hours": "Jam Operasional",
+      "hoursValue": "Sen-Jum 09:00-18:00",
+      "response": "Respons",
+      "responseValue": "Dalam 24 jam",
+      "languages": "Bahasa",
+      "languagesValue": "EN, ID, IT"
+    },
+    "serviceNames": {
+      "visa": "Visa & Imigrasi",
+      "company": "Pendirian Perusahaan & Lisensi",
+      "tax": "Konsultasi Pajak",
+      "property": "Layanan Properti"
+    },
+    "serviceTaglines": {
+      "visa": "Solusi visa lengkap untuk tinggal dan bekerja di Indonesia",
+      "company": "Dari lisensi hingga struktur — luncurkan bisnis Anda dengan cepat",
+      "tax": "Navigasi sistem pajak Indonesia dengan percaya diri",
+      "property": "Amankan properti dengan kejelasan hukum dan panduan ahli"
+    }
+  },
+  "news": {
+    "allNews": "Semua Berita",
+    "latestInsights": "Wawasan Terbaru",
+    "featured": "Unggulan",
+    "readMore": "Baca selengkapnya",
+    "minuteRead": "menit baca",
+    "categories": {
+      "immigration": "Imigrasi",
+      "business": "Bisnis",
+      "taxLegal": "Pajak & Hukum",
+      "property": "Properti",
+      "lifestyle": "Gaya Hidup",
+      "tech": "Teknologi",
+      "baliNews": "Berita Bali",
+      "visas": "Visa & Imigrasi",
+      "taxes": "Pajak & Kepatuhan",
+      "living": "Tinggal di Indonesia",
+      "trends": "Tren & Wawasan"
+    },
+    "categoryDescriptions": {
+      "immigration": "Visa, izin tinggal, dan semua yang perlu Anda ketahui tentang pindah ke Indonesia.",
+      "business": "Pendirian perusahaan, perizinan, kode KBLI, dan berbisnis di Indonesia.",
+      "taxLegal": "Kewajiban pajak, kepatuhan hukum, dan pembaruan regulasi.",
+      "property": "Properti, kepemilikan tanah, dan peluang investasi di Bali.",
+      "lifestyle": "Kehidupan di Bali, budaya, komunitas, dan kualitas hidup.",
+      "tech": "Kehidupan digital nomad, industri teknologi, dan kerja remote di Indonesia.",
+      "baliNews": "Berita terkini, budaya, acara, dan cerita dari Bali dan Indonesia.",
+      "visas": "Visa, izin tinggal, dan panduan lengkap untuk pindah ke Indonesia.",
+      "taxes": "Kewajiban pajak, kepatuhan hukum, dan pembaruan regulasi.",
+      "living": "Tinggal di Bali, budaya, komunitas, SIM, kesehatan, dan kehidupan sehari-hari.",
+      "trends": "Ekonomi digital, industri teknologi, regulasi baru, dan wawasan pasar."
+    }
+  },
+  "portal": {
+    "login": {
+      "forgot_password": "Lupa PIN?",
+      "errors": {
+        "invalid_credentials": "Email atau PIN salah. Silakan coba lagi.",
+        "account_locked": "Akun dikunci untuk keamanan. Hubungi team@balizero.com.",
+        "rate_limited": "Terlalu banyak percobaan. Coba lagi dalam {{seconds}} detik.",
+        "invalid_2fa": "Kode 2FA tidak valid.",
+        "network_error": "Koneksi terputus. Periksa jaringan dan coba lagi.",
+        "email_not_found": "Email tidak ditemukan.",
+        "server_error": "Kesalahan server. Coba lagi dalam beberapa menit.",
+        "maintenance": "Sedang dalam pemeliharaan. Silakan kembali nanti."
+      }
+    },
+    "forgot_password": {
+      "title": "Pemulihan akses",
+      "sent": "Kami telah menerima permintaan Anda. Tim akan menghubungi Anda."
+    }
+  },
+  "book": {
+    "stats": {
+      "clientsServed": "Klien dilayani",
+      "yearsOfHistory": "Tahun pengalaman",
+      "kbliNavigatorCodes": "Kode KBLI Navigator",
+      "aiChannelsActive": "Channel AI aktif"
+    }
+  },
+  "chat": {
+    "status": {
+      "initializing": "Memulai..."
+    },
+    "errors": {
+      "network": "Kesalahan jaringan"
+    }
+  }
+}

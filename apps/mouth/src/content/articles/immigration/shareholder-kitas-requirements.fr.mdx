@@ -1,0 +1,386 @@
+---
+title: "Shareholder KITAS Requirements in Indonesia 2026"
+slug: "shareholder-kitas-requirements"
+description: "KITAS requirements for foreign shareholders in Indonesian companies. Investment amounts, visa options, and what you need to know."
+excerpt: "Owning shares in an Indonesian company? Here's what KITAS options you have."
+category: "immigration"
+tags:
+  - shareholder KITAS
+  - investor visa
+  - PT PMA shareholder
+  - foreign ownership
+  - E28A investor
+  - minimum shareholding
+  - foreign investor Indonesia
+  - company ownership visa
+  - KITAS for shareholders
+  - IDR 10 billion requirement
+  - shareholder residency
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/static/insights/immigration/shareholder.jpg"
+  alt: "Foreign shareholder in Indonesia"
+seo:
+  title: "Shareholder KITAS Requirements 2026 | Indonesia Foreign Ownership"
+  description: "KITAS options for foreign shareholders in Indonesian companies. Requirements, investment minimums, and how to get residency as a shareholder."
+  keywords:
+    - shareholder KITAS Indonesia
+    - foreign shareholder visa
+    - PT PMA ownership KITAS
+readingTime: 8
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 14
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "investor-kitas-guide"
+  - "director-vs-employee-kitas"
+  - "pt-pma-capital-requirements"
+tableOfContents: true
+seoTitle: "Shareholder KITAS Requirements Indonesia 2026"
+seoDescription: "KITAS options for PT PMA foreign shareholders in Indonesia. IDR 10 billion minimum for E28A investor visa, work permits, and residency pathways."
+aiOptimization:
+  primaryQuestion: "What KITAS do foreign shareholders need in Indonesia?"
+  answerSnippet: "Foreign shareholders with IDR 10 billion+ in PT PMA can get Investor KITAS (E28A) without RPTKA. Shareholders below this threshold who hold director positions need Working KITAS (E25B). Passive minority shareholders without director role may use social/business visas for short visits."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Imigrasi"
+      sameAs: "https://www.imigrasi.go.id"
+    - type: "GovernmentOrganization"
+      name: "BKPM"
+      sameAs: "https://www.bkpm.go.id"
+    - type: "Organization"
+      name: "PT PMA"
+      sameAs: "https://en.wikipedia.org/wiki/Foreign_investment_in_Indonesia"
+faq:
+  - question: "What is the minimum shareholding for Investor KITAS?"
+    answer: "IDR 10 billion (~USD 625,000) per individual investor in a PT PMA registered with BKPM. This is per-investor, not per-company. If below this threshold, you need a Working KITAS instead."
+  - question: "Can a shareholder without a director role get KITAS?"
+    answer: "Only if shareholding meets IDR 10 billion minimum for E28A. Passive minority shareholders below this threshold have no direct KITAS path and typically use business visit visas for periodic visits."
+  - question: "Do shareholders need RPTKA?"
+    answer: "Pure investors with E28A do not need RPTKA or DKP-TKA. However, if the shareholder also serves as director or commissioner, they need Working KITAS with RPTKA regardless of shareholding amount."
+contentStructure:
+  hasHowTo: false
+  hasFAQ: true
+  hasTable: true
+canonicalUrl: "https://balizero.com/immigration/shareholder-kitas-requirements"
+ogImage: "/static/insights/immigration/shareholder.jpg"
+twitterCard: "summary_large_image"
+locale: "fr"
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Calculator,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Exigences KITAS pour les actionnaires en Indonesia 2026
+
+Les actionnaires étrangers dans les entreprises indonésiennes disposent de plusieurs options KITAS en fonction de leur rôle et de leur niveau d'investissement.
+
+## Options KITAS pour les actionnaires
+
+<DecisionTree
+  title="Quel KITAS pour les actionnaires ?"
+  description="Trouvez le permis adapté à votre situation"
+  nodes={[
+    {
+      id: "start",
+      question: "Voulez-vous travailler activement dans l'entreprise ?",
+      options: [
+        { label: "Oui, je travaillerai/gérerai l'entreprise", next: "work" },
+        { label: "Non, investisseur passif uniquement", next: "passive" },
+      ],
+    },
+    {
+      id: "work",
+      question: "Quel rôle aurez-vous ?",
+      options: [
+        { label: "Directeur (dans l'acte de société)", next: "director" },
+        { label: "Autre rôle de travail (manager, etc.)", next: "worker" },
+      ],
+    },
+    {
+      id: "passive",
+      question: "Atteignez-vous 1 milliard IDR+ d'investissement ?",
+      options: [
+        { label: "Oui, j'ai investi 1 milliard IDR+", next: "investor-kitas" },
+        { label: "Non, moins de 1 milliard IDR", next: "no-investor" },
+      ],
+    },
+    {
+      id: "director",
+      result: {
+        title: "KITAS de Directeur avec RPTKA",
+        description:
+          "En tant que directeur actif, vous avez besoin d'une autorisation de travail complète. RPTKA + KITAS requis. L'entreprise vous sponsorise. Des frais DKP-TKA s'appliquent.",
+      },
+    },
+    {
+      id: "worker",
+      result: {
+        title: "KITAS d'Employé avec RPTKA",
+        description:
+          "Travailler dans un rôle non-directeur nécessite un KITAS d'employé. RPTKA basé sur votre poste. Exigences de qualification normales.",
+      },
+    },
+    {
+      id: "investor-kitas",
+      result: {
+        title: "KITAS d'Investisseur (C313)",
+        description:
+          "Les investisseurs passifs avec 1 milliard IDR+ peuvent obtenir un KITAS d'Investisseur sans RPTKA. Pas de frais DKP-TKA. Peuvent assister aux réunions du conseil d'administration et recevoir des dividendes.",
+      },
+    },
+    {
+      id: "no-investor",
+      result: {
+        title: "Pas de voie KITAS directe",
+        description:
+          "Si moins de 1 milliard IDR et que vous ne travaillez pas, vous ne pouvez pas obtenir de KITAS en tant qu'actionnaire. Envisagez d'augmenter votre investissement à 1 milliard IDR ou de prendre un rôle actif.",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Exigences d'investissement pour les actionnaires
+
+<Calculator
+  title="Calculateur d'investissement pour les actionnaires"
+  description="Vérifiez votre éligibilité au KITAS"
+  fields={[
+    {
+      id: "totalCapital",
+      label: "Capital versé de la société",
+      type: "number",
+      defaultValue: 5000000000,
+      min: 0,
+      step: 500000000,
+      suffix: "IDR"
+    },
+    {
+      id: "sharePercent",
+      label: "Votre pourcentage de propriété",
+      type: "number",
+      defaultValue: 30,
+      min: 1,
+      max: 100,
+      suffix: "%"
+    }
+  ]}
+  calculateResult={(values) => {
+    const capital = Number(values.totalCapital);
+    const percent = Number(values.sharePercent) / 100;
+    const yourShare = capital * percent;
+    const minInvestor = 1000000000;
+    const eligible = yourShare >= minInvestor;
+
+    return {
+      total: yourShare,
+      breakdown: [
+        { label: "Capital total de la société", amount: capital },
+        { label: `Votre part (${values.sharePercent}%)`, amount: yourShare },
+        { label: "Minimum KITAS investisseur", amount: minInvestor }
+      ],
+      currency: "IDR",
+      note: eligible
+        ? "✅ Éligible au KITAS d'Investisseur (passif)"
+        : "❌ Inférieur à 1 milliard IDR - besoin de travailler ou d'augmenter l'investissement"
+    };
+
+}}
+/>
+
+### Seuils minimaux
+
+| Type de KITAS                 | Exigence d'investissement                                  |
+| ----------------------------- | ---------------------------------------------------------- |
+| KITAS d'Investisseur (passif) | 1 000 000 000 IDR d'investissement personnel minimum       |
+| KITAS de Directeur (actif)    | Aucun minimum (la société doit atteindre 10 milliards IDR) |
+| KITAS d'Employé (actif)       | Non basé sur l'investissement                              |
+
+---
+
+## Trois voies pour les actionnaires
+
+<ComparisonTable
+  title="Voies KITAS pour les actionnaires"
+  description="Options basées sur le rôle et l'investissement"
+  items={[
+    {
+      name: "Voie 1 : Pur investisseur",
+      subtitle: "1 milliard IDR+ d'investissement, pas de travail",
+      values: {
+        RPTKA: "Non requis",
+        "DKP-TKA": "Non requis",
+        Activités: "Réunions du conseil, dividendes",
+        "Idéal pour": "Revenu passif",
+      },
+    },
+    {
+      name: "Voie 2 : Investisseur-Directeur",
+      subtitle: "Actionnaire + rôle de Directeur",
+      values: {
+        RPTKA: "Requis",
+        "DKP-TKA": "Requis",
+        Activités: "Opérations commerciales complètes",
+        "Idéal pour": "Gérer votre entreprise",
+      },
+      highlight: true,
+    },
+    {
+      name: "Voie 3 : Actionnaire actif",
+      subtitle: "Actionnaire + rôle d'employé",
+      values: {
+        RPTKA: "Requis",
+        "DKP-TKA": "Requis",
+        Activités: "Rôle professionnel spécifique",
+        "Idéal pour": "Travail de spécialiste + équité",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Pur investisseur (pas de travail)
+
+Si vous êtes un actionnaire passif :
+
+### Ce que vous POUVEZ faire
+
+- Participer aux assemblées générales annuelles
+- Participer aux décisions des actionnaires
+- Recevoir des dividendes
+- Examiner les rapports de la société
+- Visiter votre investissement
+
+### Ce que vous NE POUVEZ PAS faire
+
+- Gérer les opérations quotidiennes
+- Diriger les employés
+- Signer des contrats en tant que représentant de la société
+- Représenter la société auprès des clients
+- Prendre des décisions opérationnelles
+
+<InfoCard variant="warning" title="Frontière entre actif et passif">
+  L'immigration peut remettre en question si vous êtes "réellement" juste un
+  investisseur si vous êtes constamment au bureau. Gardez vos activités
+  clairement passives si vous utilisez le KITAS d'Investisseur.
+</InfoCard>
+
+---
+
+## Documents pour le KITAS d'actionnaire
+
+### Tous les actionnaires ont besoin de
+
+- Passeport (validité 24+ mois)
+- Photos d'identité (4x6, fond rouge)
+- CV
+- Acte de société indiquant la participation
+
+### Pour le KITAS d'Investisseur (passif)
+
+- Preuve de dépôt de capital (1 milliard IDR+ votre part)
+- Relevés bancaires
+- Certificat d'actions (si disponible)
+- NIB et documents de la société
+
+### Pour l'actionnaire actif (Directeur/Employé)
+
+- Tous les documents ci-dessus
+- Documents de demande de RPTKA
+- Description de poste
+- Qualifications (diplôme, expérience)
+
+---
+
+## Actionnaires multiples
+
+Si votre PT PMA a plusieurs actionnaires étrangers :
+
+| Actionnaires | Investissement par personne              | Capital total de la société |
+| ------------ | ---------------------------------------- | --------------------------- |
+| 1 étranger   | 1 milliard IDR+                          | 10 milliards IDR minimum    |
+| 2 étrangers  | 1 milliard IDR chacun = 2 milliards IDR+ | 10 milliards IDR minimum    |
+| 3 étrangers  | 1 milliard IDR chacun = 3 milliards IDR+ | 10 milliards IDR minimum    |
+
+<InfoCard variant="note" title="Chaque étranger a besoin de 1 milliard IDR">
+  Pour le KITAS d'Investisseur, chaque actionnaire étranger doit avoir au moins
+  1 milliard de rupiahs IDR investis à son nom. Vous ne pouvez pas diviser 1
+  milliard IDR entre deux personnes.
+</InfoCard>
+
+---
+
+## Actionnaire sans KITAS ?
+
+Tous les actionnaires n'ont pas besoin de KITAS :
+
+### Quand le KITAS n'est pas requis
+
+- Vous vivez en dehors de l'Indonesia
+- Vous visitez uniquement avec un visa touristique/affaires
+- Vous n'avez pas besoin de travailler en Indonesia
+- Vous assistez uniquement à des réunions occasionnelles
+
+### Quand le KITAS est recommandé
+
+- Vous voulez vivre en Indonesia
+- Vous avez besoin d'être présent régulièrement
+- Vous voulez gérer l'entreprise
+- Vous voulez de la stabilité/un séjour à long terme
+
+---
+
+## Voie vers la résidence permanente
+
+Les actionnaires peuvent travailler à l'obtention du KITAP (séjour permanent) :
+
+1. **3 années consécutives avec KITAS** (même catégorie)
+2. **Bon dossier de conformité**
+3. **Investissement maintenu** (si investisseur)
+4. **Demander le KITAP** (permis de 5 ans)
+
+<InfoCard variant="tip" title="Avantages du KITAP pour les investisseurs">
+  - Validité de 5 ans - Entrées multiples - Extensions plus faciles - Plus de
+  stabilité - Voie vers la naturalisation (optionnel)
+</InfoCard>
+
+---
+
+## Questions fréquentes
+
+<AskZantara
+  context="Shareholder KITAS, PT PMA ownership, investor visa, foreign shareholder Indonesia"
+  placeholder="Posez une question sur le KITAS d'actionnaire..."
+  suggestedQuestions={[
+    "Puis-je vendre des actions et conserver mon KITAS ?",
+    "Que se passe-t-il si ma participation diminue ?",
+    "Puis-je détenir des actions dans plusieurs sociétés ?",
+    "Mon conjoint obtient-il aussi la résidence ?",
+  ]}
+/>
+
+---
+
+## Articles connexes
+
+- [Guide du KITAS d'Investisseur](/insights/immigration/investor-kitas-guide)
+- [KITAS de Directeur vs d'Employé](/insights/immigration/director-vs-employee-kitas)
+- [Exigences de capital pour PT PMA](/insights/business/pt-pma-capital-requirements)
+- [Guide d'enregistrement PT PMA](/insights/business/pt-pma-registration-guide)

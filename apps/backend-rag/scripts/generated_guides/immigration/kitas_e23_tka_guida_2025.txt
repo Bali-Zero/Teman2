@@ -1,0 +1,210 @@
+KITAS E23: PERMESSO DI SOGGIORNO LIMITATO PER LAVORATORI STRANIERI (TKA)
+PROCEDURA COMPLETA 2024-2025
+
+Guida normativa verificata | Aggiornata a Permenkumham 22/2023 e UU 63/2024
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. INQUADRAMENTO NORMATIVO
+
+Il KITAS (Kartu Izin Tinggal Terbatas) per lavoratori stranieri (TKA – Tenaga Kerja
+Asing) è oggi emesso sotto l'indice E23, codice introdotto da Kepmenkumham M.HH-02.GR
+.01.04 Tahun 2023 in attuazione del Permenkumham 22/2023. [IMM-363]
+
+L'indice precedente C312 è obsoleto dal 2023 e non deve più essere citato.
+
+Basi giuridiche:
+- UU 6/2011 sull'Immigrazione (art. 52: durata massima KITAS 2 anni) [IMM-002]
+- PP 34/2021 sull'impiego di TKA (abrogazione IMTA, obbligo RPTKA + DKP-TKA) [IMM-360]
+- Permenkumham 22/2023 e s.m.i. (Permenkumham 11/2024): nuovi indici visto [IMM-363]
+- PP 40/2023 (IV emendamento PP 31/2013): aggiornamento procedure immigrazione
+- UU 63/2024 (Legge Omnibus): MERP integrato nel KITAS, eliminazione duplicazioni [IMM-362]
+- Permenimipas 5/2025: nuove regole garante/penjamin [IMM-366]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. CHI PUÒ OTTENERE IL KITAS E23
+
+Il KITAS E23 è riservato a lavoratori stranieri con contratto di lavoro dipendente con
+un'azienda sponsor indonesiana registrata (PT, PT PMA, Perwakilan Asing). [IMM-005]
+
+Non è ammissibile per:
+- Lavoratori autonomi o freelance
+- Stranieri in posizioni HR, amministrativo di basso livello (posizioni riservate a WNI)
+- Titolari di partita IVA individuale senza struttura societaria
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. REQUISITI AZIENDA SPONSOR
+
+L'azienda che intende assumere un lavoratore straniero deve prima ottenere
+l'approvazione del piano RPTKA (Rencana Penggunaan Tenaga Kerja Asing) dal
+Kementerian Ketenagakerjaan. [IMM-005]
+
+Documenti richiesti per l'azienda:
+- NIB (Nomor Induk Berusaha) aggiornato
+- NPWP aziendale
+- SK Kehakiman (Akte Pendirian / Perubahan terbaru)
+- Bagan organisasi (organigramma che indica la posizione del TKA)
+- Surat pernyataan pendampingan (impegno ad affiancare un dipendente WNI per
+  trasferimento competenze — ratio solitamente 1:1 o superiore)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. REQUISITI DEL LAVORATORE (TKA)
+
+- Passaporto con validità residua minima 18 mesi (per KITAS 12 mesi)
+- Titolo di studio pertinente alla posizione (tradotto in bahasa Indonesia o inglese
+  con legalization apostille o KBRI)
+- CV con documentata esperienza lavorativa di almeno 5 anni nel settore specifico
+- Polizza assicurativa sanitaria valida per l'Indonesia per tutta la durata del soggiorno
+- Foto recente (background putih) formato sesuai ketentuan imigrasi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. PROCEDURA STEP-BY-STEP
+
+La procedura è interamente digitale tramite portale TKA Online (Kemnaker) e
+sistema Molina/Evisa (Ditjen Imigrasi). Durata totale stimata: 4–8 settimane.
+
+FASE 1 — RPTKA (Settimana 1–3)
+L'azienda accede al portale tka-online.kemnaker.go.id e sottomette:
+  1. Formulir permohonan RPTKA
+  2. Deskripsi jabatan e requisiti del ruolo
+  3. Organigramma aziendale
+  4. SK perusahaan + NIB + NPWP
+Tempi: approvazione in 10–15 giorni lavorativi.
+
+Nota critica: PP 34/2021 ha abolito l'IMTA come documento fisico separato. [IMM-360]
+L'approvazione RPTKA è ora il documento equivalente che autorizza l'utilizzo del TKA.
+
+FASE 2 — DKP-TKA (Dopo approvazione RPTKA)
+Il sistema genera automaticamente la notifica di billing per la tassa
+DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing). [IMM-361]
+
+Il datore di lavoro paga: USD 100 × numero di mesi del contratto, in anticipo.
+Esempio: KITAS 12 mesi = USD 1.200 da versare prima dell'emissione del visto.
+
+FASE 3 — VITAS E23 (Settimana 3–5)
+Dopo il pagamento DKP-TKA:
+  1. L'azienda accede al portale evisa.imigrasi.go.id
+  2. Compila il formulir permohonan visto soggiorno limitato (VITAS E23)
+  3. Allega: RPTKA approvato, ricevuta DKP-TKA, passaporto TKA, foto, ijazah
+  4. Paga la tassa PNBP per il VITAS: USD 150
+L'e-Visa viene emessa in formato PDF via email in 5–10 giorni lavorativi.
+
+FASE 4 — INGRESSO IN INDONESIA
+Il TKA entra in Indonesia mostrando l'e-Visa (file PDF) al check-in aereo e alla
+frontiera (Tempat Pemeriksaan Imigrasi).
+
+FASE 5 — ATTIVAZIONE E-ITAS (KITAS)
+All'arrivo, il VITAS si converte in KITAS elettronico (E-ITAS) via email, senza
+tessera fisica. In alcuni casi è richiesto appuntamento all'Ufficio Imigrasi locale
+per rilevamento biometrico.
+
+Il MERP (Izin Masuk Kembali / Multiple Re-Entry Permit) è ora automaticamente
+incluso nel KITAS e non richiede procedura separata. [IMM-362]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. COSTI (TASSE GOVERNATIVE PNBP 2024-2025)
+
+Componente                     Importo             Base Giuridica
+─────────────────────────────────────────────────────────────────
+DKP-TKA                        USD 100/mese × N    PP 34/2021 [IMM-361]
+VITAS E23 (tassa visto)        USD 150             PNBP immigrazione
+KITAS 1 anno (PNBP)            Rp 2.500.000–3.000.000   Peraturan PNBP
+MERP                           INCLUSO (0)          UU 63/2024 [IMM-362]
+
+Esempio costo governativo totale per KITAS 12 mesi:
+USD 1.200 (DKP) + USD 150 (VITAS) + ~Rp 2.750.000 (KITAS) ≈ USD 1.500 + Rp 2.750.000
+
+Nota: i costi dell'agenzia (se ci si avvale di consulenti come Bali Zero) non sono
+inclusi nelle tasse governative e vengono quotati separatamente tramite PricingTool.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. DURATA, RINNOVO E LIMITI
+
+- Durata massima KITAS: 2 anni per singola emissione [IMM-002]
+- Nella pratica il KITAS E23 è emesso per 1 anno, rinnovabile
+- Il rinnovo deve essere richiesto prima della scadenza [IMM-003]
+  tramite il portale Molina, con aggiornamento del RPTKA presso Kemnaker
+- Non esiste limite al numero di rinnovi finché sussiste il rapporto di lavoro
+
+Cambio di status KITAS → KITAP:
+Lo straniero che risiede continuativamente in Indonesia per almeno 3 anni consecutivi
+con KITAS può richiedere il cambio di status a KITAP. [IMM-076]
+La richiesta deve essere presentata all'Ufficio Imigrasi di competenza. [IMM-075]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. OBBLIGHI FISCALI DEL TITOLARE E23
+
+Il titolare di KITAS E23 diventa automaticamente residente fiscale indonesiano ed è
+obbligato a:
+- Registrare il proprio NPWP (Nomor Pokok Wajib Pajak) personale
+- Presentare la dichiarazione dei redditi annuale (SPT Tahunan) entro il 31 marzo
+  dell'anno successivo
+- Pagare PPh 21 (ritenuta alla fonte) mensilmente, trattenuta dal datore di lavoro
+
+Questa obbligazione è in vigore dal 2025 con applicazione rafforzata.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9. GARANTE (PENJAMIN)
+
+Il garante per il KITAS E23 è l'azienda sponsor (datore di lavoro).
+Le regole sul garante sono regolamentate da Permenimipas 5/2025, che sostituisce
+il precedente Permenkumham 36/2021. [IMM-366]
+
+Il garante è responsabile di:
+- Rispettare tutti gli obblighi di immigrazione del TKA [IMM-100]
+- Segnalare all'Ufficio Imigrasi la fine del rapporto di lavoro e del contratto
+  di garanzia entro i termini previsti [IMM-174]
+- Rispondere di eventuali violazioni del permesso di soggiorno da parte del TKA
+
+Vigilanza sulla persona giuridica garante:
+L'Ufficio Imigrasi verifica documentazione, presenza effettiva e attività del garante
+societario. [IMM-101]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10. CAMBIAMENTI NORMATIVI 2021-2025 RILEVANTI
+
+Anno    Cambiamento                                     Impatto
+─────────────────────────────────────────────────────────────────
+2021    PP 34/2021: abolizione IMTA fisico              RPTKA + DKP-TKA
+                                                         diventa unico percorso [IMM-360]
+2023    Permenkumham 22/2023: nuovi indici visto         C312 → E23 [IMM-363]
+2024    UU 63/2024: MERP integrato nel KITAS            Nessuna procedura
+                                                         separata per rientri [IMM-362]
+2024    Istituzione Kemenimipas (nuovo ministero)       Nuova autorità competente
+                                                         per immigrazione [IMM-365]
+2025    Permenimipas 5/2025: nuove regole garante       Aggiornamento obblighi
+                                                         sponsor [IMM-366]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11. ERRORI COMUNI DA EVITARE
+
+1. Citare l'indice C312 — obsoleto dal 2023, ora E23 [IMM-363]
+2. Richiedere l'IMTA come documento separato — abolito da PP 34/2021 [IMM-360]
+3. Calcolare il DKP-TKA al mese anziché anticipato per tutta la durata
+4. Dimenticare che il MERP è ora incluso — non serve richiesta separata [IMM-362]
+5. Non registrare NPWP personale dopo l'ottenimento del KITAS
+6. Assumere che il garante possa essere un individuo — deve essere l'azienda sponsor
+7. Non aggiornare il RPTKA al rinnovo del contratto di lavoro
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+IMM-002, IMM-003, IMM-005, IMM-075, IMM-076, IMM-100, IMM-101, IMM-174,
+IMM-360, IMM-361, IMM-362, IMM-363, IMM-365, IMM-366
+
+Nota: per i costi dei servizi Bali Zero consultare sempre il PricingTool — i costi
+governativi PNBP indicati in questo documento sono tasse statali, non prezzi agenzia.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

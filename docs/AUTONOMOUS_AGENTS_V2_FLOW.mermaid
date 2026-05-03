@@ -1,0 +1,13 @@
+graph TD
+    A[User Query: Business Desc] --> B{Intelligence General}
+    B --> C[KBLI Captain: Search]
+    C --> D[Qdrant: Hybrid Search]
+    D --> E[Refine: Sparse + Dense]
+    E --> F{SDV: Deterministic Check}
+    F -- Valid --> G[Final KBLI Proposal]
+    F -- Invalid --> H[Error: Rework Prompt]
+    G --> I[Episodic Memory: Save Success]
+    H --> J[Episodic Memory: Save Failure]
+    I --> K[Value Flow: Trigger Visa Captain]
+    K --> L[Visa Captain: Start Plan]
+

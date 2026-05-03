@@ -1,0 +1,40 @@
+name: Docs Sync Check
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/backend/app/setup/router_registration.py"
+      - "apps/backend-rag/backend/services/**"
+      - "apps/backend-rag/backend/tests/**"
+      - "apps/backend-rag/backend/channels/**"
+      - "package.json"
+      - "scripts/docs_sync.py"
+      - ".github/workflows/docs-sync.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend-rag/backend/app/setup/router_registration.py"
+      - "apps/backend-rag/backend/services/**"
+      - "apps/backend-rag/backend/tests/**"
+      - "apps/backend-rag/backend/channels/**"
+      - "package.json"
+
+jobs:
+  check-docs-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check docs are in sync
+        run: |
+          if [ ! -f scripts/docs_sync.py ]; then
+            echo "scripts/docs_sync.py is absent — skipping docs-sync check."
+            echo "Restore the script or remove this workflow to re-enable the gate."
+            exit 0
+          fi
+          python scripts/docs_sync.py --check

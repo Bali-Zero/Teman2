@@ -1,0 +1,290 @@
+{
+  "value": {
+    "answer": "**1. PT PMA can hold HGB for villa ownership: CONFIRMED.** \nA PT PMA (Foreign Investment Company) is the compliant and secure legal vehicle for foreigners to hold a *Hak Guna Bangunan* (HGB - Right to Build) title for commercial villa ownership and operations [1-3]. As a foreign investor, you must never use an Indonesian citizen as a \"nominee\" to hold *Hak Milik* (Freehold) titles on your behalf; this practice is strictly illegal, null and void by law, and now carries criminal penalties in Bali including up to 5 years in prison [4-7].\n\n**2. Airbnb/OTA legal in Bali but needs TDUP tourism license: CONFIRMED.** \nAirbnb and other Online Travel Agencies (OTAs) are legal and not banned in Bali [8]. However, the government is strictly enforcing a March 31, 2026 deadline requiring all short-term rental properties listed on OTAs to have a verified *Nomor Induk Berusaha* (NIB) or face delisting [8, 9]. Under the current OSS-RBA system, the verified NIB effectively replaces the old standalone TDUP (Tourism Business Registration) document [10]. \n\n**3. Only pink zone (zona pariwisata) for short-term rentals: CONFIRMED.** \nBefore pursuing any property recommendation or transaction, you must always verify the *zonasi RTRW* (Spatial Plan) [11, 12]. Foreigners operating short-term rentals must use a PT PMA to hold a commercial Villa license (KBLI 55193), which is strictly permitted only in Pink (Tourism) zones [11, 13, 14]. Properties located in Yellow (Residential) or Green (Agricultural) zones cannot legally receive this villa license [14, 15]. Foreigners are also strictly prohibited from holding a *Pondok Wisata* (homestay) license, which is exclusively reserved for Indonesian citizens [16, 17].\n\n**4. Property management companies charge 20-30% of revenue: CONFIRMED.** \nUnder the popular management company model—where a third-party management company operates the property and handles all compliance—the revenue split is typically 70/30 or 80/20 in the owner's favor [18].\n\n**5. Rental income taxed PPh final 10%: CONFIRMED (with conditions).** \nRental income earned by an Indonesian tax resident or NPWP holder is subject to a final income tax (*PPh Final*) of 10% on the gross rental amount [19]. However, if the owner is a non-resident foreign national, the applicable withholding tax (*PPh 26*) is 20%, unless reduced by an applicable tax treaty [19-21]. Note that this income tax is separate from the local Hotel and Restaurant Tax (*PHR*), which is an additional 10% levied on gross short-term accommodation revenue [21, 22]. \n\n**6. Average gross yield Canggu 8-12%, Uluwatu 10-15%, Ubud 6-10%: INCORRECT / MISSING.** \nThe provided sources do not contain specific yield breakdowns for Canggu, Uluwatu, or Ubud. The sources only state that the expected ROI for Airbnb and villa management in the general Bali market is around 8-12% annually [23], and that gross yields in Bali tourism zones generally range from 5-8% annually, dropping to a 3-5% net yield after service charges, taxes, and maintenance [24].",
+    "conversation_id": "73bcd55c-d360-4f28-b112-dfbe44aef542",
+    "sources_used": [
+      "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+      "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "e743a7c1-5f10-41fd-8fb3-fa26f36ec5f2",
+      "c632960f-fc63-49b6-b527-15e31305cb9c",
+      "134a8d23-5f66-4d51-a9bc-d94abf7ae38a"
+    ],
+    "citations": {
+      "1": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "2": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+      "3": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "4": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+      "5": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+      "6": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "7": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+      "8": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "9": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "10": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "11": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "12": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "13": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "14": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "15": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "16": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "17": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "18": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "19": "e743a7c1-5f10-41fd-8fb3-fa26f36ec5f2",
+      "20": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "21": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "22": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+      "23": "c632960f-fc63-49b6-b527-15e31305cb9c",
+      "24": "134a8d23-5f66-4d51-a9bc-d94abf7ae38a"
+    },
+    "references": [
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 1,
+        "cited_text": "How Does a PT PMA Enable Foreign Villa Rental in Bali? A PT PMA (Perseroan Terbatas Penanaman Modal Asing — foreign investment limited company) is the legal vehicle that allows foreigners to hold a villa license in Bali. Per Permenpar 18/2016 Pasal 15(3), foreign capital tourism businesses register via BKPM (Indonesia's Investment Coordinating Board). Why PT PMA Is Required The requirement flows directly from the regulation: Permenpar 18/2016 Pasal 4(4): Business entities registering for tourism businesses must be domiciled in Indonesia. Pasal 15(3): Foreign capital businesses register via BKPM — the national investment authority that oversees foreign investment. The PT PMA's Articles of Association (Anggaran Dasar) must include the correct KBLI code — 55193 for Villa. Full PT PMA setup details, including minimum capital requirements and registration process, are covered in BPR's PT PMA guide ."
+      },
+      {
+        "source_id": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+        "citation_number": 2,
+        "cited_text": "Understanding how Hak Pakai fits into land ownership in Bali, Lombok and Sumbawa is crucial. It offers legal clarity and peace of mind—but only when properly structured. It's always wise to consult a qualified legal professional to ensure your investment aligns with current regulations surrounding land ownership in Bali, Lombok and Sumbawa . Option 2: PT PMA Route – Corporate Ownership Using HGB Titles For foreigners looking to legally invest in property or operate a business in Indonesia, the PT PMA (Penanaman Modal Asing) route is a widely used and government-recognized solution. This structure allows foreign nationals to establish a foreign-owned company that can legally control land through a title called Hak Guna Bangunan (HGB) —or the Right to Build ."
+      },
+      {
+        "source_id": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+        "citation_number": 3,
+        "cited_text": "Under Law No. 40/2007 on Limited Liability Companies , a PT PMA is a separate legal entity that can own assets, enter contracts, and hold land titles independently of its shareholders. The property belongs to the company, and the foreigner controls the company through share ownership. Key Advantages Commercial use permitted: Unlike Hak Pakai (residential only), HGB through a PT PMA allows commercial activities — villas for rent, hotels, restaurants, co-working spaces No personal visa requirement: The company holds the land, so the foreigner's visa status does not affect the title Simplified inheritance: Heirs inherit company shares, not land titles — avoiding the 1-year forced divestment rule entirely Multiple properties: A single PT PMA can hold multiple properties across Indonesia"
+      },
+      {
+        "source_id": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+        "citation_number": 4,
+        "cited_text": "What the Law Says: Foreign Ownership Is Not Permitted—But There Are Alternatives Under Indonesia's Basic Agrarian Law (Law No. 5 of 1960) , foreign individuals are not permitted to own freehold land (Sertifikat Hak Milik or SHM) . This law reflects the government's longstanding stance on land sovereignty, ensuring that land remains under the control of Indonesian citizens. This restriction applies across the country and includes popular investment hotspots like Bali, Lombok, and Sumbawa . However, not all doors are closed. Foreigners still have legal and secure alternatives to access and control property —if done correctly."
+      },
+      {
+        "source_id": "e4fbd5f5-f8c1-4a52-a3f6-4ceafc19482b",
+        "citation_number": 5,
+        "cited_text": "When exploring land ownership in Bali, Lombok and Sumbawa , some foreigners are tempted to bypass legal restrictions by using a nominee structure —registering land in the name of an Indonesian citizen while making a private agreement that the land is \"really\" theirs. This arrangement may seem like a shortcut, but it's illegal and extremely risky . The Indonesian government has explicitly discouraged nominee agreements , and Indonesian courts do not recognize such contracts if disputes arise. Since the land title is legally under the nominee's name, the foreigner has no enforceable ownership rights ."
+      },
+      {
+        "source_id": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+        "citation_number": 6,
+        "cited_text": "Why Nominee Ownership in Bali Is Illegal — and What Foreign Buyers Should Do Instead By Bali Property Rules Research Desk / 2026-02-07 Last updated: March 2026 · By Bali Property Rules Research Desk Key Takeaways Nominee agreements are explicitly illegal under Article 26(2) of the Basic Agrarian Law — any transfer circumventing foreign ownership restrictions is \"null and void by law.\" As of February 2026, Bali's Perda No. 4/2026 adds criminal sanctions for nominee practices. The nominee holds legal title. The foreigner holds nothing enforceable in any Indonesian court. If the nominee dies, their heirs inherit the property — not you. No side agreement changes this. Legal alternatives exist: Hak Pakai (up to 80 years), Hak Sewa (leasehold), and PT PMA (company ownership via HGB)."
+      },
+      {
+        "source_id": "9fb386df-d063-4406-8a8b-0d26733cd4ec",
+        "citation_number": 7,
+        "cited_text": "February 2026 Update — Perda No. 4/2026: On February 24, 2026, Governor Wayan Koster signed Bali Provincial Regulation (Perda) No. 4/2026, which formally criminalizes nominee land ownership transfers. This regulation goes beyond the existing civil nullity under Article 26(2) of the BAL — it introduces criminal prosecution for both parties involved in nominee arrangements, including any intermediary or facilitator. Penalties reference Law No. 41/2009 (up to 5 years imprisonment and IDR 1 billion fine for illegal land conversion) and the Indonesian Criminal Code (KUHP) for document manipulation or ownership fraud. Administrative sanctions include business closure, license revocation, and mandatory building demolition. Civil servants who assist in nominee arrangements face disciplinary action and potential abuse-of-authority charges."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 8,
+        "cited_text": "Not sure if your villa meets licensing requirements? Check your property against zoning, permit, and registration requirements for the March 2026 deadline. Check your villa's compliance status → Frequently Asked Questions Is Airbnb banned in Bali? No. Airbnb is not banned in Bali. In December 2025, the Bali government clarified that there is no ban on online travel agencies. However, all properties listed on Airbnb and other OTAs must have a verified NIB (Business Identification Number) and valid licensing by March 31, 2026. Properties without proper licensing risk being delisted from platforms — it is a licensing requirement, not a platform ban."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 9,
+        "cited_text": "March 31, 2026 Compliance Deadline All short-term rental properties on OTA platforms must hold a valid NIB by this date. Properties without verified licenses face delisting from Airbnb, Booking.com, and Expedia. Updated March 2026 · Full details below 39,000+ Estimated unlicensed tourist accommodations in Bali — the government is targeting compliance, not prohibition Why Does the March 2026 Deadline Matter for Bali Villa Owners? Indonesia's Ministry of Tourism is coordinating with online travel agencies (OTAs) to enforce a March 31, 2026 deadline: all short-term rental properties listed on Airbnb, Booking.com, and Expedia must have a verified NIB (Nomor Induk Berusaha — Business Identification Number). Properties without a verified NIB face delisting from these platforms."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 10,
+        "cited_text": "A Villa license (KBLI 55193) requires your property to be in a Pink (Tourism) zone on Bali's spatial plan (RDTR). Properties in Yellow (Residential), Green (Agricultural), or Conservation zones cannot receive a villa license. You can check zoning using the GISTARU tool or OSS RDTR Interaktif portal. Pondok Wisata (KBLI 55130) may be permitted in residential zones in some cases, but this category is only available to Indonesian citizens. What is NIB and TDUP for Bali rental property? NIB (Nomor Induk Berusaha) is your 13-digit Business Identification Number, obtained through the OSS portal at oss.go.id. It serves as your primary business identity in Indonesia's risk-based licensing system. TDUP (Tanda Daftar Usaha Pariwisata) is your Tourism Business Registration document — defined in Permenpar 18/2016 Pasal 1(76) as the official document authorising tourism business operations. Under the current OSS-RBA system, your NIB effectively replaces the standalone TDUP, but the NIB must be \"verified\" (not just issued) by completing all licensing steps including PBG and SLF. The PT PMA formation that precedes NIB registration requires notarial deed preparation by an authorized PPAT — see our notary and PPAT guide for the documents and process involved."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 11,
+        "cited_text": "<cited_table> 6–12 months Typical licensing timeline from PT PMA setup to verified NIB — a 7-step sequential process where each step depends on the previous one What Zoning Does a Bali Villa Need for Licensing? A villa rental license (KBLI 55193) requires Pink (Tourism) zone classification. Many existing villas are in Yellow (Residential) zones where commercial tourism is prohibited. Verify your zone using the GISTARU portal or OSS RDTR Interaktif before purchasing or applying for a license.",
+        "cited_table": {
+          "num_columns": 2,
+          "rows": [
+            [
+              "To get this…",
+              "You must already have…"
+            ],
+            [
+              "NIB",
+              "A PT PMA or local PT"
+            ],
+            [
+              "KKPR (Zoning Approval)",
+              "An NIB"
+            ],
+            [
+              "PBG (Building Permit)",
+              "An NIB + KKPR"
+            ],
+            [
+              "SLF (Safety Certificate)",
+              "A PBG + a completed building"
+            ],
+            [
+              "Verified NIB (OTA compliance)",
+              "All of the above"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 12,
+        "cited_text": "Key Zoning Facts A PT PMA with hospitality KBLI codes (55130, 55193) cannot legally operate in non-tourism zones — holding a PT PMA does not override zoning requirements. The zoning check happens during Step 3 of the licensing process. If your property is in the wrong zone, the process stops. You can check your property's zoning using the GISTARU tool or the OSS RDTR Interaktif online portal. These tools allow you to enter property coordinates and see which zone applies. However, be aware that online tools may not always reflect the most recent zoning updates — confirm with the local spatial planning office (Dinas Tata Ruang) for certainty."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 13,
+        "cited_text": "Establish a PT PMA (foreign-owned company) with the correct KBLI code. Register under KBLI 55193 (Villa) — not KBLI 55130 (Pondok Wisata). Operate as a commercial accommodation business, not a homestay. Ensure the property is in a Pink (Tourism) zone, as required for the Villa classification. BPR's PT PMA guide covers the full company setup process, including capital requirements, KBLI code selection, and registration timelines. 3 Separate legal provisions in Permenpar 18/2016 that block foreigners from Pondok Wisata — Pasal 1(34), Pasal 4(3), and Permenparekraf 9/2014"
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 14,
+        "cited_text": "<cited_table>",
+        "cited_table": {
+          "num_columns": 5,
+          "rows": [
+            [
+              "Zone Color",
+              "Zone Type",
+              "Villa License (KBLI 55193)",
+              "Pondok Wisata (KBLI 55130)",
+              "Notes"
+            ],
+            [
+              "Pink",
+              "Tourism",
+              "Permitted",
+              "Permitted",
+              "Required zone for foreign-owned rental operations via PT PMA"
+            ],
+            [
+              "Orange",
+              "Mixed-Use",
+              "Case-by-case",
+              "Possible",
+              "Depends on sub-zone classification"
+            ],
+            [
+              "Red",
+              "Commercial",
+              "Not automatic",
+              "Not automatic",
+              "Commercial zoning does not automatically permit tourism"
+            ],
+            [
+              "Yellow",
+              "Residential",
+              "Not permitted",
+              "Limited (Indonesian only)",
+              "Most common zone for existing villas"
+            ],
+            [
+              "Green",
+              "Agricultural",
+              "Not permitted",
+              "Not permitted",
+              "No tourism development"
+            ],
+            [
+              "Grey",
+              "Conservation",
+              "Not permitted",
+              "Not permitted",
+              "No development of any kind"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 15,
+        "cited_text": "Zoning is one of the biggest obstacles to villa licensing in Bali. A Villa license (KBLI 55193) requires your property to be in a Pink (Tourism) zone — and many existing villas were built in residential zones that cannot be legally converted for commercial tourism use. Bali's spatial plan divides land into zones based on permitted use. Understanding these zones is critical before purchasing or leasing any property for rental purposes. Here are the main categories: Yellow — Residential. Villa license (KBLI 55193) is NOT permitted. Pondok Wisata (KBLI 55130) may be possible in some cases, but this category is limited to Indonesian citizens. Orange — Mixed-Use. Limited tourism activities may be allowed depending on sub-zone classification. Requires individual assessment. Red — Commercial. Some tourism activities may be allowed, but commercial zoning does not automatically mean tourism is permitted. Pink — Tourism. Required for Villa license (KBLI 55193). Hotels, resorts, and commercial villas are permitted in this zone. Green — Agricultural. No commercial or tourism development. Building permits for tourism activities will not be issued. Conservation — Protected. No development of any kind. Building in conservation zones is illegal."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 16,
+        "cited_text": "Bali Villa Licensing for Foreigners: The Definitive 2026 Guide By Bali Property Rules Research Desk / 2026-02-11 Last updated: March 2026 · By Bali Property Rules Research Desk Key Takeaways All Bali villas listed on Airbnb, Booking.com, and Expedia must have a verified NIB (Nomor Induk Berusaha) by March 31, 2026 — or risk being delisted from platforms. Foreigners cannot legally hold a Pondok Wisata (homestay) license — Permenpar 18/2016 restricts it to Indonesian citizens. The compliant path is a PT PMA with a Villa license (KBLI 55193). Licensing requires tourism-zone (pink) zoning, a PBG building permit for commercial use, an SLF safety certificate, and a verified NIB — a process that typically takes 6–12 months. Enforcement is real: 48 illegal structures were demolished at Bingin Beach in July 2025, fines start at IDR 50 million, and foreigners operating without proper permits face deportation and a 1–6 year blacklist."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 17,
+        "cited_text": "The table below summarises the key differences between the two license types. Pay particular attention to the \"Who Can Hold It\" row — this is where most foreign villa owners encounter their first legal obstacle. <cited_table>",
+        "cited_table": {
+          "num_columns": 3,
+          "rows": [
+            [
+              "Feature",
+              "Pondok Wisata (KBLI 55130)",
+              "Villa (KBLI 55193)"
+            ],
+            [
+              "Legal Definition",
+              "\"Bangunan rumah tinggal yang dihuni oleh pemiliknya… dimiliki oleh masyarakat setempat\" — a residential building inhabited by its owner, owned by local community members (Pasal 1(34), Permenpar 18/2016)",
+              "\"Penyewaan bangunan secara keseluruhan untuk jangka waktu tertentu… untuk kegiatan wisata\" — renting an entire building for tourism (Pasal 1(33), Permenpar 18/2016)"
+            ],
+            [
+              "Maximum Bedrooms",
+              "Up to 5 bedrooms",
+              "No limit specified"
+            ],
+            [
+              "Who Can Hold It",
+              "Indonesian citizens only (individuals) — per Pasal 4(3), Permenpar 18/2016",
+              "PT PMA (foreign-owned company) or local PT — per Pasal 4(4) and Pasal 15(3), Permenpar 18/2016"
+            ],
+            [
+              "Owner Residency",
+              "Owner must live in the property",
+              "Owner need not reside in the property"
+            ],
+            [
+              "Zoning",
+              "May be permitted in Yellow (Residential) or Pink (Tourism) zones",
+              "Requires Pink (Tourism) zone"
+            ],
+            [
+              "Purpose",
+              "Local economic empowerment — providing homestay experiences for tourists",
+              "Commercial accommodation — fully professional tourism operation"
+            ],
+            [
+              "Foreign Access",
+              "Illegal for foreigners. Nominee arrangements under active crackdown.",
+              "The legal path for foreigners via PT PMA."
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 18,
+        "cited_text": "Management Company Third-party management company operates under their own license You own the property, they handle all compliance Revenue split typically 70/30 or 80/20 in owner's favor Capital: Property only — management fee from revenue Best for: Absentee owners, multiple properties Three Operating Models for Foreign Villa Owners Not every foreign villa owner needs to follow the same structure. There are three main operating models, each with different risk profiles and compliance requirements:"
+      },
+      {
+        "source_id": "e743a7c1-5f10-41fd-8fb3-fa26f36ec5f2",
+        "citation_number": 19,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SEZIONE E — LOCAZIONE E INVESTIMENTO Q: Se affitto la villa, che tasse pago? A: PPh Final Pasal 4 Ayat 2 (pajak sewa): Tariffa: 10% dell'importo bruto sewa. Chi paga: il proprietario (pemilik) della villa. Come: se il conduttore è una badan hukum (agenzia, PT), il conduttore trattiene il 10% e versa a DJP. Se il conduttore è persona fisica, il proprietario versa autonomamente. Frequenza: mensile o trimestriale tramite e-Billing DJP. WNA proprietario senza NPWP: aliquota potenzialmente raddoppiata (20%). Raccomandazione: registrarsi a NPWP Pribadi Indonesia — abbassa il carico fiscale e rende possibile la dichiarazione dei redditi da locazione in modo regolare."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 20,
+        "cited_text": "Income Tax Income tax is separate from PHR. Corporate income tax applies to PT PMA profits from villa operations. The income tax framework involves national-level obligations with different rates and filing requirements than the local PHR. The applicable rate — 10% for tax residents, 20% for non-residents — depends on whether the beneficial owner has been present in Indonesia for 183 or more days in a 12-month period. For how your visa status affects tax residency and the 183-day test, see our dedicated guide. For full details on income tax rates and obligations for foreign property owners, see BPR's property tax guide ."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 21,
+        "cited_text": "What is the difference between the 10% and 20% tax on Bali villa rentals? These are two different taxes administered by different authorities. The 10% is PHR (Pajak Hotel dan Restoran) — a local government tax on gross accommodation revenue. Every licensed villa operator must register for and pay PHR independently; Airbnb does not withhold it. The 20% is PPh 26 — a national income tax withholding on gross rental payments to non-residents (foreigners who spend fewer than 183 days per year in Indonesia). Tax residents pay a lower rate of approximately 10% on net income instead. Both taxes apply simultaneously: a non-resident foreign villa owner pays 10% PHR to the local government and 20% PPh 26 to the national tax authority. For detailed tax rate breakdowns, see our property tax guide ."
+      },
+      {
+        "source_id": "57b54c1d-bf83-4754-8d89-a23252ccdb37",
+        "citation_number": 22,
+        "cited_text": "Licensed villa operators in Bali face three main tax obligations: Pajak Hotel dan Restoran (PHR — a 10% local tax on accommodation revenue), income tax, and standard property taxes. Airbnb does not withhold or remit PHR — operators must register and pay independently. PHR (Pajak Hotel dan Restoran) — 10% PHR is a local tax on short-term accommodation revenue, administered by the Bali provincial/regency government. The rate is 10% of gross accommodation revenue — applied to the total amount guests pay for the stay."
+      },
+      {
+        "source_id": "c632960f-fc63-49b6-b527-15e31305cb9c",
+        "citation_number": 23,
+        "cited_text": "La struttura più diffusa per le ville turistiche a Bali combina: [PROP-025] MASTER LEASE (25 + opzione 25 anni): WNA (o PT PMA) stipula master lease con il proprietario SHM Pagamento lump sum (up-front) per tutta la durata WNA/PT PMA subaffitta poi la villa a turisti (sub-lease giornaliero) Il master lease deve autorizzare esplicitamente la sub-locazione PAYMENT STRUCTURE TIPICA (villa Bali, 200 mq, 2 kamar): Master lease 25 anni: Rp 2.000.000.000 - Rp 5.000.000.000 up-front Include terreno + (eventuale) bangunan esistente Il WNA finanzia e costruisce la villa (costi: Rp 1.500.000.000+) ROI atteso: 8-12% annuo da Airbnb/villa management (mercato Bali 2024)"
+      },
+      {
+        "source_id": "134a8d23-5f66-4d51-a9bc-d94abf7ae38a",
+        "citation_number": 24,
+        "cited_text": "6.4 BIAYA RICORRENTI POST-ACQUISTO Service charge / IPL (Iuran Pemeliharaan Lingkungan): mensile, varia per gedung. PBB (Pajak Bumi dan Bangunan): annuale, basata su NJOP. Asuransi bangunan: opzionale ma consigliato. ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SEZIONE 7 — INVESTIMENTO SARUSUN — ASPETTI PRATICI [PROP-084] 7.1 RENDIMENTO LOCAZIONE Gross yield Jakarta: 4-6% annuo. Gross yield Bali (zona pariwisata): 5-8% annuo per alta stagione. Net yield: 3-5% dopo service charge, IPL, pajak sewa. Fattori che influenzano: lokasi, fasilitas gedung, manajemen sewa."
+      }
+    ]
+  }
+}

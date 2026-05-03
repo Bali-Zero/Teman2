@@ -1,0 +1,44 @@
+name: Migration number uniqueness lint
+
+# P0-7 (zero-crash audit 2026-04-29): PR-time guardrail against duplicate
+# migration prefixes in apps/backend-rag/backend/db/migrations_v2/. Two
+# files sharing the same NNN_ prefix make `discover_migrations` order
+# undefined (filesystem glob), so the runner applies whichever comes
+# first alphabetically and silently skips the second on the next deploy.
+# Complementary to migration-lint.yml (Squawk DDL safety) and the
+# runtime assert in migration_manager.discover_migrations.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/backend-rag/backend/db/migrations_v2/**'
+
+jobs:
+  lint:
+    name: Detect duplicate prefixes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect duplicate migration numbers
+        run: |
+          set -eu
+          DIR=apps/backend-rag/backend/db/migrations_v2
+          DUPS=$(ls "$DIR" \
+            | grep -E '^[0-9]+_.*\.sql$' \
+            | awk -F_ '{print $1}' \
+            | sort \
+            | uniq -d)
+          if [ -n "$DUPS" ]; then
+            echo "::error::Duplicate migration numbers detected: $(echo $DUPS | tr '\n' ' ')"
+            for n in $DUPS; do
+              echo "  Number $n found in:"
+              ls "$DIR" | grep -E "^${n}_" | sed 's/^/    /'
+            done
+            echo ""
+            echo "Resolution: rename the file that is NOT yet in"
+            echo "_schema_versions to the next-available number."
+            echo "Reference: cicatrix STRUCTURAL 2026-04-29 P0-7."
+            exit 1
+          fi
+          echo "All migration numbers are unique."

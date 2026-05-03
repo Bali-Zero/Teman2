@@ -1,0 +1,334 @@
+---
+title: "Biaya Izin Kerja di Indonesia 2026: Rincian Biaya Lengkap"
+slug: "work-permit-costs"
+description: "Rincian lengkap biaya izin kerja di Indonesia. Biaya RPTKA, KITAS, jasa agen, dan total anggaran untuk pekerja asing di tahun 2026."
+excerpt: "Berapa biaya sebenarnya untuk bekerja secara legal di Indonesia? Berikut adalah rincian lengkapnya."
+category: "immigration"
+locale: "id"
+tags:
+  - biaya izin kerja
+  - biaya KITAS
+  - biaya RPTKA
+  - DKP-TKA
+  - biaya imigrasi
+  - biaya agen Indonesia
+  - anggaran izin kerja
+  - biaya VITAS
+  - biaya tenaga kerja asing
+  - harga izin Indonesia
+  - biaya pemberi kerja
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/static/insights/immigration/permit-costs.jpg"
+  alt: "Kalkulasi biaya izin kerja Indonesia"
+seo:
+  title: "Biaya Izin Kerja Indonesia 2026 | Panduan Biaya Lengkap"
+  description: "Berapa biaya izin kerja di Indonesia? Rincian lengkap RPTKA, KITAS, DKP-TKA, biaya agen, dan total biaya untuk 2026."
+  keywords:
+    - biaya izin kerja Indonesia
+    - biaya KITAS
+    - biaya RPTKA
+    - biaya DKP-TKA
+readingTime: 8
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 15
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "kitas-work-permit-guide"
+  - "rptka-imta-explained"
+  - "work-permit-timeline"
+tableOfContents: true
+seoTitle: "Biaya Izin Kerja Indonesia 2026: Rincian Biaya"
+seoDescription: "Biaya izin kerja Indonesia 2026: biaya RPTKA, DKP-TKA (USD 100/bulan), biaya pemerintah KITAS, biaya agen, dan total anggaran untuk pekerja asing."
+aiOptimization:
+  primaryQuestion: "Berapa biaya izin kerja di Indonesia?"
+  answerSnippet: "Total biaya izin kerja di Indonesia berkisar antara Rp 15-40 juta tergantung jenis visa dan agen. Biaya utama: DKP-TKA USD 100/bulan (USD 1.200/tahun), pemrosesan RPTKA, penerbitan VITAS, konversi KITAS, dan biaya jasa agen. Pemberi kerja menanggung sebagian besar biaya. Biaya pemerintah saja sekitar Rp 5-8 juta."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Imigrasi"
+      sameAs: "https://www.imigrasi.go.id"
+    - type: "GovernmentOrganization"
+      name: "Kementerian Ketenagakerjaan"
+      sameAs: "https://kemnaker.go.id"
+    - type: "Fee"
+      name: "DKP-TKA (Dana Kompensasi Penggunaan TKA)"
+faq:
+  - question: "Siapa yang membayar izin kerja - pemberi kerja atau karyawan?"
+    answer: "Berdasarkan hukum, pemberi kerja (perusahaan sponsor) bertanggung jawab atas semua biaya izin kerja termasuk biaya RPTKA, DKP-TKA, VITAS, dan KITAS. Dalam praktiknya, beberapa perusahaan menegosiasikan pembagian biaya, tetapi biaya pemerintah adalah kewajiban hukum pemberi kerja."
+  - question: "Apa itu biaya DKP-TKA dan berapa jumlahnya?"
+    answer: "DKP-TKA (Dana Kompensasi Penggunaan Tenaga Kerja Asing) adalah biaya kompensasi bulanan sebesar USD 100 per pekerja asing, dibayar di muka untuk durasi izin. Untuk izin 1 tahun: USD 1.200. Untuk 2 tahun: USD 2.400."
+  - question: "Apakah biaya agen izin kerja bisa dinegosiasikan?"
+    answer: "Ya. Biaya agen bervariasi signifikan dari Rp 10-25 juta tergantung agen, jenis visa, dan layanan yang disertakan. Dapatkan penawaran dari beberapa agen. Agen yang bereputasi baik memberikan rincian biaya per item yang memisahkan biaya pemerintah dari biaya jasa."
+contentStructure:
+  hasHowTo: false
+  hasFAQ: true
+  hasTable: true
+canonicalUrl: "https://balizero.com/id/immigration/work-permit-costs"
+ogImage: "/static/insights/immigration/permit-costs.jpg"
+twitterCard: "summary_large_image"
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Biaya Izin Kerja di Indonesia 2026: Rincian Biaya Lengkap
+
+Mendapatkan izin kerja di Indonesia melibatkan beberapa biaya. Berikut adalah rincian tepat dari apa yang akan Anda (atau pemberi kerja Anda) bayar.
+
+## Kalkulator Biaya
+
+<Calculator
+  title="Estimasi Biaya Izin Kerja"
+  description="Hitung total biaya izin kerja"
+  fields={[
+    {
+      id: "duration",
+      label: "Durasi Izin",
+      type: "select",
+      options: [
+        { value: "6", label: "6 bulan" },
+        { value: "12", label: "12 bulan (1 tahun)" },
+        { value: "24", label: "24 bulan (2 tahun)" }
+      ],
+      defaultValue: "12"
+    },
+    {
+      id: "useAgent",
+      label: "Menggunakan Agen Imigrasi?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "newCompany",
+      label: "Perusahaan baru (pekerja asing pertama)?",
+      type: "checkbox",
+      defaultValue: false
+    }
+  ]}
+  calculateResult={(values) => {
+    const months = Number(values.duration);
+
+    // Government fees
+    const dkpTka = months * 100; // USD 100/month
+    const kitasFee = 2000000; // IDR
+    const vitasFee = 1500000; // IDR
+    const stm = 200000; // IDR
+    const biometrics = 100000; // IDR
+
+    // Agent fees (typical range)
+    const agentBase = values.useAgent ? 15000000 : 0; // IDR
+    const agentPremium = values.newCompany ? 5000000 : 0; // IDR
+
+    // Convert to IDR (approx rate)
+    const dkpTkaIdr = dkpTka * 16000;
+
+    // Totals
+    const govtTotal = kitasFee + vitasFee + stm + biometrics + dkpTkaIdr;
+    const agentTotal = agentBase + agentPremium;
+    const grandTotal = govtTotal + agentTotal;
+
+    return {
+      total: grandTotal,
+      breakdown: [
+        { label: `DKP-TKA (${months} bulan)`, amount: dkpTkaIdr },
+        { label: "Biaya KITAS", amount: kitasFee },
+        { label: "Biaya VITAS", amount: vitasFee },
+        { label: "STM + Biometrik", amount: stm + biometrics },
+        { label: "Biaya Jasa Agen", amount: agentBase },
+        { label: "Premi Perusahaan Baru", amount: agentPremium }
+      ],
+      currency: "IDR",
+      note: `Setara USD: ~$${Math.round(grandTotal / 16000)}`
+    };
+
+}}
+/>
+
+---
+
+## Rincian Biaya per Kategori
+
+### 1. Biaya Pemerintah
+
+<ComparisonTable
+  title="Biaya Pemerintah/Resmi"
+  description="Pembayaran wajib kepada pemerintah"
+  items={[
+    {
+      name: "DKP-TKA",
+      subtitle: "Dana kompensasi",
+      values: {
+        Jumlah: "USD 100/bulan",
+        "Dibayar Oleh": "Pemberi Kerja",
+        "Total 12-bulan": "USD 1.200",
+      },
+      highlight: true,
+    },
+    {
+      name: "Biaya VITAS",
+      subtitle: "Persetujuan visa",
+      values: {
+        Jumlah: "Rp 1.500.000",
+        "Dibayar Oleh": "Pemberi Kerja/Pekerja",
+        "Total 12-bulan": "~$95",
+      },
+    },
+    {
+      name: "Biaya KITAS",
+      subtitle: "Izin tinggal",
+      values: {
+        Jumlah: "Rp 2.000.000",
+        "Dibayar Oleh": "Pemberi Kerja/Pekerja",
+        "Total 12-bulan": "~$125",
+      },
+    },
+    {
+      name: "STM & Biometrik",
+      subtitle: "Biaya pemrosesan",
+      values: {
+        Jumlah: "Rp 300.000",
+        "Dibayar Oleh": "Pemberi Kerja/Pekerja",
+        "Total 12-bulan": "~$20",
+      },
+    },
+  ]}
+/>
+
+<InfoCard variant="note" title="DKP-TKA adalah Biaya Terbesar">
+  **Dana kompensasi USD 100/bulan** adalah biaya pemerintah terbesar. Untuk izin
+  2 tahun, biayanya adalah **USD 2.400** di muka dan tidak dapat dikembalikan.
+</InfoCard>
+
+---
+
+### 2. Biaya Agen/Pemrosesan
+
+Kebanyakan perusahaan menggunakan agen imigrasi. Biaya tipikal:
+
+| Layanan                  | Rentang Biaya (Rp) | Catatan                            |
+| ------------------------ | ------------------ | ---------------------------------- |
+| Pemrosesan KITAS lengkap | 15-25 juta         | All-inclusive                      |
+| RPTKA saja               | 5-8 juta           | Jika mengurus KITAS sendiri        |
+| Pemrosesan perpanjangan  | 8-15 juta          | Lebih sederhana dari aplikasi baru |
+| Pemrosesan kilat         | +30-50%            | Tidak selalu memungkinkan          |
+
+---
+
+### 3. Biaya Tersembunyi/Tambahan
+
+Jangan lupakan pengeluaran ini:
+
+| Item                  | Estimasi Biaya    | Catatan                                   |
+| --------------------- | ----------------- | ----------------------------------------- |
+| Legalisasi dokumen    | Rp 1-3 juta       | Ijazah, sertifikat                        |
+| Terjemahan            | Rp 500rb-1,5 juta | Jika dokumen tidak dalam Bahasa Indonesia |
+| Foto                  | Rp 50-100rb       | Persyaratan khusus                        |
+| Pemeriksaan kesehatan | Rp 500rb-1 juta   | Terkadang diperlukan                      |
+| Perjalanan biometrik  | Bervariasi        | Mungkin perlu mengunjungi kantor tertentu |
+
+---
+
+## Skenario Total Biaya
+
+<ComparisonTable
+  title="Contoh Total Biaya"
+  description="Anggaran realistis untuk situasi yang berbeda"
+  items={[
+    {
+      name: "Karyawan (1 tahun)",
+      subtitle: "Perusahaan mengurus semuanya",
+      values: {
+        "DKP-TKA": "USD 1.200",
+        "Biaya Pemerintah": "~Rp 4jt",
+        Agen: "~Rp 18jt",
+        Total: "~Rp 40jt (~$2.500)",
+      },
+    },
+    {
+      name: "Direktur (2 tahun)",
+      subtitle: "Miliki PT PMA sendiri",
+      values: {
+        "DKP-TKA": "USD 2.400",
+        "Biaya Pemerintah": "~Rp 4jt",
+        Agen: "~Rp 25jt",
+        Total: "~Rp 68jt (~$4.250)",
+      },
+      highlight: true,
+    },
+    {
+      name: "Perpanjangan (1 tahun)",
+      subtitle: "KITAS yang sudah ada",
+      values: {
+        "DKP-TKA": "USD 1.200",
+        "Biaya Pemerintah": "~Rp 3jt",
+        Agen: "~Rp 12jt",
+        Total: "~Rp 34jt (~$2.100)",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Siapa yang Membayar?
+
+Secara hukum, **pemberi kerja** bertanggung jawab atas sebagian besar biaya izin kerja. Dalam praktiknya:
+
+### Pemberi Kerja Biasanya Membayar
+
+- DKP-TKA (kewajiban wajib pemberi kerja)
+- Pemrosesan RPTKA
+- Biaya agen
+
+### Sering Dinegosiasikan
+
+- Biaya KITAS
+- Biaya perpanjangan
+- Penyiapan dokumen
+
+<InfoCard variant="warning" title="Periksa Kontrak Anda">
+Sebelum menerima pekerjaan, klarifikasi:
+- Siapa yang membayar izin kerja awal?
+- Siapa yang membayar perpanjangan?
+- Apa yang terjadi jika Anda berhenti lebih awal?
+- Apakah biaya dipotong dari gaji?
+
+Dapatkan secara tertulis dalam kontrak kerja Anda.
+
+</InfoCard>
+
+---
+
+## Pertanyaan Umum
+
+<AskZantara
+  context="Work permit costs, KITAS fees, DKP-TKA, immigration agent fees Indonesia"
+  placeholder="Tanya tentang biaya izin kerja..."
+  suggestedQuestions={[
+    "Apakah DKP-TKA bisa dikembalikan jika saya berhenti lebih awal?",
+    "Dapatkah saya mengklaim biaya izin kerja pada pajak?",
+    "Mengapa biaya agen sangat bervariasi?",
+    "Apakah ada pembebasan biaya?",
+  ]}
+/>
+
+---
+
+## Artikel Terkait
+
+- [Panduan KITAS Kerja](/insights/immigration/kitas-work-permit-guide)
+- [Penjelasan RPTKA & IMTA](/insights/immigration/rptka-imta-explained)
+- [Linimasa Izin Kerja](/insights/immigration/work-permit-timeline)

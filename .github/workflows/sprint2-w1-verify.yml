@@ -1,0 +1,255 @@
+name: Sprint 2 W1 verify (measurer_event emission)
+
+# Runs once on 2026-05-10 09:13 WITA = 01:13 UTC to verify migration 152
+# (notify_measurer_event trigger, applied 2026-05-03 01:21:16 UTC) is
+# actually emitting events into events_outbox after a week of runtime.
+# Replaces the session-only Claude Code cron cf018a58 which dies when
+# the session ends.
+#
+# Single one-shot schedule. After 2026-05-10, the GitHub schedule cron
+# never matches again (May 10 has passed for the year). The workflow_dispatch
+# remains so future agents can re-run the verification on demand.
+#
+# Refs:
+#   docs/wr2/sprint2-mapping.md § "L1 — measurer (Sprint 2 W1, mig 152)"
+#   docs/audits/sprint0/wr2-ipc-mechanism.md § "Violation 1"
+#   PR #439 (mig 152), MOS unresolved entry 2026-05-10 reminder
+
+on:
+  schedule:
+    # 13 1 10 5 *  =  01:13 UTC = 09:13 WITA on 2026-05-10
+    - cron: '13 1 10 5 *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: sprint2-w1-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Query events_outbox for measurer_event
+        id: query
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          set -uo pipefail
+
+          # Run all 4 verification queries in a single flyctl ssh hop. Output
+          # comes back as TSV via psql -tAF $'\t' which is robust to spaces in
+          # values. We pin the api process group (not rag) so asyncpg /
+          # site-packages resolution is correct (cf. cicatrix PR #339).
+          MACHINE_ID=$(flyctl status --app nuzantara-rag --json 2>/dev/null \
+            | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          for m in d.get('Machines', []):
+              if m.get('config', {}).get('metadata', {}).get('fly_process_group') == 'api' \
+                 and m.get('state') == 'started':
+                  print(m['id'])
+                  break
+          " || echo "")
+
+          if [ -z "$MACHINE_ID" ]; then
+            echo "ERROR: no started api-group machine found on nuzantara-rag" >&2
+            echo "verdict=infra-error" >> "$GITHUB_OUTPUT"
+            echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Could not locate a started api-group machine on nuzantara-rag." >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Note: psql connect string read from $DATABASE_URL inside the container
+          # (same as backend.db.migrate uses). We never embed creds in the workflow.
+          QUERIES=$(cat <<'PSQL'
+          \pset format unaligned
+          \pset fieldsep \t
+          \pset tuples_only on
+
+          -- Q1: total events + unconsumed backlog over last 7 days
+          SELECT 'q1_total' AS k,
+                 COUNT(*),
+                 COUNT(*) FILTER (WHERE consumed_at IS NULL),
+                 COALESCE(MIN(created_at)::text, ''),
+                 COALESCE(MAX(created_at)::text, '')
+            FROM events_outbox
+           WHERE channel = 'measurer_event'
+             AND created_at > NOW() - INTERVAL '7 days';
+
+          -- Q2: event_type breakdown over last 24h
+          SELECT 'q2_breakdown_' || COALESCE(payload->>'event_type', 'null') AS k,
+                 COUNT(*),
+                 0,
+                 '',
+                 COALESCE(MAX(created_at)::text, '')
+            FROM events_outbox
+           WHERE channel = 'measurer_event'
+             AND created_at > NOW() - INTERVAL '24 hours'
+           GROUP BY payload->>'event_type';
+
+          -- Q3: stale unconsumed backlog (> 1h old)
+          SELECT 'q3_stale_unconsumed' AS k,
+                 COUNT(*),
+                 0,
+                 '',
+                 ''
+            FROM events_outbox
+           WHERE channel = 'measurer_event'
+             AND consumed_at IS NULL
+             AND created_at < NOW() - INTERVAL '1 hour';
+
+          -- Q4: 1:1 trigger contract (post_metrics_history INSERTs vs metric_recorded events)
+          SELECT 'q4_pmh_inserts' AS k,
+                 (SELECT COUNT(*) FROM post_metrics_history
+                   WHERE collected_at > NOW() - INTERVAL '24 hours'),
+                 (SELECT COUNT(*) FROM events_outbox
+                   WHERE channel = 'measurer_event'
+                     AND payload->>'event_type' = 'metric_recorded'
+                     AND created_at > NOW() - INTERVAL '24 hours'),
+                 '',
+                 '';
+          PSQL
+          )
+
+          echo "Querying nuzantara-rag api machine $MACHINE_ID …"
+          RAW=$(flyctl ssh console \
+                  --app nuzantara-rag \
+                  --machine "$MACHINE_ID" \
+                  --command "psql \"\$DATABASE_URL\" -v ON_ERROR_STOP=1 <<'EOSQL'
+          $QUERIES
+          EOSQL
+          " 2>&1 || true)
+
+          # The raw output is psql's TSV plus flyctl's connection banner. Filter
+          # for our k/v lines (they all start with q[1-4]_).
+          PARSED=$(echo "$RAW" | grep -E '^q[1-4]_' || true)
+          echo "Parsed query output:"
+          echo "$PARSED"
+          echo "----"
+
+          if [ -z "$PARSED" ]; then
+            echo "ERROR: no parseable query output" >&2
+            echo "Raw flyctl output:" >&2
+            echo "$RAW" >&2
+            echo "verdict=infra-error" >> "$GITHUB_OUTPUT"
+            echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+            echo "Could not parse psql output from flyctl ssh console. Manual check required." >> "$GITHUB_OUTPUT"
+            echo "Run logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Extract per-query values via Python — robust to extra columns.
+          eval "$(echo "$PARSED" | python3 -c "
+          import sys
+          q1_total = q1_unconsumed = 0
+          q3_stale = 0
+          q4_pmh = q4_evt = 0
+          breakdown = {}
+          for line in sys.stdin:
+              parts = line.rstrip('\n').split('\t')
+              if not parts:
+                  continue
+              k = parts[0]
+              if k == 'q1_total':
+                  q1_total = int(parts[1])
+                  q1_unconsumed = int(parts[2])
+              elif k.startswith('q2_breakdown_'):
+                  evtype = k.removeprefix('q2_breakdown_')
+                  breakdown[evtype] = int(parts[1])
+              elif k == 'q3_stale_unconsumed':
+                  q3_stale = int(parts[1])
+              elif k == 'q4_pmh_inserts':
+                  q4_pmh = int(parts[1])
+                  q4_evt = int(parts[2])
+
+          print(f\"Q1_TOTAL='{q1_total}'\")
+          print(f\"Q1_UNCONSUMED='{q1_unconsumed}'\")
+          print(f\"Q3_STALE='{q3_stale}'\")
+          print(f\"Q4_PMH='{q4_pmh}'\")
+          print(f\"Q4_EVT='{q4_evt}'\")
+          print(f\"BREAKDOWN_KEYS='{','.join(sorted(breakdown.keys()))}'\")
+          print(f\"BREAKDOWN_TOTAL='{sum(breakdown.values())}'\")
+          ")"
+
+          echo "Q1 total events (7d): $Q1_TOTAL — unconsumed: $Q1_UNCONSUMED"
+          echo "Q3 stale backlog (>1h unconsumed): $Q3_STALE"
+          echo "Q4 contract: pmh_inserts=$Q4_PMH events=$Q4_EVT"
+          echo "Q2 event types (24h): $BREAKDOWN_KEYS (total=$BREAKDOWN_TOTAL)"
+
+          # Verdict logic:
+          #   green     — Q1>0 AND Q3<10 AND Q4_PMH==Q4_EVT
+          #   yellow    — Q1>0 BUT (Q3>=10 OR Q4 mismatch) — emitting but consumer or
+          #               trigger contract issue
+          #   red-empty — Q1==0 — trigger never fired in 7 days (likely silent failure)
+          VERDICT="green"
+          DETAILS=""
+          if [ "$Q1_TOTAL" -eq 0 ]; then
+            VERDICT="red-empty"
+            DETAILS="No measurer_event rows in events_outbox after 7 days — trigger likely silently failed. Check: pg_stat_activity, fly logs --app nuzantara-rag for ERROR rows, run \\\`SELECT * FROM pg_trigger WHERE tgname LIKE '%measurer%';\\\` to confirm trigger exists."
+          elif [ "$Q3_STALE" -ge 10 ] || [ "$Q4_PMH" != "$Q4_EVT" ]; then
+            VERDICT="yellow"
+            REASONS=""
+            [ "$Q3_STALE" -ge 10 ] && REASONS="${REASONS}Stale unconsumed backlog ($Q3_STALE > 10) — consumer not picking up. "
+            [ "$Q4_PMH" != "$Q4_EVT" ] && REASONS="${REASONS}1:1 contract violated (pmh=$Q4_PMH events=$Q4_EVT) — trigger missed inserts or extra fires. "
+            DETAILS="$REASONS"
+          else
+            DETAILS="Total events 7d: $Q1_TOTAL · backlog: $Q1_UNCONSUMED · stale: $Q3_STALE · 1:1 contract: pmh=$Q4_PMH events=$Q4_EVT · types: $BREAKDOWN_KEYS"
+          fi
+
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+          {
+            echo "summary<<EOF"
+            echo "Verdict: $VERDICT"
+            echo "$DETAILS"
+            echo ""
+            echo "Q1 total events (7d): $Q1_TOTAL"
+            echo "Q1 unconsumed: $Q1_UNCONSUMED"
+            echo "Q3 stale (>1h): $Q3_STALE"
+            echo "Q4 contract: pmh=$Q4_PMH events=$Q4_EVT"
+            echo "Q2 types (24h): $BREAKDOWN_KEYS (total=$BREAKDOWN_TOTAL)"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Telegram report
+        if: always() && steps.query.outputs.verdict != ''
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          VERDICT: ${{ steps.query.outputs.verdict }}
+          SUMMARY: ${{ steps.query.outputs.summary }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$BOT" ] || [ -z "$CHAT" ]; then
+            echo "Telegram secrets missing — skipping notification"
+            exit 0
+          fi
+
+          case "$VERDICT" in
+            green)        ICON="✅" ;;
+            yellow)       ICON="⚠️" ;;
+            red-empty)    ICON="🔴" ;;
+            infra-error)  ICON="🛠" ;;
+            *)            ICON="❓" ;;
+          esac
+
+          TEXT="${ICON} <b>Sprint 2 W1 verify (measurer_event)</b>
+          ${SUMMARY}
+
+          Run: ${RUN_URL}"
+
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true
+
+      - name: Fail job on red verdict
+        if: steps.query.outputs.verdict == 'red-empty'
+        run: |
+          echo "::error::Sprint 2 W1 verification: trigger NOT emitting after 7 days"
+          exit 1

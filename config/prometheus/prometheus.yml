@@ -1,0 +1,60 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - 'alerts.yml'
+  - 'article_composer_alerts.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Nuzantara Backend on Fly.io (via Blackbox Exporter HTTP probe)
+  - job_name: 'nuzantara-backend'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: ['https://nuzantara-rag.fly.dev/health/ready']
+    scrape_interval: 30s
+    scrape_timeout: 15s
+    static_configs:
+      - targets: ['blackbox-exporter:9115']
+        labels:
+          environment: 'production'
+          instance: 'nuzantara-rag.fly.dev'
+    relabel_configs:
+      - source_labels: [__param_target]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # PostgreSQL Exporter
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  # Node Exporter (host CPU/RAM/disk)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Cron Metrics Exporter (custom, reads ~/logs/cron/*.jsonl)
+  - job_name: 'cron-exporter'
+    static_configs:
+      - targets: ['cron-exporter:9101']
+    scrape_interval: 60s

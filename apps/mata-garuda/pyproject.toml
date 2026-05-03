@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mata-garuda"
+version = "0.1.0"
+description = "Mata Garuda — Intelligence Super Hub (OSINT blindato, CLI-only, Lamarckian meta-agent)"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Balizero1987" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
+[project.scripts]
+mata-garuda = "mata_garuda.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mata_garuda*"]
+exclude = ["tests*", "feedback*", "logs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

@@ -1,0 +1,464 @@
+MISURE COERCITIVE DELL'IMMIGRAZIONE INDONESIANA:
+CEKAL, DEPORTAZIONE E SANZIONI AMMINISTRATIVE
+
+Guida normativa verificata | Aggiornata a UU 63/2024, PP 31/2013, Permenkumham 29/2021
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INTRODUZIONE: IL SISTEMA COERCITIVO DELL'IMMIGRAZIONE
+
+L'immigrazione indonesiana — intesa come il controllo dei transiti e della
+presenza straniera nel territorio della Repubblica — è strutturata intorno a
+un sistema di misure coercitive progressive, dai divieti amministrativi fino
+all'espulsione forzata. [IMM-006]
+
+Dal 2024, il Ministero competente per l'immigrazione è il Kementerian Imigrasi
+dan Pemasyarakatan (Kemenimipas), separato dal precedente Kemenkumham.
+L'autorità esecutiva spetta alla Direzione Generale dell'Immigrazione e agli
+Uffici Immigrazione territoriali. [IMM-365]
+
+Questa guida è rivolta ai clienti di Bali Zero che operano o risiedono in
+Indonesia come stranieri (WNA) e intendono comprendere i propri rischi legali
+in materia di immigrazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 1 — QUADRO GENERALE DELLE AZIONI AMMINISTRATIVE
+
+Un'azione amministrativa dell'immigrazione (tindakan administrasi keimigrasian)
+è una sanzione amministrativa imposta dai funzionari dell'immigrazione agli
+stranieri, al di fuori dei procedimenti giudiziari ordinari. Non richiede
+condanna penale: è un atto dell'esecutivo. [IMM-018]
+
+Le misure coercitive principali previste dall'ordinamento indonesiano sono:
+
+  1. PREVENZIONE (pencegahan): divieto temporaneo di lasciare il territorio
+     indonesiano, applicabile sia a cittadini indonesiani che a stranieri
+     per motivi di immigrazione. [IMM-020]
+
+  2. RESPINGIMENTO (penolakan): divieto per gli stranieri di entrare nel
+     territorio indonesiano basato su motivi di immigrazione. [IMM-021]
+
+  3. DEPORTAZIONE (deportasi): azione forzata di espulsione di uno straniero
+     dal territorio indonesiano. [IMM-022]
+
+  4. CEKAL / BANDO DI USCITA: divieto temporaneo di uscire dal territorio,
+     applicabile durante procedimenti penali formali. [IMM-367]
+
+  5. DETENZIONE AMMINISTRATIVA: trattenimento in strutture dedicate (Rumah
+     Detensi Imigrasi / Rudenim) in attesa di esecuzione del provvedimento. [IMM-019]
+
+La sorveglianza amministrativa sugli stranieri è obbligatoria e copre tutte le
+fasi: dalla richiesta di visto, all'ingresso e uscita dal territorio, al
+rilascio del permesso di soggiorno e alle attività svolte in Indonesia. [IMM-086]
+
+Il controllo amministrativo deve includere la raccolta, l'elaborazione e la
+presentazione di dati riguardanti i servizi di immigrazione, il movimento degli
+stranieri e le decisioni di detenzione. [IMM-091]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 2 — CEKAL (BANDO DI USCITA / BLACKLIST TEMPORANEO)
+
+2.1 Definizione
+
+Il termine "cekal" (abbreviazione di "pencegahan dan penangkalan") fa
+riferimento in pratica al divieto di lasciare l'Indonesia imposto a uno
+straniero nel corso di un procedimento legale.
+
+Esistono due nozioni spesso confuse nella prassi:
+  - PENCEGAHAN: divieto temporaneo di uscita dal territorio (stranieri e WNI). [IMM-020]
+  - PENANGKALAN: divieto di ingresso nel territorio (stranieri). [IMM-021]
+
+2.2 Condizione Chiave: UU 63/2024
+
+La modifica normativa più rilevante è contenuta nella Legge 63/2024
+(Perubahan Ketiga UU 6/2011 sull'Immigrazione):
+
+  Il bando di uscita (cekal) per stranieri può essere applicato SOLO durante
+  indagini formali (penyidikan) o procedimenti penali, NON durante le
+  indagini preliminari (penyelidikan). [IMM-367]
+
+Questa distinzione è fondamentale:
+
+  - PENYELIDIKAN: fase preliminare esplorativa (polizia raccoglie informazioni,
+    non è ancora indagato formalmente). Non è sufficiente per il cekal.
+
+  - PENYIDIKAN: fase investigativa formale, con indagato ufficialmente
+    identificato e accuse formulate. Solo da qui scatta il cekal. [IMM-367]
+
+Implicazione pratica: uno straniero convocato come testimone o presente durante
+controlli preliminari NON può essere bloccato all'uscita dall'Indonesia tramite
+cekal, a meno che non sia stato formalmente iscritto nel registro degli indagati.
+
+2.3 Chi Può Applicare il Cekal
+
+L'azione è di competenza della Direzione Generale dell'Immigrazione su
+richiesta delle autorità competenti (Polizia, KPK, Kejaksaan). I funzionari
+dell'immigrazione eseguono il provvedimento dopo ricezione della richiesta
+formale con ordine scritto firmato dall'autorità competente. [IMM-093]
+
+In circostanze particolari, il controllo sul campo può essere effettuato anche
+senza un ordine scritto preventivo, ma rimane l'eccezione. [IMM-094]
+
+2.4 Durata del Cekal
+
+Il bando ha durata temporanea e deve essere motivato dalla permanenza
+del procedimento penale. Alla conclusione del procedimento, il bando
+cessa automaticamente.
+
+2.5 Sorveglianza Associata al Cekal
+
+La sorveglianza amministrativa degli stranieri sottoposti a misure coercitive
+è continua: i dati vengono registrati e resi accessibili alle agenzie competenti
+attraverso il Sistema Informativo di Gestione dell'Immigrazione. [IMM-089]
+
+I funzionari dell'immigrazione hanno la facoltà di richiedere informazioni
+a chiunque ospiti stranieri riguardo ai dati e alla posizione degli stessi. [IMM-096]
+
+Gli stranieri ospitati devono essere registrati e i loro dati consegnati
+all'ufficiale di immigrazione per fini di sorveglianza. [IMM-099]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 3 — DEPORTAZIONE (DEPORTASI)
+
+3.1 Definizione
+
+La deportazione è l'azione forzata di espulsione di uno straniero dal territorio
+indonesiano. È l'azione coercitiva più severa nell'ambito del diritto
+amministrativo dell'immigrazione. [IMM-022]
+
+3.2 Motivi Tipici di Deportazione
+
+Le principali cause che portano alla deportazione di uno straniero includono:
+
+  a) Violazione del permesso di soggiorno (overstay, attività non consentita
+     dalla tipologia di visto)
+  b) Mancato rispetto delle condizioni di ingresso o soggiorno
+  c) Presenza nel territorio senza documenti validi
+  d) Condanne penali che comportano espulsione
+  e) Minaccia all'ordine pubblico, sicurezza nazionale o sanità pubblica
+  f) Rifiuto del rinnovo o revoca del permesso di soggiorno
+
+La sorveglianza immigratoria nei confronti degli stranieri avviene durante
+l'intera permanenza: richiesta di visto, ingresso/uscita, rilascio del permesso
+e attività nel territorio. [IMM-086]
+
+3.3 Procedura della Deportazione
+
+Passo 1 — Identificazione e notifica
+Il Capo dell'Ufficio Immigrazione avvia il procedimento. Lo straniero viene
+notificato e ha facoltà di presentare osservazioni.
+
+Passo 2 — Timbro di deportazione
+Quando la richiesta o il rinnovo del permesso è rigettata, il Capo Ufficio
+Immigrazione applica un timbro di deportazione sul passaporto e ordina allo
+straniero di lasciare l'Indonesia entro un massimo di 7 giorni. [IMM-229]
+
+Il medesimo meccanismo si applica in caso di rifiuto della segnalazione
+(pelaporan) per permesso di soggiorno permanente: timbro di rimpatrio e ordine
+di uscita entro 7 giorni. [IMM-189]
+
+Passo 3 — Detenzione (se necessario)
+In attesa dell'esecuzione del provvedimento, lo straniero può essere trattenuto
+presso la Casa di Detenzione dell'Immigrazione (Rudenim), che è un'unità
+tecnica esecutiva dedicata alla detenzione temporanea. [IMM-019]
+
+Lo straniero sottoposto a misure amministrative sull'immigrazione deve essere
+in possesso del permesso di uscita durante tutta la fase procedurale. [IMM-029]
+
+Passo 4 — Esecuzione dell'espulsione
+L'espulsione è eseguita materialmente dall'ufficio immigrazione competente,
+con accompagnamento al punto di uscita (aeroporto o porto). Lo straniero è
+rimpatriato nel paese di provenienza o in un paese che accetti di riceverlo.
+
+3.4 Termine per la Partenza
+
+Lo straniero senza permesso di soggiorno valido deve lasciare l'Indonesia
+entro massimo 7 giorni dalla data del timbro di deportazione apposto sul
+documento di viaggio. Il mancato rispetto di questo termine comporta
+l'esecuzione forzata. [IMM-196]
+
+3.5 Caso Speciale: Detenzione Prolungata
+
+Lo straniero detenuto nel Rudenim per 10 anni o più acquisisce il diritto di
+richiedere il permesso di risiedere fuori dal centro di detenzione e l'esenzione
+dal permesso di soggiorno ordinario. [IMM-200]
+
+Il capo del centro di detenzione deve esaminare tale richiesta entro massimo
+3 giorni lavorativi dalla ricezione. [IMM-203]
+
+3.6 Stranieri Esclusi dall'Obbligo di Permesso Durante Processi
+
+Uno straniero è escluso dall'obbligo di mantenere un permesso di soggiorno
+valido se è sottoposto a detenzione per procedimenti investigativi, processuali
+o giudiziari, oppure se è detenuto in un carcere e il permesso è nel frattempo
+scaduto. [IMM-193]
+
+Questo significa che la scadenza del permesso durante la detenzione non
+aggiunge automaticamente una violazione immigratoria al carico.
+
+3.7 Timbro di Deportazione vs. Timbro di Rimpatrio
+
+Nella prassi amministrativa indonesiana coesistono tre forme di autorizzazione
+all'uscita per stranieri soggetti a misure:
+
+  - Lettera di autorizzazione
+  - Timbro di rimpatrio (stempel pulang)
+  - Timbro di deportazione (stempel deportasi)
+
+La scelta dipende dai motivi che determinano l'uscita dallo straniero. [IMM-147]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 4 — SANZIONI AMMINISTRATIVE
+
+4.1 Natura delle Sanzioni Amministrative
+
+Le sanzioni amministrative dell'immigrazione sono distinte dalle sanzioni
+penali: si applicano al di fuori dei procedimenti giudiziari e sono di
+competenza esclusiva dei funzionari dell'immigrazione. [IMM-018]
+
+Il sistema può includere:
+
+  a) Deportazione (la misura più grave)
+  b) Detrazione o cancellazione del permesso di soggiorno
+  c) Divieto di ingresso futuro (blacklist / penangkalan)
+  d) Detenzione amministrativa (Rudenim)
+  e) Obbligo di partenza entro termine prefissato
+
+4.2 Overstay: Tutele e Rischi
+
+L'overstay (tinggal melebihi batas waktu) è una delle violazioni più comuni.
+La normativa prevede però una tutela procedurale rilevante:
+
+  Se la richiesta di rinnovo è presentata e il pagamento delle spese di
+  immigrazione è effettuato prima della scadenza del permesso, non è considerato
+  overstay anche se il processo amministrativo si conclude dopo la scadenza. [IMM-327]
+
+Al contrario, la mancata regolarizzazione entro i termini comporta il rischio di
+deportazione immediata e inserimento nella lista di divieto di ingresso futuro.
+
+La garanzia immigratoria (jaminan keimigrasian) può essere utilizzata per
+coprire i costi dello straniero che rimane nel territorio dopo la scadenza del
+permesso, fino a un massimo di 60 giorni. [IMM-255]
+
+La garanzia può altresì essere impiegata per il pagamento di altri costi
+relativi agli obblighi immigrativi. [IMM-256]
+
+4.3 Sorveglianza Sui Garanti
+
+La sorveglianza dell'immigrazione si estende ai garanti (penjamin) dello
+straniero. Tale sorveglianza è effettuata solo per i garanti di stranieri
+titolari di permesso di soggiorno temporaneo (KITAS) o permanente (KITAP). [IMM-100]
+
+I garanti persone giuridiche sono soggetti a verifiche relative alla
+documentazione, alla presenza fisica dello straniero, alle attività svolte e al
+rispetto degli obblighi. [IMM-101]
+
+4.4 Abrogazione delle Norme Precedenti
+
+Le principali fonti normative previgenti in materia di prevenzione, allontanamento
+e sorveglianza sono state abrogate:
+
+  - PP 30/1994 relativo alle procedure di prevenzione e allontanamento:
+    abrogato, non più applicabile. [IMM-106]
+
+  - PP 31/1994 sulla sorveglianza degli stranieri e sui provvedimenti di
+    immigrazione: abrogato, non più applicabile. [IMM-107]
+
+Il quadro normativo vigente è quindi: UU 6/2011 come modificata da UU 63/2024,
+PP 31/2013, Permenkumham 29/2021 e Permenkumham 11/2024.
+
+4.5 Violazioni che Non Costituiscono Sanzione
+
+È importante distinguere situazioni che non integrano violazione:
+
+  - Una richiesta di proroga presentata e pagata prima della scadenza non
+    costituisce overstay anche se la pratica viene conclusa dopo. [IMM-327]
+
+  - La scadenza del permesso di soggiorno durante la detenzione per
+    procedimenti giudiziari non costituisce violazione autonoma. [IMM-193]
+
+  - La proroga del Permesso di Soggiorno Permanente presentata prima della
+    scadenza non integra violazione anche se completata in ritardo. [IMM-167]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 5 — IMPLICAZIONI PRATICHE PER I CLIENTI BALI ZERO
+
+5.1 Regola Fondamentale: Agire Prima della Scadenza
+
+La prima linea di difesa contro qualsiasi misura coercitiva è la gestione
+proattiva del permesso di soggiorno:
+
+  - Presentare il rinnovo prima della scadenza, con pagamento delle spese
+    incluso: non si è in overstay anche se la pratica si prolunga. [IMM-327]
+
+  - Comunicare tempestivamente al garante e all'ufficio immigrazione qualsiasi
+    cambiamento di attività, residenza o sponsor. [IMM-174]
+
+5.2 In Caso di Convocazione da Parte delle Autorità
+
+Se si viene convocati da forze di polizia o KPK:
+
+  - Verificare in quale fase procedurale si trova l'indagine:
+    penyelidikan (fase preliminare) oppure penyidikan (fase formale). [IMM-367]
+
+  - Solo nella fase di penyidikan il cekal è applicabile. Nella fase
+    di penyelidikan non esiste base legale per il bando di uscita.
+
+  - Consultare immediatamente un avvocato e Bali Zero per la valutazione
+    della posizione immigratoria.
+
+5.3 In Caso di Ricevimento del Timbro di Deportazione
+
+Se il passaporto riceve un timbro di deportazione:
+
+  - Il termine per lasciare l'Indonesia è di massimo 7 giorni. [IMM-196]
+  - Contattare immediatamente Bali Zero e un legale.
+  - Verificare se esistano le condizioni per un ricorso amministrativo.
+  - Comunicare la situazione al garante (sponsor del KITAS/KITAP).
+
+5.4 Sorveglianza Ordinaria: Cosa Aspettarsi
+
+Il Ministero effettua sorveglianza su tutti gli stranieri. Questo è ordinario
+e non coercitivo: comprende il controllo durante la richiesta di visto, i
+movimenti di ingresso/uscita, il rilascio dei permessi e le attività svolte
+nel territorio. [IMM-084] [IMM-086]
+
+I dati di tutti gli stranieri soggiornanti vengono elaborati e resi accessibili
+alle agenzie competenti tramite il sistema informativo immigrazione. [IMM-089]
+
+I proprietari e gestori di alloggi (hotel, guest house, villa, affitti privati)
+hanno l'obbligo di comunicare i dati degli ospiti stranieri all'ufficio
+immigrazione. [IMM-099]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SEZIONE 6 — TABELLA RIEPILOGATIVA
+
+Misura          | Quando                          | Durata        | Base Normativa
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cekal (uscita)  | Solo durante penyidikan formale | Temporanea    | UU 63/2024 [IMM-367]
+Respingimento   | Divieto ingresso (immigrazione) | Permanente    | PP 31/2013 [IMM-021]
+Deportazione    | Violazione soggiorno / penale   | Definitiva    | PP 31/2013 [IMM-022]
+Detenzione Adm. | In attesa esecuzione provved.   | Fino a 10 anni| Permenkumham-29-2021 [IMM-019]
+Timbro rimpatrio| Rigetto rinnovo / segnalazione  | 7 giorni      | Permenkumham-29-2021 [IMM-189]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DISCLAIMER
+
+Questa guida ha scopo informativo e non costituisce consulenza legale. La
+normativa indonesiana sull'immigrazione è soggetta a modifiche frequenti.
+Per la valutazione di situazioni specifiche, contattare il team Bali Zero.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI
+
+IMM-006   L'immigrazione riguarda il transito e la sorveglianza al fine di
+          mantenere la sovranità dello stato. (PP-31-2013 Pasal 1 Ayat 1)
+
+IMM-018   Definizione di azione amministrativa dell'immigrazione come sanzione
+          al di fuori dei procedimenti giudiziari. (PP-31-2013 Pasal 1 Ayat 23)
+
+IMM-019   La Casa di Detenzione (Rudenim) è struttura temporanea per stranieri
+          sottoposti ad azioni amministrative. (PP-31-2013 Pasal 1 Ayat 24)
+
+IMM-020   La prevenzione è il divieto temporaneo di uscita dal territorio.
+          (PP-31-2013 Pasal 1 Ayat 27)
+
+IMM-021   Il respingimento è il divieto di ingresso per motivi immigratizi.
+          (PP-31-2013 Pasal 1 Ayat 28)
+
+IMM-022   La deportazione è l'azione forzata di espulsione. (PP-31-2013 Pasal 1 Ayat 30)
+
+IMM-029   Lo straniero sottoposto a misure amministrative deve avere permesso
+          di uscita. (PP-31-2013 Pasal 6 Huruf d)
+
+IMM-084   Il Ministero effettua sorveglianza immigratoria su cittadini e stranieri.
+          (PP-31-2013 Pasal 172 Ayat 1-2)
+
+IMM-086   Sorveglianza sugli stranieri durante l'intera permanenza.
+          (PP-31-2013 Pasal 172 Ayat 4)
+
+IMM-089   Dati di sorveglianza accessibili alle agenzie competenti.
+          (PP-31-2013 Pasal 175 Ayat 3)
+
+IMM-091   Controllo amministrativo include dati su servizi, movimenti e
+          detenzioni. (PP-31-2013 Pasal 180 Ayat 1)
+
+IMM-093   Il controllo sul campo richiede ordine scritto firmato.
+          (PP-31-2013 Pasal 182 Ayat 1)
+
+IMM-094   In circostanze particolari il controllo può avvenire senza ordine
+          scritto. (PP-31-2013 Pasal 182 Ayat 2)
+
+IMM-096   L'ufficiale può richiedere informazioni a chi ospita stranieri.
+          (PP-31-2013 Pasal 187 Ayat 1)
+
+IMM-099   I dati degli stranieri ospitati devono essere consegnati all'ufficio.
+          (PP-31-2013 Pasal 188 Ayat 2)
+
+IMM-100   Sorveglianza garanti solo per KITAS/KITAP.
+          (PP-31-2013 Pasal 189 Ayat 2)
+
+IMM-101   Garanti persone giuridiche soggetti a verifica documentale e attività.
+          (riferimento PP-31-2013)
+
+IMM-106   PP 30/1994 su prevenzione e allontanamento abrogato.
+          (PP-31-2013 Pasal 257 Huruf a)
+
+IMM-107   PP 31/1994 su sorveglianza stranieri abrogato.
+          (PP-31-2013 Pasal 257 Huruf b)
+
+IMM-147   Timbro di rimpatrio o di deportazione a seconda dei motivi.
+          (Permenkumham-29-2021 Pasal 109 Ayat 4)
+
+IMM-167   Rinnovo KITAP presentato prima della scadenza non è violazione.
+          (Permenkumham-29-2021 Pasal 133 Ayat 4)
+
+IMM-174   Il garante che intende terminare la garanzia deve segnalarlo
+          all'ufficio immigrazione. (riferimento Permenkumham-29-2021)
+
+IMM-189   Rifiuto segnalazione: timbro rimpatrio, obbligo uscita entro 7 giorni.
+          (Permenkumham-29-2021 Pasal 147 Ayat 10)
+
+IMM-193   Straniero in detenzione giudiziaria esentato dall'obbligo permesso.
+          (Permenkumham-29-2021 Pasal 149 Ayat 2 Huruf a)
+
+IMM-196   Obbligo di lasciare l'Indonesia entro 7 giorni dal timbro.
+          (Permenkumham-29-2021 Pasal 150 Ayat 2)
+
+IMM-200   Straniero detenuto 10+ anni può risiedere fuori dal Rudenim.
+          (Permenkumham-29-2021 Pasal 152 Ayat 1)
+
+IMM-203   Il capo del Rudenim esamina la richiesta entro 3 giorni lavorativi.
+          (Permenkumham-29-2021 Pasal 152 Ayat 3)
+
+IMM-229   Rigetto richiesta: timbro rimpatrio, obbligo uscita entro 7 giorni.
+          (Permenkumham-29-2021 Pasal 189)
+
+IMM-255   La garanzia immigratoria copre i costi dello straniero fino a 60 giorni
+          dopo la scadenza. (Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf b)
+
+IMM-256   La garanzia copre altri costi relativi agli obblighi immigrativi.
+          (Permenkumham-29-2021 Pasal 225 Ayat (2) Huruf c)
+
+IMM-327   Se richiesta e pagamento avvengono prima della scadenza, non è overstay.
+          (Permenkumham-11-2024 Pasal 94A Ayat 5)
+
+IMM-365   Il Kemenimipas è ora il Ministero competente per l'immigrazione.
+          (Perpres pembentukan Kemenimipas 2024)
+
+IMM-367   Il cekal si applica solo durante penyidikan, non penyelidikan.
+          (UU 63/2024 Perubahan Ketiga UU 6/2011)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Prodotta da Bali Zero / Zantara Intelligence — 2025
+Aggiornata a UU 63/2024 (vigente) — PP 31/2013 — Permenkumham 29/2021 — Permenkumham 11/2024

@@ -1,0 +1,510 @@
+name: Deploy Backend to Fly.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/fly-deploy.yml"
+  workflow_dispatch: # allow manual retrigger (e.g. after a secret rotation)
+
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false # mai cancellare un deploy in corso
+
+jobs:
+  pre-deploy-gate:
+    name: Pre-deploy validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend-rag
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: nuzantara_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+      REDIS_URL: redis://localhost:6379
+      PYTHONPATH: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/backend-rag/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # requirements.txt declares cell-core editable (`-e ../../packages/cell-core`),
+          # so the previously-separate `pip install -e` step is no longer needed.
+          pip install -r requirements.txt -q
+          pip install pytest pytest-asyncio pytest-mock ruff -q
+
+      - name: Import chain gate (blocca rogue AI refactor)
+        run: |
+          python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+
+      - name: Ruff lint (blocking only on deploy-critical issues)
+        run: |
+          # Block only on issues that would actually break the running backend
+          # or that silently rot the codebase:
+          #   F401 — unused import (dead code; also catches typo'd re-exports)
+          #   F821 — undefined name (runtime NameError)
+          #   F822 — undefined export in __all__ (ImportError on `from X import *`)
+          #   F823 — local variable referenced before assignment
+          # Style issues (E501 long lines, I001 import order, E402 late imports,
+          # W293 whitespace) are tracked by the full lint step below in
+          # informational mode — they shouldn't block a deploy.
+          ruff check backend/app/ --select F401,F821,F822,F823 --output-format=concise
+          echo "✅ Deploy-critical lint OK"
+
+      - name: Ruff full lint (informational — non-blocking)
+        run: |
+          ruff check backend/app/ --output-format=concise || true
+          echo "ℹ️ Full lint report above (non-blocking — fix in a follow-up PR)"
+        continue-on-error: true
+
+      - name: Core tests (confidence + KG — 82 tests fast gate)
+        run: |
+          PYTHONPATH=. pytest \
+            backend/tests/services/rag/test_confidence.py \
+            backend/tests/services/rag/test_kg_langgraph.py \
+            backend/tests/services/rag/test_kg_subgraphs.py \
+            -q --tb=short -x \
+            --junit-xml=test-results-gate.xml
+          echo "✅ Core tests OK"
+
+      - name: Verify CVE exception file is not stale (blocking)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install pyyaml -q
+          python scripts/check_cve_exceptions.py
+
+      - name: Check Dependabot critical vulnerabilities
+        run: |
+          pip install safety pyyaml -q
+          safety check -r requirements.txt \
+            --save-json safety-deploy-report.json \
+            || true
+          # Route through the same filter CI uses, so an expired or missing
+          # exception fails the deploy gate — not just advisory.
+          CVE_EXCEPTIONS_PATH=${{ github.workspace }}/.security/exceptions.yaml \
+            python ${{ github.workspace }}/scripts/filter_safety_findings.py \
+            safety-deploy-report.json
+
+      - name: Check migration status (informational)
+        run: |
+          echo "Checking for pending migrations..."
+          flyctl ssh console --app nuzantara-rag -C "cd /app && python -m backend.db.migrate status" || echo "⚠️ Migration check skipped (non-blocking)"
+        continue-on-error: true
+
+      - name: Upload gate test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pre-deploy-gate-results
+          path: apps/backend-rag/test-results-gate.xml
+
+      - name: Notifica Telegram — gate fallito
+        if: failure()
+        run: |
+          MESSAGE="🔴 <b>Pre-deploy gate FALLITO</b>%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}%0A%0ACheck GitHub Actions per dettagli."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=HTML" || true
+
+  run-migrations:
+    name: Run DB migrations on Fly.io
+    needs: pre-deploy-gate # only after gate passes
+    runs-on: ubuntu-latest
+    # Job-level env so both setup-flyctl and the flyctl ssh call see the token.
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }} # flyctl ≥0.3 reads this name
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run DB migrations via flyctl console
+        timeout-minutes: 3 # step-level timeout (flyctl ssh no longer supports --timeout)
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'"
+          echo "✅ SQL v2 migrations OK"
+
+  deploy:
+    name: Fly.io rolling deploy
+    needs: run-migrations # BLOCCATO se migration fallisce
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy (rolling strategy, monorepo context)
+        run: |
+          flyctl deploy \
+            --strategy rolling \
+            --app nuzantara-rag \
+            --remote-only \
+            --dockerfile apps/backend-rag/Dockerfile \
+            --config apps/backend-rag/fly.toml
+
+  # SQL v2 migrations must re-run AFTER the new image is live.
+  #
+  # The pre-deploy `run-migrations` job uses `flyctl ssh console` against the
+  # currently-running container — i.e. the PREVIOUS image. Any new SQL file
+  # in apps/backend-rag/backend/db/migrations_v2/NNN_*.sql added by the same
+  # PR is not yet visible to the migration runner. The new SQL only lands in
+  # the image at the `deploy` step. So a PR with new SQL would historically
+  # require a manual `gh workflow run "Deploy Backend to Fly.io" --ref main`
+  # to trigger a no-op redeploy that finally picks up the new file.
+  #
+  # This job re-runs `python -m backend.db.migrate apply-all` on the FRESH
+  # image. Idempotent: the runner skips already-applied via _schema_versions.
+  # On a deploy without new SQL it is a no-op (~5-10s round-trip). On a
+  # deploy with new SQL it applies them and fires a Telegram signal that the
+  # pre-deploy step had been masking.
+  #
+  # Cicatrix STRUCTURAL 2026-04-26 'SQL v2 migrations apply on OLD image'
+  # is resolved by this job (zero-crash audit P0-4).
+  run-sql-v2-migrations-post-deploy:
+    name: Re-run SQL v2 migrations on fresh image
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Pin migration to a fresh-image machine in the api group (sentinel)
+        id: sentinel
+        run: |
+          # Fly's `flyctl deploy --strategy rolling` waits until each machine
+          # has been swapped to the new image before exiting; if `deploy`
+          # succeeded, both machines should be on the same fresh image_ref.
+          # We still verify defensively: if any started machine still carries
+          # a different tag, the rollout is incomplete and we must not run
+          # migrations on the OLD image (the bug we are fixing).
+          #
+          # CRITICAL: nuzantara-rag has TWO process groups: `api` and `rag`.
+          # Both share the image tag at deploy time, but they have DIFFERENT
+          # installed Python packages (`asyncpg` is only in the `api` group).
+          # The migration runner imports `backend.db.base_repository` which
+          # imports `asyncpg`, so we MUST pin the SSH session to a machine in
+          # the `api` group. The pre-deploy `run-migrations` job omits
+          # --machine and flyctl auto-routes to a working group, but once we
+          # specify --machine we lose that auto-routing; so we filter the
+          # process_group ourselves here. Belt-and-suspenders: also pass
+          # --process-group api to the ssh console call below.
+          for i in $(seq 1 18); do
+            JSON=$(flyctl machines list --app nuzantara-rag --json 2>/dev/null || echo '[]')
+            STARTED_TAGS=$(echo "$JSON" | jq -r '[.[] | select(.state=="started") | .image_ref.tag] | unique')
+            STARTED_COUNT=$(echo "$STARTED_TAGS" | jq 'length')
+            if [ "$STARTED_COUNT" = "1" ]; then
+              TAG=$(echo "$STARTED_TAGS" | jq -r '.[0]')
+              # Pick a started, fresh-image machine in the api process group.
+              MACHINE=$(echo "$JSON" | jq -r --arg tag "$TAG" '
+                [.[]
+                 | select(.state=="started"
+                          and .image_ref.tag==$tag
+                          and (.config.metadata.fly_process_group == "api"))]
+                | .[0].id // empty')
+              if [ -n "$MACHINE" ]; then
+                echo "✅ All started machines share image tag: $TAG"
+                echo "✅ Pinning migration to api-group machine: $MACHINE"
+                echo "tag=$TAG" >> $GITHUB_OUTPUT
+                echo "machine=$MACHINE" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+              echo "Tentativo $i/18 — image tag converged ($TAG) but no started machine in api process group yet"
+            else
+              echo "Tentativo $i/18 — started_unique_tags=$STARTED_COUNT (rolling not yet converged)"
+            fi
+            sleep 10
+          done
+          echo "❌ Could not isolate a fresh-image machine in the api process group after 3 min"
+          echo "Machine list (debug):"
+          echo "$JSON" | jq '.[] | {id, state, group: .config.metadata.fly_process_group, tag: .image_ref.tag}'
+          exit 1
+
+      - name: Re-run SQL v2 apply-all on fresh image
+        id: migrate
+        timeout-minutes: 5
+        run: |
+          set -o pipefail
+          MACHINE="${{ steps.sentinel.outputs.machine }}"
+          # tee preserves the live log AND captures output for the alert step.
+          # --process-group api is redundant when --machine pins to a known
+          # api-group machine, but it documents intent and would catch any
+          # future drift in the sentinel filter.
+          #
+          # NOTE: do NOT add `PYTHONPATH=.` — it shadows the container's
+          # site-packages on this image and asyncpg disappears from sys.path
+          # (verified empirically on runs 25095416132 and 25096530075).
+          # Keep the command character-for-character identical to the
+          # pre-deploy `run-migrations` job, which is proven to work.
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --machine "$MACHINE" \
+            --process-group api \
+            --command "/bin/sh -c 'cd /app && python -m backend.db.migrate apply-all'" \
+            2>&1 | tee migration_output.txt
+          # Migration runner (backend/db/migrate.py) prints
+          #   "✅ Applied: N migrations"
+          # Then one "   - Migration NNN" line per applied SQL. We count those
+          # via fixed-string grep — robust to ANSI color, log prefix variation,
+          # and the leading checkmark byte sequence.
+          APPLIED=$(grep -cF "   - Migration " migration_output.txt || true)
+          echo "applied_count=$APPLIED" >> $GITHUB_OUTPUT
+          echo "::notice::SQL v2 post-deploy: $APPLIED migrations applied on fresh image"
+
+      - name: Telegram — post-deploy migrations actually applied
+        if: success() && steps.migrate.outputs.applied_count != '0'
+        run: |
+          MESSAGE="🆕 *SQL v2 post-deploy applied*%0A%0A\`${{ steps.migrate.outputs.applied_count }}\` migrazioni sull'immagine fresca dopo deploy.%0A%0AImage tag: \`${{ steps.sentinel.outputs.tag }}\`%0AMachine: \`${{ steps.sentinel.outputs.machine }}\`%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0A%0ASegnale che il job pre-deploy stava mascherando nuovi SQL (cicatrix STRUCTURAL 2026-04-26 — fix verificato in produzione)."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+      - name: Fail loud on migration error
+        if: failure()
+        run: |
+          echo "::error::Post-deploy SQL v2 migration failed. Manual investigation required."
+          if [ -f migration_output.txt ]; then
+            echo "--- migration_output.txt (head 100) ---"
+            head -100 migration_output.txt || true
+          fi
+          MESSAGE="🔴 *SQL v2 post-deploy FAILED*%0A%0AMigration runner errored on fresh image after deploy.%0A%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0ARun: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}%0A%0A⚠️ Backend live ma schema potenzialmente disallineato. Investigare subito."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+  # Python-idiom migrations must run AFTER the new image is live, because
+  # the SQL v2 migration runner (in run-migrations above) doesn't discover
+  # backend/migrations/migration_NNN_*.py files — those are wrapped by
+  # apply_migration_NNN.py scripts that need to exist in the deployed image.
+  # Running them on the OLD image fails with "No module named ...apply_migration_119".
+  # Add a new step below for each new Python migration. All scripts are
+  # idempotent (IF NOT EXISTS guards + ON CONFLICT DO NOTHING), so re-running
+  # on subsequent deploys is a no-op.
+  run-python-migrations:
+    name: Run Python-idiom migrations (post-deploy, idempotent)
+    needs: [deploy, run-sql-v2-migrations-post-deploy]
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Wait for new image to be serving
+        run: |
+          # Post-deploy rolling restart may take ~20s for the new image to
+          # accept ssh. Short polling loop.
+          # NOTE: --command runs its argv directly (not through /bin/sh), so
+          # any shell metacharacter (&&, pipes, globs) MUST be wrapped in
+          # `/bin/sh -c '...'` explicitly. Without wrapping, `test` sees
+          # "&&" as a literal extra arg and fails.
+          for i in $(seq 1 6); do
+            if flyctl ssh console --app nuzantara-rag --command "/bin/sh -c 'test -f /app/backend/migrations/apply_migration_119.py && echo ready'" 2>/dev/null | grep -q ready; then
+              echo "✅ New image live (apply_migration_119.py present)"
+              exit 0
+            fi
+            echo "Tentativo $i/6 — waiting 10s for new image..."
+            sleep 10
+          done
+          echo "❌ New image does not expose apply_migration_119.py after 60s"
+          exit 1
+
+      - name: Run Python migration 119 (partners)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_119'"
+          echo "✅ Python migration 119 OK"
+
+      - name: Run Python migration 120 (partner_email_outbox)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
+          echo "✅ Python migration 120 OK"
+
+      - name: Run Python migration 121 (practices.family_member_id)
+        timeout-minutes: 2
+        run: |
+          flyctl ssh console \
+            --app nuzantara-rag \
+            --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_121'"
+          echo "✅ Python migration 121 OK"
+
+      - name: Notifica Telegram — Python migration fallita
+        if: failure()
+        run: |
+          MESSAGE="⚠️ *Python migration FALLITA*%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}%0A%0ANote: la nuova immagine è già live e serve traffico. Il modulo che dipende dalla migration potrebbe essere in stato degraded. Investigare manualmente."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+  post-deploy-health:
+    name: Post-deploy health check + rollback
+    needs: [deploy, run-python-migrations]
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_ACCESS_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Health check (10 tentativi × 30s = 5min max)
+        id: health_check
+        run: |
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sf https://nuzantara-rag.fly.dev/health 2>/dev/null || echo "FAILED")
+            if echo "$STATUS" | grep -q '"healthy"'; then
+              echo "✅ Health check passed (tentativo $i)"
+              echo "healthy=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            echo "Tentativo $i/10 — risposta: ${STATUS:0:100}"
+            echo "In attesa 30s..."
+            sleep 30
+          done
+          echo "❌ Health check fallito dopo 5 minuti"
+          echo "healthy=false" >> $GITHUB_OUTPUT
+          exit 1
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Rollback automatico se health check fallisce
+        if: failure() && steps.health_check.outputs.healthy == 'false'
+        run: |
+          echo "⚠️ Avvio rollback automatico..."
+          flyctl releases rollback --app nuzantara-rag --yes
+          echo "✅ Rollback completato"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: RAG smoke test (informational)
+        if: success()
+        run: |
+          echo "Running RAG smoke test..."
+          RESPONSE=$(curl -sf --max-time 30 \
+            -X POST "https://nuzantara-rag.fly.dev/api/chat/query" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: ${{ secrets.SMOKE_TEST_API_KEY }}" \
+            -d '{"query": "what is a PT PMA?", "channel": "smoke-test"}' \
+            2>/dev/null || echo '{"error": "timeout"}')
+
+          if echo "$RESPONSE" | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          assert d.get('answer') or d.get('response') or d.get('message'), 'No answer field'
+          print('Response received:', str(d)[:200])
+          " 2>/dev/null; then
+            echo "✅ RAG smoke test passed"
+          else
+            echo "⚠️ RAG smoke test inconclusive (non-blocking)"
+            echo "Response: $(echo "$RESPONSE" | head -c 500)"
+          fi
+        continue-on-error: true
+
+      - name: Notifica Telegram — deploy fallito + rollback
+        if: failure()
+        run: |
+          MESSAGE="🔴 *Deploy Nuzantara FALLITO*%0A%0AHealth check non passato dopo 5 min.%0ARollback automatico eseguito.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+      - name: Notifica Telegram — deploy OK
+        if: success()
+        run: |
+          MESSAGE="✅ *Deploy Nuzantara OK*%0A%0ABackend sano. Health check passato.%0A%0ACommit: ${{ github.sha }}%0AAutore: ${{ github.actor }}"
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" || true
+
+  # ---------------------------------------------------------------------------
+  # Edge-case coverage: upstream crashes *before* post-deploy-health runs.
+  #
+  # The `post-deploy-health` job chains `needs: deploy`, so when the `deploy` or
+  # `run-migrations` jobs fail outright (flyctl crash, network error, image
+  # build fail, timeout), GitHub Actions marks `post-deploy-health` as SKIPPED
+  # — not failed — and none of its Telegram alerts or rollback steps ever fire.
+  #
+  # This job watches those upstream failures and sends the Telegram notification
+  # that would otherwise be silently swallowed. No rollback is issued: if
+  # `run-migrations` or `deploy` crash, no new Fly release has shipped yet, so
+  # the previous release remains live. We only need visibility.
+  #
+  # The `if:` guard uses `always()` so the job still evaluates when upstream
+  # jobs fail/skip (otherwise GitHub skips it too). The inner expression then
+  # fires the alert only when one of the two upstream jobs actually failed.
+  # ---------------------------------------------------------------------------
+  deploy-failure-alert:
+    name: Alert on deploy/migration crash (pre-health)
+    needs: [run-migrations, deploy]
+    if: |
+      always() &&
+      (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine failing stage
+        id: stage
+        run: |
+          if [ "${{ needs.run-migrations.result }}" = "failure" ]; then
+            echo "stage=run-migrations" >> $GITHUB_OUTPUT
+            echo "icon=🧬" >> $GITHUB_OUTPUT
+            echo "detail=DB migration failed before deploy. No new release shipped; previous release still live." >> $GITHUB_OUTPUT
+          else
+            echo "stage=deploy" >> $GITHUB_OUTPUT
+            echo "icon=🚨" >> $GITHUB_OUTPUT
+            echo "detail=flyctl deploy crashed before the rolling swap reached health check. Previous release still live." >> $GITHUB_OUTPUT
+          fi
+
+      - name: Telegram alert (deploy crash before health)
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MESSAGE="${{ steps.stage.outputs.icon }} *Deploy Nuzantara CRASH*%0A%0AStage fallito: \`${{ steps.stage.outputs.stage }}\`%0A${{ steps.stage.outputs.detail }}%0A%0ACommit: \`${{ github.sha }}\`%0AAutore: ${{ github.actor }}%0ARun: ${RUN_URL}%0A%0A⚠️ Nessun rollback necessario (vecchia release ancora attiva). Controlla i log del run."
+          curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_OWNER_CHAT_ID }}" \
+            -d "text=${MESSAGE}" \
+            -d "parse_mode=Markdown" \
+            -d "disable_web_page_preview=true" || true

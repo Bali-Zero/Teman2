@@ -1,0 +1,396 @@
+---
+title: "Director vs Employee KITAS: Key Differences in Indonesia 2026"
+slug: "director-vs-employee-kitas"
+description: "Understanding the differences between Director and Employee KITAS in Indonesia. Requirements, responsibilities, and which is right for you."
+excerpt: "Running a company vs working for one - here's how KITAS differs for directors and employees."
+category: "immigration"
+tags:
+  - director KITAS
+  - employee KITAS
+  - PT PMA director
+  - work permit comparison
+  - E25B director visa
+  - E23 employee visa
+  - RPTKA director
+  - Indonesia work permit
+  - KITAS comparison
+  - foreign worker Indonesia
+  - DKP-TKA
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/static/insights/immigration/director-employee.jpg"
+  alt: "Director vs employee in Indonesia"
+seo:
+  title: "Director vs Employee KITAS 2026 | Indonesia Work Permit Comparison"
+  description: "Differences between Director and Employee KITAS in Indonesia. Requirements, responsibilities, costs, and which suits your situation."
+  keywords:
+    - director KITAS Indonesia
+    - employee KITAS
+    - PT PMA director work permit
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 15
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "kitas-work-permit-guide"
+  - "investor-kitas-guide"
+  - "pt-pma-registration-guide"
+tableOfContents: true
+seoTitle: "Director vs Employee KITAS Indonesia 2026"
+seoDescription: "Compare Director KITAS (E25B) vs Employee KITAS (E23) in Indonesia 2026. Requirements, RPTKA obligations, costs, and which work permit fits you."
+aiOptimization:
+  primaryQuestion: "What is the difference between Director and Employee KITAS in Indonesia?"
+  answerSnippet: "Director KITAS (E25B) is for company directors/commissioners with higher responsibility and liability. Employee KITAS (E23) is for foreign staff hired by Indonesian companies. Both require RPTKA and DKP-TKA fees, but directors face additional compliance obligations including company performance accountability."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "Direktorat Jenderal Imigrasi"
+      sameAs: "https://www.imigrasi.go.id"
+    - type: "GovernmentOrganization"
+      name: "Kementerian Ketenagakerjaan"
+      sameAs: "https://kemnaker.go.id"
+    - type: "Organization"
+      name: "PT PMA"
+      sameAs: "https://en.wikipedia.org/wiki/Foreign_investment_in_Indonesia"
+faq:
+  - question: "Can a director hold an employee KITAS instead?"
+    answer: "No. If you are appointed as director or commissioner in company documents (AHU), you must hold Director KITAS (E25B). Using an employee KITAS while serving as director is a compliance violation that can result in permit revocation."
+  - question: "Which KITAS costs more - director or employee?"
+    answer: "Both have similar government fees. Director KITAS may cost more through agents due to additional documentation (deed of appointment, AHU registration). DKP-TKA fees apply to both at USD 100/month."
+  - question: "Do both director and employee KITAS require RPTKA?"
+    answer: "Yes. Both require RPTKA (Rencana Penggunaan Tenaga Kerja Asing) approval from the Ministry of Manpower before visa application. The only exception is pure Investor KITAS (E28A) which does not require RPTKA."
+contentStructure:
+  hasHowTo: false
+  hasFAQ: true
+  hasTable: true
+canonicalUrl: "https://balizero.com/immigration/director-vs-employee-kitas"
+ogImage: "/static/insights/immigration/director-employee.jpg"
+twitterCard: "summary_large_image"
+locale: "fr"
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# KITAS de Directeur vs. Employé : Principales Différences en Indonesia 2026
+
+Si vous travaillez en Indonesia, votre type de KITAS et les exigences dépendent de votre statut : directeur d'une entreprise ou employé. Voici les différences.
+
+## Comparaison Rapide
+
+<ComparisonTable
+  title="KITAS de Directeur vs. Employé"
+  description="Comparaison côte à côte"
+  items={[
+    {
+      name: "KITAS de Directeur",
+      subtitle: "Gestion d'une PT PMA",
+      values: {
+        Sponsor: "Propre entreprise",
+        RPTKA: "Requis",
+        "DKP-TKA": "Requis",
+        "Flexibilité de la Position": "Plus de liberté",
+        Responsabilité: "Responsabilité de l'entreprise",
+        Qualification: "Flexible",
+      },
+      highlight: true,
+    },
+    {
+      name: "KITAS d'Employé",
+      subtitle: "Travail pour une entreprise",
+      values: {
+        Sponsor: "Employeur",
+        RPTKA: "Requis",
+        "DKP-TKA": "Requis",
+        "Flexibilité de la Position": "Rôle fixe",
+        Responsabilité: "Personnelle uniquement",
+        Qualification: "5+ ans d'expérience",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Lequel Êtes-vous ?
+
+<DecisionTree
+  title="Directeur ou Employé ?"
+  description="Déterminez votre type de KITAS correct"
+  nodes={[
+    {
+      id: "start",
+      question: "Possédez-vous des parts dans l'entreprise indonésienne ?",
+      options: [
+        { label: "Oui, je suis actionnaire", next: "shareholder" },
+        { label: "Non, je ne possède pas de parts", next: "no-shares" },
+      ],
+    },
+    {
+      id: "shareholder",
+      question: "Êtes-vous listé comme Directeur dans l'acte de la société ?",
+      options: [
+        { label: "Oui, je suis Directeur", next: "director" },
+        { label: "Non, juste actionnaire", next: "investor" },
+      ],
+    },
+    {
+      id: "no-shares",
+      question: "Quel est votre rôle dans l'entreprise ?",
+      options: [
+        { label: "Nommé comme Directeur", next: "non-shareholder-director" },
+        { label: "Employé/Manager/Conseiller", next: "employee" },
+      ],
+    },
+    {
+      id: "director",
+      result: {
+        title: "KITAS de Directeur (Directeur-Actionnaire)",
+        description:
+          "Vous avez besoin d'un KITAS de Directeur avec RPTKA. Vous êtes à la fois propriétaire et travailleur. Votre entreprise sponsorise votre permis.",
+      },
+    },
+    {
+      id: "investor",
+      result: {
+        title: "KITAS d'Investisseur (C313)",
+        description:
+          "Si vous êtes seulement un investisseur et ne travaillez pas, vous pouvez obtenir un KITAS d'Investisseur sans RPTKA. Si vous souhaitez travailler activement, vous aurez besoin d'un RPTKA.",
+      },
+    },
+    {
+      id: "non-shareholder-director",
+      result: {
+        title: "KITAS de Directeur (Non-propriétaire)",
+        description:
+          "Vous êtes un directeur professionnel. Nécessite un processus RPTKA + KITAS complet. L'entreprise que vous dirigez est votre sponsor.",
+      },
+    },
+    {
+      id: "employee",
+      result: {
+        title: "KITAS d'Employé",
+        description:
+          "Permis de travail standard en tant qu'employé. Votre employeur gère le RPTKA et sponsorise votre KITAS. Vous avez besoin des qualifications pertinentes.",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Spécificités du KITAS de Directeur
+
+### Qui est un Directeur ?
+
+Dans les entreprises indonésiennes :
+
+- **Direktur Utama** (Président Directeur)
+- **Direktur** (Directeur)
+
+Listé dans l'acte de la société (Akta), nommé par les actionnaires.
+
+### Exigences pour les Directeurs
+
+| Exigence             | Directeur                                                 |
+| -------------------- | --------------------------------------------------------- |
+| Éducation            | Flexible (un diplôme aide mais n'est pas toujours requis) |
+| Expérience           | Moins stricte (la règle des 5 ans est souvent levée)      |
+| Restriction de poste | Les directeurs sont exemptés de nombreuses restrictions   |
+| Justification RPTKA  | Plus facile (diriger sa propre entreprise)                |
+
+<InfoCard variant="tip" title="Avantage du Directeur">
+  En tant que Directeur de votre propre PT PMA, vous avez plus de flexibilité :
+  - La position est intrinsèquement justifiable - Les exigences d'expérience
+  sont moins strictes - Vous contrôlez le sponsor (votre entreprise) - Vous
+  pouvez définir votre propre champ d'action
+</InfoCard>
+
+### Responsabilités du Directeur
+
+Au-delà du KITAS, les directeurs ont des obligations légales :
+
+- Responsabilité légale de l'entreprise
+- Conformité fiscale (entreprise et personnelle)
+- Conformité au droit du travail
+- Rapports d'entreprise
+
+---
+
+## Spécificités du KITAS d'Employé
+
+### Exigences pour les Employés
+
+<ComparisonTable
+  title="Exigences de Qualification pour les Employés"
+  description="Ce dont vous avez besoin pour être qualifié"
+  items={[
+    {
+      name: "Éducation",
+      values: {
+        Exigence: "Licence ou supérieur",
+        Domaine: "Pertinent pour le poste",
+        Vérification: "Peut nécessiter une légalisation",
+      },
+    },
+    {
+      name: "Expérience",
+      values: {
+        Exigence: "Minimum 5 ans",
+        Domaine: "Dans le rôle spécifique",
+        Vérification: "Lettres de référence",
+      },
+      highlight: true,
+    },
+    {
+      name: "Position",
+      values: {
+        Exigence: "Pas sur la liste restreinte",
+        Domaine: "Niveau managérial/spécialiste",
+        Vérification: "Approbation RPTKA",
+      },
+    },
+  ]}
+/>
+
+### Restrictions de Poste pour les Employés
+
+Les employés font face à des contrôles de poste plus stricts :
+
+- Ne peuvent pas être dans les RH/Personnel
+- Ne peuvent pas être dans le QC (contrôle qualité)
+- Rôles administratifs limités
+- Doivent être de niveau managérial/spécialiste
+
+<InfoCard variant="warning" title="Le Poste Doit Correspondre">
+  En tant qu'employé, votre travail réel doit correspondre exactement au poste
+  RPTKA approuvé. Les directeurs ont plus de flexibilité dans la définition de
+  leur rôle.
+</InfoCard>
+
+---
+
+## Différences de Processus
+
+### Processus du KITAS de Directeur
+
+1. Établir/rejoindre une PT PMA en tant que Directeur
+2. L'acte de la société montre votre nomination
+3. L'entreprise demande le RPTKA (pour vous)
+4. Continuer avec le processus KITAS normal
+5. Vous contrôlez le calendrier (vous êtes le chef)
+
+### Processus du KITAS d'Employé
+
+1. Obtenir une offre d'emploi d'une entreprise indonésienne
+2. L'employeur demande le RPTKA
+3. Vous fournissez les documents à l'employeur
+4. L'employeur gère le processus
+5. Vous dépendez du calendrier de l'employeur
+
+---
+
+## Comparaison des Coûts
+
+| Élément de Coût      | Directeur                                    | Employé                              |
+| -------------------- | -------------------------------------------- | ------------------------------------ |
+| DKP-TKA              | Oui (l'entreprise paie)                      | Oui (l'entreprise paie généralement) |
+| Frais KITAS          | Oui                                          | Oui                                  |
+| Frais d'agent        | Souvent inclus dans la création d'entreprise | L'employeur paie généralement        |
+| Qui supporte le coût | Votre entreprise                             | Employeur                            |
+
+**Effet net** : Coûts totaux similaires, mais les directeurs paient essentiellement depuis leur propre entreprise, tandis que les employés ont leurs coûts couverts par l'employeur.
+
+---
+
+## Changement de Type
+
+### D'Employé à Directeur
+
+Si vous devenez Directeur :
+
+- Peut nécessiter un nouveau RPTKA (poste différent)
+- L'acte de la société doit être mis à jour
+- La transition peut être effectuée lors du renouvellement
+
+### De Directeur à Employé
+
+Si vous quittez votre entreprise pour un emploi :
+
+- Ancien KITAS invalide
+- Le nouvel employeur doit demander un nouveau RPTKA
+- Redémarrage complet du processus
+
+<InfoCard variant="note" title="Le KITAS est Spécifique au Poste">
+  Tout changement de rôle significatif nécessite un nouveau RPTKA. Vous ne
+  pouvez pas simplement "convertir" un KITAS de directeur en KITAS d'employé ou
+  vice versa.
+</InfoCard>
+
+---
+
+## Avantages et Inconvénients
+
+### Avantages du Directeur
+
+- Plus de contrôle sur votre permis
+- Définition de poste flexible
+- Exigences de qualification plus faciles
+- Peut parrainer directement sa famille
+
+### Inconvénients du Directeur
+
+- Responsabilités commerciales
+- Responsabilité légale
+- Doit maintenir l'entreprise
+- Plus cher (coûts de l'entreprise)
+
+### Avantages de l'Employé
+
+- Pas de responsabilité commerciale
+- L'employeur prend en charge les coûts
+- L'employeur gère la paperasse
+- Arrangement plus simple
+
+### Inconvénients de l'Employé
+
+- Dépend de l'employeur
+- Qualifications plus strictes
+- Moins de contrôle sur le calendrier
+- Lié à un poste spécifique
+
+---
+
+## Questions Fréquentes
+
+<AskZantara
+  context="Director KITAS, employee KITAS, PT PMA director, work permit comparison Indonesia"
+  placeholder="Posez une question sur le KITAS de directeur vs. employé..."
+  suggestedQuestions={[
+    "Puis-je être directeur sans posséder de parts ?",
+    "Que se passe-t-il si je suis directeur et employé en même temps ?",
+    "Mon conjoint peut-il travailler avec un visa de dépendant ?",
+    "Lequel est le plus rapide à obtenir ?",
+  ]}
+/>
+
+---
+
+## Articles Connexes
+
+- [Guide du Permis de Travail KITAS](/insights/immigration/kitas-work-permit-guide)
+- [Guide du KITAS Investisseur](/insights/immigration/investor-kitas-guide)
+- [Guide d'Enregistrement PT PMA](/insights/business/pt-pma-registration-guide)
+- [Exigences du KITAS d'Actionnaire](/insights/immigration/shareholder-kitas-requirements)

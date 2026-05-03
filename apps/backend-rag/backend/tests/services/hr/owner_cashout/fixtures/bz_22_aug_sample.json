@@ -1,0 +1,16 @@
+{
+  "description": "Real sample from BZ 22 AUG tab",
+  "rows": [
+    ["NEW CASHOUT 22 AUGUST 2025"],
+    ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+    ["JULIANNA JANOSI", "BRIDGING VISA", "Rp1,000,000", "", "", "Rp5,000,000", "Rp3,000,000", "Rp1,000,000"],
+    [],
+    ["EVA MARIE CASTEL", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+    ["JAVIER EMILIANO JOSE ZOLE", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
+    [],
+    ["JAMES ANTHONY KOSTRO", "C10", "Rp2,000,000", "", "", "Rp3,500,000", "Rp800,000", "Rp700,000"],
+    [],
+    ["RYAN RALPH HEATHCOTE", "D12 2 YEARS", "Rp7,000,000", "", "", "Rp9,800,000", "Rp800,000", "Rp2,000,000", "DISCOUNT 200K"],
+    ["MOHAMED REDA BOUZIANE", "D12 1 YEAR - URGENT", "Rp5,000,000", "Rp1,000,000", "", "Rp7,500,000", "Rp800,000", "Rp700,000"]
+  ]
+}

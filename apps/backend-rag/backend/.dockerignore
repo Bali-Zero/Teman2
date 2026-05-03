@@ -1,0 +1,65 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Test files
+tests
+test
+__tests__
+*_test.py
+test_*.py
+
+# Logs
+logs
+*.log
+
+# Data files (too large for Docker)
+data/
+# CRITICAL: Include pricing JSON for production
+!data/bali_zero_official_prices_2025.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Model files (downloaded at runtime)
+models/
+*.bin
+*.safetensors

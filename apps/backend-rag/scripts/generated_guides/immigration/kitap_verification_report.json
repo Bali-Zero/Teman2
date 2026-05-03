@@ -1,0 +1,120 @@
+{
+  "total_claims": 22,
+  "verified_count": 22,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-016",
+      "verdict": "FAITHFUL",
+      "reason": "Il permesso di soggiorno permanente è un'autorizzazione rilasciata agli stranier"
+    },
+    {
+      "claim_id": "IMM-164",
+      "verdict": "FAITHFUL",
+      "reason": "Il Permesso di Soggiorno Permanente può essere prorogato per una durata illimita"
+    },
+    {
+      "claim_id": "IMM-077",
+      "verdict": "FAITHFUL",
+      "reason": "Il cambio di stato è disponibile per religiosi, lavoratori, investitori, turisti"
+    },
+    {
+      "claim_id": "IMM-076",
+      "verdict": "FAITHFUL",
+      "reason": "Lo Straniero deve aver soggiornato continuamente nel Territorio dell'Indonesia p"
+    },
+    {
+      "claim_id": "IMM-075",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di cambio di stato da Permesso di soggiorno limitato a Permesso di "
+    },
+    {
+      "claim_id": "IMM-027",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero titolare di Permesso di Soggiorno temporaneo o permanente deve poss"
+    },
+    {
+      "claim_id": "IMM-118",
+      "verdict": "FAITHFUL",
+      "reason": "Una dichiarazione di integrazione è una dichiarazione dello straniero al governo"
+    },
+    {
+      "claim_id": "IMM-162",
+      "verdict": "FAITHFUL",
+      "reason": "Il Direttore Generale deve rilasciare l'approvazione o il rifiuto del Permesso d"
+    },
+    {
+      "claim_id": "IMM-159",
+      "verdict": "FAITHFUL",
+      "reason": "La decisione del Direttore Generale deve essere emanata entro massimo 3 giorni l"
+    },
+    {
+      "claim_id": "IMM-163",
+      "verdict": "FAITHFUL",
+      "reason": "Il Capo dell'Ufficio Immigrazione deve completare il rilascio del Permesso di So"
+    },
+    {
+      "claim_id": "IMM-165",
+      "verdict": "FAITHFUL",
+      "reason": "La proroga del Permesso di Soggiorno Permanente deve essere richiesta per iscrit"
+    },
+    {
+      "claim_id": "IMM-166",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di proroga del Permesso di Soggiorno Permanente può essere presenta"
+    },
+    {
+      "claim_id": "IMM-167",
+      "verdict": "FAITHFUL",
+      "reason": "Una richiesta di proroga registrata prima della scadenza del Permesso di Soggior"
+    },
+    {
+      "claim_id": "IMM-168",
+      "verdict": "FAITHFUL",
+      "reason": "La proroga del Permesso di Soggiorno Permanente decorre dalla data di scadenza d"
+    },
+    {
+      "claim_id": "IMM-169",
+      "verdict": "FAITHFUL",
+      "reason": "La richiesta di proroga del Permesso di Soggiorno Permanente deve essere present"
+    },
+    {
+      "claim_id": "IMM-172",
+      "verdict": "FAITHFUL",
+      "reason": "Il rifiuto del Permesso di Soggiorno Permanente è disposto dal Capo dell'Ufficio"
+    },
+    {
+      "claim_id": "IMM-173",
+      "verdict": "FAITHFUL",
+      "reason": "Il rifiuto del Permesso di Soggiorno Permanente è disposto quando la richiesta n"
+    },
+    {
+      "claim_id": "IMM-177",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero titolare di permesso di soggiorno permanente a durata illimitata è "
+    },
+    {
+      "claim_id": "IMM-175",
+      "verdict": "FAITHFUL",
+      "reason": "Il garante o responsabile è obbligato a far uscire lo straniero dal territorio i"
+    },
+    {
+      "claim_id": "IMM-176",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero è obbligato a lasciare il territorio indonesiano, restituire il per"
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    },
+    {
+      "claim_id": "IMM-174",
+      "verdict": "FAITHFUL",
+      "reason": "Il garante o responsabile di uno straniero che desidera terminare la garanzia de"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

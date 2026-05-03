@@ -1,0 +1,1441 @@
+"""
+ZANTARA RAG - Search Service
+Core search functionality with tier-based access control
+
+REFACTORED: Split into focused services following Single Responsibility Principle.
+- Collection management → CollectionManager
+- Conflict resolution → ConflictResolver
+- Cultural insights → CulturalInsightsService
+- Query routing → QueryRouterIntegration
+- Health monitoring → CollectionHealthService
+- Collection warmup → CollectionWarmupService
+
+This service now handles ONLY core search logic with proper delegation.
+"""
+
+import asyncio
+import logging
+import time
+from collections import OrderedDict
+from typing import TYPE_CHECKING, Any
+
+import httpx
+from qdrant_client.http import exceptions as qdrant_exceptions
+
+from backend.app.core.config import settings
+from backend.app.models import TierLevel
+from backend.core.cache import cached
+from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
+from backend.services.misc.cultural_insights_service import CulturalInsightsService
+from backend.services.misc.result_formatter import format_search_results
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.search.query_expander import QueryExpander
+from backend.services.search.search_filters import build_search_filter
+
+if TYPE_CHECKING:
+    pass
+
+logger = logging.getLogger(__name__)
+
+# Performance metrics (Phase 1 fixes)
+try:
+    from backend.app.metrics import (
+        metrics_collector,
+        rag_early_exit_total,
+        rag_embedding_duration,
+        rag_parallel_searches,
+        rag_pipeline_duration,
+        rag_reranking_duration,
+        rag_vector_search_duration,
+    )
+
+    METRICS_AVAILABLE = True
+except ImportError:
+    METRICS_AVAILABLE = False
+    logger.warning("Performance metrics not available")
+    metrics_collector = None
+
+# from backend.services.routing.query_router_integration import QueryRouterIntegration
+
+# Collections that use named vectors ("dense" + "bm25") instead of unnamed vectors.
+# When doing dense-only fallback, these require vector_name="dense".
+NAMED_VECTOR_COLLECTIONS = {
+    "legal_unified",
+    "legal_unified_2026",
+    "tax_genius",
+    "tax_genius_hybrid",
+    "training_conversations_hybrid",
+    "legal_unified_hybrid",
+    "legal_unified_hybrid_hybrid",
+    "kbli_2025_final",
+    "kbli_2025_final_hybrid",
+    "visa_oracle",
+}
+
+
+def _uses_named_vectors(collection_name: str) -> bool:
+    """Check if a collection uses named vectors (requires vector_name='dense')."""
+    return collection_name in NAMED_VECTOR_COLLECTIONS or collection_name.endswith("_hybrid")
+
+
+class SearchService:
+    """
+    Core search service for document retrieval.
+
+    REFACTORED: Now handles ONLY core search functionality with proper delegation.
+    Uses dependency injection for all other responsibilities.
+
+    Responsibilities:
+    - Search documents in collections
+    - Apply tier-based access control
+    - Format search results
+    - Coordinate search operations
+
+    Properly delegates to:
+    - CollectionManager: Collection access and management
+    - ConflictResolver: Multi-collection conflict detection and resolution
+    - CollectionHealthService: Query metrics and health monitoring
+    - CulturalInsightsService: Cultural context enrichment
+    - QueryRouterIntegration: Collection routing decisions
+    - CollectionWarmupService: Collection pre-loading and warmup
+    """
+
+    # Access level to allowed tiers mapping
+    LEVEL_TO_TIERS = {
+        0: [TierLevel.S],
+        1: [TierLevel.S, TierLevel.A],
+        2: [TierLevel.S, TierLevel.A, TierLevel.B, TierLevel.C],
+        3: [TierLevel.S, TierLevel.A, TierLevel.B, TierLevel.C, TierLevel.D],
+    }
+
+    def __init__(
+        self,
+        collection_manager: CollectionManager | None = None,
+        conflict_resolver: ConflictResolver | None = None,
+        cultural_insights: CulturalInsightsService | None = None,
+        query_router: Any | None = None,
+        query_expander: QueryExpander | None = None,
+    ) -> None:
+        """Initialize SearchService with dependency injection.
+
+        Sets up the core search service with modular, composable dependencies
+        following the Single Responsibility Principle. Each dependency handles
+        a specific concern (collection access, conflict resolution, etc.).
+
+        Dependencies (all optional, auto-created if None):
+        - CollectionManager: Vector database collection access and lifecycle
+        - ConflictResolver: Multi-collection conflict detection and resolution
+        - CulturalInsightsService: Cultural context enrichment for responses
+        - QueryRouterIntegration: Intelligent collection routing decisions
+        - CollectionHealthService: Query metrics and health monitoring
+        - CollectionWarmupService: Pre-loading for reduced cold-start latency
+
+        Args:
+            collection_manager: Collection access manager (auto-created if None)
+            conflict_resolver: Conflict detection/resolution (auto-created if None)
+            cultural_insights: Cultural context service (auto-created if None)
+            query_router: Collection routing service (auto-created if None)
+
+        Note:
+            - Embeddings: Auto-detects provider (Vertex AI, OpenAI, etc.)
+            - Qdrant URL: Uses centralized config (settings.qdrant_url)
+            - Health monitor: Tracks query metrics for analytics
+            - Warmup service: Initializes priority collections on startup
+        """
+        logger.info("🔄 SearchService initialization starting...")
+
+        # Initialize embeddings generator using factory function
+        logger.info("🔄 Loading EmbeddingsGenerator...")
+        from backend.core.embeddings import create_embeddings_generator
+
+        self.embedder = create_embeddings_generator()
+        logger.info(
+            f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)",
+        )
+
+        # Initialize BM25 vectorizer for hybrid search with retry and fallback
+        self._bm25_vectorizer = None
+        self._bm25_enabled = False
+        self._bm25_initialization_attempts = 0
+        self._max_bm25_init_attempts = 3
+
+        # BM25 initialization will be done synchronously in __init__
+        # For async retry, use initialize_bm25() method after instantiation
+        if settings.enable_bm25:
+            try:
+                from backend.core.bm25_vectorizer import BM25Vectorizer
+
+                self._bm25_vectorizer = BM25Vectorizer(
+                    vocab_size=settings.bm25_vocab_size,
+                    k1=settings.bm25_k1,
+                    b=settings.bm25_b,
+                )
+                self._bm25_enabled = True
+                logger.info("✅ BM25Vectorizer initialized successfully")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_success_total.inc()
+            except ImportError as e:
+                logger.error(f"❌ BM25Vectorizer import failed: {e}")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type="import_error",
+                    ).inc()
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize BM25Vectorizer: {e}")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type=type(e).__name__,
+                    ).inc()
+
+        # Get Qdrant URL from centralized config
+        qdrant_url = settings.qdrant_url
+        logger.info(f"🔄 Connecting to Qdrant: {qdrant_url}")
+
+        # Initialize dependencies (use provided or create new)
+        self.collection_manager = collection_manager or CollectionManager(qdrant_url=qdrant_url)
+        self.conflict_resolver = conflict_resolver or ConflictResolver()
+        if query_router:
+            self.query_router = query_router
+        else:
+            from backend.services.routing.query_router_integration import QueryRouterIntegration
+
+            self.query_router = QueryRouterIntegration()
+
+        # Initialize cultural insights service (requires embedder)
+        self._cultural_insights = cultural_insights or CulturalInsightsService(
+            collection_manager=self.collection_manager, embedder=self.embedder,
+        )
+
+        # Initialize collection health monitor
+        from backend.services.ingestion.collection_health_service import CollectionHealthService
+
+        self.health_monitor = CollectionHealthService(search_service=self)
+
+        # Initialize collection warmup service
+        self.warmup_service = CollectionWarmupService(
+            collection_manager=self.collection_manager, embedder=self.embedder,
+        )
+
+        # Initialize query expander for multilingual support
+        self.query_expander = query_expander or QueryExpander()
+        logger.info("✅ QueryExpander initialized for multilingual query expansion")
+
+        # Embedding LRU cache — avoids re-calling OpenAI for identical queries
+        # within the same process lifetime (esp. federated search: same query, 8 collections)
+        # Max 256 entries, no TTL (embeddings are deterministic for a given model)
+        self._embedding_cache: OrderedDict[str, list[float]] = OrderedDict()
+        self._embedding_cache_max = 256
+
+        # Conflict resolution tracking (delegated to ConflictResolver)
+        # Initialize with all fields for backward compatibility with tests
+        self.conflict_stats = {
+            "total_multi_collection_searches": 0,
+            "conflicts_detected": 0,
+            "conflicts_resolved": 0,
+            "timestamp_resolutions": 0,
+        }
+
+        logger.info(f"✅ SearchService initialized with Qdrant URL: {qdrant_url}")
+        logger.info("✅ Using dependency injection for modular services")
+
+    async def _init_bm25_with_retry(self) -> bool:
+        """Initialize BM25 with retry and fallback."""
+        if not settings.enable_bm25:
+            logger.info("BM25 disabled via settings")
+            return False
+
+        for attempt in range(self._max_bm25_init_attempts):
+            try:
+                from backend.core.bm25_vectorizer import BM25Vectorizer
+
+                self._bm25_vectorizer = BM25Vectorizer(
+                    vocab_size=settings.bm25_vocab_size,
+                    k1=settings.bm25_k1,
+                    b=settings.bm25_b,
+                )
+
+                self._bm25_enabled = True
+                logger.info("✅ BM25Vectorizer initialized successfully")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_success_total.inc()
+                return True
+
+            except ImportError as e:
+                logger.error(
+                    f"❌ BM25Vectorizer import failed: {e}",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_attempts": self._max_bm25_init_attempts,
+                        "error_type": "import_error",
+                    },
+                )
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type="import_error",
+                    ).inc()
+                # Import errors are permanent - don't retry
+                return False
+
+            except Exception as e:
+                self._bm25_initialization_attempts = attempt + 1
+                logger.warning(
+                    f"⚠️ BM25Vectorizer initialization failed (attempt {attempt + 1}/{self._max_bm25_init_attempts}): {e}",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_attempts": self._max_bm25_init_attempts,
+                        "error_type": type(e).__name__,
+                    },
+                )
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type=type(e).__name__,
+                    ).inc()
+
+                if attempt < self._max_bm25_init_attempts - 1:
+                    # Exponential backoff
+                    await asyncio.sleep(2**attempt)
+                else:
+                    logger.error(
+                        f"❌ BM25Vectorizer initialization failed after {self._max_bm25_init_attempts} attempts. "
+                        f"Falling back to dense-only search.",
+                        extra={
+                            "final_error": str(e),
+                            "error_type": type(e).__name__,
+                        },
+                    )
+                    # Alert on persistent failure
+                    await self._alert_bm25_failure(e)
+                    return False
+
+        return False
+
+    async def _alert_bm25_failure(self, error: Exception) -> None:
+        """Alert on BM25 persistent failure."""
+        # Send alert to monitoring system
+        try:
+            # Note: AlertService may not exist, so we just log for now
+            logger.error(
+                f"BM25 Initialization Failed: BM25Vectorizer failed to initialize after {self._max_bm25_init_attempts} attempts. "
+                f"System falling back to dense-only search.",
+                extra={
+                    "error": str(error),
+                    "error_type": type(error).__name__,
+                },
+            )
+        except Exception as alert_error:
+            logger.error(f"Failed to send BM25 failure alert: {alert_error}")
+
+    @property
+    def cultural_insights(self) -> Any:
+        """Access to CulturalInsightsService (public API)."""
+        return self._cultural_insights
+
+    @property
+    def hybrid_search_service(self) -> Any:
+        """
+        Access to HybridSearchService for advanced hybrid search.
+
+        Returns:
+            HybridSearchService instance for BM25 + dense vector search
+
+        Example:
+            >>> hybrid_results = await search_service.hybrid_search_service.search_hybrid(
+            ...     query="visa KITAS",
+            ...     collection="legal_unified_hybrid",
+            ...     limit=10,
+            ...     alpha=0.5
+            ... )
+        """
+        from backend.services.rag.hybrid_search import get_hybrid_search_service
+
+        return get_hybrid_search_service()
+
+    async def _prepare_search_context(
+        self,
+        query: str,
+        user_level: int,
+        tier_filter: list[TierLevel] | None,
+        collection_override: str | None,
+        apply_filters: bool | None,
+    ) -> tuple[list[float], str, Any, dict[str, Any] | None, list[str]]:
+        """Prepare common context for search operations (DRY helper).
+
+        Extracts shared logic from search() and search_with_reranking():
+        - Generate query embedding
+        - Route to collection
+        - Get vector DB client
+        - Build tier/repealed filters
+        - Determine allowed tier values
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            tier_filter: Optional tier restriction
+            collection_override: Force specific collection
+            apply_filters: Whether to apply filters (None = default behavior)
+
+        Returns:
+            Tuple of (query_embedding, collection_name, vector_db, chroma_filter, tier_values)
+
+        Raises:
+            ValueError: If query is empty or user_level is out of range
+        """
+        # Validate input
+        if not query or not query.strip():
+            raise ValueError("Query cannot be empty")
+
+        if user_level < 0 or user_level > 3:
+            raise ValueError(f"User level must be between 0 and 3, got {user_level}")
+
+        # Expand query with keyword translations (IT/EN → EN/ID)
+        # This improves embedding match with Indonesian-language documents
+        from backend.services.search.keyword_translator import get_keyword_translator
+
+        translator = get_keyword_translator()
+        expanded_query = translator.translate(query)
+        if expanded_query != query:
+            logger.debug(f"Query expanded for embedding: '{query}' → '{expanded_query[:100]}...'")
+
+        # Generate query embedding — check process-level LRU cache first
+        # This avoids redundant OpenAI calls for: (a) repeated queries, (b) federated search
+        # where the same query is sent to 8 collections in parallel.
+        cache_key = expanded_query.strip().lower()
+        if cache_key in self._embedding_cache:
+            query_embedding = self._embedding_cache[cache_key]
+            self._embedding_cache.move_to_end(cache_key)
+            logger.debug("⚡ Embedding cache HIT — skipped OpenAI call")
+        else:
+            query_embedding = await self.embedder.generate_query_embedding(expanded_query)
+            # LRU eviction
+            if len(self._embedding_cache) >= self._embedding_cache_max:
+                self._embedding_cache.popitem(last=False)
+            self._embedding_cache[cache_key] = query_embedding
+
+        # Validate embedding was generated
+        if not query_embedding or len(query_embedding) == 0:
+            raise ValueError("Failed to generate query embedding")
+
+        # Route to appropriate collection
+        routing_info = self.query_router.route_query(
+            query=query, collection_override=collection_override, enable_fallbacks=False,
+        )
+        collection_name = routing_info["collection_name"]
+
+        # Get vector DB client
+        vector_db = self.collection_manager.get_collection(collection_name)
+        if not vector_db:
+            logger.error(f"❌ Unknown collection: {collection_name}, defaulting to legal_unified")
+            vector_db = self.collection_manager.get_collection("legal_unified")
+            collection_name = "legal_unified"
+            if not vector_db:
+                raise ValueError("Failed to initialize default collection")
+
+        # Determine allowed tiers
+        allowed_tiers = self.LEVEL_TO_TIERS.get(user_level, [])
+        if tier_filter:
+            allowed_tiers = [t for t in allowed_tiers if t in tier_filter]
+
+        # Build filter (only for zantara_books)
+        tier_filter_dict = None
+        if collection_name == "zantara_books" and allowed_tiers:
+            tier_values = [t.value for t in allowed_tiers]
+            tier_filter_dict = {"tier": {"$in": tier_values}}
+        else:
+            tier_values = []
+
+        # Build combined filter
+        chroma_filter = build_search_filter(tier_filter=tier_filter_dict, exclude_repealed=True)
+
+        # Control filter application
+        if apply_filters is False:
+            chroma_filter = None
+
+        return query_embedding, collection_name, vector_db, chroma_filter, tier_values
+
+    async def search(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Semantic search with tier-based access control and intelligent collection routing.
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection (for testing)
+            apply_filters: If True, apply tier/exclude_repealed filters. If None, uses default
+                          behavior (filters disabled for backward compatibility with chat path).
+
+        Returns:
+            Search results with metadata
+        """
+        try:
+            # Multi-query expansion: generate 2-3 alternative queries, search each, RRF fusion
+            if (
+                getattr(settings, "enable_query_expansion", False)
+                and len(query.split()) > 4
+                and not collection_override  # skip for targeted single-collection searches
+            ):
+                try:
+                    multi_result = await self._search_with_multi_expansion(
+                        query=query,
+                        user_level=user_level,
+                        limit=limit,
+                        tier_filter=tier_filter,
+                        apply_filters=apply_filters,
+                    )
+                    if multi_result and multi_result.get("results"):
+                        return multi_result
+                except Exception as e:
+                    logger.warning("Multi-query expansion failed, falling back: %s", e)
+
+            # Query Expansion - translate to multiple languages for better matching
+            expanded_query = await self.query_expander.expand(query)
+            search_query = expanded_query  # Use expanded query for embedding
+
+            # Prepare search context (DRY: shared logic with search_with_reranking)
+            embedding_start = time.time() if METRICS_AVAILABLE else None
+            (
+                query_embedding,
+                collection_name,
+                vector_db,
+                chroma_filter,
+                tier_values,
+            ) = await self._prepare_search_context(
+                search_query, user_level, tier_filter, collection_override, apply_filters,
+            )
+            if METRICS_AVAILABLE and embedding_start:
+                rag_embedding_duration.observe(time.time() - embedding_start)
+
+            # Debug logging (only in debug mode)
+            logger.debug(
+                f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
+            )
+            logger.debug(
+                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}",
+            )
+            logger.debug(f"Final collection: {collection_name}")
+            if chroma_filter:
+                logger.debug(f"Filter applied: {chroma_filter}")
+
+            # Try hybrid search if BM25 available
+            if self._bm25_enabled and self._bm25_vectorizer:
+                try:
+                    # Generate sparse vector using BM25
+                    query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
+
+                    # Try hybrid search if vector_db supports it
+                    if query_sparse and hasattr(vector_db, "hybrid_search"):
+                        raw_results = await vector_db.hybrid_search(
+                            query_embedding=query_embedding,
+                            query_sparse=query_sparse,
+                            filter=chroma_filter,
+                            limit=limit,
+                            prefetch_limit=limit * 3,
+                        )
+                        if metrics_collector:
+                            metrics_collector.search_hybrid_total.inc()
+                    else:
+                        # Fallback to dense-only if hybrid_search not available
+                        raise AttributeError("vector_db does not support hybrid_search")
+
+                except Exception as e:
+                    logger.warning(
+                        f"⚠️ Hybrid search failed, falling back to dense-only: {e}",
+                        extra={
+                            "query": query[:100],
+                            "collection": collection_name,
+                            "error": str(e),
+                        },
+                    )
+                    if metrics_collector:
+                        metrics_collector.search_hybrid_failed_total.inc()
+                    # Fall through to dense-only search
+                    use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+                    raw_results = await vector_db.search(
+                        query_embedding=query_embedding,
+                        filter=chroma_filter,
+                        limit=limit,
+                        vector_name=use_vector_name,
+                    )
+                    if metrics_collector:
+                        metrics_collector.search_dense_only_total.inc()
+            else:
+                # Fallback: Dense-only search
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+                raw_results = await vector_db.search(
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
+                    vector_name=use_vector_name,
+                )
+                if metrics_collector:
+                    metrics_collector.search_dense_only_total.inc()
+
+            # Format results using helper method
+            formatted_results = format_search_results(
+                raw_results, collection_name, primary_collection=None,
+            )
+
+            # Record query for health monitoring
+            avg_score = (
+                sum(r["score"] for r in formatted_results) / len(formatted_results)
+                if formatted_results
+                else 0.0
+            )
+            self.health_monitor.record_query(
+                collection_name=collection_name,
+                had_results=len(formatted_results) > 0,
+                result_count=len(formatted_results),
+                avg_score=avg_score,
+            )
+
+            return {
+                "query": query,
+                "results": formatted_results,
+                "user_level": user_level,
+                "allowed_tiers": tier_values,
+                "collection_used": collection_name,  # NEW: tracking which collection was searched
+            }
+
+        except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError):
+            logger.exception(
+                "❌ Search failed completely",
+                extra={
+                    "query": query[:100],
+                    "user_level": user_level,
+                    "collection_override": collection_override,
+                },
+            )
+            if metrics_collector:
+                metrics_collector.search_failed_total.inc()
+
+            # Return empty results instead of raising
+            return {
+                "query": query,
+                "results": [],
+                "user_level": user_level,
+                "allowed_tiers": [],
+                "collection_used": collection_override or "unknown",
+                "error": "Search service temporarily unavailable",
+            }
+            raise
+
+    async def _search_with_multi_expansion(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Search with LLM-generated multi-query expansion and RRF fusion.
+
+        Generates 2-3 alternative queries via Gemini Flash, searches each,
+        then fuses results using Reciprocal Rank Fusion (RRF).
+
+        Only activated when ENABLE_QUERY_EXPANSION=true and query > 4 words.
+
+        Args:
+            query: Original user query
+            user_level: User access level (0-3)
+            limit: Max final results after fusion
+            tier_filter: Optional tier restriction
+            apply_filters: Whether to apply filters
+
+        Returns:
+            Search results dict with fused results, or empty if expansion fails.
+        """
+        from backend.services.search.query_expander import get_query_expander
+
+        expander = get_query_expander()
+        alt_queries = await expander.expand_multi(query)
+
+        if len(alt_queries) <= 1:
+            # No expansion happened — fall through to normal search
+            return {}
+
+        logger.info("Multi-query expansion: '%s' → %d queries", query[:40], len(alt_queries))
+
+        # Search each alternative (limit=3 per query to keep cost/latency down)
+        per_query_limit = max(3, limit)
+        all_results: list[list[dict[str, Any]]] = []
+
+        async def _single_search(q: str) -> list[dict[str, Any]]:
+            try:
+                async with asyncio.timeout(8.0):
+                    res = await self._single_query_search(
+                        query=q,
+                        user_level=user_level,
+                        limit=per_query_limit,
+                        tier_filter=tier_filter,
+                        apply_filters=apply_filters,
+                    )
+                    return res.get("results", [])
+            except Exception as e:
+                logger.warning("Multi-expansion sub-query failed: %s", e)
+                return []
+
+        sub_results = await asyncio.gather(*[_single_search(q) for q in alt_queries])
+        for sr in sub_results:
+            if sr:
+                all_results.append(sr)
+
+        if not all_results:
+            return {}
+
+        # RRF fusion across result sets
+        fused = self._rrf_fuse_multi(all_results, k=60)
+
+        # Deduplicate by document ID
+        seen_ids: set[str] = set()
+        deduped: list[dict[str, Any]] = []
+        for doc in fused:
+            doc_id = doc.get("id", "")
+            if doc_id and doc_id not in seen_ids:
+                seen_ids.add(doc_id)
+                deduped.append(doc)
+            elif not doc_id:
+                # No ID — dedup by first 100 chars of text
+                text_key = doc.get("text", "")[:100]
+                if text_key not in seen_ids:
+                    seen_ids.add(text_key)
+                    deduped.append(doc)
+
+        final_results = deduped[:limit]
+
+        return {
+            "query": query,
+            "results": final_results,
+            "user_level": user_level,
+            "allowed_tiers": [],
+            "collection_used": "multi_expansion",
+            "expansion_queries": len(alt_queries),
+            "expansion_applied": True,
+        }
+
+    async def _single_query_search(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """Execute a single search query (no expansion, no recursion)."""
+        embedding_start = time.time() if METRICS_AVAILABLE else None
+        (
+            query_embedding,
+            collection_name,
+            vector_db,
+            chroma_filter,
+            tier_values,
+        ) = await self._prepare_search_context(query, user_level, tier_filter, None, apply_filters)
+        if METRICS_AVAILABLE and embedding_start:
+            rag_embedding_duration.observe(time.time() - embedding_start)
+
+        # Determine vector name
+        use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+
+        search_start = time.time() if METRICS_AVAILABLE else None
+        raw_results = await vector_db.search(
+            query_embedding=query_embedding,
+            filter=chroma_filter,
+            limit=limit,
+            vector_name=use_vector_name,
+        )
+        if METRICS_AVAILABLE and search_start:
+            rag_vector_search_duration.observe(time.time() - search_start)
+
+        formatted_results = format_search_results(
+            raw_results, collection_name, primary_collection=None,
+        )
+        return {
+            "query": query,
+            "results": formatted_results,
+            "collection_used": collection_name,
+        }
+
+    @staticmethod
+    def _rrf_fuse_multi(
+        result_sets: list[list[dict[str, Any]]], k: int = 60,
+    ) -> list[dict[str, Any]]:
+        """
+        Reciprocal Rank Fusion across multiple result sets.
+
+        RRF score = sum(1/(k + rank_i)) for each result set containing the doc.
+        """
+        scores: dict[str, float] = {}
+        docs: dict[str, dict[str, Any]] = {}
+
+        for result_set in result_sets:
+            for rank, doc in enumerate(result_set, start=1):
+                doc_id = doc.get("id", doc.get("text", "")[:100])
+                if doc_id not in docs:
+                    docs[doc_id] = doc
+                    scores[doc_id] = 0.0
+                scores[doc_id] += 1.0 / (k + rank)
+
+        # Sort by RRF score descending
+        sorted_ids = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)
+
+        result = []
+        for doc_id in sorted_ids:
+            doc = docs[doc_id].copy()
+            doc["rrf_score"] = round(scores[doc_id], 6)
+            result.append(doc)
+
+        return result
+
+    def _init_reranker(self) -> Any:
+        """Lazy load the re-ranker based on config.
+
+        Checks ``settings.reranker_backend`` (env ``RERANKER_BACKEND``):
+          - ``"cross-encoder"`` -> local CrossEncoderReranker (free, ~75MB model)
+          - ``"zerank2"``       -> external Ze-Rank 2 API (requires API key)
+
+        When ``reranker_backend`` is ``"cross-encoder"``, the reranker is
+        explicitly enabled regardless of the legacy ``enable_reranker`` flag.
+        """
+        if not hasattr(self, "_reranker"):
+            backend: str = getattr(settings, "reranker_backend", "cross-encoder")
+            if backend == "cross-encoder":
+                from backend.services.rag.reranker import CrossEncoderReranker
+
+                self._reranker = CrossEncoderReranker(enabled=True)
+                logger.info(
+                    f"🔧 CrossEncoderReranker initialized: enabled={self._reranker.enabled}, "
+                    f"model={self._reranker.model_name}",
+                )
+            elif backend == "zerank2":
+                from backend.core.reranker import ReRanker
+
+                self._reranker = ReRanker()
+                logger.info(f"🔧 ReRanker (Ze-Rank 2) initialized: enabled={self._reranker.enabled}")
+            else:
+                logger.warning(
+                    f"⚠️ Unknown reranker_backend '{backend}', falling back to cross-encoder",
+                )
+                from backend.services.rag.reranker import CrossEncoderReranker
+
+                self._reranker = CrossEncoderReranker(enabled=True)
+        return self._reranker
+
+    async def search_with_reranking(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Enhanced search with Semantic Re-ranking.
+        Retrieves 3x candidates and re-ranks them for higher precision.
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results (final count after reranking)
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection (for testing)
+
+        Returns:
+            Search results with reranking metadata
+        """
+        pipeline_start_time = time.time() if METRICS_AVAILABLE else None
+
+        # 1. Retrieve more candidates (Wide Funnel)
+        initial_limit = limit * 3
+
+        results = await self.search(
+            query=query,
+            user_level=user_level,
+            limit=initial_limit,
+            tier_filter=tier_filter,
+            collection_override=collection_override,
+            apply_filters=True,  # Enable filters for reranked search
+        )
+
+        # PERFORMANCE FIX: Early exit for high-confidence results (>0.85 score)
+        # See: docs/debug/performance/rag_pipeline_report.md
+        # Skip reranking if top result already has high confidence
+        if results["results"] and results["results"][0].get("score", 0) > 0.85:
+            logger.info(
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.85, "
+                f"skipping reranking for query: '{query}'",
+            )
+            if METRICS_AVAILABLE:
+                rag_early_exit_total.inc()
+            results["results"] = results["results"][:limit]
+            results["reranked"] = False
+            results["early_exit"] = True
+            return results
+
+        # 2. Re-rank (track duration)
+        reranker = self._init_reranker()
+        if reranker.enabled:
+            logger.info(f"🔍 Re-ranking {len(results['results'])} candidates for query: '{query}'")
+            rerank_start = time.time() if METRICS_AVAILABLE else None
+            reranked_docs = await reranker.rerank(query, results["results"], top_k=limit)
+            if METRICS_AVAILABLE and rerank_start:
+                rag_reranking_duration.observe(time.time() - rerank_start)
+            results["results"] = reranked_docs
+            results["reranked"] = True
+            results["early_exit"] = False
+        else:
+            logger.warning(f"⚠️ ReRanker disabled - skipping rerank for query: '{query[:50]}'")
+            results["reranked"] = False
+            results["early_exit"] = False
+            results["results"] = results["results"][:limit]
+
+        # Track total pipeline duration
+        if METRICS_AVAILABLE and pipeline_start_time:
+            rag_pipeline_duration.observe(time.time() - pipeline_start_time)
+
+        return results
+
+    async def hybrid_search(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Hybrid search combining dense vectors and BM25 sparse vectors.
+
+        Uses Reciprocal Rank Fusion (RRF) to combine results from both
+        dense semantic search and BM25 keyword search for optimal retrieval.
+
+        Results are cached in Redis (TTL 1h) keyed by query+user_level+limit+collection.
+        Cache reduces avg latency from ~894ms to <100ms for repeated queries.
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection
+            apply_filters: If True, apply tier/exclude_repealed filters
+
+        Returns:
+            Search results with hybrid search metadata
+        """
+        # --- Cache lookup ---
+        from backend.core.cache import get_cache_service
+
+        cache = get_cache_service()
+        cache_key = cache._generate_key(
+            "hybrid_search",
+            query,
+            user_level=user_level,
+            limit=limit,
+            collection_override=collection_override or "",
+        )
+        cached_result = await cache.get(cache_key)
+        if cached_result is not None:
+            cached_result["cache_hit"] = True
+            return cached_result
+
+        try:
+            # Prepare search context (same as regular search)
+            embedding_start = time.time() if METRICS_AVAILABLE else None
+            (
+                query_embedding,
+                collection_name,
+                vector_db,
+                chroma_filter,
+                tier_values,
+            ) = await self._prepare_search_context(
+                query, user_level, tier_filter, collection_override, apply_filters,
+            )
+            if METRICS_AVAILABLE and embedding_start:
+                rag_embedding_duration.observe(time.time() - embedding_start)
+
+            # Generate BM25 sparse vector
+            query_sparse = None
+            if self._bm25_vectorizer:
+                query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
+                logger.debug(
+                    f"Generated BM25 sparse vector: {len(query_sparse.get('indices', []))} tokens",
+                )
+
+            # Try hybrid search if available
+            search_start = time.time() if METRICS_AVAILABLE else None
+            if query_sparse and hasattr(vector_db, "hybrid_search"):
+                raw_results = await vector_db.hybrid_search(
+                    query_embedding=query_embedding,
+                    query_sparse=query_sparse,
+                    filter=chroma_filter,
+                    limit=limit,
+                    prefetch_limit=limit * 3,  # Get more candidates for fusion
+                )
+                search_type = raw_results.get("search_type", "hybrid_rrf")
+            else:
+                # Fallback to dense-only search
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+                raw_results = await vector_db.search(
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
+                    vector_name=use_vector_name,
+                )
+                search_type = "dense_only"
+
+            if METRICS_AVAILABLE and search_start:
+                rag_vector_search_duration.observe(time.time() - search_start)
+
+            # Format results
+            formatted_results = format_search_results(
+                raw_results, collection_name, primary_collection=None,
+            )
+
+            # Record query for health monitoring
+            avg_score = (
+                sum(r["score"] for r in formatted_results) / len(formatted_results)
+                if formatted_results
+                else 0.0
+            )
+            self.health_monitor.record_query(
+                collection_name=collection_name,
+                had_results=len(formatted_results) > 0,
+                result_count=len(formatted_results),
+                avg_score=avg_score,
+            )
+
+            result = {
+                "query": query,
+                "results": formatted_results,
+                "collection": collection_name,
+                "total_results": len(formatted_results),
+                "search_type": search_type,
+                "bm25_enabled": query_sparse is not None,
+            }
+
+            # --- Cache write (non-blocking, TTL from redis_manager config) ---
+            if formatted_results:
+                try:
+                    await cache.set(cache_key, result)
+                except Exception as cache_err:
+                    logger.debug(f"Cache write failed (non-critical): {cache_err}")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Hybrid search error: {e}", exc_info=True)
+            # Fallback to regular search on error
+            return await self.search(
+                query=query,
+                user_level=user_level,
+                limit=limit,
+                tier_filter=tier_filter,
+                collection_override=collection_override,
+                apply_filters=apply_filters,
+            )
+
+    async def hybrid_search_with_reranking(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Full hybrid search pipeline: BM25 + Dense + RRF + reranking.
+
+        This is the most comprehensive search method combining:
+        1. Dense vector search (semantic)
+        2. BM25 sparse vector search (keyword)
+        3. Reciprocal Rank Fusion (combining both)
+        4. CrossEncoder or Ze-Rank reranking (final precision)
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results (final count after all stages)
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection
+
+        Returns:
+            Search results with full pipeline metadata
+        """
+        pipeline_start_time = time.time() if METRICS_AVAILABLE else None
+
+        # 1. Hybrid search with overfetch for reranking
+        initial_limit = limit * 3
+        results = await self.hybrid_search(
+            query=query,
+            user_level=user_level,
+            limit=initial_limit,
+            tier_filter=tier_filter,
+            collection_override=collection_override,
+            apply_filters=True,
+        )
+
+        # 2. Early exit for high-confidence results
+        if results["results"] and results["results"][0].get("score", 0) > 0.85:
+            logger.info(
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.85",
+            )
+            if METRICS_AVAILABLE:
+                rag_early_exit_total.inc()
+            results["results"] = results["results"][:limit]
+            results["reranked"] = False
+            results["early_exit"] = True
+            return results
+
+        # 3. Re-rank with Ze-Rank 2
+        reranker = self._init_reranker()
+        if reranker.enabled:
+            logger.info(
+                f"🔍 Re-ranking {len(results['results'])} hybrid candidates for: '{query[:50]}'",
+            )
+            rerank_start = time.time() if METRICS_AVAILABLE else None
+            reranked_docs = await reranker.rerank(query, results["results"], top_k=limit)
+            if METRICS_AVAILABLE and rerank_start:
+                rag_reranking_duration.observe(time.time() - rerank_start)
+            results["results"] = reranked_docs
+            results["reranked"] = True
+            results["early_exit"] = False
+        else:
+            results["results"] = results["results"][:limit]
+            results["reranked"] = False
+            results["early_exit"] = False
+
+        # Track total pipeline duration
+        if METRICS_AVAILABLE and pipeline_start_time:
+            rag_pipeline_duration.observe(time.time() - pipeline_start_time)
+
+        reranker_label: str = getattr(settings, "reranker_backend", "cross-encoder")
+        results["pipeline"] = f"hybrid_bm25_rrf_{reranker_label}"
+        return results
+
+    @cached(ttl=300, prefix="rag_multi_search")
+    async def search_with_conflict_resolution(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        enable_fallbacks: bool = True,
+    ) -> dict[str, Any]:
+        """Enhanced multi-collection search with conflict detection and resolution.
+
+        Implements the Supreme Knowledge Architecture's conflict resolution pipeline:
+        1. Intelligent routing: Classify query and determine primary collection
+        2. Fallback chains: Add secondary collections based on confidence
+        3. Parallel search: Query all relevant collections concurrently
+        4. Conflict detection: Identify contradicting or outdated information
+        5. Resolution: Apply timestamp-based and semantic deduplication
+        6. Merge & rank: Combine results with score-based ordering
+
+        Conflict Detection Algorithm:
+        - Temporal conflicts: Same regulation with different timestamps
+        - Semantic conflicts: Contradicting facts on same topic
+        - Resolution: Prefer newer timestamps, higher scores, primary collection
+
+        Args:
+            query: Natural language search query
+            user_level: User access level (0=S-tier only, 3=all tiers)
+            limit: Max results PER collection (final may be 2x limit)
+            tier_filter: Optional tier restriction (subset of allowed tiers)
+            enable_fallbacks: If True, search fallback collections (default: True)
+
+        Returns:
+            Dict containing:
+                - query (str): Original query
+                - results (list[dict]): Merged, deduped results (up to 2x limit)
+                - user_level (int): Access level used
+                - primary_collection (str): Main collection searched
+                - collections_searched (list[str]): All collections queried
+                - confidence (float): Router confidence in primary selection
+                - conflicts_detected (int): Number of conflicts found
+                - conflicts (list[dict]): Detailed conflict reports
+                - fallbacks_used (bool): Whether fallback collections were used
+
+        Note:
+            - Caching: 5-minute TTL for query deduplication
+            - Pricing queries: Routed to legal_unified_hybrid + visa_oracle (Fallback)
+            - Health tracking: Records metrics for all collections searched
+            - Error handling: Falls back to simple search on failure
+            - Performance: ~200-500ms for 3 collections (parallel execution)
+
+        Example:
+            >>> results = await search_service.search_with_conflict_resolution(
+            ...     query="What is the latest E33G visa requirement?",
+            ...     user_level=2,
+            ...     limit=5
+            ... )
+            >>> logger.info(f"Primary: {results['primary_collection']}")
+            >>> logger.info(f"Searched: {results['collections_searched']}")
+            >>> logger.info(f"Conflicts: {results['conflicts_detected']}")
+            >>> for conflict in results['conflicts']:
+            ...     logger.info(f"  - {conflict['type']}: {conflict['reason']}")
+        """
+        try:
+            self.conflict_stats["total_multi_collection_searches"] += 1
+
+            # Generate query embedding once (reuse for all collections)
+            query_embedding = await self.embedder.generate_query_embedding(query)
+
+            # Route query with fallbacks (using QueryRouterIntegration)
+            routing_info = self.query_router.route_query(
+                query=query, collection_override=None, enable_fallbacks=enable_fallbacks,
+            )
+            primary_collection = routing_info["collection_name"]
+            collections_to_search = routing_info["collections"]
+            confidence = routing_info["confidence"]
+
+            if routing_info["is_pricing"]:
+                logger.info(
+                    "💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)",
+                )
+            else:
+                logger.info(
+                    f"🎯 [Conflict Resolution] Primary: {primary_collection} "
+                    f"(confidence={confidence:.2f}), "
+                    f"Total collections: {len(collections_to_search)}",
+                )
+
+            # Search all collections in parallel using asyncio.gather
+            async def search_single_collection(collection_name: str) -> tuple[str, list]:
+                """
+                Search a single collection and format results.
+
+                Applies tier filters, searches collection, and formats results.
+                """
+                vector_db = self.collection_manager.get_collection(collection_name)
+                if not vector_db:
+                    logger.warning(f"⚠️ Collection not found: {collection_name}, skipping")
+                    return collection_name, []
+
+                # Determine allowed tiers (only for zantara_books)
+                allowed_tiers = self.LEVEL_TO_TIERS.get(user_level, [])
+                if tier_filter:
+                    allowed_tiers = [t for t in allowed_tiers if t in tier_filter]
+
+                # Build filter (only for zantara_books)
+                tier_filter_dict = None
+                if collection_name == "zantara_books" and allowed_tiers:
+                    tier_values = [t.value for t in allowed_tiers]
+                    tier_filter_dict = {"tier": {"$in": tier_values}}
+
+                # Build combined filter with default exclusion of repealed laws
+                chroma_filter = build_search_filter(
+                    tier_filter=tier_filter_dict, exclude_repealed=True,
+                )
+
+                # Search this collection (async) - track duration
+                use_vector_name = "dense" if _uses_named_vectors(collection_name) else None
+                search_start = time.time() if METRICS_AVAILABLE else None
+                raw_results = await vector_db.search(
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
+                    vector_name=use_vector_name,
+                )
+                if METRICS_AVAILABLE and search_start:
+                    rag_vector_search_duration.observe(time.time() - search_start)
+
+                # Format results using helper method
+                formatted_results = format_search_results(
+                    raw_results, collection_name, primary_collection=primary_collection,
+                )
+
+                return collection_name, formatted_results
+
+            # Execute all searches in parallel (track parallel execution)
+            if METRICS_AVAILABLE:
+                rag_parallel_searches.inc(len(collections_to_search))
+            search_tasks = [search_single_collection(coll) for coll in collections_to_search]
+            search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+            # Process results and collect health metrics for batch recording
+            results_by_collection = {}
+            health_metrics = []
+
+            for result in search_results:
+                if isinstance(result, Exception):
+                    logger.error(f"Search task failed: {result}")
+                    continue
+                collection_name, formatted_results = result
+
+                if formatted_results:
+                    results_by_collection[collection_name] = formatted_results
+                    logger.info(
+                        f"   ✓ {collection_name}: {len(formatted_results)} results (top score: {formatted_results[0]['score']:.2f})",
+                    )
+
+                    # Collect health metrics for batch recording
+                    avg_score = sum(r["score"] for r in formatted_results) / len(formatted_results)
+                    health_metrics.append(
+                        {
+                            "collection_name": collection_name,
+                            "had_results": True,
+                            "result_count": len(formatted_results),
+                            "avg_score": avg_score,
+                        },
+                    )
+                else:
+                    # Collect zero-result query metrics
+                    health_metrics.append(
+                        {
+                            "collection_name": collection_name,
+                            "had_results": False,
+                            "result_count": 0,
+                            "avg_score": 0.0,
+                        },
+                    )
+
+            # Batch record health metrics (performance optimization)
+            if health_metrics:
+                self.health_monitor.record_queries_batch(health_metrics)
+
+            # Detect conflicts (delegate to ConflictResolver)
+            conflicts = self.conflict_resolver.detect_conflicts(results_by_collection)
+
+            # Resolve conflicts if any
+            conflict_reports = []
+            if conflicts:
+                resolved_results, conflict_reports = self.conflict_resolver.resolve_conflicts(
+                    results_by_collection, conflicts,
+                )
+            else:
+                # No conflicts - just merge all results
+                resolved_results = []
+                for coll_results in results_by_collection.values():
+                    resolved_results.extend(coll_results)
+
+            # Sort by score (descending)
+            resolved_results.sort(key=lambda x: x["score"], reverse=True)
+
+            # Limit final results
+            final_results = resolved_results[: limit * 2]  # Return up to 2x limit to show conflicts
+
+            return {
+                "query": query,
+                "results": final_results,
+                "user_level": user_level,
+                "primary_collection": primary_collection,
+                "collections_searched": list(results_by_collection.keys()),
+                "confidence": confidence,
+                "conflicts_detected": len(conflicts),
+                "conflicts": conflict_reports,
+                "fallbacks_used": len(collections_to_search) > 1,
+            }
+
+        except (
+            qdrant_exceptions.UnexpectedResponse,
+            httpx.HTTPError,
+            ValueError,
+            KeyError,
+            RuntimeError,
+            Exception,  # Catch route_query/embedding/etc failures for fallback
+        ) as e:
+            logger.error(f"Search with conflict resolution error: {e}", exc_info=True)
+            # Fallback to simple search
+            return await self.search(query, user_level, limit, tier_filter)
+
+    def get_conflict_stats(self) -> dict:
+        """Get comprehensive conflict resolution statistics.
+
+        Aggregates metrics from ConflictResolver and SearchService to provide
+        insights into multi-collection search behavior and conflict patterns.
+
+        REFACTORED: Delegates to ConflictResolver for core metrics.
+
+        Returns:
+            Dict with conflict resolution metrics:
+                - total_multi_collection_searches (int): Total multi-collection queries
+                - conflicts_detected (int): Number of conflicts found
+                - conflicts_resolved (int): Number successfully resolved
+                - timestamp_resolutions (int): Conflicts resolved by timestamp
+                - conflict_rate (str): Percentage of searches with conflicts
+                - resolution_rate (str): Percentage of conflicts successfully resolved
+
+        Note:
+            - Includes both detection and resolution metrics
+            - Rates calculated as percentages with 1 decimal place
+            - Useful for monitoring data quality and consistency
+
+        Example:
+            >>> stats = search_service.get_conflict_stats()
+            >>> logger.info(f"Conflict rate: {stats['conflict_rate']}")
+            >>> logger.info(f"Resolution rate: {stats['resolution_rate']}")
+        """
+        resolver_stats = self.conflict_resolver.get_stats()
+        total_searches = self.conflict_stats["total_multi_collection_searches"]
+        conflict_rate = (
+            (resolver_stats["conflicts_detected"] / total_searches * 100)
+            if total_searches > 0
+            else 0.0
+        )
+
+        return {
+            **self.conflict_stats,
+            **resolver_stats,
+            "conflict_rate": f"{conflict_rate:.1f}%",
+            "resolution_rate": f"{(resolver_stats['conflicts_resolved'] / resolver_stats['conflicts_detected'] * 100) if resolver_stats['conflicts_detected'] > 0 else 0:.1f}%",
+        }
+
+    async def search_collection(
+        self,
+        query: str,
+        collection_name: str,
+        limit: int = 5,
+        filter: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Direct search on a specific collection (e.g., for few-shot examples).
+
+        Args:
+            query: Search query
+            collection_name: Target collection
+            limit: Max results
+            filter: Optional filter
+
+        Returns:
+            Search results
+        """
+        try:
+            # Generate embedding
+            query_embedding = await self.embedder.generate_query_embedding(query)
+
+            # Get client (lazy loading)
+            client = self.collection_manager.get_collection(collection_name)
+            if not client:
+                # Create ad-hoc client for new collections like conversation_examples
+                from backend.core.qdrant_db import QdrantClient
+
+                client = QdrantClient(
+                    qdrant_url=settings.qdrant_url, collection_name=collection_name,
+                )
+
+            # Search (async)
+            raw_results = await client.search(
+                query_embedding=query_embedding, filter=filter, limit=limit,
+            )
+
+            # Format results using helper method
+            formatted_results = format_search_results(
+                raw_results, collection_name, primary_collection=None,
+            )
+
+            return {"query": query, "results": formatted_results, "collection": collection_name}
+
+        except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError) as e:
+            logger.error(f"Collection search failed: {e}", exc_info=True)
+            return {"results": [], "error": str(e)}

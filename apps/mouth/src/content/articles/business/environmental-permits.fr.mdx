@@ -1,0 +1,459 @@
+---
+title: "Environmental Permits Indonesia 2026: Business Guide"
+slug: "environmental-permits"
+description: "Environmental permit requirements in Indonesia. AMDAL, UKL-UPL, SPPL explained for businesses and investors."
+excerpt: "Most businesses need environmental approval in Indonesia. Here's what you need to know."
+category: "business"
+publishedAt: "2026-01-15"
+coverImage: "/static/insights/business/environmental-permits.jpg"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/static/insights/business/environmental.jpg"
+  alt: "Environmental permits Indonesia"
+seo:
+  title: "Environmental Permits Indonesia 2026 | AMDAL UKL-UPL Guide"
+  description: "Which environmental permit does your business need in Indonesia? AMDAL, UKL-UPL, and SPPL requirements, thresholds, and approval process explained."
+  keywords:
+    - environmental permit indonesia
+    - AMDAL
+    - UKL-UPL
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "business_docs"
+    documentsUsed: 14
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "business-licenses-overview"
+  - "pt-pma-registration-guide"
+  - "manufacturing-business-guide"
+tableOfContents: true
+seoTitle: "Environmental Permits Indonesia 2026 | AMDAL Guide"
+seoDescription: "Environmental permits for Indonesia businesses: AMDAL, UKL-UPL, and SPPL explained. Which permit your business needs based on risk classification 2026."
+aiOptimization:
+  primaryQuestion: "What environmental permits does my business need in Indonesia?"
+  answerSnippet: "Environmental permits depend on business impact: AMDAL for major projects (factories, hotels 100+ rooms), UKL-UPL for medium impact businesses, SPPL for low impact. Your KBLI code risk level and project scale determine which applies. Processing: 3-6 months for AMDAL."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "KLHK (Ministry of Environment and Forestry)"
+      sameAs: "https://www.menlhk.go.id"
+    - type: "Regulation"
+      name: "PP 22/2021 on Environmental Protection"
+    - type: "Product"
+      name: "AMDAL (Environmental Impact Assessment)"
+faq:
+  - question: "What is the difference between AMDAL, UKL-UPL, and SPPL?"
+    answer: "AMDAL is a full Environmental Impact Assessment for major projects (IDR 50-200M, 3-6 months). UKL-UPL is a lighter environmental management plan for medium projects (IDR 10-30M, 1-2 months). SPPL is a simple environmental declaration for low-impact businesses (free, instant through OSS)."
+  - question: "Does my restaurant need an environmental permit?"
+    answer: "Most restaurants need SPPL (low impact) or UKL-UPL (if producing significant waste). Large restaurants or food factories need full AMDAL. The requirement is determined by your OSS risk classification based on KBLI code and business scale."
+  - question: "Can I start operations before getting environmental approval?"
+    answer: "For SPPL businesses, yes — it's issued instantly through OSS. For UKL-UPL and AMDAL, you cannot begin construction or operations until the environmental document is approved. Operating without proper environmental clearance carries heavy penalties."
+contentStructure:
+  hasHowTo: true
+  hasFAQ: true
+  hasTable: true
+tags:
+  - environmental permit
+  - AMDAL
+  - UKL-UPL
+  - business compliance
+  - SPPL
+  - environmental assessment
+  - KLHK
+  - green permit Indonesia
+  - environmental compliance
+  - construction permits
+canonicalUrl: "https://balizero.com/business/environmental-permits"
+ogImage: "/static/insights/business/environmental-permits.jpg"
+ogType: "article"
+twitterCard: "summary_large_image"
+locale: "fr"
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Checklist,
+  InfoCard,
+  AskZantara,
+} from "@/components/insights/interactive";
+
+# Permis environnementaux en Indonésie 2026 : Guide d'affaires
+
+La conformité environnementale est obligatoire pour la plupart des entreprises en Indonésie. Voici ce que vous devez savoir.
+
+## Avez-vous besoin d'une approbation environnementale ?
+
+<DecisionTree
+  title="Type de permis environnemental"
+  description="De quelle approbation avez-vous besoin ?"
+  nodes={[
+    {
+      id: "start",
+      question: "Quelle est votre activité commerciale ?",
+      options: [
+        { label: "Grande industrie/impact significatif", next: "amdal" },
+        { label: "Entreprise moyenne/impact modéré", next: "ukl" },
+        { label: "Petite entreprise/faible impact", next: "sppl" },
+        { label: "Bureau/commerce de détail uniquement", next: "minimal" },
+      ],
+    },
+    {
+      id: "amdal",
+      result: {
+        title: "AMDAL requis",
+        description:
+          "Évaluation de l'impact environnemental requise. C'est le processus le plus complet pour les activités à fort impact comme la grande fabrication, l'exploitation minière ou les développements majeurs.",
+      },
+    },
+    {
+      id: "ukl",
+      result: {
+        title: "UKL-UPL requis",
+        description:
+          "Efforts de gestion et de surveillance environnementale requis. Pour les entreprises à impact moyen comme les restaurants, les petites usines ou la construction modérée.",
+      },
+    },
+    {
+      id: "sppl",
+      result: {
+        title: "SPPL suffisant",
+        description:
+          "Lettre d'engagement de gestion environnementale. Forme la plus simple pour les entreprises à faible impact. Souvent juste une déclaration via OSS.",
+      },
+    },
+    {
+      id: "minimal",
+      result: {
+        title: "Exigences minimales",
+        description:
+          "Un bureau ou un commerce de détail standard n'a généralement pas besoin de permis environnementaux distincts au-delà de la conformité de base. Vérifiez via OSS pour votre KBLI spécifique.",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Types de documents environnementaux
+
+<ComparisonTable
+  title="Approbations environnementales"
+  description="AMDAL vs UKL-UPL vs SPPL"
+  items={[
+    {
+      name: "AMDAL",
+      subtitle: "Évaluation de l'impact environnemental",
+      values: {
+        For: "Activités à fort impact",
+        Process: "Évaluation complète + étude",
+        Time: "6-12 mois",
+        Cost: "IDR 100M-500M+",
+      },
+    },
+    {
+      name: "UKL-UPL",
+      subtitle: "Gestion et surveillance",
+      values: {
+        For: "Activités à impact moyen",
+        Process: "Plan de gestion",
+        Time: "2-4 mois",
+        Cost: "IDR 20-100M",
+      },
+      highlight: true,
+    },
+    {
+      name: "SPPL",
+      subtitle: "Lettre d'engagement",
+      values: {
+        For: "Activités à faible impact",
+        Process: "Déclaration uniquement",
+        Time: "1-2 semaines",
+        Cost: "IDR 1-5M",
+      },
+    },
+  ]}
+/>
+
+---
+
+## AMDAL (Évaluation de l'impact environnemental)
+
+<InfoCard variant="warning" title="Projets majeurs uniquement">
+**AMDAL est requis pour :**
+- Grandes installations de fabrication
+- Opérations minières
+- Projets d'infrastructure majeurs
+- Agriculture à grande échelle
+- Développement foncier significatif
+- Installations chimiques/dangereuses
+
+AMDAL implique une consultation publique et une évaluation par des experts.
+
+</InfoCard>
+
+### Processus AMDAL
+
+| Étape                             | Description                        | Durée        |
+| --------------------------------- | ---------------------------------- | ------------ |
+| Sélection                         | Déterminer si AMDAL est nécessaire | 1-2 semaines |
+| Définition du champ d'application | Définir le périmètre de l'étude    | 2-4 semaines |
+| Étude d'impact environnemental    | Étude d'impact environnemental     | 3-6 mois     |
+| Consultation publique             | Contribution de la communauté      | 1-2 mois     |
+| Examen                            | Évaluation par le comité           | 1-2 mois     |
+| Approbation                       | Permis environnemental délivré     | 2-4 semaines |
+
+### Composantes AMDAL
+
+| Document | Objectif                              |
+| -------- | ------------------------------------- |
+| KA-ANDAL | Termes de référence                   |
+| ANDAL    | Analyse d'impact                      |
+| RKL      | Plan de gestion environnementale      |
+| RPL      | Plan de surveillance environnementale |
+
+---
+
+## UKL-UPL (Gestion et surveillance)
+
+### Quand UKL-UPL est requis
+
+La plupart des entreprises de taille moyenne ont besoin de UKL-UPL :
+
+- Restaurants et cafés
+- Fabrication de petite à moyenne taille
+- Ateliers et garages
+- Construction moyenne
+- Hôtels (certaines tailles)
+
+### Exigences UKL-UPL
+
+<Checklist
+  title="Documents UKL-UPL"
+  description="Ce que vous devez préparer"
+  persistKey="ukl-upl-checklist"
+  items={[
+    {
+      id: "form",
+      label: "Formulaire/demande UKL-UPL",
+      description: "Format standard",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "map",
+      label: "Carte de localisation",
+      description: "Site et environs",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "layout",
+      label: "Plan d'aménagement du bâtiment/installation",
+      description: "Plans d’étage, emplacement des équipements",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "process",
+      label: "Description du flux de processus",
+      description: "Détail des activités commerciales",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "waste",
+      label: "Plan de gestion des déchets",
+      description: "Comment les déchets seront traités",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "water",
+      label: "Plan d'utilisation de l'eau",
+      description: "Source et traitement",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "monitoring",
+      label: "Plan de surveillance",
+      description: "Contrôles environnementaux continus",
+      required: true,
+      category: "environmental",
+    },
+  ]}
+  categories={[
+    { id: "application", label: "Demande", color: "blue" },
+    { id: "technical", label: "Technique", color: "green" },
+    { id: "environmental", label: "Environnemental", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SPPL (Lettre de déclaration)
+
+<InfoCard variant="tip" title="Option la plus simple">
+**SPPL** est destiné aux entreprises à faible impact :
+- Petits commerces de détail
+- Services de base
+- Activités de bureau
+- Opérations à faible risque
+
+Souvent généré automatiquement via le système OSS en fonction de votre code KBLI.
+
+</InfoCard>
+
+### Processus SPPL
+
+1. S'inscrire sur le système OSS
+2. Saisir les détails de l'entreprise
+3. SPPL généré si le risque est faible
+4. Imprimer et conserver dans les dossiers
+5. Se conformer aux engagements déclarés
+
+---
+
+## Approche basée sur les risques
+
+### Classification des risques OSS
+
+Le système OSS utilise désormais une **approche basée sur les risques** :
+
+| Niveau de risque | Exigence environnementale   |
+| ---------------- | --------------------------- |
+| Faible           | SPPL (automatique dans OSS) |
+| Moyen-faible     | SPPL ou UKL-UPL simplifié   |
+| Moyen-élevé      | UKL-UPL standard            |
+| Élevé            | AMDAL évaluation complète   |
+
+Risque déterminé par :
+
+- Classification commerciale KBLI
+- Échelle des opérations
+- Sensibilité de l'emplacement
+- Impact environnemental potentiel
+
+---
+
+## Obligations de conformité
+
+### Après obtention du permis
+
+<Checklist
+  title="Conformité environnementale continue"
+  description="Obligations régulières"
+  persistKey="env-compliance-checklist"
+  items={[
+    {
+      id: "monitoring",
+      label: "Surveillance régulière",
+      description: "Selon le plan approuvé",
+      required: true,
+      category: "monitoring",
+    },
+    {
+      id: "reporting",
+      label: "Rapports périodiques",
+      description: "À l'agence environnementale",
+      required: true,
+      category: "reporting",
+    },
+    {
+      id: "waste-records",
+      label: "Registres de gestion des déchets",
+      description: "Documenter l’élimination",
+      required: true,
+      category: "records",
+    },
+    {
+      id: "permits-current",
+      label: "Maintenir les permis à jour",
+      description: "Renouveler avant expiration",
+      required: true,
+      category: "admin",
+    },
+    {
+      id: "changes",
+      label: "Signaler les changements significatifs",
+      description: "Si les opérations changent matériellement",
+      required: true,
+      category: "admin",
+    },
+  ]}
+  categories={[
+    { id: "monitoring", label: "Surveillance", color: "blue" },
+    { id: "reporting", label: "Rapports", color: "green" },
+    { id: "records", label: "Registres", color: "amber" },
+    { id: "admin", label: "Admin", color: "purple" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Gestion des déchets
+
+### Catégories de déchets
+
+| Catégorie                | Exemples                             | Exigences              |
+| ------------------------ | ------------------------------------ | ---------------------- |
+| B3 (Dangereux)           | Produits chimiques, batteries, huile | Élimination autorisée  |
+| Non-B3                   | Déchets généraux                     | Élimination appropriée |
+| Eaux usées               | Eaux de processus                    | Traitement avant rejet |
+| Émissions atmosphériques | Fumée, gaz                           | Surveillance, filtres  |
+
+<InfoCard variant="warning" title="Déchets B3">
+Les **déchets dangereux (B3)** nécessitent :
+- Stockage séparé
+- Transporteur agréé
+- Installation d'élimination agréée
+- Documentation du manifeste
+- Rapports réguliers
+
+Les violations peuvent entraîner de graves sanctions.
+
+</InfoCard>
+
+---
+
+## Sanctions en cas de non-conformité
+
+| Violation                            | Sanction                             |
+| ------------------------------------ | ------------------------------------ |
+| Opération sans permis                | Fermeture + amendes                  |
+| Dépassement des normes               | Avertissements → amendes → fermeture |
+| Élimination inappropriée des déchets | Poursuites pénales possibles         |
+| Faux rapports                        | Révocation du permis                 |
+| Violations B3                        | Responsabilité pénale + civile       |
+
+---
+
+## Questions fréquentes
+
+<AskZantara
+  context="Permis environnemental Indonésie, AMDAL, UKL-UPL, SPPL, conformité des entreprises"
+  placeholder="Posez des questions sur les permis environnementaux..."
+  suggestedQuestions={[
+    "Mon restaurant a-t-il besoin d’AMDAL ?",
+    "Combien de temps prend UKL-UPL ?",
+    "Puis-je opérer en attendant le permis ?",
+    "Que se passe-t-il si je ne me conforme pas ?",
+  ]}
+/>
+
+---
+
+## Articles connexes
+
+- [Aperçu des licences commerciales](/insights/business/business-licenses-overview)
+- [Guide de création de PT PMA](/insights/business/pt-pma-setup-guide)
+- [Guide des entreprises manufacturières](/insights/business/manufacturing-business-guide)

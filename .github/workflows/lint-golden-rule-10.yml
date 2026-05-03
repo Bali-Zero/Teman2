@@ -1,0 +1,57 @@
+name: Golden Rule #10 — httpx pattern lint
+
+# Fails the PR if a new httpx.AsyncClient(...) instantiation lands outside
+# the canonical lazy-singleton location (`*_http.py`) without an
+# `async with` deterministic close, an explicit `# golden-rule-10-exempt`
+# annotation, or being a one-shot CLI script under `backend/scripts/`.
+#
+# Reference pattern: apps/backend-rag/backend/services/notifications/email_http.py
+# Audit details:    docs/audits/2026-04-29-zero-crash-audit/p0-5-httpx-audit-report.md
+# Phase 2 fix:      this workflow + the regression test
+#                   apps/backend-rag/backend/tests/app/setup/test_no_httpx_violators.py
+#
+# The check delegates to the regression test directly so the rules stay
+# in lock-step (same lookback window, same exemption parser).
+
+on:
+  pull_request:
+    paths:
+      - 'apps/backend-rag/backend/**/*.py'
+      - 'apps/backend-rag/backend/tests/app/setup/test_no_httpx_violators.py'
+      - '.github/workflows/lint-golden-rule-10.yml'
+
+jobs:
+  lint:
+    name: Detect Golden Rule #10 violations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ripgrep + pytest
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ripgrep
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+
+      - name: Run regression test (single source of truth)
+        working-directory: apps/backend-rag
+        run: |
+          PYTHONPATH=. python -m pytest \
+            backend/tests/app/setup/test_no_httpx_violators.py \
+            -v --tb=short
+
+      - name: Show fix guidance on failure
+        if: failure()
+        run: |
+          echo "::error::Golden Rule #10 violation detected."
+          echo "Solution: hoist to a module-level lazy singleton."
+          echo "Reference: apps/backend-rag/backend/services/notifications/email_http.py"
+          echo "Or wrap in 'async with httpx.AsyncClient(...) as client:' (deterministic close)."
+          echo "Or annotate the offending line with '# golden-rule-10-exempt: <reason>' if provably safe."

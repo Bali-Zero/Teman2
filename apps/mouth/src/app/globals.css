@@ -1,0 +1,760 @@
+@import "tailwindcss";
+@import "../../../../packages/core/tokens/index.css";
+@import "../../../../packages/core/tailwind/theme.css";
+@import "../../../../packages/core/effects/grain.css";
+@import "../../../../packages/core/effects/shimmer.css";
+@import "../styles/kbli-theme.css";
+
+/* Redefine dark variant to target data-theme instead of .dark class
+   (design doc §5 "Toggle mechanism", step 2 of three coupled changes). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Brand entrance strip — "Your 3ali, from ZerΩ" slogan + service subtitle.
+   Copied verbatim from (marketing)/page.tsx lines 132–225 so /v2 and legacy
+   homepage render the brand entrance identically. Shared in globals so any
+   route group can use it. */
+.brand-entrance {
+  border-bottom: 1px solid rgba(212, 168, 83, 0.15);
+  background: var(--surface-base);
+  position: relative;
+  overflow: visible;
+}
+.brand-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 26px 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+.brand-tagline {
+  font-family: "Arial Black", "Impact", "Franklin Gothic Heavy", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+  font-size: 24px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  line-height: 1.1;
+  margin: 0;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+  white-space: nowrap;
+}
+.brand-logo-3-img {
+  height: 1.6em;
+  width: auto;
+  margin: 0 -0.08em 0 -0.05em;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+.brand-om-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85em;
+  height: 0.85em;
+  background: #fff;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-top: -0.1em;
+}
+.brand-om-circle::after {
+  content: "ॐ";
+  font-size: 0.55em;
+  font-family: serif;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.brand-sub {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+}
+.brand-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-stat {
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+.brand-stat-sep {
+  font-size: 8px;
+  color: rgba(212, 168, 83, 0.4);
+}
+@media (max-width: 768px) {
+  .brand-inner {
+    padding: 12px 20px;
+  }
+  .brand-tagline {
+    font-size: 22px;
+  }
+  .brand-right {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Liquid glassmorphism — premium surface utility.
+   Apply .bz-glass for a base glass card; add .bz-glass--strong for
+   the intense variant used on funnel boxes and service cards.
+   Designed to sit on any surface and pick up --accent-funnel from
+   an ancestor data-funnel attribute.
+═══════════════════════════════════════════════════════════════ */
+.bz-glass {
+  position: relative;
+  border-radius: 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  isolation: isolate;
+}
+.bz-glass::before {
+  /* Iridescent top highlight (simulated brushed light) */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0) 30%
+  );
+  z-index: -1;
+}
+.bz-glass::after {
+  /* Soft funnel-tinted accent glow from top-left */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 80% 60% at 20% 0%,
+    color-mix(
+        in srgb,
+        var(--accent-funnel, var(--accent-zantara)) 14%,
+        transparent
+      )
+      0%,
+    transparent 65%
+  );
+  opacity: 0.7;
+  z-index: -1;
+}
+
+.bz-glass--strong {
+  /* Accent-infused glass: the card's --accent-funnel bleeds into the base
+     so the funnel color dominates the visual. */
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-funnel, white) 28%, transparent) 0%,
+    color-mix(in srgb, var(--accent-funnel, white) 8%, transparent) 100%
+  );
+  border: 1px solid
+    color-mix(in srgb, var(--accent-funnel, white) 35%, transparent);
+  backdrop-filter: blur(36px) saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: blur(36px) saturate(180%) brightness(1.05);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 0 1px
+      color-mix(in srgb, var(--accent-funnel, transparent) 20%, transparent)
+      inset,
+    0 0 40px
+      color-mix(in srgb, var(--accent-funnel, transparent) 18%, transparent);
+}
+.bz-glass--strong::after {
+  /* Saturated funnel glow from top-left, ~2x stronger than base. */
+  opacity: 1;
+  background: radial-gradient(
+    ellipse 100% 80% at 25% 0%,
+    color-mix(
+        in srgb,
+        var(--accent-funnel, var(--accent-zantara)) 55%,
+        transparent
+      )
+      0%,
+    color-mix(
+        in srgb,
+        var(--accent-funnel, var(--accent-zantara)) 12%,
+        transparent
+      )
+      45%,
+    transparent 80%
+  );
+}
+.bz-glass--strong:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--accent-funnel, white) 60%,
+    transparent
+  );
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.4),
+    0 0 0 1px color-mix(in srgb, var(--accent-funnel, white) 45%, transparent)
+      inset,
+    0 0 80px
+      color-mix(in srgb, var(--accent-funnel, transparent) 35%, transparent);
+}
+
+:root {
+  /* Map design system vars to kbli theme */
+  --background: var(--kbli-bg-base);
+  --background-secondary: var(--kbli-bg-elevated);
+  --background-elevated: var(--kbli-bg-surface);
+  --background-hover: var(--kbli-bg-surface-hover);
+
+  --foreground: var(--kbli-text-primary);
+  --foreground-secondary: var(--kbli-text-secondary);
+  --foreground-muted: var(--kbli-text-muted);
+
+  --border: var(--kbli-border);
+  --border-hover: var(--kbli-border-hover);
+
+  --accent: var(--kbli-accent);
+  --accent-hover: var(--kbli-accent-hover);
+
+  /* Warm Depth tokens (Legacy) */
+  --bz-base: #1d273b;
+  --bz-elevated: #243047;
+  --bz-surface: #2a3655;
+  --bz-card: #2a3655;
+  --bz-card-hover: #2f3d5e;
+  --bz-accent: #d4845a;
+  --bz-accent-hover: #bf7350;
+  --bz-accent-warm: #c9a96e;
+  --bz-accent-cool: #5e7fb5;
+
+  /* God Tier Anthracite Tokens */
+  --anthracite-base: #1d273b;
+  --anthracite-elevated: #243047;
+
+  /* Cinematic Border Tokens */
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --glass-rim: rgba(255, 255, 255, 0.03);
+
+  /* Typography */
+  --tx-pure: #ffffff;
+  --tx-primary: #f8fafc;
+  --tx-secondary: #94a3b8;
+  --tx-tertiary: #475569;
+
+  /* Neon Accents */
+  --neon-blue: #3b82f6;
+  --neon-purple: #8b5cf6;
+  --neon-emerald: #10b981;
+  --neon-amber: #f59e0b;
+  --neon-rose: #f43f5e;
+  --neon-cyan: #06b6d4;
+  --bz-copper: #d4845a;
+
+  /* Sidebar */
+  --sidebar-active-bg: rgba(212, 132, 90, 0.08);
+  --sidebar-active-border: rgba(212, 132, 90, 0.3);
+
+  --bz-text-1: #edeae4;
+  --bz-text-2: #8c8884;
+  --bz-text-3: #575350;
+  --bz-border: rgba(255, 255, 255, 0.055);
+  --bz-border-hover: rgba(255, 255, 255, 0.1);
+  --bz-border-accent: rgba(201, 169, 110, 0.18);
+  --bz-green: #4db87a;
+  --bz-red: #d95f5a;
+  --bz-amber: #d4923a;
+  --success: #4db87a;
+  --warning: #d4923a;
+  --error: #d95f5a;
+  --bz-sidebar-width: 216px;
+  --bz-header-height: 48px;
+  --bz-batik-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M0 10 L10 0 L20 10 L10 20 Z' fill='none' stroke='%23c9a96e' stroke-width='0.5'/%3E%3C/svg%3E");
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--kbli-bg-base);
+  color: var(--kbli-text-primary);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Editorial persona (balizero.com, visa/tax/kbli): headings use Cormorant
+   Garamond serif. Operative personas (kita., prime., my.) keep their own
+   heading treatments — sans for operative-dark, page-local Cormorant
+   imports for operative-light portal screens. See layout.tsx themeInitScript
+   for persona assignment. */
+[data-theme="editorial"] :is(h1, h2, h3) {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* Zantara widget fade-in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ZantaraPortalCard animations */
+@keyframes lotusPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(212, 132, 90, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(212, 132, 90, 0);
+  }
+}
+@keyframes liquidShift {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.06) translate(2%, 1%);
+  }
+}
+
+/* Subtle ambient gradients — God Tier Anthracite */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -25vh -25vw;
+  background:
+    radial-gradient(
+      circle at 15% 30%,
+      rgba(59, 130, 246, 0.04) 0%,
+      transparent 40%
+    ),
+    /* Blue */
+    radial-gradient(
+        circle at 85% 70%,
+        rgba(139, 92, 246, 0.03) 0%,
+        transparent 50%
+      ),
+    /* Purple */
+    radial-gradient(
+        circle at 50% 10%,
+        rgba(212, 132, 90, 0.02) 0%,
+        transparent 40%
+      ); /* Copper top */
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: color-dodge;
+}
+
+/* Noise texture overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Ensure content above pseudo-elements */
+#__next,
+main,
+[data-nextjs-scroll-focus-boundary] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Premium Liquid Animations */
+@keyframes aurora {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-aurora {
+  background-size: 200% 200%;
+  animation: aurora 8s ease infinite;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(212, 132, 90, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(212, 132, 90, 0.15);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  opacity: 0;
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes holographic-spin {
+  0% {
+    --border-angle: 0deg;
+  }
+  100% {
+    --border-angle: 360deg;
+  }
+}
+
+.holographic-card {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.holographic-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 1.1rem;
+  background: conic-gradient(
+    from var(--border-angle),
+    transparent 20%,
+    #d4845a,
+    #a855f7,
+    #3b82f6,
+    transparent 80%
+  );
+  animation: holographic-spin 3s linear infinite;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.holographic-card:hover::before {
+  opacity: 1;
+}
+
+@keyframes progress-grow {
+  from {
+    width: 0%;
+  }
+}
+
+/* ── Zantara Portal Card animations ─────────────────────────── */
+@keyframes lotusPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+}
+@keyframes liquidShift {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.06) translate(2%, 1%);
+  }
+}
+
+@layer utilities {
+  /* WCAG 2.1 — visually-hidden helper (text only for AT). Keep clipping
+     pattern, not display:none, so screen readers still announce the node. */
+  .sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  /* Workspace skip-link — appears on first Tab so keyboard users can jump
+     past the sidebar/header into <main id="main-content">. */
+  .bz-skip-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--bz-accent, #d4845a);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom-right-radius: 6px;
+    transform: translateY(-150%);
+    transition: transform 150ms ease;
+  }
+  .bz-skip-link:focus,
+  .bz-skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+  }
+
+  .glass-panel-deep {
+    @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
+  }
+
+  .glass-card-warm {
+    @apply bg-[rgba(26,26,30,0.5)] backdrop-blur-md border border-[rgba(255,255,255,0.08)] shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300;
+  }
+
+  .glass-card-warm:hover {
+    @apply bg-[rgba(36,36,41,0.6)] border-[rgba(255,255,255,0.15)] shadow-[0_8px_32px_rgba(212,132,90,0.15)] -translate-y-0.5;
+  }
+
+  .glass-card-mckinsey {
+    @apply bg-[rgba(10,37,64,0.3)] backdrop-blur-md border border-[rgba(255,255,255,0.05)] shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300;
+  }
+
+  .glass-card-mckinsey:hover {
+    @apply bg-[rgba(10,37,64,0.6)] border-[#2251ff]/50 shadow-[0_8px_32px_rgba(34,81,255,0.15)] -translate-y-0.5;
+  }
+
+  /* God Tier Anthracite Utilities */
+  .crystal-stat-card {
+    @apply bg-gradient-to-br from-[rgba(255,255,255,0.02)] to-[rgba(255,255,255,0.005)] backdrop-blur-2xl rounded-2xl p-5 shadow-[inset_0_1px_0_0_var(--glass-highlight),inset_0_0_0_1px_var(--glass-rim),0_10px_20px_-5px_rgba(0,0,0,0.3)] relative overflow-hidden transition-all duration-300;
+  }
+  .crystal-stat-card:hover {
+    @apply -translate-y-0.5 bg-gradient-to-br from-[rgba(255,255,255,0.03)] to-[rgba(255,255,255,0.01)];
+  }
+
+  .stat-glow-line {
+    @apply absolute left-0 top-0 bottom-0 w-[2px];
+    box-shadow: 0 0 15px 1px currentColor;
+  }
+
+  .ledger-container {
+    @apply bg-gradient-to-br from-[rgba(20,28,43,0.5)] to-[rgba(20,28,43,0.8)] border border-[var(--glass-rim)] rounded-[1.25rem] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_20px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-[48px] flex flex-col overflow-hidden;
+  }
+
+  .lux-text-gradient {
+    background: linear-gradient(180deg, #ffffff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* ── v2 hero — responsive aspect + gradient + logo sizing ───────────── */
+.hero-aspect {
+  aspect-ratio: 4 / 5;
+  min-height: 560px;
+  max-height: 90vh;
+}
+.hero-gradient {
+  background: linear-gradient(
+    180deg,
+    rgba(18, 16, 22, 0.25) 0%,
+    rgba(18, 16, 22, 0.55) 55%,
+    rgba(18, 16, 22, 0.92) 100%
+  );
+}
+.hero-logo :is(img, svg) {
+  width: 72px !important;
+  height: auto !important;
+}
+@media (min-width: 768px) {
+  .hero-aspect {
+    aspect-ratio: 21 / 9;
+    min-height: 0;
+    max-height: none;
+  }
+  .hero-gradient {
+    background: linear-gradient(
+      90deg,
+      rgba(18, 16, 22, 0.85) 0%,
+      rgba(18, 16, 22, 0.6) 28%,
+      rgba(18, 16, 22, 0.25) 48%,
+      transparent 62%
+    );
+  }
+  .hero-logo :is(img, svg) {
+    width: 120px !important;
+  }
+}
+
+/* ── v2 funnel — responsive grid: stack on mobile, 2-col on md+ ─────── */
+.funnel-grid {
+  grid-template-columns: 1fr !important;
+  gap: 1rem !important;
+}
+@media (min-width: 768px) {
+  .funnel-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1.5rem !important;
+  }
+}
+
+/* ── v2 socialproof — stack columns on mobile ───────────────────────── */
+.socialproof-grid {
+  grid-template-columns: 1fr !important;
+}
+@media (min-width: 768px) {
+  .socialproof-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+/* ── v2 funnel image — forced aspect on mobile when grid stacks ──────── */
+.funnel-image {
+  aspect-ratio: 4 / 3;
+  min-height: 240px;
+}
+@media (min-width: 768px) {
+  .funnel-image {
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+}
+
+/* ── v2 FABs — pill+label on desktop, compact icon-only on mobile ───── */
+
+/* Hide global WhatsApp FAB inside L1 funnels (visa/kbli/tax/property).
+   Those pages already ship a dedicated HeaderWhatsAppCTA in the NavShell
+   + a CTAHandoff sticky bottom inside FunnelFrame — a 3rd floating
+   button would be redundant visual noise. Selector targets the
+   data-funnel attribute that FunnelFrame sets on its root <div>. */
+:has([data-funnel]) .fab-whatsapp {
+  display: none;
+}
+
+.fab-whatsapp,
+.fab-zantara {
+  bottom: 20px;
+  height: 56px;
+  padding-left: 8px;
+  padding-right: 8px;
+  width: 56px;
+  justify-content: center;
+}
+.fab-whatsapp {
+  left: 20px;
+}
+.fab-zantara {
+  right: 20px;
+}
+.fab-label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .fab-whatsapp,
+  .fab-zantara {
+    bottom: 32px;
+    height: 60px;
+    padding-left: 10px;
+    padding-right: 24px;
+    width: auto;
+    justify-content: flex-start;
+  }
+  .fab-whatsapp {
+    left: 32px;
+  }
+  .fab-zantara {
+    right: 32px;
+  }
+  .fab-label {
+    display: flex;
+  }
+}
+
+/* ── v2 footer — 5-col on desktop, 2-col on tablet, 1-col on mobile ─── */
+.footer-grid {
+  grid-template-columns: 1fr !important;
+  gap: 2rem !important;
+}
+@media (min-width: 640px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+@media (min-width: 1024px) {
+  .footer-grid {
+    grid-template-columns: 1.5fr repeat(4, 1fr) !important;
+    gap: 3rem !important;
+  }
+}

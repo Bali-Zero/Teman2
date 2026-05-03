@@ -1,0 +1,118 @@
+name: Monthly PG Restore Drill
+
+# Proves that the daily pg_dump → Tigris pipeline is actually restorable.
+# Without this, a silent backup corruption could go unnoticed for weeks.
+#
+# Schedule: 1st of every month at 04:00 UTC (12:00 WITA).
+# Also triggerable on-demand via workflow_dispatch.
+#
+# L2.1 roadmap — see AUTONOMOUS_OPS.md §"Guardrails that make this safe".
+
+on:
+  schedule:
+    - cron: "0 4 1 * *" # 04:00 UTC on the 1st
+  workflow_dispatch:
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: drill
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: nuzantara_drill
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 15499:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install aws CLI + postgresql-client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client awscli
+
+      - name: Run restore drill
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TIGRIS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TIGRIS_SECRET_ACCESS_KEY }}
+          TIGRIS_ENDPOINT: https://fly.storage.tigris.dev
+          TIGRIS_BUCKET: nuzantara-backups
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          DRILL_PORT: "15499"
+          TOLERANCE_PCT: "15"
+          # CI already has its own Postgres service running — we bypass the
+          # docker-run path by pointing at it directly. The script detects
+          # a pre-provisioned container via DRILL_CONTAINER_EXISTS.
+          DRILL_CONTAINER_EXISTS: "1"
+        run: |
+          # Skip the docker-run block: we already have a service container.
+          # Just run the drill against the service DB.
+          set -e
+          cd "$GITHUB_WORKSPACE"
+
+          # Find + download latest backup
+          LATEST=$(aws --endpoint-url "$TIGRIS_ENDPOINT" s3 ls \
+            "s3://$TIGRIS_BUCKET/postgres/" \
+            | awk '{print $4}' | grep -E '\.sql\.gz$' | sort | tail -1)
+          test -n "$LATEST" || { echo "no backups"; exit 1; }
+          echo "Latest backup: $LATEST"
+
+          aws --endpoint-url "$TIGRIS_ENDPOINT" s3 cp \
+            "s3://$TIGRIS_BUCKET/postgres/$LATEST" "/tmp/$LATEST"
+
+          DUMP_SIZE=$(stat -c%s "/tmp/$LATEST")
+          echo "Downloaded $DUMP_SIZE bytes"
+          test "$DUMP_SIZE" -gt 1000000
+
+          # Restore into CI postgres service
+          PGPASSWORD=drill gunzip -c "/tmp/$LATEST" | \
+            psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill \
+                 -v ON_ERROR_STOP=0 \
+              > /tmp/restore.log 2>&1 || true
+
+          # Sanity
+          q() { PGPASSWORD=drill psql -h 127.0.0.1 -p 15499 -U drill -d nuzantara_drill -Atc "$1"; }
+          TABLES=$(q "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
+          CLIENTS=$(q "SELECT COUNT(*) FROM clients" || echo "ERROR")
+          PRACTICES=$(q "SELECT COUNT(*) FROM practices" || echo "ERROR")
+
+          echo "Tables: $TABLES, clients: $CLIENTS, practices: $PRACTICES"
+          test "$TABLES" -ge 50 || { echo "schema incomplete"; exit 3; }
+          test "$CLIENTS" != "ERROR" || { echo "clients table broken"; exit 3; }
+          test "$PRACTICES" != "ERROR" || { echo "practices table broken"; exit 3; }
+
+          # Telegram success
+          MSG="✅ Restore drill passed (CI)
+backup: $LATEST
+tables: $TABLES
+clients: $CLIENTS
+practices: $PRACTICES
+dump: $DUMP_SIZE bytes"
+          curl -s --max-time 10 \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
+            --data-urlencode "text=${MSG}" > /dev/null || true
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+        run: |
+          curl -s --max-time 10 \
+            -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
+            --data-urlencode "text=❌ Monthly restore drill FAILED — backups may not be recoverable. Investigate: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            > /dev/null || true

@@ -1,0 +1,60 @@
+/*
+ * Layer 3 — Theme: Editorial (blog only)
+ * Navy McKinsey palette. Same components, same type scale, only neutrals
+ * and primary accent differ. Token switch, not fork (design §R6).
+ * Cap: ≤40 declarations.
+ */
+
+/* Editorial — premium navy. Lightened 2 shades from the McKinsey baseline
+   (#0c1f3a → #1e3863) and softened with a subtle gradient top-highlight so the
+   surface reads like brushed material rather than flat ink. Same components,
+   same type scale, only neutrals and primary accent differ from dark.
+   Cap: ≤40 declarations. */
+
+[data-theme="editorial"] {
+  /* Base surface uses a subtle top-highlight gradient (premium feel).
+     Fallback solid for contexts that can't resolve gradients. */
+  --surface-base: linear-gradient(
+    180deg,
+    #24406e 0%,
+    #1e3863 35%,
+    #1a3258 100%
+  );
+  --surface-base-solid: #1e3863;
+  --surface-raised: rgba(255, 255, 255, 0.055);
+  --surface-sunken: rgba(0, 0, 0, 0.25);
+  --surface-overlay: rgba(30, 56, 99, 0.82);
+  --surface-scrim: rgba(26, 50, 88, 0.92);
+
+  --text-primary: rgba(255, 255, 255, 0.96);
+  --text-secondary: rgba(255, 255, 255, 0.68);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
+  --text-on-accent: #ffffff;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+
+  --nav-bg: rgba(14, 26, 48, 0.94);
+  --footer-bg: #162d50;
+  --footer-text: var(--text-tertiary);
+
+  /* Editorial accent — brighter McKinsey-adjacent blue, lifted for AA contrast
+     on the new lighter base (#1e3863 gives 4.8:1 for #5c8aff text). */
+  --accent-funnel: #3a6dff;
+  --accent-funnel-text: #5c8aff;
+}
+
+/* ── Visa funnel override on editorial theme ──
+ * Editorial base uses McKinsey blue for --accent-funnel. Visa has its own
+ * red identity (semantic.css:94) that would otherwise be hidden by the
+ * theme import order. Scope: only when BOTH theme=editorial AND funnel=visa
+ * coexist — /tax and /kbli keep editorial blue→their own hue mapping, as
+ * the other themes do (operative-light.css:38, light.css:33).
+ * #ff7a88 on editorial base (#1e3863) = 4.66:1, passes WCAG AA normal text.
+ */
+[data-theme="editorial"] [data-funnel="visa"] {
+  --accent-funnel: #ff3344;
+  --accent-funnel-text: #ff7a88;
+  --text-on-accent: #ffffff;
+}

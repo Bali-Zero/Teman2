@@ -1,0 +1,426 @@
+"""
+Hierarchical Document Indexer
+Crea relazioni parent-child per retrieval gerarchico
+"""
+
+import json
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+import asyncpg
+
+from backend.app.core.config import settings
+from backend.core.legal.quality_validators import (
+    assess_document_quality,
+    extract_ayat_numbers,
+    validate_ayat_sequence,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class HierarchicalChunk:
+    """Chunk con riferimenti gerarchici"""
+
+    chunk_id: str
+    text: str
+    # Gerarchia
+    document_id: str  # ID documento radice (es: "UU_6_2023")
+    chapter_id: str | None  # ID capitolo/BAB (es: "UU_6_2023_BAB_III")
+    section_id: str | None  # ID sezione/Bagian
+    article_id: str | None  # ID articolo/Pasal
+    # Posizione
+    hierarchy_path: str  # "UU_6_2023/BAB_III/Bagian_2/Pasal_15"
+    hierarchy_level: int  # 0=doc, 1=bab, 2=bagian, 3=pasal, 4=ayat
+    # Riferimenti per parent retrieval
+    parent_chunk_ids: list[str]  # IDs dei chunk parent
+    sibling_chunk_ids: list[str]  # IDs chunk fratelli (stesso livello)
+    # Contenuto parent per context injection
+    bab_title: str | None  # "BAB III - Hak dan Kewajiban"
+    bab_full_text: str | None  # Testo completo del BAB (per retrieval)
+    # Metadata originali
+    metadata: dict[str, Any]
+
+
+class HierarchicalIndexer:
+    """
+    Indicizza documenti legali con struttura gerarchica.
+    Ogni chunk mantiene riferimenti al parent per retrieval espanso.
+    """
+
+    def __init__(
+        self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None,
+    ) -> None:
+        self.parser = structure_parser
+        self.qdrant = qdrant_client
+        self.embeddings = embeddings
+        self.chunker = chunker
+        self.sparse_vectorizer = sparse_vectorizer
+        self.db_pool = None
+
+    async def _get_db_pool(self):
+        """Get or create DB pool. Returns None if database is not available (non-blocking)."""
+        if not self.db_pool:
+            if not settings.database_url:
+                logger.warning("⚠️ DATABASE_URL not configured - parent documents will not be saved")
+                return None
+            try:
+                self.db_pool = await asyncpg.create_pool(
+                    settings.database_url, min_size=1, max_size=5,
+                )
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to create DB pool (non-blocking): {e}")
+                return None
+        return self.db_pool
+
+    async def index_legal_document(
+        self, document_text: str, document_id: str, metadata: dict,
+    ) -> dict[str, Any]:
+        """
+        Indicizza documento con struttura gerarchica completa.
+        Strategia:
+        1. Parse struttura (BAB → Bagian → Pasal → Ayat)
+        2. Crea chunk per ogni Pasal (unità di ricerca)
+        3. Salva riferimento al BAB completo (unità di contesto)
+        4. Embedding solo sui chunk piccoli (Pasal)
+        5. BAB completi salvati come "parent_documents" separati
+        """
+        # 1. Parse struttura
+        structure = self.parser.parse(document_text)
+        chunks_to_index = []
+        parent_documents = []  # BAB completi per retrieval
+
+        # 2. Processa ogni BAB (se presenti)
+        if structure.get("batang_tubuh"):
+            for bab in structure.get("batang_tubuh", []):
+                bab_id = f"{document_id}_BAB_{bab['number']}"
+                bab_title = f"BAB {bab['number']} - {bab['title']}"
+                bab_full_text = bab.get("text", "")  # Ensure text exists
+
+                # If text is empty, try to reconstruct from pasals
+                if not bab_full_text and bab.get("pasal"):
+                    bab_full_text = f"{bab_title}\n\n" + "\n\n".join(
+                        [p["text"] for p in bab["pasal"]],
+                    )
+
+                # Quality assessment for BAB
+                bab_quality = assess_document_quality(bab_full_text)
+
+                # Salva BAB completo come parent document con quality metadata
+                parent_documents.append(
+                    {
+                        "id": bab_id,
+                        "type": "parent_chapter",
+                        "document_id": document_id,
+                        "title": bab_title,
+                        "full_text": bab_full_text,
+                        "pasal_count": len(bab.get("pasal", [])),
+                        "char_count": len(bab_full_text),
+                        "metadata": metadata,
+                        # Quality metadata
+                        "text_fingerprint": bab_quality["text_fingerprint"],
+                        "is_incomplete": bab_quality["is_incomplete"],
+                        "ocr_quality_score": bab_quality["ocr_quality_score"],
+                        "needs_reextract": bab_quality["needs_reextract"],
+                    },
+                )
+
+                # 3. Processa ogni Pasal nel BAB
+                for pasal in bab.get("pasal", []):
+                    await self._add_pasal_to_chunks(
+                        pasal=pasal,
+                        document_id=document_id,
+                        bab_id=bab_id,
+                        bab_title=bab_title,
+                        metadata=metadata,
+                        chunks_to_index=chunks_to_index,
+                    )
+
+        # 4. Fallback per documenti senza BAB ma con Pasal (es: leggi di modifica)
+        elif structure.get("pasal_list"):
+            logger.info(
+                f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals.",
+            )
+            for pasal in structure.get("pasal_list", []):
+                await self._add_pasal_to_chunks(
+                    pasal=pasal,
+                    document_id=document_id,
+                    bab_id=None,
+                    bab_title=None,
+                    metadata=metadata,
+                    chunks_to_index=chunks_to_index,
+                )
+
+        # 5. Fallback for unstructured text (if no chunks created from structure)
+        if not chunks_to_index and self.chunker:
+            logger.info(f"No structure found for {document_id}. Using fallback chunking.")
+            flat_chunks = await self.chunker.chunk(document_text, metadata)
+
+            for i, fc in enumerate(flat_chunks):
+                chunk_id = f"{document_id}_chunk_{i}"
+                h_chunk = HierarchicalChunk(
+                    chunk_id=chunk_id,
+                    text=fc["text"],
+                    document_id=document_id,
+                    chapter_id=None,
+                    section_id=None,
+                    article_id=None,
+                    hierarchy_path=f"{document_id}/chunk_{i}",
+                    hierarchy_level=0,  # Flat / Document level
+                    parent_chunk_ids=[document_id],
+                    sibling_chunk_ids=[],
+                    bab_title=None,
+                    bab_full_text=None,
+                    metadata=fc,
+                )
+                chunks_to_index.append(h_chunk)
+
+        # 6. Genera embeddings solo per i chunk (Pasal)
+        if chunks_to_index:
+            chunk_texts = [c.text for c in chunks_to_index]
+            embeddings = await self.embeddings.generate_embeddings(chunk_texts)
+
+            # 6.1 Genera vettori BM25 se abilitato
+            sparse_vectors = None
+            if self.sparse_vectorizer:
+                logger.info(f"Generating BM25 sparse vectors for {len(chunk_texts)} chunks")
+                sparse_vectors = self.sparse_vectorizer.generate_batch_sparse_vectors(chunk_texts)
+
+            # 7. Upsert chunks con struttura gerarchica
+            await self._upsert_hierarchical_chunks(chunks_to_index, embeddings, sparse_vectors)
+
+        # 8. Upsert parent documents (BAB completi) - NO embedding, solo storage
+        if parent_documents:
+            await self._upsert_parent_documents(parent_documents)
+
+        return {
+            "document_id": document_id,
+            "chunks_indexed": len(chunks_to_index),
+            "parent_documents": len(parent_documents),
+            "total_bab": len(structure.get("batang_tubuh", [])),
+            "total_pasal": len(structure.get("pasal_list", [])),
+        }
+
+    async def _add_pasal_to_chunks(
+        self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index,
+    ):
+        """Helper to process a single Pasal and add it to chunks list"""
+        pasal_id = f"{document_id}_Pasal_{pasal['number']}"
+
+        if bab_id:
+            hierarchy_path = (
+                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+            )
+        else:
+            hierarchy_path = f"{document_id}/Pasal_{pasal['number']}"
+
+        # SAFE SPLITTING: If Pasal is too large, split it using the chunker
+        char_limit = 4000  # ~1000 tokens
+        pasal_text = pasal["text"]
+
+        if len(pasal_text) > char_limit and self.chunker:
+            logger.info(
+                f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting...",
+            )
+            # Create sub-metadata for chunker
+            sub_metadata = {**metadata, "pasal_number": pasal["number"]}
+            sub_chunks = await self.chunker.chunk(pasal_text, sub_metadata)
+
+            for i, sc in enumerate(sub_chunks):
+                sc_id = f"{pasal_id}_{i}"
+                chunk = HierarchicalChunk(
+                    chunk_id=sc_id,
+                    text=sc["text"],
+                    document_id=document_id,
+                    chapter_id=bab_id,
+                    section_id=None,
+                    article_id=pasal_id,
+                    hierarchy_path=f"{hierarchy_path}/{i}",
+                    hierarchy_level=3,
+                    parent_chunk_ids=[bab_id, document_id] if bab_id else [document_id],
+                    sibling_chunk_ids=[],
+                    bab_title=bab_title,
+                    bab_full_text=None,
+                    metadata=sc,
+                )
+                chunks_to_index.append(chunk)
+            return
+
+        # Standard processing for small Pasal
+        ayat_numbers = extract_ayat_numbers(pasal_text)
+        ayat_validation = validate_ayat_sequence(ayat_numbers)
+
+        chunk = HierarchicalChunk(
+            chunk_id=pasal_id,
+            text=pasal["text"],
+            document_id=document_id,
+            chapter_id=bab_id,
+            section_id=None,
+            article_id=pasal_id,
+            hierarchy_path=hierarchy_path,
+            hierarchy_level=3,  # Pasal level
+            parent_chunk_ids=[bab_id, document_id] if bab_id else [document_id],
+            sibling_chunk_ids=[],
+            bab_title=bab_title,
+            bab_full_text=None,
+            metadata={
+                **metadata,
+                "pasal_number": pasal["number"],
+                "ayat_count": ayat_validation["ayat_count_detected"],
+                "ayat_max": ayat_validation["ayat_max_detected"],
+                "ayat_numbers": ayat_validation["ayat_numbers"],
+                "ayat_sequence_valid": ayat_validation["ayat_sequence_valid"],
+                "ayat_validation_error": ayat_validation["ayat_validation_error"],
+                "has_ayat": len(ayat_numbers) > 0,
+            },
+        )
+        chunks_to_index.append(chunk)
+
+    async def _upsert_hierarchical_chunks(
+        self, chunks: list[HierarchicalChunk], embeddings, sparse_vectors=None,
+    ):
+        """Upsert chunks con payload gerarchico"""
+        import uuid
+
+        # Namespace UUID per generare ID deterministici (stesso chunk_id → stesso UUID)
+        NAMESPACE_LEGAL = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
+
+        chunk_texts = []
+        metadatas = []
+        ids = []
+
+        for chunk, _embedding in zip(chunks, embeddings, strict=False):
+            payload = {
+                **chunk.metadata,
+                # Campi gerarchici critici
+                "document_id": chunk.document_id,
+                "chapter_id": chunk.chapter_id,
+                "hierarchy_path": chunk.hierarchy_path,
+                "hierarchy_level": chunk.hierarchy_level,
+                "parent_chunk_ids": chunk.parent_chunk_ids,
+                "bab_title": chunk.bab_title,
+            }
+
+            chunk_texts.append(chunk.text)
+            metadatas.append(payload)
+
+            # Generate deterministic UUID from chunk_id via uuid5 (hash-based)
+            deterministic_uuid = str(uuid.uuid5(NAMESPACE_LEGAL, chunk.chunk_id))
+            ids.append(deterministic_uuid)
+
+        # CRITICAL: Overwrite chunk_id with deterministic UUID5
+        for meta, cid in zip(metadatas, ids, strict=False):
+            meta["chunk_id"] = cid
+
+        if sparse_vectors and hasattr(self.qdrant, "upsert_documents_with_sparse"):
+            logger.info(f"Upserting {len(ids)} chunks with Hybrid (Dense + BM25) vectors")
+            res = await self.qdrant.upsert_documents_with_sparse(
+                chunks=chunk_texts,
+                embeddings=embeddings,
+                sparse_vectors=sparse_vectors,
+                metadatas=metadatas,
+                ids=ids,
+            )
+            if not res.get("success"):
+                raise RuntimeError(f"Qdrant hybrid upsert failed: {res.get('error')}")
+        else:
+            logger.info(f"Upserting {len(ids)} chunks with Dense vectors only")
+            res = await self.qdrant.upsert_documents(
+                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids,
+            )
+            if not res.get("success"):
+                raise RuntimeError(f"Qdrant dense upsert failed: {res.get('error')}")
+
+    async def _upsert_parent_documents(self, parent_docs: list[dict]) -> None:
+        """
+        Salva documenti parent (BAB completi) in PostgreSQL.
+        Non-blocking: se fallisce, logga warning ma non solleva eccezione.
+        """
+        pool = await self._get_db_pool()
+        if not pool:
+            logger.warning(
+                f"⚠️ Database pool not available - skipping {len(parent_docs)} parent documents",
+            )
+            return
+
+        try:
+            async with pool.acquire() as conn:
+                # Prepare batch insert
+                # We use ON CONFLICT DO UPDATE to handle re-ingestion
+                for doc in parent_docs:
+                    # Try with new quality columns first
+                    try:
+                        await conn.execute(
+                            """
+                            INSERT INTO parent_documents (
+                                id, document_id, type, title, full_text,
+                                char_count, pasal_count, metadata,
+                                text_fingerprint, is_incomplete, ocr_quality_score, needs_reextract
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                            ON CONFLICT (id) DO UPDATE SET
+                                title = EXCLUDED.title,
+                                full_text = EXCLUDED.full_text,
+                                char_count = EXCLUDED.char_count,
+                                pasal_count = EXCLUDED.pasal_count,
+                                metadata = EXCLUDED.metadata,
+                                text_fingerprint = EXCLUDED.text_fingerprint,
+                                is_incomplete = EXCLUDED.is_incomplete,
+                                ocr_quality_score = EXCLUDED.ocr_quality_score,
+                                needs_reextract = EXCLUDED.needs_reextract,
+                                created_at = NOW()
+                        """,
+                            doc["id"],
+                            doc["document_id"],
+                            doc["type"],
+                            doc["title"],
+                            doc["full_text"],
+                            doc["char_count"],
+                            doc["pasal_count"],
+                            json.dumps(doc["metadata"]),
+                            doc.get("text_fingerprint"),
+                            doc.get("is_incomplete", False),
+                            doc.get("ocr_quality_score", 1.0),
+                            doc.get("needs_reextract", False),
+                        )
+                    except Exception as e:
+                        # Fall back to basic INSERT without quality columns
+                        if "does not exist" in str(e):
+                            logger.warning(
+                                f"Quality columns not yet migrated, using basic INSERT: {e}",
+                            )
+                            await conn.execute(
+                                """
+                                INSERT INTO parent_documents (
+                                    id, document_id, type, title, full_text,
+                                    char_count, pasal_count, metadata
+                                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                                ON CONFLICT (id) DO UPDATE SET
+                                    title = EXCLUDED.title,
+                                    full_text = EXCLUDED.full_text,
+                                    char_count = EXCLUDED.char_count,
+                                    pasal_count = EXCLUDED.pasal_count,
+                                    metadata = EXCLUDED.metadata,
+                                    created_at = NOW()
+                            """,
+                                doc["id"],
+                                doc["document_id"],
+                                doc["type"],
+                                doc["title"],
+                                doc["full_text"],
+                                doc["char_count"],
+                                doc["pasal_count"],
+                                json.dumps(doc["metadata"]),
+                            )
+                        else:
+                            raise
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to save parent documents to PostgreSQL (non-blocking): {e}")
+            # Non rilanciare l'eccezione - l'ingestione deve continuare
+        else:
+            logger.info(f"✅ Upserted {len(parent_docs)} parent documents to PostgreSQL")
+
+    async def close(self) -> None:
+        if self.db_pool:
+            await self.db_pool.close()

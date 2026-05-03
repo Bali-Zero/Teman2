@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.cell.metabolic-rollup</string>
+
+    <!-- SYMBIOSIS Pillar 7 daily rollup @ 23:45 WITA (Pro local)
+         Produce: organism_metrics.db snapshot (scope='host', collector='pro') + Telegram report
+         Consume: MOS SQLite, escalations_pro.jsonl, cron JSONL
+         Staggered 15min after Air (23:30): separates log windows per host. -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/metabolic_rollup_pro.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <!-- VADEMECUM §11: launchd doesn't inherit PATH/HOME — declare explicitly. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+    </dict>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>23</integer>
+        <key>Minute</key>
+        <integer>45</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/metabolic-rollup-pro.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/metabolic-rollup-pro.stderr.log</string>
+</dict>
+</plist>

@@ -1,0 +1,39 @@
+[project]
+name = "nuzantara-mcp-browser"
+version = "0.1.0"
+description = "MCP server exposing Nuzantara's stealth browser-core"
+requires-python = ">=3.11"
+# NOTE on nuzantara-browser-core: resolved via [tool.uv.sources] with `uv`.
+# For pip: install local package first, then this package:
+#   pip install -e ../../packages/browser-core && pip install -e ".[dev]"
+dependencies = [
+    "fastmcp>=2.0",
+    "playwright>=1.40",
+    "nuzantara-browser-core",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+nuzantara-mcp-browser = "nuzantara_mcp_browser.server:main"
+
+[tool.uv.sources]
+nuzantara-browser-core = { path = "../../packages/browser-core", editable = true }
+
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nuzantara_mcp_browser*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "-m 'not integration and not stealth'"
+markers = [
+    "integration: tests launching real Chromium (run with: pytest -m integration)",
+]

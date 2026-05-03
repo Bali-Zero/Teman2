@@ -1,0 +1,17 @@
+/*
+ * @balizero/core — token entry point.
+ * Import order matters: primitives → semantic → themes.
+ * Themes override semantic values; semantic references primitives.
+ */
+
+@import "./primitives.css";
+@import "./semantic.css";
+@import "./themes/dark.css";
+@import "./themes/light.css";
+@import "./themes/editorial.css";
+@import "./themes/aubergine.css";
+@import "./themes/ink.css";
+@import "./themes/graphite.css";
+@import "./themes/jungle.css";
+@import "./themes/operative-light.css";
+@import "./themes/operative-dark.css";

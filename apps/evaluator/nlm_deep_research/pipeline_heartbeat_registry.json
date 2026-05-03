@@ -1,0 +1,20 @@
+{
+  "nb1_daily_refresh": { "schedule": "daily", "max_age_hours": 6 },
+  "nb2_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb3_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb4_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb5_t4_monitor": { "schedule": "tue_thu", "max_age_hours": 50 },
+  "nb6_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb7_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb8_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "nb10_pipeline": { "schedule": "weekday", "max_age_hours": 6 },
+  "db_nlm_sync": { "schedule": "daily", "max_age_hours": 6 },
+  "peraturan_ingestion": { "schedule": "weekly_sun", "max_age_hours": 170 },
+  "ops_briefing": { "schedule": "weekly_mon", "max_age_hours": 170 },
+  "persona_validate": { "schedule": "weekly_sun", "max_age_hours": 170 },
+  "gap_scanner": { "schedule": "daily", "max_age_hours": 6 },
+  "gap_scanner_layer_b": { "schedule": "weekly_sun", "max_age_hours": 170 },
+  "gap_scanner_remediation": { "schedule": "weekly_sun", "max_age_hours": 170 },
+  "freshness_monitor": { "schedule": "daily_2x", "max_age_hours": 14 },
+  "multimodal_pipeline": { "schedule": "weekly", "max_age_hours": 170 }
+}

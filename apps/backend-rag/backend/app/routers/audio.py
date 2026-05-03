@@ -1,0 +1,64 @@
+import io
+import logging
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from backend.app.services.audio_service import AudioService, get_audio_service
+from backend.app.utils.internal_api_auth import verify_internal_api_key
+
+router = APIRouter(prefix="/audio", tags=["Audio"])
+logger = logging.getLogger(__name__)
+
+
+class SpeechRequest(BaseModel):
+    text: str
+    voice: str | None = "alloy"  # alloy, echo, fable, onyx, nova, shimmer
+    model: str | None = "tts-1"
+
+
+@router.post("/transcribe")
+async def transcribe_audio(
+    file: UploadFile = File(...),
+    language: str | None = None,
+    audio_service: AudioService = Depends(get_audio_service),
+    api_key_verified=Depends(verify_internal_api_key),
+) -> dict[str, Any]:
+    """
+    Transcribe uploaded audio file to text.
+    """
+    try:
+        # Read file into memory
+        content = await file.read()
+        file_obj = io.BytesIO(content)
+        file_obj.name = file.filename  # helper for openai client to guess format
+
+        text = await audio_service.transcribe_audio(file_obj, language=language)
+        return {"text": text}
+    except Exception as e:
+        logger.error(f"Transcribe endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post("/speech")
+async def generate_speech(
+    request: SpeechRequest,
+    audio_service: AudioService = Depends(get_audio_service),
+    api_key_verified=Depends(verify_internal_api_key),
+) -> StreamingResponse:
+    """
+    Generate speech from text (TTS). Returns audio/mpeg stream.
+    """
+    try:
+        # Generate audio content (bytes)
+        audio_content = await audio_service.generate_speech(
+            text=request.text, voice=request.voice, model=request.model,
+        )
+
+        # Return as streaming response
+        return StreamingResponse(io.BytesIO(audio_content), media_type="audio/mpeg")
+    except Exception as e:
+        logger.error(f"Speech endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e

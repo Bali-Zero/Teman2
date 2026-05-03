@@ -1,0 +1,454 @@
+---
+title: "Environmental Permits Indonesia 2026: Business Guide"
+slug: "environmental-permits"
+description: "Environmental permit requirements in Indonesia. AMDAL, UKL-UPL, SPPL explained for businesses and investors."
+excerpt: "Most businesses need environmental approval in Indonesia. Here's what you need to know."
+category: "business"
+publishedAt: "2026-01-15"
+coverImage: "/static/insights/business/environmental-permits.jpg"
+updatedAt: "2026-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/static/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/static/insights/business/environmental.jpg"
+  alt: "Environmental permits Indonesia"
+seo:
+  title: "Environmental Permits Indonesia 2026 | AMDAL UKL-UPL Guide"
+  description: "Which environmental permit does your business need in Indonesia? AMDAL, UKL-UPL, and SPPL requirements, thresholds, and approval process explained."
+  keywords:
+    - environmental permit indonesia
+    - AMDAL
+    - UKL-UPL
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "business_docs"
+    documentsUsed: 14
+lastKbSync: "2026-01-15T10:00:00Z"
+relatedArticles:
+  - "business-licenses-overview"
+  - "pt-pma-registration-guide"
+  - "manufacturing-business-guide"
+tableOfContents: true
+seoTitle: "Environmental Permits Indonesia 2026 | AMDAL Guide"
+seoDescription: "Environmental permits for Indonesia businesses: AMDAL, UKL-UPL, and SPPL explained. Which permit your business needs based on risk classification 2026."
+aiOptimization:
+  primaryQuestion: "What environmental permits does my business need in Indonesia?"
+  answerSnippet: "Environmental permits depend on business impact: AMDAL for major projects (factories, hotels 100+ rooms), UKL-UPL for medium impact businesses, SPPL for low impact. Your KBLI code risk level and project scale determine which applies. Processing: 3-6 months for AMDAL."
+  entityMentions:
+    - type: "GovernmentOrganization"
+      name: "KLHK (Ministry of Environment and Forestry)"
+      sameAs: "https://www.menlhk.go.id"
+    - type: "Regulation"
+      name: "PP 22/2021 on Environmental Protection"
+    - type: "Product"
+      name: "AMDAL (Environmental Impact Assessment)"
+faq:
+  - question: "What is the difference between AMDAL, UKL-UPL, and SPPL?"
+    answer: "AMDAL is a full Environmental Impact Assessment for major projects (IDR 50-200M, 3-6 months). UKL-UPL is a lighter environmental management plan for medium projects (IDR 10-30M, 1-2 months). SPPL is a simple environmental declaration for low-impact businesses (free, instant through OSS)."
+  - question: "Does my restaurant need an environmental permit?"
+    answer: "Most restaurants need SPPL (low impact) or UKL-UPL (if producing significant waste). Large restaurants or food factories need full AMDAL. The requirement is determined by your OSS risk classification based on KBLI code and business scale."
+  - question: "Can I start operations before getting environmental approval?"
+    answer: "For SPPL businesses, yes — it's issued instantly through OSS. For UKL-UPL and AMDAL, you cannot begin construction or operations until the environmental document is approved. Operating without proper environmental clearance carries heavy penalties."
+contentStructure:
+  hasHowTo: true
+  hasFAQ: true
+  hasTable: true
+tags:
+  - environmental permit
+  - AMDAL
+  - UKL-UPL
+  - business compliance
+  - SPPL
+  - environmental assessment
+  - KLHK
+  - green permit Indonesia
+  - environmental compliance
+  - construction permits
+canonicalUrl: "https://balizero.com/business/environmental-permits"
+ogImage: "/static/insights/business/environmental-permits.jpg"
+ogType: "article"
+twitterCard: "summary_large_image"
+locale: "ru"
+---
+
+# Экологические разрешения в Индонезии 2026: Руководство для бизнеса
+
+Соблюдение экологических норм является обязательным для большинства предприятий в Индонезии. Вот что вам нужно знать.
+
+## Нужно ли вам экологическое разрешение?
+
+<DecisionTree
+  title="Тип экологического разрешения"
+  description="Какое разрешение вам нужно?"
+  nodes={[
+    {
+      id: "start",
+      question: "Какова ваша деловая деятельность?",
+      options: [
+        {
+          label: "Крупная промышленность/значительное воздействие",
+          next: "amdal",
+        },
+        { label: "Средний бизнес/умеренное воздействие", next: "ukl" },
+        { label: "Малый бизнес/низкое воздействие", next: "sppl" },
+        { label: "Только офис/розничная торговля", next: "minimal" },
+      ],
+    },
+    {
+      id: "amdal",
+      result: {
+        title: "Требуется AMDAL",
+        description:
+          "Требуется оценка воздействия на окружающую среду. Это наиболее комплексный процесс для видов деятельности с высоким уровнем воздействия, таких как крупное производство, добыча полезных ископаемых или крупные строительные проекты.",
+      },
+    },
+    {
+      id: "ukl",
+      result: {
+        title: "Требуется UKL-UPL",
+        description:
+          "Требуются усилия по управлению и мониторингу окружающей среды. Для предприятий со средним уровнем воздействия, таких как рестораны, небольшие фабрики или умеренное строительство.",
+      },
+    },
+    {
+      id: "sppl",
+      result: {
+        title: "SPPL достаточно",
+        description:
+          "Письмо о приверженности экологическому менеджменту. Простейшая форма для предприятий с низким уровнем воздействия. Часто это просто декларация через OSS.",
+      },
+    },
+    {
+      id: "minimal",
+      result: {
+        title: "Минимальные требования",
+        description:
+          "Стандартный офис или розничная торговля обычно не требуют отдельных экологических разрешений, помимо базового соответствия. Проверьте через OSS для вашего конкретного KBLI.",
+      },
+    },
+  ]}
+/>
+
+---
+
+## Типы экологических документов
+
+<ComparisonTable
+  title="Экологические разрешения"
+  description="AMDAL против UKL-UPL против SPPL"
+  items={[
+    {
+      name: "AMDAL",
+      subtitle: "Оценка воздействия на окружающую среду",
+      values: {
+        For: "Деятельность с высоким уровнем воздействия",
+        Process: "Полная оценка + исследование",
+        Time: "6-12 месяцев",
+        Cost: "IDR 100M-500M+",
+      },
+    },
+    {
+      name: "UKL-UPL",
+      subtitle: "Управление и мониторинг",
+      values: {
+        For: "Деятельность со средним уровнем воздействия",
+        Process: "План управления",
+        Time: "2-4 месяца",
+        Cost: "IDR 20-100M",
+      },
+      highlight: true,
+    },
+    {
+      name: "SPPL",
+      subtitle: "Письмо о приверженности",
+      values: {
+        For: "Деятельность с низким уровнем воздействия",
+        Process: "Только декларация",
+        Time: "1-2 недели",
+        Cost: "IDR 1-5M",
+      },
+    },
+  ]}
+/>
+
+---
+
+## AMDAL (Оценка воздействия на окружающую среду)
+
+<InfoCard variant="warning" title="Только для крупных проектов">
+**AMDAL требуется для:**
+- Крупные производственные предприятия
+- Горнодобывающие операции
+- Крупные инфраструктурные проекты
+- Крупномасштабное сельское хозяйство
+- Значительное освоение земель
+- Химические/опасные объекты
+
+AMDAL включает общественные консультации и экспертную оценку.
+
+</InfoCard>
+
+### Процесс AMDAL
+
+| Этап                      | Описание                                     | Продолжительность |
+| ------------------------- | -------------------------------------------- | ----------------- |
+| Скрининг                  | Определение необходимости AMDAL              | 1-2 недели        |
+| Определение объема        | Определение объема исследования              | 2-4 недели        |
+| Исследование ОВОС         | Исследование воздействия на окружающую среду | 3-6 месяцев       |
+| Общественные консультации | Вклад сообщества                             | 1-2 месяца        |
+| Рассмотрение              | Оценка комитетом                             | 1-2 месяца        |
+| Утверждение               | Выдача экологического разрешения             | 2-4 недели        |
+
+### Компоненты AMDAL
+
+| Документ | Назначение                        |
+| -------- | --------------------------------- |
+| KA-ANDAL | Техническое задание               |
+| ANDAL    | Анализ воздействия                |
+| RKL      | План управления окружающей средой |
+| RPL      | План мониторинга окружающей среды |
+
+---
+
+## UKL-UPL (Управление и мониторинг)
+
+### Когда требуется UKL-UPL
+
+Большинству средних предприятий требуется UKL-UPL:
+
+- Рестораны и кафе
+- Малое и среднее производство
+- Мастерские и гаражи
+- Среднее строительство
+- Отели (определенных размеров)
+
+### Требования к UKL-UPL
+
+<Checklist
+  title="Документы UKL-UPL"
+  description="Что вам нужно подготовить"
+  persistKey="ukl-upl-checklist"
+  items={[
+    {
+      id: "form",
+      label: "Форма/заявление UKL-UPL",
+      description: "Стандартный формат",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "map",
+      label: "Карта местоположения",
+      description: "Участок и окрестности",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "layout",
+      label: "План здания/объекта",
+      description: "Поэтажные планы, размещение оборудования",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "process",
+      label: "Описание технологического процесса",
+      description: "Детали деловой деятельности",
+      required: true,
+      category: "technical",
+    },
+    {
+      id: "waste",
+      label: "План управления отходами",
+      description: "Как будут обрабатываться отходы",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "water",
+      label: "План водопользования",
+      description: "Источник и очистка",
+      required: true,
+      category: "environmental",
+    },
+    {
+      id: "monitoring",
+      label: "План мониторинга",
+      description: "Постоянные экологические проверки",
+      required: true,
+      category: "environmental",
+    },
+  ]}
+  categories={[
+    { id: "application", label: "Заявление", color: "blue" },
+    { id: "technical", label: "Технический", color: "green" },
+    { id: "environmental", label: "Экологический", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SPPL (Письмо-заявление)
+
+<InfoCard variant="tip" title="Простейший вариант">
+**SPPL** предназначен для предприятий с низким уровнем воздействия:
+- Небольшие розничные магазины
+- Базовые услуги
+- Офисная деятельность
+- Операции с низким риском
+
+Часто генерируется автоматически через систему OSS на основе вашего кода KBLI.
+
+</InfoCard>
+
+### Процесс SPPL
+
+1. Зарегистрируйтесь в системе OSS
+2. Введите данные о бизнесе
+3. SPPL генерируется, если риск низкий
+4. Распечатайте и храните в записи
+5. Соблюдайте заявленные обязательства
+
+---
+
+## Подход, основанный на оценке рисков
+
+### Классификация рисков OSS
+
+Система OSS теперь использует **подход, основанный на оценке рисков**:
+
+| Уровень риска  | Экологическое требование    |
+| -------------- | --------------------------- |
+| Низкий         | SPPL (автоматически в OSS)  |
+| Средне-низкий  | SPPL или упрощенный UKL-UPL |
+| Средне-высокий | Стандартный UKL-UPL         |
+| Высокий        | Полная оценка AMDAL         |
+
+Риск определяется:
+
+- Классификация бизнеса по KBLI
+- Масштаб операций
+- Чувствительность местоположения
+- Потенциальное воздействие на окружающую среду
+
+---
+
+## Обязательства по соблюдению
+
+### После получения разрешения
+
+<Checklist
+  title="Постоянное соблюдение экологических норм"
+  description="Регулярные обязательства"
+  persistKey="env-compliance-checklist"
+  items={[
+    {
+      id: "monitoring",
+      label: "Регулярный мониторинг",
+      description: "Согласно утвержденному плану",
+      required: true,
+      category: "monitoring",
+    },
+    {
+      id: "reporting",
+      label: "Периодическая отчетность",
+      description: "В экологическое агентство",
+      required: true,
+      category: "reporting",
+    },
+    {
+      id: "waste-records",
+      label: "Записи об управлении отходами",
+      description: "Документирование утилизации",
+      required: true,
+      category: "records",
+    },
+    {
+      id: "permits-current",
+      label: "Поддерживайте актуальность разрешений",
+      description: "Продлевайте до истечения срока действия",
+      required: true,
+      category: "admin",
+    },
+    {
+      id: "changes",
+      label: "Сообщайте о значительных изменениях",
+      description: "Если операции существенно меняются",
+      required: true,
+      category: "admin",
+    },
+  ]}
+  categories={[
+    { id: "monitoring", label: "Мониторинг", color: "blue" },
+    { id: "reporting", label: "Отчетность", color: "green" },
+    { id: "records", label: "Записи", color: "amber" },
+    { id: "admin", label: "Администрирование", color: "purple" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Управление отходами
+
+### Категории отходов
+
+| Категория           | Примеры                  | Требования                 |
+| ------------------- | ------------------------ | -------------------------- |
+| B3 (Опасные)        | Химикаты, батареи, масло | Лицензированная утилизация |
+| Не-B3               | Общие отходы             | Правильная утилизация      |
+| Сточные воды        | Технологическая вода     | Очистка перед сбросом      |
+| Выбросы в атмосферу | Дым, газы                | Мониторинг, фильтры        |
+
+<InfoCard variant="warning" title="Отходы B3">
+**Опасные отходы (B3)** требуют:
+- Раздельное хранение
+- Лицензированный перевозчик
+- Лицензированное утилизационное сооружение
+- Документация манифеста
+- Регулярная отчетность
+
+Нарушения могут привести к серьезным штрафам.
+
+</InfoCard>
+
+---
+
+## Штрафы за несоблюдение
+
+| Нарушение                       | Штраф                                   |
+| ------------------------------- | --------------------------------------- |
+| Деятельность без разрешения     | Закрытие + штрафы                       |
+| Превышение стандартов           | Предупреждения → штрафы → закрытие      |
+| Неправильная утилизация отходов | Возможны уголовные обвинения            |
+| Ложная отчетность               | Отзыв разрешения                        |
+| Нарушения, связанные с B3       | Уголовная + гражданская ответственность |
+
+---
+
+## Частые вопросы
+
+<AskZantara
+  context="Экологическое разрешение Индонезия, AMDAL, UKL-UPL, SPPL, соблюдение бизнес-норм"
+  placeholder="Спросите об экологических разрешениях..."
+  suggestedQuestions={[
+    "Нужен ли моему ресторану AMDAL?",
+    "Сколько времени занимает UKL-UPL?",
+    "Могу ли я работать, пока жду разрешения?",
+    "Что произойдет, если я не буду соблюдать требования?",
+  ]}
+/>
+
+---
+
+## Связанные статьи
+
+- [Обзор бизнес-лицензий](/insights/business/business-licenses-overview)
+- [Руководство по созданию PT PMA](/insights/business/pt-pma-setup-guide)
+- [Руководство по производственному бизнесу](/insights/business/manufacturing-business-guide)

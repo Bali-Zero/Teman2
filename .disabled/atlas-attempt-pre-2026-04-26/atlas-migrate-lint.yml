@@ -1,0 +1,78 @@
+name: Atlas Migrate Lint
+
+# Lint database migrations using ariga/atlas. Catches the PR #302 class of
+# bugs (missing rollback block, unannotated destructive changes,
+# backward-incompatible alterations) at PR-check time rather than at the
+# pre-deploy gate. The runtime migration runner is unchanged; this
+# workflow is purely shift-left.
+#
+# See plan: ~/.claude/plans/<atlas-plan>.md
+# See brainstorm synthesis: ~/Desktop/brainstorm_oss_2026-04-26/00_SYNTHESIS.md
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/backend/db/migrations_v2/**"
+      - "scripts/atlas_split_migrations.sh"
+      - "atlas.hcl"
+      - ".github/workflows/atlas-migrate-lint.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: atlas-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_dev
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Atlas needs history to diff the new migration against main.
+          fetch-depth: 0
+
+      - name: Set up Atlas
+        uses: ariga/setup-atlas@v0
+        with:
+          version: latest
+
+      - name: Generate Atlas-compatible migration directory
+        run: |
+          mkdir -p /tmp/atlas_migrations
+          ./scripts/atlas_split_migrations.sh \
+            apps/backend-rag/backend/db/migrations_v2 \
+            /tmp/atlas_migrations
+          echo "Generated:"
+          ls /tmp/atlas_migrations | head -10
+          echo "(... $(ls /tmp/atlas_migrations | wc -l) files total)"
+
+      - name: Compute migration directory hash
+        run: |
+          atlas migrate hash \
+            --dir 'file:///tmp/atlas_migrations'
+
+      - name: Lint migrations against main
+        uses: ariga/atlas-action/migrate/lint@v1
+        with:
+          dir: 'file:///tmp/atlas_migrations'
+          dir-name: nuzantara_v2
+          dev-url: 'postgres://atlas:atlas@localhost:5432/atlas_dev?sslmode=disable'
+          config: file://atlas.hcl
+          env: ci

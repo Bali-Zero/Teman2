@@ -1,0 +1,4707 @@
+{
+  "version": "2.0.0-merged",
+  "source": "Intel Scraper Deep Research + Existing Sources (Deduplicated)",
+  "last_updated": "2026-02-19T22:25:04.557689",
+  "total_categories": 18,
+  "total_sources": 609,
+  "duplicates_removed": 503,
+  "categories": {
+    "immigration": {
+      "sources": [
+        {
+          "name": "Imigrasi Indonesia",
+          "url": "https://www.imigrasi.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemenkumham",
+          "url": "https://www.kemenkumham.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemnaker RI",
+          "url": "https://kemnaker.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BKPM Immigration",
+          "url": "https://www.bkpm.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemlu RI",
+          "url": "https://kemlu.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Jakarta Post - Immigration",
+          "url": "https://www.thejakartapost.com/search?q=immigration",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Jakarta Post - Visa",
+          "url": "https://www.thejakartapost.com/search?q=visa",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Jakarta Globe Immigration",
+          "url": "https://jakartaglobe.id/search?q=immigration",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Tempo English - Immigration",
+          "url": "https://en.tempo.co/tag/immigration",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kompas Immigration",
+          "url": "https://www.kompas.com/tag/imigrasi",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Detik News Immigration",
+          "url": "https://news.detik.com/tag/imigrasi",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "CNN Indonesia Immigration",
+          "url": "https://www.cnnindonesia.com/tag/imigrasi",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bisnis Indonesia Immigration",
+          "url": "https://bisnisindonesia.id/tag/imigrasi",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesia Expat",
+          "url": "https://indonesiaexpat.id/category/visa-immigration/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Expat Forum",
+          "url": "https://www.expatindo.org/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Living in Indonesia",
+          "url": "https://livinginindonesiaforum.org/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Expat.com Indonesia",
+          "url": "https://www.expat.com/en/destination/asia/indonesia/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "InterNations Indonesia",
+          "url": "https://www.internations.org/indonesia-expats",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesia Reddit",
+          "url": "https://www.reddit.com/r/indonesia/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Reddit",
+          "url": "https://www.reddit.com/r/bali/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hukumonline Immigration",
+          "url": "https://www.hukumonline.com/search?q=imigrasi",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesia Visa Service",
+          "url": "https://indonesiavisa.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Visa",
+          "url": "https://www.balivisa.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Living in Asia",
+          "url": "https://livinginasia.co/indonesia/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "The Broke Backpacker Bali",
+          "url": "https://www.thebrokebackpacker.com/bali-visa/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Nomad List Bali",
+          "url": "https://nomadlist.com/bali",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "✅ Good (manual)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        }
+      ],
+      "name": "Immigration & Visa",
+      "type": "official",
+      "priority": "high",
+      "id": 1,
+      "key": "immigration",
+      "source_count": 27
+    },
+    "tax_bkpm": {
+      "sources": [
+        {
+          "name": "DJP (Tax Directorate)",
+          "url": "https://www.pajak.go.id/id/berita",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "DJP Regulations",
+          "url": "https://www.pajak.go.id/id/peraturan",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemenkeu",
+          "url": "https://www.kemenkeu.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemenkeu Tax News",
+          "url": "https://www.kemenkeu.go.id/informasi-publik/publikasi/berita-pajak",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BKPM News",
+          "url": "https://www.bkpm.go.id/id/publikasi/siaran-pers",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BPS (Statistics)",
+          "url": "https://www.bps.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bank Indonesia",
+          "url": "https://www.bi.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "OJK (Financial Services)",
+          "url": "https://www.ojk.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bisnis Indonesia Tax",
+          "url": "https://bisnisindonesia.id/tag/pajak",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kontan Tax",
+          "url": "https://nasional.kontan.co.id/tag/pajak",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Tempo Tax",
+          "url": "https://en.tempo.co/tag/tax",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Jakarta Post Tax",
+          "url": "https://www.thejakartapost.com/search?q=tax",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Investor Daily",
+          "url": "https://investor.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Katadata Tax",
+          "url": "https://katadata.co.id/tag/pajak",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "CNBC Indonesia Tax",
+          "url": "https://www.cnbcindonesia.com/tag/pajak",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "PwC Indonesia",
+          "url": "https://www.pwc.com/id/en.html",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Deloitte Indonesia",
+          "url": "https://www2.deloitte.com/id/en.html",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "EY Indonesia",
+          "url": "https://www.ey.com/en_id",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "KPMG Indonesia",
+          "url": "https://home.kpmg/id/en/home.html",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Baker McKenzie Indonesia",
+          "url": "https://www.bakermckenzie.com/en/locations/asia-pacific/indonesia",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "KADIN",
+          "url": "https://kadin.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "APINDO",
+          "url": "https://apindo.or.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "AmCham Indonesia",
+          "url": "https://www.amcham.or.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "EuroCham Indonesia",
+          "url": "https://eurocham.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "AustCham Indonesia",
+          "url": "https://www.austcham.or.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Alvarez & Marsal Coretax PER-8/11",
+          "url": "https://alvarezandmarsal.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high",
+          "notes": "Big 4 consulting analysis"
+        },
+        {
+          "name": "DJP Global Minimum Tax Strategy",
+          "url": "https://pajak.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "UGM Coretax Challenges",
+          "url": "https://ugm.ac.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high",
+          "notes": "Academic analysis"
+        },
+        {
+          "name": "KPMG Coretax Implementation",
+          "url": "https://kpmg.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "ASEAN Briefing Coretax Revolution",
+          "url": "https://aseanbriefing.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Jakarta Globe Tax Revenue Rise",
+          "url": "https://jakartaglobe.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Taxindo Corporate Tax Appeal Strategy",
+          "url": "https://taxindo.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Withers Indonesia Capital Rules BKPM 5/2025",
+          "url": "https://withersworldwide.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Business Indonesia PT PMA Capital Reduction",
+          "url": "https://business-indonesia.org",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "LMI Consultancy BKPM 2025",
+          "url": "https://lmiconsultancy.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Permitindo New Investment Rules",
+          "url": "https://permitindo.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        }
+      ],
+      "name": "Tax Bkpm",
+      "type": "official",
+      "priority": "high",
+      "id": 2,
+      "key": "tax_bkpm",
+      "source_count": 36
+    },
+    "property": {
+      "sources": [
+        {
+          "name": "ATR/BPN",
+          "url": "https://www.atrbpn.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "ATR News",
+          "url": "https://www.atrbpn.go.id/Berita",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kementerian PUPR",
+          "url": "https://www.pu.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Rumah.com Bali",
+          "url": "https://www.rumah.com/properti-dijual/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Rumah.com News Bali",
+          "url": "https://www.rumah.com/berita-properti/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Lamudi Bali",
+          "url": "https://www.lamudi.co.id/bali/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "99.co Bali",
+          "url": "https://www.99.co/id/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "OLX Properti Bali",
+          "url": "https://www.olx.co.id/properti/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Jendela360 Bali",
+          "url": "https://www.jendela360.com/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Property Finder Indonesia",
+          "url": "https://www.propertyfinder.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Dot Property Bali",
+          "url": "https://www.dotproperty.co.id/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "PropertyGuru Indonesia",
+          "url": "https://www.propertyguru.com/property-investment-sale/indonesia",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Property News Indonesia",
+          "url": "https://www.rumah.com/berita-properti",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesia Property Watch",
+          "url": "https://www.indonesiapropertywatch.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Property Net",
+          "url": "https://www.balipropertynet.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Elite Havens Bali",
+          "url": "https://www.elitehavens.com/bali-villas/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Villas",
+          "url": "https://www.balivillas.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Ministry of Agrarian Affairs / BPN",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "atrbpn.go.id"
+        },
+        {
+          "name": "APIS BPN Services",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "apis.atrbpn.go.id"
+        },
+        {
+          "name": "JDIH ATR/BPN",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jdih.atrbpn.go.id"
+        },
+        {
+          "name": "Bhumi Spatial Portal",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "bhumi.atrbpn.go.id"
+        },
+        {
+          "name": "DPMPTSP Bali",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "invest.baliprov.go.id"
+        },
+        {
+          "name": "DPMPTSP Badung",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "dpmptsp.badungkab.go.id"
+        },
+        {
+          "name": "DPMPTSP Denpasar",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "dpmptsp.denpasarkota.go.id"
+        },
+        {
+          "name": "DPMPTSP Gianyar",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "dpmptsp.gianyarkab.go.id"
+        },
+        {
+          "name": "DPMPTSP Tabanan",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "dpmptsp.tabanan.go.id"
+        },
+        {
+          "name": "KPK (Anti-Corruption Commission)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kpk.go.id"
+        },
+        {
+          "name": "Assegaf Hamzah & Partners",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ahp.co.id"
+        },
+        {
+          "name": "Kusuma Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kusumalawfirm.com"
+        },
+        {
+          "name": "Schinder Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "schinderlawfirm.com"
+        },
+        {
+          "name": "Hiswara Bunjamin & Tandjung",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "hbtlaw.com"
+        },
+        {
+          "name": "Lubis Ganie Surowidjojo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "lgslaw.co.id"
+        },
+        {
+          "name": "Budidjaja International Lawyers",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "budidjaja.law"
+        },
+        {
+          "name": "Seven Stones Real Estate",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "realestate.sevenstonesindonesia.com"
+        },
+        {
+          "name": "Cekindo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "cekindo.com"
+        },
+        {
+          "name": "Bali Villa Realty",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "balivillarealty.com"
+        },
+        {
+          "name": "Bali Exception Real Estate",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "baliexception.com"
+        },
+        {
+          "name": "Bali Home Immo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "bali-home-immo.com"
+        },
+        {
+          "name": "Tipi Estate",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "tipiestate.com"
+        },
+        {
+          "name": "Ilot Property Bali",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ilotpropertybali.com"
+        },
+        {
+          "name": "Excel Bali",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "excelbali.com"
+        },
+        {
+          "name": "VillaBaliSale",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "villabalisale.com"
+        },
+        {
+          "name": "Bamboo Routes",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "bambooroutes.com"
+        },
+        {
+          "name": "CPT Corporate",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "cptcorporate.com"
+        },
+        {
+          "name": "Kepri Estates",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kepriestates.com"
+        },
+        {
+          "name": "PermitIndo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "permitindo.com"
+        },
+        {
+          "name": "Invest Islands",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "invest-islands.com"
+        },
+        {
+          "name": "Indoned Consultancy",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "indoned.id"
+        },
+        {
+          "name": "We Are Synergy Pro",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "wearesynergypro.com"
+        },
+        {
+          "name": "Indonesian Notary Association (INI)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "iniindonesia.org"
+        },
+        {
+          "name": "IPPAT (PPAT Association)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ippat.or.id"
+        },
+        {
+          "name": "IRIJ Jakarta",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "irij-jakarta.com"
+        },
+        {
+          "name": "BANI (Indonesian Arbitration Board)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "baniarb.id"
+        },
+        {
+          "name": "Jakarta International Arbitration Centre (JIAC)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jiac.or.id"
+        },
+        {
+          "name": "Indonesian Mediation Centre",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "mediasi-indonesia.org"
+        },
+        {
+          "name": "International Journal of Latin Notary",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "i-latinnotary.notariat.unpas.ac.id"
+        },
+        {
+          "name": "Jurnal Hukum Khaira Ummah",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jurnal.unissula.ac.id/index.php/jhku"
+        },
+        {
+          "name": "Al-Ishlah Jurnal Ilmiah Hukum",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jurnal.fh.umi.ac.id/index.php/ishlah"
+        },
+        {
+          "name": "Pena Justisia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jurnal.unikal.ac.id.puskomceria.com"
+        },
+        {
+          "name": "ResearchGate",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "researchgate.net"
+        },
+        {
+          "name": "Neliti Media",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "neliti.com"
+        },
+        {
+          "name": "Lamudi Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "lamudi.co.id"
+        },
+        {
+          "name": "Rumah.com",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "rumah.com"
+        },
+        {
+          "name": "AustCham (IABC)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "iabc.or.id"
+        },
+        {
+          "name": "World Bank Property Rights",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "worldbank.org"
+        },
+        {
+          "name": "Transparency International",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "transparency.org"
+        },
+        {
+          "name": "Global Property Guide",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "globalpropertyguide.com"
+        },
+        {
+          "name": "Bali Discovery",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "balidiscovery.com"
+        },
+        {
+          "name": "Bali Times",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "balitimes.com"
+        },
+        {
+          "name": "Expat Indo Forum",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "expatindo.org"
+        },
+        {
+          "name": "Bali Business Review",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "balibusinessreview.com"
+        },
+        {
+          "name": "REID (Real Estate Indonesia Database)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "reid.id"
+        }
+      ],
+      "name": "Property & Land",
+      "type": "official",
+      "priority": "high",
+      "id": 3,
+      "key": "property",
+      "source_count": 72
+    },
+    "business_regulations": {
+      "sources": [
+        {
+          "name": "OSS Indonesia",
+          "url": "https://oss.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "OSS Announcements",
+          "url": "https://oss.go.id/portal/information/announcement",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Lembaga OSS",
+          "url": "https://www.lembagaoss.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "LKPM (BKPM Portal)",
+          "url": "https://lkpm.bkpm.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "INSW (Trade Portal)",
+          "url": "https://portal.insw.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "CEISA (Customs)",
+          "url": "https://ceisa.customs.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bisnis Indonesia",
+          "url": "https://bisnisindonesia.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kontan",
+          "url": "https://www.kontan.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "SWA Magazine",
+          "url": "https://swa.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Warta Ekonomi",
+          "url": "https://www.wartaekonomi.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "InfoBrand",
+          "url": "https://www.infobrand.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "KADIN News",
+          "url": "https://kadin.id/berita/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "JCI Indonesia",
+          "url": "https://www.jci.cc/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesian Young Entrepreneurs",
+          "url": "https://www.hipmi.or.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BPS KBLI 2025 Release",
+          "url": "https://bps.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical",
+          "notes": "Official KBLI 2025 announcement"
+        },
+        {
+          "name": "Infiniti KBLI 2020 PDF",
+          "url": "https://infiniti.id/kbli-2020.pdf",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Putranto Alliance KBLI Guide",
+          "url": "https://putranto-alliance.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "ILO KBLI Reference",
+          "url": "https://webapps.ilo.org",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "CISEMA KBLI Wholesale Analysis",
+          "url": "https://cisema.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "AKSET Law KBLI 2025",
+          "url": "https://aksetlaw.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Seven Stones KBLI Update",
+          "url": "https://sevenstonesindonesia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "WIYASA Law KBLI Strategic Implications",
+          "url": "https://wiyasalaw.co.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Legal Indonesia KBLI Analysis",
+          "url": "https://legalindonesia.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Pajakku KBLI 2025 Tax Impact",
+          "url": "https://artikel.pajakku.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Legalo KBLI Changes",
+          "url": "https://legalo.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Citra Melati KBLI Transition",
+          "url": "https://citramelati.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "PriOffice KBLI Business Guide",
+          "url": "https://prioffice.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Permitindo Permendag 23/2025",
+          "url": "https://permitindo.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Watershore Halal Cosmetics 2026",
+          "url": "https://watershore.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Officenow KBLI Cosmetics",
+          "url": "https://officenow.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Smartlegal BPOM Registration",
+          "url": "https://smartlegal.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Hivefive BPOM 2025",
+          "url": "https://hivefivesurabaya.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Jakarta Pelayanan Medical Device Permit",
+          "url": "https://pelayanan.jakarta.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Sertifikasi Alkes IPAK Guide",
+          "url": "https://sertifikasialkes.kemkes.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Perizinan Indonesia IPAK",
+          "url": "https://perizinanindonesia.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Product Registration Halal Export",
+          "url": "https://productregistrationindonesia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "SGS Food Contact Materials",
+          "url": "https://sgs.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Alibaba SEA Cosmetics White Paper",
+          "url": "https://seller.alibaba.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        }
+      ],
+      "name": "Business Regulations",
+      "type": "official",
+      "priority": "high",
+      "id": 4,
+      "key": "business_regulations",
+      "source_count": 38
+    },
+    "legal_updates": {
+      "sources": [
+        {
+          "name": "JDIH Kemenkumham",
+          "url": "https://peraturan.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "JDIH DPR",
+          "url": "https://www.dpr.go.id/jdih",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Mahkamah Agung",
+          "url": "https://www.mahkamahagung.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Mahkamah Konstitusi",
+          "url": "https://www.mkri.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hukumonline",
+          "url": "https://www.hukumonline.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hukumonline News",
+          "url": "https://www.hukumonline.com/berita/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hukumonline Klinik",
+          "url": "https://www.hukumonline.com/klinik/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "SSEK Law Firm",
+          "url": "https://www.ssek.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hiswara Bunjamin",
+          "url": "https://hbtlaw.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Makarim & Taira",
+          "url": "https://www.makarim.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Ali Budiardjo (ABNR)",
+          "url": "https://www.abnrlaw.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        }
+      ],
+      "name": "Legal Updates",
+      "type": "official",
+      "priority": "high",
+      "id": 5,
+      "key": "legal_updates",
+      "source_count": 11
+    },
+    "events": {
+      "sources": [
+        {
+          "name": "Eventbrite Bali",
+          "url": "https://www.eventbrite.com/d/indonesia--bali/events/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Eventbrite Jakarta",
+          "url": "https://www.eventbrite.com/d/indonesia--jakarta/events/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Meetup Bali",
+          "url": "https://www.meetup.com/cities/id/bali/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Meetup Jakarta",
+          "url": "https://www.meetup.com/cities/id/jakarta/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Peatix Indonesia",
+          "url": "https://peatix.com/search?country=ID",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Loket.com",
+          "url": "https://www.loket.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Advertiser Events",
+          "url": "https://baliadvertiser.biz/category/events/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Now Bali Events",
+          "url": "https://www.nowbali.co.id/events/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "The Beat Bali Events",
+          "url": "https://www.thebeatbali.com/events/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Ubud Now & Then",
+          "url": "https://www.ubudnowandthen.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Hubud Bali",
+          "url": "https://www.hubud.org/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Outpost Bali",
+          "url": "https://www.outpost-asia.com/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Dojo Bali",
+          "url": "https://dojobali.org/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        }
+      ],
+      "name": "Events",
+      "type": "official",
+      "priority": "high",
+      "id": 6,
+      "key": "events",
+      "source_count": 13
+    },
+    "cost_of_living": {
+      "sources": [
+        {
+          "name": "BPS Bali",
+          "url": "https://bali.bps.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bank Indonesia Stats",
+          "url": "https://www.bi.go.id/id/statistik/default.aspx",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Numbeo Bali",
+          "url": "https://www.numbeo.com/cost-of-living/in/Bali",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Numbeo Jakarta",
+          "url": "https://www.numbeo.com/cost-of-living/in/Jakarta",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Expatistan Bali",
+          "url": "https://www.expatistan.com/cost-of-living/bali",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Livingcost.org Bali",
+          "url": "https://livingcost.org/cost/indonesia/bali",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Indonesia Expat Cost Living",
+          "url": "https://indonesiaexpat.id/tag/cost-of-living/",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Budget Your Trip Bali",
+          "url": "https://www.budgetyourtrip.com/indonesia/bali",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        }
+      ],
+      "name": "Cost Of Living",
+      "type": "official",
+      "priority": "high",
+      "id": 7,
+      "key": "cost_of_living",
+      "source_count": 8
+    },
+    "healthcare": {
+      "sources": [
+        {
+          "name": "Kemenkes RI",
+          "url": "https://www.kemkes.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BPJS Kesehatan",
+          "url": "https://www.bpjs-kesehatan.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Dinkes Bali",
+          "url": "https://www.diskes.baliprov.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BIMC Hospital Bali",
+          "url": "https://www.bimcbali.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Siloam Hospitals Bali",
+          "url": "https://www.siloamhospitals.com/rumah-sakit/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Sanglah Hospital",
+          "url": "https://sanglahhospital.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kasih Ibu Hospital",
+          "url": "https://rs-kasihibu.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Allianz Indonesia",
+          "url": "https://www.allianz.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "AXA Mandiri",
+          "url": "https://www.axa-mandiri.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Cigna Indonesia",
+          "url": "https://www.cignaindonesia.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Pacific Cross Indonesia",
+          "url": "https://www.pacificcross.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Balivisa Medical Tourism 2026",
+          "url": "https://balivisa.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Travel Weekly Asia Bali Medical Paradise",
+          "url": "https://travelweekly-asia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Channel News Asia Bali Healthcare",
+          "url": "https://channelnewsasia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Antara Bali Health SEZ",
+          "url": "https://en.antaranews.com",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Get Transfer Sanur SEZ Analysis",
+          "url": "https://blog.gettransfer.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "The Investor Bali Medical Hotspot",
+          "url": "https://theinvestor.vn",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "GMINSIGHTS ASEAN Medical Tourism",
+          "url": "https://gminsights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Semantic Scholar Bali Medical Tourism",
+          "url": "https://pdfs.semanticscholar.org",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        }
+      ],
+      "name": "Healthcare",
+      "type": "official",
+      "priority": "high",
+      "id": 8,
+      "key": "healthcare",
+      "source_count": 19
+    },
+    "education": {
+      "sources": [
+        {
+          "name": "Kemdikbud",
+          "url": "https://www.kemdikbud.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Dikti",
+          "url": "https://dikti.kemdikbud.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali International School",
+          "url": "https://www.baliinternationalschool.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Gandhi Memorial International School",
+          "url": "https://www.gmis-bali.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Canggu Community School",
+          "url": "https://www.ccsbali.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Green School Bali",
+          "url": "https://www.greenschool.org/bali/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "JIS Jakarta",
+          "url": "https://www.jisedu.or.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        }
+      ],
+      "name": "Education",
+      "type": "official",
+      "priority": "high",
+      "id": 9,
+      "key": "education",
+      "source_count": 7
+    },
+    "transportation": {
+      "sources": [
+        {
+          "name": "Ministry of Transportation",
+          "url": "http://dephub.go.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kemenhub News",
+          "url": "http://dephub.go.id/berita",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "PT Angkasa Pura I",
+          "url": "https://ap1.co.id/",
+          "tier": "T1",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Garuda Indonesia",
+          "url": "https://www.garuda-indonesia.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Gojek",
+          "url": "https://www.gojek.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Grab",
+          "url": "https://www.grab.com/id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "BlueBird",
+          "url": "https://www.bluebirdgroup.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Balivisa Logistics Guide 2026",
+          "url": "https://balivisa.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "INP Polri Freight Restrictions",
+          "url": "https://inp.polri.go.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "critical"
+        },
+        {
+          "name": "Jakarta Globe Truck Ban",
+          "url": "https://jakartaglobe.id",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Bali Live Toll Road Ban",
+          "url": "https://bali.live",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Gede Bali Transport Guide",
+          "url": "https://gedebalitransport.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Indo Shipping Gazette East Java Logistics",
+          "url": "https://indoshippinggazette.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Thomson Reuters Supply Chain 2026",
+          "url": "https://tax.thomsonreuters.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        }
+      ],
+      "name": "Transportation",
+      "type": "official",
+      "priority": "high",
+      "id": 10,
+      "key": "transportation",
+      "source_count": 14
+    },
+    "bali_news": {
+      "sources": [
+        {
+          "name": "Bali Post",
+          "url": "https://www.balipost.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Nusa Bali",
+          "url": "https://www.nusabali.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Tribun Bali",
+          "url": "https://bali.tribunnews.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Radar Bali",
+          "url": "https://radarbali.jawapos.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Suara.com Bali",
+          "url": "https://bali.suara.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Liputan6 Bali",
+          "url": "https://www.liputan6.com/regional/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Bali Advertiser",
+          "url": "https://baliadvertiser.biz/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Now Bali",
+          "url": "https://www.nowbali.co.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "The Beat Bali",
+          "url": "https://www.thebeatbali.com/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Detik Bali",
+          "url": "https://www.detik.com/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Kompas Bali",
+          "url": "https://regional.kompas.com/bali",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Exotiq Bali Property Laws",
+          "url": "https://exotiqproperty.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Coco Development Building Villa Bali",
+          "url": "https://cocodevelopmentgroup.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "BGS Bali Uluwatu Development",
+          "url": "https://bgsbali.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        }
+      ],
+      "name": "Bali News",
+      "type": "official",
+      "priority": "high",
+      "id": 11,
+      "key": "bali_news",
+      "source_count": 14
+    },
+    "competitor_intel": {
+      "sources": [
+        {
+          "name": "Crunchbase Indonesia",
+          "url": "https://www.crunchbase.com/hub/indonesia-companies",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "DealStreetAsia",
+          "url": "https://www.dealstreetasia.com/region/indonesia/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Tech in Asia Indonesia",
+          "url": "https://www.techinasia.com/indonesia",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "E27 Indonesia",
+          "url": "https://e27.co/country/indonesia/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Katadata Startup",
+          "url": "https://katadata.co.id/tag/startup",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Daily Social",
+          "url": "https://dailysocial.id/",
+          "tier": "T2",
+          "authority": null,
+          "description": ""
+        },
+        {
+          "name": "Startup Ranking Indonesia",
+          "url": "https://www.startupranking.com/countries/indonesia",
+          "tier": "T3",
+          "authority": null,
+          "description": ""
+        }
+      ],
+      "name": "Competitor Intel",
+      "type": "official",
+      "priority": "high",
+      "id": 12,
+      "key": "competitor_intel",
+      "source_count": 7
+    },
+    "tax": {
+      "sources": [
+        {
+          "name": "DJP Main Portal",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "pajak.go.id"
+        },
+        {
+          "name": "DJP Online",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "djponline.pajak.go.id"
+        },
+        {
+          "name": "JDIH Kemenkeu",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jdih.kemenkeu.go.id"
+        },
+        {
+          "name": "Secretariat Tax Court",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "setpp.kemenkeu.go.id"
+        },
+        {
+          "name": "Fiscal Policy Agency",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "fiskal.kemenkeu.go.id"
+        },
+        {
+          "name": "e-Faktur Portal",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "efaktur.pajak.go.id"
+        },
+        {
+          "name": "e-Registration",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ereg.pajak.go.id"
+        },
+        {
+          "name": "Tax Treaty Database",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "pajak.go.id/id/p3b"
+        },
+        {
+          "name": "Kurs Pajak",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "fiskal.kemenkeu.go.id"
+        },
+        {
+          "name": "Pengaduan DJP",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "pengaduan.pajak.go.id"
+        },
+        {
+          "name": "Kemenkeu Learning",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "klc.kemenkeu.go.id"
+        },
+        {
+          "name": "INSW",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "insw.go.id"
+        },
+        {
+          "name": "DJPb (Treasury)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "djpb.kemenkeu.go.id"
+        },
+        {
+          "name": "DJPPR (Financing)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "djppr.kemenkeu.go.id"
+        },
+        {
+          "name": "Inspectorate General",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "itjen.kemenkeu.go.id"
+        },
+        {
+          "name": "Deloitte Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Coretax Readiness, Digital Transformation"
+        },
+        {
+          "name": "EY Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Transfer Pricing, Supply Chain, Customs"
+        },
+        {
+          "name": "BDO Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Mid-market advisory, Sustainability Tax"
+        },
+        {
+          "name": "RSM Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Coretax Education, Compliance Audit"
+        },
+        {
+          "name": "Baker Tilly Ind.",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "International Tax, US-Indo structuring"
+        },
+        {
+          "name": "**DDTC**",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "**Academic Authority, Transfer Pricing, News**"
+        },
+        {
+          "name": "MUC Consulting",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Compliance, Monthly Reporting, Disputes"
+        },
+        {
+          "name": "HHP Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Tier 1 Litigation, Cross-border M&A"
+        },
+        {
+          "name": "SSEK Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Corporate Tax, Resources Sector"
+        },
+        {
+          "name": "**OnlinePajak**",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "Pajakku",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "Mekari Klikpajak",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "SPT (Sarana Prima)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "BRI e-Filing",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "BNI ASP",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "Nebula Surya",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PJAP"
+        },
+        {
+          "name": "Ortax",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Community"
+        },
+        {
+          "name": "Tax Centre UI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Academic"
+        },
+        {
+          "name": "ATPETSI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "IKPI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Prof. Org"
+        },
+        {
+          "name": "OECD Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Int'l"
+        },
+        {
+          "name": "IBFD",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research"
+        },
+        {
+          "name": "World Bank",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Int'l"
+        },
+        {
+          "name": "IMF",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Int'l"
+        },
+        {
+          "name": "ADB",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Int'l"
+        }
+      ],
+      "name": "Tax & Compliance",
+      "type": "official",
+      "priority": "high",
+      "id": 13,
+      "key": "tax",
+      "source_count": 40
+    },
+    "business": {
+      "sources": [
+        {
+          "name": "OSS System",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "oss.go.id"
+        },
+        {
+          "name": "BKPM",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "bkpm.go.id"
+        },
+        {
+          "name": "AHU Online",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ahu.go.id"
+        },
+        {
+          "name": "Ministry of Trade",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kemendag.go.id"
+        },
+        {
+          "name": "DJP (Taxes)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "pajak.go.id"
+        },
+        {
+          "name": "Indonesia Stock Exchange",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "idx.co.id"
+        },
+        {
+          "name": "National Council for SEZ",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kek.go.id"
+        },
+        {
+          "name": "JDIH Kemendag",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jdih.kemendag.go.id"
+        },
+        {
+          "name": "INA (Sov. Wealth Fund)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ina.go.id"
+        },
+        {
+          "name": "DPMPTSP DKI Jakarta",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "invest.jakarta.go.id"
+        },
+        {
+          "name": "DPMPTSP West Java",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "dpmptsp.jabarprov.go.id"
+        },
+        {
+          "name": "Ministry of Industry",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kemenperin.go.id"
+        },
+        {
+          "name": "Immigration",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "imigrasi.go.id"
+        },
+        {
+          "name": "Ministry of Manpower",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kemnaker.go.id"
+        },
+        {
+          "name": "BPJS Ketenagakerjaan",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "bpjsketenagakerjaan.go.id"
+        },
+        {
+          "name": "LKPP (Procurement)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "lkpp.go.id"
+        },
+        {
+          "name": "KPPU (Competition)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kppu.go.id"
+        },
+        {
+          "name": "ABNR",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "abnr.co.id"
+        },
+        {
+          "name": "SSEK",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ssek.com"
+        },
+        {
+          "name": "HHP",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "hhp.co.id"
+        },
+        {
+          "name": "Makarim & Taira S.",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "makarim.com"
+        },
+        {
+          "name": "Assegaf Hamzah (AHP)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ahp.co.id"
+        },
+        {
+          "name": "Hiswara Bunjamin",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "hbtlaw.com"
+        },
+        {
+          "name": "Walalangi & Partners",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "wplaws.com"
+        },
+        {
+          "name": "UMBRA",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "umbralaw.com"
+        },
+        {
+          "name": "Makes & Partners",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "makeslaw.com"
+        },
+        {
+          "name": "Soemadipradja & Taher",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "soemath.com"
+        },
+        {
+          "name": "PwC Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "pwc.com/id"
+        },
+        {
+          "name": "EY Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ey.com/id"
+        },
+        {
+          "name": "Cekindo (InCorp)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "cekindo.com"
+        },
+        {
+          "name": "Emerhub",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "emerhub.com"
+        },
+        {
+          "name": "MAM Corporate Solutions",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "mamsolutions.net"
+        },
+        {
+          "name": "TMF Group",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "tmf-group.com"
+        },
+        {
+          "name": "KADIN Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kadin.id"
+        },
+        {
+          "name": "BritCham Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "britcham.or.id"
+        },
+        {
+          "name": "EKONID (German)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "ekonid.com"
+        },
+        {
+          "name": "JETRO Jakarta",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "jetro.go.jp/indonesia"
+        },
+        {
+          "name": "KOTRA Jakarta",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "kotra.or.kr"
+        },
+        {
+          "name": "GAIKINDO",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "gaikindo.or.id"
+        },
+        {
+          "name": "GAPMMI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "gapmmi.id"
+        },
+        {
+          "name": "idEA",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "idea.or.id"
+        },
+        {
+          "name": "HKI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "hki-industrialestate.com"
+        },
+        {
+          "name": "APRINDO",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "aprindo.org"
+        },
+        {
+          "name": "AFTECH",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "fintech.id"
+        },
+        {
+          "name": "AFPI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "afpi.or.id"
+        },
+        {
+          "name": "GAPKI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "gapki.id"
+        },
+        {
+          "name": "The Jakarta Post",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "thejakartapost.com"
+        },
+        {
+          "name": "Tech in Asia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "techinasia.com"
+        },
+        {
+          "name": "Katadata",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "katadata.co.id"
+        },
+        {
+          "name": "World Bank Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "worldbank.org/en/country/indonesia"
+        },
+        {
+          "name": "ADB Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "adb.org/countries/indonesia"
+        },
+        {
+          "name": "OECD Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "oecd.org/countries/indonesia"
+        },
+        {
+          "name": "IMF Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "imf.org/en/Countries/IDN"
+        },
+        {
+          "name": "Hashmeta Indonesia Social Commerce",
+          "url": "https://hashmeta.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Target Media Indonesia Outlook 2026",
+          "url": "https://hellotmn.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Vyre FMCG Community Marketing",
+          "url": "https://vyreagency.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Globe Newswire Indonesia E-commerce 2026-2031",
+          "url": "https://globenewswire.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Marketing Interactive Social Commerce",
+          "url": "https://marketing-interactive.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "YouGov TikTok Tokopedia Partnership",
+          "url": "https://yougov.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "TMO Group Indonesia Marketplaces",
+          "url": "https://tmogroup.asia",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Mordor Intelligence E-commerce 2031",
+          "url": "https://mordorintelligence.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Store2Go JFW 2026 Partners",
+          "url": "https://store2go.co.id",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Xendit Warung Digital Solutions",
+          "url": "https://xendit.co",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Retail Asia B2B E-commerce",
+          "url": "https://retailasia.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Ken Research Social Commerce",
+          "url": "https://kenresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Nexdigm Medical Devices 2030",
+          "url": "https://nexdigm.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Senen Biotech Pharma Margins",
+          "url": "https://senenbiotech.in",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "Chameleon Pharma Indonesia Chains",
+          "url": "https://chameleon-pharma.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Market Research Household Appliances",
+          "url": "https://marketresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Grand View Research Appliances 2030",
+          "url": "https://grandviewresearch.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "NIQ Home Appliances Trends",
+          "url": "https://nielseniq.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "FMI Musical Instruments 2036",
+          "url": "https://futuremarketinsights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Mobility Foresights Sporting Goods",
+          "url": "https://mobilityforesights.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "Seedtable Jakarta Startups 2026",
+          "url": "https://seedtable.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "MDPI Retail Loyalty Digital Transformation",
+          "url": "https://mdpi.com",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "Scribd DSInnovate Startup Report",
+          "url": "https://scribd.com",
+          "tier": "T3",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "low"
+        },
+        {
+          "name": "North Ridge Partners Warung Wars",
+          "url": "https://northridgepartners.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        },
+        {
+          "name": "ResearchGate Transaction Cost Economics",
+          "url": "https://researchgate.net",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "Adjust Case Studies",
+          "url": "https://adjust.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "medium"
+        }
+      ],
+      "name": "Business & Investment",
+      "type": "official",
+      "priority": "high",
+      "id": 14,
+      "key": "business",
+      "source_count": 79
+    },
+    "market_intelligence": {
+      "sources": [
+        {
+          "name": "Ministry of Industry (Kemenperin) & SIINas",
+          "url": "kemenperin.go.id",
+          "tier": "T1",
+          "authority": "High (Sector Specific)",
+          "description": "Industrial Production, Manufacturing Performance, Industrial Estates"
+        },
+        {
+          "name": "Ministry of Trade (Kemendag)",
+          "url": "kemendag.go.id",
+          "tier": "T1",
+          "authority": "High (Trade Policy)",
+          "description": "Export/Import Regulations, Commodity Prices, Futures Trading"
+        },
+        {
+          "name": "Ministry of Energy and Mineral Resources (ESDM)",
+          "url": "esdm.go.id",
+          "tier": "T1",
+          "authority": "Critical (Resource Sector)",
+          "description": "Oil & Gas, Mining, Electricity, Renewable Energy"
+        },
+        {
+          "name": "Ministry of Transportation (Kemenhub)",
+          "url": "kemenhub.go.id",
+          "tier": "T2",
+          "authority": "Moderate to High",
+          "description": "Logistics, Port Throughput, Passenger Movements"
+        },
+        {
+          "name": "GAPKI (Gabungan Pengusaha Kelapa Sawit Indonesia) - Indonesian Palm Oil Association",
+          "url": "gapki.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "GIMNI (Gabungan Industri Minyak Nabati Indonesia) - Vegetable Oil Industry Association",
+          "url": "gimni.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Downstream Palm Oil (Refineries, Oleochemicals)"
+        },
+        {
+          "name": "APBI-ICMA (Asosiasi Pertambangan Batubara Indonesia) - Indonesian Coal Mining Association",
+          "url": "apbi-icma.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "APNI (Asosiasi Penambang Nikel Indonesia) - Indonesian Nickel Miners Association",
+          "url": "apni.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "IMA (Indonesian Mining Association)",
+          "url": "ima-api.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "General Mining (Copper, Gold, Bauxite)"
+        },
+        {
+          "name": "GAPKINDO (Gabungan Perusahaan Karet Indonesia) - Rubber Association of Indonesia",
+          "url": "gapkindo.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Natural Rubber"
+        },
+        {
+          "name": "GAIKINDO (Gabungan Industri Kendaraan Bermotor Indonesia) - Automotive",
+          "url": "gaikindo.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "AISI (Asosiasi Industri Sepeda Motor Indonesia) - Motorcycles",
+          "url": "aisi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "GAPMMI (Gabungan Pengusaha Makanan dan Minuman Seluruh Indonesia) - F&B",
+          "url": "gapmmi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "API (Asosiasi Pertekstilan Indonesia) - Textiles",
+          "url": "api.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Textiles & Garments"
+        },
+        {
+          "name": "IPMG (International Pharmaceutical Manufacturers Group)",
+          "url": "ipmg.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Pharmaceuticals"
+        },
+        {
+          "name": "ASI (Asosiasi Semen Indonesia) - Cement",
+          "url": "asi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "APRINDO (Asosiasi Pengusaha Ritel Indonesia) - Retailers",
+          "url": "aprindo.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Modern Retail (Supermarkets, Malls)"
+        },
+        {
+          "name": "Indonesia Stock Exchange (IDX / BEI)",
+          "url": "idx.co.id",
+          "tier": "T1",
+          "authority": "Apex (Capital Markets)",
+          "description": "Equity, Bond, Carbon Trading Data"
+        },
+        {
+          "name": "PERBANAS (Perhimpunan Bank Nasional) - Banks",
+          "url": "perbanas.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "National Banking"
+        },
+        {
+          "name": "AAJI (Asosiasi Asuransi Jiwa Indonesia) - Life Insurance",
+          "url": "aaji.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Life Insurance"
+        },
+        {
+          "name": "AAUI (Asosiasi Asuransi Umum Indonesia) - General Insurance",
+          "url": "aaui.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "General Insurance (Property, Vehicle)"
+        },
+        {
+          "name": "ASPI (Asosiasi Sistem Pembayaran Indonesia) - Payment Systems",
+          "url": "aspi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Payments SRO (Self-Regulatory Organization)"
+        },
+        {
+          "name": "AFPI (Asosiasi Fintech Pendanaan Bersama Indonesia) - Fintech Lending",
+          "url": "afpi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "P2P Lending"
+        },
+        {
+          "name": "idEA (Indonesian E-commerce Association)",
+          "url": "idea.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Primary voice of e-commerce platforms (Shopee, Tokopedia, etc.)"
+        },
+        {
+          "name": "AFTECH (Asosiasi Fintech Indonesia)",
+          "url": "aftech.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Umbrella for all fintech"
+        },
+        {
+          "name": "IDA (Indonesia Digital Association)",
+          "url": "ida.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Digital Advertising & Media"
+        },
+        {
+          "name": "Google, Temasek, Bain & Company (e-Conomy SEA Report)",
+          "url": "economysea.withgoogle.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "East Ventures (EV-DCI)",
+          "url": "east.vc",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "AC Ventures",
+          "url": "acventures.vc",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "MDI Ventures",
+          "url": "mdiventures.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Tech in Asia",
+          "url": "techinasia.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Momentum Works",
+          "url": "momentum.asia",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "The World Bank",
+          "url": "worldbank.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Development Indicators, Poverty, Fiscal Framework"
+        },
+        {
+          "name": "International Monetary Fund (IMF)",
+          "url": "imf.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Balance of Payments, Monetary Stability"
+        },
+        {
+          "name": "Asian Development Bank (ADB)",
+          "url": "adb.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Infrastructure, Regional Integration"
+        },
+        {
+          "name": "OECD (Organisation for Economic Co-operation and Development)",
+          "url": "oecd.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Policy Reform, Regulatory Standards"
+        },
+        {
+          "name": "Fitch Solutions (BMI)",
+          "url": "fitchsolutions.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Country Risk & Industry Forecasting"
+        },
+        {
+          "name": "NielsenIQ Indonesia",
+          "url": "nielseniq.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Kantar Indonesia",
+          "url": "kantar.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Ipsos Indonesia",
+          "url": "ipsos.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Euromonitor International",
+          "url": "euromonitor.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "S&P Global (IHS Markit)",
+          "url": "spglobal.com/marketintelligence",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Oxford Economics",
+          "url": "oxfordeconomics.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "CEIC Data (ISI Emerging Markets)",
+          "url": "ceicdata.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "EMIS (Emerging Markets Information Service)",
+          "url": "emis.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Katadata & Databoks",
+          "url": "katadata.",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ASEAN Briefing Indonesia Market Entry",
+          "url": "https://aseanbriefing.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "critical"
+        },
+        {
+          "name": "SBM ITB Indonesia 2026 Outlook",
+          "url": "https://sbm.itb.ac.id",
+          "tier": "T1",
+          "type": "website",
+          "update_frequency": "daily",
+          "credibility": "high"
+        },
+        {
+          "name": "PwC Indonesia Legal Alert Sep 2025",
+          "url": "https://pwc.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Fitch Solutions Indonesia Market",
+          "url": "https://fitchsolutions.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        },
+        {
+          "name": "Indonesia Investments E-commerce",
+          "url": "https://indonesia-investments.com",
+          "tier": "T2",
+          "type": "website",
+          "update_frequency": "weekly",
+          "credibility": "high"
+        }
+      ],
+      "name": "Market Intelligence",
+      "type": "data",
+      "priority": "high",
+      "id": 15,
+      "key": "market_intelligence",
+      "source_count": 51
+    },
+    "political_risk": {
+      "sources": [
+        {
+          "name": "JDIH Nasional (BPHN) - The Aggregator",
+          "url": "jdihn.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Ministry-Specific Portals: The Tactical Layer",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "State Secretariat (Kemensetneg)",
+          "url": "setneg.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Gatekeeper of national law"
+        },
+        {
+          "name": "Cabinet Secretariat (Setkab)",
+          "url": "setkab.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Ministry of National Development Planning (Bappenas)",
+          "url": "bappenas.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Architect of Indonesia's long-term vision"
+        },
+        {
+          "name": "Coordinating Ministry for Economic Affairs (Kemenko Perekonomian)",
+          "url": "ekon.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Coordinating Ministry for Maritime and Investment Affairs (Kemenko Marves)",
+          "url": "maritim.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Ministry of Environment and Forestry (KLHK)",
+          "url": "menlhk.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Ministry of Communication and Digital Affairs (Komdigi)",
+          "url": "komdigi.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Regulator of digital economy"
+        },
+        {
+          "name": "Constitutional Court (Mahkamah Konstitusi - MK)",
+          "url": "mahkamahkonstitusi.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Audit Board of Indonesia (BPK)",
+          "url": "bpk.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "External auditor of the state"
+        },
+        {
+          "name": "Corruption Eradication Commission (KPK)",
+          "url": "kpk.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "General Elections Commission (KPU)",
+          "url": "kpu.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Election Supervisory Body (Bawaslu)",
+          "url": "bawaslu.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "National Commission on Human Rights (Komnas HAM)",
+          "url": "komnasham.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "CSIS (Centre for Strategic and International Studies)",
+          "url": "csis.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "LPEM FEB UI (Institute for Economic and Social Research - Univ. of Indonesia)",
+          "url": "lpem.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "INDEF (Institute for Development of Economics and Finance)",
+          "url": "indef.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "SMERU Research Institute",
+          "url": "smeru.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "CIPS (Center for Indonesian Policy Studies)",
+          "url": "cips-indonesia.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ERIA (Economic Research Institute for ASEAN and East Asia)",
+          "url": "eria.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Indikator Politik Indonesia",
+          "url": "indikator.co.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Charta Politika",
+          "url": "chartapolitika.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "SMRC (Saiful Mujani Research and Consulting)",
+          "url": "saifulmujani.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Intersection of democracy + public sentiment"
+        },
+        {
+          "name": "LSI (Lembaga Survei Indonesia)",
+          "url": "lsi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Broader themes:"
+        },
+        {
+          "name": "Poltracking Indonesia",
+          "url": "poltracking.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Litbang Kompas",
+          "url": "kompas.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research arm of Kompas newspaper"
+        },
+        {
+          "name": "KPPOD (Regional Autonomy Watch)",
+          "url": "kppod.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Puskapol UI (Center for Political Studies)",
+          "url": "puskapol.ui.ac.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "- Electoral governance"
+        },
+        {
+          "name": "PATTIRO",
+          "url": "pattiro.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "- Public service delivery transparency"
+        },
+        {
+          "name": "IESR (Institute for Essential Services Reform)",
+          "url": "iesr.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ReforMiner Institute",
+          "url": "reforminer.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "CEDS UNPAD (Center for Economics and Development Studies)",
+          "url": "ceds.fe.unpad.ac.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "BRIN (National Research and Innovation Agency)",
+          "url": "brin.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Populi Center",
+          "url": "populicenter.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "- Public opinion"
+        },
+        {
+          "name": "HHP Law Firm (Hadiputranto, Hadinoto & Partners)",
+          "url": "hhp.co.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Assegaf Hamzah & Partners (AHP)",
+          "url": "ahp.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Reformasi Information Services",
+          "url": "reformasi-information.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Control Risks",
+          "url": "controlrisks.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "BowerGroupAsia",
+          "url": "bowergroupasia.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Vriens & Partners",
+          "url": "vrienspartners.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ERM (Environmental Resources Management)",
+          "url": "erm.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Integrity Asia",
+          "url": "integrityasia.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "PwC Indonesia",
+          "url": "pwc.com/id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "EY Indonesia",
+          "url": "ey.com/id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "US-ASEAN Business Council",
+          "url": "usasean.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "JETRO (Japan External Trade Organization)",
+          "url": "jetro.go.jp",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "EKONID (German-Indonesian Chamber)",
+          "url": "ekonid.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "IPA (Indonesian Petroleum Association)",
+          "url": "ipa.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "MASTEL (Masyarakat Telematika Indonesia)",
+          "url": "mastel.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ALI (Asosiasi Logistik Indonesia)",
+          "url": "ali.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "AEI (Asosiasi Emiten Indonesia)",
+          "url": "emitenindo.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ICW (Indonesia Corruption Watch)",
+          "url": "antikorupsi.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Transparency International Indonesia (TII)",
+          "url": "ti.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "- Systemic reform"
+        },
+        {
+          "name": "PUKAT UGM (Pusat Kajian Anti Korupsi)",
+          "url": "pukat.ugm.ac.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "WALHI (Friends of the Earth Indonesia)",
+          "url": "walhi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Greenpeace Indonesia",
+          "url": "greenpeace.org/indonesia",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "AMAN (Alliance of Indigenous Peoples of the Archipelago)",
+          "url": "aman.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "JATAM (Mining Advocacy Network)",
+          "url": "jatam.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Climate Policy Initiative (CPI) Indonesia",
+          "url": "climatepolicyinitiative.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "WRI Indonesia (World Resources Institute)",
+          "url": "wri-indonesia.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "KSPI (Confederation of Indonesian Trade Unions)",
+          "url": "kspi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "KSPSI (All Indonesian Workers Union Confederation)",
+          "url": "kspsi.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "KSBSI (Confederation of Indonesia Prosperity Trade Unions)",
+          "url": "ksbsi.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "KontraS (Commission for the Disappeared and Victims of Violence)",
+          "url": "kontras.org",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "YLBHI (Indonesian Legal Aid Foundation)",
+          "url": "ylbhi.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Migrant Care",
+          "url": "migrantcare.net",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "The Jakarta Post",
+          "url": "thejakartapost.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Majalah Tempo",
+          "url": "tempo.co",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "InaRISK (BNPB)",
+          "url": "inarisk.bnpb.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "SiPongi (MenLHK)",
+          "url": "sipongi.menlhk.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Minerba One Data Indonesia (MODI)",
+          "url": "modi.esdm.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "SPSE (Sistem Pengadaan Secara Elektronik)",
+          "url": "lpse.go.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Antara News",
+          "url": "antaranews.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "THE DECENTRALIZATION PARADOX: CENTRAL POLICY VS. REGIONAL REALITY",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "THE 2024-2029 POLITICAL TRANSITION: JOKOWI TO PRABOWO",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "CORRUPTION & REGULATORY CAPTURE",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "LABOR & SOCIAL UNREST (THE OMNIBUS LAW AFTERSHOCKS)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "ADVOCACY SPECTRUM: TECHNOCRATS VS. AGITATORS",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": ""
+        },
+        {
+          "name": "Deloitte Indonesia",
+          "url": "deloitte.com/id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "",
+          "vertical": "political_risk"
+        },
+        {
+          "name": "KPMG Indonesia",
+          "url": "kpmg.com/id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "",
+          "vertical": "political_risk"
+        },
+        {
+          "name": "BritCham Indonesia",
+          "url": "britcham.or.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "",
+          "vertical": "political_risk"
+        },
+        {
+          "name": "Bisnis Indonesia",
+          "url": "bisnis.com",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "",
+          "vertical": "political_risk"
+        },
+        {
+          "name": "Katadata",
+          "url": "katadata.co.id",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "",
+          "vertical": "political_risk"
+        }
+      ],
+      "name": "Political & Regulatory Risk",
+      "type": "official",
+      "priority": "critical",
+      "id": 16,
+      "key": "political_risk",
+      "source_count": 84
+    },
+    "emerging_trends": {
+      "sources": [
+        {
+          "name": "Ministry of Investment / Investment Coordinating Board (BKPM)",
+          "url": "state.gov",
+          "tier": "T2",
+          "authority": "Investment Execution & Licensing",
+          "description": ""
+        },
+        {
+          "name": "Nusantara Capital Authority (Otorita IKN)",
+          "url": "ikn.go.id",
+          "tier": "T2",
+          "authority": "Special Jurisdictional Authority",
+          "description": ""
+        },
+        {
+          "name": "Indonesia Carbon Exchange (IDXCarbon)",
+          "url": "idxcarbon.co.id",
+          "tier": "T2",
+          "authority": "Market Operator (Self-Regulatory Organization)",
+          "description": ""
+        },
+        {
+          "name": "National Registry System (SRN-PPI) & Carbon Unit Registry (SRUK)",
+          "url": "goldstandard.org",
+          "tier": "T2",
+          "authority": "Regulatory Registry & Tracking",
+          "description": "Scientific repository — emission reductions measured, reported, verified (MRV)"
+        },
+        {
+          "name": "Green Building Council Indonesia (GBCI)",
+          "url": "gbcindonesia.org",
+          "tier": "T2",
+          "authority": "Industry Standard Setter",
+          "description": ""
+        },
+        {
+          "name": "KADIN Net Zero Hub",
+          "url": "netzerohub.id",
+          "tier": "T2",
+          "authority": "Private Sector Coalition",
+          "description": ""
+        },
+        {
+          "name": "PT Sarana Multi Infrastruktur (PT SMI)",
+          "url": "greenclimate.fund",
+          "tier": "T2",
+          "authority": "State-Owned Financial Institution (Special Mission Vehicle)",
+          "description": ""
+        },
+        {
+          "name": "Indonesia Battery Corporation (IBC)",
+          "url": "indonesiabatterycorp.com",
+          "tier": "T2",
+          "authority": "State-Owned Enterprise Consortium",
+          "description": ""
+        },
+        {
+          "name": "PERIKLINDO (Indonesian Electric Vehicle Industry Association)",
+          "url": "pevs-id.com",
+          "tier": "T2",
+          "authority": "Industry Association",
+          "description": ""
+        },
+        {
+          "name": "PLN (Perusahaan Listrik Negara)",
+          "url": "whitecase.com",
+          "tier": "T2",
+          "authority": "State Utility Monopoly",
+          "description": ""
+        },
+        {
+          "name": "Indonesian Renewable Energy Society (METI/IRES)",
+          "url": "sre.co.id",
+          "tier": "T2",
+          "authority": "Policy Advocacy & Think Tank",
+          "description": ""
+        },
+        {
+          "name": "Indonesian Solar Energy Association (AESI)",
+          "url": "globalsolarcouncil.org",
+          "tier": "T2",
+          "authority": "Sector Specific Association",
+          "description": ""
+        },
+        {
+          "name": "Indonesian Geothermal Association (INAGA/API)",
+          "url": "inaga-api.or.id",
+          "tier": "T2",
+          "authority": "Sector Specific Association",
+          "description": ""
+        },
+        {
+          "name": "Indonesia Fintech Association (AFTECH)",
+          "url": "f.hubspotusercontent10.net",
+          "tier": "T2",
+          "authority": "Umbrella Industry Association",
+          "description": ""
+        },
+        {
+          "name": "Commodity Futures Trading Regulatory Agency (Bappebti)",
+          "url": "freemanlaw.com",
+          "tier": "T2",
+          "authority": "Crypto & Commodity Regulator (Transitioning)",
+          "description": ""
+        },
+        {
+          "name": "Indonesia Blockchain Association (A-B-I)",
+          "url": "triple-a.io",
+          "tier": "T2",
+          "authority": "Tech Association",
+          "description": ""
+        },
+        {
+          "name": "Halal Product Assurance Agency (BPJPH)",
+          "url": "halalmui.org",
+          "tier": "T2",
+          "authority": "Central Certifying Body (Ministry of Religious Affairs)",
+          "description": ""
+        },
+        {
+          "name": "National Committee for Sharia Economics and Finance (KNEKS)",
+          "url": "isef.co.id",
+          "tier": "T2",
+          "authority": "Strategic Development Committee",
+          "description": "Building \"Halal Value Chain\" via Halal Industrial Zones (KIH) establishment"
+        },
+        {
+          "name": "ANGIN (Angel Investment Network Indonesia)",
+          "url": "angin.id",
+          "tier": "T2",
+          "authority": "Investment Network & Advisory",
+          "description": ""
+        },
+        {
+          "name": "PLUS (Platform Usaha Sosial)",
+          "url": "usahasosial.com",
+          "tier": "T2",
+          "authority": "Social Enterprise Directory & Enabler",
+          "description": ""
+        },
+        {
+          "name": "Indonesian Logistics and Forwarders Association (ALFI)",
+          "url": "indoshippinggazette.com",
+          "tier": "T2",
+          "authority": "Logistics Industry Body",
+          "description": ""
+        },
+        {
+          "name": "Kominfo / Komdigi",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Regulator"
+        },
+        {
+          "name": "BSSN",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Security"
+        },
+        {
+          "name": "AC Ventures",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Investor"
+        },
+        {
+          "name": "MDI Ventures",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Investor"
+        },
+        {
+          "name": "Antler Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Incubator"
+        },
+        {
+          "name": "500 Global",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Accelerator"
+        },
+        {
+          "name": "GoTo Group",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Operator"
+        },
+        {
+          "name": "Traveloka",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Operator"
+        },
+        {
+          "name": "99.co Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PropTech"
+        },
+        {
+          "name": "Rumah123",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "PropTech"
+        },
+        {
+          "name": "MIND ID",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "SOE"
+        },
+        {
+          "name": "Antam (Aneka Tambang)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "SOE"
+        },
+        {
+          "name": "Pertamina New & Renewable Energy",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "SOE"
+        },
+        {
+          "name": "GAPKI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "APNI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "JETP Secretariat",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Funding"
+        },
+        {
+          "name": "ICDX",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Exchange"
+        },
+        {
+          "name": "Petromindo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Intelligence"
+        },
+        {
+          "name": "Dunia Energi",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "CoalAsia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Rambu Energy",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Bank Indonesia (BI)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Central Bank"
+        },
+        {
+          "name": "LPS (Deposit Insurance Corp)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Regulator"
+        },
+        {
+          "name": "Indonesia Infrastructure Finance (IIF)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Finance"
+        },
+        {
+          "name": "LPEM FEB UI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research"
+        },
+        {
+          "name": "CORE Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research"
+        },
+        {
+          "name": "CSIS Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Think Tank"
+        },
+        {
+          "name": "Mandiri Institute",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research"
+        },
+        {
+          "name": "KPMG Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Consulting"
+        },
+        {
+          "name": "PwC Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Consulting"
+        },
+        {
+          "name": "EY Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Consulting"
+        },
+        {
+          "name": "Deloitte Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Consulting"
+        },
+        {
+          "name": "McKinsey Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Strategy"
+        },
+        {
+          "name": "BCG Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Strategy"
+        },
+        {
+          "name": "Bain & Company",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Strategy"
+        },
+        {
+          "name": "ABNR Counsellors at Law",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "SSEK Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "HHP Law Firm",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "Makarim & Taira S.",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "UMBRA Legal",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "Hadiputranto, Hadinoto & Partners",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Legal"
+        },
+        {
+          "name": "WRI Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "NGO"
+        },
+        {
+          "name": "WWF Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "NGO"
+        },
+        {
+          "name": "TNC Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "NGO"
+        },
+        {
+          "name": "Climate Policy Initiative (CPI)",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Research"
+        },
+        {
+          "name": "GGGI Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Int. Org"
+        },
+        {
+          "name": "IBCSD",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Business"
+        },
+        {
+          "name": "PRAISE",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "ADUPI",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "Waste4Change",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Enterprise"
+        },
+        {
+          "name": "Systemiq",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Enterprise"
+        },
+        {
+          "name": "Greeneration Foundation",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "NGO"
+        },
+        {
+          "name": "KADIN Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Chamber"
+        },
+        {
+          "name": "APINDO",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Assoc."
+        },
+        {
+          "name": "AmCham Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Chamber"
+        },
+        {
+          "name": "EuroCham Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Chamber"
+        },
+        {
+          "name": "Katadata",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Bisnis Indonesia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Kontan",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Investor Daily",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Tech in Asia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "DailySocial",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Antara News",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "The Jakarta Post",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Tempo",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Globe Asia",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "SWA Magazine",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        },
+        {
+          "name": "Marketeers",
+          "url": "",
+          "tier": "T2",
+          "authority": "Medium",
+          "description": "Media"
+        }
+      ],
+      "name": "Emerging Trends & Strategic Ecosystems",
+      "type": "strategic",
+      "priority": "high",
+      "id": 17,
+      "key": "emerging_trends",
+      "source_count": 89
+    },
+    "social_media": {
+      "id": "18",
+      "key": "social_media",
+      "name": "Social Media & Communities",
+      "type": "research",
+      "priority": "medium",
+      "sources": [
+        {
+          "name": "CNN Indonesia YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKII0Ml9S5wneKbHswmUrIQ",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Kompas TV YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCneA4BuveCEgJql1m7lwFag",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Metro TV YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCzl0OrB3-ehunyotIQvK77A",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "tvOne YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCER4rvDnRBPr_ncYW4UCZjg",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "ANTARA News YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCC-C46T69Ymv3WBeYMAFMRQ",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Post YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCsGqYt4nx9fQfukZNqErRlw",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Tempo YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3QRoNY-nYDTNSv-1dR0P-g",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Detik YouTube",
+          "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCuMAjEaSMj7q7YLf0xW1MjQ",
+          "type": "youtube_rss",
+          "tier": "T2"
+        },
+        {
+          "name": "Hukumonline Telegram",
+          "url": "https://t.me/hukumonline",
+          "type": "telegram",
+          "tier": "T1"
+        },
+        {
+          "name": "DDTC News Telegram",
+          "url": "https://t.me/ddtcnews",
+          "type": "telegram",
+          "tier": "T1"
+        },
+        {
+          "name": "CNN Indonesia Telegram",
+          "url": "https://t.me/cnnindonesiacom",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Detik Telegram",
+          "url": "https://t.me/detikcom",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kompas Telegram",
+          "url": "https://t.me/kompaborneo",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "ANTARA Telegram",
+          "url": "https://t.me/antaranews",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Tempo Telegram",
+          "url": "https://t.me/tempomedia",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Post Telegram",
+          "url": "https://t.me/thejakartapost",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kumparan Telegram",
+          "url": "https://t.me/kumparannews",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Bali Post Telegram",
+          "url": "https://t.me/balipost_official",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Bisnis Indonesia Telegram",
+          "url": "https://t.me/biaborneo",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "Kontan Telegram",
+          "url": "https://t.me/kontanid",
+          "type": "telegram",
+          "tier": "T2"
+        },
+        {
+          "name": "r/indonesia",
+          "url": "https://www.reddit.com/r/indonesia/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/bali",
+          "url": "https://www.reddit.com/r/bali/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/digitalnomad",
+          "url": "https://www.reddit.com/r/digitalnomad/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "r/expats",
+          "url": "https://www.reddit.com/r/expats/",
+          "type": "reddit",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Hot Threads",
+          "url": "https://www.kaskus.co.id/",
+          "type": "kaskus",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Investasi",
+          "url": "https://www.kaskus.co.id/forum/319/investasi",
+          "type": "kaskus",
+          "tier": "T3"
+        },
+        {
+          "name": "Kaskus Bisnis",
+          "url": "https://www.kaskus.co.id/forum/21/business-board",
+          "type": "kaskus",
+          "tier": "T3"
+        }
+      ],
+      "source_count": 27
+    }
+  }
+}

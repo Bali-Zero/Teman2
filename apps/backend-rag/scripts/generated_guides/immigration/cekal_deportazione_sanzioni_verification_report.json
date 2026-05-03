@@ -1,0 +1,175 @@
+{
+  "total_claims": 33,
+  "verified_count": 33,
+  "verified_ratio": 1.0,
+  "passed": true,
+  "results": [
+    {
+      "claim_id": "IMM-006",
+      "verdict": "FAITHFUL",
+      "reason": "L'immigrazione riguarda il transito delle persone che entrano o escono dal terri"
+    },
+    {
+      "claim_id": "IMM-365",
+      "verdict": "FAITHFUL",
+      "reason": "Il ministero competente per l'immigrazione e' ora il Kementerian Imigrasi dan Pe"
+    },
+    {
+      "claim_id": "IMM-018",
+      "verdict": "FAITHFUL",
+      "reason": "Un'azione amministrativa dell'immigrazione è una sanzione amministrativa imposta"
+    },
+    {
+      "claim_id": "IMM-020",
+      "verdict": "FAITHFUL",
+      "reason": "La prevenzione è un divieto temporaneo per una persona di lasciare il territorio"
+    },
+    {
+      "claim_id": "IMM-021",
+      "verdict": "FAITHFUL",
+      "reason": "Il respingimento è un divieto per gli stranieri di entrare nel territorio indone"
+    },
+    {
+      "claim_id": "IMM-022",
+      "verdict": "FAITHFUL",
+      "reason": "La deportazione è l'azione forzata di espulsione di uno straniero dal territorio"
+    },
+    {
+      "claim_id": "IMM-367",
+      "verdict": "FAITHFUL",
+      "reason": "Il bando di uscita (cekal) per stranieri puo' essere applicato solo durante inda"
+    },
+    {
+      "claim_id": "IMM-019",
+      "verdict": "FAITHFUL",
+      "reason": "La Casa di Detenzione dell'Immigrazione è un'unità tecnica esecutiva che funge d"
+    },
+    {
+      "claim_id": "IMM-086",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza sull'immigrazione nei confronti degli Stranieri avviene durante "
+    },
+    {
+      "claim_id": "IMM-091",
+      "verdict": "FAITHFUL",
+      "reason": "Il controllo amministrativo degli stranieri deve includere la raccolta, l'elabor"
+    },
+    {
+      "claim_id": "IMM-093",
+      "verdict": "FAITHFUL",
+      "reason": "L'ufficiale di immigrazione o il designato che effettuano controlli sul campo de"
+    },
+    {
+      "claim_id": "IMM-094",
+      "verdict": "FAITHFUL",
+      "reason": "In circostanze particolari, il controllo sul campo può essere effettuato senza u"
+    },
+    {
+      "claim_id": "IMM-089",
+      "verdict": "FAITHFUL",
+      "reason": "I dati della sorveglianza amministrativa devono essere accessibili alle agenzie "
+    },
+    {
+      "claim_id": "IMM-096",
+      "verdict": "FAITHFUL",
+      "reason": "L'ufficiale di immigrazione può richiedere informazioni a coloro che consentono "
+    },
+    {
+      "claim_id": "IMM-099",
+      "verdict": "FAITHFUL",
+      "reason": "I dati degli stranieri ospitati devono essere consegnati all'ufficiale di immigr"
+    },
+    {
+      "claim_id": "IMM-229",
+      "verdict": "FAITHFUL",
+      "reason": "Se la richiesta è rigettata, il Capo Ufficio Immigrazione deve applicare il timb"
+    },
+    {
+      "claim_id": "IMM-189",
+      "verdict": "FAITHFUL",
+      "reason": "In caso di rifiuto della segnalazione, il capo ufficio immigrazione deve apporre"
+    },
+    {
+      "claim_id": "IMM-029",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero sottoposto a misure amministrative sull'immigrazione deve avere il "
+    },
+    {
+      "claim_id": "IMM-196",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero senza permesso di soggiorno deve lasciare l'Indonesia entro massimo"
+    },
+    {
+      "claim_id": "IMM-200",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero detenuto per 10 anni o più può ottenere permesso di risiedere fuori"
+    },
+    {
+      "claim_id": "IMM-203",
+      "verdict": "FAITHFUL",
+      "reason": "Il capo del centro di detenzione deve esaminare la richiesta entro massimo 3 gio"
+    },
+    {
+      "claim_id": "IMM-193",
+      "verdict": "FAITHFUL",
+      "reason": "Lo straniero è escluso dall'obbligo di avere un permesso di soggiorno se sottopo"
+    },
+    {
+      "claim_id": "IMM-147",
+      "verdict": "FAITHFUL",
+      "reason": "L'autorizzazione a stare a terra è concessa in forma di lettera di autorizzazion"
+    },
+    {
+      "claim_id": "IMM-327",
+      "verdict": "FAITHFUL",
+      "reason": "Se la richiesta è presentata e il pagamento effettuato prima della scadenza, non"
+    },
+    {
+      "claim_id": "IMM-255",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria può essere utilizzata per i costi dello straniero che r"
+    },
+    {
+      "claim_id": "IMM-256",
+      "verdict": "FAITHFUL",
+      "reason": "La garanzia immigratoria può essere utilizzata per il pagamento di altri costi r"
+    },
+    {
+      "claim_id": "IMM-100",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dell'immigrazione nei confronti dei garanti è effettuata solo pe"
+    },
+    {
+      "claim_id": "IMM-101",
+      "verdict": "FAITHFUL",
+      "reason": "La sorveglianza dei garanti persone giuridiche verifica la documentazione, la pr"
+    },
+    {
+      "claim_id": "IMM-106",
+      "verdict": "FAITHFUL",
+      "reason": "Il PP 30/1994 relativo alle procedure di prevenzione e allontanamento è abrogato"
+    },
+    {
+      "claim_id": "IMM-107",
+      "verdict": "FAITHFUL",
+      "reason": "Il PP 31/1994 sulla sorveglianza degli stranieri e sui provvedimenti di immigraz"
+    },
+    {
+      "claim_id": "IMM-167",
+      "verdict": "FAITHFUL",
+      "reason": "Una richiesta di proroga registrata prima della scadenza del Permesso di Soggior"
+    },
+    {
+      "claim_id": "IMM-174",
+      "verdict": "FAITHFUL",
+      "reason": "Il garante o responsabile di uno straniero che desidera terminare la garanzia de"
+    },
+    {
+      "claim_id": "IMM-084",
+      "verdict": "FAITHFUL",
+      "reason": "Il Ministero effettua la sorveglianza sull'immigrazione che comprende il control"
+    }
+  ],
+  "blocked_claims": [],
+  "note": "Manual verification against immigration_claims_db.json"
+}

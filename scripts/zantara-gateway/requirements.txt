@@ -1,0 +1,4 @@
+# scripts/zantara-gateway/requirements.txt
+aiohttp>=3.11,<4
+httpx>=0.27,<1
+mcp>=1.0,<2

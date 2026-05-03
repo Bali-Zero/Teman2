@@ -1,0 +1,337 @@
+IMK, ITK, ITB, ITP — I DOCUMENTI DI SOGGIORNO INDONESIANI
+STRUTTURA, VALIDITÀ E SCADENZE
+GUIDA OPERATIVA 2024-2025
+
+Guida normativa verificata | Aggiornata a UU 6/2011, PP 31/2013, UU 63/2024
+Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. INQUADRAMENTO: LA CATENA VISTO → PERMESSO DI SOGGIORNO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il sistema di controllo della presenza degli stranieri in Indonesia si articola
+in una catena normativa precisa: il visto costituisce il punto di accesso, mentre
+il permesso di soggiorno regola la permanenza effettiva sul territorio nazionale.
+
+Il visto è "una dichiarazione scritta che autorizza il viaggio verso il territorio
+dell'Indonesia e costituisce la base per il rilascio del permesso di soggiorno"
+[IMM-113]. Non è il visto in sé ad autorizzare la permanenza, bensì il permesso
+di soggiorno (izin tinggal) che ne discende [IMM-114].
+
+Il sistema prevede tre tipi principali di permesso di soggiorno:
+
+  • ITK  —  Izin Tinggal Kunjungan     (soggiorno per visita / kunjungan)
+  • ITB  —  Izin Tinggal Terbatas      (soggiorno temporaneo limitato = KITAS)
+  • ITP  —  Izin Tinggal Tetap         (soggiorno permanente = KITAP)
+
+A questi si aggiunge l'autorizzazione di rientro:
+
+  • IMK  —  Izin Masuk Kembali         (autorizzazione di rientro, oggi integrata)
+
+I riferimenti normativi fondamentali sono:
+  – UU 6/2011 sull'Immigrazione (legge quadro)
+  – PP 31/2013 e successive modifiche (regolamento attuativo)
+  – PP 48/2021 (aggiornamento procedurale)
+  – Permenkumham 22/2023 (disposizioni ministeriali)
+  – UU 63/2024 (integrazione dell'IMK nel KITAS/KITAP)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. ITK — IZIN TINGGAL KUNJUNGAN (permesso kunjungan/visita)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1 Cos'è e a chi si applica
+
+L'Izin Tinggal Kunjungan è il permesso rilasciato agli stranieri per soggiornare
+nel territorio indonesiano a titolo temporaneo per finalità di visita [IMM-268].
+È il permesso associato ai visti di tipo kunjungan e alle autorizzazioni di
+soggiorno breve.
+
+Si applica tipicamente a:
+  – Turisti e visitatori con visto on arrival (VoA) o visto turistico
+  – Titolari di visto kunjungan singolo o multiplo
+  – Stranieri in visita per motivi familiari, culturali o sociali a breve termine
+  – Nomadi digitali con visto kunjungan
+
+L'ITK non autorizza lo svolgimento di attività lavorativa retribuita in Indonesia.
+Chi intende lavorare deve convertire il proprio status in ITB con sponsor lavorativo.
+
+2.2 Dove si trova la data di scadenza
+
+Sul timbro (stiker) o sul documento elettronico rilasciato dall'ufficio immigrazione
+(Kantor Imigrasi) è riportato il campo "berlaku sampai" (valido fino a) o
+"tanggal berakhir" (data di scadenza). Questa è la data entro cui il titolare
+deve aver lasciato l'Indonesia o aver rinnovato/convertito il permesso.
+
+Attenzione: la data sul visto d'ingresso e la data dell'ITK possono differire.
+L'ITK viene calcolato a partire dalla data di ingresso effettivo, non dalla data
+di emissione del visto.
+
+2.3 Rinnovo ITK (finestre, decorrenza, no-overstay rule)
+
+FINESTRA DI PRESENTAZIONE: La richiesta di rinnovo può essere presentata a partire
+da 14 giorni prima della scadenza e non oltre il giorno stesso della scadenza
+[IMM-340]. Non sono ammesse richieste anticipate oltre tale finestra.
+
+DECORRENZA DEL RINNOVO: Il periodo di validità del rinnovo decorre dal primo
+giorno successivo alla scadenza del permesso precedente [IMM-341]. Non si perde
+il periodo residuo: il nuovo permesso inizia esattamente dove finisce il precedente.
+
+NO-OVERSTAY RULE: Se il titolare presenta la domanda di rinnovo prima della scadenza
+del proprio ITK, non è considerato in overstay durante il periodo di attesa
+[IMM-327]. È onere del titolare dimostrare di aver presentato la domanda nei termini.
+
+  Esempio pratico:
+  – ITK scade il 15 aprile
+  – Domanda presentata il 10 aprile (entro la finestra di 14 gg)
+  – Risposta arriva il 20 aprile
+  – Il titolare NON è in overstay tra il 15 e il 20 aprile
+  – Il nuovo ITK decorre dal 16 aprile
+
+2.4 Alih status da ITK a ITB
+
+È possibile convertire un ITK in un ITB (KITAS) senza necessità di uscire
+dall'Indonesia. Questa procedura si chiama alih status ed è espressamente prevista
+dalla normativa: "Il permesso di soggiorno limitato può essere concesso anche
+mediante cambio di status dal permesso di soggiorno per visitatori." [IMM-345]
+
+Verbatim: "Izin Tinggal Terbatas juga diberikan kepada Orang Asing melalui alih
+status dari Izin Tinggal Kunjungan menjadi Izin Tinggal Terbatas" [IMM-345].
+
+La conversione deve essere completata prima della scadenza dell'ITK in corso.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. ITB — IZIN TINGGAL TERBATAS (= KITAS, soggiorno temporaneo)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1 Cos'è e a chi si applica
+
+L'Izin Tinggal Terbatas è il permesso rilasciato agli stranieri per soggiornare e
+risiedere sul territorio indonesiano per un periodo determinato [IMM-269]. È il
+documento volgarmente noto come KITAS (Kartu Izin Tinggal Terbatas).
+
+Verbatim: "Izin Tinggal Terbatas adalah izin yang diberikan kepada Orang Asing
+untuk tinggal dan berada" nel territorio della Repubblica d'Indonesia per un
+periodo di tempo determinato [IMM-269].
+
+Si applica a:
+  – Lavoratori stranieri con sponsor aziendale (KITAS lavorativo / RPTKA)
+  – Coniugi e figli di cittadini indonesiani (KITAS sponsor keluarga)
+  – Pensionati stranieri con visto pensionato
+  – Investitori stranieri
+  – Studenti e ricercatori in istituti accreditati
+  – Titolari di visto Remote Work (E33G), Silver Hair (E33E), Pensionati (E33F)
+
+L'ITB è rinnovabile e costituisce il presupposto per la successiva richiesta
+di ITP [IMM-015].
+
+3.2 Dove si trova la data di scadenza
+
+Il KITAS (ITB) è fisicamente una tessera plastificata con chip elettronico (e-KITAS).
+  – Sul fronte della tessera: numero di documento, nome, foto, data di nascita
+  – Sul retro o nel chip: "berlaku sampai" con la data esatta
+  – Nel sistema Imigrasi Online: la data è consultabile previa autenticazione
+
+Il KITAS viene emesso di norma per periodi di 6 mesi, 1 anno o 2 anni.
+Raccomandato avviare il rinnovo con almeno 30-60 giorni di anticipo.
+
+3.3 IMK integrato nell'ITB (UU 63/2024)
+
+Con l'entrata in vigore della UU 63/2024, il Multiple Exit Re-entry Permit (MERP),
+precedentemente denominato IMK, non è più un documento separato. La sua validità è
+automaticamente incorporata nel KITAS/KITAP [IMM-362].
+
+Il titolare di KITAS (ITB) può uscire e rientrare in Indonesia più volte senza
+richiedere un documento aggiuntivo, purché il KITAS rimanga valido.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. ITP — IZIN TINGGAL TETAP (= KITAP, soggiorno permanente)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1 Cos'è e a chi si applica
+
+L'Izin Tinggal Tetap è il permesso rilasciato a determinati stranieri per risiedere
+stabilmente nel territorio della Repubblica d'Indonesia [IMM-016]. È il documento
+volgarmente noto come KITAP (Kartu Izin Tinggal Tetap).
+
+Verbatim: "Izin Tinggal Tetap adalah izin yang diberikan kepada Orang Asing tertentu
+untuk bertempat tinggal" [IMM-016].
+
+Categorie ammesse (non esaustivo):
+  – Stranieri con almeno 5 anni continuativi di ITB [IMM-015]
+  – Coniugi di cittadini indonesiani (dopo periodo qualificante)
+  – Figli di cittadini indonesiani nati all'estero
+  – Stranieri anziani che soddisfano requisiti patrimoniali
+  – Ex cittadini indonesiani
+
+Il KITAP (ITP) ha validità quinquennale ed è rinnovabile.
+
+4.2 IMK integrato nell'ITP (UU 63/2024)
+
+Analogamente all'ITB, con la UU 63/2024 l'IMK è automaticamente incorporato nel
+KITAP [IMM-362]. Il titolare di KITAP può uscire e rientrare liberamente per tutta
+la durata di validità del permesso, senza oneri aggiuntivi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. IMK — IZIN MASUK KEMBALI (autorizzazione di rientro)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1 Definizione
+
+L'Izin Masuk Kembali è "l'autorizzazione scritta rilasciata dai funzionari
+dell'immigrazione agli stranieri titolari di permessi di soggiorno limitato
+o permanente" [IMM-011].
+
+Verbatim: "Izin Masuk Kembali adalah izin tertulis yang diberikan oleh Pejabat
+Imigrasi kepada Orang Asing" titolari di KITAS o KITAP [IMM-011, IMM-266].
+
+La funzione dell'IMK è autorizzare il titolare di un permesso di soggiorno
+indonesiano a uscire dall'Indonesia e a rientrare senza che il permesso decada.
+
+5.2 Vecchio regime (pre-UU 63/2024): documento separato
+
+Prima della UU 63/2024, l'IMK era un documento autonomo con:
+  – Richiesta specifica presso l'ufficio immigrazione
+  – Pagamento di una tariffa separata (PNBP)
+  – Due varianti: SERP (Single Exit Re-entry) e MERP (Multiple Exit Re-entry)
+  – Scadenza propria entro la validità del KITAS/KITAP
+
+La mancata richiesta dell'IMK prima di una partenza era una delle cause più
+frequenti di perdita del permesso di soggiorno.
+
+5.3 Nuovo regime (post-UU 63/2024): automaticamente integrato
+
+Con la UU 63/2024, il MERP non è più un documento separato: la sua validità è
+automaticamente incorporata nel KITAS/KITAP [IMM-362].
+
+In sintesi:
+  – Nessun documento IMK autonomo da richiedere
+  – Il KITAS include automaticamente la facoltà di rientro multiplo
+  – Il KITAP include automaticamente la facoltà di rientro multiplo
+  – Nessuna tariffa aggiuntiva per il re-entry
+  – Valido per l'intera durata del KITAS/KITAP
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. TABELLA RIEPILOGATIVA: TUTTI I DOCUMENTI A CONFRONTO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sigla  | Nome completo          | Chi riguarda              | Durata tipica        | Come leggere scadenza
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+ITK    | Izin Tinggal Kunjungan | Turisti, visitatori,      | 30-60 gg             | Timbro/stiker passaporto:
+       |                        | visti kunjungan           | (rinnovabile)        | campo "berlaku sampai" o "s/d"
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+ITB    | Izin Tinggal Terbatas  | Lavoratori, coniugi WNI,  | 6 mesi / 1 / 2 anni  | Tessera e-KITAS retro:
+(KITAS)|                        | pensionati, investitori,  | (rinnovabile)        | "Berlaku s.d." + data;
+       |                        | remote workers, studenti  |                      | portale Imigrasi Online
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+ITP    | Izin Tinggal Tetap     | Residenti lungo corso     | 5 anni               | Tessera e-KITAP:
+(KITAP)|                        | (min 5 anni ITB),         | (rinnovabile)        | "Berlaku s.d." + data
+       |                        | coniugi WNI, ex-WNI       |                      |
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+IMK    | Izin Masuk Kembali     | Titolari KITAS/KITAP      | Post-UU 63/2024:     | Post-UU 63/2024: non esiste
+       |                        | che escono dal paese      | integrato nel        | documento separato.
+       |                        |                           | KITAS/KITAP          | Coperto dalla validità del
+       |                        |                           |                      | KITAS/KITAP stesso [IMM-362]
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Note:
+  (a) Il visto è il presupposto per tutti i permessi [IMM-113, IMM-114].
+  (b) L'alih status da ITK a ITB è possibile senza uscire [IMM-345].
+  (c) Il requisito per ITB→ITP è tipicamente 5 anni continuativi [IMM-015].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. COME LEGGERE LA SCADENZA SUL DOCUMENTO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PASSAPORTO CON TIMBRO/STIKER ITK
+  → Apri il passaporto alla pagina del timbro indonesiano più recente.
+  → Cerca il campo "berlaku sampai" oppure "s/d" (= sampai dengan = fino a).
+  → Data nel formato gg/mm/aaaa o gg-bln-aaaa (es. 15-04-2025).
+  → Quella è l'ultimo giorno valido: il cliente deve aver lasciato o
+    presentato rinnovo entro e non oltre quel giorno [IMM-340].
+
+  ERRORI FREQUENTI:
+  – Non confondere la data di ingresso con la data di scadenza.
+  – Non confondere la data sul visto (destra del timbro d'ingresso)
+    con la scadenza dell'ITK (stiker separato, pagina successiva).
+
+TESSERA e-KITAS (ITB)
+  → Retro della tessera, in basso: "Berlaku s.d." + data (gg/mm/aaaa).
+  → In alternativa: portale Layananimigrasi.go.id previa autenticazione.
+  → Rinnovo da avviare con almeno 30 giorni di anticipo (consigliato 60).
+
+  NOTA IMK post-UU 63/2024:
+  → KITAS emesso dopo UU 63/2024: re-entry automatico, nessun campo IMK
+    separato da cercare [IMM-362].
+  → KITAS emesso prima di UU 63/2024: verificare se esiste timbro IMK
+    separato con propria scadenza (può essere anteriore al KITAS).
+
+TESSERA e-KITAP (ITP)
+  → Stesso schema del KITAS: campo "Berlaku s.d." sul retro.
+  → KITAP ha validità quinquennale.
+  → IMK integrato post-UU 63/2024 [IMM-362].
+
+CHECKLIST RAPIDA PER IL CONSULENTE BALI ZERO
+  □ Identificare il tipo di documento (ITK su passaporto? e-KITAS? e-KITAP?)
+  □ Localizzare il campo "berlaku sampai" o "s/d"
+  □ Verificare che la data non sia già scaduta
+  □ Se ITK: siamo nei 14 giorni pre-scadenza? [IMM-340]
+  □ Se ITK con rinnovo pendente: domanda presentata prima della scadenza?
+    (tutela da overstay) [IMM-327]
+  □ Se KITAS/KITAP: emesso pre o post UU 63/2024?
+    (per sapere se cercare IMK separato) [IMM-362]
+  □ Se rinnovo ITK approvato: decorre dal giorno successivo alla scadenza
+    del precedente? [IMM-341]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8. NOTE OPERATIVE BALI ZERO
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ITK
+  1. Comunicare la finestra di rinnovo (14 gg) al cliente con 21 gg di anticipo.
+  2. Il rinnovo decorre dal giorno successivo alla scadenza [IMM-341]:
+     nessun "buco" né sovrapposizione.
+  3. Conservare copia della ricevuta di presentazione: prova no-overstay
+     durante attesa [IMM-327].
+  4. Verificare quanti rinnovi consente il visto originale [IMM-113].
+  5. L'alih status ITK→ITB va avviato con largo anticipo [IMM-345].
+
+ITB (KITAS)
+  6. KITAS lavorativo legato al sponsor: cambio datore = aggiornamento KITAS.
+  7. Post-UU 63/2024: non serve più IMK/MERP pre-partenza [IMM-362].
+  8. Documentare ogni rinnovo ITB per sostenere futuro accesso al KITAP
+     (requisito 5 anni) [IMM-015].
+
+ITP (KITAP)
+  9. Impostare promemoria a 60 e 30 giorni dalla scadenza nel CRM.
+  10. Anche per KITAP l'IMK è integrato post-UU 63/2024 [IMM-362].
+
+IMK
+  11. Per KITAS/KITAP pre-UU 63/2024: verificare se esiste IMK separato
+      e la sua scadenza autonoma.
+  12. Per documenti post-UU 63/2024: spiegare al cliente che l'IMK non
+      esiste più come documento separato [IMM-362].
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLAIM IDS UTILIZZATI IN QUESTO DOCUMENTO:
+IMM-011, IMM-015, IMM-016, IMM-113, IMM-114, IMM-266, IMM-267, IMM-268,
+IMM-269, IMM-327, IMM-340, IMM-341, IMM-345, IMM-362
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

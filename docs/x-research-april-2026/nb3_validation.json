@@ -1,0 +1,203 @@
+{
+  "value": {
+    "answer": "**WRONG: KBLI 2025 migration deadline is June 18, 2026.**\n*   **Correction:** The strict transitional compliance deadline is **May 31, 2026** [1, 2]. \n*   **Regulation:** Under the post-Omnibus Law framework enacted via **BKPM Regulation No. 5 of 2025**, all existing businesses must fully migrate their corporate data to the OSS RBA 1.2 system and adopt the updated KBLI 2025 classifications by this date. Failure to do so will result in automatic license cancellation [1, 2].\n\n**CONFIRMED: PT PMA paid-up capital IDR 2.5B, locked 12 months. Total investment IDR 10B per KBLI/location.**\n*   **Validation:** This is accurate and represents a critical post-Omnibus Law capital reform [3, 4]. \n*   **Regulation:** Governed by **BKPM Regulation No. 5 of 2025**, the minimum paid-up capital (*Modal Disetor*) is reduced to IDR 2.5 billion, but it is subject to a strict 12-month capital locking period where the funds must remain in the corporate bank account for legitimate operational use [4-6]. The total investment commitment (*Total Investasi*) remains greater than IDR 10 billion per 5-digit KBLI code and per project location, strictly excluding land and building values [4, 7]. Note that this IDR 10 billion injection is only permitted if your chosen KBLI is classified as **TERBUKA** (100% open to PMA) or **TERBATAS** (restricted foreign ownership) under the Positive Investment List (**Perpres No. 10 of 2021**) [8].\n\n**WRONG: LKPM quarterly, 2 missed = NIB suspension.**\n*   **Correction:** Missing two consecutive quarters does not lead to *immediate* NIB suspension. \n*   **Regulation:** Under the continuous compliance framework of **BKPM Regulation No. 5 of 2025** (specifically Pasal 373-375), failing to submit the LKPM for two consecutive periods triggers the first administrative sanction, which is a First Written Warning (*Peringatan Pertama*) [9, 10]. If the company ignores subsequent warnings (up to the third), the sanctions escalate to a temporary suspension of business activities (*penghentian sementara*) and ultimately license revocation [11-13]. Post-Omnibus law, the quarterly deadline has also been updated to the 15th of the following month [1].\n\n**WRONG/UNVERIFIABLE: Akta pendirian costs IDR 8-25M.**\n*   **Correction:** Indonesian corporate law (**UU No. 40 of 2007**) and the government licensing framework do not statutorily fix the notary and setup costs at IDR 8-25M. \n*   **Context:** This range reflects private agency and consulting market rates rather than official government non-tax revenue (PNBP) fees. For example, private consulting packages for a PT Lokal are typically around IDR 5-8 million, while a PT PMA setup is often quoted around IDR 20 million \"all-in\" by agencies [14]. The government warns that official state fees are separate from private consulting costs [15]. \n\n**WRONG: OSS processing: Rendah=automatic, Menengah Rendah=7d, Menengah Tinggi=14d, Tinggi=30+d.**\n*   **Correction:** The processing timelines under the post-Omnibus Law Risk-Based Licensing system are much faster for the lower risk tiers. \n*   **Regulation:** Under **PP No. 28 of 2025** and the OSS-RBA system:\n    *   **Rendah (Low Risk):** Instant/Automatic NIB issuance [16, 17].\n    *   **Menengah Rendah (Medium-Low Risk):** Instant/Auto-generated Self-Declared Standard Certificate (not 7 days) [16, 18].\n    *   **Menengah Tinggi (Medium-High Risk):** 5 to 14 working days for government verification of the Standard Certificate [16, 19].\n    *   **Tinggi (High Risk):** Variable timeline depending entirely on the specific sectoral License (*Izin*) required by the respective ministry [16, 18].",
+    "conversation_id": "cd8add2e-e29c-4bc3-ae11-45d6f2cc0bd4",
+    "sources_used": [
+      "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "db910963-90c5-4fbc-87ac-9992233094e9",
+      "0965021c-1354-4673-8487-c4e791a906de",
+      "e104baec-4dde-4669-9d6f-04c09b0b94ac"
+    ],
+    "citations": {
+      "1": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "2": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "3": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "4": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "5": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "6": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+      "7": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "8": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+      "9": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "10": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "11": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "12": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "13": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+      "14": "db910963-90c5-4fbc-87ac-9992233094e9",
+      "15": "0965021c-1354-4673-8487-c4e791a906de",
+      "16": "0965021c-1354-4673-8487-c4e791a906de",
+      "17": "e104baec-4dde-4669-9d6f-04c09b0b94ac",
+      "18": "e104baec-4dde-4669-9d6f-04c09b0b94ac",
+      "19": "e104baec-4dde-4669-9d6f-04c09b0b94ac"
+    },
+    "references": [
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 1,
+        "cited_text": "New LKPM Reporting Timeline Investment activity reports (LKPM) now have a revised submission deadline: 15th of the following month Although slightly extended, verification standards are stricter due to cross system data matching. Businesses must ensure: Financial data aligns with tax filings Import figures match customs declarations Investment realization reflects actual capital usage LKPM is no longer a formality but a central compliance instrument. Transitional Compliance Deadlines Existing businesses must complete regulatory migration by specific deadlines:"
+      },
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 2,
+        "cited_text": "November 2025: Regulation becomes effective April 2026: OSS profile synchronization deadline May 31, 2026: Full migration to OSS RBA 1.2 and KBLI 2025 Failure to update business data may result in automatic license cancellation. This transition period effectively serves as a mandatory compliance audit window. Strategic Implications for Investors BKPM Regulation No. 5 of 2025 sends a clear message: Market entry is easier, but compliance expectations are significantly higher. Key recommendations for businesses include:"
+      },
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 3,
+        "cited_text": "In practice, this means: Corporate data in the AHU (Administrasi Hukum Umum) system must match OSS records Licensing risk profiles are continuously monitored Compliance is evaluated through automated cross agency systems This integration significantly reduces manual processes while increasing regulatory enforcement. New Capital Requirements for Foreign Investment Companies under BKPM Regulation No. 5 of 2025 One of the most impactful changes introduced by BKPM Regulation No. 5 of 2025 concerns capital requirements for foreign owned companies (Penanaman Modal Asing or PMA)."
+      },
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 4,
+        "cited_text": "Lower Paid Up Capital Threshold Under previous regulations, PMA companies were generally expected to inject paid up capital equivalent to IDR 10 billion. The new regulation reduces the minimum paid up capital to: IDR 2.5 billion This move aims to attract medium scale investors, startups, and technology driven companies that may not require large initial cash commitments. Investment Value Obligation Remains Despite the lower paid up capital, the total investment value requirement remains: More than IDR 10 billion per business classification (KBLI) per location"
+      },
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 5,
+        "cited_text": "This creates a two tier system: Easier market entry through lower initial capital Strong obligation to realize substantial investment over time Compliance with this investment realization is monitored through periodic investment activity reports (Laporan Kegiatan Penanaman Modal or LKPM). Introduction of the Capital Locking Period To prevent abuse of the lower capital threshold, BKPM Regulation No. 5 of 2025 introduces a mandatory capital locking mechanism. Paid up capital must remain within the company's bank account for:"
+      },
+      {
+        "source_id": "bbf21201-9437-4af4-8571-28ccc851a5d3",
+        "citation_number": 6,
+        "cited_text": "12 months During this period, funds may only be used for legitimate operational purposes such as: Equipment purchases Facility development Employee salaries Office rent and utilities Transferring funds back to shareholders is strictly prohibited and may lead to license revocation or legal consequences. This policy ensures that investment commitments reflect real business activity rather than administrative formality. Updated Investment Components by Sector The regulation also clarifies which assets can be counted toward the IDR 10 billion investment requirement."
+      },
+      {
+        "source_id": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+        "citation_number": 7,
+        "cited_text": "Foreign ownership in a PT PMA ranges from partial to 100%, depending on the business sector's classification under the Positive Investment List. Sectors not subject to restrictions permit full foreign ownership, while others specify maximum foreign ownership percentages or mandate partnerships with Indonesian entities. Capital requirements Under BKPM Regulation No. 5 of 2025, PT PMA entities must comply with the following capital and investment requirements: Minimum total investment of more than IDR 10,000,000,000 (ten billion rupiah) per business activity (per KBLI and per project location), excluding land and buildings Minimum issued and paid-up capital of IDR 2,500,000,000 (two billion five hundred million rupiah) per company"
+      },
+      {
+        "source_id": "74d23b90-ae60-46aa-a6a7-1c81208681da",
+        "citation_number": 8,
+        "cited_text": "Business structures for foreign investors Indonesia's regulatory framework provides foreign investors with two primary structures for establishing a presence in the country: Foreign-owned limited liability company (PT PMA), which is a legal entity established under Indonesian law Representative office (RO), which is not a separate legal entity but a non-commercial extension of the foreign parent company Foreign-owned limited liability company (PT PMA) PT PMA is a type of subsidiary that represents the standard structure for foreign investors seeking to generate revenue and establish long-term operations in Indonesia. This entity functions as a legal person separate from its shareholders, providing liability protection and operational autonomy, and is governed by Law No. 40 of 2007 (as amended by the Job Creation Law) and its implementing regulations."
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 9,
+        "cited_text": "(1) (2) (1) (2) (3) Pasal 373 Sanksi administratif dikenakan terhadap Pelaku Usaha yang melanggar kewajiban penyampaian LKPM realisasi Penanaman Modal dan kewajiban Penanaman Modal sebagaimana dimaksud dalam Pasal 284 ayat (5) huruf a. DPMPTSP Lembaga OSS, DPMPTSP provinsi, kabupaten/kota, Administrator KEK, Badan Pengusahaan KPBPB dan/atau ΟΙΚΝ sesuai kewenangannya mengenakan sanksi administratif sebagaimana dimaksud pada ayat (1) dalam hal Pelaku Usaha: a. tidak menyampaikan LKPM selama 2 (dua) periode"
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 10,
+        "cited_text": "b. C. berturut-turut sebagaimana dimaksud dalam Pasal 285 ayat (1); menyampaikan LKPM pertama kali tanpa ada nilai tambahan realisasi Penanaman Modal selama 4 (empat) periode berturut-turut; atau menyampaikan LKPM tanpa ada nilai tambahan realisasi Penanaman Modal selama 4 (empat) periode berturut-turut dalam pelaporan LKPM tahap persiapan. Pelaku Pasal 374 Usaha yang tidak menyampaikan LKPM sebagaimana dimaksud dalam Pasal 373 ayat (2) dikenakan sanksi administratif peringatan pertama. Pelaku Usaha yang mendapatkan peringatan sebagaimana dimaksud pada ayat (1) wajib menyampaikan LKPM pada periode berikutnya."
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 11,
+        "cited_text": "Terhadap penyampaian LKPM sebagaimana dimaksud pada ayat (2), sanksi administratif peringatan pertama yang telah dikenakan dinyatakan gugur. (4) (5) Dalam hal Pelaku Usaha tidak menyampaikan LKPM periode berikutnya sebagaimana dimaksud ayat (2), dikenakan sanksi administratif peringatan kedua. Pelaku Usaha yang mendapatkan peringatan sebagaimana dimaksud pada ayat (4), wajib menyampaikan LKPM pada periode berikutnya. pada (6) Terhadap penyampaian LKPM sebagaimana dimaksud pada ayat (5), sanksi administratif peringatan kedua yang"
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 12,
+        "cited_text": "telah dikenakan dinyatakan gugur. - 243 - (7) (8) (9) Dalam hal Pelaku Usaha tidak menyampaikan LKPM periode berikutnya sebagaimana dimaksud pada ayat (5), dikenakan sanksi administratif peringatan ketiga. Pelaku Usaha yang mendapatkan peringatan sebagaimana dimaksud pada ayat (7), wajib menyampaikan LKPM pada periode berikutnya. Terhadap penyampaian LKPM sebagaimana dimaksud pada ayat (8), sanksi administratif peringatan ketiga yang telah dikenakan dinyatakan gugur. (10) Dalam hal Pelaku Usaha tidak menyampaikan LKPM periode berikutnya sebagaimana dimaksud pada ayat (8), dikenakan sanksi administratif penghentian sementara kegiatan usaha."
+      },
+      {
+        "source_id": "cc06b0a7-e4d2-4afa-a5ca-3cd2fa43905c",
+        "citation_number": 13,
+        "cited_text": "Terhadap penyampaian LKPM dan pembayaran denda administratif sebagaimana dimaksud pada ayat (5), sanksi administratif penghentian sementara kegiatan usaha dan denda administratif dinyatakan gugur. Pasal 376 (1) Pelaku Usaha yang tidak menyampaikan LKPM periode berikutnya dan tidak melakukan pembayaran denda administratif sebagaimana dimaksud dalam Pasal 375 ayat (5) dikenakan pencabutan kegiatan usaha berupa pencabutan PB. (2) Sistem OSS menyampaikan notifikasi pencabutan PB kepada Lembaga OSS, kementerian/lembaga, Pemerintah Daerah provinsi, Pemerintah Daerah kabupaten/kota,"
+      },
+      {
+        "source_id": "db910963-90c5-4fbc-87ac-9992233094e9",
+        "citation_number": 14,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CONFRONTO DETTAGLIATO PT LOKAL vs PT PMA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CARATTERISTICA              PT LOKAL              PT PMA ────────────────────────────────────────────────────────────────────── Azionisti WNA               ❌ Vietati             ✅ Ammessi Azionisti WNI               ✅ Sì                  ✅ Sì (misto ok) Capitale autorizzato min.   Rp 50 juta            Rp 10 miliardi Capitale versato min.       Rp 12,5 juta          Rp 2,5 miliardi Direttore WNA               ✅ Sì (ma: no ITAS*)  ✅ Sì (ITAS lavorativo) Residente in Indonesia req. No (per direktur)     Sì (≥1 direktur) [COM-043] Settori aperti              Tutti i non-TERTUTUP  Solo TERBUKA/TERBATAS LKPM trimestrale            ❌ No                  ✅ Obbligatorio [COM-020] Tempi costituzione          1-2 settimane         2-3 settimane Costo Bali Zero             Rp 5-8 juta*          Rp 20 juta (all-in) KITAS Investor ammesso      ❌ No                  ✅ Sì (Rp 1 miliardo) ──────────────────────────────────────────────────────────────────────"
+      },
+      {
+        "source_id": "0965021c-1354-4673-8487-c4e791a906de",
+        "citation_number": 15,
+        "cited_text": "KNOWN ISSUES / ALERTS GR 28/2025 transition: OSS platform may have interim UI changes as new risk classifications are implemented. Some KBLI codes may show different risk levels than PP 5/2021 references. KBLI 2025 catalog update (BPS 7/2025): Some codes were reclassified. Foreign ownership matrix may differ from 2024 version. Verify specific codes before client advisement. PRICING DISCLAIMER All Bali Zero service prices for company setup are in the PricingTool ONLY. This document tracks government fees and processing times, NOT BZ consulting fees. Government PNBP fees referenced here are for internal knowledge only — tell clients to consult PricingTool for our service packages."
+      },
+      {
+        "source_id": "0965021c-1354-4673-8487-c4e791a906de",
+        "citation_number": 16,
+        "cited_text": "CURRENT PROCESSING TIMES (Bali office, BZ experience) <cited_table>",
+        "cited_table": {
+          "num_columns": 4,
+          "rows": [
+            [
+              "Process",
+              "Standard Time",
+              "Current Reality",
+              "Bottleneck"
+            ],
+            [
+              "Akta Pendirian (notary)",
+              "3-5 days",
+              "3-5 days",
+              "Normal"
+            ],
+            [
+              "SK Kemenkumham",
+              "5-10 working days",
+              "5-10 working days",
+              "Normal"
+            ],
+            [
+              "NPWP Badan",
+              "1-2 days",
+              "1-2 days",
+              "Normal"
+            ],
+            [
+              "NIB via OSS",
+              "Instant (automatic)",
+              "Instant",
+              "None"
+            ],
+            [
+              "Sertifikat Standar (med-low risk)",
+              "Auto-generated",
+              "Auto-generated",
+              "None"
+            ],
+            [
+              "Sertifikat Standar verified (med-high)",
+              "3-14 days",
+              "5-14 days",
+              "Government verification queue"
+            ],
+            [
+              "Izin formal (high risk)",
+              "Variable",
+              "Variable",
+              "Sector-dependent"
+            ],
+            [
+              "TDUP (Bali tourism license)",
+              "3-7 days",
+              "5-10 days",
+              "DPMPTSP Bali workload"
+            ],
+            [
+              "Bank account opening",
+              "3-7 days",
+              "3-7 days",
+              "Bank-dependent"
+            ],
+            [
+              "TOTAL PT PMA setup",
+              "2-3 weeks",
+              "2-4 weeks",
+              "Overall normal"
+            ]
+          ]
+        }
+      },
+      {
+        "source_id": "e104baec-4dde-4669-9d6f-04c09b0b94ac",
+        "citation_number": 17,
+        "cited_text": "A critical update in the 2026 landscape introduced by PP 28/2025 is the refinement of how foreign investment entities are managed. This major shift makes entry easier for smaller investors but requires tighter financial discipline and reporting within the OSS dashboard to maintain compliance. Every stakeholder must ensure their company data is migrated correctly to avoid the penalties associated with the old licensing regime in Bali. Understanding Risk Categories and Outputs The core logic of the OSS is that not all businesses require the same level of scrutiny. The system categorizes activities into four risk levels based on your KBLI (Standard Industrial Classification) codes. For Low Risk businesses, such as a small trading company or management consultancy, the output is simply an NIB (Business Identification Number). This NIB acts as your legality, company registration, and import ID all in one, allowing you to operate immediately in Bali or elsewhere in Indonesia."
+      },
+      {
+        "source_id": "e104baec-4dde-4669-9d6f-04c09b0b94ac",
+        "citation_number": 18,
+        "cited_text": "Complexity increases with risk. Medium-Low projects require an NIB plus a Self-Declared Standard Certificate, where you legally promise to meet specific criteria. Medium-High projects need that Standard Certificate to be verified by a government agency before it becomes effective. Finally, High Risk ventures—like heavy manufacturing or large hospitality resorts in Bali—require a full License (Izin) in addition to the NIB. This tiered structure ensures that the OSS RBA streamlines entry for low-impact businesses while maintaining strict oversight for high-impact sectors."
+      },
+      {
+        "source_id": "e104baec-4dde-4669-9d6f-04c09b0b94ac",
+        "citation_number": 19,
+        "cited_text": "FAQ's about OSS RBA Can I use a virtual office for my OSS registration in 2026? Yes, provided the virtual office location is zoned for commercial use and allowed by the local district regulations in Bali. Is the NIB valid forever? The NIB remains valid as long as the business is operational and compliant. However, it can be revoked if you fail to submit LKPM reports or violate regulations in 2026. How long does the verification process take for Medium-High risk? Timelines vary by sector, but 2026 regulations generally aim for a Service Level Agreement (SLA) of 5 to 14 working days, though delays in local Bali offices can occur."
+      }
+    ]
+  }
+}

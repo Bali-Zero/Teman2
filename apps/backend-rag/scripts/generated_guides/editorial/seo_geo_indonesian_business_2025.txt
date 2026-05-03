@@ -1,0 +1,551 @@
+SEO E GEO PER CONTENUTI SUL BUSINESS INDONESIANO
+STRATEGIA DI OTTIMIZZAZIONE PER MOTORI DI RICERCA E MOTORI DI RISPOSTA AI
+2024-2025
+
+Guida operativa interna | Prodotta da Bali Zero / Zantara Intelligence
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+SEZIONE 1 — RICERCA KEYWORD E PRIORITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-016] La ricerca keyword per Bali Zero si struttura per lingua, intent e priorità
+di business. Non tutti i volumi di ricerca sono uguali: un keyword con 50 ricerche
+mensili ma intent transazionale altissimo vale più di 5.000 ricerche informazionali.
+
+CLUSTER KEYWORD PRINCIPALE: PT PMA / COMPANY SETUP
+  Keyword primarie (IT):
+    - "aprire PT PMA Bali" — volume basso, intent altissimo (PRIORITÀ MASSIMA)
+    - "azienda straniera Indonesia" — volume medio, intent misto
+    - "società PT PMA costi 2025" — volume basso, intent transazionale
+    - "come investire a Bali legalmente" — volume medio, intent informazionale
+  Keyword primarie (EN):
+    - "PT PMA Bali setup 2025" — volume medio, alta competizione
+    - "PT PMA minimum capital Indonesia" — volume medio, intent transazionale
+    - "foreign company Indonesia how to setup" — volume alto, alta competizione
+    - "BKPM requirements PT PMA 2025" — volume basso, intent qualificato
+  Keyword primarie (ID):
+    - "syarat PT PMA terbaru" — volume alto, competizione locale
+    - "modal minimum PT PMA 2025" — volume medio
+
+CLUSTER KEYWORD: VISTO E IMMIGRAZIONE
+  Keyword prioritarie (IT):
+    - "visto Bali investitore italiano" — volume molto basso, opportunità unica
+    - "KITAS investitore Indonesia" — volume basso, intent qualificato
+    - "visto nomade digitale Indonesia 2025" — volume crescente, trend
+    - "permesso soggiorno Bali come fare" — volume basso, long-tail
+    - "visto B211 Indonesia" — volume basso, molto qualificato
+  Keyword prioritarie (EN):
+    - "Indonesia investor KITAS requirements 2025" — volume basso, alto intent
+    - "Bali digital nomad visa E33G" — volume medio, trend crescente
+    - "KITAS vs KITAP Indonesia difference" — volume medio, informazionale
+    - "Indonesia visa for freelancers 2025" — volume crescente
+
+CLUSTER KEYWORD: FISCALITÀ
+  Keyword prioritarie (IT):
+    - "tasse Indonesia stranieri" — volume basso, intent qualificato
+    - "regime fiscale expat Indonesia" — volume molto basso, nicchia
+    - "SPT Tahunan stranieri Indonesia" — volume molto basso, altamente qualificato
+    - "CoreTax Indonesia 2025" — volume emergente, trend 2025
+  Keyword prioritarie (EN):
+    - "Indonesia tax for foreigners 2025" — volume medio, competizione media
+    - "PT PMA tax obligations Indonesia" — volume basso, qualificato
+    - "CoreTax Indonesia transition guide" — volume basso, opportunity gap
+
+CLUSTER KEYWORD: PROPRIETÀ
+  Keyword prioritarie (IT):
+    - "comprare casa Bali stranieri legalmente" — volume basso, intent transazionale
+    - "leasehold Bali come funziona" — volume basso, informazionale
+    - "proprietà stranieri Indonesia" — volume basso, qualificato
+  Keyword prioritarie (EN):
+    - "can foreigners own property in Bali" — volume alto, alta competizione
+    - "Bali leasehold vs freehold comparison" — volume medio, qualificato
+    - "Hak Pakai Indonesia foreigners" — volume basso, altamente tecnico
+
+CLUSTER KEYWORD: KBLI 2025
+  [EDT-017] La migrazione KBLI 2025 (deadline 18 giugno 2026) è un'opportunità SEO
+  strategica unica: poca competizione, altissima rilevanza per clienti PT PMA.
+  Keyword target:
+    - "KBLI 2025 cambiamenti" / "KBLI 2025 changes for foreigners"
+    - "migrazione KBLI PT PMA" / "KBLI code update 2025"
+    - "KBLI 2025 hospitality" / "KBLI 2025 F&B Indonesia"
+    - "KBLI terbuka PMA 2025" (ID) — ricerca diretta da imprenditori locali
+
+CLUSTER KEYWORD: REGIME UMKM
+  Keyword target:
+    - "UMKM regime fiscale Indonesia stranieri" — nicchia, ma crescente
+    - "PP 23/2018 final tax Indonesia" — tecnico, qualificato
+    - "opzione UMKM PT PMA possibile" — domanda frequente, poco coperta
+
+
+SEZIONE 2 — MAPPATURA DELL'INTENT DI RICERCA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-018] Le keyword non sono tutte uguali: il content type deve corrispondere
+all'intent del ricercatore per performare. Mappatura sistematica per Bali Zero:
+
+INTENT INFORMAZIONALE ("cosa è X")
+  Segnali: "cos'è", "definizione", "come funziona", "spiegazione"
+  Contenuto ideale: articolo definitorio con definizione-first, esempi, FAQ
+  Esempi Bali Zero:
+    - "Cos'è una PT PMA?" → pillar definitoria
+    - "Come funziona il KITAS?" → guida introduttiva
+    - "Cos'è il Nomor Induk Berusaha?" → definizione + use case
+  Conversione attesa: bassa immediata, alta nel tempo (awareness → consideration)
+
+INTENT NAVIGAZIONALE ("come fare X")
+  Segnali: "come", "procedura", "passaggi", "guida passo per passo", "come ottenere"
+  Contenuto ideale: guida step-by-step, checklist, timeline
+  Esempi Bali Zero:
+    - "Come aprire PT PMA in Indonesia" → guida completa numerata
+    - "Come ottenere KITAS investitore" → procedura con requisiti e documentazione
+    - "Come fare SPT Tahunan da straniero" → guida dichiarazione fiscale
+  Conversione attesa: media, lettore è in fase di pianificazione
+
+INTENT TRANSAZIONALE ("voglio che qualcuno faccia X per me")
+  Segnali: "servizio", "costi", "quanto costa", "consulenza", "quanto tempo",
+           "agenzia", "aiuto per", contatto diretto
+  Contenuto ideale: landing page con pricing, CTA forte, social proof, FAQ
+  Esempi Bali Zero:
+    - "Quanto costa aprire PT PMA Bali" → pricing page + CTA consulenza
+    - "Servizio KITAS Bali" → service page con processo + testimonianze + CTA
+    - "Consulenza fiscale Indonesia Bali" → service page specializzata
+  Conversione attesa: alta, lettore è pronto all'acquisto
+
+INTENT COMPARATIVO ("X vs Y")
+  Segnali: "differenza tra", "meglio", "confronto", "vs", "quale scelgo"
+  Contenuto ideale: articolo di confronto strutturato, tabelle comparative
+  Esempi Bali Zero:
+    - "PT PMA vs CV Indonesia: differenze per stranieri"
+    - "KITAS vs KITAP: quando scegliere l'uno o l'altro"
+    - "Leasehold vs Hak Pakai: guida al diritto immobiliare Bali"
+  Conversione attesa: media-alta, lettore è nella fase decisionale
+
+
+SEZIONE 3 — GERARCHIA DEI CONTENUTI (HUB & SPOKE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-019] L'architettura dei contenuti di Bali Zero segue il modello Hub & Spoke:
+pillar pages (hub) con cluster di articoli correlati (spoke).
+
+PILLAR PAGE 1: "Guida Completa PT PMA Indonesia 2025"
+  URL: /guida-pt-pma-indonesia-2025
+  Lunghezza: 4.000-5.000 parole
+  Spoke articles (cluster):
+    - "Capitale minimo PT PMA 2025: tabella per settore"
+    - "Lista DNI 2025: settori aperti e chiusi agli investitori stranieri"
+    - "PT PMA vs CV: differenze, vantaggi, scelta"
+    - "Tempistiche PT PMA: quanto tempo serve davvero?"
+    - "Documenti richiesti per aprire PT PMA in Indonesia"
+    - "Costi totali PT PMA Bali: fee governative + consulenza"
+    - "OSS-RBA: come ottenere il NIB per PT PMA"
+
+PILLAR PAGE 2: "Visto e Permesso di Soggiorno Indonesia per Stranieri 2025"
+  URL: /visto-indonesia-stranieri-2025
+  Lunghezza: 3.500-4.500 parole
+  Spoke articles:
+    - "KITAS Investitore (C317): requisiti, costi, procedura"
+    - "Visto E33G digital nomad: guida completa"
+    - "KITAP: quando e come ottenerlo"
+    - "Visto B211 Indonesia: uso corretto e limiti"
+    - "Rinnovo KITAS: scadenze e procedura"
+
+PILLAR PAGE 3: "Fiscalità Indonesia per Stranieri e PT PMA 2025"
+  URL: /tasse-indonesia-stranieri-2025
+  Lunghezza: 4.000+ parole
+  Spoke articles:
+    - "SPT Tahunan per stranieri: dichiarazione annuale guidata"
+    - "CoreTax Indonesia 2025: cosa cambia per le aziende straniere"
+    - "Tax treaty Italia-Indonesia: come evitare la doppia tassazione"
+    - "Regime UMKM (PP 23/2018): applicabile alle PT PMA?"
+    - "Withholding tax Indonesia: guida per PT PMA"
+
+PILLAR PAGE 4: "Proprietà Immobiliare a Bali per Stranieri 2025"
+  URL: /proprieta-bali-stranieri-2025
+  Spoke articles:
+    - "Leasehold Bali: guida completa e rischi"
+    - "Hak Pakai: come uno straniero può avere diritti reali"
+    - "Acquisto villa Bali tramite PT PMA: legale e vantaggi"
+    - "Zonazione Bali 2025: dove si può costruire e cosa"
+
+PILLAR PAGE 5: "KBLI 2025: Guida alle Classificazioni per PT PMA"
+  URL: /kbli-2025-guida-pt-pma
+  Spoke articles: link al KBLI Navigator per ogni codice rilevante
+
+
+SEZIONE 4 — STRATEGIA DI LINK INTERNO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-020] Il link building interno è fondamentale per trasferire autorità SEO
+e guidare il lettore nel funnel.
+
+REGOLE OBBLIGATORIE:
+  1. Ogni articolo long-form deve linkare almeno 2 pillar pages correlate
+  2. Ogni pillar page deve linkare TUTTI i suoi spoke article
+  3. Il KBLI Navigator linka agli articoli PT PMA rilevanti (e viceversa)
+  4. Usare anchor text descrittivo e keyword-rich, mai "clicca qui"
+  5. Link contestuali preferiti ai link in "leggi anche" box
+  6. Verificare che tutti i link interni non siano broken (audit mensile)
+
+STRATEGIA DI CROSS-LINKING TRA PILLAR:
+  PT PMA ↔ Fiscalità: ogni guida PT PMA linka alla guida fiscale
+  Visto ↔ PT PMA: KITAS investitore linka alla guida PT PMA
+  Proprietà ↔ PT PMA: acquisto tramite PT linka alla guida PT PMA
+  KBLI ↔ PT PMA: ogni voce KBLI Navigator linka alla guida PT PMA
+
+
+SEZIONE 5 — SEO TECNICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-021] Gli aspetti tecnici SEO sono implementati automaticamente dalla piattaforma
+Next.js di balizero.com. Questa sezione documenta i requisiti obbligatori.
+
+URL CANONICHE:
+  - Formato: /slug-articolo-keyword (senza date nella URL per long-form evergreen)
+  - Eccezione: aggiornamenti normativi includono l'anno: /coretax-indonesia-2025
+  - Canonical tag obbligatorio su ogni pagina, specialmente per contenuti duplicati
+    (es. versione IT ed EN dello stesso articolo)
+
+HREFLANG:
+  Implementazione obbligatoria per articoli disponibili in più lingue:
+  <link rel="alternate" hreflang="it" href="/it/guida-pt-pma" />
+  <link rel="alternate" hreflang="en" href="/en/pt-pma-guide" />
+  <link rel="alternate" hreflang="id" href="/id/panduan-pt-pma" />
+  <link rel="alternate" hreflang="x-default" href="/en/pt-pma-guide" />
+  Nota: x-default punta all'inglese (lingua default internazionale)
+
+STRUCTURED DATA (JSON-LD) — OBBLIGATORIO:
+  Tipo Article (ogni articolo long-form):
+    - "@type": "Article"
+    - "headline": titolo H1
+    - "datePublished", "dateModified": date ISO 8601
+    - "author": "Bali Zero Legal Team"
+    - "publisher": { "@type": "Organization", "name": "Bali Zero" }
+  Tipo FAQPage (ogni articolo con sezione FAQ):
+    - Ogni Q&A nell'oggetto mainEntity
+    - Massimo 10 per Google Feature Snippet
+  Tipo HowTo (ogni guida passo-passo):
+    - "@type": "HowTo"
+    - "step": array degli step con "@type": "HowToStep"
+    - "totalTime", "estimatedCost" dove applicabile
+  Tipo BreadcrumbList (tutte le pagine):
+    - Gerarchia: Home > Categoria > Articolo
+
+META TAG:
+  - title: 50-60 caratteri, keyword target nelle prime parole
+  - description: 150-160 caratteri, include keyword + call to action implicita
+  - og:image: immagine 1200x630px, branded
+  - og:type: "article"
+  - article:published_time, article:modified_time
+  - twitter:card: "summary_large_image"
+
+CORE WEB VITALS (Target 2025):
+  - LCP < 2.5s (Largest Contentful Paint)
+  - INP < 200ms (Interaction to Next Paint)
+  - CLS < 0.1 (Cumulative Layout Shift)
+  Monitoraggio: Google Search Console + PageSpeed Insights mensile
+
+
+SEZIONE 6 — STRATEGIA GEO (GENERATIVE ENGINE OPTIMIZATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-022] GEO è la disciplina emergente per ottimizzare i contenuti affinché vengano
+citati dai sistemi AI (Claude Sonnet/Opus, ChatGPT 4o, Perplexity, Gemini Ultra,
+Google AI Overview). Bali Zero ha un vantaggio competitivo reale qui: pochi
+competitor producono contenuti strutturati per il GEO in italiano.
+
+STRUTTURA DEI CLAIM PER LA CITABILITÀ AI:
+  I sistemi AI citano contenuti che hanno:
+  (a) Claim specifici e verificabili con fonte indicata esplicitamente
+  (b) Formato che permette l'estrazione senza ambiguità
+  (c) Dati numerici (costi, tempi, percentuali, date)
+  (d) Autorevolezza della fonte (E-E-A-T)
+
+  Formato ottimale:
+  "Secondo [fonte ufficiale] (aggiornato [mese anno]), [claim specifico e misurabile]."
+  Esempio: "Secondo il Peraturan Pemerintah n.7/2021 (aggiornato agosto 2024),
+  il capitale minimo per una PT PMA nel settore ricettivo è pari a IDR 10 miliardi."
+
+[EDT-023] ANSWER SNIPPET OPTIMIZATION:
+  I primi 160 caratteri di ogni sezione H2/H3 devono rispondere direttamente
+  alla domanda implicita nel titolo, senza preamboli retorici.
+
+  SBAGLIATO:
+  "## Quanto costa aprire una PT PMA?
+  Questa è una delle domande più frequenti che riceviamo dai nostri clienti..."
+
+  CORRETTO:
+  "## Quanto costa aprire una PT PMA?
+  Il costo totale per aprire una PT PMA a Bali nel 2025 è compreso tra 5.000 e
+  15.000 USD, incluse fee governative e consulenza."
+
+  Il secondo formato viene estratto direttamente da AI Overview e Perplexity.
+
+DEFINITION-FIRST FORMAT:
+  Ogni argomento nuovo deve essere introdotto con una definizione diretta:
+  "La PT PMA (Perseroan Terbatas Penanaman Modal Asing) è una società a
+  responsabilità limitata indonesiana con partecipazione straniera, regolata
+  dalla Legge n.25/2007 sugli investimenti esteri."
+
+NUMBERED LISTS E STRUCTURED CONTENT:
+  I sistemi AI estraggono più facilmente liste numerate rispetto a testo continuo.
+  Preferire sempre:
+  - Step sequenziali numerati per le procedure
+  - Tabelle per confronti (PT PMA vs CV, tipi di visto, etc.)
+  - Definizioni in formato "Termine: Definizione" per glossari
+  - Box "In sintesi" con bullet points alla fine di ogni sezione
+
+
+SEZIONE 7 — SEGNALI E-E-A-T
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-024] E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness)
+è il framework Google per valutare la qualità dei contenuti, particolarmente
+critico per tematiche YMYL (Your Money Your Life) come la normativa fiscale
+e legale indonesiana.
+
+EXPERIENCE (Esperienza diretta):
+  - Citare casi reali da CRM (anonimizzati): "In base alla nostra esperienza
+    con oltre 5.000 clienti processati..."
+  - Author box con credenziali: anni di operatività a Bali, numero di pratiche
+  - Case study come prova di esperienza concreta
+
+EXPERTISE (Competenza):
+  - Citare fonti primarie (UU, PP, PMK) non fonti secondarie
+  - Autore indicato: "Bali Zero Legal Team", "verificato da consulente legale"
+  - Terminologia tecnica corretta (in bahasa Indonesia e italiano)
+  - Aggiornamento regolare documentato (data ultima revisione visibile)
+
+AUTHORITATIVENESS (Autorevolezza):
+  - Link in entrata da siti autorevoli (BKPM, DJP, forum expat riconosciuti)
+  - Presenza Google My Business e NAP (Name, Address, Phone) consistente
+  - Wikipedia / Wikidata presence se possibile
+  - Citazioni da media indonesiani o internazionali
+
+TRUSTWORTHINESS (Affidabilità):
+  - HTTPS obbligatorio (già in produzione)
+  - Privacy policy e cookie policy aggiornate
+  - Disclaimer legale su ogni articolo normativo:
+    "Questo articolo è a scopo informativo. Per consulenza legale personalizzata,
+    contatta Bali Zero."
+  - Nessuna promessa di risultati garantiti
+  - Data pubblicazione e data ultima revisione SEMPRE visibili
+
+BADGE "VERIFICATO DA ESPERTO":
+  Implementare su ogni articolo normativo un badge:
+  "Verificato dal team legale Bali Zero | Ultima revisione: [data]"
+  Questo segnale aumenta sia il CTR che il trust score per Google e sistemi AI.
+
+
+SEZIONE 8 — LINK BUILDING ESTERNO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-025] La strategia di link building esterno si concentra sulla qualità
+dei backlink, non sul volume. Un link da BKPM.go.id vale 1000 link da directory.
+
+TIER 1 — FONTI AUTOREVOLI ISTITUZIONALI (priorità massima):
+  Target:
+    - bkpm.go.id / oss.go.id (citazione in sezioni "risorse utili")
+    - pajak.go.id (DJP, link da FAQ o pagine di approfondimento)
+    - Camere di commercio italiane in Asia (CAMIC, CCII)
+    - Ambasciate e consolati italiani in Indonesia
+    - KADIN (Camera di commercio indonesiana)
+  Approccio: content partnership, presenza a eventi, PR dirette
+  Difficoltà: alta, tempi lunghi (6-18 mesi)
+
+TIER 2 — FORUM E COMMUNITY EXPAT (priorità alta):
+  Target:
+    - Bali Expats Facebook Group (200K+ membri)
+    - Internations Jakarta/Bali
+    - Reddit r/Bali, r/digitalnomad, r/Indonesia
+    - Nomad List (profilo Bali)
+    - Forum.bali.com (se attivo)
+    - Gruppi Telegram italiani su Bali/Indonesia
+  Approccio: partecipazione genuina, rispondere a domande con link a guide
+  Regola: mai spam, solo quando l'articolo risponde DIRETTAMENTE alla domanda
+  Difficoltà: media, richiede presenza costante
+
+TIER 3 — MEDIA E BLOG (priorità media):
+  Target:
+    - Jakarta Post (sezione business)
+    - Bali Discovery (turismo + business)
+    - Bisnis Bali
+    - Blog expat in italiano (collaborazioni editoriali)
+    - Podcast italiani su expat lifestyle
+  Approccio: HARO-style (fornire expert quotes), guest posts, PR
+  Difficoltà: media-bassa
+
+TIER 4 — CONTENT SYNDICATION (priorità bassa):
+  Target: syndication su Medium, LinkedIn Articles, Substack
+  Regola: SEMPRE con canonical tag che punta a balizero.com (per evitare duplicate content)
+  Valore: reach aggiuntivo, non SEO diretto
+
+
+SEZIONE 9 — ANALYTICS E KPI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-026] KPI del programma SEO/GEO di Bali Zero, con target 2025:
+
+KPI TRAFFICO ORGANICO:
+  - Sessioni organiche totali: +150% YoY (baseline da stabilire Q1 2025)
+  - Sessioni organiche in italiano: target 2.000/mese entro Q4 2025
+  - Sessioni organiche in inglese: target 10.000/mese entro Q4 2025
+  - Tasso di nuovi utenti organici: >65%
+
+KPI POSIZIONAMENTO:
+  - Keyword in top 10 per termini core (IT): target 15 keyword entro fine 2025
+  - Keyword in top 10 per termini core (EN): target 25 keyword entro fine 2025
+  - Featured Snippet / AI Overview per almeno 5 keyword chiave
+  - Posizione media: < 15 per keyword target
+
+KPI ENGAGEMENT:
+  - Tempo medio sulla pagina (pillar pages): > 3 minuti (segnale di qualità)
+  - Bounce rate: < 55% per articoli long-form
+  - Pagine per sessione da organico: > 2
+  - Scroll depth: > 70% degli utenti raggiunge il 75% dell'articolo
+
+KPI GEO (AI CITATION):
+  - Test mensile: query "come aprire PT PMA Bali" + 5 varianti su Claude, ChatGPT,
+    Perplexity, Google AI Overview → registrare se Bali Zero è citato
+  - Target 2025: citato in almeno 2/3 sistemi AI per almeno 5 keyword
+  - Brand mention tracking: Google Alerts + Mention.com per "Bali Zero"
+
+KPI CONVERSIONE:
+  - Lead da organico: tracking via GA4 + UTM
+  - Tasso conversione organico → lead: target > 1.5%
+  - Articoli con almeno 1 conversione/mese (tasso successo): > 60%
+
+
+SEZIONE 10 — GAP ANALYSIS COMPETITIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-027] Analisi dei gap editoriali rispetto ai competitor principali
+(Emerhub, InCorp, Seven Stones, LMI). Queste sono le opportunità di contenuto
+dove Bali Zero può dominare con investimento relativamente basso.
+
+GAP IDENTIFICATI:
+
+GAP 1 — ITALIANO COMPLETAMENTE ASSENTE (competitors 0/5 in italiano)
+  Opportunità: nessun competitor produce contenuti sistematici in italiano.
+  Bali Zero con 10-15 articoli qualità può dominare tutte le keyword IT.
+  Azione: priorità massima alla produzione in italiano Q2-Q3 2025.
+
+GAP 2 — KBLI 2025 (competitors con info datate KBLI 2017)
+  Opportunità: la migrazione KBLI 2025 è uno dei cambiamenti più significativi
+  per PT PMA. Pochissimi competitor hanno aggiornato le loro guide.
+  Azione: "Guida KBLI 2025 per PT PMA" + aggiornamento di ogni guida PT PMA.
+
+GAP 3 — CORETAX TRANSITION (argomento quasi ignorato dai competitor)
+  Opportunità: CoreTax è il nuovo sistema fiscale integrato indonesiano.
+  Impatto enorme su PT PMA, ma guida pratica per stranieri quasi assente.
+  Azione: serie di 3 articoli CoreTax (cos'è, come registrarsi, obblighi PT PMA).
+
+GAP 4 — DIGITAL NOMAD E33G APPROFONDITO
+  Opportunità: visto E33G (nomade digitale) molto cercato ma spesso descritto
+  solo superficialmente. Mancano guide su casi edge (sponsorship, rinnovo, combo).
+  Azione: guida completa + FAQ (almeno 20 Q&A) sul visto E33G.
+
+GAP 5 — GUIDA FISCALE ITALIA-INDONESIA (doppia tassazione)
+  Opportunità: i competitor coprono la fiscalità indonesiana ma non il tax treaty
+  Italia-Indonesia, il che è esattamente ciò che cerca l'investitore italiano.
+  Azione: articolo "Tax treaty Italia-Indonesia: guida per expat 2025".
+
+GAP 6 — CONTENUTI IN PROFONDITÀ SU PROPRIETÀ
+  Opportunità: guide proprietà esistenti (competitor) sono superficiali.
+  Manca: analisi dettagliata di Hak Pakai, PT PMA property holding,
+  contratti di leasehold standard, rischi legali, due diligence.
+  Azione: 4 articoli specializzati sulla proprietà, con revisione legale.
+
+
+SEZIONE 11 — PREVENZIONE NEGATIVE SEO E MONITORAGGIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-028] La protezione del profilo SEO di Bali Zero è parte integrante
+della strategia. Azioni preventive e reattive:
+
+MONITORAGGIO BACKLINK (mensile):
+  Strumenti: Google Search Console (link report) + Ahrefs/Semrush
+  Azione: identificare e disavow backlink da siti spam, PBN, directory di bassa qualità
+  File disavow: aggiornare e reinviare se si identificano > 5 link dannosi
+  Soglia di attenzione: anchor text anomali (es. keyword non correlate)
+
+MONITORAGGIO BRAND MENTION:
+  Strumenti: Google Alerts per "Bali Zero", "balizero.com", "Zantara Bali"
+  Obiettivo: identificare menzioni di misinformazione su Bali Zero (recensioni false,
+  contenuti errati che ci citano) e intervenire tempestivamente
+  Protocollo: risposta a recensioni negative entro 48h (Google My Business)
+
+CONTENT SCRAPING PROTECTION:
+  - Verificare mensilmente se altri siti hanno copiato i nostri articoli
+  - Se trovati: procedura DMCA takedown (tramite Google Search Console)
+  - Canonical tag come prima linea di difesa contro duplicate content
+
+MONITORAGGIO RANKING (settimanale):
+  - Track delle top 50 keyword con strumento SEO
+  - Alert se un articolo perde > 5 posizioni in 7 giorni → investigare causa
+  - Google Search Console: monitorare cali improvvisi di impressioni
+
+AGGIORNAMENTO ALGORITMO:
+  - Monitorare Google Algorithm Update feed (SEMrush Sensor, MozCast)
+  - Dopo ogni core update confermato: audit dei contenuti più colpiti entro 2 settimane
+
+
+SEZIONE 12 — WORKFLOW OPERATIVO SEO/GEO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[EDT-029] Integrazione del lavoro SEO/GEO nel ciclo editoriale quotidiano:
+
+CHECK SETTIMANALE (30 minuti ogni lunedì):
+  □ Revisione Search Console: cali CTR, nuove keyword, errori crawl
+  □ Revisione GA4: articoli con bounce rate improvvisamente alto
+  □ Check posizionamento top 20 keyword tramite tool SEO
+  □ Review google alerts brand mention della settimana
+
+CHECK MENSILE (2 ore il primo lunedì del mese):
+  □ Audit articoli con status "giallo" (>6 mesi) → programmare revisione
+  □ Verifica broken links interni ed esterni
+  □ Aggiornamento disavow file se necessario
+  □ Test GEO: query manuale su Claude/ChatGPT/Perplexity per top 5 keyword
+  □ Report KPI: traffico organico, posizioni, lead da organico
+  □ Identificazione 3 nuovi gap keyword per mese successivo
+
+CHECK TRIMESTRALE (mezzo giorno):
+  □ Audit completo catalogo articoli (verde/giallo/rosso)
+  □ Competitor content audit: cosa hanno pubblicato di nuovo
+  □ Core Web Vitals review e ottimizzazione
+  □ Structured data validation (Google Rich Results Test su tutti i template)
+  □ Hreflang audit per articoli multi-lingua
+  □ Revisione strategia link building: risultati e prossimi target
+
+[EDT-030] SEO GUARDIAN TOOL:
+  Lo script `apps/evaluator/kbli_indexing_submit.py` e l'audit `audit_geo_aeo()`
+  automatizzano parte del monitoraggio. Eseguire:
+    - `kbli_indexing_submit.py --batch 200` mensile per nuove URL KBLI
+    - `audit_geo_aeo()` mensile per coverage AI SEO e freshness llms.txt
+  Output: report in Google Sheets + alert Telegram se metriche sotto soglia.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CLAIM IDS UTILIZZATI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EDT-016  Cluster keyword PT PMA: priorità per IT ("aprire PT PMA Bali"), EN e ID
+EDT-017  KBLI 2025 come opportunità SEO strategica unica (deadline 18 giugno 2026)
+EDT-018  Mappatura intent: informazionale / navigazionale / transazionale / comparativo
+EDT-019  Architettura Hub & Spoke: 5 pillar pages + cluster spoke per ogni tema
+EDT-020  Link building interno: ogni articolo linka ≥2 pillar pages, anchor text descrittivo
+EDT-021  SEO tecnico: canonical, hreflang, JSON-LD obbligatorio (Article, FAQ, HowTo)
+EDT-022  GEO: claim con fonte esplicita, formato "Secondo [legge]: [claim misurabile]"
+EDT-023  Answer snippet optimization: primi 160 caratteri H2/H3 = risposta diretta
+EDT-024  E-E-A-T: esperienza (case study), expertise (fonti primarie), autorevolezza, fiducia
+EDT-025  Link building a 4 tier: istituzionale > forum expat > media > syndication
+EDT-026  KPI 2025: +150% traffico organico YoY, top 10 su 40 keyword, GEO citation 2/3 AI
+EDT-027  Gap analysis: 6 gap editoriali identificati vs competitor (IT, KBLI 2025, CoreTax...)
+EDT-028  Negative SEO: disavow mensile, brand monitoring, DMCA scraping, ranking alert
+EDT-029  Workflow operativo: check settimanale (30min) + mensile (2h) + trimestrale (4h)
+EDT-030  SEO Guardian: kbli_indexing_submit.py + audit_geo_aeo() automatizzano il monitoring
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fine documento | Versione 2025-03-27 | Generato da Zantara Intelligence

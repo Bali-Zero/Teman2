@@ -1,0 +1,725 @@
+"""
+ZANTARA AI Client - Primary engine for all conversational AI
+
+AI Models Architecture:
+- PRIMARY: Google Gemini 2.0 Flash (production)
+
+Configuration:
+- GOOGLE_API_KEY: API key for Gemini (primary)
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK (replaced deprecated google-generativeai)
+- Using genai_client.py wrapper for centralized client management
+- Improved async support with client.aio
+"""
+
+import asyncio
+import logging
+from typing import Any
+
+from backend.app.core.config import settings
+
+# Import helper modules
+from backend.llm.fallback_messages import get_fallback_message
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.prompt_manager import PromptManager
+from backend.llm.retry_handler import RetryHandler, _classify_error, _compute_delay
+from backend.llm.token_estimator import TokenEstimator
+
+logger = logging.getLogger(__name__)
+
+
+# Constants
+class ZantaraAIClientConstants:
+    """Constants for ZantaraAIClient configuration."""
+
+    MAX_RETRIES = 3
+    BASE_RETRY_DELAY = 2.0
+    RETRY_BACKOFF_FACTOR = 2
+    MOCK_STREAM_DELAY = 0.05
+    FALLBACK_STREAM_DELAY = 0.1
+    DEFAULT_MAX_TOKENS = 8192  # Maximum tokens for comprehensive responses
+    DEFAULT_TEMPERATURE = 0.4  # Lower for more factual, consistent responses
+    DEFAULT_STREAM_MAX_TOKENS = (
+        8192  # Aligned with DEFAULT_MAX_TOKENS - streaming needs same capacity
+    )
+    MAX_TEMPERATURE = 2.0
+    MIN_TEMPERATURE = 0.0
+    MAX_MAX_TOKENS = 8192
+    MIN_MAX_TOKENS = 1
+
+
+class ZantaraAIClient:
+    """
+    ZANTARA AI Client – primary engine for all conversational AI.
+
+    AI Models:
+    - PRIMARY: Google Gemini 2.0 Flash (production) - unlimited quota, fast, cost-effective
+
+    Provider: Google AI (Gemini) - using new google-genai SDK
+
+    This client handles:
+    - Chat completion (async)
+    - Streaming responses
+    - Tool calling (when needed)
+    - Error handling with retry logic
+    - Token estimation for cost tracking
+    """
+
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
+        """
+        Initialize ZantaraAIClient.
+
+        Supports two authentication methods:
+        1. Service Account (preferred) - via GOOGLE_CREDENTIALS_JSON env var
+        2. API Key (fallback) - via GOOGLE_API_KEY env var
+
+        Args:
+            api_key: Google API key (defaults to settings.google_api_key)
+            model: Model name (defaults to gemini-2.0-flash-lite)
+
+        Raises:
+            ValueError: If no valid credentials in production environment
+        """
+        import os
+
+        self.api_key = api_key or settings.google_api_key
+        self.mock_mode = False
+
+        # Check if Service Account credentials are available
+        has_service_account = bool(
+            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            or os.environ.get("GOOGLE_CREDENTIALS_JSON")
+            or getattr(settings, "google_credentials_json", None),
+        )
+
+        # Initialize GenAI client using new SDK wrapper
+        # GenAIClient will try Service Account (ADC) first, then API key
+        if GENAI_AVAILABLE and (self.api_key or has_service_account):
+            try:
+                # GenAIClient handles auth method selection internally
+                self._genai_client = GenAIClient(api_key=self.api_key if self.api_key else None)
+                if not self._genai_client.is_available:
+                    raise RuntimeError("GenAI client initialization failed")
+                auth_method = getattr(self._genai_client, "_auth_method", "unknown")
+                logger.info(f"✅ Gemini AI Client initialized (auth: {auth_method})")
+            except Exception as e:
+                logger.error(f"❌ Failed to configure Gemini: {e}")
+                if settings.environment == "production":
+                    raise ValueError(f"CRITICAL: Failed to configure Gemini in production: {e}")
+                self.mock_mode = True
+                self._genai_client = None
+        else:
+            if settings.environment == "production":
+                logger.critical(
+                    "❌ CRITICAL: No Gemini credentials found in PRODUCTION environment",
+                )
+                raise ValueError(
+                    "GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production",
+                )
+
+            logger.warning(
+                "⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)",
+            )
+            self.mock_mode = True
+            self._genai_client = None
+
+        # Use centralized model config (S04 solidification)
+        from backend.llm.config import ModelName
+
+        self.model = model or ModelName.CHANNEL
+
+        # Initialize pricing even in mock mode
+        self.pricing = {
+            "input": getattr(settings, "zantara_ai_cost_input", 0.15),
+            "output": getattr(settings, "zantara_ai_cost_output", 0.60),
+        }
+
+        # Initialize helper services
+        self.prompt_manager = PromptManager()
+        self.retry_handler = RetryHandler(
+            max_retries=ZantaraAIClientConstants.MAX_RETRIES,
+            base_delay=ZantaraAIClientConstants.BASE_RETRY_DELAY,
+            backoff_factor=ZantaraAIClientConstants.RETRY_BACKOFF_FACTOR,
+        )
+        self.token_estimator = TokenEstimator(model=self.model)
+
+        # Log configuration (without sensitive info)
+        logger.debug("🔧 ZantaraAIClient Configuration:")
+        logger.debug(f"   Model: {self.model}")
+        logger.debug(f"   Mock Mode: {self.mock_mode}")
+        logger.debug(
+            f"   System Prompt: {len(self.prompt_manager._base_system_prompt)} chars loaded",
+        )
+
+        logger.info("✅ ZantaraAIClient initialized")
+        logger.info(f"   Engine model: {self.model}")
+        logger.info(f"   Mode: {'Mock' if self.mock_mode else 'google-genai SDK'}")
+
+    def _get_chat_session(self, system_instruction: str, history: list[dict] | None = None):
+        """
+        Create a chat session using the new GenAI wrapper.
+
+        Args:
+            system_instruction: System instruction for the model
+            history: Optional conversation history
+
+        Returns:
+            ChatSession instance from genai_client wrapper
+        """
+        if not self._genai_client or not self._genai_client.is_available:
+            return None
+
+        return self._genai_client.create_chat(
+            model=self.model,
+            system_instruction=system_instruction,
+            history=history,
+        )
+
+    def get_model_info(self) -> dict[str, Any]:
+        """
+        Get current model information.
+
+        Returns:
+            Dictionary with model, provider, and pricing info
+        """
+        return {
+            "model": self.model,
+            "provider": "mock" if self.mock_mode else "google_native",
+            "pricing": self.pricing,
+        }
+
+    def _build_system_prompt(
+        self,
+        memory_context: str | None = None,
+        identity_context: str | None = None,
+        use_rich_prompt: bool = True,
+    ) -> str:
+        """
+        Build ZANTARA system prompt with context injection.
+
+        Delegates to PromptManager for actual building.
+
+        Args:
+            memory_context: Optional memory/RAG context to inject
+            identity_context: Optional user identity context
+            use_rich_prompt: Use rich prompt from file (default: True)
+
+        Returns:
+            System prompt string with all context properly structured
+        """
+        return self.prompt_manager.build_system_prompt(
+            memory_context=memory_context,
+            identity_context=identity_context,
+            use_rich_prompt=use_rich_prompt,
+        )
+
+    def _validate_inputs(
+        self,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+        messages: list[dict[str, str]] | None = None,
+    ) -> None:
+        """
+        Validate input parameters.
+
+        Args:
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            messages: List of messages
+
+        Raises:
+            ValueError: If validation fails
+        """
+        if max_tokens is not None:
+            if max_tokens < ZantaraAIClientConstants.MIN_MAX_TOKENS:
+                raise ValueError(f"max_tokens must be >= {ZantaraAIClientConstants.MIN_MAX_TOKENS}")
+            if max_tokens > ZantaraAIClientConstants.MAX_MAX_TOKENS:
+                raise ValueError(f"max_tokens must be <= {ZantaraAIClientConstants.MAX_MAX_TOKENS}")
+
+        if temperature is not None:
+            if temperature < ZantaraAIClientConstants.MIN_TEMPERATURE:
+                raise ValueError(
+                    f"temperature must be >= {ZantaraAIClientConstants.MIN_TEMPERATURE}",
+                )
+            if temperature > ZantaraAIClientConstants.MAX_TEMPERATURE:
+                raise ValueError(
+                    f"temperature must be <= {ZantaraAIClientConstants.MAX_TEMPERATURE}",
+                )
+
+        if messages is not None:
+            if not isinstance(messages, list):
+                raise ValueError("messages must be a list")
+            if len(messages) == 0:
+                raise ValueError("messages must contain at least one message")
+            for msg in messages:
+                if not isinstance(msg, dict):
+                    raise ValueError("Each message must be a dictionary")
+                if "role" not in msg or "content" not in msg:
+                    raise ValueError("Each message must have 'role' and 'content' keys")
+
+    def _prepare_gemini_messages(self, messages: list[dict[str, str]]) -> tuple[list[dict], str]:
+        """
+        Prepare messages for Gemini API format.
+
+        Args:
+            messages: List of messages in standard format
+
+        Returns:
+            Tuple of (gemini_history, last_user_message)
+        """
+        gemini_history = []
+        last_user_message = ""
+
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+
+            if role == "system":
+                continue
+
+            if role == "user":
+                last_user_message = content
+                gemini_history.append({"role": "user", "parts": [content]})
+            elif role == "assistant":
+                gemini_history.append({"role": "model", "parts": [content]})
+
+        # Remove the last user message from history as it's the prompt
+        if gemini_history and gemini_history[-1]["role"] == "user":
+            gemini_history.pop()
+
+        return gemini_history, last_user_message
+
+    def _estimate_tokens(
+        self, messages: list[dict[str, str]], response_text: str,
+    ) -> dict[str, int]:
+        """
+        Estimate token counts for input and output.
+
+        Args:
+            messages: Input messages
+            response_text: Output text
+
+        Returns:
+            Dictionary with 'input' and 'output' token counts
+        """
+        tokens_input = self.token_estimator.estimate_messages_tokens(messages)
+        tokens_output = self.token_estimator.estimate_tokens(response_text)
+        return {"input": tokens_input, "output": tokens_output}
+
+    async def chat_async(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = ZantaraAIClientConstants.DEFAULT_MAX_TOKENS,
+        temperature: float = ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
+        system: str | None = None,
+        memory_context: str | None = None,
+        identity_context: str | None = None,
+        safety_settings: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Generate chat response using ZANTARA AI.
+
+        Args:
+            messages: Chat messages [{"role": "user", "content": "..."}]
+            max_tokens: Max tokens to generate (default: 1500)
+            temperature: Sampling temperature (default: 0.7)
+            system: Optional system prompt override
+            memory_context: Optional memory context to inject
+            identity_context: Optional user identity context
+            safety_settings: Optional safety settings for Gemini
+
+        Returns:
+            Dictionary with 'text', 'model', 'provider', 'tokens', 'cost'
+
+        Raises:
+            ValueError: If input validation fails
+            Exception: If API call fails
+        """
+        # Validate inputs
+        self._validate_inputs(max_tokens=max_tokens, temperature=temperature, messages=messages)
+
+        # Build system prompt with all contexts
+        if system is None:
+            system = self._build_system_prompt(
+                memory_context=memory_context,
+                identity_context=identity_context,
+            )
+
+        # Debug logging
+        logger.debug("=" * 80)
+        logger.debug("🔍 [DRY RUN] Full Prompt Assembly for chat_async")
+        logger.debug("=" * 80)
+        logger.debug(f"System Prompt ({len(system)} chars):\n{system}")
+        logger.debug(f"Messages ({len(messages)} messages):")
+        for i, msg in enumerate(messages):
+            if not isinstance(msg, dict):
+                logger.debug(f"  [{i}] (skipped non-dict: {type(msg).__name__})")
+                continue
+            role = msg.get("role", "unknown")
+            content_preview = msg.get("content", "")[:200] + (
+                "..." if len(msg.get("content", "")) > 200 else ""
+            )
+            logger.debug(f"  [{i}] {role}: {content_preview}")
+        logger.debug("=" * 80)
+
+        # Handle Mock Mode
+        if self.mock_mode:
+            answer = "This is a MOCK response from ZantaraAIClient (Mock Mode)."
+            return {
+                "text": answer,
+                "model": self.model,
+                "provider": "mock",
+                "tokens": {"input": 10, "output": 10},
+                "cost": 0.0,
+            }
+
+        if not GENAI_AVAILABLE or not self._genai_client:
+            logger.error("❌ Gemini client library not available")
+            raise ValueError("Gemini client library is not available")
+
+        try:
+            # Prepare history and get last user message
+            gemini_history, last_user_message = self._prepare_gemini_messages(messages)
+
+            # Create chat session with new SDK wrapper
+            chat = self._get_chat_session(system, gemini_history)
+            if not chat:
+                raise RuntimeError("Failed to create chat session")
+
+            # Send message and get response
+            result = await chat.send_message(
+                last_user_message,
+                max_output_tokens=max_tokens,
+                temperature=temperature,
+            )
+
+            answer = result.get("text", "")
+            tokens = self._estimate_tokens(messages, answer)
+            return {
+                "text": answer,
+                "model": self.model,
+                "provider": "google_genai",
+                "tokens": tokens,
+                "cost": 0.0,
+            }
+
+        except (ConnectionError, TimeoutError) as e:
+            logger.error(f"❌ GenAI Connection Error: {e}")
+            raise
+        except Exception as e:
+            error_msg = str(e).lower()
+            # Check for API key leaked error (403)
+            if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
+                logger.critical(
+                    "🚨 CRITICAL: API key leaked or invalid (403). "
+                    "Please replace GOOGLE_API_KEY in environment variables.",
+                )
+                # Raise a specific exception that can be caught and handled gracefully
+                raise ValueError(
+                    "API key was reported as leaked. Please use another API key. "
+                    "Contact the technical team to update GOOGLE_API_KEY.",
+                ) from e
+            logger.error(f"❌ GenAI Error: {e}", exc_info=True)
+            raise
+
+    async def stream(
+        self,
+        message: str,
+        user_id: str,
+        conversation_history: list[dict[str, str]] | None = None,
+        memory_context: str | None = None,
+        identity_context: str | None = None,
+        max_tokens: int = ZantaraAIClientConstants.DEFAULT_STREAM_MAX_TOKENS,
+        language: str = "en",
+    ):
+        """
+        Stream chat response token by token for SSE.
+
+        Args:
+            message: User message
+            user_id: User identifier
+            conversation_history: Optional chat history
+            memory_context: Optional memory context
+            identity_context: Optional user identity context
+            max_tokens: Max tokens (default: 150)
+            language: Language for fallback messages (default: 'en')
+
+        Yields:
+            str: Text chunks as they arrive from AI
+        """
+        logger.info(f"🌊 [ZantaraAI] Starting stream for user {user_id}")
+
+        # Validate inputs
+        self._validate_inputs(
+            max_tokens=max_tokens, messages=[{"role": "user", "content": message}],
+        )
+
+        # Build system prompt
+        system = self._build_system_prompt(
+            memory_context=memory_context,
+            identity_context=identity_context,
+        )
+
+        # Debug logging
+        logger.debug("=" * 80)
+        logger.debug("🔍 [DRY RUN] Full Prompt Assembly for stream")
+        logger.debug("=" * 80)
+        logger.debug(f"System Prompt ({len(system)} chars):\n{system}")
+        logger.debug(f"User Message: {message}")
+        if conversation_history:
+            logger.debug(f"Conversation History ({len(conversation_history)} messages):")
+            for i, msg in enumerate(conversation_history):
+                if not isinstance(msg, dict):
+                    logger.debug(f"  [{i}] (skipped non-dict: {type(msg).__name__})")
+                    continue
+                role = msg.get("role", "unknown")
+                content_preview = msg.get("content", "")[:200] + (
+                    "..." if len(msg.get("content", "")) > 200 else ""
+                )
+                logger.debug(f"  [{i}] {role}: {content_preview}")
+        else:
+            logger.debug("Conversation History: None")
+        logger.debug("=" * 80)
+
+        # Mock Mode
+        if self.mock_mode:
+            logger.info(f"🎭 [ZantaraAI] MOCK MODE streaming for user {user_id}")
+            response = f"This is a MOCK stream response to: {message}. In production mode, this would be connected to Gemini AI."
+            words = response.split()
+            for word in words:
+                yield word + " "
+                await asyncio.sleep(ZantaraAIClientConstants.MOCK_STREAM_DELAY)
+            return
+
+        if not GENAI_AVAILABLE or not self._genai_client:
+            logger.error("❌ GenAI not available for streaming")
+            fallback_response = get_fallback_message("service_unavailable", language)
+            words = fallback_response.split()
+            for word in words:
+                yield word + " "
+                await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+            return
+
+        # Streaming retry: cannot use execute_with_retry (async generator incompatibility).
+        # Uses shared _classify_error / _compute_delay from retry_handler for consistent backoff.
+        last_exception = None
+        for attempt in range(self.retry_handler.max_retries):
+            try:
+                # Prepare conversation history
+                gemini_history = []
+                if conversation_history:
+                    for msg in conversation_history:
+                        if not isinstance(msg, dict):
+                            continue
+                        gemini_history.append(
+                            {
+                                "role": msg.get("role", "user"),
+                                "content": msg.get("content", ""),
+                            },
+                        )
+
+                # Create chat session with new SDK wrapper
+                chat = self._get_chat_session(system, gemini_history)
+                if not chat:
+                    raise RuntimeError("Failed to create chat session")
+
+                # Stream response
+                stream_active = False
+                async for chunk in chat.send_message_stream(
+                    message,
+                    max_output_tokens=max_tokens,
+                    temperature=ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
+                ):
+                    stream_active = True
+                    yield chunk
+
+                if not stream_active:
+                    logger.warning("⚠️ [ZantaraAI] No content received in stream")
+                    raise ValueError("No content received from stream")
+
+                logger.info(f"✅ [ZantaraAI] Stream completed successfully for user {user_id}")
+                return
+
+            except ValueError as e:
+                # Handle API key leaked error specifically
+                error_msg = str(e).lower()
+                if "leaked" in error_msg or "api key" in error_msg:
+                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    fallback_response = get_fallback_message("api_key_error", language)
+                    words = fallback_response.split()
+                    for word in words:
+                        yield word + " "
+                        await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+                    return
+                # For other ValueErrors (like no content), retry
+                last_exception = e
+                # Fall through to retry logic
+
+            except Exception as e:
+                last_exception = e
+                error_msg = str(e).lower()
+                # Check for API key errors in exception message
+                if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
+                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    fallback_response = get_fallback_message("api_key_error", language)
+                    words = fallback_response.split()
+                    for word in words:
+                        yield word + " "
+                        await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+                    return
+
+                # Check if retryable (using RetryHandler logic implicitly via similar checks)
+                # But here we just retry all exceptions except auth ones caught above
+
+            # Retry decision — use shared classification/delay logic from RetryHandler
+            if attempt < self.retry_handler.max_retries - 1:
+                err_class = _classify_error(str(last_exception or ""))
+                if err_class == "permanent":
+                    logger.error(
+                        "LLM stream permanent error",
+                        extra={"user_id": user_id, "attempt": attempt + 1, "error": str(last_exception)},
+                    )
+                    break
+                delay = _compute_delay(
+                    err_class, attempt,
+                    self.retry_handler.base_delay,
+                    self.retry_handler.backoff_factor,
+                )
+                logger.warning(
+                    "LLM stream retry",
+                    extra={
+                        "user_id": user_id,
+                        "attempt": attempt + 1,
+                        "max_retries": self.retry_handler.max_retries,
+                        "error_class": err_class,
+                        "delay_s": round(delay, 2),
+                        "error": str(last_exception),
+                    },
+                )
+                await asyncio.sleep(delay)
+            else:
+                logger.error(
+                    "LLM stream exhausted",
+                    extra={"user_id": user_id, "error": str(last_exception)},
+                )
+
+        # If all retries failed, send fallback
+        fallback_response = get_fallback_message("connection_error", language)
+        words = fallback_response.split()
+        for word in words:
+            yield word + " "
+            await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+
+    async def conversational(
+        self,
+        message: str,
+        user_id: str,
+        conversation_history: list[dict[str, str]] | None = None,
+        memory_context: str | None = None,
+        identity_context: str | None = None,
+        max_tokens: int = ZantaraAIClientConstants.DEFAULT_STREAM_MAX_TOKENS,
+    ) -> dict[str, Any]:
+        """
+        Compatible interface for IntelligentRouter - simple conversational response.
+
+        Args:
+            message: User message
+            user_id: User identifier (unused, kept for compatibility)
+            conversation_history: Optional chat history
+            memory_context: Optional memory context
+            identity_context: Optional user identity context
+            max_tokens: Max tokens (default: 150)
+
+        Returns:
+            Dictionary with 'text', 'model', 'provider', 'ai_used', 'tokens'
+        """
+        messages = []
+        if conversation_history:
+            messages.extend(conversation_history)
+        messages.append({"role": "user", "content": message})
+
+        result = await self.chat_async(
+            messages=messages,
+            max_tokens=max_tokens,
+            memory_context=memory_context,
+            identity_context=identity_context,
+        )
+
+        return {
+            "text": result["text"],
+            "model": result["model"],
+            "provider": result["provider"],
+            "ai_used": "zantara-ai",
+            "tokens": result["tokens"],
+        }
+
+    async def conversational_with_tools(
+        self,
+        message: str,
+        user_id: str,
+        conversation_history: list[dict[str, str]] | None = None,
+        memory_context: str | None = None,
+        identity_context: str | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        _tool_executor: Any | None = None,
+        max_tokens: int = ZantaraAIClientConstants.DEFAULT_STREAM_MAX_TOKENS,
+        _max_tool_iterations: int = 2,
+    ) -> dict[str, Any]:
+        """
+        Compatible interface for IntelligentRouter - conversational WITH tool calling.
+
+        Note: Tool calling is not fully implemented for Gemini native mode.
+        Falls back to standard conversational if tools are provided.
+
+        Args:
+            message: User message
+            user_id: User identifier
+            conversation_history: Optional chat history
+            memory_context: Optional memory context
+            identity_context: Optional user identity context
+            tools: Optional list of tool definitions (not used in Gemini native)
+            _tool_executor: Tool executor (unused, kept for compatibility)
+            max_tokens: Max tokens (default: 150)
+            _max_tool_iterations: Max tool iterations (unused)
+
+        Returns:
+            Dictionary with 'text', 'model', 'provider', 'ai_used', 'tokens', 'tools_called', 'used_tools'
+        """
+        # Gemini native doesn't support tool calling in the same way as OpenAI
+        # So we just use standard conversational
+        if tools:
+            logger.info(
+                "🔧 [ZantaraAI] Tool use requested but not supported in Gemini native mode, using standard conversational",
+            )
+
+        result = await self.conversational(
+            message=message,
+            user_id=user_id,
+            conversation_history=conversation_history,
+            memory_context=memory_context,
+            identity_context=identity_context,
+            max_tokens=max_tokens,
+        )
+        result["tools_called"] = []
+        result["used_tools"] = False
+        return result
+
+    def is_available(self) -> bool:
+        """
+        Check if ZANTARA AI is configured and available.
+
+        Returns:
+            True if API key is set and client is available
+        """
+        if self.mock_mode:
+            return True
+        return bool(self.api_key and GENAI_AVAILABLE)
+
+    async def close(self) -> None:
+        """
+        Shut down the AI client.
+        Google SDK handles pooling, but we null the reference for completeness.
+        """
+        self._genai_client = None
+        logger.info("✅ ZantaraAIClient: All clients shut down")

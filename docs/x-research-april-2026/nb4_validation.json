@@ -1,0 +1,277 @@
+{
+  "value": {
+    "answer": "**1. CoreTax replaces DJP Online for tax filings (Confirmed)**\nUnder PMK 81/2024, the CoreTax Administration System (PSIAP) is the new unified digital framework, officially replacing the legacy DJP Online portal for all tax obligations, including e-Faktur and e-SPT filings, starting in 2025/2026 [1], [2], [3]. \n\n**2. NPWP migrating 15→16 digit NIK-based (Confirmed with caveat for Expats)**\nUnder PMK 112/2022 (amended by PMK 136/2023), Indonesian citizens (WNI) use their 16-digit National Identity Number (NIK) as their tax ID [4], [5]. However, expatriates who qualify as Domestic Tax Residents (SPDN) do not use a NIK; instead, the DJP issues them a specific 16-digit NPWP [5], [6]. Non-residents (SPLN) do not require an NPWP but are subject to PPh 26 withholding [7]. \n\n**3. Corporate tax 22% (Confirmed)**\nUnder the Harmonized Tax Law (UU 7/2021 HPP), the standard Corporate Income Tax (PPh Badan) for a PT PMA is 22% on net taxable income [8], [9]. A 50% rate reduction is available on the taxable income derived from the first IDR 4.8 billion of turnover for companies with total gross turnover under IDR 50 billion [8], [10]. \n\n**4. VAT 12% above IDR 4.8B turnover (Partially Wrong/Needs Correction)**\nMandatory PKP (Taxable Entrepreneur) registration applies at IDR 4.8 billion turnover per the KUP Law (UU 28/2007) [11], [12]. However, the implementation of the 12% VAT rate is nuanced. Under PMK 131/2024, the unadjusted 12% VAT rate strictly applies *only* to luxury goods (goods subject to PPnBM) [13], [14], [15]. For standard non-luxury items, an adjusted tax base (11/12) is legally mandated, ensuring the effective VAT rate remains at 11% [13], [16], [15]. **CoreTax Change:** The system now automatically cross-references your generated e-Faktur VAT with third-party data to detect anomalies instantly [17], [18].\n\n**5. PPh final 0.5% for SMEs under IDR 4.8B (Confirmed, but highly restricted for PT PMA)**\nGoverned by PP 55/2022, the 0.5% final tax applies to gross turnover for eligible MSMEs [19], [20]. However, a pending revision will permanently revoke this facility for corporate entities (PT, CV) to curb tax avoidance via firm splitting, keeping it available only for individual taxpayers [21]. Furthermore, a PT PMA rarely qualifies in practice because its mandatory minimum capital investment requirement of IDR 10 billion renders the SME designation incompatible [22].\n\n**6. Monthly SPT Masa mandatory (Confirmed with CoreTax updates)**\nPT PMAs must actively file monthly SPT Masa for withholdings (PPh 21/26, 23) and corporate installments (PPh 25) [11], [23]. **CoreTax Change:** PMK 81/2024 shifted the monthly tax payment deadline from the 10th to the **15th of the following month** [24], [25], [26]. Reporting deadlines remain the 20th of the following month, or the end of the month for VAT (SPT Masa PPN) [27].\n\n**7. Annual SPT deadline April 30 (Partially Wrong/Needs Distinction)**\nUnder the KUP Law (UU 28/2007), April 30 is the statutory deadline *only* for Corporate Tax Returns (SPT Tahunan Badan) [28], [29]. Expatriates holding SPDN status must file their Individual Tax Returns (SPT Tahunan Orang Pribadi) by **March 31** [30], [29]. **Note:** For the 2026 filing season, the government waived the IDR 100,000 administrative penalty for individual late submissions until April 30 due to CoreTax transition disruptions, but March 31 remains the legal statutory deadline [31], [32], [33].\n\n**8. 183-day rule triggers tax residency (Confirmed)**\nUnder UU 36/2008 and UU 7/2021 (HPP), staying more than 183 days in a 12-month period or holding a long-term visa (KITAS/KITAP) classifies a foreigner as a Domestic Tax Resident (SPDN) [34], [35], [36]. SPDNs must register for a 16-digit NPWP and pay progressive PPh 21 on their **worldwide income** (using the new TER mechanism under PMK 168/2023) [37], [7], [38], [39]. Foreigners staying 183 days or less are Foreign Tax Subjects (SPLN) and face a flat 20% PPh 26 withholding strictly on Indonesian-sourced income, subject to reductions only if a valid Certificate of Domicile (CoD) is provided under a Tax Treaty (P3B) per PMK 112/2025 [7], [40], [41].",
+    "conversation_id": "542c5155-af86-4a43-94b8-58ceada047fe",
+    "sources_used": [
+      "3485f266-f226-48a1-ace8-aa1aaafb625b",
+      "8449662f-a07d-4868-88c7-3f10f20ba520",
+      "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "3c335fb3-1291-41ac-a78f-d5086d786e30",
+      "2cf6f175-411d-4a0e-9ef7-61ed5ebe1110",
+      "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "206cb212-7f79-45be-9a17-fa7f2786f648",
+      "fa6f50cb-637e-4593-a0ed-339adb9dc756",
+      "31e56c2f-73f8-4bba-9769-196f7ed689a8",
+      "f605fb4d-ec31-4bce-ad71-08d33083e0c9",
+      "f5068195-93de-4962-b552-23cb24b01105",
+      "fbc14489-bbd2-4eb6-a9fc-9a81823cfdf7",
+      "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+      "d5f2d49e-48b1-4b15-aa83-d494994c8709",
+      "179044a5-fd0e-4562-b7f6-865e2e232b30",
+      "a422b971-23fe-4f7d-8abd-12677b6244c2",
+      "56966138-2e6c-4875-aa96-c45c589a2d28",
+      "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1"
+    ],
+    "citations": {
+      "1": "3485f266-f226-48a1-ace8-aa1aaafb625b",
+      "2": "3485f266-f226-48a1-ace8-aa1aaafb625b",
+      "3": "8449662f-a07d-4868-88c7-3f10f20ba520",
+      "4": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "5": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "6": "3c335fb3-1291-41ac-a78f-d5086d786e30",
+      "7": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "8": "2cf6f175-411d-4a0e-9ef7-61ed5ebe1110",
+      "9": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "10": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "11": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "12": "206cb212-7f79-45be-9a17-fa7f2786f648",
+      "13": "fa6f50cb-637e-4593-a0ed-339adb9dc756",
+      "14": "31e56c2f-73f8-4bba-9769-196f7ed689a8",
+      "15": "f605fb4d-ec31-4bce-ad71-08d33083e0c9",
+      "16": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "17": "8449662f-a07d-4868-88c7-3f10f20ba520",
+      "18": "8449662f-a07d-4868-88c7-3f10f20ba520",
+      "19": "f5068195-93de-4962-b552-23cb24b01105",
+      "20": "fbc14489-bbd2-4eb6-a9fc-9a81823cfdf7",
+      "21": "fbc14489-bbd2-4eb6-a9fc-9a81823cfdf7",
+      "22": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+      "23": "d5f2d49e-48b1-4b15-aa83-d494994c8709",
+      "24": "8449662f-a07d-4868-88c7-3f10f20ba520",
+      "25": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "26": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "27": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+      "28": "2cf6f175-411d-4a0e-9ef7-61ed5ebe1110",
+      "29": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "30": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "31": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+      "32": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+      "33": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+      "34": "a422b971-23fe-4f7d-8abd-12677b6244c2",
+      "35": "a422b971-23fe-4f7d-8abd-12677b6244c2",
+      "36": "56966138-2e6c-4875-aa96-c45c589a2d28",
+      "37": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+      "38": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "39": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "40": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+      "41": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1"
+    },
+    "references": [
+      {
+        "source_id": "3485f266-f226-48a1-ace8-aa1aaafb625b",
+        "citation_number": 1,
+        "cited_text": "PRODUK DDTC DDTC Corporate DDTCNews DDTC Library Perpajakan DDTC DDTC Academy Copyright © 2026 Tim DDTC Digital Transformation. Dilarang distribusi tanpa izin dari DDTC. Konfirmasi Keluar Apakah Anda yakin ingin keluar dari Akun Anda? Batal Keluar Konfirmasi Keluar Apakah Anda yakin ingin keluar dari Akun Anda? Batal Keluar Previous Next Previous Next Berita Nasional WEEKLY TAX NEWS ROUNDUP 2026 Marks Full Coretax Implementation, Avoid Inactive Account Risks URL berhasil disalin Redaksi DDTCNews Sabtu, 27 Desember 2025 | 07.30 WIB"
+      },
+      {
+        "source_id": "3485f266-f226-48a1-ace8-aa1aaafb625b",
+        "citation_number": 2,
+        "cited_text": "Ukuran Teks Teks Normal Teks Sedang Teks Besar Ukuran Teks Teks Normal Teks Sedang Teks Besar 0 1 Salin Link Bagikan ke Facebook Bagikan ke X Bagikan ke WhatsApp Bagikan ke LinkedIn Bagikan Berita Salin Link Bagikan ke Facebook Bagikan ke X Bagikan ke WhatsApp Bagikan ke LinkedIn 0 Masuk ke Akun DDTCNews Gunakan akun DDTCNews untuk mengakses fitur ini. Batal Masuk JAKARTA, DDTCNews - The final week of 2025 has seen the domination of coverage of the coretax system. This is hardly surprising, as starting in 2026, the coretax system will be fully operational. The former platform, namely DJP Online, will be officially dismissed. The filing of the annual tax return ( surat pemberitahuan /SPT in Indonesian), which in 2025 could still be completed outside the coretax system, will from next year be conducted entirely through a “full coretax” framework."
+      },
+      {
+        "source_id": "8449662f-a07d-4868-88c7-3f10f20ba520",
+        "citation_number": 3,
+        "cited_text": "Legal framework behind CoreTax implementation The primary legal framework begins with Presidential Regulation No. 40 of 2018 concerning Tax Administration System Renewal, which provided the initial mandate for developing a modernized tax administration system. This foundational regulation was operationalized through Minister of Finance Regulation No. 81 of 2024 (PMK-81), which serves as the comprehensive legal framework for CoreTax implementation. PMK-81 represents a significant consolidation effort, revoking 42 existing tax regulations and integrating their provisions into a unified regulatory framework."
+      },
+      {
+        "source_id": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+        "citation_number": 4,
+        "cited_text": "Each NPWP is unique to its holder and functions as a permanent identifier for all tax transactions. Once registered, the NPWP is used to record income, deductions, and tax payments, and it remains valid for life, even if the taxpayer changes employment or business activity. NPWP Updates as of 2025 Indonesia's tax administration has undergone significant modernisation over the past year, with the Directorate General of Taxes fully integrate the new Personal Identity Number (Nomor Induk Kependudukan)."
+      },
+      {
+        "source_id": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+        "citation_number": 5,
+        "cited_text": "As of 2025, all Indonesian citizens can now use their Personal Identity Number (NIK) as their Indonesian taxpayer identification number. This change is part of a nationwide effort to integrate tax data with the national population database, streamlining compliance and making it easier for individuals and businesses in Indonesia to access tax services online. The new unified system eliminates the need for dual identification numbers. A NIK now functions as both your civil registration and tax identification reference. For foreign taxpayers, however, the ID format remains unchanged, and they must continue using the standard 15-digit NPWP until further notice from the Ministry of Finance."
+      },
+      {
+        "source_id": "3c335fb3-1291-41ac-a78f-d5086d786e30",
+        "citation_number": 6,
+        "cited_text": "New registrations and issuances For individual residents, their NIK will be activated as their NPWP, and they will receive a 15-digit NPWP. Non-residents, entities, and government agencies will receive both 15-digit and 16-digit NPWPs. Branch offices will receive a 15-digit NPWP and a Business Location Identification Number, with the main office NPWP being in the new 16-digit format. Should you have any further questions, please do not hesitate to contact us. About Acclime. Acclime helps businesses, from funded startups to multinational corporations, start and operate in Indonesia and beyond, navigating local regulatory complexities to maximise opportunities while ensuring compliance. As a trusted partner, we provide premier advisory and corporate services across Indonesia and the Asia-Pacific region."
+      },
+      {
+        "source_id": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+        "citation_number": 7,
+        "cited_text": "Holding an NPWP provides a tangible benefit: expatriates with an NPWP are taxed at the standard progressive rate of up to 35%, while those without one face a higher flat rate of 20% on gross income. Moreover, many employers, banks, and government agencies require NPWP as part of their administrative verification process. Non-resident foreigners who do not meet the residency threshold but receive income from Indonesia (for example, through consultancy services or digital transactions) may be taxed under final withholding schemes, but they are not typically required to hold NPWP unless they maintain a physical or long-term business presence in the country."
+      },
+      {
+        "source_id": "2cf6f175-411d-4a0e-9ef7-61ed5ebe1110",
+        "citation_number": 8,
+        "cited_text": "Corporate Income Tax in Indonesia Tax rate Indonesia's CIT rate is 22 percent , with several targeted tax incentives to support investment and SME growth: Contributing Advisor Duha Ziaun Senior Associate, Corporate Accounting Services | | | --- | --- | --- | --- | | Category | Criteria | Corporate Income Tax (CIT) Treatment | Legal Basis | | Publicly Listed Companies | Listed on the Indonesia Stock Exchange with at least 40% paid-in capital owned by the public; meet conditions like minimum shareholders & duration | Eligible for a 3% CIT reduction , resulting in a 19% CIT rate | GR No. 30/2020 | | Medium-sized Enterprises | Annual gross turnover ≤ IDR 50 billion (US$2.9 million) | 50% CIT reduction on taxable income from turnover up to IDR 4.8 billion ; remainder taxed at standard 22% rate | Article 31E of Income Tax Law | | Small Enterprises | Gross turnover ≤ IDR 4.8 billion/year (US$287,729) ; not affiliated with large businesses or permanent establishments | Subject to a Final Income Tax of 0.5% of gross revenue instead of regular CIT; valid for 4–7 years depending on entity | GR No. 23/2018 |"
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 9,
+        "cited_text": "Key employer obligations under PPh 21: – Classify each employee under the correct TER category – Withhold tax on all cash and non-cash benefits, including housing, vehicle, and education allowances – Remit withheld tax to the government by the 15th of the following month – File the monthly SPT Masa by the 20th of the following month – Issue the annual PPh 21 tax certificate (Bukti Potong) to each employee Corporate Income Tax Indonesia: Rates and Rules The Standard Rate The standard Indonesia Corporate Tax Rate is 22% , applied to a company’s net taxable income after allowable deductions. This rate applies to domestic companies as well as foreign permanent establishments (PEs) operating in Indonesia. It was established under Law No. 6 of 2023 (the Job Creation Law / Omnibus Law) and remains the applicable rate today."
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 10,
+        "cited_text": "Reduced Rates Worth Knowing The 22% headline rate is not universal. There are several legitimate pathways to a lower effective rate: Listed companies: Public companies with at least 40% of shares traded on the Indonesia Stock Exchange (IDX) qualify for a 3% discount , bringing their rate down to 19% SME discount: Companies with annual gross turnover below IDR 50 billion receive a 50% tax discount on taxable income attributable to the first IDR 4.8 billion of turnover, resulting in an effective rate of 11% on that portion Final Tax ( PP 23/2018 ): Businesses with gross annual revenue below IDR 4.8 billion may elect a simplified 0.5% final tax on gross revenue , available for up to three years from the date of incorporation"
+      },
+      {
+        "source_id": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+        "citation_number": 11,
+        "cited_text": "SMEs & Startups Key Obligations: NPWP registration (mandatory for all businesses) VAT registration if annual turnover > IDR 4.8 billion Employee salary withholding tax (Article 21) Final tax 0.5% for small businesses (≤ IDR 4.8B turnover) Monthly Cash Flow Impact: ~2-5% of gross revenue Established Companies Key Obligations: All monthly withholding taxes (Articles 21, 22, 23, 4(2)) Monthly corporate income tax installments VAT payments and returns at 12% rate Annual corporate tax return with comprehensive attachments"
+      },
+      {
+        "source_id": "206cb212-7f79-45be-9a17-fa7f2786f648",
+        "citation_number": 12,
+        "cited_text": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.1 Soglia obbligatoria L'iscrizione a PKP (Pengusaha Kena Pajak) è OBBLIGATORIA se: [TAX-030] Peredaran bruto (fatturato lordo) > Rp 4.800.000.000/anno (quattro miliardi e ottocento milioni — circa €275.000) SCADENZA: La PT deve registrarsi come PKP entro la fine del mese successivo al mese in cui ha superato la soglia. Es: supera soglia in luglio → registrarsi entro 31 agosto. 3.2 Registrazione volontaria Una PT PMA può registrarsi come PKP VOLONTARIAMENTE anche prima di raggiungere la soglia di Rp 4,8 miliardi. [TAX-031]"
+      },
+      {
+        "source_id": "fa6f50cb-637e-4593-a0ed-339adb9dc756",
+        "citation_number": 13,
+        "cited_text": "Other taxes Branch income Income determination Deductions Group taxation Tax credits and incentives Withholding taxes Tax administration Other issues Significant developments Taxes on personal income Residence Other taxes Income determination Deductions Foreign tax relief and tax treaties Other tax credits and incentives Tax administration Sample personal income tax calculation Other issues Other taxes Indonesia Corporate - Other taxes Last reviewed - 15 December 2025 Value-added tax (VAT) The VAT rate is currently 12%. However, the government has decided to implement the 12% rate by using Other Value as Tax Base ( Dasar Pengenaan Pajak /' DPP Nilai Lain ') of 11/12, resulting in an 'effective' VAT rate of 11% for most taxable goods and services. Effective VAT rate of 12% is only applicable to certain luxurious goods. This may be increased or decreased to 15% or 5% by issuing a Government Regulation after consultation with the Parliament. VAT on export of goods is zero-rated, whilst the import of goods is subject to the applicable VAT rate for the relevant goods. Zero-rated VAT is also applicable on exported services, but subject to a Ministry of Finance (MoF) limitation. The range of services subject to 0% VAT has been expanded as of 1 April 2019 as follows:"
+      },
+      {
+        "source_id": "31e56c2f-73f8-4bba-9769-196f7ed689a8",
+        "citation_number": 14,
+        "cited_text": "Do not sell or share my personal information Allow all cookies Customize Allow selection Use necessary cookies only Locations Careers News Contact us Global Home Insights Tax Indirect Tax Indonesia - Standard VAT Rate Increase for Luxury Items BDO Indirect Tax News Indonesia - Standard VAT Rate Increase for Luxury Items SEE MORE ARTICLES FROM THIS NEWSLETTER An increase in Indonesia's standard VAT rate from 11% to 12% applies to the delivery of luxury items—the rate increase was originally planned to apply across the board. The regulation defines luxury items as goods that are not considered basic necessities, consumed by high-income earners."
+      },
+      {
+        "source_id": "f605fb4d-ec31-4bce-ad71-08d33083e0c9",
+        "citation_number": 15,
+        "cited_text": "On 31 December 2024, Indonesia Minister of Finance (MoF) issued Regulation No 131/ 2024 (“PMK-131”) in relation to New VAT Treatment. PMK-131 is the implementing regulation of Article 8A of Law No 8/1983 (VAT Law) which was last amended by Law No. 6/2023. PMK-131 is effective on 1 January 2025. Key highlights of PMK-131 are: Starting 1 January 2025, the importation and/ or delivery of taxable goods by VAT-able Entrepreneurs within Indonesia Customs Area is subject to VAT rate of 12% on the import or sales value. The VAT rate of 12% is imposed on taxable goods that are subject to Luxury Goods Sales Tax (LGST). These taxable goods are luxury automotive vehicles (as stipulated in MoF Regulation No 141/PMK.010/2021 as amended by MoF Regulation No 42/PMK.010/2022), and luxury goods other than automotive vehicles (as stipulated in MoF Regulation No 96/PMK.03/2021 as amended by MoF Regulation No 15/PMK.03/2023 – “PMK-15”). Luxury goods other than automotive vehicles as stated in PMK-15 are limited to: (a) luxury residences, such as luxury houses, apartments, town houses and alike, with sales value of at least Rp. 30 billion; (b) air balloon and glider; (c) private firearms and their ammunitions, (d) private helicopter and jets; and (e) private cruise ships and yachts. The importation and/ or delivery of taxable goods within Customs Area by VAT-able Entrepreneurs, other than the luxury goods mentioned above, and the utilization of intangible taxable goods and/ or taxable services from outside of Customs Area in the Customs Area, is subject to VAT rate of 12% on the Adjusted Tax Base. The Adjusted Tax Base is defined as 11/12 of the import value, sales value or replacement value. So that the effective VAT rate remains at 11% (i.e., 12% x 11/12 x import value or sales value or replacement value = 11% x import value or sales value or replacement value). Input VAT on the acquisition or import of taxable goods and/ or services and utilization of intangible taxable goods and/ or taxable services from outside of Customs Area in the Customs Area, which are using Adjusted Tax Base in the calculation, can be credited in accordance with the prevailing tax regulations. VAT on the delivery of taxable goods and/or services that have used Adjusted Tax Base and those using certain amount which are separately regulated under the prevailing tax regulations, are excluded from the provisions under PMK-131. The VAT thereon shall continue to be calculated in accordance with those prevailing tax regulations. 6.VAT-able Entrepreneurs who deliver luxury taxable goods (as mentioned above) to end-consumers shall apply the following: From 1 January 2025 to 31 January 2025, the VAT payable is calculated using the VAT rate of 12% multiplied by the Adjusted Tax Base of 11/12 of sales value (i.e., effective VAT rate of 11% of the sales value); and Starting 1 February 2025, the VAT payable is calculated using the VAT rate of 12% of the sales value or import value."
+      },
+      {
+        "source_id": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+        "citation_number": 16,
+        "cited_text": "Standard Rate : 12% (up from 11%) Effective Rate : 11% for non-luxury goods (using 11/12 adjusted tax base) Luxury Goods : Full 12% rate applies Target Audience: PKP (VAT-registered entrepreneurs) Penalty Risk: HIGH – 2% monthly interest + administrative fines ALSO READ: SPT Tahunan for Indonesian SMEs in 2025: Complete Filing Guide with Coretax System ALSO READ: ESG 101: Why Sustainable Business Setup is the Future of Indonesia Investment Avoid HIGH-RISK Tax Penalties: Master Indonesia's New Monthly Obligations (Deadlines Changed!) Click Here"
+      },
+      {
+        "source_id": "8449662f-a07d-4868-88c7-3f10f20ba520",
+        "citation_number": 17,
+        "cited_text": "Core Functions and Objectives of the CoreTax System Download publications An Introduction to Doing Business in Indonesia 2026 CoreTax represents a comprehensive reimagining of tax administration , built around five core business processes that integrate previously separate functions: Registration and taxpayer management: The system introduces a unified approach to taxpayer registration, incorporating new features such as facial recognition for identity verification and automatic generation of Tax Identification Numbers (NPWP) for individuals using their National Identity Numbers (NIK). For businesses, the system streamlines the process of obtaining Taxable Entrepreneur (PKP) status and managing corporate tax obligations. Tax return management: CoreTax consolidates all tax return processes into a single platform, eliminating the need for multiple applications. The system automatically generates tax invoice serial numbers and provides real-time validation of submitted data. Processing times have been dramatically reduced, with tax return submission dropping from 29.28 seconds to just 3.93 seconds according to official DJP data. Payment processing: The system introduces three streamlined billing code generation schemes, including automated generation linked to tax return filing, payment of tax assessments, and self-service creation for specific obligations. A significant innovation is the introduction of a \"tax deposit\" feature, functioning like an e-wallet system that allows taxpayers to pre-fund their tax obligations. Taxpayer services: CoreTax provides comprehensive taxpayer account management through its Taxpayer Account Management (TAM) feature, offering a unified view of all tax-related information and transactions. This includes real-time access to payment histories, outstanding obligations, and compliance status. Compliance monitoring: The system integrates data from multiple sources, including population databases, third-party transaction records, and e-commerce platforms, enabling comprehensive compliance monitoring and reducing opportunities for tax evasion."
+      },
+      {
+        "source_id": "8449662f-a07d-4868-88c7-3f10f20ba520",
+        "citation_number": 18,
+        "cited_text": "Benefits of the CoreTax system CoreTax represents a paradigm shift toward unprecedented transparency in Indonesia's tax system, creating significant benefits for compliant taxpayers while substantially reducing opportunities for tax evasion. The system's most significant transparency feature is its ability to integrate taxpayer data with multiple external sources, including banking records, customs data, population databases, and third-party transaction information. CoreTax automatically cross-references VAT invoices with actual transaction data, making fictitious invoice schemes significantly more difficult to execute. The system's comprehensive data integration provides tax authorities with sophisticated tools for identifying potential compliance issues before they become major problems. The system's digital nature and automated processes significantly reduce opportunities for corruption in tax administration. The technical capabilities of CoreTax deliver substantial improvements in data accuracy and processing speed that benefit both taxpayers and tax authorities. Login times have been reduced from 4.1 seconds to 0.012 seconds, registration processes from 5.8 seconds to 0.045 seconds, and tax invoice generation from 10 seconds to 1.46 seconds. The system's real-time validation capabilities identify errors and inconsistencies immediately during data entry, rather than after processing. CoreTax provides automated reconciliation between payments and reporting, eliminating manual matching processes that were prone to errors and delays. The system's integration with authoritative databases ensures that basic taxpayer information remains accurate and current. Automatic updates from population databases, business registries, and other official sources reduce the burden on taxpayers to maintain current information while ensuring data accuracy."
+      },
+      {
+        "source_id": "f5068195-93de-4962-b552-23cb24b01105",
+        "citation_number": 19,
+        "cited_text": "Salah satu stimulus yang diberikan adalah perpanjangan periode pemanfaatan pajak penghasilan (PPh) final sebesar 0,5% bagi orang pribadi pelaku UMKM. Menko Perekonomian Airlangga Hartarto mengatakan skema PPh final UMKM dengan tarif 0,5% diputuskan untuk tetap berlaku bagi wajib pajak orang pribadi hingga 2029. Baca Juga: Tantangan Coretax, DJP: Banyak Data Eksternal yang Perlu Divalidasi \"Terkait PPh final UMKM yang pendapatannya Rp4,8 miliar setahun, itu pajak finalnya 0,5% dilanjutkan sampai 2029. Jadi, tidak diperpanjang setahun-setahun, tetapi diberikan kepastian sampai 2029,\" katanya."
+      },
+      {
+        "source_id": "fbc14489-bbd2-4eb6-a9fc-9a81823cfdf7",
+        "citation_number": 20,
+        "cited_text": "GMT Focus EN | ID | JP Search News Revision to Government Regulation 55/2022: No Time Limit for Final Income Tax for Individual MSME Taxpayers Friday, 21 November 2025 JAKARTA. The government is finalizing amendments to the rules regarding final income tax for Micro, Small, and Medium Enterprise (MSME) taxpayers. Previously, provisions on MSME income tax were regulated under Government Regulation (PP) No. 55 of 2022. Under that regulation, MSME taxpayers, those with an annual gross revenue of up to IDR 4.8 billion, are entitled to a final income tax rate of 0.5% of their revenue."
+      },
+      {
+        "source_id": "fbc14489-bbd2-4eb6-a9fc-9a81823cfdf7",
+        "citation_number": 21,
+        "cited_text": "No Time Limit According to Kompas.com, a key change to be introduced is that the government will remove the time limit for individual MSME taxpayers in using this facility. Previously, individual taxpayers were only allowed to apply the 0.5% final income tax rate for a period of seven years. This change will override the government's earlier statement that the MSME tax facility would only be extended until 2027. Corporate Taxpayers Lose Eligibility for 0.5% Final Income Tax Meanwhile, the government plans to revoke the 0.5% final tax facility for corporate taxpayers. Under the previous rule, corporate taxpayers in the form of limited partnerships (CV), firms, and village-owned enterprises with annual revenue up to IDR 4.8 billion were eligible for the facility for three years."
+      },
+      {
+        "source_id": "9e49136b-5efe-4a04-99a5-e25907c0f58f",
+        "citation_number": 22,
+        "cited_text": "CARATTERISTICHE: Aliquota: 0,5% SUL FATTURATO LORDO (omzet) — NON sull'utile Applicabile se omzet ≤ Rp 4.800.000.000/anno (4,8 miliardi) È un'imposta FINALE (tidak dapat dikreditkan) Scelta facoltativa, non obbligatoria DURATA MASSIMA (PP 55/2022): [TAX-074] Wajib pajak orang pribadi (persone fisiche): 7 tahun CV/Firma (persekutuan): 4 tahun PT (Perseroan Terbatas): 3 tahun dalla data costituzione NOTA CRITICA PER PT PMA: Le PT PMA RARAMENTE rientrano in questo regime perché: Il capitale minimo (Rp 10 miliardi) è incompatibile con una microimpresa da 4,8 miliardi di omzet Il BKPM/OSS richiede dimostrazione di attività economica proporzionale al capitale — una villa di lusso o ristorante premium solitamente supera rapidamente il threshold UMKM"
+      },
+      {
+        "source_id": "d5f2d49e-48b1-4b15-aa83-d494994c8709",
+        "citation_number": 23,
+        "cited_text": "Versamento PPh 21 (ritenuta stipendi dipendenti WNI/WNA penduduk) Versamento PPh 26 (ritenuta compensi WNA non penduduk) Versamento PPh 23 (ritenuta su servizi, dividendi, royalties) Versamento PPh 4(2) Final (sewa tanah/bangunan, se applicabile) Nota: con CoreTax 2025, alcune scadenze slittano al 15 ENTRO IL 15 DEL MESE SUCCESSIVO: Versamento PPh 25 (acconto mensile PPh Badan) Versamento BPJS Ketenagakerjaan e Kesehatan Versamento PPN (se PKP registrato) — ora anche SPT Masa PPN ENTRO IL 20 DEL MESE SUCCESSIVO (dichiarazioni/report):"
+      },
+      {
+        "source_id": "8449662f-a07d-4868-88c7-3f10f20ba520",
+        "citation_number": 24,
+        "cited_text": "PMK-81 adjusted several compliance deadlines to align with the new system's capabilities. Notably, the monthly Income Tax (PPh) payment deadline was extended from the 10th to the 15th of the following month, providing businesses with additional time to utilize the system's enhanced processing capabilities. Integration with Accounting and ERP Systems CoreTax provides Application Programming Interface (API) access that enables direct integration with business systems The system requires specific data formats for electronic submission, particularly for financial statements that must be submitted electronically in predetermined formats."
+      },
+      {
+        "source_id": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+        "citation_number": 25,
+        "cited_text": "Indonesia Tax Compliance Calendar 2025 JCSS-Indonesia Indonesia Tax Compliance Calendar 2025 Start Business in Indoensia || August 13, 2025 Indonesia Tax Compliance Calendar 2025 The Ultimate Guide for VPs, CFOs & Heads of Finance Also Read in : Indonesian(Basaha) CRITICAL ALERT: Major Tax Changes in 2025 Immediate Action Required: VAT Rate Increase : 11% → 12% (January 1, 2025) – 12% is applicable only for luxury goods, rest all remains 11% only. Payment Deadline Change : 10th → 15th of following month New Tax System : Core tax replaces DJP Online – For monthly compliance yes, however for annual compliance such as SPT filing etc to be done from DJP only. E-commerce Tax : 0.5% withholding starts July 14"
+      },
+      {
+        "source_id": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+        "citation_number": 26,
+        "cited_text": "Executive Summary Total Tax Obligations Tracked: 41 critical deadlines High-Risk Items: 27 obligations with severe penalties System Changes: Complete digital transformation required 2025 Tax Rate Quick Reference Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut elit tellus, luctus nec ullamcorper mattis, pulvinar dapibus leo. Monthly Tax Compliance Schedule MONTHLY PAYMENT OBLIGATIONS Deadline: 15th of Following Month (NEW – Changed from 10th) Tax Types Covered: Article 21: Employee salary withholding tax Article 22: Import and specific transaction withholding Article 23: Service payment withholding tax Article 4(2): Final withholding tax Article 25: Monthly corporate income tax installments"
+      },
+      {
+        "source_id": "ed3b3660-7791-4332-beea-48a1dc1e9f0e",
+        "citation_number": 27,
+        "cited_text": "Target Audience: All companies, employers, withholding agents Penalty Risk: HIGH – Interest penalties at benchmark rate + 5% Payment Method: Coretax system only MONTHLY REPORTING OBLIGATIONS Deadline: 20th of Following Month Requirements: Submit monthly tax returns (SPT Masa) electronically Target Audience: All companies, employers, withholding agents Penalty Risk: MEDIUM – Administrative penalties apply System: Coretax mandatory VAT (PPN) OBLIGATIONS Deadline: End of Following Month New 2025 Requirements:"
+      },
+      {
+        "source_id": "2cf6f175-411d-4a0e-9ef7-61ed5ebe1110",
+        "citation_number": 28,
+        "cited_text": "Tax payments and deadlines Corporate taxpayers must fulfill their tax obligations either through monthly installments (Article 25), third-party withholdings, or a combination of both. The deadline for filing the annual income tax return is four months after the end of the fiscal year, with the tax payment due by the same date. While most Indonesian companies adopt the calendar year (January 1 to December 31) as their fiscal year, the fiscal year may also align with a company's financial year as stipulated in its Articles of Association."
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 29,
+        "cited_text": "Pro Tip: Do not assume the Indonesian party will automatically apply the reduced treaty rate. Many payers default to 20% unless the foreign counterpart proactively submits a valid CoD and requests treaty treatment before payment is made. SPT Tahunan: The Annual Tax Return SPT Tahunan (Surat Pemberitahuan Tahunan) is the annual income tax return filed by all registered taxpayers in Indonesia. It applies to both individuals and business entities. Filing Deadlines Taxpayer Type   Deadline   Individual taxpayers (SPT Tahunan Orang Pribadi)   31 March   Corporate taxpayers (SPT Tahunan PPh Badan)   30 April"
+      },
+      {
+        "source_id": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+        "citation_number": 30,
+        "cited_text": "Register your Taxpayer ID in Indonesia with LMI Consultancy here Foreign professionals are encouraged to consult with licensed tax advisors or business consultants to ensure all reporting obligations are properly handled, especially when linked to employment contracts or investment income. Personal vs Corporate NPWP 1. Personal Tax Identification Number A Personal NPWP is issued to individuals earning income in Indonesia, whether from employment, freelance work, or investments. Holders of personal NPWP must submit Annual Income Tax Returns (SPT Tahunan Orang Pribadi) by 31 March each year."
+      },
+      {
+        "source_id": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+        "citation_number": 31,
+        "cited_text": "Contact Us [ Jakarta Office +62 21 300 297 27](tel:+622130029727) [ Seminyak Office +62 361 934 8343](tel:+623619348343) [ Canggu Office +62 361 939 9406](tel:+623619399406) [ Sanur Office +62 361 280 789](tel:+62361280789) +62 21 300 297 27 Start Chat Home News Indonesia Announces SPT Filing Relaxation Until 30 April 2026 natalia Hanifa March 27, 2026 Share: The Indonesian government has released a policy to extend relief for individual taxpayers by allowing late submission of the 2025 Annual Personal Income Tax Return (SPT Tahunan PPh OP) without penalties until 30 April 2026."
+      },
+      {
+        "source_id": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+        "citation_number": 32,
+        "cited_text": "Announced by Finance Minister Purbaya Yudhi Sadewa on 25 March, the policy comes as part of a broader response to technical disruptions and seasonal challenges affecting tax reporting compliance. Originally due on 31 March 2026, the filing deadline will not be formally changed. Instead, the government plans to waive the administrative penalty of IDR 100,000 typically imposed on late submissions. Policy Driven by Technical and Seasonal Factors Authorities cited two key reasons behind the policy. First, the tax reporting period coincided with the Idul Fitri holiday, reducing the effective filing window for many taxpayers."
+      },
+      {
+        "source_id": "179044a5-fd0e-4562-b7f6-865e2e232b30",
+        "citation_number": 33,
+        "cited_text": "Not A Legal Extension Despite being widely described as an “extension,” the policy does not alter the statutory deadline. Under Article 3 of Indonesia's General Tax Provisions and Procedures Law (UU KUP), individual taxpayers are required to submit their annual tax returns no later than three months after the end of the fiscal year, effectively 31 March. The law also stipulates that extensions can only be requested individually by taxpayers, not granted universally by the government. As such, the current policy is technically a relaxation mechanism, not a legal extension. The government is utilizing its authority under Article 36 of the UU KUP to eliminate administrative sanctions, rather than revising the deadline itself."
+      },
+      {
+        "source_id": "a422b971-23fe-4f7d-8abd-12677b6244c2",
+        "citation_number": 34,
+        "cited_text": "Who do DTAAs apply to? The provisions of DTAAs apply to individuals and companies who are residents of one or both contracting states. The term “persons” refers to any entity recognized as a taxpayer for tax purposes. An individual is considered a tax resident in Indonesia if they have been present in the country for more than 183 days within a 12-month period, or if they intend to stay in Indonesia. In such cases, they will be considered domestic tax subjects. The government has clarified further the definition of 'residing in Indonesia' and the 'intention to stay in Indonesia'."
+      },
+      {
+        "source_id": "a422b971-23fe-4f7d-8abd-12677b6244c2",
+        "citation_number": 35,
+        "cited_text": "For the purposes of taxation, an individual is considered to be “residing in Indonesia” if they meet the following criteria: They live in a place of residence in Indonesia that is under their control and can be accessed at any time, which they either own or rent and is not a place of transit; They have significant personal or vital interests in Indonesia; and, They have their regular or habitual residence in Indonesia. An 'intention to stay in Indonesia' needs to be substantiated with the following documents:"
+      },
+      {
+        "source_id": "56966138-2e6c-4875-aa96-c45c589a2d28",
+        "citation_number": 36,
+        "cited_text": "For businesses, tax returns are due at the end of the fourth month after the fiscal year-end. That means businesses that operate on a calendar-year basis must file by April 30th. However, the due date varies for businesses that operate on a different fiscal calendar. Determining Indonesian tax residency Indonesia defines tax residents as those who: Reside in Indonesia Are present in Indonesia for more than 183 days in any 12-month period Enter Indonesia during the tax year with the intention to stay Note: Indonesia typically considers those applying for a visa that lasts more than six months, a work permit, or a permanent stay permit to fall into this category."
+      },
+      {
+        "source_id": "e6aae613-74b0-4483-91a7-91bec11fdb5d",
+        "citation_number": 37,
+        "cited_text": "It also acts as proof of tax registration, demonstrating that the holder is compliant with Indonesia's fiscal regulations. Without it, individuals and companies may face administrative penalties or higher tax rates. Do Expats Need a Taxpayer Identification Number in Indonesia? Yes, expatriates working or earning income in Indonesia are generally required to obtain an NPWP. Under Indonesian law, any foreign national who stays in the country for more than 183 days within a 12-month period, or intends to reside and work in Indonesia, is classified as a resident taxpayer. As such, they must report and pay tax on their Indonesia-sourced income."
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 38,
+        "cited_text": "Non-Taxable Income Threshold (PTKP) — Current Rates: Single individual: IDR 54,000,000 per year Married individual (additional for husband): IDR 4,500,000 Per dependent child (maximum 3 children): IDR 4,500,000 each Pro Tip: A married expatriate executive with three dependent children is not taxed on the first IDR 72,000,000 of annual income. This is worth factoring into employment cost planning before finalising a compensation package. PPh 21: Employment Income Withholding PPh 21 (Pajak Penghasilan Pasal 21) is the withholding tax applied to employment and service income. It covers salaries, bonuses, allowances, and professional fees paid to both local employees and expatriate staff classified as tax residents."
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 39,
+        "cited_text": "Since 1 January 2024, the monthly calculation method changed significantly. The new Average Effective Rate system (TER / Tarif Efektif Rata-Rata) , introduced under Government Regulation No. 58 of 2023 (PP 58/2023) and Ministry of Finance Regulation No. 168 of 2023 (PMK-168/2023) , simplified the monthly payroll process. Here is how it works in practice: Employees are placed into one of three TER categories (A, B, or C), based on their marital and dependent status Employers apply the corresponding effective monthly rate to gross monthly income In December, or upon termination, the full-year liability is recalculated using the standard progressive brackets, and any difference is settled"
+      },
+      {
+        "source_id": "f8ac9ed5-6b7d-45f2-af69-a34bf88986ae",
+        "citation_number": 40,
+        "cited_text": "Personal Income Tax Indonesia: Who Needs to Pay? The 183-Day Residency Rule Residency status is what determines how broadly an individual is taxed. A person is classified as a tax resident in Indonesia if they meet any of the following conditions: They are domiciled in Indonesia They are physically present in Indonesia for more than 183 days within any 12-month period They are present in Indonesia during the tax year with the intention to reside there Resident taxpayers are subject to Indonesian tax on their worldwide income , while non-resident taxpayers are only taxed on income that is sourced within Indonesia. For non-residents, tax is typically collected through a final withholding mechanism (PPh 26) at a standard rate of 20%, which can be reduced under an applicable tax treaty."
+      },
+      {
+        "source_id": "c3ad1f89-8394-4b36-94d6-8d6633ff4fd1",
+        "citation_number": 41,
+        "cited_text": "Indonesia's PMK No. 112 of 2025: Procedures for Implementing Double Taxation Avoidance Agreements Skip to main content Apply Main navigation About A&M Alumni Build Your Career at A&M Contact Us Inclusive Diversity ESG & Sustainability Expertise Digital Corporate Transactions Environmental, Technical and Sustainability Services Corporate Performance Improvement A&M INFRA Corporate Finance Private Equity Services Restructuring & Turnaround Tax Disputes and Investigations Global Valuation Services Regulatory & Risk Advisory A&M Crypto Advisory Industries Advanced Materials and Chemicals Aerospace, Defense, Aviation & Space Automotive & Industrials Business Services Consumer Products Education Energy Environmental Disputes Financial Services Healthcare Life Sciences Media & Entertainment Public Sector Services Real Estate Retail Technology Industry Group Telecommunications & Digital Infrastructure Transportation & Logistics Travel, Hospitality and Leisure Insights Media Our People Global Locations Europe and Middle East Austria Benelux Bermuda British Virgin Islands Cayman Islands Czech Republic Denmark Finland France Germany Greece Ireland Israel Italy Kazakhstan Norway Poland Portugal Qatar Romania Saudi Arabia Spain Sweden Switzerland Turkey Ukraine United Arab Emirates United Kingdom Uzbekistan India Latin America Brazil Chile Colombia Mexico North America Canada United States North Asia China Japan Korea Southeast Asia & Australia Australia Indonesia Malaysia Singapore Thailand Vietnam Careers Trade & Tariffs"
+      }
+    ]
+  }
+}

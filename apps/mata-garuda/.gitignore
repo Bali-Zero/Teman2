@@ -1,0 +1,11 @@
+# Mata Garuda — runtime data (NEVER push)
+feedback/
+logs/
+data/
+reflections/
+skills/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/

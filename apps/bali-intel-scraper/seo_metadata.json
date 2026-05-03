@@ -1,0 +1,42 @@
+{
+  "seoTitle": "Visa Atlet Asing IBL 2026: Imigrasi Permudah Proses KITAS",
+  "seoDescription": "Ditjen Imigrasi berinovasi untuk mempermudah administrasi visa dan KITAS bagi pemain basket asing di IBL. Pelajari bagaimana aturan baru mendukung industri olahraga.",
+  "keywords": [
+    "visa atlet asing",
+    "kitas pemain basket",
+    "ibl indonesia",
+    "imigrasi untuk atlet",
+    "foreign athlete visa indonesia",
+    "peraturan imigrasi terbaru 2026",
+    "syarat kitas atlet"
+  ],
+  "aiOptimization": {
+    "answerSnippet": "Direktorat Jenderal Imigrasi Indonesia mempermudah proses administrasi visa dan KITAS untuk pemain asing di Indonesian Basketball League (IBL). Inovasi ini mengakui kontribusi atlet asing dalam meningkatkan kualitas kompetisi, siaran, dan sponsor liga.",
+    "primaryQuestion": "Bagaimana proses visa kerja (KITAS) untuk atlet asing di Indonesia?",
+    "entityMentions": [
+      { "name": "Indonesian Basketball League (IBL)", "type": "Organization" },
+      {
+        "name": "Direktorat Jenderal Imigrasi",
+        "type": "GovernmentOrganization"
+      },
+      { "name": "KITAS", "type": "Product" },
+      { "name": "Indonesia", "type": "Place" }
+    ]
+  },
+  "faqSchema": [
+    {
+      "question": "Apa peran pemain asing di IBL?",
+      "answer": "Pemain asing meningkatkan level kompetitif, menarik penonton, dan mendorong nilai komersial liga melalui sponsor dan hak siar."
+    },
+    {
+      "question": "Apa jenis visa yang digunakan oleh atlet asing di Indonesia?",
+      "answer": "Atlet asing profesional biasanya menggunakan Izin Tinggal Terbatas (KITAS) yang berfungsi sebagai izin kerja dan tinggal mereka selama masa kontrak."
+    },
+    {
+      "question": "Mengapa Imigrasi memberikan kemudahan untuk atlet asing?",
+      "answer": "Imigrasi mendukung pertumbuhan industri olahraga di Indonesia dengan menyederhanakan birokrasi, mengakui dampak positif atlet asing bagi ekonomi dan perkembangan olahraga nasional."
+    }
+  ],
+  "og_title": "Pemain Asing Beri Warna IBL, Ditjen Imigrasi Permudah Proses Visa dan Kitas",
+  "og_description": "Inovasi terbaru dari Ditjen Imigrasi membuka jalan bagi pemain basket asing untuk lebih mudah berkarir di Indonesian Basketball League (IBL), mendorong pertumbuhan industri olahraga."
+}

@@ -1,0 +1,43 @@
+{
+  "admin": {
+    "calendar": {
+      "title": "Calendar",
+      "fallbackName": "Bali Zero Calendar",
+      "newEventButton": "New",
+      "newEventTitle": "New Event",
+      "today": "Today",
+      "eventsCount": "{{count}} events",
+      "loading": "Loading...",
+      "noEventsScheduled": "No events scheduled",
+      "noEventsUpcoming": "No upcoming events",
+      "upcomingEvents": "Upcoming Events",
+      "moreEvents": "+{{count}} more",
+      "fields": {
+        "title": "Title",
+        "from": "Start",
+        "to": "End",
+        "location": "Location",
+        "description": "Description",
+        "attendees": "Attendees"
+      },
+      "placeholders": {
+        "title": "Add title",
+        "location": "Add location",
+        "description": "Add description",
+        "attendees": "email@example.com, other@example.com"
+      },
+      "addGoogleMeet": "Add Google Meet",
+      "joinGoogleMeet": "Join with Google Meet",
+      "buttons": {
+        "cancel": "Cancel",
+        "save": "Save"
+      },
+      "actions": {
+        "errorPrefix": "Error: ",
+        "deleteEventConfirm": "Delete this event?"
+      },
+      "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+      "weekdaysFull": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    }
+  }
+}
