@@ -627,3 +627,9 @@ data/seo_cell/*.db-shm
 /Nuzantara/
 /api-news.txt
 /api-*.txt
+
+# Codex spalla transcripts (machine-local audit trail; canonical location is
+# ~/logs/codex-spalla/ + ~/logs/codex-spalla.jsonl telemetry, both per-machine).
+# Transcripts contain `(see ~/.codex/AGENTS.md)` references that docs_audit.py
+# parses as broken markdown links and fails Docs Guardian on every PR.
+docs/codex-reviews/

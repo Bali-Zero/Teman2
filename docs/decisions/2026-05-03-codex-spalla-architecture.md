@@ -49,7 +49,7 @@ Keep `/codex-second-opinion` and Consiglio v1 **separate**. Do not bolt Codex in
 
 ### Q2 — Transcript storage
 
-**Chosen: (c) hybrid** — `~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md` for routine runs (per-machine, not git-tracked); only BLOCKER-tagged runs are also copied to `docs/codex-reviews/<ts>-<rand>-blocker-<slug>.md` for git audit trail. The `<rand>` 4-hex suffix + race-safe noclobber creation in the helper guarantee no two concurrent runs ever silently clobber each other's transcript.
+**Chosen: (c) hybrid** — `~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md` for routine runs (per-machine, not git-tracked). BLOCKER-tagged runs are also `cp`'d to `docs/codex-reviews/<ts>-<rand>-blocker-<slug>.md`, but **that path is gitignored** (transcripts contain `(see ~/.codex/AGENTS.md)`-style references that `docs_audit.py` parses as broken markdown links, breaking the Docs Guardian inventory-check on every PR). The canonical audit trail therefore lives in `~/logs/codex-spalla/` + the JSONL telemetry; `docs/codex-reviews/` is a per-machine convenience copy. The `<rand>` 4-hex suffix + race-safe noclobber creation in the helper guarantee no two concurrent runs ever silently clobber each other's transcript.
 **Reason:** keeps repo clean while preserving high-signal transcripts for future learning (parallel to PR #181 case study citation).
 
 ### Q3 — Anti-pattern guard threshold
