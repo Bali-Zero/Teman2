@@ -41,11 +41,15 @@ Codex CLI is installed (0.124.0, ChatGPT Plus OAuth, GPT-5.5 + xhigh) and operat
 ┌─────────────────────────────────────────────────────────────┐
 │ .claude/scripts/codex-spalla.sh                             │
 │   1. anti-pattern guard (3-line banner + 5s countdown)      │
-│   2. diff capture                                           │
-│   3. dispatch:                                              │
-│      Pattern B (default): codex review --base main          │
+│   2. diff capture (committed + uncommitted + untracked      │
+│      contents head -200 each, max 25 files)                 │
+│   3. dispatch (both patterns use `codex exec` because        │
+│      `codex review --base` rejects stdin context):          │
+│      Pattern B (default): codex exec --sandbox read-only    │
 │      Pattern A (--mode=exec): codex exec --full-auto        │
-│   4. transcript saved to ~/logs/codex-spalla/<ts>-<slug>.md │
+│   4. transcript saved race-safely to                        │
+│      ~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md       │
+│      (set -C noclobber + counter suffix on collision);      │
 │      copied to docs/codex-reviews/ if BLOCKER found         │
 │   5. telemetry → ~/logs/codex-spalla.jsonl                  │
 └─────────────────────────────┬───────────────────────────────┘
@@ -106,7 +110,7 @@ Shell helper, single source of truth. Bash 3.2-compatible (macOS default).
 
 **Dispatch logic:**
 
-- Pattern B (review): `codex review --base "$BASE" --title "[SPALLA] ${FOCUS:-uncommitted-diff}"`. If `codex review` doesn't accept stdin context, fall back to `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh "<built prompt>"`.
+- Pattern B (review): `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh` with the [SPALLA] prompt fed via stdin. (We tried `codex review --base "$BASE" --title "[SPALLA] ..."` first but it rejects stdin context, error: "argument '--base <BRANCH>' cannot be used with '[PROMPT]'", so we settled on `codex exec --sandbox read-only` which accepts our custom prompt while staying read-only on the workspace.)
 - Pattern A (exec): `codex exec --full-auto -c model_reasoning_effort=xhigh "<built prompt>"`.
 
 **Output handling:**
@@ -160,13 +164,13 @@ Shell helper, single source of truth. Bash 3.2-compatible (macOS default).
 
 1. User types `/codex-second-opinion adversarial — focus on race conditions`.
 2. Slash command markdown loads. Claude parses args.
-3. Claude calls `bash .claude/scripts/codex-spalla.sh review main "adversarial — focus on race conditions"`.
-4. Script captures `git diff main...HEAD`, runs anti-pattern guard.
-5. Script dispatches `codex review --base main --title "[SPALLA] adversarial — focus on race conditions"`.
+3. Claude calls `.claude/scripts/codex-spalla.sh review main "adversarial — focus on race conditions"` (direct invocation, NOT via `bash <script>` — keeps the allowed-tools whitelist match).
+4. Script captures `git diff main...HEAD`, the uncommitted diff against `HEAD`, and the full content of every untracked file (head -200 each, max 25 files, binary/>500KB skipped). Then runs anti-pattern guard against TOTAL_DIFF_LINES so large WIP edits don't get classified as "small scope".
+5. Script dispatches `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh` with the `[SPALLA]` prompt fed via stdin. (Pattern A: `codex exec --full-auto` without `--sandbox read-only`.) Note: `codex review --base` rejects stdin context, so both patterns use `codex exec` with the custom [SPALLA] prompt.
 6. Codex reads `~/.codex/AGENTS.md`, sees `[SPALLA]` prefix, switches to spalla output mode.
 7. Codex returns verdict (~3-8 min on xhigh).
-8. Script saves transcript, parses verdict, writes telemetry.
-9. Claude reads transcript path from script stdout and surfaces the verdict to user.
+8. Script saves transcript via race-safe noclobber creation (`set -C; : > "$TRANSCRIPT"`); on collision, an incrementing counter suffix is appended. Parses verdict, writes telemetry, and copies to `docs/codex-reviews/` if BLOCKER.
+9. Claude reads transcript path from script stdout (`RESULT_PATH=...`) and surfaces the verdict to user.
 
 ## 6. ChatGPT Pro upgrade — current decision
 

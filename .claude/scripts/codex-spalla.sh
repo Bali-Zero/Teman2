@@ -89,7 +89,12 @@ if [[ "$TOTAL_DIFF_LINES" -eq 0 ]] && [[ "$UNTRACKED_FILES" -eq 0 ]]; then
     exit 2
 fi
 
-if [[ "$DIFF_LINES" -lt 10 ]] || [[ "$FILES_CHANGED" -lt 3 ]]; then
+# Scope-warning uses TOTAL_DIFF_LINES (committed + uncommitted) so that a
+# branch with only large uncommitted edits is not misclassified as "small
+# scope". `FILES_CHANGED` still reflects committed-only stat — combine with
+# untracked count for the file-count check (Codex spalla self-review #2).
+TOTAL_FILES=$((FILES_CHANGED + UNTRACKED_FILES))
+if [[ "$TOTAL_DIFF_LINES" -lt 10 ]] || [[ "$TOTAL_FILES" -lt 3 ]]; then
     WARNED="true"
     printf '⚠ scope is small — Claude self-review may be cheaper.\n' >&2
     printf '⚠ proceeding in 5s (Ctrl-C to cancel) ...\n' >&2
@@ -110,8 +115,24 @@ SLUG="$(echo "${FOCUS:-uncommitted}" | tr -c '[:alnum:]-' '-' | tr -s '-' | cut 
 
 LOG_DIR="$HOME/logs/codex-spalla"
 TELEMETRY_FILE="$HOME/logs/codex-spalla.jsonl"
-TRANSCRIPT="$LOG_DIR/${TS}-${RAND}-${MODE}-${SLUG}.md"
 mkdir -p "$LOG_DIR"
+
+# Codex spalla self-review #3: race-safe transcript creation. Use noclobber
+# (set -C) to refuse-write if the path already exists; on collision, append
+# an incrementing counter until we find a free path. Guarantees no two
+# concurrent runs ever silently clobber each other's transcript.
+TRANSCRIPT_BASE="$LOG_DIR/${TS}-${RAND}-${MODE}-${SLUG}"
+TRANSCRIPT="${TRANSCRIPT_BASE}.md"
+__counter=0
+while ! ( set -C; : > "$TRANSCRIPT" ) 2>/dev/null; do
+    __counter=$((__counter + 1))
+    if [[ "$__counter" -gt 99 ]]; then
+        echo "ERROR: cannot create unique transcript path after 100 attempts" >&2
+        exit 1
+    fi
+    TRANSCRIPT="${TRANSCRIPT_BASE}-${__counter}.md"
+done
+# Empty file now exclusively owned; codex output below appends via >> not >.
 
 record_telemetry() {
     local exit_code="$1"
@@ -136,7 +157,33 @@ fi
 # Capture diff bodies once for embedding in the prompt.
 DIFF_BODY="$(git "${DIFF_ARGS[@]}" 2>/dev/null | head -2000 || echo '<diff capture failed>')"
 UNCOMMITTED_BODY="$(git diff HEAD 2>/dev/null | head -1000 || true)"
+
+# Codex spalla self-review #1: embed full content of each untracked file
+# (with per-file line cap) so reviewers can actually inspect new files.
+# Cap: max 25 files × 200 lines/file ≈ 5000 lines budget, plus skip binary.
+UNTRACKED_FILES_FOR_DUMP="$(git ls-files --others --exclude-standard 2>/dev/null | head -25 || true)"
 UNTRACKED_LIST="$(git ls-files --others --exclude-standard 2>/dev/null | head -50 || true)"
+UNTRACKED_TOTAL_FOR_DUMP="$(printf '%s\n' "$UNTRACKED_FILES_FOR_DUMP" | grep -c . 2>/dev/null || echo 0)"
+UNTRACKED_BODIES=""
+if [[ -n "$UNTRACKED_FILES_FOR_DUMP" ]]; then
+    while IFS= read -r ufile; do
+        [[ -z "$ufile" ]] && continue
+        # Skip binary / large files (>500KB) — embedding either would just
+        # blow the token budget.
+        if [[ ! -f "$ufile" ]]; then continue; fi
+        if [[ "$(file --brief --mime-encoding "$ufile" 2>/dev/null)" == "binary" ]]; then
+            UNTRACKED_BODIES+=$'\n----- BEGIN UNTRACKED FILE: '"$ufile"$' (binary, skipped) -----\n'
+            continue
+        fi
+        if [[ "$(wc -c < "$ufile" 2>/dev/null || echo 0)" -gt 500000 ]]; then
+            UNTRACKED_BODIES+=$'\n----- BEGIN UNTRACKED FILE: '"$ufile"$' (>500KB, skipped) -----\n'
+            continue
+        fi
+        UNTRACKED_BODIES+=$'\n----- BEGIN UNTRACKED FILE: '"$ufile"$' -----\n'
+        UNTRACKED_BODIES+="$(head -200 "$ufile" 2>/dev/null || echo '<read failed>')"
+        UNTRACKED_BODIES+=$'\n----- END UNTRACKED FILE: '"$ufile"$' -----\n'
+    done <<< "$UNTRACKED_FILES_FOR_DUMP"
+fi
 
 PROMPT="[SPALLA]
 
@@ -164,24 +211,31 @@ ${DIFF_BODY}
 ${UNCOMMITTED_BODY}
 --- END UNCOMMITTED DIFF ---
 
---- UNTRACKED FILES (truncated to 50) ---
+--- UNTRACKED FILES (paths, truncated to 50) ---
 ${UNTRACKED_LIST}
---- END UNTRACKED FILES ---"
+--- END UNTRACKED FILES ---
+
+--- UNTRACKED FILE CONTENTS (first 25 files, head -200 each, binary/>500KB skipped) ---
+${UNTRACKED_BODIES}
+--- END UNTRACKED FILE CONTENTS ---"
 
 echo "Dispatching codex (mode=$MODE base=$BASE committed=${DIFF_LINES}L/${FILES_CHANGED}f uncommitted=${UNCOMMITTED_LINES}L untracked=${UNTRACKED_FILES})" >&2
 echo "Transcript will be saved to: $TRANSCRIPT" >&2
 
 CODEX_EXIT=0
+# Append (>>) not truncate (>) — TRANSCRIPT was created exclusively above
+# with set -C noclobber; another process clobbering it would already have
+# been refused at creation, so >> is safe and idempotent.
 if [[ "$MODE" == "review" ]]; then
     # `codex review --base BRANCH "$PROMPT"` is rejected:
     # "argument '--base <BRANCH>' cannot be used with '[PROMPT]'".
     # Use `codex exec --sandbox read-only` instead — it accepts our
     # custom [SPALLA] prompt while staying read-only on the workspace.
     printf '%s' "$PROMPT" | codex exec --full-auto --sandbox read-only \
-        -c model_reasoning_effort=xhigh - > "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+        -c model_reasoning_effort=xhigh - >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 else
     printf '%s' "$PROMPT" | codex exec --full-auto -c model_reasoning_effort=xhigh - \
-        > "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
+        >> "$TRANSCRIPT" 2>&1 || CODEX_EXIT=$?
 fi
 
 BLOCKER="false"

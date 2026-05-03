@@ -28,11 +28,11 @@ Ask Codex CLI for an adversarial second opinion before commit/push. Pattern B (r
    ```
 
    The helper handles:
-   - anti-pattern guard (empty diff → hard refuse; small diff → 3-line warning + 5s countdown)
-   - diff capture
-   - dispatch (`codex review --base ...` for Pattern B, `codex exec --full-auto ...` for Pattern A)
-   - transcript saved to `~/logs/codex-spalla/<ts>-<slug>.md`
-   - BLOCKER-grade transcripts also copied to `docs/codex-reviews/<ts>-blocker-<slug>.md`
+   - anti-pattern guard (empty diff → hard refuse; small diff → 3-line warning + 5s countdown). Small-diff threshold uses TOTAL diff (committed + uncommitted) so large WIP edits don't slip through as "small".
+   - diff capture, including uncommitted-diff body and full content of untracked files (head -200 each, max 25 files, binary/>500KB skipped) so newly created files are visible to Codex
+   - dispatch via `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh` for Pattern B (review), and `codex exec --full-auto` for Pattern A (exec). Note: `codex review --base` doesn't accept stdin context, so both patterns use `codex exec` with our custom [SPALLA] prompt.
+   - transcript saved to `~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md` with race-safe noclobber creation (concurrent same-second runs don't clobber each other)
+   - BLOCKER-grade transcripts also copied to `docs/codex-reviews/<ts>-<rand>-blocker-<slug>.md`
    - telemetry one-line JSON to `~/logs/codex-spalla.jsonl`
 
 4. Read the helper's stdout. The last non-empty line will be `RESULT_PATH=<path>`. Read that file.
