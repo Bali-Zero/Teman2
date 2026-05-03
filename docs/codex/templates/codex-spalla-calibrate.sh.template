@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# codex-spalla-calibrate.sh — weekly telemetry calibration for /codex-second-opinion
+#
+# Reads ~/logs/codex-spalla.jsonl, computes the BLOCKER rate among `warned=true`
+# small-diff runs, classifies the result against the exit criteria from
+# docs/decisions/2026-05-03-codex-spalla-architecture.md §"Exit criteria for
+# Q3 (14-day calibration)", logs the verdict, and (when threshold action is
+# warranted) sends a Telegram nudge to Zero.
+#
+# Hard rules:
+#   - Read-only against ~/logs/codex-spalla.jsonl.
+#   - NEVER edit the decision memo from cron (branch-hijack risk per cicatrix
+#     scar 2026-04-29; surface verdict, let the human apply it).
+#   - Fail-open: any error logs and exits 0 silently.
+#
+# Schedule: Sunday 06:00 WITA via com.balizero.codex-spalla-calibrate.plist.
+
+set -u -o pipefail
+
+LOG_FILE="$HOME/logs/codex-spalla-calibration.log"
+TELEMETRY="$HOME/logs/codex-spalla.jsonl"
+mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+
+log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >> "$LOG_FILE"; }
+
+# ─────────────────────────────────────────────────────────────────────────
+# Pre-flight
+# ─────────────────────────────────────────────────────────────────────────
+if ! command -v jq >/dev/null 2>&1; then
+    log "FATAL: jq not installed; calibration cannot run"
+    exit 0
+fi
+
+if [[ ! -s "$TELEMETRY" ]]; then
+    log "no telemetry yet at $TELEMETRY — first calibration will wait until /codex-second-opinion has logged some runs"
+    exit 0
+fi
+
+# Load secrets for Telegram (same pattern as hotfix-notify.sh)
+if [[ -f "$HOME/.nuzantara-secrets.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$HOME/.nuzantara-secrets.env" 2>/dev/null || true
+    set +a
+fi
+TG_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TG_CHAT_ID="${TELEGRAM_OWNER_CHAT_ID:-${TELEGRAM_ZERO_CHAT_ID:-${TELEGRAM_ADMIN_CHAT_ID:-}}}"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Compute calibration metrics
+# ─────────────────────────────────────────────────────────────────────────
+# Window: telemetry from the last 14 days (calibration period per spec).
+# Cutoff is computed in jq using the run's ts compared to NOW - 14d.
+NOW_TS="$(date -u +%s)"
+CUTOFF_TS=$((NOW_TS - 14 * 86400))
+
+# Build a single-pass jq aggregate. Output is a compact JSON object.
+SUMMARY="$(jq -s --argjson cutoff "$CUTOFF_TS" '
+    map(
+        select(.ts and (.ts | fromdateiso8601) >= $cutoff)
+    ) | {
+        total_runs: length,
+        warned_runs: ([.[] | select(.warned == true)] | length),
+        warned_blocker: ([.[] | select(.warned == true and .blocker == true)] | length),
+        warned_no_blocker: ([.[] | select(.warned == true and .blocker == false)] | length),
+        unwarned_blocker: ([.[] | select(.warned == false and .blocker == true)] | length),
+        unwarned_no_blocker: ([.[] | select(.warned == false and .blocker == false)] | length),
+        first_ts: (map(.ts) | min // null),
+        last_ts: (map(.ts) | max // null)
+    }
+' < "$TELEMETRY" 2>/dev/null || echo '{}')"
+
+if [[ -z "$SUMMARY" || "$SUMMARY" == "{}" ]]; then
+    log "WARN: jq aggregate returned empty; telemetry may be malformed"
+    exit 0
+fi
+
+TOTAL="$(printf '%s' "$SUMMARY" | jq -r '.total_runs // 0')"
+WARNED="$(printf '%s' "$SUMMARY" | jq -r '.warned_runs // 0')"
+WARNED_BLK="$(printf '%s' "$SUMMARY" | jq -r '.warned_blocker // 0')"
+WARNED_OK="$(printf '%s' "$SUMMARY" | jq -r '.warned_no_blocker // 0')"
+FIRST_TS="$(printf '%s' "$SUMMARY" | jq -r '.first_ts // "n/a"')"
+LAST_TS="$(printf '%s' "$SUMMARY" | jq -r '.last_ts // "n/a"')"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Classify per the exit criteria in the decision memo
+# ─────────────────────────────────────────────────────────────────────────
+VERDICT="hold"
+ACTION_HUMAN=""
+
+if [[ "$WARNED" -lt 5 ]]; then
+    # Not enough small-diff runs to call yet
+    VERDICT="insufficient-sample"
+    ACTION_HUMAN="<5 warned runs in 14d window (have $WARNED). Hold smart-loud (c). Re-evaluate next week."
+else
+    # Compute percentages with shell arithmetic (integer)
+    PCT_NO_BLOCKER=$(( WARNED_OK * 100 / WARNED ))
+    PCT_BLOCKER=$(( WARNED_BLK * 100 / WARNED ))
+
+    if [[ "$PCT_NO_BLOCKER" -ge 90 ]]; then
+        VERDICT="promote-to-strict"
+        ACTION_HUMAN="warned-without-blocker rate is ${PCT_NO_BLOCKER}% (≥90%). Promote anti-pattern guard from smart-loud (c) to strict (a). Edit .claude/scripts/codex-spalla.sh: change small-diff branch from 5s countdown to immediate refuse. Update docs/decisions/2026-05-03-codex-spalla-architecture.md with the post-2026-05-17 amendment."
+    elif [[ "$PCT_BLOCKER" -ge 30 ]]; then
+        VERDICT="keep-smart-loud"
+        ACTION_HUMAN="warned-with-blocker rate is ${PCT_BLOCKER}% (≥30%). Small diffs DO find blockers; smart-loud (c) is justified. Update decision memo with the 'kept (c)' amendment."
+    else
+        VERDICT="hold-and-grow-sample"
+        ACTION_HUMAN="warned-with-blocker=${PCT_BLOCKER}%, warned-without-blocker=${PCT_NO_BLOCKER}%. Mixed signal. Hold (c) for another 14 days to grow sample, then re-evaluate."
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Log verdict (always)
+# ─────────────────────────────────────────────────────────────────────────
+{
+    log "──────────────────────────────────────"
+    log "Calibration window: $FIRST_TS → $LAST_TS"
+    log "Total runs: $TOTAL · warned: $WARNED · warned+blocker: $WARNED_BLK · warned+no-blocker: $WARNED_OK"
+    log "VERDICT: $VERDICT"
+    log "ACTION: $ACTION_HUMAN"
+    log "Full aggregate: $SUMMARY"
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# Telegram nudge — only when action is needed
+# ─────────────────────────────────────────────────────────────────────────
+if [[ "$VERDICT" == "promote-to-strict" || "$VERDICT" == "keep-smart-loud" ]]; then
+    if [[ -n "$TG_TOKEN" && -n "$TG_CHAT_ID" ]]; then
+        TEXT="🧪 Codex spalla calibration verdict: ${VERDICT}
+
+Window: ${FIRST_TS} → ${LAST_TS}
+Stats: total=${TOTAL} warned=${WARNED} warned+blocker=${WARNED_BLK} warned+no-blocker=${WARNED_OK}
+
+Action:
+${ACTION_HUMAN}
+
+Full log: ${LOG_FILE}"
+        # POST to Telegram. Fail-open if endpoint unreachable.
+        curl -fsS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d "chat_id=${TG_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            >/dev/null 2>&1 \
+            && log "telegram: sent verdict nudge to ${TG_CHAT_ID}" \
+            || log "telegram: send failed (network or token issue) — verdict still in log"
+    else
+        log "telegram: skipped (no TELEGRAM_BOT_TOKEN/CHAT_ID in secrets)"
+    fi
+else
+    log "telegram: skipped (verdict=${VERDICT}, no action required)"
+fi
+
+exit 0
