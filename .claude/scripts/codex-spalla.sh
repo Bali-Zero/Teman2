@@ -77,6 +77,7 @@ FILES_CHANGED="$(git "${DIFF_ARGS[@]}" --stat 2>/dev/null | tail -1 | grep -oE '
 # Codex spalla BLOCKER #2 + #3: include uncommitted + untracked in the
 # "what's about to ship" tally; otherwise fresh `Write` files look empty.
 UNCOMMITTED_LINES="$(git diff HEAD 2>/dev/null | wc -l | tr -d ' ')"
+UNCOMMITTED_FILES="$(git diff HEAD --name-only 2>/dev/null | grep -c . 2>/dev/null || echo 0)"
 UNTRACKED_FILES="$(git ls-files --others --exclude-standard 2>/dev/null | wc -l | tr -d ' ')"
 TOTAL_DIFF_LINES=$((DIFF_LINES + UNCOMMITTED_LINES))
 
@@ -140,11 +141,11 @@ record_telemetry() {
 # records cancelled=true telemetry and exits cleanly with code 3.
 trap 'CANCELLED="true"; record_telemetry 3 false; echo "" >&2; echo "CANCELLED by user." >&2; exit 3' INT
 
-# Scope-warning uses TOTAL_DIFF_LINES (committed + uncommitted) so that a
-# branch with only large uncommitted edits is not misclassified as "small
-# scope". `FILES_CHANGED` still reflects committed-only stat — combine with
-# untracked count for the file-count check (Codex spalla self-review #2).
-TOTAL_FILES=$((FILES_CHANGED + UNTRACKED_FILES))
+# Scope-warning uses TOTAL_DIFF_LINES (committed + uncommitted) and
+# TOTAL_FILES (committed + uncommitted + untracked) so that a branch with
+# only large uncommitted edits across several tracked files is not
+# misclassified as "small scope". (Codex spalla self-review #2 + #9.)
+TOTAL_FILES=$((FILES_CHANGED + UNCOMMITTED_FILES + UNTRACKED_FILES))
 if [[ "$TOTAL_DIFF_LINES" -lt 10 ]] || [[ "$TOTAL_FILES" -lt 3 ]]; then
     WARNED="true"
     printf '⚠ scope is small — Claude self-review may be cheaper.\n' >&2
