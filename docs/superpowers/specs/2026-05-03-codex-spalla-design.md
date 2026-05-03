@@ -115,8 +115,8 @@ Shell helper, single source of truth. Bash 3.2-compatible (macOS default).
 
 **Output handling:**
 
-- Always: `~/logs/codex-spalla/<UTC-ts>-<slug>.md` (full transcript).
-- If BLOCKER detected (regex `^BLOCKER` in output, case-insensitive on first 50 lines): also `cp` to `docs/codex-reviews/<UTC-ts>-blocker-<slug>.md`.
+- Always: `~/logs/codex-spalla/<UTC-ts>-<rand>-<mode>-<slug>.md` (full transcript), pre-created race-safely via `set -C` noclobber + counter-suffix loop.
+- If BLOCKER detected (regex `^BLOCKER` in output, case-insensitive on first 50 lines): also `cp` to `docs/codex-reviews/<UTC-ts>-<rand>-blocker-<slug>.md`.
 - Telemetry one-line JSON to `~/logs/codex-spalla.jsonl`:
   ```json
   {

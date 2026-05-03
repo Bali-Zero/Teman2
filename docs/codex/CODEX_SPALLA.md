@@ -74,12 +74,12 @@
 **Edge:** kernel-enforced `--full-auto` autonomy + commit-loop pattern + frees Claude session for design work.
 **Expected output:** chain of small commits + final pass/fail report.
 
-#### S4. PR diff review with `codex review --base main`
+#### S4. PR diff review via `codex exec --sandbox read-only` (with `[SPALLA]` prompt)
 
 **Trigger:** any PR before merge, especially when author and would-be reviewer are both Claude.
-**Prompt template:** native `codex review --base main` with optional `--title` for context (no custom prompt needed for default review).
-**Edge:** built-in 3-mode review (branch/uncommitted/commit), no token cost from current Claude session, separate transcript turn keeps context clean.
-**Expected output:** structured prioritized findings (Codex review preset).
+**Prompt template:** custom `[SPALLA]` prompt fed via stdin to `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh`. Built-in `codex review --base $BRANCH` was the original plan but rejects stdin context (error: `argument '--base <BRANCH>' cannot be used with '[PROMPT]'`), so we settled on `codex exec --sandbox read-only` — accepts our custom prompt while staying read-only on the workspace.
+**Edge:** committed diff + uncommitted diff + full content of untracked files all visible to Codex; no token cost from current Claude session; separate transcript turn keeps context clean.
+**Expected output:** structured prioritized findings (BLOCKER/MEDIUM/LOW/LGTM verdict + bullets with file:line cites).
 
 #### S5. "I am not sure I trust my own judgment here" gate
 
@@ -108,11 +108,11 @@ codex exec --full-auto -c model_reasoning_effort=xhigh \
 
 ```bash
 # /codex-second-opinion slash command:
-#   1. anti-pattern guard (3-line banner + 5s countdown if small)
-#   2. git diff base..HEAD captured
-#   3. dispatch: codex review --base main --title "[SPALLA] <task>"
-#   4. transcript saved to ~/logs/codex-spalla/<ts>-<slug>.md
-#   5. BLOCKER-tagged → also copy to docs/codex-reviews/
+#   1. anti-pattern guard (3-line banner + 5s countdown if TOTAL diff small)
+#   2. context capture: committed diff + uncommitted diff + untracked file contents
+#   3. dispatch: codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh
+#   4. transcript saved race-safely to ~/logs/codex-spalla/<ts>-<rand>-<mode>-<slug>.md
+#   5. BLOCKER-tagged → also copy to docs/codex-reviews/<ts>-<rand>-blocker-<slug>.md
 #   6. summarize verdict to user inline
 ```
 
