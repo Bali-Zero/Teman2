@@ -89,23 +89,12 @@ if [[ "$TOTAL_DIFF_LINES" -eq 0 ]] && [[ "$UNTRACKED_FILES" -eq 0 ]]; then
     exit 2
 fi
 
-# Scope-warning uses TOTAL_DIFF_LINES (committed + uncommitted) so that a
-# branch with only large uncommitted edits is not misclassified as "small
-# scope". `FILES_CHANGED` still reflects committed-only stat — combine with
-# untracked count for the file-count check (Codex spalla self-review #2).
-TOTAL_FILES=$((FILES_CHANGED + UNTRACKED_FILES))
-if [[ "$TOTAL_DIFF_LINES" -lt 10 ]] || [[ "$TOTAL_FILES" -lt 3 ]]; then
-    WARNED="true"
-    printf '⚠ scope is small — Claude self-review may be cheaper.\n' >&2
-    printf '⚠ proceeding in 5s (Ctrl-C to cancel) ...\n' >&2
-    printf '⚠ logged warned=true to telemetry.\n' >&2
-    if ! sleep 5; then
-        CANCELLED="true"
-        echo "" >&2
-        echo "CANCELLED by user." >&2
-    fi
-fi
-
+# Set up telemetry + transcript path BEFORE the small-diff countdown.
+# Codex spalla self-review #6: previously the trap was installed AFTER
+# `sleep 5`, so Ctrl-C during the countdown would kill the script before
+# `record_telemetry` could write the cancelled=true line. Now the trap
+# is installed first and the function is defined upfront with a fallback
+# transcript path.
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 # Codex spalla BLOCKER #7: race-safe random suffix so two same-second runs
 # don't clobber the same transcript path.
@@ -147,11 +136,21 @@ record_telemetry() {
         "$TRANSCRIPT" >> "$TELEMETRY_FILE"
 }
 
-trap 'if [[ "$CANCELLED" == "true" ]]; then record_telemetry 3 false; exit 3; fi' INT
+# Install INT trap BEFORE the small-diff countdown so Ctrl-C during sleep
+# records cancelled=true telemetry and exits cleanly with code 3.
+trap 'CANCELLED="true"; record_telemetry 3 false; echo "" >&2; echo "CANCELLED by user." >&2; exit 3' INT
 
-if [[ "$CANCELLED" == "true" ]]; then
-    record_telemetry 3 false
-    exit 3
+# Scope-warning uses TOTAL_DIFF_LINES (committed + uncommitted) so that a
+# branch with only large uncommitted edits is not misclassified as "small
+# scope". `FILES_CHANGED` still reflects committed-only stat — combine with
+# untracked count for the file-count check (Codex spalla self-review #2).
+TOTAL_FILES=$((FILES_CHANGED + UNTRACKED_FILES))
+if [[ "$TOTAL_DIFF_LINES" -lt 10 ]] || [[ "$TOTAL_FILES" -lt 3 ]]; then
+    WARNED="true"
+    printf '⚠ scope is small — Claude self-review may be cheaper.\n' >&2
+    printf '⚠ proceeding in 5s (Ctrl-C to cancel) ...\n' >&2
+    printf '⚠ logged warned=true to telemetry.\n' >&2
+    sleep 5
 fi
 
 # Capture diff bodies once for embedding in the prompt.
@@ -239,7 +238,11 @@ else
 fi
 
 BLOCKER="false"
-if grep -qiE '^[[:space:]]*BLOCKER\b' "$TRANSCRIPT" 2>/dev/null; then
+# Codex spalla self-review #8: BLOCKER detection scans only the first 50
+# lines (the verdict header per output template). Scanning the entire
+# transcript would false-positive on bullets that quote earlier BLOCKER
+# verdicts (verify-after-fix runs cite previous transcripts).
+if head -50 "$TRANSCRIPT" 2>/dev/null | grep -qiE '^[[:space:]]*BLOCKER\b'; then
     BLOCKER="true"
     REVIEWS_DIR="$REPO_ROOT/docs/codex-reviews"
     mkdir -p "$REVIEWS_DIR"

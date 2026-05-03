@@ -111,7 +111,7 @@ Shell helper, single source of truth. Bash 3.2-compatible (macOS default).
 **Dispatch logic:**
 
 - Pattern B (review): `codex exec --full-auto --sandbox read-only -c model_reasoning_effort=xhigh` with the [SPALLA] prompt fed via stdin. (We tried `codex review --base "$BASE" --title "[SPALLA] ..."` first but it rejects stdin context, error: "argument '--base <BRANCH>' cannot be used with '[PROMPT]'", so we settled on `codex exec --sandbox read-only` which accepts our custom prompt while staying read-only on the workspace.)
-- Pattern A (exec): `codex exec --full-auto -c model_reasoning_effort=xhigh "<built prompt>"`.
+- Pattern A (exec): `printf '%s' "$PROMPT" | codex exec --full-auto -c model_reasoning_effort=xhigh -` — same stdin-piped pattern as Pattern B, just without the `--sandbox read-only` flag.
 
 **Output handling:**
 
