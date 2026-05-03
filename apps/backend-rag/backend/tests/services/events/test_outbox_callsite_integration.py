@@ -320,8 +320,28 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset({
     # Track A 2026-05-02 — see PR #411 + #416 + #425.
     "cell_pulse_observed",
 })
+# Channels that DO have DB triggers but whose triggers live in migrations
+# OTHER than 146. Migration 146 was the bulk refactor of the original 6
+# trigger-backed channels (075/076/112/113/114); newer trigger-backed
+# channels follow the same outbox-INSERT-then-pg_notify pattern in their
+# own migration files and inherit the durability contract by construction.
+#
+#   - ``measurer_event`` — Sprint 2 (Symbiosis Law 4 compliance for the
+#     measurer organelle). Trigger function ``notify_measurer_event`` lives
+#     in migration 152, dispatching by TG_TABLE_NAME on
+#     post_metrics_history (event_type=metric_recorded) and m13_retrain_log
+#     (event_type=retrain_executed). See migration_152_measurer_event_trigger.sql
+#     and backend/tests/db/test_migration_152.py for the per-migration
+#     contract test that enforces the same outbox-before-notify ordering
+#     and _outbox_id injection that this file enforces for migration 146.
+_TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset({
+    "measurer_event",
+})
 _TRIGGER_BACKED_CHANNELS = frozenset(
-    ch for ch in PG_CHANNEL_MAP if ch not in _PG_NOTIFY_ONLY_CHANNELS
+    ch
+    for ch in PG_CHANNEL_MAP
+    if ch not in _PG_NOTIFY_ONLY_CHANNELS
+    and ch not in _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS
 )
 
 
