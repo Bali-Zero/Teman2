@@ -90,6 +90,16 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #  metadata{host,machine_role,...}, _outbox_id}.
     # Consumer: apps/cell-observatory-collector (PR-3, Pro local SQLite).
     "cell_pulse_observed": "cell.pulse.observed",
+    # Emitted by post_metrics_history + m13_retrain_log AFTER INSERT triggers
+    # (migration 152, Sprint 2 measurer event-driven compliance — Symbiosis
+    # Law 4). Payload: {metric_id|retrain_id, post_id|trigger_type,
+    # horizon_hours|delta_pct, metric_name, metric_value, source, event_type,
+    # occurred_at, _outbox_id}. event_type ∈ {metric_recorded, retrain_executed}.
+    # Consumers: M14 learner (per Sprint 2 plan), measurer dashboards (replaces
+    # current 6h polling). See:
+    #   docs/audits/sprint0/wr2-ipc-mechanism.md § "Violation 1"
+    #   docs/audits/2026-05-02-cell-openclaw-brainstorm/99b_synthesis_v2.md
+    "measurer_event": "measurer.event",
 }
 
 _RECONNECT_DELAY_S = 5
