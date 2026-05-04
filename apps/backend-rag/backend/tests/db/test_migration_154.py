@@ -197,10 +197,14 @@ def test_pg_channel_map_registers_asset_provenance():
 
 def test_migration_creates_set_updated_at_trigger():
     """Sprint 3 W2 review I3 fix: BEFORE UPDATE trigger bumps
-    asset_provenance.updated_at on every UPDATE so the mig 155 trigger
-    payload's 'occurred_at': NEW.updated_at always reflects the actual
+    asset_provenance.updated_at on UPDATE so the mig 155 trigger
+    payload's 'occurred_at': NEW.updated_at reflects the actual
     change time. Without this, direct SQL UPDATE (e.g. from psql) would
     leave updated_at stale.
+
+    v2.5 hardening: the trigger MUST be conditional (only bump when
+    row actually changed) to not defeat the mig 155 AFTER WHEN no-op
+    filter — see test_migration_set_updated_at_is_conditional below.
     """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
@@ -209,6 +213,32 @@ def test_migration_creates_set_updated_at_trigger():
     assert "asset_provenance_set_updated_at" in forward_section
     # Function must set NEW.updated_at = NOW()
     assert "NEW.updated_at = NOW()" in forward_section
+
+
+def test_migration_set_updated_at_is_conditional():
+    """v2.5 review V2-B1 fix: the BEFORE UPDATE trigger MUST be
+    conditional (`IF NEW IS DISTINCT FROM OLD THEN`) so a no-op UPSERT
+    does NOT bump updated_at, allowing the mig 155 AFTER UPDATE WHEN
+    clause (OLD.* IS DISTINCT FROM NEW.*) to correctly filter out
+    spurious events.
+
+    Postgres docs: "the NEW row seen by the [WHEN] condition is the
+    current value, as possibly modified by earlier triggers". An
+    unconditional BEFORE bump would make NEW.updated_at always differ
+    from OLD.updated_at, defeating the AFTER WHEN no-op guard.
+    """
+    sql = MIGRATION_FILE.read_text()
+    forward_section = sql.split("-- === ROLLBACK ===")[0]
+    # Locate the function body
+    func_start = forward_section.find("CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()")
+    assert func_start != -1
+    func_end = forward_section.find("$$ LANGUAGE plpgsql;", func_start)
+    func_body = forward_section[func_start:func_end]
+    # The IF guard must protect the NOW() bump
+    assert "IF NEW IS DISTINCT FROM OLD" in func_body, (
+        "BEFORE UPDATE trigger must conditionally bump updated_at; "
+        "unconditional bump defeats mig 155 AFTER WHEN no-op filter"
+    )
 
 
 def test_rollback_drops_set_updated_at_trigger_and_function():

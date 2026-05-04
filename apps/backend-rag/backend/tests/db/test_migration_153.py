@@ -99,18 +99,13 @@ def test_migration_trigger_fires_on_false_to_true_transition():
     assert "OLD.success IS DISTINCT FROM NEW.success" in forward_section
 
 
-def test_migration_trigger_does_not_fire_on_noop_update():
-    """Idempotent UPSERT (true→true rewrite with same values) MUST NOT
-    re-emit the welcome_completed event. The WHEN clause filters via
-    OLD.success IS DISTINCT FROM NEW.success which evaluates false on
-    no-op true→true transitions (as well as false→false).
-    """
-    sql = MIGRATION_FILE.read_text()
-    forward_section = sql.split("-- === ROLLBACK ===")[0]
-    # Documentation comment block in the trigger declaration calls out
-    # the no-op case explicitly so future readers understand the intent.
-    assert "true→true (no-op)" in forward_section.lower() or \
-           "true→true" in forward_section
+# NOTE: deleted `test_migration_trigger_does_not_fire_on_noop_update`
+# (v2.5 review V2-X1): asserted on a comment string rather than trigger
+# behavior — pure test theater. The WHEN clause's no-op semantics are
+# already pinned by `test_migration_trigger_fires_on_false_to_true_transition`
+# (positive case) and the ON DELETE/UPDATE contract tests below. A real
+# behavioral test of "true→true UPSERT does not emit" requires a live
+# PG connection (Sprint 4 integration test layer).
 
 
 def test_migration_writes_to_outbox_before_notify():

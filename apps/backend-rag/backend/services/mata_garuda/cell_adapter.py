@@ -177,6 +177,15 @@ async def tag_provenance(
         tlp=tlp,
     )
 
+    # NOTE: this UPSERT does NOT include `updated_at = NOW()` in the
+    # SET clause. The mig 154 BEFORE UPDATE trigger
+    # `set_updated_at_asset_provenance` handles updated_at conditionally
+    # (only bumps when business columns truly changed). If we set
+    # updated_at = NOW() here, an idempotent retry (same business
+    # columns) would still bump updated_at, defeating the trigger's
+    # conditional guard and re-introducing spurious mig 155 emissions
+    # on every no-op UPSERT. v2.5 review (DeepSeek) caught this
+    # interaction.
     sql = """
         INSERT INTO asset_provenance (
             asset_kind, asset_id, source,
@@ -195,8 +204,7 @@ async def tag_provenance(
             invalidation_event_topic = EXCLUDED.invalidation_event_topic,
             invalidation_mode = EXCLUDED.invalidation_mode,
             tlp = EXCLUDED.tlp,
-            metadata = EXCLUDED.metadata,
-            updated_at = NOW()
+            metadata = EXCLUDED.metadata
         RETURNING id
     """
     async with pool.acquire() as conn:

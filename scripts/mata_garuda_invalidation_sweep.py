@@ -39,19 +39,16 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from datetime import datetime
-from pathlib import Path
 
-# The cell_adapter lives in backend-rag (not in apps/mata-garuda — see
-# B3 finding 2026-05-04 multi-LLM W2 review). This script is currently
-# self-contained (does not import the adapter); the import path setup
-# below is reserved for the future extension that will call
-# `cell_adapter.list_expired_assets` to enrich the sweep log with
-# per-asset_kind counts.
-_REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
-
+# This script is self-contained: it speaks asyncpg directly to the
+# Pro-local Postgres and runs as a Pro-only cron. It does NOT import
+# the cell_adapter (which lives in apps/backend-rag/backend/services/
+# mata_garuda/ per B3 finding 2026-05-04). Sprint 4 may add a richer
+# log enrichment that DOES call into cell_adapter — at that point the
+# Sprint 4 PR will add the appropriate sys.path setup deliberately.
+# Pre-emptively reaching across app boundaries is an anti-pattern
+# (cf. v2.5 review V2-X2).
 logger = logging.getLogger("mata_garuda_invalidation_sweep")
 
 
@@ -127,6 +124,13 @@ async def run_ttl_sweep(
     # Atomic UPDATE — both filters re-applied so concurrent invalidators
     # don't get clobbered. The inner SELECT locks (FOR UPDATE) only the
     # rows that survive WHERE; SKIP LOCKED makes contention non-blocking.
+    #
+    # NOTE: we do NOT explicitly SET updated_at = NOW() here. The mig 154
+    # BEFORE UPDATE trigger `set_updated_at_asset_provenance` handles
+    # updated_at conditionally (only when the row truly changes). Setting
+    # both invalidated_at and invalidated_by IS a real change, so the
+    # trigger fires and bumps updated_at automatically. v2.5 review V2-I2:
+    # explicit SET was redundant.
     update_sql = """
         WITH expired AS (
             SELECT id
@@ -141,8 +145,7 @@ async def run_ttl_sweep(
         )
         UPDATE asset_provenance ap
         SET invalidated_at = NOW(),
-            invalidated_by = 'ttl_sweeper',
-            updated_at = NOW()
+            invalidated_by = 'ttl_sweeper'
         FROM expired
         WHERE ap.id = expired.id
         RETURNING ap.id, ap.asset_kind, ap.asset_id, ap.valid_until

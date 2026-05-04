@@ -184,45 +184,34 @@ def _check_cli_only(cd: dict[str, Any]) -> Violation | None:
     return None
 
 
-# OSINT-class providers — inbound feeds whose content COULD contaminate
-# client facts (visa/tax/regulation scrapers). A cell that has any of
-# these in `external_sources` AND has `client_data_access=true` violates
-# Law 2 (OSINT blindato).
+# Delivery-class allowlist — operational integrations that push client
+# data OUTBOUND or embed structured client data without pulling raw
+# untrusted intel back IN. Cells that legitimately combine
+# `client_data_access=true` with `external_sources=[…]` MUST list only
+# providers from this allowlist; anything else is treated as
+# (potentially) OSINT-class and blocks admission.
 #
-# Non-OSINT integrations (Google Drive client folders, Brevo email
-# delivery, WhatsApp Business API, Telegram bot, OpenAI embedding, etc.)
-# are operational integrations — they deliver client data outbound or
-# embed structured client data; they do NOT pull raw untrusted intel
-# into the client perimeter. CRM legitimately uses them.
+# This is a DEFAULT-DENY posture: a new external_source name added to
+# a cell.yaml that's NOT in this allowlist will FAIL admission with a
+# clear error pointing the author at this constant. To register a new
+# delivery integration: add the provider name here in a separate code
+# review PR (the Law 2 perimeter is security-critical, not yaml
+# configuration).
 #
-# This list is the allowlist's COMPLEMENT: if a provider name appears
-# here, it's treated as OSINT-class. Conservative — we list only the
-# providers we have actually identified as inbound-OSINT in the
-# project. Any new external provider added to a cell.yaml that's NOT
-# in this list is treated as non-OSINT (delivery integration); add to
-# this list explicitly when registering a new OSINT scraper.
-#
-# Sprint 3 W2 review I4 fix (multi-LLM 2026-05-04): the original Law 2
-# blocked any non-empty external_sources combined with client_data_access,
-# which forced cells like crm-cell to falsely declare external_sources=[]
-# even though they DO call Drive/Brevo/etc. — an honest declaration
-# became impossible. The new rubric distinguishes OSINT-class providers
-# from delivery integrations.
-_OSINT_CLASS_PROVIDERS: frozenset[str] = frozenset({
-    # Indonesian government domains (visa, immigration, tax, statistics, OSS)
-    "imigrasi.go.id",
-    "djp.go.id",
-    "bps.go.id",
-    "bi.go.id",
-    "oss.go.id",
-    "kemnaker.go.id",
-    "peraturan.go.id",
-    # News + commercial intel sources scraped for content
-    "bali.tribunnews.com",
-    "tribunnews.com",
-    # Project-internal scraper handles
-    "intel-scraper",
-    "intel-scraper-cell.bali_tribunnews",
+# v2.5 review V2-B2 fix (multi-LLM 2026-05-04): the v2 design used a
+# blocklist (`_OSINT_CLASS_PROVIDERS`) which silently passed any new
+# scraper not in the hardcoded set — a security regression vs the v1
+# design's "any external_sources + client_data → BLOCK". The allowlist
+# restores conservative posture while still allowing legitimate cells
+# (crm-cell uses Drive/Brevo/WhatsApp/Telegram, all in this list).
+_DELIVERY_CLASS_ALLOWLIST: frozenset[str] = frozenset({
+    # CRM client-comms delivery channels
+    "google_drive_api",       # service account, folder/file CRUD on client folders
+    "brevo_api",              # transactional email
+    "whatsapp_business_api",  # client messaging
+    "telegram_bot_api",       # team alerts
+    # Common embedding-only / structured-output APIs (push, no inbound intel)
+    "openai_embedding_api",   # text-embedding-3-small (FROZEN per CLAUDE.md)
 })
 
 
@@ -230,39 +219,41 @@ _OSINT_CLASS_PROVIDERS: frozenset[str] = frozenset({
 def _check_osint_blindato(cd: dict[str, Any]) -> Violation | None:
     """Law 2: OSINT data must NOT leave Pro. No mixing OSINT + client data.
 
-    A cell that pulls inbound OSINT-class data AND has access to client
-    PII could contaminate client facts with untrusted intel. This is
-    forbidden.
+    Conservative posture: the cell must declare client_data_access=true
+    AND have all `external_sources` in the `_DELIVERY_CLASS_ALLOWLIST`
+    to pass admission. Any provider NOT in the allowlist is treated as
+    OSINT-class and blocks the combination — including unknown
+    providers (default-deny).
 
-    Operational integrations (Drive, Brevo, WhatsApp, Telegram, OpenAI
-    embedding, etc.) are delivery channels — they push client data
-    OUTBOUND or embed client data into delivery formats. They are NOT
-    OSINT inbound feeds. Cells that legitimately use these (e.g.
-    crm-cell) can declare both external_sources=[<delivery-providers>]
-    AND client_data_access=true.
+    Cells with `client_data_access=false` may declare any
+    external_sources (no contamination risk on the client perimeter).
 
     Cell definition fields used:
         external_sources: list[str] — names of upstream feeds + delivery
             integrations
         client_data_access: bool — does the cell read client PII?
-
-    The check fires only if external_sources contains at least one
-    OSINT-class provider (per _OSINT_CLASS_PROVIDERS) AND
-    client_data_access=true.
     """
     declared_sources: set[str] = set(cd.get("external_sources", []) or [])
     has_client = bool(cd.get("client_data_access", False))
-    osint_intersection = declared_sources & _OSINT_CLASS_PROVIDERS
-    if osint_intersection and has_client:
+    if not has_client:
+        # No client PII access → no OSINT contamination risk. Cells
+        # like intel-scraper-cell legitimately declare arbitrary
+        # external_sources here (visa/tax government domains, etc.).
+        return None
+    untrusted = declared_sources - _DELIVERY_CLASS_ALLOWLIST
+    if untrusted:
         return Violation(
             legge=Legge.OSINT_BLINDATO,
             message=(
-                f"cell mixes OSINT-class external_sources "
-                f"({sorted(osint_intersection)}) with client_data_access — "
-                f"Law 2 forbids OSINT contamination of client facts. "
-                f"Non-OSINT delivery integrations (Drive, Brevo, WhatsApp, "
-                f"Telegram, embedding APIs) are allowed; OSINT scrapers are "
-                f"not when combined with client PII access."
+                f"cell mixes external_sources with client_data_access — "
+                f"the following providers are NOT in the delivery allowlist "
+                f"and are treated as OSINT-class: {sorted(untrusted)}. "
+                f"Either (a) add to _DELIVERY_CLASS_ALLOWLIST in "
+                f"packages/cell-core/cell_core/admission_test.py via a "
+                f"dedicated code review (the Law 2 perimeter is security-"
+                f"critical), or (b) remove client_data_access if this cell "
+                f"doesn't actually read client PII. Current allowlist: "
+                f"{sorted(_DELIVERY_CLASS_ALLOWLIST)}"
             ),
             severity="blocker",
         )

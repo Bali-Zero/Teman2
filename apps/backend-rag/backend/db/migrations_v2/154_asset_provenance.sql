@@ -7,6 +7,16 @@
 -- Spec:      docs/sprint3/research-and-brainstorm.md § Stream 3
 -- Decision:  docs/sprint3/review-synthesis-2026-05-04.md
 --
+-- ⚠️  PAIRED WITH MIGRATION 155 — never apply 154 alone in production.
+-- Migration 154 creates the table + column-management triggers; mig 155
+-- adds the AFTER INSERT/UPDATE event-emit trigger that powers the
+-- `asset_provenance` PG_NOTIFY channel. If 154 lands without 155, the
+-- table exists but nothing emits — consumers (oracle citation guard,
+-- KG demotion, WR2 invalidation reactor) silently see no events.
+-- The migration runner applies in numeric order so a normal sequential
+-- deploy is safe; this comment exists to prevent partial manual rollback
+-- from producing the un-emitting state. (v2.5 review V2-D1.)
+--
 -- WHAT THIS MIGRATION DOES:
 --   1. Adds asset_provenance table — per-asset row carrying source +
 --      confidence (M2 admiralty 2-axis: reliability A-F + credibility 1-6) +
@@ -158,17 +168,31 @@ CREATE INDEX IF NOT EXISTS ix_asset_provenance_admiralty
     ON asset_provenance (reliability, credibility)
     WHERE invalidated_at IS NULL;
 
--- BEFORE UPDATE trigger: bump updated_at on every UPDATE so the mig 155
--- trigger payload's 'occurred_at': NEW.updated_at always reflects the
--- actual change time. Without this, direct SQL UPDATE (e.g. from psql)
--- would leave updated_at stale and consumers would see a wrong
--- timestamp. Multi-LLM W2 review (cf. SYNTHESIS I3) caught this gap.
--- The set_updated_at() function is shared across schemas — use a
--- backend-rag-conventional name so it can be reused (or already exists).
+-- BEFORE UPDATE trigger: conditionally bump updated_at when business
+-- columns actually change. Original v2 set updated_at unconditionally,
+-- which silently defeated the mig 155 AFTER UPDATE WHEN clause's no-op
+-- filter (OLD.* IS DISTINCT FROM NEW.*) — Postgres docs: "the NEW row
+-- seen by the [WHEN] condition is the current value, as possibly
+-- modified by earlier triggers". Always-bumping updated_at made
+-- OLD.updated_at != NEW.updated_at always, so the AFTER WHEN was
+-- always TRUE → spurious events on every no-op UPSERT.
+--
+-- Conditional guard fixes the interaction: when the row truly changes,
+-- updated_at bumps and the AFTER trigger correctly fires; when the
+-- UPSERT is a no-op (cell adapter idempotent retry with same values),
+-- updated_at stays unchanged and the AFTER WHEN evaluates FALSE.
+--
+-- Multi-LLM v2.5 review caught this regression (cf. SYNTHESIS V2-B1).
 CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
+    -- Only bump if the row actually changed. NEW IS DISTINCT FROM OLD
+    -- compares all columns NULL-safely. If the cell adapter writes the
+    -- same values via ON CONFLICT DO UPDATE, this branch is NOT taken
+    -- and the AFTER UPDATE trigger's WHEN clause sees OLD = NEW.
+    IF NEW IS DISTINCT FROM OLD THEN
+        NEW.updated_at = NOW();
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

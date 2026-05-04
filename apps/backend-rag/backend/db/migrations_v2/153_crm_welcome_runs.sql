@@ -104,10 +104,15 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION notify_crm_welcome_completed() IS
     'Sprint 3 W2 CRM-cell welcome flow event emitter. Emits '
-    'crm_welcome_completed channel on AFTER INSERT into crm_welcome_runs '
-    'WHEN success=true (partial-failure rows are persisted for audit but '
-    'do NOT fire downstream observers). Persists to events_outbox first '
-    '(durability) then pg_notify (mig 146 outbox pattern).';
+    'crm_welcome_completed channel on AFTER INSERT OR UPDATE into '
+    'crm_welcome_runs whose WHEN clause matches the false→true success '
+    'transition (covers fresh INSERT(success=true) AND retry UPSERT '
+    'where OLD.success=false changes to NEW.success=true). '
+    'Partial-failure rows are persisted for audit but do NOT fire '
+    'downstream observers. Persists to events_outbox first (durability) '
+    'then pg_notify (mig 146 outbox pattern). Function body is '
+    'unconditional emit; the WHEN guard on the trigger declaration '
+    'enforces the success-transition policy.';
 
 -- Drop existing trigger (idempotent re-run).
 DROP TRIGGER IF EXISTS crm_welcome_runs_notify ON crm_welcome_runs;

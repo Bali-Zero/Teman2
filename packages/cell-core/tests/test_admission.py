@@ -483,13 +483,12 @@ def test_crm_cell_passes_admission() -> None:
 def test_crm_cell_metadata_contracts() -> None:
     """Cell-yaml-only contract checks (Sprint 3 W2 invariants).
 
-    Post 2026-05-04 multi-LLM W2 review (I4 fix): crm-cell.yaml now
-    declares its delivery integrations truthfully. The AdmissionTest
-    Law 2 rubric was extended to distinguish OSINT-class providers
-    from delivery integrations — see admission_test.py
-    _OSINT_CLASS_PROVIDERS. crm-cell legitimately mixes
-    external_sources (Drive/Brevo/WhatsApp/Telegram, all delivery)
-    with client_data_access=true.
+    v2.5 review V2-B2 fix: AdmissionTest Law 2 rubric is now
+    default-deny via `_DELIVERY_CLASS_ALLOWLIST`. crm-cell legitimately
+    mixes external_sources (Drive/Brevo/WhatsApp/Telegram — all in the
+    allowlist) with client_data_access=true. Any future external_source
+    name not in the allowlist will FAIL admission until added there
+    via a dedicated code review.
     """
     pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
     cd = load_cell_definition(_CRM_CELL_YAML)
@@ -501,19 +500,19 @@ def test_crm_cell_metadata_contracts() -> None:
 
     # CRM IS the client data domain — UU PDP scope (Q4 W1.2 decision)
     assert cd["client_data_access"] is True
-    # …and external_sources MUST be declared truthfully (Drive/Brevo/
-    # WhatsApp/Telegram are delivery integrations, not OSINT).
+    # external_sources must be truthfully declared
     declared_sources = set(cd.get("external_sources", []))
     assert declared_sources, (
         "crm-cell must declare its actual external integrations, not []"
     )
-    # …but external_sources must NOT include OSINT-class providers
-    # (the Law 2 rubric blocks the combination).
-    from cell_core.admission_test import _OSINT_CLASS_PROVIDERS
-    osint_intersection = declared_sources & _OSINT_CLASS_PROVIDERS
-    assert not osint_intersection, (
-        f"crm-cell external_sources must not include OSINT providers, "
-        f"got: {osint_intersection}"
+    # …and ALL declared sources must be in the delivery allowlist
+    # (default-deny posture; anything else = OSINT-class blocker).
+    from cell_core.admission_test import _DELIVERY_CLASS_ALLOWLIST
+    untrusted = declared_sources - _DELIVERY_CLASS_ALLOWLIST
+    assert not untrusted, (
+        f"crm-cell external_sources contains providers not in the "
+        f"delivery allowlist: {sorted(untrusted)}. Either add them to "
+        f"_DELIVERY_CLASS_ALLOWLIST or remove them from the cell."
     )
     # Expect the 4 declared delivery integrations
     expected_delivery = {
@@ -538,6 +537,57 @@ def test_crm_cell_metadata_contracts() -> None:
     suborganelles = {s["name"] for s in cd.get("sub_organelles", [])}
     assert "drive_poll" in suborganelles
     assert "nightly_engine" in suborganelles
+
+
+def test_unknown_external_source_blocks_with_client_data() -> None:
+    """v2.5 review V2-B2: default-deny posture. A cell that declares
+    an external_source NOT in `_DELIVERY_CLASS_ALLOWLIST` AND has
+    client_data_access=true MUST fail admission. Catches the security
+    regression where the v2 blocklist would have silently allowed
+    unknown providers.
+    """
+    cell = _passing_cell()
+    cell["external_sources"] = ["unknown_new_scraper.example.com"]
+    cell["client_data_access"] = True
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    osint_violations = [
+        v for v in result.violations
+        if v.legge == Legge.OSINT_BLINDATO and v.severity == "blocker"
+    ]
+    assert osint_violations, (
+        "default-deny posture: an unknown external_source combined with "
+        "client_data_access=true MUST block admission, even if the "
+        "name doesn't match any known OSINT provider"
+    )
+    # The error message must point the author at the allowlist constant
+    msg = osint_violations[0].message
+    assert "_DELIVERY_CLASS_ALLOWLIST" in msg, (
+        f"violation message must mention _DELIVERY_CLASS_ALLOWLIST so "
+        f"the cell author knows where to add new delivery providers; "
+        f"got: {msg!r}"
+    )
+
+
+def test_delivery_allowlist_with_client_data_passes() -> None:
+    """v2.5 review V2-B2: a cell with ONLY delivery-allowlisted
+    external_sources AND client_data_access=true MUST pass admission.
+    This is the legitimate crm-cell case.
+    """
+    cell = _passing_cell()
+    cell["external_sources"] = [
+        "google_drive_api", "brevo_api", "whatsapp_business_api",
+    ]
+    cell["client_data_access"] = True
+    result = AdmissionTest().run_all(cell)
+    osint_violations = [
+        v for v in result.violations
+        if v.legge == Legge.OSINT_BLINDATO and v.severity == "blocker"
+    ]
+    assert not osint_violations, (
+        f"delivery-only external_sources + client_data should pass; "
+        f"got Law 2 violations: {[v.message for v in osint_violations]}"
+    )
 
 
 def test_mata_garuda_cell_yaml_exists() -> None:
