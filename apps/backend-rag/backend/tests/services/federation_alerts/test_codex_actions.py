@@ -151,6 +151,40 @@ async def test_overnight_queue_uses_safe_slug() -> None:
 
 
 @pytest.mark.asyncio
+async def test_overnight_queue_filename_is_deterministic(tmp_path, monkeypatch) -> None:
+    """Same proposal_id + idempotency_key → same filename (no timestamp).
+
+    Regression guard for tri-LLM panel finding 2026-05-05 (PR #463 review):
+    the original implementation embedded `datetime.now()` in the filename,
+    which broke the 'idempotent' claim documented in the docstring. Now
+    the filename is derived purely from proposal_id / idempotency_key so
+    repeated L2 dispatches resolve to the same file (overwritten with
+    identical content) — true idempotency.
+    """
+    from backend.services.federation_alerts.actions import codex_overnight_queue as mod
+
+    monkeypatch.setattr(mod, "QUEUE_DIR", tmp_path / "queue")
+
+    # Two proposals with same idempotency_key → same target filename.
+    @dataclass
+    class _IdempProposal:
+        proposal_id: str = "abc-123"
+        severity: str = "high"
+        idempotency_key: str = "key-deterministic"
+        action_payload: dict[str, Any] = None  # type: ignore[assignment]
+
+    p1 = _IdempProposal(action_payload={"spec": "# spec v1"})
+    p2 = _IdempProposal(action_payload={"spec": "# spec v2"})
+
+    r1 = await codex_overnight_queue_action(p1, dry_run=True)
+    r2 = await codex_overnight_queue_action(p2, dry_run=True)
+
+    assert r1.metadata["target_path"] == r2.metadata["target_path"], (
+        "filename must be deterministic for same idempotency_key"
+    )
+
+
+@pytest.mark.asyncio
 async def test_overnight_queue_actually_writes_file(tmp_path, monkeypatch) -> None:
     """Non-dry-run path writes a real file (spec is .strip()-ed)."""
     from backend.services.federation_alerts.actions import codex_overnight_queue as mod

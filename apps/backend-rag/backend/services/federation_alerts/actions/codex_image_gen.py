@@ -37,12 +37,28 @@ DISPATCH_ROOT = Path(os.path.expanduser("~/Desktop/nuzantara/research/dispatch")
 SAFE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
 
+_STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
+    # Golden Rule #13 — Anthropic OAuth-only.
+    "ANTHROPIC_API_KEY",
+    "AWS_BEDROCK_ANTHROPIC_KEY",
+    "VERTEX_AI_ANTHROPIC_KEY",
+    # Codex CLI uses OAuth Pro $200 quota for gpt-image-2; the parent
+    # process's OPENAI_API_KEY (embedding-only) MUST NOT leak into the
+    # image-gen subprocess where it would open a per-call billing path.
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+})
+
+
 def _safe_env() -> dict[str, str]:
-    return {
-        k: v
-        for k, v in os.environ.items()
-        if k not in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_ANTHROPIC_KEY")
-    }
+    """Strip provider API keys before spawning Codex subprocess.
+
+    Mirrors codex_xhigh_fix._safe_env. The backend-rag parent process
+    legitimately holds OPENAI_API_KEY for text-embedding-3-small, but
+    image generation must run via Codex OAuth — never per-call billing.
+    """
+    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
 
 
 def _safe_name(s: str, default: str = "asset") -> str:

@@ -42,10 +42,9 @@ import asyncio
 import json
 import logging
 import os
-import shutil
 import subprocess
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -53,7 +52,10 @@ from typing import Any
 for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_ANTHROPIC_KEY"):
     os.environ.pop(forbidden, None)
 
-REPO_ROOT = Path("/Users/nuzantara/Desktop/nuzantara")
+# Derive repo root from this script's location. Override via
+# NUZANTARA_REPO_ROOT env var when running from a worktree.
+REPO_ROOT = Path(os.environ.get("NUZANTARA_REPO_ROOT") or
+                 Path(__file__).resolve().parent.parent)
 DISPATCH_ROOT = REPO_ROOT / "research" / "dispatch"
 LOG_DIR = Path.home() / "logs" / "codex-visual-orchestrator"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -310,9 +312,6 @@ async def generate_bundle(topic: str, output_dir: Path, parallelism: int = 3) ->
             return await generate_one(asset, topic, output_dir, idx)
 
     # For hero/body assets, slot_idx = position in their group; for singletons, idx = 0
-    hero_count = sum(1 for a in ASSET_BUNDLE if a.name.startswith("hero"))
-    body_count = sum(1 for a in ASSET_BUNDLE if a.name.startswith("body"))
-
     tasks = []
     hero_idx = body_idx = 0
     for a in ASSET_BUNDLE:

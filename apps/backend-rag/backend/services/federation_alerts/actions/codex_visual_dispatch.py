@@ -40,12 +40,27 @@ MAX_TIMEOUT_SEC = 7200
 MAX_TOPIC_BYTES = 4 * 1024
 
 
+_STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
+    # Golden Rule #13 — Anthropic OAuth-only.
+    "ANTHROPIC_API_KEY",
+    "AWS_BEDROCK_ANTHROPIC_KEY",
+    "VERTEX_AI_ANTHROPIC_KEY",
+    # The visual orchestrator launches Codex (gpt-image-2 OAuth) in a loop.
+    # Strip OPENAI/GEMINI/GOOGLE provider keys so the embedding-only key
+    # held by backend-rag parent never leaks into a non-embedding path.
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+})
+
+
 def _safe_env() -> dict[str, str]:
-    return {
-        k: v
-        for k, v in os.environ.items()
-        if k not in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_ANTHROPIC_KEY")
-    }
+    """Strip provider API keys before spawning visual orchestrator.
+
+    Same defense as codex_image_gen — OAuth-only quota for image gen,
+    never leak embedding-only OPENAI_API_KEY into a billing path.
+    """
+    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
 
 
 @register_action("codex_visual_dispatch")

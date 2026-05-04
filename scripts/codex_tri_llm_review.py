@@ -41,10 +41,8 @@ import hashlib
 import json
 import logging
 import os
-import shlex
 import subprocess
 import sys
-import textwrap
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -55,7 +53,12 @@ for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_A
     if forbidden in os.environ:
         del os.environ[forbidden]
 
-REPO_ROOT = Path("/Users/nuzantara/Desktop/nuzantara")
+# Derive repo root from this script's location (scripts/ → repo).
+# Allows the script to run on any machine (Pro / Mini / future) without
+# hardcoded paths. Override with NUZANTARA_REPO_ROOT env var if needed
+# (e.g. running from a worktree).
+REPO_ROOT = Path(os.environ.get("NUZANTARA_REPO_ROOT") or
+                 Path(__file__).resolve().parent.parent)
 LOG_DIR = Path.home() / "logs" / "tri-llm-review"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -281,6 +284,27 @@ def parse_verdict(reviewer: str, raw: str, duration_s: float, error: str | None 
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+_STRIPPED_PROVIDER_KEYS: frozenset[str] = frozenset({
+    "ANTHROPIC_API_KEY",
+    "AWS_BEDROCK_ANTHROPIC_KEY",
+    "VERTEX_AI_ANTHROPIC_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+})
+
+
+def _safe_subprocess_env() -> dict[str, str]:
+    """Strip provider API keys before spawning Codex/Claude CLI subprocess.
+
+    Codex CLI uses OAuth (Pro $200), Claude CLI uses OAuth (Max plan).
+    Neither needs an API key — keep the parent env's embedding-only
+    OPENAI_API_KEY scoped to backend-rag and never leak it to a
+    subprocess that could open a non-embedding billing path.
+    """
+    return {k: v for k, v in os.environ.items() if k not in _STRIPPED_PROVIDER_KEYS}
+
+
 async def review_codex(prompt: str) -> ReviewVerdict:
     start = time.time()
     try:
@@ -292,6 +316,7 @@ async def review_codex(prompt: str) -> ReviewVerdict:
             prompt,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=_safe_subprocess_env(),
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
         duration = time.time() - start
@@ -307,15 +332,50 @@ async def review_codex(prompt: str) -> ReviewVerdict:
 
 
 async def review_claude_opus(prompt: str) -> ReviewVerdict:
-    """Use Claude OAuth via local `claude` CLI — no API key, free under MAX plan."""
+    """Invoke Claude OAuth (Pro MAX, no API key) via local ``claude`` CLI.
+
+    ARCHITECTURAL NOTE — Golden Rule #13 alignment
+    ─────────────────────────────────────────────
+    The canonical Anthropic OAuth path inside backend-rag is
+    ``apps/backend-rag/backend/llm/claude_oauth_client.py``. That module
+    is the single sanctioned production caller of the ``claude`` CLI.
+
+    THIS SCRIPT is a STANDALONE PR-review TOOL that lives outside the
+    backend-rag package. It can NOT cleanly import the production module
+    without polluting sys.path or installing backend-rag as a package
+    locally. Three properties keep it Golden-Rule-#13 compliant despite
+    the duplication:
+
+    1. **No SDK import**: this script never `from anthropic import ...`.
+       It only spawns the ``claude`` CLI binary, which itself uses
+       ``CLAUDE_CODE_OAUTH_TOKEN`` (Max-plan quota) and has no API-key
+       fallback. Equivalent posture to the canonical client.
+
+    2. **Defense-in-depth env strip**: ANTHROPIC_API_KEY (and AWS/Vertex
+       Anthropic variants) are stripped from the subprocess env before
+       spawn, identical to ``_strip_anthropic_api_key()`` in the
+       canonical client. If anyone accidentally exports the key, the CLI
+       still cannot see it.
+
+    3. **OAuth-only token sourcing**: token comes from
+       ``CLAUDE_CODE_OAUTH_TOKEN`` env var, then macOS keychain, then
+       ``~/.claude/token`` file — same priority order documented in the
+       canonical client's docstring. No new API-key fallback added.
+
+    If/when a future PR moves this script under ``apps/backend-rag/`` or
+    publishes ``claude_oauth_client`` as a shared utility, this function
+    SHOULD be replaced with a direct import. Until then, the duplication
+    is deliberate and audited.
+    """
     start = time.time()
-    # Strip ANTHROPIC_API_KEY from env passed to subprocess (defense in depth)
-    env = os.environ.copy()
-    for forbidden in ("ANTHROPIC_API_KEY", "AWS_BEDROCK_ANTHROPIC_KEY", "VERTEX_AI_ANTHROPIC_KEY"):
-        env.pop(forbidden, None)
-    # Need OAuth token from env, then keychain, then file
+    # 1. Strip ALL provider billing env vars (defense-in-depth, mirror of
+    #    backend.llm.claude_oauth_client._strip_anthropic_api_key()
+    #    extended to OpenAI/Google for symmetry — Claude CLI doesn't need
+    #    them and neither does any subprocess we spawn for review).
+    env = _safe_subprocess_env()
+    # 2. OAuth token discovery (env → keychain → file). Identical priority
+    #    to the canonical client. No API-key path.
     if not env.get("CLAUDE_CODE_OAUTH_TOKEN") and not env.get("CLAUDE_CODE_OAUTH_TOKEN_1"):
-        # Try keychain first (canonical location per memory discovery_oauth_token_keychain.md)
         keychain_result = subprocess.run(
             ["security", "find-generic-password", "-s", "Claude Code-credentials", "-w"],
             capture_output=True,
@@ -354,8 +414,14 @@ async def review_claude_opus(prompt: str) -> ReviewVerdict:
         return parse_verdict("claude-opus", "", time.time() - start, error=str(e))
 
 
-async def review_deepseek(prompt: str) -> ReviewVerdict:
-    """DeepSeek Reasoner v4 via API (~$0.01/query — explicitly allowed)."""
+async def review_deepseek(prompt: str, http_client: Any) -> ReviewVerdict:
+    """DeepSeek Reasoner v4 via API (~$0.01/query — explicitly allowed).
+
+    The httpx.AsyncClient is owned by the caller (run_panel) and passed in
+    here. This satisfies the project's async-first rule (Golden Rule #10):
+    NEVER instantiate httpx.AsyncClient inside a method/loop — clients
+    must be persistent and closed via lifespan.
+    """
     start = time.time()
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
@@ -370,28 +436,22 @@ async def review_deepseek(prompt: str) -> ReviewVerdict:
         return parse_verdict("deepseek", "", time.time() - start, error="no_api_key")
 
     try:
-        import httpx  # type: ignore[import-not-found]
-    except ImportError:
-        return parse_verdict("deepseek", "", time.time() - start, error="httpx_missing")
-
-    try:
-        async with httpx.AsyncClient(timeout=600.0) as client:
-            r = await client.post(
-                "https://api.deepseek.com/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": "deepseek-reasoner",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "You are a strict code reviewer. Output ONLY the JSON requested, no preamble.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    "max_tokens": 8192,
-                    "temperature": 0,
-                },
-            )
+        r = await http_client.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "deepseek-reasoner",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a strict code reviewer. Output ONLY the JSON requested, no preamble.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 8192,
+                "temperature": 0,
+            },
+        )
         duration = time.time() - start
         if r.status_code != 200:
             return parse_verdict(
@@ -410,14 +470,40 @@ async def review_deepseek(prompt: str) -> ReviewVerdict:
 
 
 async def run_panel(prompt: str) -> list[ReviewVerdict]:
-    """Run all 3 reviewers in parallel, return verdicts (one per reviewer)."""
+    """Run all 3 reviewers in parallel, return verdicts (one per reviewer).
+
+    Creates a single persistent httpx.AsyncClient for DeepSeek (async-first
+    rule — Golden Rule #10), used only by ``review_deepseek``. The client
+    is closed via the async context manager when this coroutine exits.
+    """
     logger.info("Launching tri-LLM panel (codex + claude-opus + deepseek)")
-    results = await asyncio.gather(
-        review_codex(prompt),
-        review_claude_opus(prompt),
-        review_deepseek(prompt),
-        return_exceptions=False,
-    )
+    try:
+        import httpx  # type: ignore[import-not-found]
+    except ImportError:
+        # Without httpx, DeepSeek leg is unavailable; degrade panel to 2-way.
+        logger.warning("httpx missing — DeepSeek leg disabled, panel runs 2-way")
+        results = await asyncio.gather(
+            review_codex(prompt),
+            review_claude_opus(prompt),
+            return_exceptions=False,
+        )
+        # Synthesize a deepseek verdict to keep schema stable
+        deepseek_skip = ReviewVerdict(
+            reviewer="deepseek",
+            verdict="red",
+            duration_s=0.0,
+            error="httpx_missing",
+        )
+        results = [*results, deepseek_skip]
+    else:
+        async with httpx.AsyncClient(timeout=600.0) as http_client:
+            results = await asyncio.gather(
+                review_codex(prompt),
+                review_claude_opus(prompt),
+                review_deepseek(prompt, http_client),
+                return_exceptions=False,
+            )
+
     for r in results:
         logger.info(
             "  %s: %s (%.1fs)%s",

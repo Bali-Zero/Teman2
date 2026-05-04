@@ -19,7 +19,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -74,10 +73,15 @@ async def codex_overnight_queue_action(
     slug_hint = (payload.get("slug_hint") or proposal_id).strip()
     slug = _safe_slug(slug_hint)
 
-    # Deterministic filename — same proposal_id always maps to same filename
-    # so re-running the action is idempotent.
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    filename = f"{timestamp}-{slug}-{proposal_id[:12]}.md"
+    # Filename derived purely from proposal_id (and idempotency_key when
+    # available) — NO timestamp. The repository's UPSERT on
+    # idempotency_key already deduplicates at the DB level; the queue
+    # filename mirrors that contract so re-running the action is a true
+    # no-op (rename overwrites identical content; second L2 dispatch
+    # cannot create a duplicate task file).
+    idempotency_key = str(getattr(proposal, "idempotency_key", "") or "")
+    key_slice = (idempotency_key[:16] or proposal_id[:16] or "task").rstrip("-")
+    filename = f"{slug}-{key_slice}.md"
     target = QUEUE_DIR / filename
 
     if dry_run:

@@ -1,7 +1,8 @@
-"""Whitelist V1 actions for the Federation Alert Dispatcher.
+"""Whitelist V2 actions for the Federation Alert Dispatcher.
 
-Per spec: only 4 actions are safe enough for L2 autonomous in production
-mode. Two patterns are deliberately BLOCKED or HITL_ONLY (see registry).
+V1 (4 actions) — idempotent maintenance ops on local resources.
+V2 (4 new actions, this PR) — Codex 5.5 capabilities (OAuth Pro $200,
+no API key). See registry.py for ALLOWED_L2 / HITL_ONLY routing.
 
 Pattern (adapted from Robusta's @action decorator under MIT, see:
 https://github.com/robusta-dev/robusta):
