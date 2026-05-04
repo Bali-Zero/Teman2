@@ -11,6 +11,44 @@ via Tailscale (Subhi-side niente cron pull, solo Tailscale SSH server).
 
 ---
 
+## Bridge WSL — Subhi parte SUBITO sul Windows Acer (2026-05-04)
+
+Il MacBook Pro arriva giovedì 2026-05-06. Per non far aspettare 2 giorni,
+Subhi parte oggi/domani su Windows tramite WSL2 (Linux dentro Windows).
+Setup è separato dal Day 1 macOS:
+
+**Flow WSL bridge:**
+
+1. **Sera prima** (oggi): mandi via WhatsApp il messaggio bahasa
+   step-by-step per installare WSL2 (vedi `docs/runbooks/subhi-wsl-bootstrap-bahasa.md`
+   o copia dal messaggio originale).
+2. Subhi installa WSL2 da solo (~15 min: `wsl --install -d Ubuntu` da
+   PowerShell admin + reboot + setup user).
+3. Subhi ti scrive "WSL ready" via WA.
+4. Mandi gist URL del **install script WSL variant**
+   (`scripts/subhi/subhi-tutor-install-wsl.sh`, NON quello macOS).
+5. Subhi runs `bash <(curl -sL <gist-wsl-raw-url>)` dentro Ubuntu WSL.
+6. ~25 min, ottiene tutor funzionante in WSL.
+
+**Differenze WSL vs macOS:**
+
+| Aspetto | WSL2 Ubuntu | macOS (giovedì) |
+|---|---|---|
+| Path home | `/home/subhi/` | `/Users/subhi/` |
+| Package manager | `apt` | `brew` |
+| Tailscale | Windows-host (mirrored networking) | nativo |
+| VSCode | Windows + Remote-WSL extension | nativo |
+| Browser flows | URL passati a Edge/Chrome Windows | Safari/Chrome Mac |
+
+**Giovedì 2026-05-06 (MacBook Day 1):**
+
+- Subhi smette di usare WSL.
+- Riapri questo runbook **dalla sezione "Pre-Day-1"** sotto e procedi
+  normalmente con `subhi-tutor-install.sh` (variant macOS).
+- Memory mirror, scaffold, hooks **non cambiano** — solo l'OS dove girano.
+
+---
+
 ## Convenzioni
 
 - `<gist-url>` = URL del gist GitHub creato da Antonello con
