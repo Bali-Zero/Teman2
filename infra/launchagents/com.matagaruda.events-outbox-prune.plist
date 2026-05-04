@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.events-outbox-prune</string>
+
+    <!-- Sprint 6 / audit P0-2 phase 3 partial: daily prune of consumed
+         events_outbox rows.
+
+         Reference:  scripts/events_outbox_prune.py docstring
+                     apps/backend-rag/backend/services/events/outbox.py
+                     prune_consumed()
+
+         Runs daily at 04:30 WITA on Pro only.
+         Pro-only because Pro-local is the only host with the
+         `fly proxy 15432:5432 -a nuzantara-postgres` background process
+         that exposes Fly Postgres at 127.0.0.1:15432. From Fly machines
+         the same prune could run, but coordinating "exactly one prune
+         per day" across multiple machines requires a leader-election we
+         don't have. Pro-local single-actor is simpler and sufficient.
+
+         Schedule slot: 04:30 WITA. Comes AFTER the 04:13 invalidation
+         sweep (which inserts rows into events_outbox via the trigger
+         on asset_provenance UPDATE), so we never race with that sweep's
+         own writes.
+
+         KeepAlive=false because this is a scheduled cron, not a daemon.
+         Cicatrix P0-3 § "53 LaunchAgents Pro" classifies StartCalendar-
+         Interval entries as "cron" — KeepAlive=false is correct.
+    -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/mata_garuda/events_outbox_prune_wrapper.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <!-- DATABASE_URL is sourced by the wrapper script from
+             ~/.nuzantara-secrets.env (mode 0600). Do NOT inline
+             secrets here (plists default to mode 0644 world-readable;
+             cf. cicatrix P0-3 secrets-leak 2026-04-29). -->
+    </dict>
+
+    <!-- Daily 04:30 WITA. macOS launchd evaluates StartCalendarInterval
+         in SYSTEM LOCAL TIME (NOT UTC). Verified via the existing
+         com.balizero.indexing-sweep.daily.plist which uses Hour=0 for
+         "00:30 WITA". -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Logs to ~/logs (NOT /tmp — cf. cicatrix P0-3: 6/53 plist
+         logging to /tmp lose entries on reboot and break Sentinel
+         cross-checks). -->
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/events-outbox-prune.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/events-outbox-prune.stderr.log</string>
+</dict>
+</plist>
