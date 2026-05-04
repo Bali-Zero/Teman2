@@ -1,0 +1,56 @@
+# Memory mirror filter rules for Subhi tutor.
+# Source: ~/.claude/projects/-Users-nuzantara/memory/
+# Destination: ~/Desktop/subhi_TUTOR_KIT/staging/.claude/memory-mirror/
+# Reference: feedback_subhi_memory_scope.md
+# Per addendum B (option B): destination is local staging, NOT a separate
+# GitHub repo. Distribution to Subhi happens via rsync over Tailscale (T3).
+
+source_dir: "/Users/nuzantara/.claude/projects/-Users-nuzantara/memory"
+dest_dir: "/Users/nuzantara/Desktop/subhi_TUTOR_KIT/staging/.claude/memory-mirror"
+
+# Files NEVER copied (matched against path relative to source_dir).
+# Glob-style patterns; "**" means any-depth recursion below the prefix.
+exclude_patterns:
+  - "Subhi/**"
+  - "Subhi"
+  - "reference_subhi_folder.md"
+  - "discovery_token_*.md"
+  - "MEMORY_ARCHIVE.md"
+  - "feedback_subhi_*.md"
+  - "*.pre-T2"
+  - "*.pre-T1"
+  - "MEMORY.md.pre-*"
+  - "subhi-misi-60h/**"
+  - "subhi-videos/**"
+  - "subhi_induction/**"
+  - "team 30 april/**"
+  - "archive/**"
+
+# Files included only if NO exclude pattern matches and they match one of these.
+include_patterns:
+  - "*.md"
+
+# Content-level redaction: substrings matching these regex are scrubbed
+# (replaced with "[REDACTED-secret]"). Defense in depth — even if an
+# exclude pattern is missed, accidental token / email leaks are removed.
+content_redact_regex:
+  - 'ANTHROPIC_API_KEY\s*=\s*["\x27]?sk-ant[^"\x27\s]+'
+  - "sk-ant-[A-Za-z0-9_-]{20,}"
+  - "ghp_[A-Za-z0-9]{36}"
+  - "gho_[A-Za-z0-9]{36}"
+  - "gsk_[A-Za-z0-9]{20,}"
+  - "fly_[A-Za-z0-9]{20,}"
+  - 'antonellosiano@gmail\.com'
+  - 'kaiser198719871987@gmail\.com'
+
+# Files entirely SKIPPED (not copied) if content matches any of these regex.
+content_full_exclude_regex:
+  - 'TELEGRAM_BOT_TOKEN\s*=\s*[0-9]+:[A-Za-z0-9_-]+'
+
+# MEMORY.md index lines that mention any of these substrings are removed
+# from the mirrored copy of MEMORY.md so the index does not point at
+# files that were excluded from the mirror.
+memory_index_strip_patterns:
+  - "Subhi/"
+  - "reference_subhi_folder"
+  - "discovery_token_"
