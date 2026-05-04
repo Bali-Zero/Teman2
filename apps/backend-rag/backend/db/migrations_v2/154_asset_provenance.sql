@@ -158,12 +158,36 @@ CREATE INDEX IF NOT EXISTS ix_asset_provenance_admiralty
     ON asset_provenance (reliability, credibility)
     WHERE invalidated_at IS NULL;
 
+-- BEFORE UPDATE trigger: bump updated_at on every UPDATE so the mig 155
+-- trigger payload's 'occurred_at': NEW.updated_at always reflects the
+-- actual change time. Without this, direct SQL UPDATE (e.g. from psql)
+-- would leave updated_at stale and consumers would see a wrong
+-- timestamp. Multi-LLM W2 review (cf. SYNTHESIS I3) caught this gap.
+-- The set_updated_at() function is shared across schemas — use a
+-- backend-rag-conventional name so it can be reused (or already exists).
+CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS asset_provenance_set_updated_at ON asset_provenance;
+CREATE TRIGGER asset_provenance_set_updated_at
+    BEFORE UPDATE ON asset_provenance
+    FOR EACH ROW
+    EXECUTE FUNCTION set_updated_at_asset_provenance();
+
 -- === ROLLBACK ===
--- Reverts the indexes and table. Safe to run on any DB state because all
--- DROP statements use IF EXISTS. After rollback, asset_provenance is gone;
--- consumers (oracle citation guard, KG demotion cron, WR2 invalidation
--- reactor) lose the provenance signal and fall back to the pre-Sprint-3
--- behaviour (no cross-cell trust check, no TTL-driven invalidation).
+-- Reverts the trigger + function + indexes + table. Safe to run on any DB
+-- state because all DROP statements use IF EXISTS. After rollback,
+-- asset_provenance is gone; consumers (oracle citation guard, KG demotion
+-- cron, WR2 invalidation reactor) lose the provenance signal and fall
+-- back to the pre-Sprint-3 behaviour (no cross-cell trust check, no
+-- TTL-driven invalidation).
+DROP TRIGGER IF EXISTS asset_provenance_set_updated_at ON asset_provenance;
+DROP FUNCTION IF EXISTS set_updated_at_asset_provenance();
 DROP INDEX IF EXISTS ix_asset_provenance_admiralty;
 DROP INDEX IF EXISTS ix_asset_provenance_source;
 DROP INDEX IF EXISTS ix_asset_provenance_event_topic;

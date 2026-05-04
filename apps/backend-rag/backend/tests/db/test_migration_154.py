@@ -193,3 +193,35 @@ def test_pg_channel_map_registers_asset_provenance():
     )
     src = event_bus_path.read_text()
     assert '"asset_provenance": "mata_garuda.asset_provenance"' in src
+
+
+def test_migration_creates_set_updated_at_trigger():
+    """Sprint 3 W2 review I3 fix: BEFORE UPDATE trigger bumps
+    asset_provenance.updated_at on every UPDATE so the mig 155 trigger
+    payload's 'occurred_at': NEW.updated_at always reflects the actual
+    change time. Without this, direct SQL UPDATE (e.g. from psql) would
+    leave updated_at stale.
+    """
+    sql = MIGRATION_FILE.read_text()
+    forward_section = sql.split("-- === ROLLBACK ===")[0]
+    assert "CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()" in forward_section
+    assert "BEFORE UPDATE ON asset_provenance" in forward_section
+    assert "asset_provenance_set_updated_at" in forward_section
+    # Function must set NEW.updated_at = NOW()
+    assert "NEW.updated_at = NOW()" in forward_section
+
+
+def test_rollback_drops_set_updated_at_trigger_and_function():
+    """Rollback ordering: trigger → function (DROP FUNCTION fails if a
+    trigger still depends on it without CASCADE)."""
+    sql = MIGRATION_FILE.read_text()
+    rollback_section = sql.split("-- === ROLLBACK ===")[1]
+    drop_trigger_pos = rollback_section.find(
+        "DROP TRIGGER IF EXISTS asset_provenance_set_updated_at"
+    )
+    drop_function_pos = rollback_section.find(
+        "DROP FUNCTION IF EXISTS set_updated_at_asset_provenance"
+    )
+    assert drop_trigger_pos != -1
+    assert drop_function_pos != -1
+    assert drop_trigger_pos < drop_function_pos

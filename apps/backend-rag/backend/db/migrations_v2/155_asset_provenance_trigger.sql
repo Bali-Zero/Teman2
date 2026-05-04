@@ -91,13 +91,23 @@ COMMENT ON FUNCTION notify_asset_provenance() IS
 -- Drop existing trigger (idempotent re-run).
 DROP TRIGGER IF EXISTS asset_provenance_notify ON asset_provenance;
 
--- Attach trigger — AFTER INSERT OR UPDATE. Updates fire on re-tag (e.g.
--- credibility raised after corroboration) so consumers can react to
--- confidence shifts. UNIQUE (asset_kind, asset_id) on the table means
--- re-tagging UPDATEs in place rather than creating duplicate rows.
+-- Attach trigger — AFTER INSERT OR UPDATE with WHEN clause. The WHEN
+-- prevents no-op emissions when the cell adapter performs idempotent
+-- ON CONFLICT DO UPDATE that writes the same values (e.g. import-loop
+-- re-tagging unchanged data). Without this guard, every UPSERT call
+-- generates a spurious 'provenance_updated' event with payload identical
+-- to the previous one. Multi-LLM W2 review (cf. SYNTHESIS I1) caught
+-- this; the contract test test_migration_trigger_does_not_fire_on_noop
+-- pins the behavior.
+--
+-- OLD.* IS DISTINCT FROM NEW.* uses Postgres NULL-safe comparison; works
+-- correctly when columns transition NULL ↔ value (e.g. valid_until set
+-- for the first time, invalidated_at populated by sweeper). On INSERT
+-- OLD is implicitly NULL → IS DISTINCT FROM evaluates true.
 CREATE TRIGGER asset_provenance_notify
     AFTER INSERT OR UPDATE ON asset_provenance
     FOR EACH ROW
+    WHEN (TG_OP = 'INSERT' OR OLD.* IS DISTINCT FROM NEW.*)
     EXECUTE FUNCTION notify_asset_provenance();
 
 -- === ROLLBACK ===

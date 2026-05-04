@@ -20,8 +20,13 @@ import mata_garuda_invalidation_sweep as sweep  # noqa: E402
 
 
 def test_parse_args_default_batch_size():
+    """Default lowered from 1000 → 200 in W2 review (cf. SYNTHESIS X2):
+    cap is conservative to avoid pg_notify storm when the table grows.
+    The mig 155 trigger emits one outbox row + one pg_notify per
+    updated row.
+    """
     args = sweep._parse_args(["--database-url", "postgres://x"])
-    assert args.batch_size == 1000
+    assert args.batch_size == 200
 
 
 def test_parse_args_custom_batch_size():

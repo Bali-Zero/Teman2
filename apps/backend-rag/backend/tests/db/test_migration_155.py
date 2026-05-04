@@ -112,6 +112,18 @@ def test_migration_attaches_after_insert_or_update_trigger():
     assert "FOR EACH ROW" in forward_section
 
 
+def test_migration_when_clause_filters_noop_updates():
+    """Sprint 3 W2 review I1 fix: the trigger MUST NOT fire on
+    no-op UPDATEs (UPSERT with identical values). The WHEN clause
+    uses OLD.* IS DISTINCT FROM NEW.* (Postgres NULL-safe row
+    comparison) so idempotent re-tagging by the cell adapter doesn't
+    generate spurious 'provenance_updated' events.
+    """
+    sql = MIGRATION_FILE.read_text()
+    forward_section = sql.split("-- === ROLLBACK ===")[0]
+    assert "WHEN (TG_OP = 'INSERT' OR OLD.* IS DISTINCT FROM NEW.*)" in forward_section
+
+
 def test_migration_is_idempotent():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]

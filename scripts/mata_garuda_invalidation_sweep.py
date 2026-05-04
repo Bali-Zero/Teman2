@@ -73,52 +73,98 @@ async def _connect(database_url: str):
 
 
 async def run_ttl_sweep(
-    pool: asyncpg.Pool,
+    pool,
     *,
-    batch_size: int = 1000,
+    batch_size: int = 200,
     dry_run: bool = False,
 ) -> int:
     """Mark TTL-expired provenance rows invalidated.
 
-    Returns the number of rows updated. With ``dry_run=True`` no UPDATE is
-    issued — the count returned is the would-update count.
+    Returns the number of rows updated. With ``dry_run=True`` no UPDATE
+    happens — only the would-update count is returned.
+
+    Atomic version (Sprint 3 W2 review I2 fix). Replaces the original
+    two-step SELECT-then-UPDATE pattern, which had a race window where a
+    concurrent event-driven invalidator could mark rows
+    invalidated_by='event:topic' between the two queries; the TTL sweeper
+    would then overwrite that attribution. The atomic path uses
+    UPDATE ... WHERE id IN (SELECT ... FOR UPDATE SKIP LOCKED LIMIT $1)
+    so:
+
+    * Only rows still un-invalidated and in 'auto' mode get the
+      ttl_sweeper attribution.
+    * Concurrent sweepers / future event-invalidators don't deadlock —
+      SKIP LOCKED yields the contended rows to whoever got there first.
+    * Single round-trip instead of two queries.
+
+    For dry-run we keep the read-only SELECT path because we don't want
+    side effects (no row locking, no UPDATE).
     """
-    select_sql = """
-        SELECT id, asset_kind, asset_id, valid_until
-        FROM asset_provenance
-        WHERE valid_until IS NOT NULL
-          AND valid_until < NOW()
-          AND invalidated_at IS NULL
-          AND invalidation_mode = 'auto'
-        ORDER BY valid_until ASC
-        LIMIT $1
-    """
+    if dry_run:
+        select_sql = """
+            SELECT id, asset_kind, asset_id, valid_until
+            FROM asset_provenance
+            WHERE valid_until IS NOT NULL
+              AND valid_until < NOW()
+              AND invalidated_at IS NULL
+              AND invalidation_mode = 'auto'
+            ORDER BY valid_until ASC
+            LIMIT $1
+        """
+        async with pool.acquire() as conn:
+            candidates = await conn.fetch(select_sql, batch_size)
+        if not candidates:
+            logger.info("ttl_sweep[dry_run]: 0 expired rows; nothing to do")
+            return 0
+        logger.info(
+            "ttl_sweep[dry_run]: %d expired rows (oldest valid_until=%s, batch_size=%d)",
+            len(candidates),
+            candidates[0]["valid_until"].isoformat(),
+            batch_size,
+        )
+        return len(candidates)
+
+    # Atomic UPDATE — both filters re-applied so concurrent invalidators
+    # don't get clobbered. The inner SELECT locks (FOR UPDATE) only the
+    # rows that survive WHERE; SKIP LOCKED makes contention non-blocking.
     update_sql = """
-        UPDATE asset_provenance
+        WITH expired AS (
+            SELECT id
+            FROM asset_provenance
+            WHERE valid_until IS NOT NULL
+              AND valid_until < NOW()
+              AND invalidated_at IS NULL
+              AND invalidation_mode = 'auto'
+            ORDER BY valid_until ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT $1
+        )
+        UPDATE asset_provenance ap
         SET invalidated_at = NOW(),
             invalidated_by = 'ttl_sweeper',
             updated_at = NOW()
-        WHERE id = ANY($1::bigint[])
+        FROM expired
+        WHERE ap.id = expired.id
+        RETURNING ap.id, ap.asset_kind, ap.asset_id, ap.valid_until
     """
     async with pool.acquire() as conn:
-        candidates = await conn.fetch(select_sql, batch_size)
-        if not candidates:
-            logger.info("ttl_sweep: 0 expired rows; nothing to do")
-            return 0
-        ids = [r["id"] for r in candidates]
-        logger.info(
-            "ttl_sweep: %d expired rows (oldest valid_until=%s, batch_size=%d, dry_run=%s)",
-            len(ids), candidates[0]["valid_until"].isoformat(), batch_size, dry_run,
-        )
-        if dry_run:
-            return len(ids)
-        # The UPDATE fires the mig 155 trigger per row, which writes to
-        # events_outbox + pg_notify (durability before volatile). Consumers
-        # see asset_provenance events with event_type='provenance_updated'
-        # and invalidated_at set.
-        await conn.execute(update_sql, ids)
-        logger.info("ttl_sweep: %d rows marked invalidated by ttl_sweeper", len(ids))
-        return len(ids)
+        rows = await conn.fetch(update_sql, batch_size)
+    if not rows:
+        logger.info("ttl_sweep: 0 expired rows; nothing to do")
+        return 0
+    # The UPDATE fires the mig 155 trigger per row, which writes to
+    # events_outbox + pg_notify (durability before volatile). Consumers
+    # see asset_provenance events with event_type='provenance_updated'
+    # and invalidated_at set. With FOR EACH ROW + batch_size=200 this
+    # generates ≤200 outbox rows + ≤200 pg_notify per sweep — well
+    # within Postgres LISTEN/NOTIFY headroom (cf. cicatrix § "PG
+    # LISTEN/NOTIFY at scale").
+    logger.info(
+        "ttl_sweep: %d rows marked invalidated by ttl_sweeper "
+        "(oldest valid_until=%s, batch_size=%d)",
+        len(rows), rows[0]["valid_until"].isoformat(), batch_size,
+    )
+    return len(rows)
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -140,8 +186,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument(
         "--batch-size",
         type=int,
-        default=1000,
-        help="Maximum rows to process per sweep run (default 1000).",
+        default=200,
+        help=(
+            "Maximum rows to process per sweep run (default 200). The mig "
+            "155 trigger emits one events_outbox row + one pg_notify per "
+            "updated row; cap is conservative to avoid pg_notify storms "
+            "when the asset_provenance table grows. Increase if telemetry "
+            "shows the sweeper falling behind."
+        ),
     )
     p.add_argument(
         "--dry-run",
