@@ -1,0 +1,505 @@
+{
+  "summary": {
+    "started_at": "2026-05-04T18:30:20.802607+00:00",
+    "ended_at": "2026-05-04T18:37:33.719058+00:00",
+    "duration_s": 432.92,
+    "total_ops": 58,
+    "success_count": 54,
+    "429_count": 0,
+    "401_count": 0,
+    "5xx_count": 0,
+    "net_err_count": 4,
+    "timeout_count": 0,
+    "auth_refresh_events": 0,
+    "p50_latency_ms": 4647.53,
+    "p95_latency_ms": 55805.26,
+    "errors_first5": [
+      "NetworkError: Chat request timed out: ",
+      "NetworkError: Chat request timed out: ",
+      "NetworkError: Chat request timed out: ",
+      "NetworkError: Chat request timed out: "
+    ]
+  },
+  "operations": [
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:10.400023+00:00",
+      "status": "200",
+      "latency_ms": 48294.84,
+      "error": null,
+      "answer_chars": 3230
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:31:14.947604+00:00",
+      "status": "200",
+      "latency_ms": 4547.45,
+      "error": null,
+      "url": "https://arxiv.org/abs/2402.03300",
+      "source_id": "2563f981-9f98-4180-bae6-02d89da9c90f"
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:15.520632+00:00",
+      "status": "200",
+      "latency_ms": 53414.26,
+      "error": null,
+      "answer_chars": 3965
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:15.925057+00:00",
+      "status": "200",
+      "latency_ms": 53818.06,
+      "error": null,
+      "answer_chars": 3152
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:31:16.394175+00:00",
+      "status": "200",
+      "latency_ms": 469.0,
+      "error": null,
+      "source_id": "605b1cf3-00de-432c-8829-852c581f4b5e",
+      "content_chars": 18658
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:43.250452+00:00",
+      "status": "200",
+      "latency_ms": 28302.8,
+      "error": null,
+      "answer_chars": 601
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:57.143579+00:00",
+      "status": "200",
+      "latency_ms": 41622.82,
+      "error": null,
+      "answer_chars": 2998
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:31:59.420665+00:00",
+      "status": "200",
+      "latency_ms": 43026.44,
+      "error": null,
+      "answer_chars": 3095
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:31:59.912348+00:00",
+      "status": "200",
+      "latency_ms": 491.56,
+      "error": null,
+      "source_id": "e608b34c-14aa-4db4-9036-cf888398af15",
+      "content_chars": 12912
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:32:31.906651+00:00",
+      "status": "200",
+      "latency_ms": 31994.25,
+      "error": null,
+      "answer_chars": 588
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:32:33.191925+00:00",
+      "status": "200",
+      "latency_ms": 49941.41,
+      "error": null,
+      "answer_chars": 3486
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:32:34.750169+00:00",
+      "status": "200",
+      "latency_ms": 37606.46,
+      "error": null,
+      "answer_chars": 3802
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:03.740526+00:00",
+      "status": "net_err",
+      "latency_ms": 30548.48,
+      "error": "NetworkError: Chat request timed out: "
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:17.026466+00:00",
+      "status": "200",
+      "latency_ms": 45119.15,
+      "error": null,
+      "answer_chars": 3556
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:33:17.511470+00:00",
+      "status": "200",
+      "latency_ms": 484.88,
+      "error": null,
+      "source_id": "015018e4-a499-4117-a1d8-567af87af866",
+      "content_chars": 10056
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:25.459854+00:00",
+      "status": "200",
+      "latency_ms": 50709.52,
+      "error": null,
+      "answer_chars": 3961
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:46.572573+00:00",
+      "status": "200",
+      "latency_ms": 42831.63,
+      "error": null,
+      "answer_chars": 2751
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:48.082135+00:00",
+      "status": "net_err",
+      "latency_ms": 30570.49,
+      "error": "NetworkError: Chat request timed out: "
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:33:52.282796+00:00",
+      "status": "200",
+      "latency_ms": 4197.89,
+      "error": null,
+      "url": "https://arxiv.org/abs/2404.07143",
+      "source_id": "afee50d9-be03-41a5-a713-5ae715aa38f5"
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:33:54.095248+00:00",
+      "status": "200",
+      "latency_ms": 28635.25,
+      "error": null,
+      "answer_chars": 617
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:33:56.576939+00:00",
+      "status": "200",
+      "latency_ms": 4294.05,
+      "error": null,
+      "url": "https://arxiv.org/abs/2401.04088",
+      "source_id": "b7cac369-7059-4e39-93fd-42bcd13730cd"
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:34:00.343773+00:00",
+      "status": "200",
+      "latency_ms": 3766.77,
+      "error": null,
+      "url": "https://arxiv.org/abs/2402.03300",
+      "source_id": "446ebf8b-cdc0-4f31-947a-05a7703d7d21"
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:34:00.798045+00:00",
+      "status": "200",
+      "latency_ms": 454.11,
+      "error": null,
+      "source_id": "b3535468-ae2c-42a2-b08b-31027566019d",
+      "content_chars": 3459
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:34:01.201233+00:00",
+      "status": "200",
+      "latency_ms": 403.01,
+      "error": null,
+      "source_id": "8364de2e-89a0-4326-8ee4-1bdcedf4b7cf",
+      "content_chars": 10056
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:34:19.524517+00:00",
+      "status": "200",
+      "latency_ms": 32951.83,
+      "error": null,
+      "answer_chars": 500
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:34:27.827574+00:00",
+      "status": "200",
+      "latency_ms": 26626.19,
+      "error": null,
+      "answer_chars": 571
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:34:47.213360+00:00",
+      "status": "200",
+      "latency_ms": 53117.98,
+      "error": null,
+      "answer_chars": 4127
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:34:48.522180+00:00",
+      "status": "200",
+      "latency_ms": 28997.57,
+      "error": null,
+      "answer_chars": 730
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:34:48.874154+00:00",
+      "status": "200",
+      "latency_ms": 351.83,
+      "error": null,
+      "source_id": "c56ff002-fd59-40be-8950-1d3c6595576c",
+      "content_chars": 16320
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:34:51.923706+00:00",
+      "status": "200",
+      "latency_ms": 4710.22,
+      "error": null,
+      "url": "https://arxiv.org/abs/2403.08540",
+      "source_id": "ed2c7655-70ae-4761-a9b5-06cd1aa736a8"
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:34:52.412621+00:00",
+      "status": "200",
+      "latency_ms": 488.72,
+      "error": null,
+      "source_id": "c830df60-18a1-47cc-a55e-e979ef4149a0",
+      "content_chars": 3670
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:34:53.459210+00:00",
+      "status": "200",
+      "latency_ms": 4584.85,
+      "error": null,
+      "url": "https://arxiv.org/abs/2403.08540",
+      "source_id": "98b12598-2dea-4374-9ab8-8e5200c318c9"
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:35:01.932729+00:00",
+      "status": "200",
+      "latency_ms": 34104.99,
+      "error": null,
+      "answer_chars": 2393
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:35:05.749505+00:00",
+      "status": "200",
+      "latency_ms": 3816.64,
+      "error": null,
+      "url": "https://arxiv.org/abs/2404.07143",
+      "source_id": "426e995f-ee51-4526-93d3-682b5daaa556"
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:35:06.230356+00:00",
+      "status": "200",
+      "latency_ms": 480.7,
+      "error": null,
+      "source_id": "c502ad35-f4ea-42ab-adee-6313e419d6fd",
+      "content_chars": 4428
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:35:22.963029+00:00",
+      "status": "200",
+      "latency_ms": 30550.14,
+      "error": null,
+      "answer_chars": 669
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:35:38.390523+00:00",
+      "status": "200",
+      "latency_ms": 32159.96,
+      "error": null,
+      "answer_chars": 586
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:35:38.791803+00:00",
+      "status": "200",
+      "latency_ms": 401.06,
+      "error": null,
+      "source_id": "e4024712-846e-421f-9628-777fa703f612",
+      "content_chars": 3968
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:35:39.152947+00:00",
+      "status": "200",
+      "latency_ms": 360.89,
+      "error": null,
+      "source_id": "df5136ca-ac8b-4497-bc19-f87de341be3b",
+      "content_chars": 1793
+    },
+    {
+      "op": "source_add",
+      "ts": "2026-05-04T18:35:43.308651+00:00",
+      "status": "200",
+      "latency_ms": 4155.56,
+      "error": null,
+      "url": "https://arxiv.org/abs/2401.04088",
+      "source_id": "9f4420a4-564b-422b-8c61-f513b420d110"
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:35:47.773156+00:00",
+      "status": "200",
+      "latency_ms": 24809.98,
+      "error": null,
+      "answer_chars": 707
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:35:55.226222+00:00",
+      "status": "200",
+      "latency_ms": 61766.85,
+      "error": null,
+      "answer_chars": 4433
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:35:55.684828+00:00",
+      "status": "200",
+      "latency_ms": 458.43,
+      "error": null,
+      "source_id": "378a3fdd-3544-45d1-9bc2-3581a6aec8f0",
+      "content_chars": 15841
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:36:26.254952+00:00",
+      "status": "net_err",
+      "latency_ms": 30569.88,
+      "error": "NetworkError: Chat request timed out: "
+    },
+    {
+      "op": "source_get_fulltext",
+      "ts": "2026-05-04T18:36:27.305353+00:00",
+      "status": "200",
+      "latency_ms": 1050.2,
+      "error": null,
+      "source_id": "e757177f-9edc-4af6-9fb7-a5cf86b3ae0e",
+      "content_chars": 6327
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:36:28.184947+00:00",
+      "status": "200",
+      "latency_ms": 40411.49,
+      "error": null,
+      "answer_chars": 608
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:36:55.287950+00:00",
+      "status": "200",
+      "latency_ms": 71978.65,
+      "error": null,
+      "answer_chars": 5869
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:36:58.724013+00:00",
+      "status": "net_err",
+      "latency_ms": 30538.95,
+      "error": "NetworkError: Chat request timed out: "
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:37:11.947098+00:00",
+      "status": "200",
+      "latency_ms": 44641.44,
+      "error": null,
+      "answer_chars": 3987
+    },
+    {
+      "op": "chat_ask",
+      "ts": "2026-05-04T18:37:26.945101+00:00",
+      "status": "200",
+      "latency_ms": 31656.85,
+      "error": null,
+      "answer_chars": 691
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:27.767456+00:00",
+      "status": "200",
+      "latency_ms": 822.18,
+      "error": null,
+      "source_id": "2563f981-9f98-4180-bae6-02d89da9c90f"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:28.714706+00:00",
+      "status": "200",
+      "latency_ms": 947.22,
+      "error": null,
+      "source_id": "afee50d9-be03-41a5-a713-5ae715aa38f5"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:29.553902+00:00",
+      "status": "200",
+      "latency_ms": 839.16,
+      "error": null,
+      "source_id": "b7cac369-7059-4e39-93fd-42bcd13730cd"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:30.367036+00:00",
+      "status": "200",
+      "latency_ms": 813.08,
+      "error": null,
+      "source_id": "446ebf8b-cdc0-4f31-947a-05a7703d7d21"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:31.174187+00:00",
+      "status": "200",
+      "latency_ms": 807.12,
+      "error": null,
+      "source_id": "ed2c7655-70ae-4761-a9b5-06cd1aa736a8"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:32.068678+00:00",
+      "status": "200",
+      "latency_ms": 894.45,
+      "error": null,
+      "source_id": "98b12598-2dea-4374-9ab8-8e5200c318c9"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:32.937647+00:00",
+      "status": "200",
+      "latency_ms": 868.94,
+      "error": null,
+      "source_id": "426e995f-ee51-4526-93d3-682b5daaa556"
+    },
+    {
+      "op": "cleanup_delete",
+      "ts": "2026-05-04T18:37:33.718398+00:00",
+      "status": "200",
+      "latency_ms": 780.72,
+      "error": null,
+      "source_id": "9f4420a4-564b-422b-8c61-f513b420d110"
+    }
+  ]
+}
