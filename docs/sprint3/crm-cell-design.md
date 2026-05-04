@@ -104,9 +104,83 @@ retention loop, future onboarding cell) will want to react to as
 ONE atomic event. Today they have to scrape 3-4 separate signals.
 
 Channel name: `crm_welcome_completed` (underscores per validate_channel
-regex). Migration: AFTER INSERT trigger on a yet-to-be-created
-`crm_welcome_runs` table that the welcome service writes when all
-sub-steps succeed. Migration target: 153.
+regex). Migration target: 153.
+
+**`crm_welcome_runs` table spec** (DDL specced here so W2 implementer
+doesn't fork on Day 1):
+
+```sql
+-- 153_crm_welcome_runs.sql (Sprint 3 W2)
+CREATE TABLE IF NOT EXISTS crm_welcome_runs (
+    id BIGSERIAL PRIMARY KEY,
+    client_id BIGINT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    practice_id BIGINT REFERENCES practices(id) ON DELETE SET NULL,
+    -- Drive folder created during welcome (NULL if Drive step skipped/failed)
+    drive_folder_id TEXT,
+    -- Channels actually delivered: subset of ['email', 'whatsapp', 'telegram']
+    channels_sent TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- Welcome flow has 4 sub-steps: practice + drive + WA + email.
+    -- success=true ONLY when all 4 green; partial = false (and trigger
+    -- does NOT emit; partial-failure path documented in W2 cell adapter).
+    success BOOLEAN NOT NULL,
+    -- Metadata for cross-step debugging (failed_step name, error msg, etc.)
+    metadata JSONB DEFAULT '{}'::jsonb,
+    UNIQUE (client_id, practice_id)  -- one welcome per (client, practice)
+);
+
+CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_client
+    ON crm_welcome_runs (client_id);
+CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_completed
+    ON crm_welcome_runs (completed_at DESC) WHERE success = true;
+
+-- Trigger fires only on success=true rows; mig 146 outbox pattern
+-- (durability before pg_notify, _outbox_id injection).
+CREATE OR REPLACE FUNCTION notify_crm_welcome_completed()
+RETURNS TRIGGER AS $$
+DECLARE
+    payload    JSONB;
+    outbox_id  BIGINT;
+BEGIN
+    IF TG_OP = 'INSERT' AND NEW.success = true THEN
+        payload := jsonb_build_object(
+            'client_id', NEW.client_id,
+            'practice_id', NEW.practice_id,
+            'drive_folder_id', NEW.drive_folder_id,
+            'channels_sent', NEW.channels_sent,
+            'event_type', 'welcome_completed',
+            'occurred_at', NEW.completed_at
+        );
+        INSERT INTO events_outbox (channel, payload)
+        VALUES ('crm_welcome_completed', payload)
+        RETURNING id INTO outbox_id;
+        PERFORM pg_notify(
+            'crm_welcome_completed',
+            (payload || jsonb_build_object('_outbox_id', outbox_id))::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER crm_welcome_runs_notify
+    AFTER INSERT ON crm_welcome_runs
+    FOR EACH ROW
+    EXECUTE FUNCTION notify_crm_welcome_completed();
+
+-- === ROLLBACK ===
+DROP TRIGGER IF EXISTS crm_welcome_runs_notify ON crm_welcome_runs;
+DROP FUNCTION IF EXISTS notify_crm_welcome_completed();
+DROP INDEX IF EXISTS ix_crm_welcome_runs_completed;
+DROP INDEX IF EXISTS ix_crm_welcome_runs_client;
+DROP TABLE IF EXISTS crm_welcome_runs;
+```
+
+The trigger emits ONLY when `success = true`, so partial-failure
+welcome runs (e.g. WA send failed) are persisted as audit rows but
+do NOT fire downstream observers. This matches the design intent
+("only fires on full success" — line 341 below in Risks called out).
 
 **Reversal cost (MEDIUM):** once the channel ships, consumers can
 subscribe; removing it means coordinating with consumers. But for
@@ -312,9 +386,10 @@ metrics:
   following `test_migration_152.py` template (11 contract tests for
   trigger function dispatch, outbox-before-notify ordering,
   `_outbox_id` injection, ROLLBACK marker, idempotent re-run).
-- **Cell descriptor:** `apps/cell-crm/cell.yaml` (new app dir under
-  `apps/`, mirrors `apps/bali-intel-scraper/cell.yaml`).
-- **Adapter module:** `apps/cell-crm/cell_crm/__init__.py` exposing
+- **Cell descriptor:** `apps/crm-cell/cell.yaml` (new app dir under
+  `apps/`, naming symmetric with `apps/mata-garuda/` and
+  `apps/intel-scraper-cell/`. Python package inside is `crm_cell/`.)
+- **Adapter module:** `apps/crm-cell/crm_cell/__init__.py` exposing
   `crm_cell` instance with `genome`, `hgt_publisher`, `event_bridge`
   attributes. ~80 LOC.
 - **Admission test:** `packages/cell-core/tests/test_admission.py`
@@ -384,28 +459,42 @@ default at our scale (5000 clients, ~150 events/day).
 trigger) + cell adapter ~250 LOC + admission test. Ships as
 designed.
 
-### C2 — Optional automation rule registry table — DEFERRED to Sprint 4+
+### C2 — Automation rule registry table — REJECTED, NEVER
 
 **Research finding:** Twenty CRM has explicit workflow versioning
 (each rule = versioned record in DB, Zero could pause/resume via
 UI). EspoCRM stores workflow definitions in a dedicated table.
 Our 13 automations are imperative Python today.
 
-**Decision:** Defer the rule registry to Sprint 4+. Reasons:
+**Decision (corrected reasoning post-review 2026-05-04):** **Do
+NOT add a rule registry. Ever** (unless Bali Zero one day pivots
+into a multi-tenant SaaS where end-users author their own
+workflows).
 
-1. **Premature abstraction at 13 rules.** Twenty CRM justifies it
-   because users define their own workflows; we have only 13
-   internally-authored automations. Building a registry to
-   manage 13 hard-coded modules adds plumbing without payoff.
-2. **Sprint 3 W2 already at +1 day from M1 (mata-garuda 3-layer
-   schema).** Adding C2 would push W2 beyond comfort.
-3. **Reversal cost is symmetric**: building C2 in Sprint 4
-   costs the same as building it in Sprint 3 (~0.5 day for
-   migration + cell-config-sync logic).
+**Why** — multi-LLM review (Gemini X4) flagged the original
+"premature abstraction at 13 rules, revisit at 25" framing as
+wrong. The right framing is the **inner-platform anti-pattern**:
+Twenty CRM's DB-backed workflow registry exists because it's a
+SaaS platform where *end-users* configure custom workflows.
+Nuzantara is an internal tool. Automations like
+`run_lead_assignment`, `birthday_notifier_service`, and
+`practice_status_listener` are core backend business logic — they
+belong in code/git/PR-review forever, not in a database
+configuration table that Zero or Subhi could mutate at runtime
+without a code review.
 
-**Trigger to revisit:** when we hit ≥25 automations OR when Zero
-requests Telegram-controllable pause/resume per rule. Whichever
-comes first.
+The cost of an inner platform is real: every "moved to DB" rule
+loses git history, type checking, code review, and CI test
+coverage. Twenty CRM accepts that cost because their users demand
+configurability; we do not have those users.
+
+**Trigger to revisit (UPDATED):** ONLY when Bali Zero ships a
+public-facing CRM product where external customers configure
+their own workflows (i.e. a SaaS pivot). At that point, the
+registry becomes core to the product, not optional plumbing.
+Pause/resume per rule for Zero himself does NOT justify it —
+just toggle the cron crontab line or the `CELL_<RULE>_DISABLED`
+env var.
 
 ### LISTEN/NOTIFY scaling — confirmed safe at our scale
 
@@ -436,7 +525,7 @@ is the production-proven pattern.
 ### What this addendum DOES decide
 
 ✅ C1 (in-process FastAPI cell) — confirmed, ships in W2.
-✅ C2 (rule registry) — deferred to Sprint 4+.
+❌ C2 (rule registry) — **rejected outright** (not deferred). Inner-platform anti-pattern for an internal tool with no end-user-authored workflows. Revisit only on SaaS pivot.
 ✅ Direct PG LISTEN/NOTIFY — kept (no PgDog/logical-replication
    pivot needed for 2-3 years at current event rate).
 ✅ Drive polling-only — kept (no webhook adoption).

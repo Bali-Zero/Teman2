@@ -18,7 +18,7 @@ Promote the existing **`apps/mata-garuda/`** walking skeleton (Sprint 1
 state) to a full L4.5 cell with:
 
 1. **Asset provenance schema** — per-asset row carrying source +
-   confidence + owner + invalidation_path, queryable by other cells
+   confidence + owner + invalidation policy (valid_until/event/mode), queryable by other cells
    before they consume the asset.
 2. **Cell descriptor** (`apps/mata-garuda/cell.yaml`) validated by
    `AdmissionTest` — declared at L4.5 (meta-awareness, separate tier
@@ -67,7 +67,7 @@ The schema makes provenance a **first-class queryable artifact**.
 --
 -- Sprint 3 W1.3 — Mata-Garuda asset provenance schema
 --
--- Per-asset row carrying source + confidence + owner + invalidation_path.
+-- Per-asset row carrying source + confidence + owner + invalidation policy.
 -- Other cells query this BEFORE consuming an asset (cross-cell trust check).
 --
 -- Idempotency: CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS.
@@ -79,6 +79,16 @@ CREATE TABLE IF NOT EXISTS asset_provenance (
     -- (war_room_drafts.id), a Qdrant point_id (intel findings),
     -- a kbli_code (KG entity), a client_id, a research_dossier slug.
     -- The asset_kind disambiguates the namespace.
+    --
+    -- AUTHORITATIVE SET (12 values, Bali-Zero-domain-aligned). Any
+    -- alternate list circulating in handovers (e.g. news_article,
+    -- regulation, kbli_code, telegram_post, kg_node, kg_edge,
+    -- contradiction, entity_link, document_hash, visa_type, query_result)
+    -- is NON-AUTHORITATIVE — those concepts may map onto the values
+    -- below (e.g. a regulation alert → 'compliance_alert', a
+    -- telegram_post → 'war_room_post' if it's already published) but
+    -- SHALL NOT be added to this enum without an ALTER TYPE migration
+    -- and updated cell adapter logic.
     asset_kind TEXT NOT NULL CHECK (asset_kind IN (
         'war_room_draft',
         'war_room_post',
@@ -119,14 +129,24 @@ CREATE TABLE IF NOT EXISTS asset_provenance (
     -- the email of the person who entered it.
     owner TEXT NOT NULL,
 
-    -- HOW does this asset get invalidated? A predicate-string the consumer
-    -- can interpret as "is this still valid?". Format:
-    --   'time:7d' — expires 7 days after created_at
-    --   'time:90d' — expires 90 days
-    --   'event:reg_alert.<topic>' — invalidated by a reg-alert on topic
-    --   'manual' — never auto-expires; manual review required
-    --   'never' — canonical, doesn't change (e.g. ID number formats)
-    invalidation_path TEXT NOT NULL,
+    -- HOW does this asset get invalidated? Three explicit columns
+    -- (revised 2026-05-04 post-review — Gemini X5: replaced custom
+    -- DSL `invalidation_path TEXT` with explicit typed columns.
+    -- Reasoning: predicate parsing is reinvention of basic schema;
+    -- `valid_until TIMESTAMPTZ` + `invalidation_event_topic VARCHAR`
+    -- + `invalidation_mode` enum is queryable, indexable, no DSL
+    -- library required).
+    --   - mode='auto', valid_until=NOW()+7d → time-based TTL
+    --   - mode='auto', invalidation_event_topic='reg_alert.visa' → event-driven
+    --   - mode='manual' → never auto-expires; human SQL UPDATE required
+    --   - mode='never' → canonical, immutable (e.g. ID number format rules)
+    valid_until TIMESTAMPTZ,                  -- non-null = TTL deadline
+    invalidation_event_topic VARCHAR(64),     -- non-null = event-driven invalidation
+    invalidation_mode VARCHAR(8) NOT NULL DEFAULT 'auto'
+        CHECK (invalidation_mode IN ('auto', 'manual', 'never')),
+    -- Audit (set when actually invalidated by sweeper or human)
+    invalidated_at TIMESTAMPTZ,
+    invalidated_by VARCHAR(64),
 
     -- Audit trail
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -147,10 +167,15 @@ CREATE INDEX IF NOT EXISTS ix_asset_provenance_owner
     ON asset_provenance (owner);
 
 -- Index for invalidation sweeps: "which time-based assets are expiring?"
--- Partial index — only on time:* invalidation paths.
-CREATE INDEX IF NOT EXISTS ix_asset_provenance_invalidation_time
-    ON asset_provenance (created_at)
-    WHERE invalidation_path LIKE 'time:%';
+-- Partial index — only on rows with a TTL set and not yet invalidated.
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_valid_until
+    ON asset_provenance (valid_until)
+    WHERE valid_until IS NOT NULL AND invalidated_at IS NULL;
+
+-- Index for event-driven invalidation: "which assets care about topic X?"
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_event_topic
+    ON asset_provenance (invalidation_event_topic)
+    WHERE invalidation_event_topic IS NOT NULL AND invalidated_at IS NULL;
 
 -- Index for confidence-band queries: "show me low-trust assets"
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_confidence
@@ -164,27 +189,32 @@ CREATE INDEX IF NOT EXISTS ix_asset_provenance_source
 -- === ROLLBACK ===
 DROP INDEX IF EXISTS ix_asset_provenance_source;
 DROP INDEX IF EXISTS ix_asset_provenance_confidence;
-DROP INDEX IF EXISTS ix_asset_provenance_invalidation_time;
+DROP INDEX IF EXISTS ix_asset_provenance_event_topic;
+DROP INDEX IF EXISTS ix_asset_provenance_valid_until;
 DROP INDEX IF EXISTS ix_asset_provenance_owner;
 DROP TABLE IF EXISTS asset_provenance;
 ```
 
-### Why those four columns
+### Why those columns
 
 - **`source`** — without this, "where did this come from" is a grep
   through scraper logs. With it, every consumer can filter
   trustworthy sources without re-implementing source-vetting logic.
-- **`confidence`** — calibrated 0.0-1.0 lets consumers pick threshold
-  bands (intel-radar might require ≥0.8; CRM enrichment might
-  accept ≥0.5).
+- **`confidence`** (will be replaced by admiralty 2-axis in M2) —
+  calibrated lets consumers pick threshold bands (intel-radar might
+  require ≥0.8; CRM enrichment might accept ≥0.5).
 - **`owner`** — separates "machine produced it" from "human can
   vouch for it". For high-stakes decisions (compliance, immigration
   filing), consumer can require `owner LIKE '%@balizero.com'`.
-- **`invalidation_path`** — the killer feature. "Is this still
-  valid?" is the question every consumer wants to ask but today
-  can't. The predicate-string is parseable by a small library
-  (W2 deliverable) so consumers don't have to re-invent expiration
-  checking.
+- **`valid_until` + `invalidation_event_topic` + `invalidation_mode`** —
+  the killer feature trio (revised post-review 2026-05-04, was
+  `invalidation_path TEXT` DSL). "Is this still valid?" answered
+  via SQL only:
+  - TTL: `WHERE valid_until < NOW() AND invalidated_at IS NULL`
+  - Event-driven invalidation: `UPDATE asset_provenance SET
+    invalidated_at = NOW() WHERE invalidation_event_topic = $1`
+  - Manual / Never: `WHERE invalidation_mode IN ('manual', 'never')`
+  No DSL parser library needed.
 
 ### NOT in the schema
 
@@ -218,15 +248,17 @@ BEGIN
     END IF;
 
     payload := jsonb_build_object(
-        'provenance_id',     NEW.id,
-        'asset_kind',        NEW.asset_kind,
-        'asset_id',          NEW.asset_id,
-        'source',            NEW.source,
-        'confidence',        NEW.confidence,
-        'owner',             NEW.owner,
-        'invalidation_path', NEW.invalidation_path,
-        'event_type',        event_type,
-        'occurred_at',       NEW.updated_at
+        'provenance_id',             NEW.id,
+        'asset_kind',                NEW.asset_kind,
+        'asset_id',                  NEW.asset_id,
+        'source',                    NEW.source,
+        'confidence',                NEW.confidence,
+        'owner',                     NEW.owner,
+        'valid_until',               NEW.valid_until,
+        'invalidation_event_topic',  NEW.invalidation_event_topic,
+        'invalidation_mode',         NEW.invalidation_mode,
+        'event_type',                event_type,
+        'occurred_at',               NEW.updated_at
     );
 
     -- Mig 146 outbox pattern (durability before pg_notify)
@@ -261,17 +293,27 @@ WR2". Two flows:
 When WR2 newsletter publishes a `war_room_post`, the cell calls
 `mata_garuda.tag_provenance(asset_kind='war_room_post', asset_id=...,
 source='wr2.newsletter', confidence=0.9, owner='damar@balizero.com',
-invalidation_path='time:90d')`. Tag goes into `asset_provenance`,
-trigger fires `asset_provenance` event.
+valid_until=NOW() + INTERVAL '90 days', invalidation_mode='auto')`.
+Tag goes into `asset_provenance`, trigger fires `asset_provenance`
+event.
 
-### Mata-Garuda → WR2 (event: invalidation_path triggered)
+### Mata-Garuda → WR2 (TTL or event invalidation triggered)
 
 Mata-Garuda runs a daily cron (`apps/mata-garuda/cell.yaml`
-`runtime: pro-cron`) that scans for `time:Nd` rows past expiration
-+ `event:*` rows where the matching event has fired. For each
-expired row, emits `asset_invalidated` event. WR2 supervisor LISTENs
-on `asset_invalidated` and reacts (e.g. dossier-compiler re-scrapes
-the source, oracle's ultra_move citing this asset gets demoted).
+`runtime: pro-cron`) that runs two sweeps:
+
+1. **TTL sweep**: `UPDATE asset_provenance SET invalidated_at=NOW(),
+   invalidated_by='ttl_sweeper' WHERE valid_until < NOW() AND
+   invalidated_at IS NULL AND invalidation_mode='auto' RETURNING id`.
+2. **Event sweep**: when a `reg_alert` (or other) event fires for
+   topic X, `UPDATE asset_provenance SET invalidated_at=NOW(),
+   invalidated_by='event:'||$1 WHERE invalidation_event_topic=$1
+   AND invalidated_at IS NULL RETURNING id`.
+
+For each updated row, the trigger emits `asset_invalidated` event
+(separate channel). WR2 supervisor LISTENs on `asset_invalidated`
+and reacts (e.g. dossier-compiler re-scrapes the source, oracle's
+ultra_move citing this asset gets demoted).
 
 Channel name: `asset_invalidated`. Same outbox pattern.
 
@@ -390,13 +432,13 @@ prov = await mata_garuda.get_provenance(
     asset_kind='cross_dossier_thesis',
     asset_id=str(thesis_id),
 )
-if prov.invalidation_path == 'time:90d':
-    age_days = (now - prov.created_at).days
-    if age_days > 90:
-        # Skip the thesis; ask connector to re-corroborate
-        await event_bus.emit_pg('cognitive_event',
-            {'event_type': 'thesis_stale', 'thesis_id': thesis_id})
-        return None
+if prov.invalidated_at is not None or (
+    prov.valid_until and prov.valid_until < now
+):
+    # Skip the thesis; ask connector to re-corroborate
+    await event_bus.emit_pg('cognitive_event',
+        {'event_type': 'thesis_stale', 'thesis_id': thesis_id})
+    return None
 ```
 
 ### Example 3: KG entity demotion
@@ -470,8 +512,7 @@ decision. The cell EMITS regardless.
 ## What this doc does NOT decide
 
 - The `confidence_calibration` constants table (W2 codification).
-- The `invalidation_path` parser implementation (W2 — the predicate
-  language is small but needs unit tests).
+- ~~The `invalidation_path` parser implementation~~ — DROPPED post 2026-05-04 review (X5: replaced DSL with 3 explicit columns; no parser needed).
 - Garbage collection of provenance rows for deleted assets (W2 backlog).
 - WR2 supervisor's subscription to `asset_invalidated` (Sprint 4 work).
 - Mata-Garuda's existing `cell/` and `cells/` dirs reorg (out of scope
@@ -503,57 +544,63 @@ mapping), OpenLineage facets pattern, MISP admiralty taxonomy,
 STIX 2.1 confidence + TLP, GitLab/Rails polymorphic-FK guidance.
 Zero approved all three changes 2026-05-04.
 
-### M1 — 3-layer asset_provenance schema (REPLACES single-table polymorphic FK)
+### M1 — 3-layer asset_provenance schema — **CONSIDERED AND REJECTED (2026-05-04 multi-LLM review)**
 
-**What changes:** The original migration 154 design uses a single
-`asset_provenance` table with `asset_kind + asset_id` as opaque
-polymorphic discriminator (no FK constraint). GitLab production
-guidance and Hashrocket/Rails community consensus explicitly warn
-against this for >5 entity types when consistency matters
-(we have 12). Pivot to **3 tables**:
+**Original proposal:** pivot from single polymorphic `asset_provenance`
+table to a 3-layer schema (`provenance_activity` + core
+`asset_provenance` + per-asset-kind link tables `asset_provenance_<kind>`
+each with FK to the asset's source table).
 
-1. **`provenance_activity`** — the prov:Activity (the cell pulse,
-   scrape event, or extraction job that produced an asset). One
-   row per "what happened", referenced by many provenance rows.
-2. **`asset_provenance`** — PROV-O core columns (universal across
-   all asset_kinds): activity_id, agent, captured_at, source_url,
-   source_sha256, reliability + credibility (admiralty 2-axis,
-   see M2), tlp (see M2), invalidation_path, valid_until,
-   invalidated_at + invalidated_by, asset_kind discriminator,
-   asset_id (per-kind ID, no FK), metadata JSONB facet.
-3. **`asset_provenance_<asset_kind>`** (one per asset_kind, created
-   on-demand) — link table with `provenance_id REFERENCES
-   asset_provenance(id) ON DELETE CASCADE` AND
-   `<asset>_id REFERENCES <asset_table>(id) ON DELETE CASCADE`.
-   This restores the FK integrity that the polymorphic pattern
-   loses.
+**Why rejected (post-research empirical check):**
 
-**Concrete DDL** — see § "Polymorphic FK — production tradeoffs"
-in research-and-brainstorm.md for the full CREATE TABLE block.
+Of the 12 `asset_kind` values declared in the original schema (lines
+82-95), **only 4 have a corresponding Postgres table** in
+`apps/backend-rag/backend/db/migrations_v2/`:
 
-**Trade accepted:** schema explosion (12 link tables for 12
-asset_kinds, one new migration per future asset_kind). At our scale
-(~180k rows/year estimated), per-asset-kind tables are cheap. They
-restore (a) FK integrity (orphan provenance rows impossible),
-(b) query efficiency (no full-table scan on `asset_kind`),
-(c) cascade-delete safety (when an asset is deleted, its provenance
-goes too — no GC cron needed).
+| asset_kind | PG table exists? |
+|---|---|
+| `war_room_draft` | ✅ `war_room_drafts` (mig 128) |
+| `war_room_post` | ✅ `war_room_posts` (mig 128) |
+| `intel_finding` | ✅ `intel_radar_findings` (mig 139) |
+| `compliance_alert` | ✅ `compliance_alerts` (mig 114) |
+| `research_dossier` | ❌ |
+| `cross_dossier_thesis` | ❌ |
+| `weekly_strategic_brief` | ❌ |
+| `ultra_move` | ❌ |
+| `kg_entity` | ❌ — KG lives in Qdrant + 108k nodes / 242k edges, not as a relational table |
+| `kg_proposal` | ❌ |
+| `crm_enrichment_lookup` | ❌ — composite string `f'{client_id}:google_places:{place_id}'`, references external Google Places, not a PG table |
+| `measurer_metric` | ❌ |
 
-**Migration plan:**
-- Migration 154a: `provenance_activity` + `asset_provenance` core.
-- Migrations 154b-154m: 12 `asset_provenance_<asset_kind>` link
-  tables. Each ~20 LOC of DDL, all idempotent. Can ship in one PR
-  or split if Squawk lint complains.
-- Migration 155: `asset_provenance` trigger emitting `asset_provenance`
-  channel via mig 146 outbox pattern (unchanged from original design,
-  payload now includes activity_id + reliability + credibility + tlp).
+A `REFERENCES <asset_table>(id)` FK constraint **cannot exist** when
+the target table doesn't exist. M1's central justification was "FK
+integrity restoration" — that justification collapses when 8/12 link
+tables would point to nothing. Even where data exists, it lives in
+Qdrant or external systems (Google Places), not in Postgres.
 
-**Reversal cost:** if we hate the 12-tables-explosion in 6 months,
-we collapse via a `migrations_v2/NNN_consolidate_asset_provenance_links.sql`
-that creates a single replacement table with TYPE column + IDs and
-cascade-drops the 12 link tables. Cost: ~1 day of careful DDL.
-**Accepted because** at year 1, having FK integrity is worth more
-than 11 extra empty migration files.
+**Multi-LLM convergence on this finding (2026-05-04 review):**
+- Reviewer 1 (Opus 4.7 1M, repo grep): identified 8/12 missing tables.
+- Reviewer 2 (DeepSeek-Reasoner): same conclusion via DDL parse.
+- Reviewer 3 (Gemini 3 Pro Preview): same + added depth — even where
+  IDs exist, they point to non-relational stores; FK is a category
+  error.
+
+**Resolution:** keep the **original single-table polymorphic
+`asset_provenance` schema** (lines 65-170 of this doc). Acknowledge
+"polymorphic FK is unverifiable" as a documented limitation (already
+called out at line 432-434, "Risks called out" §1). Mitigation
+remains: weekly garbage-collection cron sweeps orphan provenance
+rows for deleted assets (W2 backlog as originally planned).
+
+**M2 (admiralty 2-axis + TLP) and the new mig 155 trigger remain in
+scope** — they are independent of M1 and apply directly to the
+original single-table schema (see M2 § below).
+
+**If FK integrity becomes critical in y1+** when more asset target
+tables exist as PG entities (not Qdrant/external), revisit per-kind
+link tables case-by-case — but only for the 4 currently-real PG
+asset tables, and only when telemetry shows orphan-row drift in the
+GC cron logs.
 
 ### M2 — MISP Admiralty 2-axis confidence + TLP column (REPLACES single 0-1 confidence)
 
@@ -570,14 +617,26 @@ finer-grained, OSINT-vetted, and consumers can filter on either axis
 independently (e.g. "show me anything from grade-A sources regardless
 of credibility" for source-reputation analysis).
 
-**Plus** `tlp` column for distribution control (Symbiosis Law 2 —
-OSINT blindato — enforced in DDL not just runtime):
+**Plus** `tlp` column for distribution control. **Honest framing**
+(corrected post-review 2026-05-04): the `DEFAULT 'red'` is a **safe
+default**, NOT DDL-level enforcement of Symbiosis Law 2. Any client
+can override with an explicit `INSERT (..., 'green')`. Effective
+Symbiosis Law 2 (OSINT blindato — Pro-local, never leaves perimeter)
+remains at the **cell adapter layer** (cell adapter validates
+`tlp = 'red'` for sensitive asset_kinds before insert) and at the
+**network boundary** (Fly cells cannot connect to Pro-local
+Postgres anyway). True DDL-level "Pro-only writes" would require
+either a `GENERATED ALWAYS AS ('red') STORED` column (which forbids
+*any* override, defeating the purpose) or a `BEFORE INSERT` trigger
+that consults a session-level setting — neither is justified for
+this column.
 
 ```sql
 -- Replacement for single confidence DOUBLE PRECISION
 reliability  CHAR(1)  NOT NULL CHECK (reliability IN ('A','B','C','D','E','F')),
 credibility  SMALLINT NOT NULL CHECK (credibility BETWEEN 1 AND 6),
--- TLP — defaults to red (Pro-only) per OSINT blindato
+-- TLP — safe default 'red' (Pro-only). Cell adapter enforces real
+-- per-asset-kind policy at insert time; DDL is just a fail-safe.
 tlp          VARCHAR(8) NOT NULL DEFAULT 'red'
              CHECK (tlp IN ('white','green','amber','red','black')),
 ```
@@ -653,23 +712,25 @@ def vote_insight(self, insight_id: str, delta: int) -> Optional[int]:
 have its own brainstorm + admission test. Tracked here so future
 agents see the connection between research and code.
 
-**Risk added by all M1+M2+M3 changes**: +0.5-1 day in W2 (3-layer
-DDL is the dominant cost). Migrations now 154a..154m + 155 instead
-of 154 + 155. Test mirroring follows the same pattern (one
-test_migration_<num>.py per file).
+**Risk added by M2 changes**: ~0.5 day in W2 (admiralty mapping
+helper + tests). Migration plan stays simple: **`154_asset_provenance`
+(single table) + `155_asset_provenance_trigger`**. Two integers, no
+letter suffixes (the runner expects integer ordering; letter suffixes
+were never supported convention in this repo).
 
-### What this addendum DOES decide
+Test mirroring follows the same pattern as `test_migration_152.py`
+(one `test_migration_<num>.py` per file).
 
-✅ Pivot from single polymorphic table to 3-layer schema (M1).
+### What this addendum DOES decide (post 2026-05-04 multi-LLM review)
+
+❌ ~~Pivot from single polymorphic table to 3-layer schema (M1).~~ **REJECTED.** 8/12 asset_kinds lack PG target tables — see § "M1 — CONSIDERED AND REJECTED" above. Keep single-table polymorphic.
 ✅ Replace single 0-1 confidence with admiralty 2-axis (M2).
-✅ Add `tlp` column with default `red` (M2).
+✅ Add `tlp` column with default `red` (M2). Documented as **safe default, NOT DDL enforcement** — any client can override; real Symbiosis Law 2 enforcement remains at the cell adapter / network boundary.
 ✅ Confirm Lamarckian meta-agent is OUT of Sprint 3 W2 (M3).
-✅ Document ExpeL importance-count as future cell-core enhancement.
+✅ Document ExpeL importance-count as future cell-core enhancement (citation verified accurate against arXiv:2308.10144 v3).
 
 ### What this addendum does NOT decide
 
-❌ Whether the 12 link tables ship as 12 migrations or 1 batch
-   migration — Sprint 3 W2 picks based on Squawk lint behavior.
 ❌ Calibration of admiralty mapping for automated taggers
    (e.g. `intel-scraper-cell.bali_tribunnews` → which admiralty
    grade?) — codified in W2 cell adapter constants.

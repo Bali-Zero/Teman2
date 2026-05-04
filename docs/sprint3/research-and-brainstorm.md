@@ -16,7 +16,7 @@
 | 0.9x decay on inheritance | ✅ Voyager has no decay; ours is more conservative | Keep |
 | 7-day cooldown on rejected proposals | ⚠️ no direct literature anchor | Keep (operational pragma — escalation noise control) |
 | 5-phase lifecycle (embrione/neonato/giovane/adulto/anziano) | ⚠️ unique to our design; SOAR/ACT-R have no equivalent | **Document as design-original, justify by HITL frequency findings (§2.3)** |
-| Polymorphic FK for asset_provenance (asset_kind+asset_id, no FK) | 🟥 **GitLab/Rails warn against** for >5 entity types AND when consistency matters | **Pivot to PROV-O Entity/Activity/Agent core + per-asset-type extension table** (§3.4) |
+| Polymorphic FK for asset_provenance (asset_kind+asset_id, no FK) | ⚠️ GitLab/Rails warn against for >5 entity types AND when consistency matters — but only 4/12 asset_kinds have PG tables (rest in Qdrant + external systems), so per-asset-kind FK link tables are infeasible | **Keep polymorphic** with documented "unverifiable FK" limitation; weekly orphan-GC cron mitigates. Multi-LLM review 2026-05-04 rejected the 3-layer pivot — see mata-garuda-cell-design.md § "M1 — CONSIDERED AND REJECTED". |
 | 6-band confidence (UNCONFIRMED→CONFIRMED) | ✅ matches MISP admiralty A-F + 1-6 | Keep, **map to Admiralty explicitly** |
 | Outbox + pg_notify | ✅ event-driven.io best practice; Twenty CRM uses BullMQ on top | Keep, our migration 146 is correct |
 | ~50 practice events/day, ~100 Drive events/day | ✅ well below LISTEN/NOTIFY breaking point (`max_connections` exhaustion) | Keep direct LISTEN, no PgDog yet |
@@ -231,11 +231,11 @@ Two independent fields (`reliability` + `credibility`) instead of one collapsed 
 - **Exclusive-arc / nullable-FKs**: per-asset-type FK column, all but one are NULL per row, CHECK constraint. **Foreign key integrity preserved**, indexes work, joins normal.
 - **PostgreSQL specific:** "null values are almost free; nullable fields can be added quickly regardless of table size."
 
-→ **CRITICAL DESIGN PIVOT FOR mata-garuda-cell:**
+→ **DESIGN PIVOT CONSIDERED, THEN REJECTED 2026-05-04** (see mata-garuda-cell-design.md § "M1 — CONSIDERED AND REJECTED" for the empirical check). The 3-layer schema below is **kept here for reference** — DO NOT implement. Reason: only 4/12 asset_kinds have PG target tables; 8/12 (research_dossier, cross_dossier_thesis, weekly_strategic_brief, ultra_move, kg_entity, kg_proposal, crm_enrichment_lookup, measurer_metric) live in Qdrant or external systems where Postgres FK is impossible. Original single-table polymorphic stays.
 
-**Pre-research design:** single `asset_provenance` table with `asset_kind VARCHAR + asset_id BIGINT` (polymorphic, no FK).
+**Pre-research design (KEPT):** single `asset_provenance` table with `asset_kind VARCHAR + asset_id BIGINT` (polymorphic, no FK).
 
-**Post-research recommendation:** **3-table layered approach** (matches OpenLineage's facets pattern):
+**Post-research recommendation (REJECTED — kept below for reference only):** 3-table layered approach (matched OpenLineage's facets pattern in spirit, but Gemini 3 Pro flagged that OpenLineage uses JSON facets, not 12 hardcoded link tables — the analogy was inaccurate):
 
 ```sql
 -- Layer 1: PROV-O core (universal across all asset types)
@@ -415,7 +415,7 @@ The closest published analog: SpiderFoot module ordering optimization (community
 
 1. **PG NOTIFY + outbox** (migration 146) is industry best practice — keep verbatim.
 2. **STIX 2.1 / admiralty taxonomy** is the OSINT standard — adopt 2-axis confidence.
-3. **OpenLineage facets pattern** is the right answer for polymorphic provenance — pivot from naive `asset_kind+asset_id`.
+3. **OpenLineage facets pattern** uses JSON-extensible blocks on a fixed core schema — **not 12 hardcoded link tables** as we initially read it. Multi-LLM review caught this. Implication for us: keep polymorphic `asset_kind + asset_id` AND add JSONB `metadata` column for per-kind facets (already in original schema line 137). No relational explosion.
 4. **Devin's plan+PR checkpoint pattern** = our embrione (admission test) + adulto (autonomous) gates — well-aligned.
 5. **Voyager skill library** validates SQLite+FTS5 at small scale — keep.
 6. **ExpeL importance-count + prune-at-0** is missing from cell-core — add for `insight` type.
@@ -430,9 +430,9 @@ The closest published analog: SpiderFoot module ordering optimization (community
 
 ### What we got wrong
 
-1. **`asset_provenance` polymorphic FK** without per-asset-kind link tables — GitLab/Rails community explicitly warns. **Pivot to 3-layer (PROV-O core + per-asset-kind link + activity)**.
-2. **Single 6-band confidence (UNCONFIRMED→CONFIRMED)** — should be **2-axis admiralty** (reliability A-F + credibility 1-6) per OSINT industry standard.
-3. **No `tlp` column on asset_provenance** — needed for OSINT blindato enforcement.
+1. **Single 6-band confidence (UNCONFIRMED→CONFIRMED)** — should be **2-axis admiralty** (reliability A-F + credibility 1-6) per OSINT industry standard. **M2 ships.**
+2. **No `tlp` column on asset_provenance** — useful as a taxonomy label. **Ships in M2 — but documented as default-only, not DDL enforcement.** Real Symbiosis Law 2 enforcement remains at the cell adapter / network boundary.
+3. **`asset_provenance` polymorphic FK** without per-asset-kind link tables — GitLab/Rails community warns this **when target tables exist as PG entities**. In our case, 8/12 asset_kinds live outside PG (Qdrant for KG, composite strings for crm_enrichment, etc.), so the warning doesn't apply. The 3-layer pivot was reviewed 2026-05-04 (multi-LLM: Opus 4.7, DeepSeek-Reasoner, Gemini 3 Pro Preview) and **rejected** as structurally infeasible. Keep polymorphic with documented "unverifiable FK" limitation + weekly orphan-GC cron.
 
 ---
 
@@ -481,15 +481,18 @@ Cell consults this table at startup; respawns sub-organelles on `enabled` change
 
 ### mata-garuda-cell
 
-#### Proposal M1: Pivot asset_provenance to 3-layer schema (PROV-O core + per-asset-kind link + activity)
+#### Proposal M1: Pivot asset_provenance to 3-layer schema — **REJECTED 2026-05-04**
 
 ```sql
--- See §3 for full DDL
+-- See §3 for full DDL (REJECTED — kept for reference only)
 ```
 
-- **Pros:** FK integrity, OpenLineage-aligned, query-friendly (no full-table scan on asset_kind).
-- **Cons:** schema explosion (12 link tables for 12 asset_kinds). Migration 154 becomes 154+155+156... (1 per asset_kind). More upfront DDL.
-- **Cost:** ~1 day extra in W2 (DDL + per-kind insert helpers in Python).
+- **Pros (claimed):** FK integrity, OpenLineage-aligned, query-friendly (no full-table scan on asset_kind).
+- **Cons (revealed by multi-LLM review):**
+  - 8/12 asset_kinds have no PG table to FK against (KG=Qdrant, crm_enrichment=composite string Google Places, dossier/thesis/brief/ultra_move/measurer not yet PG-backed).
+  - "OpenLineage-aligned" was inaccurate — OpenLineage uses JSON facets, not 12 hardcoded link tables.
+  - "FK integrity" win is theoretical when half the link tables would point at nothing.
+- **Verdict:** **REJECTED.** Keep original single-table polymorphic. Revisit per-kind link tables case-by-case when (and only when) target tables become PG-backed entities.
 
 #### Proposal M2: Adopt MISP admiralty 2-axis confidence + TLP column
 
@@ -511,17 +514,17 @@ ALTER TABLE asset_provenance ADD COLUMN tlp VARCHAR(8) NOT NULL DEFAULT 'red'
 - **Cost:** 0 (deferral).
 - **Recommendation:** **ACCEPT.** Walking skeleton must walk before it learns.
 
-**Sprint 3 W2 picks: M1 + M2 + M3.** All three are cheap individually; together they realign mata-garuda-cell with industry standards while preserving frontier elements (5-phase lifecycle, HGT, homeostatic).
+**Sprint 3 W2 picks: ~~M1~~ + M2 + M3.** M1 rejected post-review (see above and mata-garuda-cell-design.md § "M1 — CONSIDERED AND REJECTED"). M2 (admiralty 2-axis + TLP) and M3 (defer Lamarckian meta-agent) ship.
 
 ---
 
 ## Open questions for Zero
 
-1. **C2 (rule registry)** — yes/no for Sprint 3 W2? (default: defer to Sprint 4)
-2. **M1 (3-layer asset_provenance)** — yes/no? This is the biggest design change identified. (default: yes, despite cost)
-3. **M2 (admiralty 2-axis + TLP)** — yes/no? (default: yes; cheap and validates against OSINT standard)
+1. **C2 (rule registry)** — deferred to Sprint 4+. **Reasoning corrected post-review (Gemini X4)**: not "premature abstraction at 13 rules" but "internal-only automations belong in code/git forever; Twenty CRM's DB registry exists because it's multi-tenant SaaS where end-users author workflows. Nuzantara is internal — never add a registry for hard-coded automations."
+2. **~~M1~~ (3-layer asset_provenance)** — **REJECTED 2026-05-04** post multi-LLM review. 8/12 asset_kinds lack PG target tables. Keep polymorphic.
+3. **M2 (admiralty 2-axis + TLP)** — **YES, ships.** Cheap, OSINT-standard. Note: TLP `red` default is a *safe default*, NOT DDL-level enforcement (any client can override).
 4. **Voyager skill versioning (`{name}V{i}` on duplicate)** — adopt for cell-core genome? Currently we silence/decay; Voyager pattern preserves history. (default: no, our `decay_unused_skills` is cleaner)
-5. **ExpeL importance-count for insights** — adopt? (default: yes, ~30 LOC addition, mirrors literature)
+5. **ExpeL importance-count for insights** — fact-checked against arXiv:2308.10144 v3: mechanism IS in the paper (ADD initial=2, UPVOTE/EDIT +1, DOWNVOTE -1, prune at 0). Citation accurate. Defer to Sprint 4+ as a separate cell-core-wide brainstorm.
 
 ---
 
