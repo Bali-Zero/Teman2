@@ -1,0 +1,172 @@
+-- 154_asset_provenance.sql
+--
+-- Sprint 3 W2 — Mata-Garuda L4.5 cell: asset provenance schema (single-table
+-- polymorphic, post-2026-05-04 multi-LLM review).
+--
+-- Reference: docs/sprint3/mata-garuda-cell-design.md
+-- Spec:      docs/sprint3/research-and-brainstorm.md § Stream 3
+-- Decision:  docs/sprint3/review-synthesis-2026-05-04.md
+--
+-- WHAT THIS MIGRATION DOES:
+--   1. Adds asset_provenance table — per-asset row carrying source +
+--      confidence (M2 admiralty 2-axis: reliability A-F + credibility 1-6) +
+--      owner + invalidation policy (3 typed columns, X5 review fix) + tlp.
+--   2. UNIQUE (asset_kind, asset_id) — one provenance row per asset, UPDATE
+--      in place on re-tag.
+--   3. Single-table polymorphic (asset_kind enum + opaque asset_id TEXT) —
+--      M1 3-layer pivot REJECTED 2026-05-04 because 8/12 asset_kinds lack
+--      PG target tables (KG=Qdrant, crm_enrichment=Google Places composite,
+--      etc.). Polymorphic FK is unverifiable; weekly orphan-GC cron mitigates
+--      (W2 backlog).
+--
+-- The corresponding trigger emitting asset_provenance channel ships in
+-- migration 155 (separate file for blast-radius isolation: this migration is
+-- pure DDL, the trigger is wholesale replaceable without re-creating the
+-- table).
+--
+-- Idempotency: CREATE TABLE IF NOT EXISTS + CREATE INDEX IF NOT EXISTS guard
+-- against re-runs on partially-applied state.
+--
+-- Squawk: this migration creates a brand-new empty table — no lock contention
+-- on existing rows. require-timeout-settings is suppressed (empty-table DDL,
+-- same rationale as migration 144 events_outbox).
+
+-- squawk-ignore: require-concurrent-index-creation
+-- squawk-ignore: require-timeout-settings
+CREATE TABLE IF NOT EXISTS asset_provenance (
+    id BIGSERIAL PRIMARY KEY,
+
+    -- WHAT asset are we tagging? Asset ID is opaque — could be a UUID
+    -- (war_room_drafts.id), a Qdrant point_id (intel findings),
+    -- a kbli_code (KG entity), a client_id, a research_dossier slug.
+    -- The asset_kind disambiguates the namespace.
+    --
+    -- AUTHORITATIVE SET (12 values, Bali-Zero-domain-aligned). Adding a new
+    -- asset_kind requires an ALTER TYPE migration AND updated cell adapter
+    -- logic. NEVER add values from the alternate "OSINT-generic" list
+    -- (news_article, regulation, kbli_code, telegram_post, kg_node,
+    -- kg_edge, ...) — those map onto values below (e.g. regulation alert →
+    -- compliance_alert, telegram post once published → war_room_post).
+    asset_kind TEXT NOT NULL CHECK (asset_kind IN (
+        'war_room_draft',
+        'war_room_post',
+        'intel_finding',
+        'research_dossier',
+        'cross_dossier_thesis',
+        'weekly_strategic_brief',
+        'ultra_move',
+        'kg_entity',
+        'kg_proposal',
+        'crm_enrichment_lookup',
+        'compliance_alert',
+        'measurer_metric'
+    )),
+    asset_id TEXT NOT NULL,    -- string for uniformity; UUIDs cast to text
+
+    -- WHO produced it? Free-form but constrained namespace.
+    -- Examples: 'wr2.connector', 'intel-scraper-cell.bali_tribunnews',
+    -- 'crm-cell.enrichment.google_places', 'kg.imigrasi_extract',
+    -- 'oracle', 'manual.zero', 'manual.team.<email>'
+    source TEXT NOT NULL,
+
+    -- HOW confident are we? Two axes (M2: MISP admiralty 2-axis taxonomy):
+    --   - reliability: source quality (A=completely reliable …
+    --     F=cannot be judged)
+    --   - credibility: information quality (1=confirmed … 6=cannot be judged)
+    -- 30 ordinal cells total. Cell adapter exposes a confidence_tier()
+    -- summary view that collapses to 4 tiers for human dashboards.
+    -- Auto-tagger calibration mapping is codified in cell adapter constants
+    -- (W2 codification, not in DDL — easier to evolve).
+    reliability  CHAR(1)  NOT NULL CHECK (reliability IN ('A','B','C','D','E','F')),
+    credibility  SMALLINT NOT NULL CHECK (credibility BETWEEN 1 AND 6),
+
+    -- WHO owns it? Owner = the human who can be asked "is this still true?".
+    -- For automated sources, owner = the team responsible for that data
+    -- domain (visa-team, tax-team, etc.). For manual entries, owner =
+    -- the email of the person who entered it.
+    owner TEXT NOT NULL,
+
+    -- HOW does this asset get invalidated? Three explicit columns
+    -- (X5 post-review 2026-05-04: replaced custom DSL `invalidation_path TEXT`
+    -- with explicit typed columns. Reasoning: predicate parsing is
+    -- reinvention of basic schema; valid_until + invalidation_event_topic +
+    -- invalidation_mode is queryable, indexable, no parser library
+    -- required).
+    --   - mode='auto', valid_until=NOW()+7d → time-based TTL
+    --   - mode='auto', invalidation_event_topic='reg_alert.visa' → event-driven
+    --   - mode='manual' → never auto-expires; human SQL UPDATE required
+    --   - mode='never' → canonical, immutable (e.g. ID number format rules)
+    valid_until TIMESTAMPTZ,                  -- non-null = TTL deadline
+    invalidation_event_topic VARCHAR(64),     -- non-null = event-driven invalidation
+    invalidation_mode VARCHAR(8) NOT NULL DEFAULT 'auto'
+        CHECK (invalidation_mode IN ('auto', 'manual', 'never')),
+    -- Audit (set when actually invalidated by sweeper or human).
+    invalidated_at TIMESTAMPTZ,
+    invalidated_by VARCHAR(64),
+
+    -- TLP (Traffic Light Protocol) for distribution control. Default 'red'
+    -- is a SAFE DEFAULT, NOT DDL-level Symbiosis Law 2 enforcement (any
+    -- client can override with explicit INSERT). Real Symbiosis Law 2
+    -- enforcement (OSINT blindato — Pro-local, never leaves perimeter) lives
+    -- at the cell adapter layer and at the network boundary (Fly cells
+    -- cannot reach Pro-local Postgres anyway).
+    tlp VARCHAR(8) NOT NULL DEFAULT 'red'
+        CHECK (tlp IN ('white','green','amber','red','black')),
+
+    -- Audit trail
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Optional structured metadata (JSON for forward-compat, NOT for query
+    -- — index-by structure later if a payload field becomes hot)
+    metadata JSONB DEFAULT '{}'::jsonb,
+
+    -- Uniqueness: one provenance row per (asset_kind, asset_id) pair.
+    -- If an asset is re-tagged (e.g. confidence bumped after corroboration),
+    -- UPDATE in place; don't create a second row.
+    UNIQUE (asset_kind, asset_id)
+);
+
+-- Index for the most common query: "what assets does X own?"
+-- squawk-ignore: require-concurrent-index-creation
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_owner
+    ON asset_provenance (owner);
+
+-- Index for TTL invalidation sweep: "which time-based assets are expiring?"
+-- Partial index — only on rows with a TTL set and not yet invalidated.
+-- squawk-ignore: require-concurrent-index-creation
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_valid_until
+    ON asset_provenance (valid_until)
+    WHERE valid_until IS NOT NULL AND invalidated_at IS NULL;
+
+-- Index for event-driven invalidation: "which assets care about topic X?"
+-- squawk-ignore: require-concurrent-index-creation
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_event_topic
+    ON asset_provenance (invalidation_event_topic)
+    WHERE invalidation_event_topic IS NOT NULL AND invalidated_at IS NULL;
+
+-- Index for source-of-truth queries: "what came from KG?"
+-- squawk-ignore: require-concurrent-index-creation
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_source
+    ON asset_provenance (source);
+
+-- Index for admiralty-axis queries: "show me grade-A reliable sources" or
+-- "show me confirmed (credibility=1) intel". Composite on both axes; partial
+-- on still-valid rows so consumers see only live provenance.
+-- squawk-ignore: require-concurrent-index-creation
+CREATE INDEX IF NOT EXISTS ix_asset_provenance_admiralty
+    ON asset_provenance (reliability, credibility)
+    WHERE invalidated_at IS NULL;
+
+-- === ROLLBACK ===
+-- Reverts the indexes and table. Safe to run on any DB state because all
+-- DROP statements use IF EXISTS. After rollback, asset_provenance is gone;
+-- consumers (oracle citation guard, KG demotion cron, WR2 invalidation
+-- reactor) lose the provenance signal and fall back to the pre-Sprint-3
+-- behaviour (no cross-cell trust check, no TTL-driven invalidation).
+DROP INDEX IF EXISTS ix_asset_provenance_admiralty;
+DROP INDEX IF EXISTS ix_asset_provenance_source;
+DROP INDEX IF EXISTS ix_asset_provenance_event_topic;
+DROP INDEX IF EXISTS ix_asset_provenance_valid_until;
+DROP INDEX IF EXISTS ix_asset_provenance_owner;
+DROP TABLE IF EXISTS asset_provenance;
