@@ -249,7 +249,18 @@ COMMENT ON FUNCTION mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEA
     '~/scripts/cron-agent-python/intel_radar.py and any future intel producer.';
 
 REVOKE EXECUTE ON FUNCTION mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT) TO backend_rag_v2;
+
+-- Grant to backend_rag_v2 only if the role exists (prod Fly Postgres has it,
+-- CI test Postgres does NOT — the test instance uses role 'test'). The DO
+-- block silently skips the GRANT in CI without breaking the migration.
+-- On prod, the GRANT fires normally.
+DO $grant_block$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'backend_rag_v2') THEN
+        EXECUTE 'GRANT EXECUTE ON FUNCTION mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT) TO backend_rag_v2';
+    END IF;
+END
+$grant_block$;
 
 -- === ROLLBACK ===
 DROP FUNCTION IF EXISTS mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT);

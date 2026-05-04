@@ -169,9 +169,18 @@ def test_migration_revokes_from_public():
     assert "FROM PUBLIC" in sql
 
 
-def test_migration_grants_to_backend_rag_v2():
-    """The cron's connection (DATABASE_URL_LOCAL) uses backend_rag_v2 role."""
+def test_migration_grants_to_backend_rag_v2_conditionally():
+    """The cron's connection (DATABASE_URL_LOCAL) uses backend_rag_v2 role.
+
+    The GRANT is wrapped in a DO block with `IF EXISTS (... pg_roles ...)`
+    because CI test Postgres uses role 'test' and does NOT have
+    backend_rag_v2. Without the conditional wrap, the migration crashes
+    in CI with `role "backend_rag_v2" does not exist`.
+    """
     sql = _forward(MIGRATION_FILE.read_text())
+    # Conditional execution wrapper present
+    assert "pg_roles WHERE rolname = 'backend_rag_v2'" in sql
+    # The actual GRANT statement (inside EXECUTE)
     assert "GRANT EXECUTE ON FUNCTION mata_garuda.tag_intel_finding" in sql
     assert "TO backend_rag_v2" in sql
 
