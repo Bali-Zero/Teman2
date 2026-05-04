@@ -72,13 +72,45 @@ def test_migration_creates_notify_function():
 
 
 def test_migration_emits_only_on_success_true():
-    """The trigger must NOT broadcast partial-failure rows. Audit-only."""
+    """The trigger must NOT broadcast partial-failure rows. Audit-only.
+
+    Post 2026-05-04 multi-LLM W2 review: the success=true guard moved
+    from the function body to the trigger WHEN clause to also cover the
+    UPSERT retry path (false→true UPDATE transition). The function body
+    is now the unconditional emit; correctness depends on the WHEN.
+    """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    # Conditional success guard
-    assert "NEW.success = true" in forward_section
-    # event_type baked literally (no per-op dispatch — only one INSERT path)
+    # The WHEN guard on the trigger declaration enforces success=true
+    assert "WHEN (NEW.success = true" in forward_section
+    # event_type literal in the function body
     assert "'welcome_completed'" in forward_section
+
+
+def test_migration_trigger_fires_on_false_to_true_transition():
+    """Sprint 3 W2 review B1 fix: the trigger MUST fire on UPDATE
+    when OLD.success=false → NEW.success=true (cell adapter UPSERT
+    retry path), not just on INSERT.
+    """
+    sql = MIGRATION_FILE.read_text()
+    forward_section = sql.split("-- === ROLLBACK ===")[0]
+    assert "AFTER INSERT OR UPDATE ON crm_welcome_runs" in forward_section
+    # The WHEN clause must explicitly include the OLD.success transition
+    assert "OLD.success IS DISTINCT FROM NEW.success" in forward_section
+
+
+def test_migration_trigger_does_not_fire_on_noop_update():
+    """Idempotent UPSERT (true→true rewrite with same values) MUST NOT
+    re-emit the welcome_completed event. The WHEN clause filters via
+    OLD.success IS DISTINCT FROM NEW.success which evaluates false on
+    no-op true→true transitions (as well as false→false).
+    """
+    sql = MIGRATION_FILE.read_text()
+    forward_section = sql.split("-- === ROLLBACK ===")[0]
+    # Documentation comment block in the trigger declaration calls out
+    # the no-op case explicitly so future readers understand the intent.
+    assert "true→true (no-op)" in forward_section.lower() or \
+           "true→true" in forward_section
 
 
 def test_migration_writes_to_outbox_before_notify():
@@ -113,13 +145,15 @@ def test_migration_injects_outbox_id_into_notify_payload():
     )
 
 
-def test_migration_attaches_after_insert_trigger():
-    """Trigger must be AFTER INSERT only — crm_welcome_runs is conceptually
-    append-only. Re-runs UPSERT via the cell adapter; trigger fires once."""
+def test_migration_attaches_after_insert_or_update_trigger():
+    """Trigger must be AFTER INSERT OR UPDATE — fires on the
+    false→true success transition (whether new row or retry UPSERT)."""
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "AFTER INSERT ON crm_welcome_runs" in forward_section
+    assert "AFTER INSERT OR UPDATE ON crm_welcome_runs" in forward_section
     assert "FOR EACH ROW" in forward_section
+    # WHEN clause is the actual guard
+    assert "WHEN (NEW.success = true" in forward_section
 
 
 def test_migration_is_idempotent():

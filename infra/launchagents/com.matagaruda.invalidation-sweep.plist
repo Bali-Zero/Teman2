@@ -46,13 +46,19 @@
              cicatrix P0-3 secrets-leak incident 2026-04-29). -->
     </dict>
 
-    <!-- Daily 04:13 WITA = 20:13 UTC previous day. Off-minute, off-hour
-         to avoid contention with the daily indexing sweep (00:30 WITA),
-         the auto-sentinel (03:00 WITA), and most cron-spike windows. -->
+    <!-- Daily 04:13 WITA. Off-minute, off-hour to avoid contention with
+         the daily indexing sweep (00:30 WITA), the auto-sentinel (03:00
+         WITA), and most cron-spike windows.
+
+         macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL
+         TIME (NOT UTC). Verified vs com.balizero.indexing-sweep.daily.plist
+         which uses Hour=0 for "00:30 WITA". The earlier W2 draft
+         had Hour=20 with a wrong UTC translation comment — caught by
+         multi-LLM W2 review (cf. SYNTHESIS B2). -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>20</integer>
+        <integer>4</integer>
         <key>Minute</key>
         <integer>13</integer>
     </dict>

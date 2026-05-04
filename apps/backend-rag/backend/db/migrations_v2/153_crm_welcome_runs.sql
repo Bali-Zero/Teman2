@@ -13,8 +13,13 @@
 --      attempts are persisted as audit rows but NOT broadcast downstream).
 --   3. Persists to events_outbox BEFORE pg_notify (mig 144 + 146 outbox
 --      pattern). _outbox_id injected for idempotent ack on replay.
---   4. AFTER INSERT trigger only — welcome flow rows are append-only
---      (re-runs create a new row via UPSERT-on-conflict logic in cell adapter).
+--   4. AFTER INSERT OR UPDATE trigger with WHEN guard — fires once on the
+--      false→true success transition (whether the row was created already
+--      successful via direct INSERT, or was retried from partial failure
+--      via ON CONFLICT DO UPDATE). The WHEN clause prevents duplicate
+--      events when the cell adapter writes the same successful row twice.
+--      Multi-LLM W2 review caught the original AFTER INSERT-only design
+--      as silently dropping retry events; cf. SYNTHESIS B1.
 --
 -- The Python-side PG_CHANNEL_MAP in
 -- apps/backend-rag/backend/services/events/event_bus.py must be updated
@@ -67,34 +72,31 @@ DECLARE
     payload    JSONB;
     outbox_id  BIGINT;
 BEGIN
-    -- Emit ONLY on full-success rows. Partial-failure rows are persisted
-    -- for audit but do not fire downstream observers (analytics, retention
-    -- loop, future onboarding cell). The cell adapter is expected to
-    -- retry partial failures via UPDATE-to-success rather than re-INSERT;
-    -- on first true→true UPSERT path the AFTER INSERT fires once.
-    IF TG_OP = 'INSERT' AND NEW.success = true THEN
-        payload := jsonb_build_object(
-            'client_id',       NEW.client_id,
-            'practice_id',     NEW.practice_id,
-            'drive_folder_id', NEW.drive_folder_id,
-            'channels_sent',   NEW.channels_sent,
-            'event_type',      'welcome_completed',
-            'occurred_at',     NEW.completed_at
-        );
+    -- Function body is the unconditional emit; the trigger declaration
+    -- WHEN clause guards on (NEW.success=true AND
+    -- (TG_OP='INSERT' OR OLD.success IS DISTINCT FROM NEW.success)) so
+    -- this code only runs on the false→true success transition.
+    payload := jsonb_build_object(
+        'client_id',       NEW.client_id,
+        'practice_id',     NEW.practice_id,
+        'drive_folder_id', NEW.drive_folder_id,
+        'channels_sent',   NEW.channels_sent,
+        'event_type',      'welcome_completed',
+        'occurred_at',     NEW.completed_at
+    );
 
-        -- Persist to durability layer BEFORE pg_notify (mig 144 pattern).
-        -- Same user transaction: rollback erases both consistently.
-        INSERT INTO events_outbox (channel, payload)
-        VALUES ('crm_welcome_completed', payload)
-        RETURNING id INTO outbox_id;
+    -- Persist to durability layer BEFORE pg_notify (mig 144 pattern).
+    -- Same user transaction: rollback erases both consistently.
+    INSERT INTO events_outbox (channel, payload)
+    VALUES ('crm_welcome_completed', payload)
+    RETURNING id INTO outbox_id;
 
-        -- Attach _outbox_id to NOTIFY payload so consumers can ack
-        -- idempotently on replay (mig 146 contract).
-        PERFORM pg_notify(
-            'crm_welcome_completed',
-            (payload || jsonb_build_object('_outbox_id', outbox_id))::text
-        );
-    END IF;
+    -- Attach _outbox_id to NOTIFY payload so consumers can ack
+    -- idempotently on replay (mig 146 contract).
+    PERFORM pg_notify(
+        'crm_welcome_completed',
+        (payload || jsonb_build_object('_outbox_id', outbox_id))::text
+    );
 
     RETURN NEW;
 END;
@@ -110,12 +112,20 @@ COMMENT ON FUNCTION notify_crm_welcome_completed() IS
 -- Drop existing trigger (idempotent re-run).
 DROP TRIGGER IF EXISTS crm_welcome_runs_notify ON crm_welcome_runs;
 
--- Attach trigger — AFTER INSERT only. The crm_welcome_runs table is
--- conceptually append-only at the audit layer; cell adapter re-runs use
--- ON CONFLICT to UPSERT and the trigger fires only on the initial INSERT.
+-- Attach trigger — AFTER INSERT OR UPDATE with WHEN guard. Fires once on
+-- the false→true success transition. Three concrete cases the WHEN
+-- handles:
+--   * INSERT(success=true)        → fires (new row, fresh success)
+--   * INSERT(success=false)       → DOES NOT fire (no false→true transition)
+--   * UPDATE: false→true (retry)  → fires (cell adapter UPSERT retry path)
+--   * UPDATE: true→true (no-op)   → DOES NOT fire (idempotent rewrite)
+--   * UPDATE: true→false          → DOES NOT fire (regression; not expected
+--                                   but defensive — doesn't fire backward)
 CREATE TRIGGER crm_welcome_runs_notify
-    AFTER INSERT ON crm_welcome_runs
+    AFTER INSERT OR UPDATE ON crm_welcome_runs
     FOR EACH ROW
+    WHEN (NEW.success = true
+          AND (TG_OP = 'INSERT' OR OLD.success IS DISTINCT FROM NEW.success))
     EXECUTE FUNCTION notify_crm_welcome_completed();
 
 -- === ROLLBACK ===
