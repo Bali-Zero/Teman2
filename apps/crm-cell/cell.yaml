@@ -26,22 +26,31 @@ cell_class: cell
 
 # 7 Leggi declarations (consumed by AdmissionTest)
 exposes_gui: false
-llm_invocation: cli   # enrichment.py uses Gemini via Federation Orchestrator
-                      # CLI subprocess (per Golden Rule #13: no Anthropic
-                      # paid API; Gemini OAuth is free; CLI subprocess is
-                      # the canonical pattern). The admission rubric
-                      # allowlist is {cli, oauth_cli, ollama, deepseek_api,
-                      # none}; "cli" covers Gemini-via-CLI invocations.
-external_sources: []     # Law 2 (OSINT blindato) governs INBOUND feeds
-                         # that could contaminate client facts with
-                         # untrusted OSINT data. CRM has no such feeds.
-                         # Outbound delivery channels (Drive folder
-                         # creation via Service Account, Brevo email,
-                         # WhatsApp Business message, Telegram alert)
-                         # are NOT inbound OSINT — they push existing
-                         # client data OUT, not pull untrusted intel IN.
-                         # See README "External integrations (outbound
-                         # only)" for the full list and rationale.
+llm_invocation: oauth_cli   # enrichment.py uses Gemini via Federation
+                            # Orchestrator CLI subprocess. Authenticated via
+                            # the user's Gemini OAuth (free quota), NOT a
+                            # paid API key — Golden Rule #13. Multi-LLM W2
+                            # review (cf. SYNTHESIS I6) caught the original
+                            # 'cli' as a loophole that would also satisfy
+                            # bare-API-key authenticated CLI tools;
+                            # 'oauth_cli' is the correct value.
+external_sources:        # Truthful declaration of all external integrations.
+                         # The Law 2 (OSINT blindato) rubric distinguishes
+                         # OSINT-class providers (e.g. imigrasi.go.id,
+                         # bali.tribunnews.com — see admission_test.py
+                         # _OSINT_CLASS_PROVIDERS) from delivery
+                         # integrations like the four below. Cells that
+                         # use ONLY delivery integrations may legitimately
+                         # combine external_sources with
+                         # client_data_access=true.
+                         # Multi-LLM W2 review (cf. SYNTHESIS I4) caught
+                         # the original [] declaration as dishonest;
+                         # admission_test.py rubric was extended to
+                         # support the distinction.
+  - google_drive_api      # service account, drive_poll only
+  - brevo_api             # transactional emails (zantara@balizero.com)
+  - whatsapp_business_api # welcome_whatsapp_service
+  - telegram_bot_api      # notifiers (Zero + team alerts)
 client_data_access: true  # CRM IS the client data domain — UU PDP scope
 publishes_via: pg_notify  # via existing client_changed / practice_changed
                           # triggers + new crm_welcome_completed (mig 153)

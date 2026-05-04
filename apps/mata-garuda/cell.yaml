@@ -26,11 +26,14 @@ cell_class: cell
 
 # 7 Leggi declarations (consumed by AdmissionTest)
 exposes_gui: false
-llm_invocation: cli   # Claude/Gemini/Codex CLI subprocess only (per existing
-                      # mata-garuda principle #1 + Golden Rule #13). The
-                      # admission rubric allowlist is {cli, oauth_cli,
-                      # ollama, deepseek_api, none}; "cli" covers all
-                      # Pro-local CLI subprocess patterns.
+llm_invocation: oauth_cli   # Claude/Gemini/Codex CLI subprocess only,
+                            # authenticated via user OAuth (Max plan +
+                            # Gemini OAuth + ChatGPT Plus). NEVER paid
+                            # API keys — Golden Rule #13. mata-garuda's
+                            # local CLAUDE.md is even more strict ("MAI
+                            # importare anthropic/openai/google-generativeai").
+                            # Multi-LLM W2 review (cf. SYNTHESIS I6)
+                            # caught the original 'cli' as a loophole.
 external_sources: []  # OSINT blindato — Pro-local, no inbound cloud feeds
 client_data_access: false  # Mata-Garuda does NOT touch CRM client data
                            # by design (separate from crm-cell domain)
@@ -94,6 +97,14 @@ metrics:
   - tags_by_source               # cardinality per source identifier
   - sweeper_duration_ms
   - sweeper_invalidated_count
+  # X4 (multi-LLM W2 review 2026-05-04): mata-garuda ships polymorphic
+  # asset_kind+asset_id WITHOUT FK integrity (M1 3-layer pivot rejected
+  # — 8/12 asset_kinds live outside Postgres). The orphan-GC cron
+  # tracks rows whose target asset_id no longer exists in the per-kind
+  # source table; this metric surfaces the orphan drift so Zero can see
+  # whether the polymorphic-without-FK trade-off is healthy or whether
+  # the GC cron needs to run more often.
+  - orphan_provenance_count      # rows pointing at deleted/missing assets
 
 # Layer 4.5 specific — what makes this a META-awareness cell
 meta_awareness:

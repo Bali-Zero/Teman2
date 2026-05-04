@@ -74,8 +74,17 @@ TLP_VALUES: frozenset[str] = frozenset({"white", "green", "amber", "red", "black
 # Invalidation mode allowed values. Cf. mig 154 CHECK constraint.
 INVALIDATION_MODES: frozenset[str] = frozenset({"auto", "manual", "never"})
 
-# Self-tagging guard — Mata-Garuda MUST NOT tag its own outputs (avoid
-# feedback loop). Cell descriptor declares this; the adapter enforces it.
+# Self-tagging guard intentionally EMPTY for the current schema:
+# none of the 12 canonical asset_kind values represent Mata-Garuda's
+# own outputs (the cell tags assets produced by other cells —
+# war_room_*, intel_finding, kg_*, etc.). The cell.yaml
+# meta_awareness.does_not_observe: [self] declaration is the formal
+# contract. Revisit (and populate this set) only if a future
+# asset_kind represents Mata-Garuda-produced data.
+# Multi-LLM W2 review M1: kept as `frozenset()` instead of deleting
+# entirely — the guard branch in `_validate_inputs` references it,
+# and an explicit empty set + `# pragma: no cover` is more readable
+# than maintaining "removed the check, must re-instate" lore.
 _SELF_REFERENCING_KINDS: frozenset[str] = frozenset()
 
 
@@ -116,7 +125,11 @@ def _validate_inputs(
             f"adding new kinds requires an ALTER TYPE migration. "
             f"Allowed: {ASSET_KIND_AUTHORITATIVE!r}"
         )
-    if asset_kind in _SELF_REFERENCING_KINDS:
+    # _SELF_REFERENCING_KINDS is intentionally empty for the current 12-value
+    # enum (no asset_kind represents Mata-Garuda's own output). The check
+    # below is dormant; if a future asset_kind becomes self-referential,
+    # populate the set above and the guard re-activates without code change.
+    if asset_kind in _SELF_REFERENCING_KINDS:  # pragma: no cover  (empty set)
         raise ValueError(
             f"Mata-Garuda must NOT tag its own outputs (asset_kind={asset_kind!r}) — "
             f"feedback-loop guard per cell.yaml meta_awareness.does_not_observe"

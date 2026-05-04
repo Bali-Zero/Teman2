@@ -184,22 +184,85 @@ def _check_cli_only(cd: dict[str, Any]) -> Violation | None:
     return None
 
 
+# OSINT-class providers — inbound feeds whose content COULD contaminate
+# client facts (visa/tax/regulation scrapers). A cell that has any of
+# these in `external_sources` AND has `client_data_access=true` violates
+# Law 2 (OSINT blindato).
+#
+# Non-OSINT integrations (Google Drive client folders, Brevo email
+# delivery, WhatsApp Business API, Telegram bot, OpenAI embedding, etc.)
+# are operational integrations — they deliver client data outbound or
+# embed structured client data; they do NOT pull raw untrusted intel
+# into the client perimeter. CRM legitimately uses them.
+#
+# This list is the allowlist's COMPLEMENT: if a provider name appears
+# here, it's treated as OSINT-class. Conservative — we list only the
+# providers we have actually identified as inbound-OSINT in the
+# project. Any new external provider added to a cell.yaml that's NOT
+# in this list is treated as non-OSINT (delivery integration); add to
+# this list explicitly when registering a new OSINT scraper.
+#
+# Sprint 3 W2 review I4 fix (multi-LLM 2026-05-04): the original Law 2
+# blocked any non-empty external_sources combined with client_data_access,
+# which forced cells like crm-cell to falsely declare external_sources=[]
+# even though they DO call Drive/Brevo/etc. — an honest declaration
+# became impossible. The new rubric distinguishes OSINT-class providers
+# from delivery integrations.
+_OSINT_CLASS_PROVIDERS: frozenset[str] = frozenset({
+    # Indonesian government domains (visa, immigration, tax, statistics, OSS)
+    "imigrasi.go.id",
+    "djp.go.id",
+    "bps.go.id",
+    "bi.go.id",
+    "oss.go.id",
+    "kemnaker.go.id",
+    "peraturan.go.id",
+    # News + commercial intel sources scraped for content
+    "bali.tribunnews.com",
+    "tribunnews.com",
+    # Project-internal scraper handles
+    "intel-scraper",
+    "intel-scraper-cell.bali_tribunnews",
+})
+
+
 @AdmissionTest.register(Legge.OSINT_BLINDATO)
 def _check_osint_blindato(cd: dict[str, Any]) -> Violation | None:
     """Law 2: OSINT data must NOT leave Pro. No mixing OSINT + client data.
 
+    A cell that pulls inbound OSINT-class data AND has access to client
+    PII could contaminate client facts with untrusted intel. This is
+    forbidden.
+
+    Operational integrations (Drive, Brevo, WhatsApp, Telegram, OpenAI
+    embedding, etc.) are delivery channels — they push client data
+    OUTBOUND or embed client data into delivery formats. They are NOT
+    OSINT inbound feeds. Cells that legitimately use these (e.g.
+    crm-cell) can declare both external_sources=[<delivery-providers>]
+    AND client_data_access=true.
+
     Cell definition fields used:
-        external_sources: list[str] — names of upstream feeds
+        external_sources: list[str] — names of upstream feeds + delivery
+            integrations
         client_data_access: bool — does the cell read client PII?
+
+    The check fires only if external_sources contains at least one
+    OSINT-class provider (per _OSINT_CLASS_PROVIDERS) AND
+    client_data_access=true.
     """
-    has_external = bool(cd.get("external_sources", []))
+    declared_sources: set[str] = set(cd.get("external_sources", []) or [])
     has_client = bool(cd.get("client_data_access", False))
-    if has_external and has_client:
+    osint_intersection = declared_sources & _OSINT_CLASS_PROVIDERS
+    if osint_intersection and has_client:
         return Violation(
             legge=Legge.OSINT_BLINDATO,
             message=(
-                "cell mixes external_sources with client_data_access — Law 2 "
-                "forbids OSINT contamination of client facts"
+                f"cell mixes OSINT-class external_sources "
+                f"({sorted(osint_intersection)}) with client_data_access — "
+                f"Law 2 forbids OSINT contamination of client facts. "
+                f"Non-OSINT delivery integrations (Drive, Brevo, WhatsApp, "
+                f"Telegram, embedding APIs) are allowed; OSINT scrapers are "
+                f"not when combined with client PII access."
             ),
             severity="blocker",
         )

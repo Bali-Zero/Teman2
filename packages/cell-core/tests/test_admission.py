@@ -481,7 +481,16 @@ def test_crm_cell_passes_admission() -> None:
 
 
 def test_crm_cell_metadata_contracts() -> None:
-    """Cell-yaml-only contract checks (Sprint 3 W2 invariants)."""
+    """Cell-yaml-only contract checks (Sprint 3 W2 invariants).
+
+    Post 2026-05-04 multi-LLM W2 review (I4 fix): crm-cell.yaml now
+    declares its delivery integrations truthfully. The AdmissionTest
+    Law 2 rubric was extended to distinguish OSINT-class providers
+    from delivery integrations — see admission_test.py
+    _OSINT_CLASS_PROVIDERS. crm-cell legitimately mixes
+    external_sources (Drive/Brevo/WhatsApp/Telegram, all delivery)
+    with client_data_access=true.
+    """
     pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
     cd = load_cell_definition(_CRM_CELL_YAML)
 
@@ -492,12 +501,30 @@ def test_crm_cell_metadata_contracts() -> None:
 
     # CRM IS the client data domain — UU PDP scope (Q4 W1.2 decision)
     assert cd["client_data_access"] is True
-    # …but external_sources must NOT include OSINT-class providers
-    osint_classes = {"intel-scraper", "imigrasi.go.id", "bps.go.id"}
+    # …and external_sources MUST be declared truthfully (Drive/Brevo/
+    # WhatsApp/Telegram are delivery integrations, not OSINT).
     declared_sources = set(cd.get("external_sources", []))
-    assert declared_sources.isdisjoint(osint_classes), (
-        f"crm-cell external_sources must not include OSINT providers, got: "
-        f"{declared_sources & osint_classes}"
+    assert declared_sources, (
+        "crm-cell must declare its actual external integrations, not []"
+    )
+    # …but external_sources must NOT include OSINT-class providers
+    # (the Law 2 rubric blocks the combination).
+    from cell_core.admission_test import _OSINT_CLASS_PROVIDERS
+    osint_intersection = declared_sources & _OSINT_CLASS_PROVIDERS
+    assert not osint_intersection, (
+        f"crm-cell external_sources must not include OSINT providers, "
+        f"got: {osint_intersection}"
+    )
+    # Expect the 4 declared delivery integrations
+    expected_delivery = {
+        "google_drive_api",
+        "brevo_api",
+        "whatsapp_business_api",
+        "telegram_bot_api",
+    }
+    assert expected_delivery.issubset(declared_sources), (
+        f"crm-cell must declare all 4 delivery integrations, got: "
+        f"{declared_sources}"
     )
 
     # Outbound contract — crm_welcome_completed (mig 153) must be declared
