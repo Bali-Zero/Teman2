@@ -149,14 +149,31 @@ def test_alert_input_severity_invalid_rejected() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_requested_action_v1_whitelist_exact() -> None:
-    """V1 whitelist is exactly 4 actions. Adding a new one requires
-    a deliberate review — this test fails as a guard."""
+def test_requested_action_v2_whitelist_exact() -> None:
+    """V2 whitelist: V1 (4) + Codex 5.5 (4) = 8 actions total.
+
+    V1 — idempotent maintenance ops:
+        cleanup_log, ack_outbox_event, quarantine_alert, prune_consumed_outbox
+
+    V2 — Codex 5.5 capabilities (OAuth Pro $200, no API key):
+        codex_xhigh_fix         (HITL_ONLY: deep agentic fix)
+        codex_overnight_queue   (ALLOWED_L2: non-destructive queue write)
+        codex_image_gen         (HITL_ONLY: public-facing artifact)
+        codex_visual_dispatch   (HITL_ONLY: 15-asset bundle)
+
+    Adding a new action requires a deliberate review — this test fails as a guard.
+    """
     assert {a.value for a in RequestedAction} == {
+        # V1
         "cleanup_log",
         "ack_outbox_event",
         "quarantine_alert",
         "prune_consumed_outbox",
+        # V2
+        "codex_xhigh_fix",
+        "codex_overnight_queue",
+        "codex_image_gen",
+        "codex_visual_dispatch",
     }
 
 
@@ -165,9 +182,22 @@ def test_requested_action_excludes_blocked() -> None:
     assert "cleanup_zombie_plist" not in {a.value for a in RequestedAction}
 
 
-def test_requested_action_excludes_hitl_only() -> None:
-    """restart_agent is HITL_ONLY — not in V1 RequestedAction whitelist."""
+def test_requested_action_excludes_legacy_hitl_only() -> None:
+    """restart_agent is HITL_ONLY but NOT a RequestedAction — separate flow."""
     assert "restart_agent" not in {a.value for a in RequestedAction}
+
+
+def test_requested_action_v2_includes_codex_capabilities() -> None:
+    """V2 adds 4 Codex 5.5 capabilities to the RequestedAction enum.
+
+    All use Codex CLI OAuth (Pro $200) — Golden Rule #13 compliant
+    (no ANTHROPIC_API_KEY, no new OPENAI_API_KEY usage).
+    """
+    enum_values = {a.value for a in RequestedAction}
+    assert "codex_xhigh_fix" in enum_values
+    assert "codex_overnight_queue" in enum_values
+    assert "codex_image_gen" in enum_values
+    assert "codex_visual_dispatch" in enum_values
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,11 @@ from __future__ import annotations
 from backend.services.federation_alerts.actions import (  # noqa: F401
     ack_outbox_event,
     cleanup_log,
+    # Whitelist V2 — Codex 5.5 capabilities (OAuth Pro, no API key)
+    codex_image_gen,
+    codex_overnight_queue,
+    codex_visual_dispatch,
+    codex_xhigh_fix,
     prune_consumed_outbox,
     quarantine_alert,
 )

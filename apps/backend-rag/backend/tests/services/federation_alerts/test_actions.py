@@ -33,13 +33,42 @@ from backend.services.federation_alerts.actions.registry import (
 # ---------------------------------------------------------------------------
 
 
-def test_v1_whitelist_is_exactly_4() -> None:
+def test_v2_whitelist_includes_v1_plus_codex_overnight_queue() -> None:
+    """V1 whitelist (4 idempotent maintenance ops) plus V2 codex_overnight_queue.
+
+    V2 (this PR) adds codex_overnight_queue as L2-allowed because the
+    queue write is non-destructive — the overnight runner has its own
+    safeguards (8h timeout, sandbox, branch-isolated work, no auto-merge).
+
+    The 3 other Codex 5.5 actions (codex_xhigh_fix, codex_image_gen,
+    codex_visual_dispatch) are HITL_ONLY (broad blast radius or
+    public-facing artifacts).
+    """
     assert ALLOWED_L2_ACTIONS == frozenset({
+        # V1 maintenance ops
         "cleanup_log",
         "ack_outbox_event",
         "quarantine_alert",
         "prune_consumed_outbox",
+        # V2 Codex 5.5 — non-destructive enqueue only
+        "codex_overnight_queue",
     })
+
+
+def test_v2_hitl_only_includes_codex_deep_actions() -> None:
+    """V2 adds 3 Codex 5.5 actions that always need Telegram approval."""
+    assert "codex_xhigh_fix" in HITL_ONLY_ACTIONS
+    assert "codex_image_gen" in HITL_ONLY_ACTIONS
+    assert "codex_visual_dispatch" in HITL_ONLY_ACTIONS
+
+
+def test_v2_codex_actions_are_registered() -> None:
+    """All 4 Codex 5.5 action handlers must be importable + decorator-registered."""
+    registered = set(list_actions())
+    assert "codex_xhigh_fix" in registered
+    assert "codex_overnight_queue" in registered
+    assert "codex_image_gen" in registered
+    assert "codex_visual_dispatch" in registered
 
 
 def test_blocked_actions_contain_plist_threat() -> None:
