@@ -5,3 +5,7 @@
 ## 2026-04-25 - [Keyboard Visibility for Actions]
 **Learning:** Actions that only appear on hover (e.g., a "Delete" button) are inaccessible to keyboard-only users unless they are also triggered by focus.
 **Action:** Use Tailwind's `group-focus-within:opacity-100` (or similar focus-based classes) alongside `group-hover:opacity-100` to ensure secondary actions become visible when a user tabs through a list.
+
+## 2026-04-25 - [Immediate Visual Feedback for Attachments]
+**Learning:** Providing immediate visual feedback for file attachments (like image previews) in a chat interface significantly improves the user's sense of control and reduces errors. Users can verify they attached the correct file before sending.
+**Action:** Always include animated previews for file attachments in input components, and provide an easy, accessible way to remove them (visible on hover/focus).

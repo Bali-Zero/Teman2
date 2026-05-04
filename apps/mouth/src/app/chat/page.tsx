@@ -121,6 +121,8 @@ export default function ChatPage() {
           recordingTime={0}
           onStartRecording={() => {}}
           onStopRecording={() => {}}
+          attachedImages={chatInput.attachedImages}
+          onRemoveImage={chatInput.removeAttachedImage}
         />
       </div>
 

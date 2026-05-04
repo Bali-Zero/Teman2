@@ -2,8 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { UI } from '@/constants';
-import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic, X } from 'lucide-react';
 import { ChatRecordingOverlay } from './ChatRecordingOverlay';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { AttachedImage } from '@/hooks/useChatInput';
 
 export interface ChatInputBarProps {
   input: string;
@@ -23,6 +26,8 @@ export interface ChatInputBarProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleRecording?: () => void; // Click-to-toggle handler
+  attachedImages?: AttachedImage[];
+  onRemoveImage?: (id: string) => void;
 }
 
 export function ChatInputBar({
@@ -43,6 +48,8 @@ export function ChatInputBar({
   onStartRecording,
   onStopRecording,
   onToggleRecording,
+  attachedImages = [],
+  onRemoveImage,
 }: ChatInputBarProps) {
   // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
@@ -132,6 +139,44 @@ export function ChatInputBar({
               <Camera className="w-3.5 h-3.5" />
             </Button>
           </div>
+
+          {/* Image Previews */}
+          <AnimatePresence>
+            {attachedImages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-wrap gap-2 px-2 py-2 mb-1 border-b border-[var(--border)]/50"
+              >
+                {attachedImages.map((img) => (
+                  <motion.div
+                    key={img.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="relative group w-16 h-16 rounded-lg overflow-hidden border border-[var(--border)]"
+                  >
+                    <Image
+                      src={img.base64}
+                      alt={img.name}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                    <button
+                      onClick={() => onRemoveImage?.(img.id)}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                      aria-label={`Remove image ${img.name}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="flex items-end gap-2">
             {/* Attachment Menu */}
