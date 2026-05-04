@@ -19,11 +19,14 @@ Guard conditions (skip silently if any fail):
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import asyncpg
 import httpx
 
 from backend.app.core.config import settings
@@ -102,6 +105,7 @@ async def _send_practice_kickoff_impl(
     practice_type_code: str,
     db_pool: asyncpg.Pool,
 ) -> None:
+    started_at = datetime.now(tz=timezone.utc)
     async with db_pool.acquire() as conn:
         client = await conn.fetchrow(
             "SELECT id, full_name, email, phone, nationality, assigned_to FROM clients WHERE id = $1",
@@ -123,8 +127,11 @@ async def _send_practice_kickoff_impl(
     )
     service_name = get_service_name(practice_type_code, lang)
 
-    # Run both channels (each checks its own gate + idempotency)
-    await _send_whatsapp(
+    # Run both channels (each checks its own gate + idempotency).
+    # Each returns True if the sub-step delivered; False if it skipped or
+    # errored. The aggregate result drives the crm_welcome_runs UPSERT
+    # (Sprint 4 wiring): success=true ONLY when both channels succeed.
+    wa_ok = await _send_whatsapp(
         practice_id=practice_id,
         client_id=client_id,
         client=client,
@@ -134,7 +141,7 @@ async def _send_practice_kickoff_impl(
         service_name=service_name,
         db_pool=db_pool,
     )
-    await _send_email(
+    email_ok = await _send_email(
         practice_id=practice_id,
         client_id=client_id,
         client=client,
@@ -146,6 +153,103 @@ async def _send_practice_kickoff_impl(
         service_name=service_name,
         db_pool=db_pool,
     )
+
+    # Sprint 4 wiring: UPSERT crm_welcome_runs (mig 153).
+    # The mig 153 trigger fires on AFTER INSERT WHEN success=true OR
+    # AFTER UPDATE on false→true success transition, emitting the
+    # crm_welcome_completed PG_NOTIFY channel via outbox pattern.
+    # Idempotent retry path: re-running this with both channels green
+    # writes success=true again — no-op on the trigger because OLD.success
+    # = NEW.success.
+    channels_sent: list[str] = []
+    if wa_ok:
+        channels_sent.append("whatsapp")
+    if email_ok:
+        channels_sent.append("email")
+    success = wa_ok and email_ok
+    metadata: dict[str, Any] = {
+        "lang": lang,
+        "service_name": service_name,
+        "practice_type_code": practice_type_code,
+    }
+    if not success:
+        metadata["failed_channels"] = [
+            ch for ch, ok in (("whatsapp", wa_ok), ("email", email_ok))
+            if not ok
+        ]
+    await _record_welcome_run(
+        db_pool=db_pool,
+        client_id=client_id,
+        practice_id=practice_id,
+        channels_sent=channels_sent,
+        success=success,
+        started_at=started_at,
+        metadata=metadata,
+    )
+
+
+async def _record_welcome_run(
+    *,
+    db_pool: asyncpg.Pool,
+    client_id: int,
+    practice_id: int,
+    channels_sent: list[str],
+    success: bool,
+    started_at: datetime,
+    metadata: dict[str, Any],
+) -> None:
+    """UPSERT into crm_welcome_runs (mig 153) — never raises.
+
+    Failure to record the audit row must not break the welcome flow
+    (which has already delivered the messages). Errors are logged.
+
+    NOTE: do NOT include `updated_at = NOW()` in the SET clause —
+    the mig 154 BEFORE UPDATE trigger handles updated_at conditionally
+    only when business columns change. Setting it here would defeat
+    the no-op filter (cf. v2.5 review V2-B1 finding on
+    asset_provenance; same principle applies here for consistency).
+    crm_welcome_runs has no BEFORE UPDATE trigger today, so updated_at
+    just gets the original value via the column DEFAULT NOW() at
+    INSERT time; on UPSERT-update path this column doesn't change.
+    """
+    # JSONB cast on $6 forces asyncpg to encode the Python dict as a
+    # Postgres jsonb value (not as a JSON-encoded text literal). v2 review
+    # caught this: passing json.dumps(dict) for a jsonb column stores a
+    # JSON-string scalar, breaking downstream readers that expect an
+    # object. Pass the dict directly + ::jsonb cast = correct.
+    sql = """
+        INSERT INTO crm_welcome_runs (
+            client_id, practice_id, channels_sent,
+            started_at, completed_at, success, metadata
+        ) VALUES ($1, $2, $3, $4, NOW(), $5, $6::jsonb)
+        ON CONFLICT (client_id, practice_id) DO UPDATE SET
+            channels_sent = EXCLUDED.channels_sent,
+            completed_at = EXCLUDED.completed_at,
+            success = EXCLUDED.success,
+            metadata = EXCLUDED.metadata
+    """
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute(
+                sql,
+                client_id,
+                practice_id,
+                channels_sent,
+                started_at,
+                success,
+                json.dumps(metadata),
+            )
+        logger.info(
+            "PracticeKickoff: crm_welcome_runs UPSERT for client=%d practice=%d "
+            "success=%s channels=%s",
+            client_id, practice_id, success, channels_sent,
+        )
+    except Exception:
+        logger.error(
+            "PracticeKickoff: crm_welcome_runs UPSERT failed for client=%d practice=%d",
+            client_id, practice_id,
+            exc_info=True,
+        )
 
 
 # ─────────────────────────────────────────────────────────
@@ -162,21 +266,24 @@ async def _send_whatsapp(
     advisor_name: str,
     service_name: str,
     db_pool: asyncpg.Pool,
-) -> None:
+) -> bool:
+    """Returns True if a WhatsApp was sent (or already-sent, idempotent),
+    False if any guard prevented delivery (gate inactive / missing creds /
+    no phone / API failure)."""
     if not _WHATSAPP_PRACTICE_ACTIVE:
         logger.debug("PracticeKickoff WA: inactive, skipping practice %d", practice_id)
-        return
+        return False
 
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
     access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
     if not phone_number_id or not access_token:
         logger.warning("PracticeKickoff WA: WHATSAPP_PHONE_NUMBER_ID or ACCESS_TOKEN not set")
-        return
+        return False
 
     phone = (client["phone"] or "").strip()
     if not phone:
         logger.info("PracticeKickoff WA: client %d has no phone, skipping", client_id)
-        return
+        return False
 
     async with db_pool.acquire() as conn:
         already_sent = await conn.fetchval(
@@ -187,7 +294,9 @@ async def _send_whatsapp(
         )
     if already_sent:
         logger.info("PracticeKickoff WA: already sent for practice %d, skipping", practice_id)
-        return
+        # Idempotent retry: count as delivered (the message reached the
+        # client on a previous run).
+        return True
 
     message_text = PRACTICE_KICKOFF_WHATSAPP.format(
         first_name=first_name,
@@ -230,13 +339,14 @@ async def _send_whatsapp(
             practice_id,
             lang,
         )
-    else:
-        logger.error(
-            "PracticeKickoff WA: Meta API error for practice %d: %d %s",
-            practice_id,
-            resp.status_code,
-            resp.text[:200],
-        )
+        return True
+    logger.error(
+        "PracticeKickoff WA: Meta API error for practice %d: %d %s",
+        practice_id,
+        resp.status_code,
+        resp.text[:200],
+    )
+    return False
 
 
 # ─────────────────────────────────────────────────────────
@@ -255,15 +365,17 @@ async def _send_email(
     practice_type_code: str,
     service_name: str,
     db_pool: asyncpg.Pool,
-) -> None:
+) -> bool:
+    """Returns True if the email was sent (or already-sent, idempotent),
+    False if any guard prevented delivery."""
     if not _EMAIL_PRACTICE_ACTIVE:
         logger.debug("PracticeKickoff Email: inactive, skipping practice %d", practice_id)
-        return
+        return False
 
     email = (client["email"] or "").strip()
     if not email:
         logger.info("PracticeKickoff Email: client %d has no email, skipping", client_id)
-        return
+        return False
 
     async with db_pool.acquire() as conn:
         already_sent = await conn.fetchval(
@@ -274,7 +386,8 @@ async def _send_email(
         )
     if already_sent:
         logger.info("PracticeKickoff Email: already sent for practice %d, skipping", practice_id)
-        return
+        # Idempotent retry — count as delivered.
+        return True
 
     subject_tmpl = PRACTICE_EMAIL_SUBJECT[lang]
     subject = "[CLIENT] " + subject_tmpl.format(service_name=service_name)
@@ -342,13 +455,14 @@ async def _send_email(
             practice_id,
             lang,
         )
-    else:
-        logger.error(
-            "PracticeKickoff Email: send failed for practice %d: %d %s",
-            practice_id,
-            resp.status_code,
-            resp.text[:200],
-        )
+        return True
+    logger.error(
+        "PracticeKickoff Email: send failed for practice %d: %d %s",
+        practice_id,
+        resp.status_code,
+        resp.text[:200],
+    )
+    return False
 
 
 # ─────────────────────────────────────────────────────────

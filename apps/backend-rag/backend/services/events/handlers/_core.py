@@ -337,6 +337,23 @@ def register_handlers(
     except ImportError as exc:
         logger.warning("partner handlers not loaded: %s", exc)
 
+    # ── WR2 asset_invalidated subscriber (Sprint 4 wiring) ──────────────
+    # Listens on `mata_garuda.asset_provenance` (mig 155 channel) and
+    # filters for invalidation transitions (asset_kind=war_room_*,
+    # event_type=provenance_updated, invalidated_at IS NOT NULL).
+    # Patches war_room_drafts.brief_json with the invalidation metadata
+    # so other readers see it without a separate provenance lookup.
+    try:
+        from backend.services.war_room.asset_invalidated_subscriber import (
+            AssetInvalidatedSubscriber,
+        )
+        wr2_invalidated = AssetInvalidatedSubscriber(db_pool=db_pool)
+        bus.subscribe("mata_garuda.asset_provenance", wr2_invalidated.handle)
+    except ImportError as exc:
+        logger.warning(
+            "war_room AssetInvalidatedSubscriber not loaded: %s", exc,
+        )
+
     logger.info(
         f"✅ EventBus handlers registered: "
         f"{len(bus._subscribers)} event types"
