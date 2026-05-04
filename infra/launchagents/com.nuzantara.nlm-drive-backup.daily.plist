@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.nuzantara.nlm-drive-backup.daily
+
+  Daily NLM → Drive 30TB backup, fires at 03:00 local time (WITA on Pro).
+  Source: apps/backend-rag/backend/services/backup/nlm_drive_backup.py
+  Token:  ~/.nuzantara/drive_backup_oauth.json (chmod 0400)
+  Logs:   ~/logs/nlm-drive-backup/YYYY-MM-DD.log (script-side rotation)
+  Plist logs: ~/logs/nlm-drive-backup/launchd-stdout.log + stderr.log
+
+  Operator: Pro only. Mini-Pro2 keeps the binary in sync via existing
+  rsync daemons but DOES NOT run this cron (avoid duplicate writes).
+
+  To install on Pro:
+      cp infra/launchagents/com.nuzantara.nlm-drive-backup.daily.plist \
+         ~/Library/LaunchAgents/
+      launchctl bootstrap gui/$(id -u) \
+         ~/Library/LaunchAgents/com.nuzantara.nlm-drive-backup.daily.plist
+
+  To remove:
+      launchctl bootout gui/$(id -u)/com.nuzantara.nlm-drive-backup.daily
+
+  This is a CRON (StartCalendarInterval), not a daemon — KeepAlive=false
+  is intentional and matches VADEMECUM §11.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nuzantara.nlm-drive-backup.daily</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag &amp;&amp; source .venv/bin/activate &amp;&amp; PYTHONPATH=. python -m backend.services.backup.nlm_drive_backup --apply --json</string>
+  </array>
+
+  <!-- Daily at 03:00 WITA (machine-local time) -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>3</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/nlm-drive-backup/launchd-stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/nlm-drive-backup/launchd-stderr.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>/Users/nuzantara</string>
+    <key>PATH</key>
+    <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>LC_ALL</key>
+    <string>en_US.UTF-8</string>
+    <key>LANG</key>
+    <string>en_US.UTF-8</string>
+  </dict>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>Nice</key>
+  <integer>10</integer>
+</dict>
+</plist>
