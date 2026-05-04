@@ -8,6 +8,7 @@
       "ram_gb": 48,
       "mlx_enabled": true,
       "warm_model": "qwen3.5:9b",
+      "warm_models_extra": ["qwen3:8b"],
       "warm_keep_alive": "-1",
       "warm_ctx": 32768,
       "warm_think": false,
