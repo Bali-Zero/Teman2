@@ -43,9 +43,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Make the repo's apps/mata-garuda importable when run directly from a cron.
+# The cell_adapter lives in backend-rag (not in apps/mata-garuda — see
+# B3 finding 2026-05-04 multi-LLM W2 review). This script is currently
+# self-contained (does not import the adapter); the import path setup
+# below is reserved for the future extension that will call
+# `cell_adapter.list_expired_assets` to enrich the sweep log with
+# per-asset_kind counts.
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_REPO_ROOT / "apps" / "mata-garuda"))
+sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 logger = logging.getLogger("mata_garuda_invalidation_sweep")
 

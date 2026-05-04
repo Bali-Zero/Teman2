@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from mata_garuda.cell_adapter import (
+from backend.services.mata_garuda.cell_adapter import (
     ASSET_KIND_AUTHORITATIVE,
     CREDIBILITY_VALUES,
     INVALIDATION_MODES,

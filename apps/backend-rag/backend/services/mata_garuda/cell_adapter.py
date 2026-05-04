@@ -2,7 +2,17 @@
 
 Sprint 3 W2 deliverable. Reference:
   docs/sprint3/mata-garuda-cell-design.md
-  docs/sprint3/review-synthesis-2026-05-04.md
+  docs/sprint3/review-synthesis-2026-05-04.md (B3 — relocated 2026-05-04)
+
+Lives in ``apps/backend-rag/backend/services/mata_garuda/`` because (a) the
+host backend-rag image already has ``asyncpg`` and the service-injection
+pattern, and (b) the mata-garuda app's local CLAUDE.md forbids ``asyncpg``
+as a runtime dep (minimal-stack rule: ``SOLO pydantic>=2``). Multi-LLM W2
+review surfaced this constraint mismatch; the W1 design had not accounted
+for it.
+
+The cell-yaml declaration at ``apps/mata-garuda/cell.yaml`` still defines
+the L4.5 cell as Pro-only; ONLY the SQL data-access shim lives here.
 
 This module is the ONLY public entry point for other cells to interact with
 Mata-Garuda's provenance schema. It provides three operations:
