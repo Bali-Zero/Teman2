@@ -5,7 +5,7 @@
 # Core Framework
 fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility and security fixes
 uvicorn[standard]>=0.40.0  # Upgraded for async improvements
-pydantic>=2.12.5
+pydantic>=2.13.3
 pydantic-settings>=2.5.2
 python-multipart>=0.0.22  # Security fix: arbitrary file write
 
