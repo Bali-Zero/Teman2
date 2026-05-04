@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.invalidation-sweep</string>
+
+    <!-- Mata-Garuda L4.5 cell — daily TTL invalidation sweep
+         Sprint 3 W2 deliverable.
+         Reference: docs/sprint3/mata-garuda-cell-design.md
+                    apps/mata-garuda/cell.yaml (sub_organelles.invalidation_sweeper)
+
+         Runs daily at 04:13 WITA (off-minute, off-hour) on Pro only.
+         Pro-only because Pro-local PostgreSQL is not reachable from Fly cells.
+
+         Symbiosis Law 2: this is the time-driven invalidation pass. Event-driven
+         invalidation (when reg_alert.<topic> fires) is handled by separate cell
+         adapters listening on event channels (Sprint 4 wiring on the consumer
+         side; Mata-Garuda emits asset_provenance events regardless via mig 155).
+
+         KeepAlive=false because this is a scheduled sweep, not a daemon. The
+         cicatrix § "53 LaunchAgents Pro, only 7 KeepAlive=true" classifies
+         StartCalendarInterval entries as "cron jobs" — KeepAlive=false is
+         correct here.
+    -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata_garuda_invalidation_sweep.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <!-- DATABASE_URL must be set via launchctl setenv on Pro before
+             enabling this plist, OR injected via a wrapper script that
+             sources ~/.nuzantara-secrets.env. Do NOT inline secrets here
+             (plist files are world-readable mode 0644 by default; cf.
+             cicatrix P0-3 secrets-leak incident 2026-04-29). -->
+    </dict>
+
+    <!-- Daily 04:13 WITA. Off-minute, off-hour to avoid contention with
+         the daily indexing sweep (00:30 WITA), the auto-sentinel (03:00
+         WITA), and most cron-spike windows.
+
+         macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL
+         TIME (NOT UTC). Verified vs com.balizero.indexing-sweep.daily.plist
+         which uses Hour=0 for "00:30 WITA". The earlier W2 draft
+         had Hour=20 with a wrong UTC translation comment — caught by
+         multi-LLM W2 review (cf. SYNTHESIS B2). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>13</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Logs to ~/logs (NOT /tmp — cf. cicatrix P0-3: 6/53 plist logging to
+         /tmp lose entries on reboot and break Sentinel cross-checks). -->
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-invalidation-sweep.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-invalidation-sweep.stderr.log</string>
+</dict>
+</plist>

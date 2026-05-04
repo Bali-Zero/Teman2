@@ -440,3 +440,247 @@ def test_hgt_coordinator_cell_passes_admission() -> None:
         f"hgt-coordinator-cell must clear admission with zero blockers; got: "
         f"{[(v.legge.value, v.message) for v in blockers]}"
     )
+
+
+# ── Sprint 3 W2 — crm-cell + mata-garuda-cell admission entries ───────────
+
+_CRM_CELL_YAML = _REPO_ROOT / "apps" / "crm-cell" / "cell.yaml"
+_MATA_GARUDA_CELL_YAML = _REPO_ROOT / "apps" / "mata-garuda" / "cell.yaml"
+
+
+def test_crm_cell_yaml_exists() -> None:
+    """The Sprint 3 W2 crm-cell.yaml MUST be on disk at the canonical path."""
+    assert _CRM_CELL_YAML.exists(), (
+        f"missing {_CRM_CELL_YAML} — Sprint 3 W2 declarative contract not in place"
+    )
+
+
+def test_crm_cell_passes_admission() -> None:
+    """The crm-cell definition PASSES all 7 Leggi (zero blockers).
+
+    Sprint 3 W2 acceptance test. If it ever fails, either the cell
+    definition drifted (fix cell.yaml) or the admission rubric changed
+    (fix admission_test.py). Both deserve a code review.
+
+    Note: ``client_data_access=true`` IS valid for crm-cell — the cell IS
+    the CRM client data domain (UU PDP scope). What Law 2 (OSINT blindato)
+    forbids is the *combination* of OSINT external_sources AND client PII
+    — CRM has neither OSINT scrapers nor any external_source on
+    domains like ``intel-scraper`` (it has Drive/Brevo/WhatsApp/Telegram,
+    which are non-OSINT integrations).
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_CRM_CELL_YAML)
+    result = AdmissionTest().run_all(cd)
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        "crm-cell admission FAILED:\n" + result.summary()
+    )
+    assert result.passed is True, result.summary()
+    assert result.cell_name == "crm-cell"
+
+
+def test_crm_cell_metadata_contracts() -> None:
+    """Cell-yaml-only contract checks (Sprint 3 W2 invariants).
+
+    v2.5 review V2-B2 fix: AdmissionTest Law 2 rubric is now
+    default-deny via `_DELIVERY_CLASS_ALLOWLIST`. crm-cell legitimately
+    mixes external_sources (Drive/Brevo/WhatsApp/Telegram — all in the
+    allowlist) with client_data_access=true. Any future external_source
+    name not in the allowlist will FAIL admission until added there
+    via a dedicated code review.
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_CRM_CELL_YAML)
+
+    # Identity
+    assert cd["name"] == "crm-cell"
+    assert cd["level"] == "L1"
+    assert "fastapi-inproc" in cd["runtime"]
+
+    # CRM IS the client data domain — UU PDP scope (Q4 W1.2 decision)
+    assert cd["client_data_access"] is True
+    # external_sources must be truthfully declared
+    declared_sources = set(cd.get("external_sources", []))
+    assert declared_sources, (
+        "crm-cell must declare its actual external integrations, not []"
+    )
+    # …and ALL declared sources must be in the delivery allowlist
+    # (default-deny posture; anything else = OSINT-class blocker).
+    from cell_core.admission_test import _DELIVERY_CLASS_ALLOWLIST
+    untrusted = declared_sources - _DELIVERY_CLASS_ALLOWLIST
+    assert not untrusted, (
+        f"crm-cell external_sources contains providers not in the "
+        f"delivery allowlist: {sorted(untrusted)}. Either add them to "
+        f"_DELIVERY_CLASS_ALLOWLIST or remove them from the cell."
+    )
+    # Expect the 4 declared delivery integrations
+    expected_delivery = {
+        "google_drive_api",
+        "brevo_api",
+        "whatsapp_business_api",
+        "telegram_bot_api",
+    }
+    assert expected_delivery.issubset(declared_sources), (
+        f"crm-cell must declare all 4 delivery integrations, got: "
+        f"{declared_sources}"
+    )
+
+    # Outbound contract — crm_welcome_completed (mig 153) must be declared
+    outbound = set(cd.get("events", {}).get("outbound", []))
+    assert "crm_welcome_completed" in outbound, (
+        "crm-cell must declare crm_welcome_completed in events.outbound "
+        "(emitted by mig 153 trigger)"
+    )
+
+    # Pro-only sub-organelles per W1.2 Q3 (Drive page_token persistence)
+    suborganelles = {s["name"] for s in cd.get("sub_organelles", [])}
+    assert "drive_poll" in suborganelles
+    assert "nightly_engine" in suborganelles
+
+
+def test_unknown_external_source_blocks_with_client_data() -> None:
+    """v2.5 review V2-B2: default-deny posture. A cell that declares
+    an external_source NOT in `_DELIVERY_CLASS_ALLOWLIST` AND has
+    client_data_access=true MUST fail admission. Catches the security
+    regression where the v2 blocklist would have silently allowed
+    unknown providers.
+    """
+    cell = _passing_cell()
+    cell["external_sources"] = ["unknown_new_scraper.example.com"]
+    cell["client_data_access"] = True
+    result = AdmissionTest().run_all(cell)
+    assert result.passed is False
+    osint_violations = [
+        v for v in result.violations
+        if v.legge == Legge.OSINT_BLINDATO and v.severity == "blocker"
+    ]
+    assert osint_violations, (
+        "default-deny posture: an unknown external_source combined with "
+        "client_data_access=true MUST block admission, even if the "
+        "name doesn't match any known OSINT provider"
+    )
+    # The error message must point the author at the allowlist constant
+    msg = osint_violations[0].message
+    assert "_DELIVERY_CLASS_ALLOWLIST" in msg, (
+        f"violation message must mention _DELIVERY_CLASS_ALLOWLIST so "
+        f"the cell author knows where to add new delivery providers; "
+        f"got: {msg!r}"
+    )
+
+
+def test_delivery_allowlist_with_client_data_passes() -> None:
+    """v2.5 review V2-B2: a cell with ONLY delivery-allowlisted
+    external_sources AND client_data_access=true MUST pass admission.
+    This is the legitimate crm-cell case.
+    """
+    cell = _passing_cell()
+    cell["external_sources"] = [
+        "google_drive_api", "brevo_api", "whatsapp_business_api",
+    ]
+    cell["client_data_access"] = True
+    result = AdmissionTest().run_all(cell)
+    osint_violations = [
+        v for v in result.violations
+        if v.legge == Legge.OSINT_BLINDATO and v.severity == "blocker"
+    ]
+    assert not osint_violations, (
+        f"delivery-only external_sources + client_data should pass; "
+        f"got Law 2 violations: {[v.message for v in osint_violations]}"
+    )
+
+
+def test_mata_garuda_cell_yaml_exists() -> None:
+    """The Sprint 3 W2 mata-garuda-cell.yaml MUST be on disk."""
+    assert _MATA_GARUDA_CELL_YAML.exists(), (
+        f"missing {_MATA_GARUDA_CELL_YAML} — Sprint 3 W2 declarative "
+        f"contract not in place"
+    )
+
+
+def test_mata_garuda_cell_passes_admission() -> None:
+    """The mata-garuda-cell definition PASSES all 7 Leggi (zero blockers).
+
+    Sprint 3 W2 acceptance test. Mata-Garuda is L4.5 (meta-awareness)
+    rather than L1; the admission rubric does not gate on level value
+    — it gates on the 7 Leggi declarations themselves. OSINT blindato
+    is satisfied because external_sources=[] (no inbound cloud) and
+    client_data_access=False.
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_MATA_GARUDA_CELL_YAML)
+    result = AdmissionTest().run_all(cd)
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        "mata-garuda-cell admission FAILED:\n" + result.summary()
+    )
+    assert result.passed is True, result.summary()
+    assert result.cell_name == "mata-garuda-cell"
+
+
+def test_mata_garuda_cell_metadata_contracts() -> None:
+    """Cell-yaml-only contract checks (Sprint 3 W2 invariants)."""
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_MATA_GARUDA_CELL_YAML)
+
+    # Identity — L4.5 meta-awareness
+    assert cd["name"] == "mata-garuda-cell"
+    assert cd["level"] == "L4.5"
+
+    # OSINT blindato: zero external_sources, zero client_data_access
+    assert cd["external_sources"] == [], (
+        "mata-garuda-cell must have empty external_sources (OSINT blindato — "
+        "Pro-local, no inbound cloud)"
+    )
+    assert cd["client_data_access"] is False, (
+        "mata-garuda-cell must NOT touch CRM client data (separate from "
+        "crm-cell domain)"
+    )
+
+    # Outbound contracts — both new channels declared
+    outbound = set(cd.get("events", {}).get("outbound", []))
+    assert "asset_provenance" in outbound, (
+        "mata-garuda-cell must declare asset_provenance in events.outbound "
+        "(emitted by mig 155 trigger)"
+    )
+    assert "asset_invalidated" in outbound, (
+        "mata-garuda-cell must declare asset_invalidated in events.outbound "
+        "(emitted by daily invalidation_sweeper sub-organelle)"
+    )
+
+    # Meta-awareness layer — cells observed must NOT include self
+    meta = cd.get("meta_awareness", {})
+    assert "self" in meta.get("does_not_observe", []), (
+        "mata-garuda-cell.meta_awareness.does_not_observe must include 'self' "
+        "to prevent feedback loop (cell adapter enforces this at runtime)"
+    )
+
+    # Sub-organelle: invalidation_sweeper at 04:13 WITA
+    suborganelles = {s["name"]: s for s in cd.get("sub_organelles", [])}
+    sweeper = suborganelles.get("invalidation_sweeper")
+    assert sweeper is not None
+    assert sweeper["schedule"] == "13 4 * * *", (
+        f"invalidation_sweeper schedule must be '13 4 * * *' (daily 04:13 WITA, "
+        f"off-minute off-hour), got {sweeper.get('schedule')!r}"
+    )
+
+    # Event contracts must include asset_provenance with all M2 + X5 fields
+    contracts = cd.get("event_contracts", [])
+    prov_contracts = [
+        c for c in contracts if c.get("name") == "mata_garuda.asset_provenance"
+    ]
+    assert len(prov_contracts) == 1
+    fields = set(prov_contracts[0].get("fields", {}).keys())
+    required_m2_x5 = {
+        "reliability",            # M2 admiralty
+        "credibility",            # M2 admiralty
+        "tlp",                    # M2 distribution control
+        "valid_until",            # X5 invalidation column
+        "invalidation_event_topic",  # X5 invalidation column
+        "invalidation_mode",      # X5 invalidation enum
+        "_outbox_id",             # mig 146 contract
+    }
+    missing = required_m2_x5 - fields
+    assert not missing, (
+        f"asset_provenance contract missing M2/X5 fields: {missing}"
+    )
