@@ -17,6 +17,13 @@ exclude_patterns:
   - "discovery_token_*.md"
   - "MEMORY_ARCHIVE.md"
   - "feedback_subhi_*.md"
+  # Top-level Subhi-related files (Antonello directive 2026-05-04 option B):
+  # tutor must NOT see RBAC/routing/contact/offer files — can deduce from CLAUDE.md
+  - "subhi-rbac-permissions.md"
+  - "subhi-task-routing.md"
+  - "team-subhi-contact.md"
+  - "project_subhi_*.md"
+  - "subhi-*.md"
   - "*.pre-T2"
   - "*.pre-T1"
   - "MEMORY.md.pre-*"
