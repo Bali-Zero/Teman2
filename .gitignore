@@ -23,6 +23,9 @@ __pycache__/
 uv.lock
 .venv/
 **/.venv/
+# Also catch .venv symlinks (without trailing slash, the dir-pattern misses them)
+.venv
+**/.venv
 # apps/backend-rag/data/ holds large logs + raw assets we don't ship, BUT
 # apps/backend-rag/data/evaluation/ holds small static golden-query fixtures
 # that tests import at collection time — CI needs them in the repo.

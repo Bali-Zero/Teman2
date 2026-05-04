@@ -212,11 +212,16 @@ async def _record_welcome_run(
     just gets the original value via the column DEFAULT NOW() at
     INSERT time; on UPSERT-update path this column doesn't change.
     """
+    # JSONB cast on $6 forces asyncpg to encode the Python dict as a
+    # Postgres jsonb value (not as a JSON-encoded text literal). v2 review
+    # caught this: passing json.dumps(dict) for a jsonb column stores a
+    # JSON-string scalar, breaking downstream readers that expect an
+    # object. Pass the dict directly + ::jsonb cast = correct.
     sql = """
         INSERT INTO crm_welcome_runs (
             client_id, practice_id, channels_sent,
             started_at, completed_at, success, metadata
-        ) VALUES ($1, $2, $3, $4, NOW(), $5, $6)
+        ) VALUES ($1, $2, $3, $4, NOW(), $5, $6::jsonb)
         ON CONFLICT (client_id, practice_id) DO UPDATE SET
             channels_sent = EXCLUDED.channels_sent,
             completed_at = EXCLUDED.completed_at,
