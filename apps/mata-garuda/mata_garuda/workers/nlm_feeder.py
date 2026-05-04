@@ -64,18 +64,86 @@ def _nlm_add_url(notebook_id: str, url: str) -> bool:
         return False
 
 
+def _try_headless_auth_refresh() -> bool:
+    """Best-effort: spawn headless Chrome from saved nlm profile to refresh
+    cookies + CSRF, then write back to ~/.notebooklm-mcp-cli/auth.json.
+
+    Only works if the user has previously run `nlm login --clear` interactively
+    (creating an isolated Chrome profile with persistent Google session).
+    Returns True if tokens were extracted; False otherwise.
+
+    NOTE: requires the `notebooklm-mcp-cli` package to be installed in the
+    same Python env as the feeder OR available via the uv tool path.
+    """
+    try:
+        from notebooklm_tools.utils.cdp import run_headless_auth  # type: ignore
+    except ImportError:
+        # mata-garuda venv doesn't bundle notebooklm-mcp-cli; fall back to
+        # subprocess against the uv tool venv where it IS installed.
+        try:
+            uv_python = Path(
+                "/Users/nuzantara/.local/share/uv/tools/notebooklm-mcp-cli/bin/python"
+            )
+            if not uv_python.exists():
+                return False
+            result = subprocess.run(
+                [str(uv_python), "-c",
+                 "from notebooklm_tools.utils.cdp import run_headless_auth; "
+                 "t = run_headless_auth(profile_name='default', timeout=45); "
+                 "print('OK' if t else 'FAIL')"],
+                capture_output=True, text=True, timeout=60,
+            )
+            return "OK" in result.stdout
+        except Exception as e:
+            logger.warning(f"[nlm_feeder] headless auth refresh subprocess failed: {e}")
+            return False
+
+    try:
+        tokens = run_headless_auth(profile_name="default", timeout=45)
+        return tokens is not None
+    except Exception as e:
+        logger.warning(f"[nlm_feeder] headless auth refresh failed: {e}")
+        return False
+
+
 def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
-    """Add text content to NLM notebook via temp file."""
+    """Add text content to NLM notebook via temp file.
+
+    On auth-error stderr from `nlm` CLI, attempts ONE headless refresh
+    + retry. Subsequent auth failures within the same run are NOT retried
+    (Layer-1 recovery only — if Chrome profile is stale too, only an
+    interactive `nlm login --clear` will fix it).
+    """
     if not notebook_id:
         return False
     tmp = Path(f"/tmp/nlm_feed_{uuid4().hex[:8]}.txt")
     try:
         tmp.write_text(f"# {title}\n\n{text}")
-        result = subprocess.run(
-            ["nlm", "source", "add", notebook_id, "--file", str(tmp)],
-            capture_output=True, text=True, timeout=60,
-        )
-        return result.returncode == 0
+
+        for attempt in (1, 2):
+            result = subprocess.run(
+                ["nlm", "source", "add", notebook_id, "--file", str(tmp)],
+                capture_output=True, text=True, timeout=60,
+            )
+            if result.returncode == 0:
+                return True
+
+            stderr = (result.stderr or "") + (result.stdout or "")
+            auth_err = (
+                "Authentication expired" in stderr
+                or "Authentication Error" in stderr
+                or "auth" in stderr.lower() and "expir" in stderr.lower()
+            )
+            if attempt == 1 and auth_err:
+                logger.info(
+                    "[nlm_feeder] auth expired on add_text — attempting headless refresh"
+                )
+                if not _try_headless_auth_refresh():
+                    return False
+                # loop back for retry with refreshed auth.json
+                continue
+            return False
+        return False
     except Exception as e:
         logger.warning(f"[nlm_feeder] Failed to add text '{title}': {e}")
         return False
