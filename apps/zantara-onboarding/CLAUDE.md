@@ -7,6 +7,21 @@
 **Repo lavoro:** `balizero/nuzantara` (branch `sancho/*`)
 **Repo onboarding:** `~/zantara-onboarding/` (kamu di sini, distribusi rsync dari Pro)
 
+## Model — JANGAN PAKAI OPUS
+
+**Default model: `claude-sonnet-4-6`** (Sonnet, sudah set di settings.json).
+
+**JANGAN pakai Opus** (`claude-opus-*`) tanpa izin eksplisit Antonello.
+Opus ~5x lebih mahal. Kamu pakai shared MAX plan yang kuotanya juga
+dipakai Antonello untuk kerja prod.
+
+Kalau kamu accidentally trigger Opus (via `/model opus` atau
+`claude --model opus`), STOP dan kembali ke Sonnet:
+
+```
+/model sonnet
+```
+
 ## Bahasa
 
 **Selalu jawab dalam Bahasa Indonesia kepada Subhi.** Code, commit, branch

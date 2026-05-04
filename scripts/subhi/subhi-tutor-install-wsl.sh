@@ -183,19 +183,54 @@ if [[ -f "$SETTINGS" ]]; then
   fi
 fi
 
-# Step 14: Claude OAuth login
-BAHASA "Login Claude Code (akan kasih URL, buka di browser Windows)..."
-INFO "Login pakai subhi@balizero.com — claim slot MAX plan dari Antonello"
-INFO "WSL akan melempar URL ke browser Windows otomatis."
+# Step 14: Claude OAuth — token transfer (NO browser flow, NO password)
+BAHASA "Setup Claude Code via token transfer..."
+INFO "Antonello akan kirim token JSON via WhatsApp di pesan terpisah."
+INFO "Token ini berisi access+refresh untuk akun MAX yang sudah aktif."
 INFO ""
-INFO "Setelah install ini selesai, manual run:"
-INFO "  cd ~/zantara-onboarding && claude"
+INFO "PENTING:"
+INFO "  - Default model: claude-sonnet-4-6 (sudah set di settings.json)"
+INFO "  - JANGAN pakai opus tanpa izin Antonello (mahal)"
+INFO "  - Token ini SHARED — chat history di sidebar kamu adalah punya"
+INFO "    Antonello, JANGAN baca conversation lama, bikin chat baru saja"
 INFO ""
 
-# Step 15: NLM login
-BAHASA "Login NotebookLM (akan kasih URL, buka di browser Windows)..."
-INFO "Login pakai subhi@balizero.com — accept invite NB-1, NB-2, NB-9, NB-OPS"
-nlm login --clear || INFO "NLM login interactive — ikuti petunjuk di browser"
+mkdir -p "$HOME/.claude"
+TOKEN_FILE="$HOME/.claude/.credentials.json"
+
+PROMPT "Paste isi token JSON dari WhatsApp (1 baris JSON, tekan Enter setelah selesai):"
+PROMPT "Format expected: {\"claudeAiOauth\":{\"accessToken\":\"sk-ant-oat01-...\",\"refreshToken\":\"sk-ant-ort01-...\",...}}"
+read -r -s TOKEN_INPUT
+echo ""
+
+if [[ -z "$TOKEN_INPUT" ]]; then
+  INFO "Token kosong — skip. Kamu bisa import manual nanti:"
+  INFO "  echo '<token-json>' > $TOKEN_FILE && chmod 0600 $TOKEN_FILE"
+elif [[ "$TOKEN_INPUT" =~ \"claudeAiOauth\" ]] && [[ "$TOKEN_INPUT" =~ \"accessToken\" ]]; then
+  echo "$TOKEN_INPUT" > "$TOKEN_FILE"
+  chmod 0600 "$TOKEN_FILE"
+  OK "Token disimpan di $TOKEN_FILE (mode 0600)"
+
+  # Verify token works
+  if claude --version &>/dev/null; then
+    OK "claude CLI ready (token valid)"
+  else
+    INFO "claude --version gagal — token mungkin invalid. Cek JSON format."
+  fi
+else
+  INFO "Format token tidak terlihat valid — tinggalkan kosong."
+  INFO "Manual import: echo '<json>' > $TOKEN_FILE && chmod 0600 $TOKEN_FILE"
+fi
+
+# Step 15: NLM access — public links (NO CLI login required)
+BAHASA "NotebookLM access via public links..."
+INFO "4 notebook sudah dibuat public via link oleh Antonello:"
+INFO "  - NB-1 (Codebase): https://notebooklm.google.com/notebook/f6ecd115-dd89-4c9b-b3dd-071e0e2f1876"
+INFO "  - NB-2 (Visa):     https://notebooklm.google.com/notebook/cff93ab0-813a-42f2-a8de-36987e724271"
+INFO "  - NB-9 (Research): https://notebooklm.google.com/notebook/d2a05271-2f65-4c02-a44d-eefeb7c7f7cd"
+INFO "  - NB-OPS:          https://notebooklm.google.com/notebook/2072e518-e6f9-437d-93ea-f9037ec54052"
+INFO ""
+INFO "Bookmark di browser. Tutor (mcp__notebooklm-mcp tools) akan setup nanti."
 
 # Final
 echo ""
