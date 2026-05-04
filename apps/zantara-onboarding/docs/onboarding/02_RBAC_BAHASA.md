@@ -4,6 +4,24 @@
 **Track:** Operator → Builder → Rekan
 **Reference:** memory `subhi-rbac-permissions.md` Antonello
 
+## Filosofi (penting — baca dulu)
+
+Kamu **developer senior** dengan akses **READ penuh**: seluruh codebase
+Nuzantara, NotebookLM authority (NB-1, NB-2, NB-9, NB-OPS), memory mirror
+sistem Bali Zero, lessons & cicatrix. Tutor (`/agent zantara-onboarding`)
+akan jawab pertanyaan teknis sedalam apa pun — RAG architecture, Qdrant,
+cell/genome, EventBus, deploy flow, semua.
+
+Yang dibatasi adalah **WRITE/EXECUTE di luar sandbox sancho/*** dan
+**akses langsung ke production**. Kamu kerja di sandbox (clone repo
+lokal), bikin perubahan di branch `sancho/<task>`, commit, push, open PR.
+Antonello + Asya review, lalu deploy.
+
+Bukan karena kamu tidak mampu — tapi karena 5000 client live + cicatrix
+sejarah (lihat `~/zantara-onboarding/.claude/memory-mirror/lessons.md`)
+butuh review process untuk blast-radius control. Standar sama untuk
+semua dev di Bali Zero.
+
 Dokumen ini menjelaskan apa yang **boleh** dan **tidak boleh** kamu akses
 selama probation. Bukan untuk takut-takutan — biar kamu tahu di mana
 batas-batas otonom kamu, dan di mana harus minta tolong.
