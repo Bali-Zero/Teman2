@@ -170,6 +170,42 @@ def _mint_access_token(creds: dict[str, str]) -> str:
 # --- Drive helpers ---------------------------------------------------------
 
 
+def _retry(fn: Any, *, attempts: int = 4, base: float = 1.0, label: str = "drive") -> Any:
+    """Retry helper for transient HTTP errors on Drive calls.
+
+    Retries on 429 / 5xx / URLError up to ``attempts`` times. Honors
+    ``Retry-After`` header on 429 if present; otherwise exponential
+    backoff (base × 2**attempt). Last attempt re-raises the original
+    exception.
+    """
+    last_exc: BaseException | None = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except urllib.error.HTTPError as exc:
+            last_exc = exc
+            if exc.code in (429, 500, 502, 503, 504) and i < attempts - 1:
+                retry_after = int(exc.headers.get("Retry-After", "0") or 0) if exc.headers else 0
+                delay = max(retry_after, base * (2 ** i))
+                logger.warning("%s HTTP %d on attempt %d/%d — sleeping %.1fs",
+                               label, exc.code, i + 1, attempts, delay)
+                time.sleep(delay)
+                continue
+            raise
+        except urllib.error.URLError as exc:
+            last_exc = exc
+            if i < attempts - 1:
+                delay = base * (2 ** i)
+                logger.warning("%s URLError on attempt %d/%d (%s) — sleeping %.1fs",
+                               label, i + 1, attempts, exc, delay)
+                time.sleep(delay)
+                continue
+            raise
+    if last_exc is not None:
+        raise last_exc
+    raise BackupError(f"{label}: retry exhausted with no captured exception")
+
+
 def _verify_account(token: str) -> dict[str, Any]:
     """Confirm the access token belongs to ``EXPECTED_USER_EMAIL``.
 
@@ -221,28 +257,36 @@ def _verify_root_folder(token: str, folder_id: str) -> None:
 
 def _drive_get(token: str, path: str, query: dict[str, str] | None = None) -> dict[str, Any]:
     qs = "?" + urllib.parse.urlencode(query) if query else ""
-    req = urllib.request.Request(
-        f"{DRIVE_API_BASE}{path}{qs}",
-        headers={"Authorization": f"Bearer {token}"},
-        method="GET",
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+
+    def _do() -> dict[str, Any]:
+        req = urllib.request.Request(
+            f"{DRIVE_API_BASE}{path}{qs}",
+            headers={"Authorization": f"Bearer {token}"},
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    return _retry(_do, label=f"drive_get {path}")
 
 
 def _drive_post_json(token: str, path: str, body: dict[str, Any]) -> dict[str, Any]:
     data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        f"{DRIVE_API_BASE}{path}",
-        data=data,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+
+    def _do() -> dict[str, Any]:
+        req = urllib.request.Request(
+            f"{DRIVE_API_BASE}{path}",
+            data=data,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    return _retry(_do, label=f"drive_post {path}")
 
 
 def _drive_find_or_create_folder(
@@ -281,8 +325,13 @@ def _drive_upload_json(
 
     Returns the file ID.
     """
-    # Check for existing same-name child
-    q = f"name = '{filename}' and '{parent_id}' in parents and trashed = false"
+    # Validate filename and parent_id (defense-in-depth — used in `q=` query).
+    if not DRIVE_ID_RE.match(parent_id):
+        raise BackupError(f"Invalid parent_id {parent_id!r}")
+    # filename is built from validated nb_id + ".json", so safe by construction
+    # but escape single quotes in the q filter for symmetry with drive_folder_setup.py.
+    escaped_name = filename.replace("\\", "\\\\").replace("'", "\\'")
+    q = f"name = '{escaped_name}' and '{parent_id}' in parents and trashed = false"
     res = _drive_get(token, "/files", {"q": q, "fields": "files(id,name)"})
     existing = res.get("files", [])
     body_bytes = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -290,21 +339,26 @@ def _drive_upload_json(
     if existing:
         # Update content of the existing file (PATCH /upload)
         file_id = existing[0]["id"]
-        req = urllib.request.Request(
-            f"{DRIVE_UPLOAD_BASE}/files/{file_id}?uploadType=media",
-            data=body_bytes,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-            },
-            method="PATCH",
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            json.loads(resp.read().decode("utf-8"))  # validate response
-        return file_id
 
-    # Multipart insert
-    boundary = "==NUZANTARA_BACKUP_BOUNDARY=="
+        def _patch() -> dict[str, Any]:
+            req = urllib.request.Request(
+                f"{DRIVE_UPLOAD_BASE}/files/{file_id}?uploadType=media",
+                data=body_bytes,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                method="PATCH",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+
+        out = _retry(_patch, label=f"drive_upload_patch {file_id}")
+        return out.get("id", file_id)
+
+    # Multipart insert with random boundary to prevent collision with payload bytes.
+    import secrets
+    boundary = f"==NUZANTARA_{secrets.token_hex(16)}=="
     metadata = {
         "name": filename,
         "parents": [parent_id],
@@ -317,17 +371,25 @@ def _drive_upload_json(
         f"--{boundary}\r\n"
         f"Content-Type: application/json\r\n\r\n"
     ).encode("utf-8") + body_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
-    req = urllib.request.Request(
-        f"{DRIVE_UPLOAD_BASE}/files?uploadType=multipart",
-        data=multipart_body,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": f"multipart/related; boundary={boundary}",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        out = json.loads(resp.read().decode("utf-8"))
+
+    # Sanity check boundary not present in payload (defense-in-depth)
+    if boundary.encode("utf-8") in body_bytes:
+        raise BackupError(f"multipart boundary collision with payload — regenerate")
+
+    def _post() -> dict[str, Any]:
+        req = urllib.request.Request(
+            f"{DRIVE_UPLOAD_BASE}/files?uploadType=multipart",
+            data=multipart_body,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": f"multipart/related; boundary={boundary}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+
+    out = _retry(_post, label="drive_upload_post")
     return out["id"]
 
 
@@ -351,8 +413,11 @@ def _nlm_call(args: list[str]) -> str:
         )
         return out.stdout
     except subprocess.CalledProcessError as exc:
+        # Defensive: stderr can be None if the child was killed by signal
+        # before producing output. Guard against TypeError on slice.
+        stderr = (exc.stderr or "")[:300]
         raise BackupError(
-            f"nlm {' '.join(args)} failed (rc={exc.returncode}): {exc.stderr[:300]}",
+            f"nlm {' '.join(args)} failed (rc={exc.returncode}): {stderr}",
         ) from exc
     except subprocess.TimeoutExpired as exc:
         raise BackupError(f"nlm {' '.join(args)} timed out after {NLM_CLI_TIMEOUT_S}s") from exc
@@ -361,35 +426,44 @@ def _nlm_call(args: list[str]) -> str:
 def _nlm_list_notebooks() -> list[dict[str, Any]]:
     """Return list of notebooks visible to the authenticated CLI session.
 
-    Output schema: list of dicts with at minimum ``id`` and ``title``.
+    Output schema: list of dicts with at minimum ``id``, ``title``,
+    ``source_count``, ``updated_at``. Verified empirically against
+    `nlm notebook list --json` (singular `notebook`, `--json` flag,
+    NOT `nlm notebooks list --format json`).
     """
-    raw = _nlm_call(["notebooks", "list", "--format", "json"])
+    raw = _nlm_call(["notebook", "list", "--json"])
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise BackupError(f"nlm notebooks list returned invalid JSON: {raw[:200]}") from exc
+        raise BackupError(f"nlm notebook list returned invalid JSON: {raw[:200]}") from exc
     return data if isinstance(data, list) else data.get("notebooks", [])
 
 
 def _nlm_describe_notebook(notebook_id: str) -> dict[str, Any]:
-    raw = _nlm_call(["notebooks", "describe", notebook_id, "--format", "json"])
+    """`nlm notebook describe NOTEBOOK_ID --json` — AI summary + topics."""
+    raw = _nlm_call(["notebook", "describe", notebook_id, "--json"])
     return json.loads(raw)
 
 
 def _nlm_list_sources(notebook_id: str) -> list[dict[str, Any]]:
-    raw = _nlm_call(["sources", "list", notebook_id, "--format", "json"])
+    """`nlm source list NOTEBOOK_ID --json` — list sources in a notebook."""
+    raw = _nlm_call(["source", "list", notebook_id, "--json"])
     data = json.loads(raw)
     return data if isinstance(data, list) else data.get("sources", [])
 
 
 def _nlm_get_source_content(notebook_id: str, source_id: str) -> dict[str, Any]:
+    """`nlm source content SOURCE_ID --json` — raw content (no AI processing).
+
+    Note the CLI takes only SOURCE_ID, not NOTEBOOK_ID. notebook_id is kept
+    in the signature for callsite symmetry but not passed to subprocess.
+    Both IDs validated against regex BEFORE invocation as defense-in-depth.
+    """
     if not NB_ID_RE.match(notebook_id):
         raise BackupError(f"notebook_id {notebook_id!r} fails NB_ID_RE before subprocess")
     if not SOURCE_ID_RE.match(source_id):
         raise BackupError(f"source_id {source_id!r} fails SOURCE_ID_RE — refusing subprocess call")
-    raw = _nlm_call([
-        "sources", "get-content", notebook_id, source_id, "--format", "json",
-    ])
+    raw = _nlm_call(["source", "content", source_id, "--json"])
     return json.loads(raw)
 
 
@@ -472,19 +546,20 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
 
     creds = _load_oauth_credentials()
     token = _mint_access_token(creds)
+    token_minted_at = time.monotonic()
 
-    # BLOCKER fix #1: verify token belongs to expected account before any writes.
-    if apply:
-        about = _verify_account(token)
-        logger.info(
-            "Account verified: %s (used=%s/%s bytes)",
-            about.get("user", {}).get("emailAddress"),
-            about.get("storageQuota", {}).get("usage"),
-            about.get("storageQuota", {}).get("limit"),
-        )
-        # BLOCKER fix #4: confirm root folder still exists and is a folder.
-        _verify_root_folder(token, BACKUP_ROOT_FOLDER_ID)
-        logger.info("Backup root folder verified: %s", BACKUP_ROOT_FOLDER_ID)
+    # Verify account + root folder ALWAYS, even on dry-run, so the operator's
+    # sanity check actually exercises the auth path that production will use.
+    # (PR #456 review MEDIUM #5: dry-run was skipping these checks.)
+    about = _verify_account(token)
+    logger.info(
+        "Account verified: %s (used=%s/%s bytes)",
+        about.get("user", {}).get("emailAddress"),
+        about.get("storageQuota", {}).get("usage"),
+        about.get("storageQuota", {}).get("limit"),
+    )
+    _verify_root_folder(token, BACKUP_ROOT_FOLDER_ID)
+    logger.info("Backup root folder verified: %s", BACKUP_ROOT_FOLDER_ID)
 
     notebooks = _nlm_list_notebooks()
     logger.info("Discovered %d notebooks", len(notebooks))
@@ -507,8 +582,16 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
     else:
         day_folder_id = "DRY-RUN"
 
+    # Token refresh budget: refresh after 50min to give headroom on the 60min TTL
+    # so a long-running batch (60+ NB × ~30 sources) doesn't hit 401 mid-loop.
+    TOKEN_REFRESH_AFTER_S = 50 * 60
+
     results: list[dict[str, Any]] = []
     for i, nb in enumerate(notebooks):
+        if time.monotonic() - token_minted_at > TOKEN_REFRESH_AFTER_S:
+            logger.info("Refreshing access token after %ds", int(time.monotonic() - token_minted_at))
+            token = _mint_access_token(creds)
+            token_minted_at = time.monotonic()
         logger.info("[%d/%d] backing up %s", i + 1, len(notebooks), nb.get("id"))
         res = backup_one_notebook(nb, token, day_folder_id, apply=apply)
         results.append(res)
