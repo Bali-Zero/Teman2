@@ -26,8 +26,8 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata_garuda_invalidation_sweep.py</string>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata_garuda_invalidation_sweep_wrapper.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -39,11 +39,10 @@
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
         <string>/Users/nuzantara</string>
-        <!-- DATABASE_URL must be set via launchctl setenv on Pro before
-             enabling this plist, OR injected via a wrapper script that
-             sources ~/.nuzantara-secrets.env. Do NOT inline secrets here
-             (plist files are world-readable mode 0644 by default; cf.
-             cicatrix P0-3 secrets-leak incident 2026-04-29). -->
+        <!-- DATABASE_URL is sourced by the wrapper script from
+             ~/.nuzantara-secrets.env (mode 0600) — do NOT inline
+             secrets here (plist files default to mode 0644 world-readable;
+             cf. cicatrix P0-3 secrets-leak incident 2026-04-29). -->
     </dict>
 
     <!-- Daily 04:13 WITA. Off-minute, off-hour to avoid contention with

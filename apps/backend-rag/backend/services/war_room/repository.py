@@ -2,16 +2,51 @@
 
 Inherits BaseRepository (backend/db/base_repository.py) for consistent
 pool injection, transactions, and structured error logging.
+
+Sprint 4 wiring: create_draft / create_post auto-tag provenance via
+backend.services.mata_garuda.cell_adapter.tag_provenance, so other
+cells (oracle citation guard, KG demotion cron, future WR2
+asset_invalidated reactor) can query the trustworthiness of a war_room
+asset without scraping logs. Tagging is best-effort (try/except wrap):
+the primary INSERT must never fail because of provenance side effects.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+import logging
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from backend.db.base_repository import BaseRepository
+from backend.services.mata_garuda.cell_adapter import (
+    ASSET_KIND_AUTHORITATIVE,
+    tag_provenance,
+)
+
+logger = logging.getLogger(__name__)
+
+# WR2 connector creates drafts with high source-reputation (we own the
+# pipeline) but unverified information quality (LLM-generated). Map to
+# admiralty: B (usually reliable) + 2 (probably true). 90-day TTL —
+# drafts older than that are quarterly-stale even if not published.
+_WR2_DRAFT_RELIABILITY = "B"
+_WR2_DRAFT_CREDIBILITY = 2
+_WR2_DRAFT_TTL_DAYS = 90
+
+# Posts are drafts that survived human review + Telegram approval.
+# Same reliability (we own the pipeline) but credibility=1 (confirmed
+# by team approval). 180-day TTL — posts age out after ~6 months.
+_WR2_POST_RELIABILITY = "B"
+_WR2_POST_CREDIBILITY = 1
+_WR2_POST_TTL_DAYS = 180
+
+# Both flow through the WR2 OSINT-blindato perimeter (Pro-only); when
+# eventually published to social, the post itself is OUT (TLP=green) but
+# the provenance row stays IN (TLP=red — the metadata about WHO produced
+# it and WHEN is internal-only).
+_WR2_TLP = "red"
 from backend.services.war_room.models import (
     ConversionStage,
     CostType,
@@ -81,7 +116,24 @@ class WarRoomRepository(BaseRepository):
             draft.brief_json,
         )
         assert row is not None
-        return _row_to_draft(row)
+        result = _row_to_draft(row)
+        # Sprint 4 wiring: tag provenance (mata-garuda L4.5).
+        # Best-effort — never raises (primary INSERT already committed).
+        await self._tag_provenance_safe(
+            asset_kind="war_room_draft",
+            asset_id=str(result.id),
+            source="wr2.connector",
+            reliability=_WR2_DRAFT_RELIABILITY,
+            credibility=_WR2_DRAFT_CREDIBILITY,
+            owner="damar@balizero.com",
+            ttl_days=_WR2_DRAFT_TTL_DAYS,
+            metadata={
+                "topic": draft.topic,
+                "register": draft.tone_register.value if draft.tone_register else None,
+                "status": draft.status.value,
+            },
+        )
+        return result
 
     async def get_draft(self, draft_id: UUID) -> WarRoomDraft | None:
         row = await self.fetchrow_safe(
@@ -171,7 +223,26 @@ class WarRoomRepository(BaseRepository):
             post.final_text,
         )
         assert row is not None
-        return _row_to_post(row)
+        result = _row_to_post(row)
+        # Sprint 4 wiring: tag provenance for the published post.
+        # credibility=1 (confirmed — the post survived human review);
+        # 180-day TTL — posts age out into archival quality.
+        await self._tag_provenance_safe(
+            asset_kind="war_room_post",
+            asset_id=str(result.id),
+            source="wr2.publisher",
+            reliability=_WR2_POST_RELIABILITY,
+            credibility=_WR2_POST_CREDIBILITY,
+            owner="damar@balizero.com",
+            ttl_days=_WR2_POST_TTL_DAYS,
+            metadata={
+                "draft_id": str(post.draft_id),
+                "platform": post.platform.value,
+                "post_external_id": post.post_external_id,
+                "register": post.tone_register.value if post.tone_register else None,
+            },
+        )
+        return result
 
     async def get_posts_for_draft(self, draft_id: UUID) -> list[WarRoomPost]:
         rows = await self.fetch_safe(
@@ -179,6 +250,71 @@ class WarRoomRepository(BaseRepository):
             draft_id,
         )
         return [_row_to_post(row) for row in rows]
+
+    # ── Provenance wiring (Sprint 4) ────────────────────────────────────
+    async def _tag_provenance_safe(
+        self,
+        *,
+        asset_kind: str,
+        asset_id: str,
+        source: str,
+        reliability: str,
+        credibility: int,
+        owner: str,
+        ttl_days: int,
+        metadata: dict[str, Any],
+    ) -> None:
+        """Best-effort provenance tagging — never raises.
+
+        Defensive guard: if asset_kind drifts from the canonical 12-value
+        enum, log + return rather than propagate the ValueError to the
+        caller (the war_room_drafts/posts INSERT has already committed;
+        we cannot roll it back).
+
+        Notes for v2.5+ trigger interaction:
+          * tag_provenance() does NOT include `updated_at = NOW()` in
+            its UPSERT SET clause — the mig 154 conditional BEFORE
+            UPDATE trigger handles updated_at only when business
+            columns truly change, which keeps the AFTER UPDATE
+            no-op filter working. We rely on that contract here.
+          * Idempotent retry of create_draft/create_post (e.g. via
+            BackgroundTasks re-run on transient failure) writes the
+            same values — the BEFORE trigger sees NEW IS NOT DISTINCT
+            FROM OLD and skips updated_at, so the AFTER trigger also
+            skips, no spurious provenance_updated event.
+        """
+        if asset_kind not in ASSET_KIND_AUTHORITATIVE:
+            logger.error(
+                "WarRoomRepository: refusing to tag provenance — "
+                "asset_kind=%r not in canonical 12-value set",
+                asset_kind,
+            )
+            return
+        try:
+            valid_until = datetime.now(tz=timezone.utc) + timedelta(days=ttl_days)
+            await tag_provenance(
+                self.db_pool,
+                asset_kind=asset_kind,
+                asset_id=asset_id,
+                source=source,
+                reliability=reliability,
+                credibility=credibility,
+                owner=owner,
+                valid_until=valid_until,
+                tlp=_WR2_TLP,
+                invalidation_mode="auto",
+                metadata=metadata,
+            )
+            logger.debug(
+                "WarRoomRepository: tagged provenance kind=%s id=%s reliability=%s%s",
+                asset_kind, asset_id, reliability, credibility,
+            )
+        except Exception:
+            logger.exception(
+                "WarRoomRepository: tag_provenance failed kind=%s id=%s "
+                "(non-fatal; primary INSERT already committed)",
+                asset_kind, asset_id,
+            )
 
     async def count_posts_published_today(
         self,
