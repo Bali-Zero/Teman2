@@ -1,0 +1,112 @@
+# crm-cell (light) — Sprint 3 W2
+#
+# Reference: docs/sprint3/crm-cell-design.md
+# Decisions: docs/sprint3/review-synthesis-2026-05-04.md
+#
+# Light cell: keeps existing CRM module code intact, wraps with
+#   1. Genome scar registry (failure pattern accumulation across automation runs)
+#   2. HGT publisher (structural pattern broadcast on confidence ≥0.7)
+#   3. ObservedShellBus event bridge (durable run trace via mig 144 + 151)
+#   4. Cell descriptor validated by AdmissionTest
+#
+# C2 (rule registry) was REJECTED post-review — internal-only automations
+# belong in code/git, never a runtime-mutable DB config (inner-platform
+# anti-pattern). Twenty CRM's registry exists because Twenty is multi-tenant
+# SaaS; we are not.
+#
+# Validated against the 7 Leggi via packages/cell-core/cell_core/admission_test.py.
+
+name: crm-cell
+version: 0.1.0
+level: L1
+runtime: fastapi-inproc + pro-cron-suborganelle   # in-process FastAPI + Pro cron sub-organelles
+owner: crm-team
+
+cell_class: cell
+
+# 7 Leggi declarations (consumed by AdmissionTest)
+exposes_gui: false
+llm_invocation: gemini_3_flash   # used by enrichment.py via existing GenAI client
+external_sources:
+  - google_drive_api      # via service account, drive_poll only
+  - brevo_api             # transactional emails (zantara@balizero.com only)
+  - whatsapp_business_api # welcome_whatsapp_service
+  - telegram_bot_api      # notifiers (Zero + team alerts)
+client_data_access: true  # CRM IS the client data domain — UU PDP scope
+publishes_via: pg_notify  # via existing client_changed / practice_changed
+                          # triggers + new crm_welcome_completed (mig 153)
+fallback_modes:
+  - postgres_down            # FastAPI lifespan handles via existing graceful degradation
+  - drive_unreachable        # circuit breaker in drive_poll_service (3-fail open)
+  - brevo_down               # email queued in notification_log, retry from there
+  - whatsapp_down            # message queued, retry on next welcome run
+  - telegram_down            # alerts swallowed (best-effort), logged
+kill_switch: true            # disable engine: comment out crontab; disable listener:
+                             # CRM_LISTENER_DISABLED=1 env var (W2 backlog)
+auto_publishes: false        # all client comms go through human-gate or RBAC-bound API
+depends_on_other_cell_decisions: false   # CRM operates on its own data; consumes
+                                         # client/practice events but doesn't wait
+                                         # on other cells' verdicts before acting
+
+sub_organelles:
+  - name: drive_poll
+    location: pro
+    schedule: "*/5 * * * *"
+    script: scripts/drive_poll_cron.sh
+    constraint: page_token_persistence_required
+    cell_pulse: heartbeat_via_circuit_breaker_state
+  - name: nightly_engine
+    location: pro
+    schedule: "0 23 * * *"   # 07:00 WITA = 23:00 UTC
+    script: scripts/crm_automation_engine.py
+    constraint: none
+
+genome_integration:
+  registered: true
+  reason: |
+    crm-cell is structurally distinct from nuz-sync (which is excluded per
+    cicatrix § "Untracked files lost when sibling automation switches branches").
+    It does not switch git branches, does not write to ~/Library/LaunchAgents/,
+    runs in-process. Supervisor pulse adds value for centralized health view.
+  pulse_endpoint: /health     # existing FastAPI healthcheck
+
+events:
+  inbound:
+    - practice_changed         # mig 075, consumed by practice_status_listener
+    - client_changed           # mig 076, consumed by cache invalidation
+    - compliance_alert         # mig 076, consumed for context (not action)
+  outbound:
+    - practice_changed         # via existing trigger when engine writes
+    - client_changed           # via existing trigger when engine writes
+    - crm_welcome_completed    # mig 153 — emitted on welcome multi-step success.
+                               # Payload: {client_id, practice_id, drive_folder_id,
+                               # channels_sent[], event_type='welcome_completed',
+                               # occurred_at, _outbox_id}.
+
+metrics:
+  - practices_quality_fixes
+  - leads_assigned
+  - doc_checklists_populated
+  - renewal_alerts_sent
+  - stale_practices_escalated
+  - welcome_runs_completed
+  - drive_changes_processed
+  - listener_events_consumed
+  - listener_lag_seconds   # events_outbox row age at consumption (W2 backlog)
+
+# Event contracts (consumers can rely on these field names + types)
+event_contracts:
+  - name: crm.welcome_completed
+    description: >-
+      Fires when a client welcome flow completes ALL 4 sub-steps successfully
+      (practice INSERT + Drive folder + WhatsApp message + Brevo email).
+      Partial-failure rows are persisted to crm_welcome_runs as audit but do
+      NOT emit this event — the trigger guards on success=true.
+    fields:
+      client_id: bigint
+      practice_id: bigint | null
+      drive_folder_id: text | null
+      channels_sent: text[]
+      event_type: literal[welcome_completed]
+      occurred_at: timestamptz
+      _outbox_id: bigint
