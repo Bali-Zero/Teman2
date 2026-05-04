@@ -41,8 +41,6 @@
 -- on existing rows. require-timeout-settings is suppressed (empty-table DDL,
 -- same rationale as migration 144 events_outbox).
 
--- squawk-ignore: require-concurrent-index-creation
--- squawk-ignore: require-timeout-settings
 CREATE TABLE IF NOT EXISTS asset_provenance (
     id BIGSERIAL PRIMARY KEY,
 
@@ -138,32 +136,27 @@ CREATE TABLE IF NOT EXISTS asset_provenance (
 );
 
 -- Index for the most common query: "what assets does X own?"
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_owner
     ON asset_provenance (owner);
 
 -- Index for TTL invalidation sweep: "which time-based assets are expiring?"
 -- Partial index — only on rows with a TTL set and not yet invalidated.
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_valid_until
     ON asset_provenance (valid_until)
     WHERE valid_until IS NOT NULL AND invalidated_at IS NULL;
 
 -- Index for event-driven invalidation: "which assets care about topic X?"
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_event_topic
     ON asset_provenance (invalidation_event_topic)
     WHERE invalidation_event_topic IS NOT NULL AND invalidated_at IS NULL;
 
 -- Index for source-of-truth queries: "what came from KG?"
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_source
     ON asset_provenance (source);
 
 -- Index for admiralty-axis queries: "show me grade-A reliable sources" or
 -- "show me confirmed (credibility=1) intel". Composite on both axes; partial
 -- on still-valid rows so consumers see only live provenance.
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_asset_provenance_admiralty
     ON asset_provenance (reliability, credibility)
     WHERE invalidated_at IS NULL;

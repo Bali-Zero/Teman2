@@ -35,8 +35,6 @@
 -- table; require-timeout-settings is suppressed because this is empty-table
 -- DDL (same rationale as migration 144 events_outbox).
 
--- squawk-ignore: require-concurrent-index-creation
--- squawk-ignore: require-timeout-settings
 CREATE TABLE IF NOT EXISTS crm_welcome_runs (
     id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
@@ -58,11 +56,9 @@ CREATE TABLE IF NOT EXISTS crm_welcome_runs (
     UNIQUE (client_id, practice_id)
 );
 
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_client
     ON crm_welcome_runs (client_id);
 
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_completed
     ON crm_welcome_runs (completed_at DESC) WHERE success = true;
 
@@ -114,31 +110,45 @@ COMMENT ON FUNCTION notify_crm_welcome_completed() IS
     'unconditional emit; the WHEN guard on the trigger declaration '
     'enforces the success-transition policy.';
 
--- Drop existing trigger (idempotent re-run).
+-- Drop existing triggers (idempotent re-run).
 DROP TRIGGER IF EXISTS crm_welcome_runs_notify ON crm_welcome_runs;
+DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert ON crm_welcome_runs;
+DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update ON crm_welcome_runs;
 
--- Attach trigger — AFTER INSERT OR UPDATE with WHEN guard. Fires once on
--- the false→true success transition. Three concrete cases the WHEN
--- handles:
---   * INSERT(success=true)        → fires (new row, fresh success)
---   * INSERT(success=false)       → DOES NOT fire (no false→true transition)
---   * UPDATE: false→true (retry)  → fires (cell adapter UPSERT retry path)
---   * UPDATE: true→true (no-op)   → DOES NOT fire (idempotent rewrite)
---   * UPDATE: true→false          → DOES NOT fire (regression; not expected
---                                   but defensive — doesn't fire backward)
-CREATE TRIGGER crm_welcome_runs_notify
-    AFTER INSERT OR UPDATE ON crm_welcome_runs
+-- Two separate triggers — Postgres does NOT allow TG_OP in CREATE TRIGGER
+-- WHEN clauses (only OLD/NEW columns are referenceable per the docs:
+-- "the WHEN condition can refer to columns of the old and/or new row").
+-- Splitting INSERT and UPDATE handles the same matrix as a unified
+-- "AFTER INSERT OR UPDATE WHEN (TG_OP=... OR ...)" without the syntax
+-- violation. v2.6 fix (CI failed: column "tg_op" does not exist).
+--
+-- Cases the two triggers cover:
+--   * INSERT(success=true)        → INSERT trigger fires (WHEN NEW.success=true)
+--   * INSERT(success=false)       → DOES NOT fire (WHEN gates it)
+--   * UPDATE: false→true (retry)  → UPDATE trigger fires (success transitioned)
+--   * UPDATE: true→true (no-op)   → DOES NOT fire (OLD.success = NEW.success)
+--   * UPDATE: true→false          → DOES NOT fire (NEW.success=false gates it)
+CREATE TRIGGER crm_welcome_runs_notify_insert
+    AFTER INSERT ON crm_welcome_runs
+    FOR EACH ROW
+    WHEN (NEW.success = true)
+    EXECUTE FUNCTION notify_crm_welcome_completed();
+
+CREATE TRIGGER crm_welcome_runs_notify_update
+    AFTER UPDATE ON crm_welcome_runs
     FOR EACH ROW
     WHEN (NEW.success = true
-          AND (TG_OP = 'INSERT' OR OLD.success IS DISTINCT FROM NEW.success))
+          AND OLD.success IS DISTINCT FROM NEW.success)
     EXECUTE FUNCTION notify_crm_welcome_completed();
 
 -- === ROLLBACK ===
--- Reverts the trigger + function + indexes + table. Safe to run on any DB
--- state because all DROP statements use IF EXISTS — no error if the
+-- Reverts the triggers + function + indexes + table. Safe to run on any
+-- DB state because all DROP statements use IF EXISTS — no error if the
 -- migration was never applied. After rollback, crm_welcome_runs is gone;
 -- downstream observers (analytics, retention loop) lose the welcome
 -- completion signal and fall back to the pre-Sprint-3 polling behaviour.
+DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update ON crm_welcome_runs;
+DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert ON crm_welcome_runs;
 DROP TRIGGER IF EXISTS crm_welcome_runs_notify ON crm_welcome_runs;
 DROP FUNCTION IF EXISTS notify_crm_welcome_completed();
 DROP INDEX IF EXISTS ix_crm_welcome_runs_completed;

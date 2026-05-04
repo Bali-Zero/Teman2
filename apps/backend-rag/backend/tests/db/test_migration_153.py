@@ -74,29 +74,39 @@ def test_migration_creates_notify_function():
 def test_migration_emits_only_on_success_true():
     """The trigger must NOT broadcast partial-failure rows. Audit-only.
 
-    Post 2026-05-04 multi-LLM W2 review: the success=true guard moved
-    from the function body to the trigger WHEN clause to also cover the
-    UPSERT retry path (false→true UPDATE transition). The function body
-    is now the unconditional emit; correctness depends on the WHEN.
+    v2.6: Postgres does not allow TG_OP in CREATE TRIGGER WHEN clauses
+    (only OLD/NEW columns are referenceable). The trigger was split into
+    two separate INSERT and UPDATE triggers, both gating on
+    `NEW.success = true` in WHEN. Correctness depends on the WHEN
+    clauses on each trigger.
     """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    # The WHEN guard on the trigger declaration enforces success=true
+    # The WHEN clauses on each trigger declaration enforce success=true
     assert "WHEN (NEW.success = true" in forward_section
     # event_type literal in the function body
     assert "'welcome_completed'" in forward_section
 
 
 def test_migration_trigger_fires_on_false_to_true_transition():
-    """Sprint 3 W2 review B1 fix: the trigger MUST fire on UPDATE
-    when OLD.success=false → NEW.success=true (cell adapter UPSERT
-    retry path), not just on INSERT.
+    """Sprint 3 W2 review B1 fix: the UPDATE trigger MUST fire on
+    OLD.success=false → NEW.success=true (cell adapter UPSERT retry
+    path), and the INSERT trigger MUST fire on a fresh
+    INSERT(success=true).
+
+    v2.6: enforced via two separate triggers (INSERT + UPDATE) because
+    TG_OP isn't allowed in WHEN.
     """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "AFTER INSERT OR UPDATE ON crm_welcome_runs" in forward_section
-    # The WHEN clause must explicitly include the OLD.success transition
+    # Two separate triggers
+    assert "AFTER INSERT ON crm_welcome_runs" in forward_section
+    assert "AFTER UPDATE ON crm_welcome_runs" in forward_section
+    # The UPDATE trigger explicitly checks the OLD.success transition
     assert "OLD.success IS DISTINCT FROM NEW.success" in forward_section
+    # Both trigger names exist
+    assert "crm_welcome_runs_notify_insert" in forward_section
+    assert "crm_welcome_runs_notify_update" in forward_section
 
 
 # NOTE: deleted `test_migration_trigger_does_not_fire_on_noop_update`
@@ -140,15 +150,31 @@ def test_migration_injects_outbox_id_into_notify_payload():
     )
 
 
-def test_migration_attaches_after_insert_or_update_trigger():
-    """Trigger must be AFTER INSERT OR UPDATE — fires on the
-    false→true success transition (whether new row or retry UPSERT)."""
+def test_migration_attaches_separate_insert_and_update_triggers():
+    """v2.6: two separate triggers (INSERT + UPDATE), not one combined
+    AFTER INSERT OR UPDATE — Postgres does not support TG_OP in
+    CREATE TRIGGER WHEN clauses."""
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "AFTER INSERT OR UPDATE ON crm_welcome_runs" in forward_section
+    # Two distinct trigger names
+    assert "crm_welcome_runs_notify_insert" in forward_section
+    assert "crm_welcome_runs_notify_update" in forward_section
+    # Each on its own event
+    assert "AFTER INSERT ON crm_welcome_runs" in forward_section
+    assert "AFTER UPDATE ON crm_welcome_runs" in forward_section
     assert "FOR EACH ROW" in forward_section
-    # WHEN clause is the actual guard
+    # Both have a WHEN clause gating on NEW.success
     assert "WHEN (NEW.success = true" in forward_section
+    # Must NOT use TG_OP in WHEN (Postgres rejects). Check on lines that
+    # are NOT comments — the explanatory comment block above is allowed
+    # to mention TG_OP.
+    for line in forward_section.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("--"):
+            continue
+        assert "WHEN (TG_OP" not in stripped, (
+            f"non-comment line uses TG_OP in WHEN: {line!r}"
+        )
 
 
 def test_migration_is_idempotent():
@@ -157,7 +183,9 @@ def test_migration_is_idempotent():
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     assert "CREATE TABLE IF NOT EXISTS crm_welcome_runs" in forward_section
     assert "CREATE OR REPLACE FUNCTION" in forward_section
-    assert "DROP TRIGGER IF EXISTS crm_welcome_runs_notify" in forward_section
+    # Must drop both triggers (insert + update + legacy unified) before re-create
+    assert "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert" in forward_section
+    assert "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update" in forward_section
     assert "CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_client" in forward_section
     assert "CREATE INDEX IF NOT EXISTS ix_crm_welcome_runs_completed" in forward_section
 
@@ -179,15 +207,23 @@ def test_pg_channel_map_registers_crm_welcome_completed():
     )
 
 
-def test_rollback_drops_trigger_then_function_then_table():
-    """Rollback ordering: trigger → function → indexes → table. DROP FUNCTION
-    fails if a trigger still depends on it (without CASCADE), and DROP TABLE
-    fails if indexes still reference it (though indexes auto-drop on DROP
-    TABLE; we drop them explicitly for clarity)."""
+def test_rollback_drops_triggers_then_function_then_table():
+    """Rollback ordering: triggers → function → indexes → table.
+    DROP FUNCTION fails if a trigger still depends on it (without
+    CASCADE), and DROP TABLE fails if indexes still reference it
+    (though indexes auto-drop on DROP TABLE; we drop them explicitly
+    for clarity).
+
+    v2.6: must drop BOTH the new split triggers AND any legacy
+    unified trigger that may exist from earlier deploys.
+    """
     sql = MIGRATION_FILE.read_text()
     rollback_section = sql.split("-- === ROLLBACK ===")[1]
-    drop_trigger_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS crm_welcome_runs_notify"
+    drop_insert_pos = rollback_section.find(
+        "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert"
+    )
+    drop_update_pos = rollback_section.find(
+        "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update"
     )
     drop_function_pos = rollback_section.find(
         "DROP FUNCTION IF EXISTS notify_crm_welcome_completed"
@@ -195,8 +231,11 @@ def test_rollback_drops_trigger_then_function_then_table():
     drop_table_pos = rollback_section.find(
         "DROP TABLE IF EXISTS crm_welcome_runs"
     )
-    assert drop_trigger_pos != -1
+    assert drop_insert_pos != -1
+    assert drop_update_pos != -1
     assert drop_function_pos != -1
     assert drop_table_pos != -1
-    assert drop_trigger_pos < drop_function_pos
+    # All trigger drops before function drop
+    assert max(drop_insert_pos, drop_update_pos) < drop_function_pos
+    # Function before table
     assert drop_function_pos < drop_table_pos

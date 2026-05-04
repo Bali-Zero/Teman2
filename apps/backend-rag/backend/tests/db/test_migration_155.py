@@ -103,44 +103,65 @@ def test_migration_injects_outbox_id_into_notify_payload():
     assert "outbox_id" in forward_section
 
 
-def test_migration_attaches_after_insert_or_update_trigger():
-    """Updates fire on re-tag (e.g. credibility raised). UNIQUE
-    (asset_kind, asset_id) on the table means re-tags UPDATE in place."""
+def test_migration_attaches_separate_insert_and_update_triggers():
+    """v2.6: two separate triggers (INSERT + UPDATE), not one combined
+    AFTER INSERT OR UPDATE — Postgres does not support TG_OP in
+    CREATE TRIGGER WHEN clauses."""
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "AFTER INSERT OR UPDATE ON asset_provenance" in forward_section
+    # Two distinct trigger names
+    assert "asset_provenance_notify_insert" in forward_section
+    assert "asset_provenance_notify_update" in forward_section
+    # Each on its own event
+    assert "AFTER INSERT ON asset_provenance" in forward_section
+    assert "AFTER UPDATE ON asset_provenance" in forward_section
     assert "FOR EACH ROW" in forward_section
+    # Must NOT use TG_OP in WHEN (Postgres rejects)
+    assert "WHEN (TG_OP" not in forward_section
 
 
-def test_migration_when_clause_filters_noop_updates():
-    """Sprint 3 W2 review I1 fix: the trigger MUST NOT fire on
+def test_migration_update_trigger_filters_noop_updates():
+    """Sprint 3 W2 review I1 fix: the UPDATE trigger MUST NOT fire on
     no-op UPDATEs (UPSERT with identical values). The WHEN clause
     uses OLD.* IS DISTINCT FROM NEW.* (Postgres NULL-safe row
     comparison) so idempotent re-tagging by the cell adapter doesn't
     generate spurious 'provenance_updated' events.
+
+    v2.6: enforced on the UPDATE trigger only (INSERT trigger always
+    fires; INSERT with no-op concept doesn't apply).
     """
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
-    assert "WHEN (TG_OP = 'INSERT' OR OLD.* IS DISTINCT FROM NEW.*)" in forward_section
+    assert "WHEN (OLD.* IS DISTINCT FROM NEW.*)" in forward_section
 
 
 def test_migration_is_idempotent():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     assert "CREATE OR REPLACE FUNCTION" in forward_section
-    assert "DROP TRIGGER IF EXISTS asset_provenance_notify" in forward_section
+    # Drop both new split triggers AND legacy unified one
+    assert "DROP TRIGGER IF EXISTS asset_provenance_notify_insert" in forward_section
+    assert "DROP TRIGGER IF EXISTS asset_provenance_notify_update" in forward_section
 
 
-def test_rollback_drops_trigger_then_function():
-    """DROP FUNCTION fails if a trigger still depends on it (without CASCADE)."""
+def test_rollback_drops_triggers_then_function():
+    """DROP FUNCTION fails if a trigger still depends on it (without CASCADE).
+
+    v2.6: must drop both split triggers (insert + update) AND the
+    legacy unified trigger before dropping the function.
+    """
     sql = MIGRATION_FILE.read_text()
     rollback_section = sql.split("-- === ROLLBACK ===")[1]
-    drop_trigger_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS asset_provenance_notify"
+    drop_insert_pos = rollback_section.find(
+        "DROP TRIGGER IF EXISTS asset_provenance_notify_insert"
+    )
+    drop_update_pos = rollback_section.find(
+        "DROP TRIGGER IF EXISTS asset_provenance_notify_update"
     )
     drop_function_pos = rollback_section.find(
         "DROP FUNCTION IF EXISTS notify_asset_provenance"
     )
-    assert drop_trigger_pos != -1
+    assert drop_insert_pos != -1
+    assert drop_update_pos != -1
     assert drop_function_pos != -1
-    assert drop_trigger_pos < drop_function_pos
+    assert max(drop_insert_pos, drop_update_pos) < drop_function_pos

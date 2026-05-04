@@ -27,7 +27,6 @@
 -- for the same rationale used in migration 146 (trigger creation, not
 -- a long-running DDL on data rows).
 
--- squawk-ignore: require-timeout-settings
 CREATE OR REPLACE FUNCTION notify_asset_provenance()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -88,33 +87,47 @@ COMMENT ON FUNCTION notify_asset_provenance() IS
     'admiralty 2-axis confidence (reliability/credibility), TLP, and the '
     '3-column invalidation policy.';
 
--- Drop existing trigger (idempotent re-run).
+-- Drop existing triggers (idempotent re-run).
 DROP TRIGGER IF EXISTS asset_provenance_notify ON asset_provenance;
+DROP TRIGGER IF EXISTS asset_provenance_notify_insert ON asset_provenance;
+DROP TRIGGER IF EXISTS asset_provenance_notify_update ON asset_provenance;
 
--- Attach trigger — AFTER INSERT OR UPDATE with WHEN clause. The WHEN
--- prevents no-op emissions when the cell adapter performs idempotent
--- ON CONFLICT DO UPDATE that writes the same values (e.g. import-loop
--- re-tagging unchanged data). Without this guard, every UPSERT call
--- generates a spurious 'provenance_updated' event with payload identical
--- to the previous one. Multi-LLM W2 review (cf. SYNTHESIS I1) caught
--- this; the contract test test_migration_trigger_does_not_fire_on_noop
--- pins the behavior.
+-- Two separate triggers — Postgres does NOT allow TG_OP in
+-- CREATE TRIGGER WHEN clauses (only OLD/NEW columns are referenceable).
+-- v2.6 fix (CI failed: column "tg_op" does not exist).
 --
--- OLD.* IS DISTINCT FROM NEW.* uses Postgres NULL-safe comparison; works
--- correctly when columns transition NULL ↔ value (e.g. valid_until set
--- for the first time, invalidated_at populated by sweeper). On INSERT
--- OLD is implicitly NULL → IS DISTINCT FROM evaluates true.
-CREATE TRIGGER asset_provenance_notify
-    AFTER INSERT OR UPDATE ON asset_provenance
+-- INSERT trigger: always fires (every new asset_provenance row becomes
+-- a provenance_recorded event).
+--
+-- UPDATE trigger: fires only when the row truly changed (WHEN guard
+-- using OLD.* IS DISTINCT FROM NEW.*) — prevents no-op emissions when
+-- the cell adapter performs idempotent ON CONFLICT DO UPDATE that
+-- writes the same values. Combined with mig 154's conditional BEFORE
+-- UPDATE trigger that only bumps updated_at when the row truly
+-- changes, the AFTER UPDATE trigger correctly skips no-op UPSERTs.
+--
+-- OLD.* IS DISTINCT FROM NEW.* uses Postgres NULL-safe comparison;
+-- works correctly when columns transition NULL ↔ value (e.g.
+-- valid_until set for the first time, invalidated_at populated
+-- by sweeper).
+CREATE TRIGGER asset_provenance_notify_insert
+    AFTER INSERT ON asset_provenance
     FOR EACH ROW
-    WHEN (TG_OP = 'INSERT' OR OLD.* IS DISTINCT FROM NEW.*)
+    EXECUTE FUNCTION notify_asset_provenance();
+
+CREATE TRIGGER asset_provenance_notify_update
+    AFTER UPDATE ON asset_provenance
+    FOR EACH ROW
+    WHEN (OLD.* IS DISTINCT FROM NEW.*)
     EXECUTE FUNCTION notify_asset_provenance();
 
 -- === ROLLBACK ===
--- Reverts the trigger + function. Safe to run on any DB state because both
--- DROP statements use IF EXISTS. After rollback, asset_provenance INSERT/
--- UPDATE no longer emits the asset_provenance NOTIFY; the row is still
--- written but downstream consumers (WR2 invalidation reactor, oracle
--- citation guard, KG demotion cron) get no signal.
+-- Reverts the triggers + function. Safe to run on any DB state because
+-- all DROP statements use IF EXISTS. After rollback, asset_provenance
+-- INSERT/UPDATE no longer emits the asset_provenance NOTIFY; the row
+-- is still written but downstream consumers (WR2 invalidation reactor,
+-- oracle citation guard, KG demotion cron) get no signal.
+DROP TRIGGER IF EXISTS asset_provenance_notify_update ON asset_provenance;
+DROP TRIGGER IF EXISTS asset_provenance_notify_insert ON asset_provenance;
 DROP TRIGGER IF EXISTS asset_provenance_notify ON asset_provenance;
 DROP FUNCTION IF EXISTS notify_asset_provenance();
