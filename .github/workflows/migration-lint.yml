@@ -92,6 +92,17 @@ jobs:
             # migrations in this repo (no lock contention, intentional rollback
             # via DROP). Rule names verified against squawk-cli 2.50.0
             # `--reporter=gcc` output.
+            #
+            # Style-only exclusions (added 2026-05-04, mig 154/155):
+            #   ban-char-field            — CHAR(1) for reliability A-F is intentional
+            #                               (1-byte enum-like, not a varchar typo)
+            #   prefer-bigint-over-smallint — SMALLINT for credibility 1-6 fits in 2
+            #                                 bytes; BIGINT here would waste 6 bytes/row
+            #   prefer-text-field         — VARCHAR(8/64) gives explicit length budgets
+            #                               for tlp/invalidation_event_topic/invalidated_by;
+            #                               on a fresh empty table the ACCESS EXCLUSIVE
+            #                               warning about future ALTER COLUMN doesn't apply
+            #                               (we'd just rebuild the table at this scale)
             squawk \
               --pg-version=15.0 \
               --exclude=require-concurrent-index-creation \
@@ -99,6 +110,9 @@ jobs:
               --exclude=require-concurrent-index-deletion \
               --exclude=ban-drop-table \
               --exclude=ban-drop-column \
+              --exclude=ban-char-field \
+              --exclude=prefer-bigint-over-smallint \
+              --exclude=prefer-text-field \
               "$file"
             echo "::endgroup::"
           done

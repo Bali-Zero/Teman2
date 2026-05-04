@@ -184,22 +184,76 @@ def _check_cli_only(cd: dict[str, Any]) -> Violation | None:
     return None
 
 
+# Delivery-class allowlist — operational integrations that push client
+# data OUTBOUND or embed structured client data without pulling raw
+# untrusted intel back IN. Cells that legitimately combine
+# `client_data_access=true` with `external_sources=[…]` MUST list only
+# providers from this allowlist; anything else is treated as
+# (potentially) OSINT-class and blocks admission.
+#
+# This is a DEFAULT-DENY posture: a new external_source name added to
+# a cell.yaml that's NOT in this allowlist will FAIL admission with a
+# clear error pointing the author at this constant. To register a new
+# delivery integration: add the provider name here in a separate code
+# review PR (the Law 2 perimeter is security-critical, not yaml
+# configuration).
+#
+# v2.5 review V2-B2 fix (multi-LLM 2026-05-04): the v2 design used a
+# blocklist (`_OSINT_CLASS_PROVIDERS`) which silently passed any new
+# scraper not in the hardcoded set — a security regression vs the v1
+# design's "any external_sources + client_data → BLOCK". The allowlist
+# restores conservative posture while still allowing legitimate cells
+# (crm-cell uses Drive/Brevo/WhatsApp/Telegram, all in this list).
+_DELIVERY_CLASS_ALLOWLIST: frozenset[str] = frozenset({
+    # CRM client-comms delivery channels
+    "google_drive_api",       # service account, folder/file CRUD on client folders
+    "brevo_api",              # transactional email
+    "whatsapp_business_api",  # client messaging
+    "telegram_bot_api",       # team alerts
+    # Common embedding-only / structured-output APIs (push, no inbound intel)
+    "openai_embedding_api",   # text-embedding-3-small (FROZEN per CLAUDE.md)
+})
+
+
 @AdmissionTest.register(Legge.OSINT_BLINDATO)
 def _check_osint_blindato(cd: dict[str, Any]) -> Violation | None:
     """Law 2: OSINT data must NOT leave Pro. No mixing OSINT + client data.
 
+    Conservative posture: the cell must declare client_data_access=true
+    AND have all `external_sources` in the `_DELIVERY_CLASS_ALLOWLIST`
+    to pass admission. Any provider NOT in the allowlist is treated as
+    OSINT-class and blocks the combination — including unknown
+    providers (default-deny).
+
+    Cells with `client_data_access=false` may declare any
+    external_sources (no contamination risk on the client perimeter).
+
     Cell definition fields used:
-        external_sources: list[str] — names of upstream feeds
+        external_sources: list[str] — names of upstream feeds + delivery
+            integrations
         client_data_access: bool — does the cell read client PII?
     """
-    has_external = bool(cd.get("external_sources", []))
+    declared_sources: set[str] = set(cd.get("external_sources", []) or [])
     has_client = bool(cd.get("client_data_access", False))
-    if has_external and has_client:
+    if not has_client:
+        # No client PII access → no OSINT contamination risk. Cells
+        # like intel-scraper-cell legitimately declare arbitrary
+        # external_sources here (visa/tax government domains, etc.).
+        return None
+    untrusted = declared_sources - _DELIVERY_CLASS_ALLOWLIST
+    if untrusted:
         return Violation(
             legge=Legge.OSINT_BLINDATO,
             message=(
-                "cell mixes external_sources with client_data_access — Law 2 "
-                "forbids OSINT contamination of client facts"
+                f"cell mixes external_sources with client_data_access — "
+                f"the following providers are NOT in the delivery allowlist "
+                f"and are treated as OSINT-class: {sorted(untrusted)}. "
+                f"Either (a) add to _DELIVERY_CLASS_ALLOWLIST in "
+                f"packages/cell-core/cell_core/admission_test.py via a "
+                f"dedicated code review (the Law 2 perimeter is security-"
+                f"critical), or (b) remove client_data_access if this cell "
+                f"doesn't actually read client PII. Current allowlist: "
+                f"{sorted(_DELIVERY_CLASS_ALLOWLIST)}"
             ),
             severity="blocker",
         )

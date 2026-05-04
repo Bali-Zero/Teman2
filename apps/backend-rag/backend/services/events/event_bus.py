@@ -100,6 +100,24 @@ PG_CHANNEL_MAP: dict[str, str] = {
     #   docs/audits/sprint0/wr2-ipc-mechanism.md § "Violation 1"
     #   docs/audits/2026-05-02-cell-openclaw-brainstorm/99b_synthesis_v2.md
     "measurer_event": "measurer.event",
+    # Emitted by crm_welcome_runs AFTER INSERT trigger (migration 153, Sprint
+    # 3 W2 CRM-cell consolidation). Fires ONLY when success=true (full
+    # 4-step welcome completed: practice + Drive folder + WhatsApp + email).
+    # Payload: {client_id, practice_id, drive_folder_id, channels_sent[],
+    # event_type='welcome_completed', occurred_at, _outbox_id}.
+    # Consumers: analytics dashboards, retention loop, future onboarding cell.
+    # See: docs/sprint3/crm-cell-design.md § Q2c.
+    "crm_welcome_completed": "crm.welcome_completed",
+    # Emitted by asset_provenance INSERT/UPDATE trigger (migration 155, Sprint
+    # 3 W2 Mata-Garuda L4.5 cell promotion). Payload: {provenance_id,
+    # asset_kind, asset_id, source, confidence, owner, valid_until,
+    # invalidation_event_topic, invalidation_mode, event_type, occurred_at,
+    # _outbox_id}. event_type ∈ {provenance_recorded, provenance_updated}.
+    # Consumers: WR2 supervisor (asset_invalidated reactor), oracle citation
+    # guard, KG entity demotion cron. asset_kind ∈ 12 canonical Bali-Zero
+    # values (war_room_draft..measurer_metric — see migration 154).
+    # See: docs/sprint3/mata-garuda-cell-design.md.
+    "asset_provenance": "mata_garuda.asset_provenance",
 }
 
 _RECONNECT_DELAY_S = 5

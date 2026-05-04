@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 23 · **Packages:** 5
+**Apps:** 24 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -45,6 +45,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `bali-intel-scraper` | Intelligence pipeline for Bali Zero news and regulatory updates. |
 | `cell` |  |
 | `cell-observatory-collector` | Pro-local Python service that listens to `cell_pulse_observed` PG channel, |
+| `crm-cell` | Sprint 3 W2 — light cell wrapping the existing CRM modules |
 | `evaluator` | Security and quality evaluation tools for the Nuzantara RAG system. |
 | `graph-engine` | Graph processing engine for Knowledge Graph operations. |
 | `kb` |  |
@@ -69,7 +70,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 257 routers, 532 services, 898 test files
+- **Backend:** Python 3.11+, FastAPI, 257 routers, 533 services, 902 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
