@@ -302,19 +302,18 @@ def setup_folders(*, apply: bool = False) -> dict[str, Any]:
     When apply=True, missing folders are created; existing folders untouched.
 
     The returned summary intentionally contains ONLY non-sensitive fields:
-    account email, display name, storage quota, OAuth scope string, folder
-    IDs. Refresh token / client secret / access token NEVER appear in the
-    output. The scope is extracted as a string before constructing summary
-    so the CodeQL taint chain on ``creds`` (which DOES contain secrets) is
-    explicitly broken — see CodeQL false-positive on PR #456 commit 50424f5.
+    account email, display name, storage quota, folder IDs. The OAuth
+    credentials dict (refresh_token, client_secret) NEVER touches the
+    output. We deliberately do NOT include the ``scope`` field anywhere
+    in the summary even though it is non-sensitive — CodeQL taint
+    analysis flagged any ``creds.get(...)`` derived value as sensitive
+    (false positive). The scope is documented in
+    WEEK0_PHASE_D_DRIVE_SETUP.md instead.
     """
     _validate_folder_names(FOLDER_NAMES)
     creds = _load_oauth_credentials()
-    # Extract scope as a plain string immediately; do NOT keep ``creds`` in
-    # any dict that gets serialized to stdout. This breaks the taint flow.
-    scope_str: str = str(creds.get("scope", "unknown"))
     access_token = _exchange_refresh_token(creds)
-    del creds  # explicit hint: no further use of the secrets dict
+    del creds  # explicit: no further reference to the secrets dict
     about = _verify_account(access_token)
 
     quota = about.get("storageQuota", {})
@@ -323,7 +322,6 @@ def setup_folders(*, apply: bool = False) -> dict[str, Any]:
         "auth_account_name": about.get("user", {}).get("displayName"),
         "quota_limit_bytes": quota.get("limit"),
         "quota_usage_bytes": quota.get("usage"),
-        "scope": scope_str,
         "folders": {},
     }
 
@@ -393,7 +391,6 @@ def main(argv: list[str] | None = None) -> int:
     out_lines = [
         "=" * 72,
         f"Account     : {summary['auth_account']} ({summary['auth_account_name']})",
-        f"Scope       : {summary['scope']}",
         f"Quota       : {summary['quota_usage_bytes']} / {summary['quota_limit_bytes']} bytes",
         "Folders     :",
     ]
