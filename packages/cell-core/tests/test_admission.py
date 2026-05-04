@@ -440,3 +440,170 @@ def test_hgt_coordinator_cell_passes_admission() -> None:
         f"hgt-coordinator-cell must clear admission with zero blockers; got: "
         f"{[(v.legge.value, v.message) for v in blockers]}"
     )
+
+
+# ── Sprint 3 W2 — crm-cell + mata-garuda-cell admission entries ───────────
+
+_CRM_CELL_YAML = _REPO_ROOT / "apps" / "crm-cell" / "cell.yaml"
+_MATA_GARUDA_CELL_YAML = _REPO_ROOT / "apps" / "mata-garuda" / "cell.yaml"
+
+
+def test_crm_cell_yaml_exists() -> None:
+    """The Sprint 3 W2 crm-cell.yaml MUST be on disk at the canonical path."""
+    assert _CRM_CELL_YAML.exists(), (
+        f"missing {_CRM_CELL_YAML} — Sprint 3 W2 declarative contract not in place"
+    )
+
+
+def test_crm_cell_passes_admission() -> None:
+    """The crm-cell definition PASSES all 7 Leggi (zero blockers).
+
+    Sprint 3 W2 acceptance test. If it ever fails, either the cell
+    definition drifted (fix cell.yaml) or the admission rubric changed
+    (fix admission_test.py). Both deserve a code review.
+
+    Note: ``client_data_access=true`` IS valid for crm-cell — the cell IS
+    the CRM client data domain (UU PDP scope). What Law 2 (OSINT blindato)
+    forbids is the *combination* of OSINT external_sources AND client PII
+    — CRM has neither OSINT scrapers nor any external_source on
+    domains like ``intel-scraper`` (it has Drive/Brevo/WhatsApp/Telegram,
+    which are non-OSINT integrations).
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_CRM_CELL_YAML)
+    result = AdmissionTest().run_all(cd)
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        "crm-cell admission FAILED:\n" + result.summary()
+    )
+    assert result.passed is True, result.summary()
+    assert result.cell_name == "crm-cell"
+
+
+def test_crm_cell_metadata_contracts() -> None:
+    """Cell-yaml-only contract checks (Sprint 3 W2 invariants)."""
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_CRM_CELL_YAML)
+
+    # Identity
+    assert cd["name"] == "crm-cell"
+    assert cd["level"] == "L1"
+    assert "fastapi-inproc" in cd["runtime"]
+
+    # CRM IS the client data domain — UU PDP scope (Q4 W1.2 decision)
+    assert cd["client_data_access"] is True
+    # …but external_sources must NOT include OSINT-class providers
+    osint_classes = {"intel-scraper", "imigrasi.go.id", "bps.go.id"}
+    declared_sources = set(cd.get("external_sources", []))
+    assert declared_sources.isdisjoint(osint_classes), (
+        f"crm-cell external_sources must not include OSINT providers, got: "
+        f"{declared_sources & osint_classes}"
+    )
+
+    # Outbound contract — crm_welcome_completed (mig 153) must be declared
+    outbound = set(cd.get("events", {}).get("outbound", []))
+    assert "crm_welcome_completed" in outbound, (
+        "crm-cell must declare crm_welcome_completed in events.outbound "
+        "(emitted by mig 153 trigger)"
+    )
+
+    # Pro-only sub-organelles per W1.2 Q3 (Drive page_token persistence)
+    suborganelles = {s["name"] for s in cd.get("sub_organelles", [])}
+    assert "drive_poll" in suborganelles
+    assert "nightly_engine" in suborganelles
+
+
+def test_mata_garuda_cell_yaml_exists() -> None:
+    """The Sprint 3 W2 mata-garuda-cell.yaml MUST be on disk."""
+    assert _MATA_GARUDA_CELL_YAML.exists(), (
+        f"missing {_MATA_GARUDA_CELL_YAML} — Sprint 3 W2 declarative "
+        f"contract not in place"
+    )
+
+
+def test_mata_garuda_cell_passes_admission() -> None:
+    """The mata-garuda-cell definition PASSES all 7 Leggi (zero blockers).
+
+    Sprint 3 W2 acceptance test. Mata-Garuda is L4.5 (meta-awareness)
+    rather than L1; the admission rubric does not gate on level value
+    — it gates on the 7 Leggi declarations themselves. OSINT blindato
+    is satisfied because external_sources=[] (no inbound cloud) and
+    client_data_access=False.
+    """
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_MATA_GARUDA_CELL_YAML)
+    result = AdmissionTest().run_all(cd)
+    blockers = [v for v in result.violations if v.severity == "blocker"]
+    assert blockers == [], (
+        "mata-garuda-cell admission FAILED:\n" + result.summary()
+    )
+    assert result.passed is True, result.summary()
+    assert result.cell_name == "mata-garuda-cell"
+
+
+def test_mata_garuda_cell_metadata_contracts() -> None:
+    """Cell-yaml-only contract checks (Sprint 3 W2 invariants)."""
+    pytest.importorskip("yaml", reason="cell.yaml requires PyYAML to load")
+    cd = load_cell_definition(_MATA_GARUDA_CELL_YAML)
+
+    # Identity — L4.5 meta-awareness
+    assert cd["name"] == "mata-garuda-cell"
+    assert cd["level"] == "L4.5"
+
+    # OSINT blindato: zero external_sources, zero client_data_access
+    assert cd["external_sources"] == [], (
+        "mata-garuda-cell must have empty external_sources (OSINT blindato — "
+        "Pro-local, no inbound cloud)"
+    )
+    assert cd["client_data_access"] is False, (
+        "mata-garuda-cell must NOT touch CRM client data (separate from "
+        "crm-cell domain)"
+    )
+
+    # Outbound contracts — both new channels declared
+    outbound = set(cd.get("events", {}).get("outbound", []))
+    assert "asset_provenance" in outbound, (
+        "mata-garuda-cell must declare asset_provenance in events.outbound "
+        "(emitted by mig 155 trigger)"
+    )
+    assert "asset_invalidated" in outbound, (
+        "mata-garuda-cell must declare asset_invalidated in events.outbound "
+        "(emitted by daily invalidation_sweeper sub-organelle)"
+    )
+
+    # Meta-awareness layer — cells observed must NOT include self
+    meta = cd.get("meta_awareness", {})
+    assert "self" in meta.get("does_not_observe", []), (
+        "mata-garuda-cell.meta_awareness.does_not_observe must include 'self' "
+        "to prevent feedback loop (cell adapter enforces this at runtime)"
+    )
+
+    # Sub-organelle: invalidation_sweeper at 04:13 WITA
+    suborganelles = {s["name"]: s for s in cd.get("sub_organelles", [])}
+    sweeper = suborganelles.get("invalidation_sweeper")
+    assert sweeper is not None
+    assert sweeper["schedule"] == "13 4 * * *", (
+        f"invalidation_sweeper schedule must be '13 4 * * *' (daily 04:13 WITA, "
+        f"off-minute off-hour), got {sweeper.get('schedule')!r}"
+    )
+
+    # Event contracts must include asset_provenance with all M2 + X5 fields
+    contracts = cd.get("event_contracts", [])
+    prov_contracts = [
+        c for c in contracts if c.get("name") == "mata_garuda.asset_provenance"
+    ]
+    assert len(prov_contracts) == 1
+    fields = set(prov_contracts[0].get("fields", {}).keys())
+    required_m2_x5 = {
+        "reliability",            # M2 admiralty
+        "credibility",            # M2 admiralty
+        "tlp",                    # M2 distribution control
+        "valid_until",            # X5 invalidation column
+        "invalidation_event_topic",  # X5 invalidation column
+        "invalidation_mode",      # X5 invalidation enum
+        "_outbox_id",             # mig 146 contract
+    }
+    missing = required_m2_x5 - fields
+    assert not missing, (
+        f"asset_provenance contract missing M2/X5 fields: {missing}"
+    )

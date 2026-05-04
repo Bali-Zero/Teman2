@@ -26,12 +26,15 @@ cell_class: cell
 
 # 7 Leggi declarations (consumed by AdmissionTest)
 exposes_gui: false
-llm_invocation: cli_subprocess   # Claude/Gemini/Codex CLI subprocess only
-                                  # (per existing mata-garuda principle #1)
-external_sources: []             # OSINT blindato — Pro-local, no inbound cloud
-client_data_access: false        # Mata-Garuda does NOT touch CRM client data
-                                 # by design (separate from crm-cell domain)
-publishes_via: pg_notify         # asset_provenance + asset_invalidated channels
+llm_invocation: cli   # Claude/Gemini/Codex CLI subprocess only (per existing
+                      # mata-garuda principle #1 + Golden Rule #13). The
+                      # admission rubric allowlist is {cli, oauth_cli,
+                      # ollama, deepseek_api, none}; "cli" covers all
+                      # Pro-local CLI subprocess patterns.
+external_sources: []  # OSINT blindato — Pro-local, no inbound cloud feeds
+client_data_access: false  # Mata-Garuda does NOT touch CRM client data
+                           # by design (separate from crm-cell domain)
+publishes_via: pg_notify   # asset_provenance + asset_invalidated channels
 
 fallback_modes:
   - postgres_down       # Pro-local SQLite mirror in mata-garuda for read-only

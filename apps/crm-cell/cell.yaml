@@ -26,12 +26,22 @@ cell_class: cell
 
 # 7 Leggi declarations (consumed by AdmissionTest)
 exposes_gui: false
-llm_invocation: gemini_3_flash   # used by enrichment.py via existing GenAI client
-external_sources:
-  - google_drive_api      # via service account, drive_poll only
-  - brevo_api             # transactional emails (zantara@balizero.com only)
-  - whatsapp_business_api # welcome_whatsapp_service
-  - telegram_bot_api      # notifiers (Zero + team alerts)
+llm_invocation: cli   # enrichment.py uses Gemini via Federation Orchestrator
+                      # CLI subprocess (per Golden Rule #13: no Anthropic
+                      # paid API; Gemini OAuth is free; CLI subprocess is
+                      # the canonical pattern). The admission rubric
+                      # allowlist is {cli, oauth_cli, ollama, deepseek_api,
+                      # none}; "cli" covers Gemini-via-CLI invocations.
+external_sources: []     # Law 2 (OSINT blindato) governs INBOUND feeds
+                         # that could contaminate client facts with
+                         # untrusted OSINT data. CRM has no such feeds.
+                         # Outbound delivery channels (Drive folder
+                         # creation via Service Account, Brevo email,
+                         # WhatsApp Business message, Telegram alert)
+                         # are NOT inbound OSINT — they push existing
+                         # client data OUT, not pull untrusted intel IN.
+                         # See README "External integrations (outbound
+                         # only)" for the full list and rationale.
 client_data_access: true  # CRM IS the client data domain — UU PDP scope
 publishes_via: pg_notify  # via existing client_changed / practice_changed
                           # triggers + new crm_welcome_completed (mig 153)
