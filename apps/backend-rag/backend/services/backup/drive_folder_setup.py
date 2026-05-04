@@ -372,22 +372,25 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("setup failed: %s", exc)
         return 2
 
+    # CLI output uses sys.stdout.write directly to satisfy Golden Rule #8
+    # (no print() — logger.info would route via logging config which a CLI
+    # script invoked from cron should NOT depend on for human-readable output).
     if args.json:
-        print(json.dumps(summary, indent=2, sort_keys=True))
+        sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
         return 0
 
-    print("=" * 72)
-    print(f"Account     : {summary['auth_account']} ({summary['auth_account_name']})")
-    print(f"Scope       : {summary['scope']}")
-    print(
+    out_lines = [
+        "=" * 72,
+        f"Account     : {summary['auth_account']} ({summary['auth_account_name']})",
+        f"Scope       : {summary['scope']}",
         f"Quota       : {summary['quota_usage_bytes']} / {summary['quota_limit_bytes']} bytes",
-    )
-    print("Folders     :")
+        "Folders     :",
+    ]
     for name, info in summary["folders"].items():
-        print(f"  - {name}: id={info['id']} status={info['status']}")
-    print("=" * 72)
-    print("Summary JSON:")
-    print(json.dumps(summary, indent=2, sort_keys=True))
+        out_lines.append(f"  - {name}: id={info['id']} status={info['status']}")
+    out_lines.extend(["=" * 72, "Summary JSON:",
+                      json.dumps(summary, indent=2, sort_keys=True)])
+    sys.stdout.write("\n".join(out_lines) + "\n")
     return 0
 
 

@@ -639,10 +639,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         sys.stdout.write(json.dumps(summary, indent=2) + "\n")
     else:
-        print(
+        sys.stdout.write(
             f"NLM Drive backup — applied={summary['applied_count']} "
             f"errors={summary['error_count']} total={summary['total_notebooks']} "
-            f"day_folder={summary['day_folder']}",
+            f"day_folder={summary['day_folder']}\n",
         )
     return 0 if summary["error_count"] == 0 else 1
 
