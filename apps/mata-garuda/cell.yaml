@@ -1,0 +1,145 @@
+# mata-garuda-cell — Sprint 3 W2 (promotion from walking skeleton)
+#
+# Reference: docs/sprint3/mata-garuda-cell-design.md
+# Decisions: docs/sprint3/review-synthesis-2026-05-04.md
+#
+# Promotes the existing apps/mata-garuda/ walking skeleton (Sprint 1 state)
+# to a full L4.5 cell with:
+#   1. asset_provenance schema (mig 154 single-table polymorphic + mig 155
+#      trigger). M1 3-layer pivot was REJECTED 2026-05-04 — 8/12 asset_kinds
+#      lack PG target tables.
+#   2. M2 admiralty 2-axis confidence (reliability A-F + credibility 1-6) +
+#      TLP column (safe default 'red', not DDL enforcement).
+#   3. Bidirectional WR2 innervation via asset_provenance + asset_invalidated
+#      channels.
+#   4. Cell descriptor validated by AdmissionTest.
+#   5. OSINT blindato preserved — Pro-local, CLI-only, OSINT data never
+#      leaves the Pro perimeter.
+
+name: mata-garuda-cell
+version: 0.1.0
+level: L4.5            # meta-awareness — reasoning ABOUT other cells' outputs
+runtime: pro-cli + pro-cron
+owner: zero            # exclusive owner per existing OSINT blindato constraint
+
+cell_class: cell
+
+# 7 Leggi declarations (consumed by AdmissionTest)
+exposes_gui: false
+llm_invocation: cli_subprocess   # Claude/Gemini/Codex CLI subprocess only
+                                  # (per existing mata-garuda principle #1)
+external_sources: []             # OSINT blindato — Pro-local, no inbound cloud
+client_data_access: false        # Mata-Garuda does NOT touch CRM client data
+                                 # by design (separate from crm-cell domain)
+publishes_via: pg_notify         # asset_provenance + asset_invalidated channels
+
+fallback_modes:
+  - postgres_down       # Pro-local SQLite mirror in mata-garuda for read-only
+  - cli_subprocess_fail # log scar to genome, retry on next run
+  - cloud_disconnected  # natural state per principle #3 — feature, not failure
+
+kill_switch: true       # disable: launchctl unload com.matagaruda.<all>.plist
+auto_publishes: false   # provenance tags require explicit cell call
+                        # (no autonomous "tag everything in sight" behavior)
+
+depends_on_other_cell_decisions: false   # Mata-Garuda observes assets,
+                                         # does not gate other cells'
+                                         # decisions (consumers OPTIONALLY
+                                         # query provenance)
+
+genome_integration:
+  registered: true
+  reason: |
+    Mata-Garuda is structurally distinct from nuz-sync (cicatrix exclusion).
+    Pro-local cell with launchd-only writes via canonical install paths
+    (no rogue plist mutation). Supervisor pulse adds value for centralized
+    health view across the 9 com.matagaruda.* LaunchAgents.
+  pulse_endpoint: pro_local       # not HTTP — the supervisor reads pulse
+                                  # via launchctl print state for each LA
+
+events:
+  inbound:
+    - war_room_event              # consumes WR2 publishes, may auto-tag provenance
+    - intel_event                 # consumes scraper findings, may auto-tag
+    - cognitive_event             # consumes oracle/strategos for trust monitoring
+  outbound:
+    - asset_provenance            # mig 155 — emitted on INSERT/UPDATE
+    - asset_invalidated           # daily cron sweep emits when TTL or event fires
+
+sub_organelles:
+  - name: provenance_tagger
+    location: pro
+    runtime: in_process_within_cell
+    role: ingest WR2/intel/cognitive events, derive provenance tags
+  - name: invalidation_sweeper
+    location: pro
+    schedule: "13 4 * * *"   # daily 04:13 WITA — off-minute, off-hour
+    script: scripts/mata_garuda_invalidation_sweep.py
+    role: |
+      Two sweeps per run:
+        1. TTL: UPDATE asset_provenance SET invalidated_at=NOW(),
+           invalidated_by='ttl_sweeper' WHERE valid_until < NOW()
+           AND invalidated_at IS NULL AND invalidation_mode='auto';
+        2. Event: when reg_alert (or other) fires for topic X, UPDATE
+           asset_provenance SET invalidated_at=NOW() WHERE
+           invalidation_event_topic=X AND invalidated_at IS NULL.
+
+metrics:
+  - assets_tagged_today
+  - invalidations_emitted_today
+  - tags_by_admiralty_grade      # histogram (A1, A2, ... F6)
+  - tags_by_source               # cardinality per source identifier
+  - sweeper_duration_ms
+  - sweeper_invalidated_count
+
+# Layer 4.5 specific — what makes this a META-awareness cell
+meta_awareness:
+  observes_cells: [wr2-organism, intel-scraper-cell, kg-cell, crm-cell]
+  does_not_observe: [self]       # MUST NOT tag own outputs (avoid feedback loop)
+  trust_function: |
+    confidence(asset_X) = (reliability(source_X), credibility(asset_X))
+    Mapped per MISP admiralty 2-axis taxonomy. Cell adapter exposes a
+    confidence_tier() summary that collapses to 4 tiers for human dashboards
+    (VERIFIED|HIGH|LOW|UNVERIFIED) without losing the 30-cell granularity
+    in the underlying DDL.
+  feedback_to_observed_cells: |
+    Via asset_invalidated event. Cells optionally subscribe;
+    Mata-Garuda does NOT push fixes — it raises questions
+    (per existing principle "Lamarckian — ogni regola
+    richiede review", review = the consumer cell decides).
+
+# Event contracts (consumers can rely on these field names + types)
+event_contracts:
+  - name: mata_garuda.asset_provenance
+    description: >-
+      Fires on INSERT or UPDATE to asset_provenance (mig 155). UPDATE
+      events fire on re-tag (e.g. credibility raised after corroboration);
+      UNIQUE (asset_kind, asset_id) means re-tag UPDATEs in place.
+    fields:
+      provenance_id: bigint
+      asset_kind: enum(12 values)   # see mig 154
+      asset_id: text
+      source: text
+      reliability: char(1)          # A-F
+      credibility: smallint         # 1-6
+      owner: text
+      valid_until: timestamptz | null
+      invalidation_event_topic: varchar(64) | null
+      invalidation_mode: enum[auto, manual, never]
+      tlp: enum[white, green, amber, red, black]
+      event_type: enum[provenance_recorded, provenance_updated]
+      occurred_at: timestamptz
+      _outbox_id: bigint
+  - name: mata_garuda.asset_invalidated
+    description: >-
+      Emitted by the daily invalidation_sweeper sub-organelle when a row's
+      TTL elapses OR an event-topic fires. WR2 supervisor and oracle
+      citation guard listen on this channel (Sprint 4 wiring on the
+      consumer side).
+    fields:
+      provenance_id: bigint
+      asset_kind: enum(12 values)
+      asset_id: text
+      invalidated_at: timestamptz
+      invalidated_by: varchar(64)   # 'ttl_sweeper' | 'event:<topic>' | email
+      _outbox_id: bigint
