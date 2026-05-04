@@ -99,13 +99,67 @@ def _route_to_notebook(source_type: str) -> str:
 def route_domain_to_notebook(domain: str) -> tuple[str, str]:
     """Route an enriched item's domain/topic to an NLM notebook.
 
+    Resolution order:
+      1. If `domain` is a business-domain key (e.g. "tax_fiscal") in
+         NLM_DOMAIN_ROUTING, follow the mapping to nb_key.
+      2. If `domain` is itself a notebook key (e.g. "ai_research",
+         "press") present in NLM_NOTEBOOKS, treat it as already-resolved.
+         This handles items whose `domain` was inferred directly from
+         source_type (sentinel/intel_scraper) without an intermediate
+         business-domain label.
+
     Returns (nb_key, notebook_id). Either can be empty string if unrouted
     or notebook not configured.
     """
-    nb_key = NLM_DOMAIN_ROUTING.get(domain or "", "")
+    key = (domain or "").strip()
+    if not key:
+        return ("", "")
+
+    nb_key = NLM_DOMAIN_ROUTING.get(key, "")
+    if not nb_key and key in NLM_NOTEBOOKS:
+        nb_key = key
+
     if not nb_key:
         return ("", "")
     return (nb_key, NLM_NOTEBOOKS.get(nb_key, ""))
+
+
+# Heuristic source→domain map for items that arrive without a `domain`
+# field. Producers like sentinel (arxiv/rss/github/youtube) and
+# intel_scraper_bridge (bali-intel-scraper) write `source` and
+# `source_type` but not `domain`; without a fallback every enriched
+# item gets skipped.
+_SOURCE_TO_DOMAIN: dict[str, str] = {
+    "arxiv": "ai_research",
+    "github": "ai_research",
+    "youtube": "ai_research",
+    "rss": "ai_research",  # AI-research RSS feeds (jack-clark.net, hf blog, etc)
+    "intel_scraper": "press",  # bali-intel-scraper articles → press feed
+}
+
+
+def infer_domain_from_item(data: dict) -> str:
+    """Best-effort domain inference when the item has none.
+
+    Order:
+      1. data["domain"] / data["topic"] if non-empty
+      2. data["source_type"] mapped via _SOURCE_TO_DOMAIN
+      3. data["source"] mapped via _SOURCE_TO_DOMAIN
+      4. "" (caller should treat as unrouted → skip)
+    """
+    explicit = (data.get("domain") or data.get("topic") or "").strip()
+    if explicit:
+        return explicit
+
+    source_type = (data.get("source_type") or "").strip().lower()
+    if source_type in _SOURCE_TO_DOMAIN:
+        return _SOURCE_TO_DOMAIN[source_type]
+
+    source = (data.get("source") or "").strip().lower()
+    if source in _SOURCE_TO_DOMAIN:
+        return _SOURCE_TO_DOMAIN[source]
+
+    return ""
 
 
 def _nlm_fed_marker(url_or_hash: str) -> str:
@@ -224,7 +278,7 @@ def run_nlm_feeder_from_stream(
         title = data.get("title", "") or ""
         content = data.get("content", "") or ""
         url = data.get("url", "") or data.get("source_url", "") or data.get("source", "")
-        domain = data.get("domain", "") or data.get("topic", "")
+        domain = infer_domain_from_item(data)
 
         nb_key, notebook_id = route_domain_to_notebook(domain)
         if not nb_key:
