@@ -487,3 +487,195 @@ phase) opens once user signs off on the architectural picks.
 W2 estimate: ~5-7 days of focused work (migration 153 + 154 + 155,
 cell adapters for both cells, admission tests, integration tests,
 PR per phase).
+
+---
+
+## ADDENDUM 2026-05-04 — Research-driven refinements
+
+After Zero requested academic + production-system research (see
+[`research-and-brainstorm.md`](research-and-brainstorm.md)), three
+design changes are confirmed to apply in W2. The original schema
+above remains the **starting point**; the deltas below are
+**superseding**.
+
+**Authority:** Research findings against W3C PROV-O (MLflow2PROV
+mapping), OpenLineage facets pattern, MISP admiralty taxonomy,
+STIX 2.1 confidence + TLP, GitLab/Rails polymorphic-FK guidance.
+Zero approved all three changes 2026-05-04.
+
+### M1 — 3-layer asset_provenance schema (REPLACES single-table polymorphic FK)
+
+**What changes:** The original migration 154 design uses a single
+`asset_provenance` table with `asset_kind + asset_id` as opaque
+polymorphic discriminator (no FK constraint). GitLab production
+guidance and Hashrocket/Rails community consensus explicitly warn
+against this for >5 entity types when consistency matters
+(we have 12). Pivot to **3 tables**:
+
+1. **`provenance_activity`** — the prov:Activity (the cell pulse,
+   scrape event, or extraction job that produced an asset). One
+   row per "what happened", referenced by many provenance rows.
+2. **`asset_provenance`** — PROV-O core columns (universal across
+   all asset_kinds): activity_id, agent, captured_at, source_url,
+   source_sha256, reliability + credibility (admiralty 2-axis,
+   see M2), tlp (see M2), invalidation_path, valid_until,
+   invalidated_at + invalidated_by, asset_kind discriminator,
+   asset_id (per-kind ID, no FK), metadata JSONB facet.
+3. **`asset_provenance_<asset_kind>`** (one per asset_kind, created
+   on-demand) — link table with `provenance_id REFERENCES
+   asset_provenance(id) ON DELETE CASCADE` AND
+   `<asset>_id REFERENCES <asset_table>(id) ON DELETE CASCADE`.
+   This restores the FK integrity that the polymorphic pattern
+   loses.
+
+**Concrete DDL** — see § "Polymorphic FK — production tradeoffs"
+in research-and-brainstorm.md for the full CREATE TABLE block.
+
+**Trade accepted:** schema explosion (12 link tables for 12
+asset_kinds, one new migration per future asset_kind). At our scale
+(~180k rows/year estimated), per-asset-kind tables are cheap. They
+restore (a) FK integrity (orphan provenance rows impossible),
+(b) query efficiency (no full-table scan on `asset_kind`),
+(c) cascade-delete safety (when an asset is deleted, its provenance
+goes too — no GC cron needed).
+
+**Migration plan:**
+- Migration 154a: `provenance_activity` + `asset_provenance` core.
+- Migrations 154b-154m: 12 `asset_provenance_<asset_kind>` link
+  tables. Each ~20 LOC of DDL, all idempotent. Can ship in one PR
+  or split if Squawk lint complains.
+- Migration 155: `asset_provenance` trigger emitting `asset_provenance`
+  channel via mig 146 outbox pattern (unchanged from original design,
+  payload now includes activity_id + reliability + credibility + tlp).
+
+**Reversal cost:** if we hate the 12-tables-explosion in 6 months,
+we collapse via a `migrations_v2/NNN_consolidate_asset_provenance_links.sql`
+that creates a single replacement table with TYPE column + IDs and
+cascade-drops the 12 link tables. Cost: ~1 day of careful DDL.
+**Accepted because** at year 1, having FK integrity is worth more
+than 11 extra empty migration files.
+
+### M2 — MISP Admiralty 2-axis confidence + TLP column (REPLACES single 0-1 confidence)
+
+**What changes:** Original schema has `confidence DOUBLE PRECISION`
+(0.0-1.0) as a single calibrated band. Research finds OSINT industry
+standard is **2-axis admiralty**: source reliability A-F (5 levels:
+A=Completely reliable, B=Usually reliable, C=Fairly reliable,
+D=Not usually reliable, E=Unreliable, F=Reliability cannot be judged)
+× information credibility 1-6 (1=Confirmed, 2=Probably true,
+3=Possibly true, 4=Doubtful, 5=Improbable, 6=Truth cannot be judged).
+
+Two independent fields capture **30 ordinal cells** vs our 6 bands —
+finer-grained, OSINT-vetted, and consumers can filter on either axis
+independently (e.g. "show me anything from grade-A sources regardless
+of credibility" for source-reputation analysis).
+
+**Plus** `tlp` column for distribution control (Symbiosis Law 2 —
+OSINT blindato — enforced in DDL not just runtime):
+
+```sql
+-- Replacement for single confidence DOUBLE PRECISION
+reliability  CHAR(1)  NOT NULL CHECK (reliability IN ('A','B','C','D','E','F')),
+credibility  SMALLINT NOT NULL CHECK (credibility BETWEEN 1 AND 6),
+-- TLP — defaults to red (Pro-only) per OSINT blindato
+tlp          VARCHAR(8) NOT NULL DEFAULT 'red'
+             CHECK (tlp IN ('white','green','amber','red','black')),
+```
+
+**Mapping from old 0-1 confidence** (for any pre-existing rows in
+dev environments — production has none yet, this is a new schema):
+- 1.00 → A1 (Completely reliable, Confirmed)
+- 0.90 → B1 or A2 (Usually reliable, Confirmed/Probable)
+- 0.80 → B2 (Usually reliable, Probably true)
+- 0.70 → C2 (Fairly reliable, Probably true)
+- 0.60 → C3 (Fairly reliable, Possibly true)
+- 0.50 → D3 (Not usually reliable, Possibly true)
+- 0.30 → E4 (Unreliable, Doubtful)
+- 0.10 → F5/F6 (Cannot be judged, Improbable)
+
+**TLP defaults by asset_kind** (codified in W2 cell adapter, not in
+DDL — easier to change):
+- `intel_finding`, `cross_dossier_thesis`, `weekly_strategic_brief`,
+  `ultra_move`: **red** (Pro-only, never shareable)
+- `kg_entity`, `kg_proposal`, `compliance_alert`,
+  `measurer_metric`: **amber** (team-only, can be shared via HGT
+  with downgrade rules)
+- `war_room_post`: **green** (already published — public-facing)
+- `crm_enrichment_lookup`, `research_dossier`,
+  `war_room_draft`: **red** (contains client/case data)
+
+**Reversal cost:** trivial. Drop 2 columns, rename 1, add back
+`confidence DOUBLE PRECISION`. ~5 LOC migration.
+
+### M3 — Defer Lamarckian meta-agent to y1+ (UNCHANGED from existing principle)
+
+**What changes:** Nothing concrete — re-confirms the existing
+design philosophy. Research found **no published OSS analog** to
+Mata-Garuda's meta-agent pattern (skills that improve OSINT
+tradecraft over time via cell-core HGT + genome). This is
+research-frontier, not Sprint 3 scope.
+
+**Sprint 3 W2 deliverables for Mata-Garuda DO include**:
+- `provenance_tagger` sub-organelle (auto-tag WR2/intel events).
+- `invalidation_sweeper` daily cron.
+- Cell adapter `tag_provenance` / `get_provenance` /
+  `list_expired_assets`.
+
+**Sprint 3 W2 deliverables DO NOT include**:
+- Lamarckian skill library for OSINT tradecraft.
+- Auto-improving search query templates.
+- Cross-investigation pattern abstraction.
+- Meta-agent confidence calibration.
+
+These are y1+ once ≥3 months of provenance telemetry exist to drive
+the calibration. Walking skeleton must walk before it learns.
+
+### Genome integration delta — ExpeL importance count for `insight` entry type
+
+**What changes:** Independently of M1/M2/M3, research found that
+ExpeL (AAAI 2024) uses an **importance-count** mechanism for
+insights: ADD with importance=2, UPVOTE → +1, DOWNVOTE → -1,
+EDIT keeps importance, prune at 0. Our cell-core genome stores
+insights with `confidence` (0-1) but no equivalent of the
+upvote/downvote feedback loop.
+
+**Proposed addition to `packages/cell-core/cell_core/genome.py`**
+(NOT in W2 scope unless time permits — this is a cell-core-wide
+change, not Mata-Garuda-specific):
+
+```python
+def vote_insight(self, insight_id: str, delta: int) -> Optional[int]:
+    """Adjust insight importance by ±1; prune at 0."""
+    # ... new method on Genome class
+```
+
+**Defer to Sprint 4+** if not done in W2. Cell-core change should
+have its own brainstorm + admission test. Tracked here so future
+agents see the connection between research and code.
+
+**Risk added by all M1+M2+M3 changes**: +0.5-1 day in W2 (3-layer
+DDL is the dominant cost). Migrations now 154a..154m + 155 instead
+of 154 + 155. Test mirroring follows the same pattern (one
+test_migration_<num>.py per file).
+
+### What this addendum DOES decide
+
+✅ Pivot from single polymorphic table to 3-layer schema (M1).
+✅ Replace single 0-1 confidence with admiralty 2-axis (M2).
+✅ Add `tlp` column with default `red` (M2).
+✅ Confirm Lamarckian meta-agent is OUT of Sprint 3 W2 (M3).
+✅ Document ExpeL importance-count as future cell-core enhancement.
+
+### What this addendum does NOT decide
+
+❌ Whether the 12 link tables ship as 12 migrations or 1 batch
+   migration — Sprint 3 W2 picks based on Squawk lint behavior.
+❌ Calibration of admiralty mapping for automated taggers
+   (e.g. `intel-scraper-cell.bali_tribunnews` → which admiralty
+   grade?) — codified in W2 cell adapter constants.
+❌ Whether reliability/credibility get separate index — TBD on
+   first query-pattern profiling.
+❌ Whether kept rows beyond `valid_until` get a separate
+   `asset_provenance_archive` table (cold storage) or stay
+   in-place with `invalidated_at IS NOT NULL` — Sprint 4+ when
+   table size demands it.

@@ -361,3 +361,90 @@ data from a non-Bali Zero source, the cell should be able to query
 it.
 
 Picked up in W1.3.
+
+---
+
+## ADDENDUM 2026-05-04 — Research-driven refinements
+
+After Zero requested research on production CRM event-driven
+systems (see [`research-and-brainstorm.md`](research-and-brainstorm.md)),
+the design above is **validated unchanged** — no architectural
+pivot needed. Two clarifications below.
+
+### C1 — Confirmed default: in-process FastAPI cell, no daemon
+
+**Validation:** Twenty CRM (the highest-star OSS CRM at our
+scale, TypeScript+NestJS+PostgreSQL+BullMQ) uses the same pattern
+— record-event triggers fire workflow handlers on shared workers,
+not separate daemons. EspoCRM and SuiteCRM both keep their workflow
+engines in-process. Our Q1 pick (in-process) is the industry
+default at our scale (5000 clients, ~150 events/day).
+
+**No change to migration plan**: 153 (`crm_welcome_completed`
+trigger) + cell adapter ~250 LOC + admission test. Ships as
+designed.
+
+### C2 — Optional automation rule registry table — DEFERRED to Sprint 4+
+
+**Research finding:** Twenty CRM has explicit workflow versioning
+(each rule = versioned record in DB, Zero could pause/resume via
+UI). EspoCRM stores workflow definitions in a dedicated table.
+Our 13 automations are imperative Python today.
+
+**Decision:** Defer the rule registry to Sprint 4+. Reasons:
+
+1. **Premature abstraction at 13 rules.** Twenty CRM justifies it
+   because users define their own workflows; we have only 13
+   internally-authored automations. Building a registry to
+   manage 13 hard-coded modules adds plumbing without payoff.
+2. **Sprint 3 W2 already at +1 day from M1 (mata-garuda 3-layer
+   schema).** Adding C2 would push W2 beyond comfort.
+3. **Reversal cost is symmetric**: building C2 in Sprint 4
+   costs the same as building it in Sprint 3 (~0.5 day for
+   migration + cell-config-sync logic).
+
+**Trigger to revisit:** when we hit ≥25 automations OR when Zero
+requests Telegram-controllable pause/resume per rule. Whichever
+comes first.
+
+### LISTEN/NOTIFY scaling — confirmed safe at our scale
+
+**Research finding:** PG LISTEN/NOTIFY breaks at `max_connections`
+exhaustion (one listener = one connection). No quantitative
+events/sec ceiling published by Postgres team, but anecdotal
+production data: ~10K notify/sec on a single connection works.
+PgDog proxy + logical replication outbox are the workarounds at
+scale.
+
+**Our scale:** ~150 events/day total (50 practice + 100 drive).
+**Three orders of magnitude below the ceiling.** Direct LISTEN +
+existing migration 146 outbox pattern is correct. No PgDog or
+logical-replication migration needed for years.
+
+### Drive polling — confirmed correct (no webhook pivot)
+
+**Research finding:** Google Drive Activity API webhook push is
+**not used in production CRM** at our scale because (a) cold-start
+of webhook handler can take 2-30s on the consumer side,
+(b) webhook reliability requires public HTTPS endpoint with retry
+infra, (c) page_token loss on cold start = full re-scan = expensive.
+Polling-every-5-min with persistent page_token in `system_settings`
+is the production-proven pattern.
+
+**Our design:** matches exactly. No change.
+
+### What this addendum DOES decide
+
+✅ C1 (in-process FastAPI cell) — confirmed, ships in W2.
+✅ C2 (rule registry) — deferred to Sprint 4+.
+✅ Direct PG LISTEN/NOTIFY — kept (no PgDog/logical-replication
+   pivot needed for 2-3 years at current event rate).
+✅ Drive polling-only — kept (no webhook adoption).
+
+### What this addendum does NOT decide
+
+❌ Whether crm-cell publishes any provenance rows itself or only
+   queries Mata-Garuda's. Picked up in W2 once mata-garuda
+   adapter API stabilizes.
+❌ Whether automation rule retries get an exponential-backoff
+   shared library — Sprint 4+ together with C2.
