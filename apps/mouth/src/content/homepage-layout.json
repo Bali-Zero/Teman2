@@ -1,5 +1,5 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "zero-tax-countries-are-temptingbut-indonesia-has-rules-of-its-own",
   "hero_2": "indonesia-work-visa-landscape-what-every-expat-must-know",
   "hero_3": "balis-airbnb-era-under-pressure-what-the-2026-rules-mean-for-short-stay-rentals",
@@ -12,7 +12,7 @@
   "latest_3": "indonesias-e-visa-overhaul-what-every-foreign-national-must-know-in-2026",
   "latest_4": "dj-on-sacred-volcano-balis-tolerance-for-viral-stunts-has-a-limit",
   "latest_5": "bali-business-setup-in-2026-what-every-foreign-entrepreneur-must-know",
-  "insight_1": "bkpm-regulation-5-2025-fdi",
+  "insight_1": "indonesias-hajj-pilgrims-arrive-in-saudi-arabia-what-expats-should-know",
   "insight_2": "ifc-calls-on-indonesia-to-cultivate-a-stronger-base-of-productive-firms",
   "insight_3": "indonesias-second-home-visa-the-5-year-and-10-year-kitas-fully-decoded"
 }
