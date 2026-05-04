@@ -1,4 +1,4 @@
-# Bali Zero Tutor for Subhi — Design Spec
+# Zantara Onboarding for Subhi — Design Spec
 
 **Date:** 2026-05-04
 **Author:** Antonello + Claude Opus 4.7 (1M context)
@@ -34,7 +34,7 @@ and contract draft), that:
 - **Not** giving Subhi access to Antonello's `~/.claude/projects/.../memory/`
   directly. He sees a _daily-refreshed mirror_ in his own repo, with
   the `Subhi/` folder excluded.
-- **Not** building a multi-agent orchestration. One sub-agent (`bali-zero-tutor`)
+- **Not** building a multi-agent orchestration. One sub-agent (`zantara-onboarding`)
   is enough for the 90-day probation. A second (`sancho-reviewer`) for
   PR review is added at week 5+ once Subhi has shipped his first PRs.
 - **Not** giving NB write access (no `source_add`, `studio_create`,
@@ -72,7 +72,7 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
 │   │                                                               │
 │   └── Cloned repos:                                               │
 │        ├── ~/Projects/nuzantara-subhi/      ← onboarding workspace│
-│        │   ├── .claude/agents/bali-zero-tutor.md                  │
+│        │   ├── .claude/agents/zantara-onboarding.md                  │
 │        │   ├── .claude/memory-mirror/        ← daily filtered     │
 │        │   ├── .claude/settings.json                              │
 │        │   ├── .claude/hooks/                                     │
@@ -107,15 +107,15 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
    commands with bahasa educational message.
 6. **Sub-agent-level**: prompt explicitly refuses ROSSO topics.
 
-## 5. The sub-agent `bali-zero-tutor`
+## 5. The sub-agent `zantara-onboarding`
 
-**Location:** `~/Projects/nuzantara-subhi/.claude/agents/bali-zero-tutor.md`
+**Location:** `~/Projects/nuzantara-subhi/.claude/agents/zantara-onboarding.md`
 
 **Frontmatter:**
 
 ```yaml
 ---
-name: bali-zero-tutor
+name: zantara-onboarding
 description: Tutor Bali Zero untuk Subhi Darajat (Growth Systems Owner)
   selama 90-day probation. Use when Subhi asks about codebase Nuzantara,
   NotebookLM authority, RBAC, task routing, conventions, atau 60-day
@@ -300,7 +300,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write, mcp__github__*, mcp__notebooklm-mcp_
 nuzantara-subhi/
 ├── .claude/
 │   ├── agents/
-│   │   ├── bali-zero-tutor.md           ← THE TUTOR (bahasa)
+│   │   ├── zantara-onboarding.md           ← THE TUTOR (bahasa)
 │   │   └── sancho-reviewer.md           ← week 5+ addition
 │   ├── memory-mirror/                   ← daily refresh
 │   │   ├── MEMORY.md                    ← redacted index
@@ -411,7 +411,7 @@ T+15   09:45       Subhi: bash <(curl -sL <gist>) — follows prompts
 T+30   10:00       Install complete: claude, nlm, tailscale all up
 T+35   10:05       Subhi opens VSCode on ~/Projects/nuzantara-subhi/
 T+40   10:10       Subhi opens integrated terminal, runs claude
-T+45   10:15       Subhi: /agent bali-zero-tutor halo
+T+45   10:15       Subhi: /agent zantara-onboarding halo
 T+50   10:20       Tutor responds in bahasa, presents scope
 T+55   10:25       Antonello verifies reply, screenshot to shared note
 T+60   10:30       Subhi reads docs/onboarding/00_SELAMAT_DATANG.md
@@ -441,15 +441,15 @@ NOT Antonello via SSH). Steps:
 
 ## 14. Failure modes + recovery
 
-| Symptom                            | Likely cause            | Fix                                                |
-| ---------------------------------- | ----------------------- | -------------------------------------------------- |
-| `claude: command not found`        | npm global path missing | re-export `~/.npm-global/bin` in `~/.zshrc`        |
-| OAuth login fails                  | MAX quota / network     | check admin Anthropic, retry                       |
-| MCP not loading                    | uvx missing/path        | `brew reinstall uv && uv tool install ...`         |
-| `/agent bali-zero-tutor` not found | wrong CWD               | must be `~/Projects/nuzantara-subhi/`              |
-| NLM login fails                    | Google MFA              | `nlm login --clear` interactive                    |
-| Repo clone fails                   | SSH key not registered  | `gh auth login` redo                               |
-| Bash hook rejects valid command    | over-restrictive regex  | edit `subhi-bash-guard.sh` whitelist, commit, pull |
+| Symptom                               | Likely cause            | Fix                                                |
+| ------------------------------------- | ----------------------- | -------------------------------------------------- |
+| `claude: command not found`           | npm global path missing | re-export `~/.npm-global/bin` in `~/.zshrc`        |
+| OAuth login fails                     | MAX quota / network     | check admin Anthropic, retry                       |
+| MCP not loading                       | uvx missing/path        | `brew reinstall uv && uv tool install ...`         |
+| `/agent zantara-onboarding` not found | wrong CWD               | must be `~/Projects/nuzantara-subhi/`              |
+| NLM login fails                       | Google MFA              | `nlm login --clear` interactive                    |
+| Repo clone fails                      | SSH key not registered  | `gh auth login` redo                               |
+| Bash hook rejects valid command       | over-restrictive regex  | edit `subhi-bash-guard.sh` whitelist, commit, pull |
 
 ## 15. Open issues / risks
 
@@ -474,7 +474,7 @@ NOT Antonello via SSH). Steps:
 1. **Phase 0 — Pre-reqs** (Antonello, ~25 min): GitHub PAT, repo create, NLM share, tailnet check, ACL.
 2. **Phase 1 — Memory mirror script** (~1h): `subhi-memory-mirror.sh` + LaunchAgent + first-run audit.
 3. **Phase 2 — Repo skeleton** (~2h): `nuzantara-subhi` repo with all `.claude/`, `docs/onboarding/`, `exercises/day1-7`, `CLAUDE.md`.
-4. **Phase 3 — Sub-agent + hooks** (~1.5h): `bali-zero-tutor.md`, `subhi-bash-guard.sh`, `subhi-session-log.sh`, `settings.json`.
+4. **Phase 3 — Sub-agent + hooks** (~1.5h): `zantara-onboarding.md`, `subhi-bash-guard.sh`, `subhi-session-log.sh`, `settings.json`.
 5. **Phase 4 — Install script** (~1h): `subhi-tutor-install.sh` + gist hosting.
 6. **Phase 5 — Dry-run on Antonello Mini** (~30min): test full flow on a clean macOS account before Subhi sees it.
 7. **Phase 6 — Day 1 live setup** (90 min, with Subhi).
@@ -487,7 +487,7 @@ NOT Antonello via SSH). Steps:
 After Day 1:
 
 - [ ] Subhi can run `claude` and get response in bahasa
-- [ ] `/agent bali-zero-tutor halo` returns scoped intro in bahasa
+- [ ] `/agent zantara-onboarding halo` returns scoped intro in bahasa
 - [ ] `git status` works in `~/Projects/nuzantara/`
 - [ ] Subhi can read `docs/onboarding/00_SELAMAT_DATANG.md`
 - [ ] Hooks reject `fly` and `gcloud` commands with bahasa message
@@ -508,18 +508,124 @@ After 30 days:
 
 ## 18. Decisions log
 
-| #   | Decision                                            | Rationale                                          | Date       |
-| --- | --------------------------------------------------- | -------------------------------------------------- | ---------- |
-| 1   | Approach 1 (Local + Git sync)                       | Multi-device handled by Git pull, no cloud cost    | 2026-05-04 |
-| 2   | Single sub-agent (not 5 split)                      | Cognitive overhead, 90-day scope                   | 2026-05-04 |
-| 3   | Model `sonnet` not `opus`                           | Quota saving, sufficient for Q&A                   | 2026-05-04 |
-| 4   | Tools include Edit/Write                            | Subhi is Builder track, needs autonomy             | 2026-05-04 |
-| 5   | NB read-only full access                            | Ground-truth value > minimal RBAC                  | 2026-05-04 |
-| 6   | Bahasa Indonesia hardcoded output                   | Subhi native, no auto-detect drift                 | 2026-05-04 |
-| 7   | Memory: tutto eccetto cartella `Subhi/`             | Subhi sees other team memos but not own assessment | 2026-05-04 |
-| 8   | Repo separato `nuzantara-subhi` (not branch)        | RBAC cleaner                                       | 2026-05-04 |
-| 9   | Memory mirror first push manual approval, then cron | Safety net                                         | 2026-05-04 |
-| 10  | Exercises mapped to 60-day mission deliverables     | Ground exercises in real work, not toy tasks       | 2026-05-04 |
+| #   | Decision                                                     | Rationale                                                                                         | Date       |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Approach 1 (Local + Git sync)                                | Multi-device handled by Git pull, no cloud cost                                                   | 2026-05-04 |
+| 2   | Single sub-agent (not 5 split)                               | Cognitive overhead, 90-day scope                                                                  | 2026-05-04 |
+| 3   | Model `sonnet` not `opus`                                    | Quota saving, sufficient for Q&A                                                                  | 2026-05-04 |
+| 4   | Tools include Edit/Write                                     | Subhi is Builder track, needs autonomy                                                            | 2026-05-04 |
+| 5   | NB read-only full access                                     | Ground-truth value > minimal RBAC                                                                 | 2026-05-04 |
+| 6   | Bahasa Indonesia hardcoded output                            | Subhi native, no auto-detect drift                                                                | 2026-05-04 |
+| 7   | Memory: tutto eccetto cartella `Subhi/`                      | Subhi sees other team memos but not own assessment                                                | 2026-05-04 |
+| 8   | Repo separato `nuzantara-subhi` (not branch)                 | RBAC cleaner                                                                                      | 2026-05-04 |
+| 9   | Memory mirror first push manual approval, then cron          | Safety net                                                                                        | 2026-05-04 |
+| 10  | Exercises mapped to 60-day mission deliverables              | Ground exercises in real work, not toy tasks                                                      | 2026-05-04 |
+| 11  | Renamed sub-agent: `bali-zero-tutor` → `zantara-onboarding`  | Antonello directive: tie-in to Zantara brand, warmer name                                         | 2026-05-04 |
+| 12  | Tutor rebalanced: 60% teacher / 30% RBAC enforcer / 10% peer | Antonello directive: Subhi must "talk with Claude and have everything explained" — not be policed | 2026-05-04 |
+
+---
+
+## 19. Conversational continuity layer
+
+**Driver (Antonello, 2026-05-04):** _"voglio che Subhi possa parlare con te
+e tu gli spieghi tutto"_ — the tutor must feel like a partner that
+remembers prior conversations, explains the system at depth, and only
+enforces RBAC when actually needed (not as primary register).
+
+### 19.1 Memory layers — three of them
+
+The tutor reads from three distinct memory sources, each with different
+semantics:
+
+| Layer                         | Path                                       | Refresh                         | What it holds                                                                                                |
+| ----------------------------- | ------------------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Project memory mirror**     | `.claude/memory-mirror/`                   | Daily 04:00 WITA cron           | Antonello's full memory minus `Subhi/` folder — static system knowledge                                      |
+| **Subhi conversation memory** | `~/.claude/projects/<encoded-cwd>/memory/` | Per-session, native Claude Code | Subhi's own past sessions: questions asked, answers given, patterns                                          |
+| **Subhi tutor notes**         | `.claude/memory-mirror-subhi/`             | Stop hook on each tutor exit    | Curated facts extracted from sessions: "Subhi understood X on day N", "Confused about Y", "Working on PR #Z" |
+
+The first is push-from-Antonello (system knowledge). The second is native
+Claude Code memory (conversational). The third is **new** — generated by
+the Stop hook scanning the session and writing 1-3 line summaries.
+
+### 19.2 Sub-agent prompt rebalance
+
+Old structure (gatekeeper-first):
+
+```
+1. Identitas
+2. ATURAN BAHASA
+3. 5 Tugas (codebase, NB, RBAC, sancho, mission)
+4. Style
+```
+
+New structure (teacher-first):
+
+```
+1. Identitas (warmer intro)
+2. ATURAN BAHASA (unchanged — hard constraint)
+3. Conversational continuity (NEW — read prior session before responding)
+4. 5 Tugas — REORDERED: explain codebase, NB authority, mission first;
+   RBAC enforcement absorbed into examples, not a primary section
+5. Boundaries (HARD — kept, but framed as "kapan kamu harus tolak", not
+   as the agent's main job)
+6. Style (warmer — "santai professional, partner not policeman")
+```
+
+### 19.3 Stop hook extension
+
+`subhi-session-log.sh` (T4 Step 5) gets a second responsibility: extract
+session summary and write to `.claude/memory-mirror-subhi/<date>.md`.
+
+Pseudocode:
+
+```bash
+# After appending to session-log.jsonl:
+TODAY=$(date +%Y-%m-%d)
+SUMMARY_FILE=".claude/memory-mirror-subhi/${TODAY}.md"
+mkdir -p "$(dirname "$SUMMARY_FILE")"
+
+# Use jq + heuristics to extract: topics asked, files touched, decisions made
+TOPICS=$(echo "$INPUT" | jq -r '.transcript // empty' | head -200 |
+  grep -oE 'NB-[0-9]|FunnelFeature|sancho/|GA4|KBLI|visa|tax|property' | sort -u)
+FILES=$(echo "$INPUT" | jq -r '.tool_calls[].tool_input.file_path // empty' | sort -u | head -10)
+
+cat >> "$SUMMARY_FILE" <<EOF
+## Sesi $(date +%H:%M)
+
+**Topik:** $(echo "$TOPICS" | tr '\n' ', ')
+**File disentuh:** $(echo "$FILES" | tr '\n' ', ')
+**Durasi:** ~$DURATION min
+
+EOF
+```
+
+The next session, the sub-agent's first action is to read
+`.claude/memory-mirror-subhi/$(date +%Y-%m-%d).md` and the previous 3 days,
+giving it concrete recall: _"Kemarin Subhi tanya tentang X, saya kasih
+solusi Y, dia setuju. Hari ini probable continuation: Z."_
+
+### 19.4 New decision facts
+
+- **Name change**: `bali-zero-tutor` → `zantara-onboarding`. Sub-agent
+  invoked as `/agent zantara-onboarding "<pertanyaan>"`. User-facing name
+  in greetings: "Zantara Onboarding" (or just "Zantara" in casual reply).
+- **Brand tie-in**: connects to existing Zantara persona (`zantara_core.py`
+  is the production system prompt for client-facing Zantara). The tutor
+  is a _training-mode_ Zantara, scoped to Subhi only, no client access.
+
+### 19.5 Why not unify with production Zantara
+
+Production Zantara serves clients via WhatsApp/Telegram/web/Instagram
+(`apps/backend-rag/backend/channels/`). Different goals:
+
+- Production Zantara: pricing accuracy, NPWP/NIB handling, immigration
+  consultation, never-make-promises
+- Onboarding Zantara: explain-the-codebase, RBAC navigation, exercise
+  generation, internal mission tracking
+
+Sharing the prompt would either bloat production (Subhi-specific guidance)
+or weaken onboarding (production safety constraints irrelevant to Subhi).
+Keep separate, share the _brand_, share the _bahasa default_.
 
 ---
 
