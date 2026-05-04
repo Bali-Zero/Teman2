@@ -334,8 +334,21 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset({
 #     and backend/tests/db/test_migration_152.py for the per-migration
 #     contract test that enforces the same outbox-before-notify ordering
 #     and _outbox_id injection that this file enforces for migration 146.
+#   - ``crm_welcome_completed`` — Sprint 3 W2. Trigger function
+#     ``notify_crm_welcome_completed`` lives in migration 153 (split into
+#     two AFTER INSERT + AFTER UPDATE triggers because Postgres doesn't
+#     allow TG_OP in CREATE TRIGGER WHEN clauses). See migration
+#     153_crm_welcome_runs.sql and backend/tests/db/test_migration_153.py
+#     for the per-migration contract tests.
+#   - ``asset_provenance`` — Sprint 3 W2 Mata-Garuda L4.5 cell. Trigger
+#     function ``notify_asset_provenance`` lives in migration 155 (also
+#     split into AFTER INSERT + AFTER UPDATE WHEN OLD.* IS DISTINCT FROM
+#     NEW.* triggers). See migration 155_asset_provenance_trigger.sql and
+#     backend/tests/db/test_migration_155.py for contract tests.
 _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset({
     "measurer_event",
+    "crm_welcome_completed",
+    "asset_provenance",
 })
 _TRIGGER_BACKED_CHANNELS = frozenset(
     ch
