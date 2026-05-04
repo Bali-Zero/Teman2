@@ -1,0 +1,104 @@
+{
+  "$schema": "https://docs.claude.com/en/docs/claude-code/settings-schema.json",
+  "model": "claude-sonnet-4-6",
+  "mcpServers": {
+    "github": {
+      "command": "uvx",
+      "args": ["mcp-server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "__SUBHI_GITHUB_PAT_PLACEHOLDER__"
+      }
+    },
+    "notebooklm-mcp": {
+      "command": "uvx",
+      "args": ["notebooklm-mcp"],
+      "env": {
+        "NLM_PROFILE": "subhi"
+      }
+    },
+    "filesystem": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-filesystem",
+        "/Users/__SUBHI_USERNAME_PLACEHOLDER__/zantara-onboarding"
+      ]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(playwright:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh repo view:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [
+      "Bash(fly:*)",
+      "Bash(gcloud:*)",
+      "Bash(aws:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(rsync:*)",
+      "Bash(rm -rf:*)",
+      "Bash(curl * | bash)",
+      "Bash(curl * | sh)",
+      "Bash(sudo:*)",
+      "Read(/Users/*/.ssh/**)",
+      "Read(/Users/*/.aws/**)",
+      "Read(/Users/*/.config/gh/**)",
+      "Read(**/*.env)",
+      "Read(**/.nuzantara-secrets*)",
+      "Edit(**/apps/backend-rag/**)",
+      "Edit(**/apps/cell/**)",
+      "Edit(**/apps/organism/**)",
+      "Edit(**/fly.toml)",
+      "Edit(**/.github/**)",
+      "Write(**/apps/backend-rag/**)",
+      "Write(**/apps/cell/**)",
+      "Write(**/apps/organism/**)"
+    ]
+  },
+  "env": {
+    "BALI_ZERO_USER": "subhi",
+    "BALI_ZERO_ROLE": "growth-systems-owner",
+    "BALI_ZERO_PROBATION_END": "2026-07-29"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/subhi-bash-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/subhi-session-log.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

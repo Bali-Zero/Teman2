@@ -1,0 +1,21 @@
+# Session logs (per-device, never committed)
+.claude/session-log.jsonl
+.claude/local/
+local/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Env files (defense in depth — settings.json should never have plaintext secrets either)
+.env
+.env.*
+*.secret
+
+# Tests/temp
+*.tmp
+/tmp/
