@@ -35,6 +35,7 @@ from mata_garuda.config import (
     NLM_FEEDER_BATCH_SIZE,
     NLM_FEEDER_SLEEP_BETWEEN_S,
     NLM_NOTEBOOKS,
+    STREAM_ALERTS,
     STREAM_ENRICHED,
 )
 from mata_garuda.runtime.knowledge import KnowledgeBase
@@ -244,30 +245,27 @@ def run_nlm_feeder(kb: KnowledgeBase, max_items: int = 30) -> dict:
     return stats
 
 
-def run_nlm_feeder_from_stream(
+def _run_nlm_feeder_from(
     kb: KnowledgeBase,
-    max_items: int = NLM_FEEDER_BATCH_SIZE,
-    sleep_s: float = NLM_FEEDER_SLEEP_BETWEEN_S,
+    stream: str,
+    consumer_group: str,
+    consumer_name: str,
+    max_items: int,
+    sleep_s: float,
 ) -> dict:
-    """Consume garuda:enriched and feed domain-routed items to NLM.
+    """Generic stream→NLM feeder. Backs both run_nlm_feeder_from_stream
+    (garuda:enriched) and run_nlm_feeder_from_alerts (garuda:alerts).
 
-    Each enriched item is routed via its ``domain`` (or fallback ``topic``)
-    field. Unrouted domains are skipped (NOT an error). ACK happens for
-    every consumed message — success OR skip OR error — so the stream
-    doesn't back up on persistent problems (we log via ``case_not_resolved``).
-
-    Rate-limited: max ``max_items`` per run, ``sleep_s`` between NLM calls.
-
-    Returns stats: {processed, fed, skipped, errors}
+    The alerts stream is the better source: scorer.py enriches it with
+    `topic` (immigration_visa / tax_fiscal / investment_licensing / ...)
+    derived from Ollama. The enriched stream lacks `topic` because the
+    scorer doesn't write back into it — only into alerts + KB.
     """
     stats = {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}
 
-    items = stream_read_new(
-        STREAM_ENRICHED, STREAM_CONSUMER_GROUP, STREAM_CONSUMER_NAME,
-        count=max_items,
-    )
+    items = stream_read_new(stream, consumer_group, consumer_name, count=max_items)
     if not items:
-        logger.info("[nlm_feeder] No new items in garuda:enriched")
+        logger.info(f"[nlm_feeder] No new items in {stream}")
         return stats
 
     for idx, item in enumerate(items):
@@ -283,7 +281,7 @@ def run_nlm_feeder_from_stream(
         nb_key, notebook_id = route_domain_to_notebook(domain)
         if not nb_key:
             stats["skipped"] += 1
-            stream_ack(STREAM_ENRICHED, STREAM_CONSUMER_GROUP, msg_id)
+            stream_ack(stream, consumer_group, msg_id)
             continue
         if not notebook_id:
             # Domain is mapped but NB ID is unset — treat as skip, log warning.
@@ -292,7 +290,7 @@ def run_nlm_feeder_from_stream(
                 f"but no notebook_id configured; skipping"
             )
             stats["skipped"] += 1
-            stream_ack(STREAM_ENRICHED, STREAM_CONSUMER_GROUP, msg_id)
+            stream_ack(stream, consumer_group, msg_id)
             continue
 
         # Dedup: if we've already fed this URL, skip. Look up by (type, source)
@@ -301,7 +299,7 @@ def run_nlm_feeder_from_stream(
         already = _already_fed(kb, dedup_key)
         if already:
             stats["skipped"] += 1
-            stream_ack(STREAM_ENRICHED, STREAM_CONSUMER_GROUP, msg_id)
+            stream_ack(stream, consumer_group, msg_id)
             continue
 
         # Feed as text (title + content) so NLM gets context even if URL
@@ -333,14 +331,59 @@ def run_nlm_feeder_from_stream(
                 0.3,
             )
 
-        stream_ack(STREAM_ENRICHED, STREAM_CONSUMER_GROUP, msg_id)
+        stream_ack(stream, consumer_group, msg_id)
 
         # Rate limit between NLM calls (skip sleep after last item).
         if idx + 1 < len(items) and sleep_s > 0:
             time.sleep(sleep_s)
 
     logger.info(
-        f"[nlm_feeder] Stream done: {stats['processed']} processed, "
+        f"[nlm_feeder] {stream} done: {stats['processed']} processed, "
         f"{stats['fed']} fed, {stats['skipped']} skipped, {stats['errors']} errors"
     )
     return stats
+
+
+def run_nlm_feeder_from_stream(
+    kb: KnowledgeBase,
+    max_items: int = NLM_FEEDER_BATCH_SIZE,
+    sleep_s: float = NLM_FEEDER_SLEEP_BETWEEN_S,
+) -> dict:
+    """Consume garuda:enriched (raw items) → NLM. Backward-compat shim
+    around _run_nlm_feeder_from. Most enriched items lack `topic`, so
+    only items whose `source_type` falls in _SOURCE_TO_DOMAIN are fed
+    (mainly arxiv/rss/github → ai_research).
+
+    Prefer run_nlm_feeder_from_alerts for high-quality multi-NB feeds.
+    """
+    return _run_nlm_feeder_from(
+        kb, STREAM_ENRICHED, STREAM_CONSUMER_GROUP, STREAM_CONSUMER_NAME,
+        max_items, sleep_s,
+    )
+
+
+# Separate consumer group/name so feeding alerts doesn't fight with
+# the existing `garuda:enriched` consumer group. The two streams are
+# disjoint — one item flows scraper→raw→enriched→alerts, and we ack
+# at every stop independently.
+ALERTS_CONSUMER_GROUP = "nlm_feeder_alerts"
+ALERTS_CONSUMER_NAME = "nlm_feeder_alerts-1"
+
+
+def run_nlm_feeder_from_alerts(
+    kb: KnowledgeBase,
+    max_items: int = NLM_FEEDER_BATCH_SIZE,
+    sleep_s: float = NLM_FEEDER_SLEEP_BETWEEN_S,
+) -> dict:
+    """Consume garuda:alerts (high-score, topic-enriched items) → NLM.
+
+    Items in this stream have a `topic` field already set by scorer.py
+    (immigration_visa / tax_fiscal / investment_licensing / labor_manpower /
+    political_risk / provincial_bali / ai_research). This is the canonical
+    source for multi-NB routing — every alert is high-relevance for Bali
+    Zero business and routes cleanly via NLM_DOMAIN_ROUTING.
+    """
+    return _run_nlm_feeder_from(
+        kb, STREAM_ALERTS, ALERTS_CONSUMER_GROUP, ALERTS_CONSUMER_NAME,
+        max_items, sleep_s,
+    )
