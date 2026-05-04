@@ -35,10 +35,12 @@ NLM_DOMAIN_ROUTING = {
     "tax_fiscal": "tax",
     "investment_licensing": "regulation",
     "labor_manpower": "regulation",
+    "property": "regulation",          # PBG/SHGB/Hak Pakai → regulation NB
+    "financial_banking": "regulation", # banking compliance → regulation NB
     "political_risk": "press",
     "provincial_bali": "press",
     "ai_research": "ai_research",
-    # Other domains skip — keep NBs focused.
+    # "other" / "environmental" / "procurement" → skip — keep NBs focused.
 }
 
 # NLM rate limits

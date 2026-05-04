@@ -62,6 +62,108 @@ class TestRouting:
         assert nb_key == ""
         assert nb_id == ""
 
+    def test_route_nb_key_directly(self):
+        """PR #447 — domain may already be an NB key (e.g. inferred from
+        source_type). route_domain_to_notebook should resolve it to the NB."""
+        nb_key, nb_id = nlm_feeder.route_domain_to_notebook("ai_research")
+        assert nb_key == "ai_research"
+        assert nb_id == NLM_NOTEBOOKS["ai_research"]
+
+    def test_route_property_to_regulation(self):
+        """PR #450 — property → regulation NB."""
+        nb_key, _ = nlm_feeder.route_domain_to_notebook("property")
+        assert nb_key == "regulation"
+
+
+# ── infer_domain_from_item heuristic (PR #446) ────────────────────────────
+
+class TestInferDomain:
+    def test_explicit_domain_wins(self):
+        assert nlm_feeder.infer_domain_from_item({"domain": "tax_fiscal"}) == "tax_fiscal"
+
+    def test_topic_fallback_when_domain_empty(self):
+        assert nlm_feeder.infer_domain_from_item(
+            {"domain": "", "topic": "immigration_visa"}
+        ) == "immigration_visa"
+
+    def test_source_type_arxiv_to_ai_research(self):
+        assert nlm_feeder.infer_domain_from_item(
+            {"source_type": "arxiv"}
+        ) == "ai_research"
+
+    def test_source_type_intel_scraper_to_press(self):
+        assert nlm_feeder.infer_domain_from_item(
+            {"source_type": "intel_scraper"}
+        ) == "press"
+
+    def test_source_field_fallback(self):
+        """When source_type missing, source field is used."""
+        assert nlm_feeder.infer_domain_from_item(
+            {"source": "github"}
+        ) == "ai_research"
+
+    def test_unknown_source_returns_empty(self):
+        assert nlm_feeder.infer_domain_from_item(
+            {"source": "unknown.com", "source_type": "blog"}
+        ) == ""
+
+    def test_empty_data_returns_empty(self):
+        assert nlm_feeder.infer_domain_from_item({}) == ""
+
+
+# ── alerts stream consumer (PR #447) ──────────────────────────────────────
+
+class TestAlertsConsumer:
+    def test_alerts_stream_uses_separate_consumer_group(self):
+        """alerts has its own CG so feeding alerts doesn't fight with enriched."""
+        assert nlm_feeder.ALERTS_CONSUMER_GROUP != nlm_feeder.STREAM_CONSUMER_GROUP
+        assert nlm_feeder.ALERTS_CONSUMER_NAME != nlm_feeder.STREAM_CONSUMER_NAME
+
+    def test_alerts_routes_and_feeds_via_topic(self, tmp_path):
+        """Alerts items have `topic` set by scorer.py — should route directly."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [
+            {"id": "1-0", "data": {
+                "title": "Indonesia Visa Update", "content": "imigrasi.go.id news",
+                "url": "https://ex.com/visa", "topic": "immigration_visa",
+                "score": "5",
+            }},
+            {"id": "2-0", "data": {
+                "title": "PMK 25/2026", "content": "tax regulation",
+                "url": "https://ex.com/tax", "topic": "tax_fiscal",
+                "score": "4",
+            }},
+        ]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True) as m_add, \
+             patch.object(nlm_feeder, "stream_ack") as m_ack:
+            stats = nlm_feeder.run_nlm_feeder_from_alerts(kb, sleep_s=0)
+
+        assert stats["processed"] == 2
+        assert stats["fed"] == 2
+        assert m_add.call_count == 2
+        assert m_ack.call_count == 2
+        kb.close()
+
+    def test_alerts_uses_inferred_domain_when_topic_missing(self, tmp_path):
+        """Backward compat: items in alerts without topic still route via
+        source heuristic from infer_domain_from_item."""
+        kb = KnowledgeBase(db_path=tmp_path / "feeder.db")
+        items = [{
+            "id": "1-0",
+            "data": {
+                "title": "arxiv preprint", "content": "neural network paper",
+                "url": "https://arxiv.org/abs/1234", "source_type": "arxiv",
+                # NO topic / domain field
+            },
+        }]
+        with patch.object(nlm_feeder, "stream_read_new", return_value=items), \
+             patch.object(nlm_feeder, "_nlm_add_text", return_value=True), \
+             patch.object(nlm_feeder, "stream_ack"):
+            stats = nlm_feeder.run_nlm_feeder_from_alerts(kb, sleep_s=0)
+        assert stats["fed"] == 1
+        kb.close()
+
 
 # ── stream consumer behaviour ─────────────────────────────────────────────
 
