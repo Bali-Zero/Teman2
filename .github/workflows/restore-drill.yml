@@ -94,12 +94,15 @@ jobs:
           test "$PRACTICES" != "ERROR" || { echo "practices table broken"; exit 3; }
 
           # Telegram success
-          MSG="✅ Restore drill passed (CI)
-backup: $LATEST
-tables: $TABLES
-clients: $CLIENTS
-practices: $PRACTICES
-dump: $DUMP_SIZE bytes"
+          MSG=$(cat <<EOF
+          ✅ Restore drill passed (CI)
+          backup: $LATEST
+          tables: $TABLES
+          clients: $CLIENTS
+          practices: $PRACTICES
+          dump: $DUMP_SIZE bytes
+          EOF
+          )
           curl -s --max-time 10 \
             -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_OWNER_CHAT_ID}" \
