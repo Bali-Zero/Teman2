@@ -67,6 +67,23 @@ def _safe_env() -> dict[str, str]:
     return {k: v for k, v in os.environ.items() if k not in _STRIPPED_ENV_KEYS}
 
 
+def _default_project_root() -> Path:
+    """Resolve the repo root in worktrees, CI, and the canonical Pro checkout."""
+    env_root = os.environ.get("NUZANTARA_REPO_ROOT")
+    if env_root:
+        return Path(env_root).expanduser()
+
+    legacy_root = Path(os.path.expanduser("~/Desktop/nuzantara"))
+    if legacy_root.exists():
+        return legacy_root
+
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "apps" / "backend-rag").exists():
+            return parent
+
+    return legacy_root
+
+
 @register_action("codex_xhigh_fix")
 async def codex_xhigh_fix_action(
     proposal: Any,
@@ -78,7 +95,8 @@ async def codex_xhigh_fix_action(
     proposal.action_payload may set:
         prompt           (str, REQUIRED)  — task description for Codex
         timeout_sec      (int, default 1800, max 3600)
-        cwd              (str, default $HOME/Desktop/nuzantara)
+        cwd              (str, default $NUZANTARA_REPO_ROOT, detected repo root,
+                           or $HOME/Desktop/nuzantara)
 
     The prompt is wrapped with hard rules + hard-rule reminder before being
     passed to Codex. The action does NOT mutate git state — Codex itself
@@ -102,7 +120,7 @@ async def codex_xhigh_fix_action(
         )
 
     timeout = max(60, min(int(payload.get("timeout_sec", DEFAULT_TIMEOUT_SEC)), MAX_TIMEOUT_SEC))
-    cwd = Path(payload.get("cwd") or os.path.expanduser("~/Desktop/nuzantara"))
+    cwd = Path(payload.get("cwd")).expanduser() if payload.get("cwd") else _default_project_root()
 
     if not cwd.exists():
         return ActionResult(

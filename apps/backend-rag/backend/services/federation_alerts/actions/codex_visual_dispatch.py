@@ -32,7 +32,25 @@ from backend.services.federation_alerts.actions.registry import (
 
 logger = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(os.path.expanduser("~/Desktop/nuzantara"))
+
+def _default_project_root() -> Path:
+    """Resolve the repo root in worktrees, CI, and the canonical Pro checkout."""
+    env_root = os.environ.get("NUZANTARA_REPO_ROOT")
+    if env_root:
+        return Path(env_root).expanduser()
+
+    legacy_root = Path(os.path.expanduser("~/Desktop/nuzantara"))
+    if legacy_root.exists():
+        return legacy_root
+
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "apps" / "backend-rag").exists():
+            return parent
+
+    return legacy_root
+
+
+PROJECT_ROOT = _default_project_root()
 ORCHESTRATOR_SCRIPT = PROJECT_ROOT / "scripts" / "codex_visual_orchestrator.py"
 DISPATCH_ROOT = PROJECT_ROOT / "research" / "dispatch"
 DEFAULT_TIMEOUT_SEC = 3600

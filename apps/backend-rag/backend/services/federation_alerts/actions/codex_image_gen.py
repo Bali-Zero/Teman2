@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import string
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,7 +35,7 @@ DEFAULT_TIMEOUT_SEC = 600
 MAX_TIMEOUT_SEC = 1200
 MAX_PROMPT_BYTES = 8 * 1024
 DISPATCH_ROOT = Path(os.path.expanduser("~/Desktop/nuzantara/research/dispatch"))
-SAFE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+SAFE_NAME_CHARS = string.ascii_letters + string.digits + "-_"
 
 
 _STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
