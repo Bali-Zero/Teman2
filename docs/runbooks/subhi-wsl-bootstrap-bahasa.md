@@ -151,9 +151,10 @@ Subhi:
 - **PAT GitHub**: stesso PAT scoped a `balizero/nuzantara` (sancho/* write,
   contents read, metadata read) lavora sia su WSL sia su macOS. Riusa lo
   stesso PAT giovedì.
-- **MAX plan slot**: una volta che Subhi logga `claude` in WSL, slot MAX #2
-  è claimed. Quando passa a macOS, lo stesso slot è già his — NON
-  rifare login slot, basta `claude --auth` riusa il token esistente.
+- **Claude Pro account**: Subhi usa il SUO Pro plan (sua email, sua sottoscrizione,
+  indipendente dal MAX di Antonello). Il login è per-device — su WSL fa OAuth la
+  prima volta, su MacBook giovedì rifà login con la stessa email Pro. Non c'è uno
+  "slot Antonello" da claim.
 - **NLM share**: NB-1, NB-2, NB-9, NB-OPS sono shared a `subhi@balizero.com`
   email — invariato tra WSL e macOS.
 - **Tailscale**: tailnet membership è per-device. Quando MacBook joins,

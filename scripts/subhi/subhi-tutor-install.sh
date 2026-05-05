@@ -193,7 +193,7 @@ fi
 
 # === Step 15: Claude OAuth login ===
 BAHASA "Login Claude Code (akan buka browser)..."
-INFO "Login pakai subhi@balizero.com — claim slot MAX plan dari Antonello"
+INFO "Login pakai email Pro kamu sendiri — akun Claude Pro independen, bukan plan Antonello"
 INFO ""
 INFO "Setelah browser login selesai, claude akan ready."
 INFO "Kalau browser tidak otomatis terbuka, manual: claude (di terminal lain)"

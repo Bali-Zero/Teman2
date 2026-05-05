@@ -86,13 +86,14 @@ di questi richiede Subhi online.
   `NB-OPS`. Se manca anche solo uno: rimanda l'invito da NotebookLM web UI
   e chiedi a Subhi di accettare l'email entro la sera.
 
-- [ ] **3. Verifica MAX plan #2 ha slot libero per Subhi**
-  - Apri https://console.anthropic.com/settings/billing nel browser
-  - Vai su "Subscriptions" → identifica MAX plan #2 (quello dedicato a Subhi)
-  - Verifica `seat usage`: deve essere `< limit` (slot libero)
-  - Se piano pieno: liberare uno slot OPPURE fallback Path B (Subhi paga il
-    proprio MAX dal suo Google personale — vedi tabella failure escalation
-    sotto)
+- [ ] **3. Conferma con Subhi che il suo Claude Pro è attivo**
+  - Subhi ha il SUO account Claude Pro (sua email, sua sottoscrizione,
+    indipendente dal MAX di Antonello)
+  - Su Pro side: nessuna verifica necessaria
+  - Su Subhi MacBook al primo `claude`: si apre browser, lui logga con
+    la sua email Pro, claim del seat sul SUO piano
+  - Se conferma è "non sicuro/non attivo ancora": Subhi sottoscrive Claude
+    Pro a https://claude.ai/upgrade prima del setup giovedì
 
 - [ ] **4. Verifica Tailscale ACL — asimmetria Pro↔Subhi**
   ```bash
@@ -394,7 +395,7 @@ di questi richiede Subhi online.
 | Failure point | Sintomo | Recovery |
 |---|---|---|
 | Install script crash mid-step | Terminal exit non-zero, errore stderr | Re-run `bash <(curl -sL '<gist-url>')` — script idempotente, riprende dal primo step incompleto. Se stesso crash 3 volte: screenshot stderr, debug post-call. |
-| OAuth Claude fail (slot saturo) | Browser mostra "subscription seat limit reached" | Antonello libera 1 slot in MAX plan #2. Se non possibile entro 1h: fallback Path B → Subhi paga il proprio MAX dal suo Google personale (ref `subhi-rbac-permissions.md` "PROPRIO Claude Code MAX subscription"). |
+| OAuth Claude fail | Browser mostra errore login | Subhi logga con la sua email Pro al prompt browser. Se ancora rotto: verifica connessione Internet, retry. Se Subhi non ha ancora un Pro plan: lo sottoscrive a https://claude.ai/upgrade (NON usa MAX di Antonello). |
 | Tailscale login wrong account | Subhi ha loggato Google personale invece di `subhi@balizero.com` | `tailscale logout && tailscale up` retry. Antonello revoca sessione Tailscale precedente da admin UI. |
 | Tutor risponde lingua sbagliata (inglese/italiano) | `/agent zantara-onboarding halo` → reply in EN/IT | Antonello edita prompt su Pro → `git push` → manual `subhi-rsync-push.sh` → Subhi rilancia `claude`. Vedi sezione "Recovery — tutor risponde lingua sbagliata". |
 | `/agent` non riconosciuto | Claude version `< 2.0` | `npm install -g @anthropic-ai/claude-code@latest` |
@@ -413,7 +414,7 @@ di questi richiede Subhi online.
 PRE-DAY-1 SERA PRIMA:
 ☐ curl gist URL                        ☐ TS ACL test asimmetria
 ☐ nlm share status NB-1/2/9/OPS        ☐ Pro Remote Login OFF
-☐ MAX plan #2 slot libero              ☐ PAT generato in secrets.env
+☐ Pro plan Subhi confermato attivo     ☐ PAT generato in secrets.env
 ☐ WA evening message bahasa →
 
 T+0 09:30: Subhi MacBook on, video call, screen share

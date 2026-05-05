@@ -123,7 +123,7 @@ Tutor harus jawab:
 | Error                                 | Fix                                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `claude: command not found`           | Re-source `~/.zshrc`, atau `npm install -g @anthropic-ai/claude-code` ulang                      |
-| OAuth login Claude fail               | Cek koneksi internet, retry. Kalau persisten, ping Antonello — mungkin MAX plan slot belum ready |
+| OAuth login Claude fail               | Cek koneksi internet, retry. Login pakai email Pro kamu di browser yang kebuka. Kalau persisten, ping Antonello |
 | `/agent zantara-onboarding not found` | CWD kamu salah. `cd ~/zantara-onboarding` dulu                                                   |
 | Tutor jawab dalam bahasa Inggris      | Sub-agent prompt salah load. Restart Claude session, retry                                       |
 | `nlm login` fail                      | Google MFA — coba `nlm login --clear` lalu login lagi                                            |

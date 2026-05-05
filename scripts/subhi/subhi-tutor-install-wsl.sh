@@ -135,10 +135,18 @@ OK "GitHub SSH key registered"
 mkdir -p "$HOME/Projects"
 cd "$HOME/Projects"
 if [[ ! -d nuzantara ]]; then
-  BAHASA "Clone repo balizero/nuzantara (~5 min, repo besar)..."
-  gh repo clone balizero/nuzantara
+  BAHASA "Clone repo Balizero1987/Teman2 (~5 min, repo besar)..."
+  gh repo clone Balizero1987/Teman2 nuzantara
 fi
-OK "Repo nuzantara cloned di ~/Projects/nuzantara"
+OK "Repo nuzantara cloned di ~/Projects/nuzantara (from Balizero1987/Teman2)"
+
+# Checkout branch with the onboarding scaffold
+BAHASA "Checkout branch feat/zantara-onboarding-subhi (untuk akses scaffold tutor)..."
+cd "$HOME/Projects/nuzantara"
+git fetch origin feat/zantara-onboarding-subhi 2>&1 | tail -3 || true
+git checkout feat/zantara-onboarding-subhi 2>&1 | tail -3
+OK "Checked out feat/zantara-onboarding-subhi"
+cd "$HOME/Projects"
 
 # Step 12: Set up zantara-onboarding workspace
 BAHASA "Setup zantara-onboarding workspace..."
@@ -183,44 +191,27 @@ if [[ -f "$SETTINGS" ]]; then
   fi
 fi
 
-# Step 14: Claude OAuth — token transfer (NO browser flow, NO password)
-BAHASA "Setup Claude Code via token transfer..."
-INFO "Antonello akan kirim token JSON via WhatsApp di pesan terpisah."
-INFO "Token ini berisi access+refresh untuk akun MAX yang sudah aktif."
+# Step 14: Claude OAuth — login pakai akun Pro kamu sendiri
+BAHASA "Setup Claude Code OAuth login..."
+INFO "Login pakai email Pro KAMU sendiri (akun Claude Pro independen, "
+INFO "bukan plan Antonello). Browser akan kebuka untuk login."
 INFO ""
 INFO "PENTING:"
 INFO "  - Default model: claude-sonnet-4-6 (sudah set di settings.json)"
 INFO "  - JANGAN pakai opus tanpa izin Antonello (mahal)"
-INFO "  - Token ini SHARED — chat history di sidebar kamu adalah punya"
-INFO "    Antonello, JANGAN baca conversation lama, bikin chat baru saja"
+INFO "  - Akun ini PUNYA KAMU — chat history di sidebar adalah punya kamu,"
+INFO "    quota Pro adalah punya kamu"
 INFO ""
 
 mkdir -p "$HOME/.claude"
-TOKEN_FILE="$HOME/.claude/.credentials.json"
 
-PROMPT "Paste isi token JSON dari WhatsApp (1 baris JSON, tekan Enter setelah selesai):"
-PROMPT "Format expected: {\"claudeAiOauth\":{\"accessToken\":\"sk-ant-oat01-...\",\"refreshToken\":\"sk-ant-ort01-...\",...}}"
-read -r -s TOKEN_INPUT
-echo ""
-
-if [[ -z "$TOKEN_INPUT" ]]; then
-  INFO "Token kosong — skip. Kamu bisa import manual nanti:"
-  INFO "  echo '<token-json>' > $TOKEN_FILE && chmod 0600 $TOKEN_FILE"
-elif [[ "$TOKEN_INPUT" =~ \"claudeAiOauth\" ]] && [[ "$TOKEN_INPUT" =~ \"accessToken\" ]]; then
-  echo "$TOKEN_INPUT" > "$TOKEN_FILE"
-  chmod 0600 "$TOKEN_FILE"
-  OK "Token disimpan di $TOKEN_FILE (mode 0600)"
-
-  # Verify token works
-  if claude --version &>/dev/null; then
-    OK "claude CLI ready (token valid)"
-  else
-    INFO "claude --version gagal — token mungkin invalid. Cek JSON format."
-  fi
-else
-  INFO "Format token tidak terlihat valid — tinggalkan kosong."
-  INFO "Manual import: echo '<json>' > $TOKEN_FILE && chmod 0600 $TOKEN_FILE"
-fi
+INFO "Step manual — jalankan di terminal lain setelah script ini selesai:"
+INFO "  claude"
+INFO ""
+INFO "Browser otomatis kebuka. Pilih 'Login with Claude' lalu pakai email"
+INFO "Pro kamu. Setelah login, kembali ke terminal — claude CLI ready."
+INFO ""
+INFO "Verify dengan: claude --version"
 
 # Step 15: NLM access — public links (NO CLI login required)
 BAHASA "NotebookLM access via public links..."

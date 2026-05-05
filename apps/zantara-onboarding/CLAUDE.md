@@ -12,8 +12,9 @@
 **Default model: `claude-sonnet-4-6`** (Sonnet, sudah set di settings.json).
 
 **JANGAN pakai Opus** (`claude-opus-*`) tanpa izin eksplisit Antonello.
-Opus ~5x lebih mahal. Kamu pakai shared MAX plan yang kuotanya juga
-dipakai Antonello untuk kerja prod.
+Opus ~5x lebih mahal. Kamu pakai akun Claude Pro kamu sendiri — kuota
+terbatas, jangan habiskan dengan Opus untuk task harian. Sonnet 4.6
+cukup untuk semua exercise + onboarding.
 
 Kalau kamu accidentally trigger Opus (via `/model opus` atau
 `claude --model opus`), STOP dan kembali ke Sonnet:

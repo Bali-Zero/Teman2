@@ -22,8 +22,9 @@ and contract draft), that:
    with daily exercises that escalate D1 (fix tracking) → D2 (12 money pages)
    → D3 (Article-to-Tool components) → D4 (organic distribution) → D5
    (WhatsApp contextual CTAs).
-4. Remains under Antonello control: MAX plan quota is Antonello's, daily
-   memory mirror filtered+audited, GitHub PAT scoped `sancho/*` only,
+4. Remains under Antonello control: Subhi has his own Claude Pro plan
+   (his email, his account, his quota — independent from Antonello's MAX).
+   Daily memory mirror filtered+audited, GitHub PAT scoped `sancho/*` only,
    no Fly/Pro/secrets access.
 
 ## 2. Non-goals
@@ -52,7 +53,7 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
 | 4   | Git                      | Basic (clone/commit/push)     | Linear `sancho/*` flow, no rebase chirurgia |
 | 5   | VSCode                   | Daily user                    | Skip install                                |
 | 6   | AI tools                 | GitHub Copilot user           | Coexist, no duplication                     |
-| 7   | Account for Claude OAuth | `subhi@balizero.com`          | MAX plan #2 of Antonello's 3                |
+| 7   | Account for Claude OAuth | Subhi's own email             | Claude Pro plan owned by Subhi, independent from Antonello's MAX |
 | 8   | Internet                 | Stable                        | MCP remoti OK                               |
 | 9   | Language                 | Mix bahasa+EN                 | Bahasa narrative, EN code                   |
 | 10  | Setup window             | Morning 09-11 WITA            | Day 1 = morning standup window              |
@@ -66,7 +67,7 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
 │  VSCode (Copilot stays, Claude added)                             │
 │   ├── Integrated Terminal                                         │
 │   │    └── claude (CLI v2.0+)                                     │
-│   │         ├── OAuth: subhi@balizero.com → MAX plan #2           │
+│   │         ├── OAuth: Subhi's own email → his Claude Pro plan    │
 │   │         ├── Memory: /Users/subhi/.claude/projects/<repo>/     │
 │   │         └── Settings: /Users/subhi/.claude/settings.json      │
 │   │                                                               │
@@ -98,7 +99,10 @@ Subhi's answers to the profiling questionnaire (2026-05-04):
 
 **Boundary layers (defense in depth):**
 
-1. **OAuth-level**: MAX plan owned by Antonello, revocable.
+1. **OAuth-level**: Subhi's own Pro plan, his account. Antonello cannot revoke
+   it directly — but the GitHub PAT, NLM share, and rsync drop zone can be
+   revoked from Antonello side at any time, isolating Subhi from the
+   Bali Zero perimeter without touching his Claude account.
 2. **GitHub-level**: fine-grained PAT `sancho/*` write only.
 3. **MCP-level**: filesystem confined to `~/Projects/nuzantara-subhi/`.
 4. **Settings-level**: `permissions.deny` on Bash patterns
@@ -396,7 +400,7 @@ Subhi asks "apa misi hari ini" by reading `00_MISI_SUBHI_60_HARI_BAHASA.md`
 | 5   | Repo `balizero/nuzantara-subhi` created (Subhi+Antonello collaborator) | Antonello           | 2min | clone repo       |
 | 6   | NLM share NB-1, NB-2, NB-9, NB-OPS to subhi@balizero.com               | Antonello (NLM CLI) | 3min | tutor NB queries |
 | 7   | Tailscale ACL verified (Subhi NOT seeing `nuzantara` Pro)              | Antonello           | 5min | security         |
-| 8   | MAX plan #2 OAuth login validated with subhi@balizero.com              | Antonello           | 2min | claude command   |
+| 8   | Claude Pro OAuth login validated with Subhi's own email                | Subhi (self)        | 2min | claude command   |
 
 **Note:** Tailscale verification 2026-05-04 13:30 shows MacBook NOT yet joined to tailnet (only Windows `laptop-i9elf7cc` visible). Step 1 is the first action when MacBook arrives.
 
@@ -455,7 +459,7 @@ NOT Antonello via SSH). Steps:
 
 1. **MacBook not in tailnet yet** (verified 2026-05-04). Step 1 of pre-reqs blocks everything else. Antonello must guide tailscale up live with Subhi.
 
-2. **OAuth quota MAX plan #2**: assumes Antonello has MAX plan #2 dedicated to Subhi. If not, falls back to Subhi's personal Google account → he pays for his own MAX (per `subhi-rbac-permissions.md` "PROPRIO Claude Code MAX subscription"). Antonello to confirm.
+2. **OAuth quota — RESOLVED**: Subhi has his own Claude Pro plan (his email, his account). Independent quota — does NOT consume Antonello's MAX. First `claude` invocation triggers his own OAuth flow; he authenticates with his email at `claude.ai/login` in browser.
 
 3. **NB share `subhi@balizero.com`**: requires Antonello to share NB-1/NB-2/NB-9/NB-OPS via NLM CLI before Day 1. If forgotten, tutor's NB queries return 403.
 

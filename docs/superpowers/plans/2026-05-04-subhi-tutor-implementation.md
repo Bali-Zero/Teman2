@@ -4,7 +4,7 @@
 
 **Goal:** Scaffold and ship a personal Claude Code "Zantara Onboarding" running on Subhi Darajat's MacBook Pro 16GB during his 90-day probation, speaking bahasa Indonesia, with daily-mirrored Bali Zero memory (excluding the confidential `Subhi/` folder), and RBAC hooks enforcing `apps/mouth/**` scope + `sancho/*` branch workflow.
 
-**Architecture:** Local Claude Code CLI on Subhi's Mac (`subhi@balizero.com` OAuth on Antonello's MAX plan #2) + per-project `.claude/` config in a separate private repo `balizero/nuzantara-subhi` with a `zantara-onboarding.md` sub-agent and PreToolUse Bash guard hook + nightly memory mirror cron on Antonello Pro that filters Antonello's `~/.claude/projects/-Users-nuzantara/memory/` (excluding `Subhi/` folder, `discovery_token_*`, `MEMORY_ARCHIVE`, secret regex matches) and pushes the result to the repo for `git pull` morning sync.
+**Architecture:** Local Claude Code CLI on Subhi's Mac (Subhi's own email + his own Claude Pro plan — independent from Antonello's MAX) + per-project `.claude/` config in a separate private repo `balizero/nuzantara-subhi` with a `zantara-onboarding.md` sub-agent and PreToolUse Bash guard hook + nightly memory mirror cron on Antonello Pro that filters Antonello's `~/.claude/projects/-Users-nuzantara/memory/` (excluding `Subhi/` folder, `discovery_token_*`, `MEMORY_ARCHIVE`, secret regex matches) and pushes the result to the repo for `git pull` morning sync.
 
 **Tech Stack:** macOS · zsh · git · Claude Code CLI v2.0+ · Node 20 · npm · brew · uv (Python tool installer) · LaunchAgent (launchd) · GitHub fine-grained PAT · Tailscale · NotebookLM CLI (`nlm`) · MCP servers (github, notebooklm-mcp, filesystem, fetch).
 
@@ -94,18 +94,11 @@ Save token to `~/.nuzantara-secrets.env` as `SUBHI_GITHUB_PAT=ghp_xxxx` (chmod 0
 
 Expected: PAT created, copied to secrets file.
 
-- [ ] **Step 2: Verify MAX plan #2 OAuth quota for Subhi**
+- [ ] **Step 2: Verify Subhi has his own Claude Pro plan ready**
 
-Run on Pro:
+Subhi has his own Claude Pro plan (his email, his account, his quota — independent from Antonello's MAX). Nothing to verify on Pro side; on his Mac, his first `claude` invocation will trigger the standard OAuth flow at `claude.ai/login`.
 
-```bash
-ls ~/.claude/token* 2>/dev/null
-security find-generic-password -s "Claude Code-credentials" -w | head -c 30 && echo "..."
-```
-
-Verify plan dashboard at https://claude.ai/account or Anthropic admin (subhi@balizero.com profile). If subhi has not yet logged in, this step is satisfied by ensuring the email exists in your Workspace and the MAX plan has 1+ free seat. Subhi's first `claude` login on his Mac claims that seat.
-
-Expected: free seat available, no current MAX plan #2 user.
+Expected: Subhi confirms his Pro plan is active before Day 1 (he can verify at https://claude.ai/account).
 
 - [ ] **Step 3: Create new repo `balizero/nuzantara-subhi`**
 
@@ -1754,7 +1747,7 @@ Antonello sudah pre-setup beberapa hal:
 
 - Akun GitHub `subhi@balizero.com` collaborator di `balizero/nuzantara` + `balizero/nuzantara-subhi`
 - NotebookLM share NB-1, NB-2, NB-9, NB-OPS ke email kamu
-- MAX plan Claude Code dengan slot kamu
+- Akun Claude Pro punya kamu sendiri (email kamu) — siap untuk login pertama
 - Tailscale tailnet `balizero` (kamu sudah join via laptop kamu sebelumnya)
 
 Sekarang kamu install client-side: Claude Code CLI, nlm CLI, dan join
@@ -1847,7 +1840,7 @@ Tutor harus jawab:
 | Error                                 | Fix                                                                                              |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | `claude: command not found`           | Re-source `~/.zshrc`, atau `npm install -g @anthropic-ai/claude-code` ulang                      |
-| OAuth login Claude fail               | Cek koneksi internet, retry. Kalau persisten, ping Antonello — mungkin MAX plan slot belum ready |
+| OAuth login Claude fail               | Cek koneksi internet, retry. Login pakai email Pro kamu di browser yang kebuka. Kalau persisten, ping Antonello |
 | `/agent zantara-onboarding not found` | CWD kamu salah. `cd ~/Projects/nuzantara-subhi` dulu                                             |
 | Tutor jawab dalam bahasa Inggris      | Sub-agent prompt salah load. Restart Claude session, retry                                       |
 | `nlm login` fail                      | Google MFA — coba `nlm login --clear` lalu login lagi                                            |
@@ -2087,7 +2080,7 @@ fi
 
 # === 12. Claude OAuth login ===
 BAHASA "Login Claude Code (akan buka browser)..."
-INFO "Login pakai subhi@balizero.com — ini claim slot MAX plan dari Antonello"
+INFO "Login pakai email Pro kamu — akun Claude Pro kamu sendiri, bukan plan Antonello"
 cd "$HOME/Projects/nuzantara-subhi"
 # Trigger OAuth — sends user to browser, then exits
 claude --version  # Just to verify it runs
@@ -2239,8 +2232,7 @@ seeded, install script gist-hosted, dry-run on Mini OK).
   ```bash
   gh api -X GET '/user/keys' | head -20  # check PAT separately in GH UI
   ```
-- [ ] Verify MAX plan #2 has free slot:
-  - Anthropic admin → Subscription → check seat usage
+- [ ] Confirm with Subhi his Claude Pro plan is active (his own account, his email — independent from Antonello's MAX). No Antonello-side verification needed.
 - [ ] Verify Tailscale ACL still blocks Subhi → Pro:
   ```bash
   # Mock as Subhi:
@@ -2352,7 +2344,7 @@ seeded, install script gist-hosted, dry-run on Mini OK).
 | Failure point                      | Recovery                                                                                        |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Install script crashes mid-step    | Re-run from same point — most steps are idempotent                                              |
-| OAuth Claude fails                 | Check MAX plan slot, retry. If >3 fails, fall back to Subhi's personal Google + buy his own MAX |
+| OAuth Claude fails                 | Subhi logs in with his own Pro email at the browser prompt. If browser doesn't open: retry, check Internet, ping Antonello. |
 | Tutor responds wrong language      | Edit sub-agent prompt, push, Subhi `git pull && claude` restart                                 |
 | Subhi can't run any commands       | Antonello checks Tailscale ACL — if Subhi accidentally got Pro access, revoke immediately       |
 | Anything taking >2x estimated time | Stop, screenshot state, defer to async fix                                                      |

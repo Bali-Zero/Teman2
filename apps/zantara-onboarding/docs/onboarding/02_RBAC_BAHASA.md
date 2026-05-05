@@ -128,8 +128,8 @@ tanpa NB read tutor cuma chatbot generik.
 
 ## Claude Code OAuth
 
-Subhi punya **MAX subscription sendiri** (terpisah dari 3 plan
-Antonello). Token OAuth disimpan di Keychain MacBook Subhi.
+Subhi punya **Claude Pro subscription sendiri** (akun email kamu, terpisah
+dari 3 plan MAX Antonello). Token OAuth disimpan di Keychain MacBook Subhi.
 
 JANGAN PERNAH:
 
@@ -173,8 +173,8 @@ luar tim = pelanggaran.
 
 **T: Boleh saya pakai ChatGPT/Copilot bareng Claude?**
 J: Boleh, tapi tidak paste secret/code production ke layanan eksternal
-yang tidak Bali Zero (mis. ChatGPT free tier). Claude Code MAX OK
-karena official + ada agreement.
+yang tidak Bali Zero (mis. ChatGPT free tier). Claude Code Pro kamu OK
+karena official + akun atas nama kamu sendiri.
 
 **T: Saya kerja remote sehari, OK?**
 J: OK occasional. Default kantor Kuta. Komunikasi via WA + standup
