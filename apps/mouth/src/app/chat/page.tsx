@@ -45,7 +45,13 @@ export default function ChatPage() {
     setImageModalOpen
   } = useChatPage();
 
-  // 2. Gestione dello stato di caricamento iniziale (Blocking UI)
+  // 2. Refs e stati locali per componenti UI
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  const attachMenuRef = React.useRef<HTMLDivElement>(null);
+  const [showAttachMenu, setShowAttachMenu] = React.useState(false);
+
+  // 3. Gestione dello stato di caricamento iniziale (Blocking UI)
   if (isInitialLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
@@ -83,8 +89,8 @@ export default function ChatPage() {
           userAvatar={userAvatar}
           showUserMenu={showUserMenu}
           onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
-          userMenuRef={null as any}
-          avatarInputRef={null as any}
+          userMenuRef={userMenuRef}
+          avatarInputRef={avatarInputRef}
           onAvatarUpload={handleAvatarChange}
           onShowToast={showToast}
         />
@@ -112,15 +118,17 @@ export default function ChatPage() {
           setShowImagePrompt={(val) => chatInput.setImageGenPrompt(val ? " " : "")}
           onSend={handleSend}
           onImageGenerate={() => setImageModalOpen(true)}
-          showAttachMenu={false}
-          setShowAttachMenu={() => {}}
-          attachMenuRef={null as any}
+          showAttachMenu={showAttachMenu}
+          setShowAttachMenu={setShowAttachMenu}
+          attachMenuRef={attachMenuRef}
           fileInputRef={fileInputRef}
           onFileChange={async (e) => chatInput.handleImageAttach(e)}
           isRecording={false}
           recordingTime={0}
           onStartRecording={() => {}}
           onStopRecording={() => {}}
+          attachedImages={chatInput.attachedImages}
+          onRemoveImage={chatInput.removeAttachedImage}
         />
       </div>
 
