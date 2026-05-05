@@ -29,6 +29,12 @@ BLOCKED_ACTIONS: frozenset[str] = frozenset({
 HITL_ONLY_ACTIONS: frozenset[str] = frozenset({
     # Organism restart loop amplification risk — Telegram approval mandatory.
     "restart_agent",
+    # Codex 5.5 deep agentic edit — broad blast radius, approval mandatory.
+    "codex_xhigh_fix",
+    # Codex image gen — public-facing, editorial review gate.
+    "codex_image_gen",
+    # Codex visual dispatch (15 assets) — public-facing bundle, editorial gate.
+    "codex_visual_dispatch",
 })
 
 ALLOWED_L2_ACTIONS: frozenset[str] = frozenset({
@@ -36,6 +42,10 @@ ALLOWED_L2_ACTIONS: frozenset[str] = frozenset({
     "ack_outbox_event",
     "quarantine_alert",
     "prune_consumed_outbox",
+    # Whitelist V2: enqueue is non-destructive (queue write only; runner
+    # processes at 22:00 with its own safeguards: 8h timeout, sandbox
+    # workspace-write, branch-isolated, no auto-merge).
+    "codex_overnight_queue",
 })
 
 

@@ -110,19 +110,38 @@ class RiskLevel(str, Enum):
 
 
 class RequestedAction(str, Enum):
-    """Whitelist V1 — only these 4 actions are safe enough for L2 autonomous.
+    """FAD whitelist — actions safe enough to be proposed by Consiglio + executed.
+
+    Whitelist V1 (PR #393) — 4 idempotent maintenance ops on local resources:
+        CLEANUP_LOG, ACK_OUTBOX_EVENT, QUARANTINE_ALERT, PRUNE_CONSUMED_OUTBOX
+
+    Whitelist V2 (this PR) — 4 Codex 5.5 capabilities (OAuth Pro $200, no API key):
+        CODEX_XHIGH_FIX        — HITL_ONLY: deep agentic fix via Codex gpt-5.5 xhigh
+        CODEX_OVERNIGHT_QUEUE  — ALLOWED_L2: enqueue task for overnight runner
+                                 (non-destructive: queue write only; runner has
+                                 its own safeguards)
+        CODEX_IMAGE_GEN        — HITL_ONLY: single-image gpt-image-2 OAuth
+        CODEX_VISUAL_DISPATCH  — HITL_ONLY: 15-asset bundle for BZ dispatch
 
     BLOCKED:
         cleanup_zombie_plist — replicates P0-3 threat model (2026-04-29
                                51/54 plist corruption, producer unidentified).
     HITL_ONLY (requires approval even in production):
         restart_agent        — organism restart loop amplification risk.
+        codex_xhigh_fix      — deep code edit with potential blast radius.
+        codex_image_gen      — public-facing artifact, editorial gate.
+        codex_visual_dispatch — public-facing bundle, editorial gate.
     """
 
     CLEANUP_LOG = "cleanup_log"
     ACK_OUTBOX_EVENT = "ack_outbox_event"
     QUARANTINE_ALERT = "quarantine_alert"
     PRUNE_CONSUMED_OUTBOX = "prune_consumed_outbox"
+    # Whitelist V2 — Codex 5.5 capabilities (OAuth, no API key)
+    CODEX_XHIGH_FIX = "codex_xhigh_fix"
+    CODEX_OVERNIGHT_QUEUE = "codex_overnight_queue"
+    CODEX_IMAGE_GEN = "codex_image_gen"
+    CODEX_VISUAL_DISPATCH = "codex_visual_dispatch"
 
 
 class AlertInput(BaseModel):

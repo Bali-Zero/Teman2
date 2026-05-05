@@ -560,6 +560,11 @@ class FederationAlertDaemon:
         Keeps payload minimal — full alert context lives in the DB row,
         but Consiglio voters only need enough to vote on whether the
         action is appropriate for the alert.
+
+        The prompt includes the full whitelist (V1 + V2) so voters can
+        compare the proposed action against alternatives. A voter that
+        thinks ``codex_xhigh_fix`` is overkill can lower confidence and
+        hint ``codex_overnight_queue`` would be a better fit.
         """
         action = getattr(proposal, "requested_action", None) or "(none)"
         alert_type = getattr(proposal, "alert_type", "alert")
@@ -571,7 +576,26 @@ class FederationAlertDaemon:
             f"severity: {severity}\n"
             f"requested_action: {action}\n"
             f"target_file: {target_file}\n\n"
+            "Available action whitelist (V2):\n"
+            "  V1 maintenance ops (autonomous L2):\n"
+            "    - cleanup_log: delete old log files in ~/logs/**\n"
+            "    - ack_outbox_event: ack a stuck events_outbox row\n"
+            "    - quarantine_alert: park alert without further action\n"
+            "    - prune_consumed_outbox: GC consumed outbox rows\n"
+            "  V2 Codex 5.5 capabilities (OAuth Pro $200, no API key):\n"
+            "    - codex_xhigh_fix (HITL_ONLY): deep agentic fix via Codex "
+            "gpt-5.5 xhigh; use for complex bugs needing code changes spanning "
+            "multiple files\n"
+            "    - codex_overnight_queue (autonomous L2): enqueue spec for "
+            "overnight runner; use for non-urgent feature/refactor that can wait "
+            "until 22:00 WITA\n"
+            "    - codex_image_gen (HITL_ONLY): single image via gpt-image-2; "
+            "use for isolated artifact (hero, story slide, social card)\n"
+            "    - codex_visual_dispatch (HITL_ONLY): full 15-asset bundle for "
+            "BZ Instagram dispatch; use ONLY on editorial dispatch days\n\n"
             "Vote whether the requested_action is appropriate for the alert. "
+            "If you would propose a different action, lower the confidence "
+            "and indicate the alternative in your reasoning. "
             'Respond with JSON: {"claims":[{"key":"action_appropriate",'
             '"value":"yes|no","confidence":0.0-1.0}]}'
         )

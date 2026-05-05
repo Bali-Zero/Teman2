@@ -1,7 +1,8 @@
-"""Whitelist V1 actions for the Federation Alert Dispatcher.
+"""Whitelist V2 actions for the Federation Alert Dispatcher.
 
-Per spec: only 4 actions are safe enough for L2 autonomous in production
-mode. Two patterns are deliberately BLOCKED or HITL_ONLY (see registry).
+V1 (4 actions) — idempotent maintenance ops on local resources.
+V2 (4 new actions, this PR) — Codex 5.5 capabilities (OAuth Pro $200,
+no API key). See registry.py for ALLOWED_L2 / HITL_ONLY routing.
 
 Pattern (adapted from Robusta's @action decorator under MIT, see:
 https://github.com/robusta-dev/robusta):
@@ -20,6 +21,11 @@ from __future__ import annotations
 from backend.services.federation_alerts.actions import (  # noqa: F401
     ack_outbox_event,
     cleanup_log,
+    # Whitelist V2 — Codex 5.5 capabilities (OAuth Pro, no API key)
+    codex_image_gen,
+    codex_overnight_queue,
+    codex_visual_dispatch,
+    codex_xhigh_fix,
     prune_consumed_outbox,
     quarantine_alert,
 )
