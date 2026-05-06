@@ -154,21 +154,40 @@ def nlm_source_add_text(target_nb: str, text: str, title: str) -> bool:
 # -----------------------------------------------------------------------------
 
 def do_merge(source_nb: str, target_nb: str) -> dict:
-    """Copy all sources from source_nb to target_nb, then rename source_nb."""
+    """Copy all sources from source_nb to target_nb, then rename source_nb.
+
+    Resume-safe: deduplicates against URLs already present in target_nb so
+    a partial prior run can be resumed without producing duplicates.
+    """
     sources = nlm_source_list(source_nb)
     if not sources:
         append_audit_log(source_nb, "MERGE_SKIP", f"target={target_nb} reason=no_sources")
         return {"copied": 0, "failed": 0, "renamed": False}
 
     src_title = nlm_get_title(source_nb) or "?"
-    print(f"  merge {source_nb[:8]}… ({len(sources)} src) → {target_nb[:8]}…")
+    # Build dedup set: URLs already in target NB
+    target_existing = nlm_source_list(target_nb)
+    target_urls = {s["url"] for s in target_existing if s.get("url")}
+    target_titles = {s.get("title", "").strip().lower() for s in target_existing}
+    print(f"  merge {source_nb[:8]}… ({len(sources)} src) → {target_nb[:8]}… (target already has {len(target_existing)} src; dedup pool {len(target_urls)} urls)", flush=True)
 
     copied = 0
     failed = 0
+    skipped = 0
     for i, s in enumerate(sources, start=1):
         stype = s.get("type", "")
         url = s.get("url")
         title = s.get("title", "")[:200]
+        # Dedup: skip if already in target
+        if url and url in target_urls:
+            skipped += 1
+            if i % 25 == 0:
+                print(f"    progress {i}/{len(sources)} (copied={copied} skipped={skipped} failed={failed})", flush=True)
+            continue
+        if not url and title.strip().lower() in target_titles:
+            skipped += 1
+            continue
+
         if url:
             ok = nlm_source_add_url(target_nb, url, title=title)
         elif stype == "generated_text":
@@ -181,6 +200,9 @@ def do_merge(source_nb: str, target_nb: str) -> dict:
             ok = False
         if ok:
             copied += 1
+            if url:
+                target_urls.add(url)
+            target_titles.add(title.strip().lower())
         else:
             failed += 1
             append_audit_log(
@@ -189,8 +211,8 @@ def do_merge(source_nb: str, target_nb: str) -> dict:
                 f"target={target_nb} source_id={s['id']} type={stype} title={title[:80]}",
             )
         if i % 25 == 0:
-            print(f"    progress {i}/{len(sources)} (copied={copied} failed={failed})")
-        time.sleep(0.5)  # gentle throttle
+            print(f"    progress {i}/{len(sources)} (copied={copied} skipped={skipped} failed={failed})", flush=True)
+        time.sleep(0.3)  # gentle throttle
 
     # Rename source NB to mark merge done
     new_name = f"[MERGED-INTO-{target_nb[:8]}-{TODAY}] {src_title}"
@@ -198,9 +220,10 @@ def do_merge(source_nb: str, target_nb: str) -> dict:
     append_audit_log(
         source_nb,
         "MERGE_DONE",
-        f"target={target_nb} copied={copied}/{len(sources)} renamed={renamed}",
+        f"target={target_nb} copied={copied}/{len(sources)} skipped={skipped} renamed={renamed}",
     )
-    return {"copied": copied, "failed": failed, "renamed": renamed, "total": len(sources)}
+    print(f"  done {source_nb[:8]}…: copied={copied} skipped={skipped} failed={failed} renamed={renamed}", flush=True)
+    return {"copied": copied, "failed": failed, "skipped": skipped, "renamed": renamed, "total": len(sources)}
 
 
 # -----------------------------------------------------------------------------

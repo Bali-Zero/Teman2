@@ -285,3 +285,32 @@
 - 2026-05-06T18:11:54.446727+00:00 | uuid-AA | SKIP_ALREADY_ARCHIVED | [ARCHIVED-2026-05-07] Foo
 - 2026-05-06T18:11:55.129866+00:00 | uuid-00 | APOPTOSIS_DONE | [ARCHIVED-2026-05-07] 
 - 2026-05-06T18:11:55.768660+00:00 | uuid-01 | APOPTOSIS_DONE | [ARCHIVED-2026-05-07] 
+- 2026-05-06T19:36:41.156990+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=f261793b-f50a-41c5-b13a-1774013d52b6 type=web_page title=Digital initiatives for indigenous languages - UNESCO Digital Library
+- 2026-05-06T19:37:06.737830+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=308067e9-a6c4-44df-922f-01089b7bea05 type=web_page title=Faculty of Humanities Udayana University Successfully Held the 18th SNBI: Highli
+- 2026-05-06T19:37:27.475283+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=f31980bd-49d0-4f5a-97dc-b32a5b039c83 type=web_page title=GDSS for Bali Tourism Development Using AHP | PDF - Scribd
+- 2026-05-06T19:37:48.211373+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=b6022758-213c-446d-adf3-4f774a328717 type=web_page title=Heritage governance in Bali and Ifugao ricescapes: exploring the dynamic roles o
+- 2026-05-06T19:41:17.962139+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=308067e9-a6c4-44df-922f-01089b7bea05 type=web_page title=Faculty of Humanities Udayana University Successfully Held the 18th SNBI: Highli
+- 2026-05-06T19:41:20.288541+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=f31980bd-49d0-4f5a-97dc-b32a5b039c83 type=web_page title=GDSS for Bali Tourism Development Using AHP | PDF - Scribd
+- 2026-05-06T19:41:22.789246+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=b6022758-213c-446d-adf3-4f774a328717 type=web_page title=Heritage governance in Bali and Ifugao ricescapes: exploring the dynamic roles o
+- 2026-05-06T19:44:38.051382+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=b0bdec99-65ee-4386-ac07-d7348d617fce type=web_page title=Leveraging UNESCO Normative Instruments for an Ethical Generative AI Use of Indi
+- 2026-05-06T19:47:25.376732+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=e6af8966-4261-4b80-be90-e3aca3d1eed8 type=web_page title=New report and guidelines for indigenous data sovereignty in artificial intellig
+- 2026-05-06T19:48:43.775947+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=023126db-95b8-48ab-bee6-904c083f9673 type=pdf title=Pacific Arts - eScholarship.org
+- 2026-05-06T19:48:46.045889+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=0d9618cc-4c67-434c-ad9c-a66444964578 type=web_page title=Panca Datu Logic Framework for Sustainability Evaluation: Conceptual Development
+- 2026-05-06T19:49:46.007017+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=a1516fbd-61ff-4a55-947c-13ffd0d95b28 type=pdf title=Practicing Sovereignty - Digital Involvement in Times of Crises
+- 2026-05-06T19:51:31.941382+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=f2e4d0c4-e5f9-44d6-891f-03cd139ac52f type=web_page title=Preserving Bali's Cultural & Literary History through the Palm Leaf Project
+- 2026-05-06T19:53:03.049733+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_SOURCE_FAIL | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd source_id=ca39d128-55ad-47fc-9e95-3446ee3551d1 type=web_page title=Sistem Wariga Bali: Pengetahuan Waktu | PDF - Scribd
+- 2026-05-06T19:57:14.009968+00:00 | 201b4b94-deda-40a9-9fcb-0e67a3f81e52 | MERGE_DONE | target=d2a05271-2f65-4c02-a44d-eefeb7c7f7cd copied=61/150 skipped=79 renamed=True
+- 2026-05-06T20:17:24.998473+00:00 | 50396b3e-b2f9-4903-8df5-65c2b9709eba | MERGE_DONE | target=dc5d01cd-e99f-4c8f-aae4-75060b43d0de copied=124/128 skipped=4 renamed=True
+- 2026-05-06T20:24:23.749635+00:00 | 917a1300-61ac-4fdb-8d94-8a42503c0442 | MERGE_DONE | target=dc5d01cd-e99f-4c8f-aae4-75060b43d0de copied=48/49 skipped=1 renamed=True
+- 2026-05-06T20:33:42.540424+00:00 | d97ff70b-9c14-42a3-8813-5416039b24f7 | MERGE_DONE | target=dc5d01cd-e99f-4c8f-aae4-75060b43d0de copied=44/44 skipped=0 renamed=True
+- 2026-05-06T20:33:45.412511+00:00 | 4a8f3162-6f63-4876-9fe9-642dd9ae0606 | DELETE_RENAMED | [ARCHIVED-DELETE-2026-05-07] Analisi Video AI Agency
+- 2026-05-06T20:33:48.023758+00:00 | 46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab | DELETE_RENAMED | [ARCHIVED-DELETE-2026-05-07] NB-NLM-ELEVATION — SOTA research & brainstorm 2026-04-25
+- 2026-05-06T20:33:48.911765+00:00 | 552072ab-7f09-4cda-a13c-0988f414d36d | DELETE_SKIP | label=NB-SUBHI Onboarding reason=not_found_live
+- 2026-05-06T20:33:49.814370+00:00 | 9a866adc-988c-407f-9920-60dabf5ab164 | DELETE_SKIP | label=NB-SUBHI Misi reason=not_found_live
+- 2026-05-06T20:33:50.760303+00:00 | da94d615-0140-4b46-8484-f24a423a91ce | DELETE_SKIP | label=NB-CRM-VIP reason=not_found_live
+- 2026-05-06T20:33:53.369246+00:00 | 9530b58d-cb7b-4bda-b5c2-c68e723b8118 | DELETE_FAIL | [ARCHIVED-DELETE-2026-05-07] Indonesia Restaurant Investment and Regulatory Guide 2026
+- 2026-05-06T20:33:54.283805+00:00 | aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000036 | STUB_NOT_LIVE | label=Foreign Investment stub
+- 2026-05-06T20:34:54.701247+00:00 | 9530b58d-cb7b-4bda-b5c2-c68e723b8118 | DELETE_BLOCKED_PERMISSION | Indonesia Restaurant — PERMISSION_DENIED on rename, NB not owned by us
+- 2026-05-06T20:34:54.701247+00:00 | 552072ab-7f09-4cda-a13c-0988f414d36d | DELETE_VERIFIED_NOT_LIVE | NB-SUBHI Onboarding — already removed from NLM (no live entry)
+- 2026-05-06T20:34:54.701247+00:00 | 9a866adc-988c-407f-9920-60dabf5ab164 | DELETE_VERIFIED_NOT_LIVE | NB-SUBHI Misi — already removed from NLM
+- 2026-05-06T20:34:54.701247+00:00 | da94d615-0140-4b46-8484-f24a423a91ce | DELETE_VERIFIED_NOT_LIVE | NB-CRM-VIP — already removed from NLM
