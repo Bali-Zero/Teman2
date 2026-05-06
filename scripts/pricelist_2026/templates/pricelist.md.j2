@@ -1,0 +1,57 @@
+# Bali Zero — Price List 2026
+
+**Effective:** {{ effective_date }}
+**Version:** {{ version }}
+**Last updated:** {{ last_updated }}
+
+> {{ contact.email }} · {{ contact.whatsapp }} · {{ contact.website }} · {{ contact.location }}
+
+![Bali Zero](./assets/2026/logo_circle.png)
+
+---
+
+## Contents
+
+{% for section in sections -%}
+- **{{ section.roman }}.** [{{ section.title }}](#{{ section.anchor }})
+{% endfor %}
+
+---
+
+{% for section in sections %}
+<a id="{{ section.anchor }}"></a>
+
+## {{ section.roman }}. {{ section.title }}
+
+![{{ section.title }}](./assets/2026/heros/{{ section.hero_basename }}.png)
+
+_{{ section.intro }}_
+
+{% if section.subsections %}
+{% for sub in section.subsections %}
+### {{ sub.title }}
+
+| Service | Description | Price |
+| --- | --- | --- |
+{% for svc in sub.services -%}
+| **{{ svc.name }}** | {{ svc.description_en }}{% if svc.notes %} _({{ svc.notes }})_{% endif %} | {% if svc.tier_range %}{{ svc.tier_range[0] }} – {{ svc.tier_range[1] }}{% else %}{{ svc.price }}{% endif %} |
+{% endfor %}
+
+{% endfor %}
+{% else %}
+| Service | Description | Price |
+| --- | --- | --- |
+{% for svc in section.services -%}
+| **{{ svc.name }}** | {{ svc.description_en }}{% if svc.notes %} _({{ svc.notes }})_{% endif %} | {% if svc.tier_range %}{{ svc.tier_range[0] }} – {{ svc.tier_range[1] }}{% else %}{{ svc.price }}{% endif %} |
+{% endfor %}
+{% endif %}
+
+---
+{% endfor %}
+
+## Get in touch
+
+- Website: <https://{{ contact.website }}>
+- Email: <{{ contact.email }}>
+- WhatsApp: [{{ contact.whatsapp }}]({{ contact.wa_link }})
+- Office: {{ contact.location }}

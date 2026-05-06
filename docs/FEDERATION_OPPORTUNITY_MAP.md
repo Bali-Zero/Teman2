@@ -115,7 +115,7 @@ Congiunzioni che generano soldi direttamente.
 | Componente           | Stato      | Dove                                                                           |
 | -------------------- | ---------- | ------------------------------------------------------------------------------ |
 | PricingTool          | ESISTE     | `pricing.py` — `calculate_pricing`, `get_all_prices`, `search_service_pricing` |
-| Catalogo prezzi      | ESISTE     | `bali_zero_official_prices_2025.json`                                          |
+| Catalogo prezzi      | ESISTE     | `bali_zero_official_prices_2026.json`                                          |
 | Email send           | ESISTE     | Zoho Mail API via `zoho_email_service.py`                                      |
 | PDF generation       | NON ESISTE | Nessun template preventivo                                                     |
 | Google Docs template | NON ESISTE | gws non integrato per Docs                                                     |
@@ -1186,7 +1186,7 @@ Congiunzioni che danno visibilità sul mercato — sapere cosa fanno i competito
 
 | Componente                   | Stato      | Dove                                                         |
 | ---------------------------- | ---------- | ------------------------------------------------------------ |
-| Bali Zero pricing catalog    | ESISTE     | `bali_zero_official_prices_2025.json`, PricingTool           |
+| Bali Zero pricing catalog    | ESISTE     | `bali_zero_official_prices_2026.json`, PricingTool           |
 | Competitor report con prezzi | ESISTE     | `COMPETITOR_INTELLIGENCE_2026.md` include pricing comparison |
 | Intel scraper                | ESISTE     | Può monitorare pagine pricing competitor                     |
 | Gemini Search grounding      | ESISTE     | `ai-dispatch.sh search` — cerca prezzi con fonti             |

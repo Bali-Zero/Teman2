@@ -30,12 +30,12 @@ SAMPLE_PRICES = {
             {"code": "E28A", "name": "Investor KITAS", "price_idr": 20_000_000},
         ],
     },
-    "contact_info": {"email": "info@balizero.com"},
+    "contact_info": {"email": "zero@balizero.com"},
     "disclaimer": {},
 }
 
 SEARCH_RESULT = {
-    "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+    "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
     "search_query": "kitas",
     "results": {
         "kitas_permits": [{"code": "E28A", "name": "Investor KITAS", "price_idr": 20_000_000}]
@@ -137,19 +137,24 @@ class TestPricingJsonConsistency:
 
     def test_json_loads_successfully(self, real_pricing_service):
         assert real_pricing_service.loaded, (
-            "bali_zero_official_prices_2025.json must exist and load"
+            "bali_zero_official_prices_2026.json must exist and load"
         )
 
     def test_all_categories_present(self, real_pricing_service):
+        # 2026 schema: 9 categories. ``visa_extensions`` was dropped
+        # (C1 Tourism Extension moved into single_entry_visas);
+        # ``urgent_services`` renamed to ``urgent_processing``;
+        # ``tax_accounting`` and ``consultant_services`` are NEW.
         expected_categories = [
             "single_entry_visas",
             "multiple_entry_visas",
-            "visa_extensions",
             "kitas_permits",
             "kitap_permits",
+            "tax_accounting",
             "company_services",
+            "consultant_services",
             "other_process",
-            "urgent_services",
+            "urgent_processing",
         ]
         services = real_pricing_service.prices.get("services", {})
         for cat in expected_categories:

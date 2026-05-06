@@ -31,7 +31,7 @@ KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset({
 
 # Map our VisaType codes to substrings likely to appear in the
 # price JSON keys. Names reflect the JSON shape exactly (see
-# backend/data/bali_zero_official_prices_2025.json). Offshore
+# backend/data/bali_zero_official_prices_2026.json). Offshore
 # variants are preferred (standard fresh-applicant path).
 _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
     VisaType.C1:             ("C1 Tourism",),

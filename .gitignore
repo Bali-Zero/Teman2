@@ -226,6 +226,10 @@ docs/generated/
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
 
+# Allow pricing assets (heros + icons generated via codex $imagegen)
+!docs/pricing/assets/**/*.png
+!docs/pricing/assets/**/*.jpg
+
 coverage.json
 # Auto-generated Playwright extensions
 .playwright-mcp/
@@ -636,3 +640,9 @@ data/seo_cell/*.db-shm
 # Transcripts contain `(see ~/.codex/AGENTS.md)` references that docs_audit.py
 # parses as broken markdown links and fails Docs Guardian on every PR.
 docs/codex-reviews/
+
+# Bali Zero Price List 2026 — generated outputs live outside the repo on ~/Desktop/
+# Source of truth: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+# Generator:       scripts/pricelist_2026/
+# Versioned MD:    docs/pricing/Bali_Zero_Price_List_2026.md
+# Working assets:  ~/Desktop/Bali_Zero_Price_List_2026_assets/

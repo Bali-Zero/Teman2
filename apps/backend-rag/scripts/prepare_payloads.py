@@ -2,8 +2,13 @@
 """
 Prepare Payloads for Qdrant REST API Upload
 -------------------------------------------
-Reads bali_zero_official_prices_2025.json, generates embeddings,
+Reads bali_zero_official_prices_2026.json, generates embeddings,
 and formats data for Qdrant REST API upsert endpoint.
+
+The 2026 schema has one extra nesting level for ``tax_accounting``
+(sub-blocks: ``monthly_tax_basic`` / ``monthly_tax_bundled`` /
+``annual_basic_packages`` / ``annual_standalone``). ``flatten_services``
+descends into those sub-blocks so each tier becomes its own embedding.
 """
 
 import hashlib
@@ -21,7 +26,7 @@ load_dotenv()
 # Configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DATA_PATH = (
-    Path(__file__).parent.parent / "backend" / "data" / "bali_zero_official_prices_2025.json"
+    Path(__file__).parent.parent / "backend" / "data" / "bali_zero_official_prices_2026.json"
 )
 OUTPUT_PATH = Path(__file__).parent / "ready_to_curl.json"
 COLLECTION_NAME = "bali_zero_pricing"
@@ -45,11 +50,26 @@ def generate_semantic_text(
     Returns:
         Rich markdown formatted text
     """
+    # 2026: use ``tier_range`` when ``price`` is empty.
+    price = (item_data.get("price") or "").strip()
+    if not price:
+        tier_range = item_data.get("tier_range")
+        if isinstance(tier_range, (list, tuple)) and len(tier_range) == 2:
+            low = (tier_range[0] or "").strip().replace("IDR", "").strip()
+            high = (tier_range[1] or "").strip().replace("IDR", "").strip()
+            if low and high:
+                price = f"Rp {low} – {high}"
+    if not price:
+        price = "Contact for quote"
+
     parts = [
         f"# {item_name}",
         f"**Category**: {category.replace('_', ' ').title()}",
-        f"**Price**: {item_data.get('price', 'Contact for quote')}",
+        f"**Price**: {price}",
     ]
+
+    if item_data.get("description_en"):
+        parts.append(f"**Description**: {item_data['description_en']}")
 
     if item_data.get("duration"):
         parts.append(f"**Duration**: {item_data['duration']}")
@@ -63,9 +83,9 @@ def generate_semantic_text(
     parts.append("")
     parts.append("---")
     parts.append("")
-    parts.append(f"**Contact**: {contact_info.get('email', 'info@balizero.com')}")
+    parts.append(f"**Contact**: {contact_info.get('email', 'zero@balizero.com')}")
     parts.append(f"**WhatsApp**: {contact_info.get('whatsapp', '')}")
-    parts.append(f"**Location**: {contact_info.get('location', 'Canggu, Bali, Indonesia')}")
+    parts.append(f"**Location**: {contact_info.get('location', 'Kerobokan, Bali, Indonesia')}")
 
     return "\n".join(parts)
 
@@ -83,12 +103,23 @@ def flatten_services(data: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Flatten nested services structure into individual items.
 
+    The 2026 schema introduces ``tax_accounting`` whose value is a dict of
+    sub-blocks (``monthly_tax_basic`` / ``monthly_tax_bundled`` / ...),
+    each of which is itself a ``{name: entry}`` map. Descend one level
+    deeper for those — and detect them generically by checking whether the
+    inner dict's values look like service entries (have ``price`` or
+    ``tier_range``) instead of being entries themselves.
+
     Returns:
         List of dicts with: name, category, data
     """
-    items = []
+    items: list[dict[str, Any]] = []
     services = data.get("services", {})
-    contact_info = data.get("contact_info", {})
+    # 2026 contact lives under ``metadata.contact``.
+    contact_info = data.get("contact_info") or data.get("metadata", {}).get("contact", {})
+
+    def _is_service_entry(d: dict[str, Any]) -> bool:
+        return isinstance(d, dict) and ("price" in d or "tier_range" in d)
 
     for category, category_items in services.items():
         if not isinstance(category_items, dict):
@@ -96,6 +127,24 @@ def flatten_services(data: dict[str, Any]) -> list[dict[str, Any]]:
 
         for item_name, item_data in category_items.items():
             if not isinstance(item_data, dict):
+                continue
+
+            # Sub-block detection: dict of dicts where the inner values
+            # ARE service entries (this matches ``tax_accounting`` in 2026).
+            if (
+                not _is_service_entry(item_data)
+                and item_data
+                and all(_is_service_entry(v) for v in item_data.values())
+            ):
+                for sub_name, sub_entry in item_data.items():
+                    items.append(
+                        {
+                            "name": sub_name,
+                            "category": f"{category}/{item_name}",
+                            "data": sub_entry,
+                            "contact_info": contact_info,
+                        }
+                    )
                 continue
 
             items.append(
