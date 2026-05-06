@@ -35,7 +35,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 ### Architecture — Monorepo
 
 <!-- DOCSYNC:LIVING_ORGANS_START -->
-**Apps:** 24 · **Packages:** 5
+**Apps:** 23 · **Packages:** 5
 
 | App | Ruolo |
 | --- | ----- |
@@ -58,7 +58,6 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `nuzantara-mcp-browser` | FastMCP server exposing Nuzantara's stealth Playwright browser manager |
 | `openclaw-hgt-coordinator` |  |
 | `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
-| `osint-nexus` |  |
 | `osint-nexus-ui` |  |
 | `team-agent` |  |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |

@@ -40,7 +40,7 @@ nuzantara/
 - Backend: FastAPI · 257 routers · 541 services
 - Vector DB: Qdrant · 12 collections · 104,154 documents
 - Knowledge Graph: 108,068 nodes · 242,827 edges
-- Apps: 24 · Packages: 5
+- Apps: 23 · Packages: 5
 - Version: 5.2.0
 <!-- DOCSYNC:TECH_STATS_END -->
 
