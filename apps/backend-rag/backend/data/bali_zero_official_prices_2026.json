@@ -25,13 +25,13 @@
         "icon_id": "visa-tourism"
       },
       "C1 Tourism Extension": {
-        "name": "C1 Tourism — Extension (+30 days)",
+        "name": "C1 Tourism — Extension (+60 days)",
         "price": "1.700.000 IDR",
         "tier_range": null,
-        "duration": "30 days",
+        "duration": "60 days",
         "validity": "",
         "notes": "",
-        "description_en": "Onshore extension of the C1 Tourism visa for an additional 30 days, processed at Indonesian immigration.",
+        "description_en": "Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.",
         "icon_id": "visa-extension"
       },
       "C2 Business": {
