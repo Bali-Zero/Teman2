@@ -135,7 +135,7 @@ SEED_SKILLS: list[dict[str, Any]] = [
             "If a price is missing, respond 'da verificare con il team'."
         ),
         "precondition": "User question has a cost/price shape.",
-        "success_criterion": "No invented numbers; all quoted prices traceable to bali_zero_official_prices_2025.json.",
+        "success_criterion": "No invented numbers; all quoted prices traceable to bali_zero_official_prices_2026.json.",
         "confidence": 0.9,
     },
 

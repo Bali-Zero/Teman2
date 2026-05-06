@@ -1,0 +1,43 @@
+{
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "metadata": {
+    "currency": "IDR",
+    "contact": {
+      "email": "zero@balizero.com",
+      "whatsapp": "+62 821 31 07 363",
+      "wa_link": "https://wa.me/628213107363",
+      "location": "Kerobokan, Bali, Indonesia",
+      "website": "balizero.com"
+    },
+    "last_updated": "2026-05-06"
+  },
+  "services": {
+    "single_entry_visas": {
+      "C1 Tourism": {
+        "name": "C1 Tourism",
+        "price": "2.300.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "60 days",
+        "notes": "",
+        "description_en": "Tourist visa, single entry, valid 60 days.",
+        "icon_id": "visa-tourism"
+      }
+    },
+    "tax_accounting": {
+      "monthly_tax_basic": {
+        "Tier 0-50": {
+          "name": "Monthly Tax Report — 0 to 50 transactions",
+          "price": "",
+          "tier_range": ["1.800.000 IDR", "2.000.000 IDR"],
+          "duration": "",
+          "validity": "monthly",
+          "notes": "",
+          "description_en": "Monthly bookkeeping for low volume.",
+          "icon_id": "tax-monthly"
+        }
+      }
+    }
+  }
+}
