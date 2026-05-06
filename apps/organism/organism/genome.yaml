@@ -44,7 +44,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 6e9c005167e71ff14606696a682449ca2c5e6f9b5957da8d998d2f0dc18f07fb
+checksum: 4e84c2e3e81ec628d306bccc1cec16e9930ba3c0f83f7434a0de98645f9ff777
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -914,5 +914,288 @@ organs:
   recovery_params:
     host: mini
     label: com.matagaruda.normalizer.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.canva_apply
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_canva_apply.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.canva-apply
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.connector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_connector.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.connector
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.dossier_compiler
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.dossier-compiler
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.draft_generator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_draft_generator.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.draft-generator
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: wr2.hardening
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_hardening.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.hardening
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.image_generator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_image_generator.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.image-generator
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: wr2.learner_nightly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_learner_nightly.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.learner-nightly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.measurer
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_measurer.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.measurer
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.pg_proxy
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 60
+  owner_module: apps/war-room/scripts/wr2_pg_proxy.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.pg-proxy
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: wr2.sla_worker
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_sla_worker.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.sla-worker
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.strategos
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/war-room/scripts/wr2_strategos.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.strategos
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.topic_selector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_topic_selector.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.topic-selector
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.trend_hunter
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_trend_hunter.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.trend-hunter
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.codex_autofix_ci
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/codex/codex_autofix_ci.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-autofix-ci
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.codex_overnight_runner
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex/codex_overnight_runner.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-overnight-runner
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.cost_advisor_daily_cap
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/cost-advisor/daily_cap.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cost-advisor-daily-cap
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.openclaw_children_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3900
+  owner_module: scripts/openclaw-children-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.openclaw-children-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.nb_intel_delta_watcher
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/nb-intel-delta-watcher.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.nb-intel-delta-watcher.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.sentinel_meta_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 4200
+  owner_module: scripts/sentinel-meta-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.sentinel-meta-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.federation_alert_dispatcher
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 180
+  owner_module: scripts/federation-alert-dispatcher.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.federation-alert-dispatcher
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: pro.secrets_sync_mini
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/mini-setup/secrets-sync-mini.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.secrets-sync-mini
   severity_on_silence: warning
   cicatrix_refs: []
