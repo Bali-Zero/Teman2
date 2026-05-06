@@ -26,7 +26,14 @@ VALID_CLUSTERS = {
 
 VALID_MATCH_STATUSES = {"exact", "fuzzy", "not_found"}
 VALID_DRIFT_STATUSES = {"consistent", "drifted", "unknown_via_mcp_failure"}
-VALID_PROPOSED_ACTIONS = {"KILL", "EXPORT", "ORPHAN_REVIEW"}
+# Initial manifest: KILL/EXPORT/ORPHAN_REVIEW.
+# After persist_transition during APOPTOSIS apply: APOPTOSIS_DONE / RENAME_FAIL.
+# Schema accepts both classes since the same field is reused as the persisted
+# transition record (same shape; status taxonomy widens after each apply run).
+VALID_PROPOSED_ACTIONS = {
+    "KILL", "EXPORT", "ORPHAN_REVIEW",
+    "APOPTOSIS_DONE", "RENAME_FAIL",
+}
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 

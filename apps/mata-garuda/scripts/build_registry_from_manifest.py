@@ -68,10 +68,29 @@ CLUSTER_INITIAL_STATUS: Final[dict[str, str]] = {
 }
 
 
+# Status values that the manifest's `proposed_action` field can carry as a
+# persisted transition (i.e. they came from execute_apoptosis.persist_transition,
+# not from the cluster initial mapping).
+PERSISTED_STATUSES: Final[set[str]] = {"APOPTOSIS_DONE", "RENAME_FAIL"}
+
+
 def _candidate_to_entry(c: dict, override_status: str | None = None) -> dict:
-    """Translate a manifest candidate into the registry entry shape."""
+    """Translate a manifest candidate into the registry entry shape.
+
+    Status resolution order (highest to lowest priority):
+    1. `override_status` explicitly passed in (current in-flight transition)
+    2. `proposed_action` field if it matches a persisted status (recovers
+       prior transitions from earlier `persist_transition` calls)
+    3. cluster initial mapping fallback (first-run path: KILL/EXPORT_PENDING)
+    """
     cluster = c["cluster"]
-    status = override_status or CLUSTER_INITIAL_STATUS[cluster]
+    proposed = c.get("proposed_action")
+    if override_status is not None:
+        status = override_status
+    elif proposed in PERSISTED_STATUSES:
+        status = proposed
+    else:
+        status = CLUSTER_INITIAL_STATUS[cluster]
     action_pending = c["proposed_action"] if status.endswith("_PENDING") else None
     return {
         "name": c.get("name_live") or c.get("name_snapshot") or "",
