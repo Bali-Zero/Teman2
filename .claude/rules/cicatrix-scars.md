@@ -5,6 +5,138 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: NLM feeder split-brain — base_worker redis-cli has no host arg, prod has two local Redis instances (2026-05-06)
+
+_Discovered: 2026-05-06 22:00 WITA during NB-INTEL pipeline resurrection ·
+Patched: same day, branch `fix/nlm-feeder-resurrect-2026-05-06` · Severity: P0 ·
+Status: code patched + Mini Redis configured; code activates on next merge to main_
+
+**TRAUMA:** `apps/mata-garuda/mata_garuda/workers/base_worker.py` at lines
+21–34 (pre-patch) shells out via `subprocess.run(["redis-cli", *args])` with
+no `-h` / `-p` flags, so every call connects to **127.0.0.1**. After the
+2026-05-02 Modo B reorganization the sentinel was moved to Mini and the
+feeder kept running on Pro. Both machines run their own brew-managed
+Redis at port 6379:
+
+* Pro Redis `garuda:alerts` — 258 entries, last fresh 2026-05-05 02:01 (frozen)
+* Mini Redis `garuda:alerts` — fresh today (latest 2026-05-06 02:01)
+
+The feeder consumed Pro's stale stream every hour for ~36h while NotebookLM
+saw `last delivered` of `2026-05-04T07:52:41Z`. Logs showed `processed=0,
+fed=0` and operator read it as "stream healthy, no new items" — actually
+"feeder pointing at the wrong Redis". The 753 nlm_fed entries in the local
+KB are all from the Pro stream, so dedup masks the divergence.
+
+Compounding fault: 2 transient `sqlite3.OperationalError: disk I/O error`
+out of 106 hourly runs because `KnowledgeBase.__init__` opened the connection
+without enabling WAL — a momentary lock collision between two overlapping
+hourly invocations crashed the second one entirely instead of waiting on
+the busy_timeout (Python's 5s default). Same class of bug, different
+amplitude than the auth/CLI problems that the prompt suspected.
+
+Concrete sentinel ground-truth (2026-05-06 22:30 WITA via `nlm notebook list`):
+
+```
+NB-INTEL-Immigration  61 sources  last_updated 2026-05-04T07:52:41Z
+NB-INTEL-Tax          14 sources  last_updated 2026-04-19T18:54:05Z
+NB-INTEL-Regulation   34 sources  last_updated 2026-05-04T07:52:52Z
+NB-INTEL-Press        28 sources  last_updated 2026-05-04T07:52:40Z
+NB-INTEL-AIResearch   75 sources  last_updated 2026-05-04T16:43:27Z
+```
+
+**ANTIBODY (shipped on `fix/nlm-feeder-resurrect-2026-05-06`):**
+
+1. **`base_worker.redis_cmd` reads `GARUDA_REDIS_HOST` + optional
+   `GARUDA_REDIS_PORT` from env** and prepends `-h $host` (and `-p $port`
+   when both are set) to every redis-cli invocation. Empty/unset → no flags
+   → localhost default (preserves backward compatibility for any caller
+   running on the producer host). New `_redis_host_args()` helper documents
+   the contract.
+2. **`KnowledgeBase.__init__` now enables WAL + `synchronous=NORMAL`** on
+   the connection. WAL allows readers + a single writer concurrently and
+   makes transient lock contention wait on the busy_timeout instead of
+   propagating an I/O error. WAL setting is persisted in the DB header so
+   it's a no-op after the first open of an existing DB.
+3. **9 new tests** in `tests/test_redis_host_override.py` (5) and
+   `tests/test_knowledge_resilience.py` (4): empty/missing env, port-
+   without-host ignored, host+port routing, parent dir creation, busy
+   timeout ≥1s, journal_mode=wal, concurrent open without I/O error.
+4. **Mini Redis reconfigured 2026-05-06 22:35 WITA**:
+   `bind 127.0.0.1 ::1 100.93.236.6`, `protected-mode no`, `CONFIG REWRITE`
+   persisted. Backup at
+   `/opt/homebrew/etc/redis.conf.pre-tailscale-bind-2026-05-06`. Tailnet
+   `balizero` is restricted to Pro+Mini devices (Subhi has admin role but
+   no enrolled device, no SSH keys), so 6379 on the Tailscale IP is
+   private-LAN-only.
+5. **Pro plist** `~/Library/LaunchAgents/com.matagaruda.nlm-feeder-stream.hourly.plist`
+   gains `GARUDA_REDIS_HOST=100.93.236.6` in `EnvironmentVariables`. Backup
+   at `*.pre-redis-host-2026-05-06`. Reloaded via `launchctl bootout` +
+   `bootstrap` 2026-05-06 22:38 WITA — verified live via `launchctl print`.
+
+**Empirical AFTER (2026-05-06 23:00 WITA, after manual draining + 1 cron tick):**
+
+```
+NB-INTEL-Immigration  79 sources  +18
+NB-INTEL-Tax          15 sources  +1
+NB-INTEL-Regulation   38 sources  +4
+NB-INTEL-Press        56 sources  +28
+NB-INTEL-AIResearch   85 sources  +10
+                      ──────────
+                      +61 total
+```
+
+Press +28 and Immigration +18 hit the ≥5 threshold; Tax +1 and Regulation +4
+reflect the actual sentinel topic distribution today, not a remaining
+plumbing issue. Mini consumer group `nlm_feeder_alerts` shows
+`entries-read=23, lag=0` after a synthetic test alert was injected and
+consumed end-to-end via the new env path.
+
+**GOTCHA:**
+
+- **`redis-cli` itself does NOT honor `GARUDA_REDIS_HOST`**. The env var is
+  read only by the Python `base_worker.redis_cmd` wrapper. A debug session
+  that runs `GARUDA_REDIS_HOST=… redis-cli XLEN …` from a Pro shell will
+  silently hit Pro localhost, returning numbers that LOOK like they came
+  from Mini. Always use the Python wrapper or `redis-cli -h $host`
+  explicitly when you debug. Compare `INFO server | grep run_id` — Pro and
+  Mini each have a unique `run_id` and that's the only reliable way to
+  tell which Redis answered.
+- The plist's `WorkingDirectory` and Python interpreter path point at the
+  main repo (`apps/mata-garuda/.venv/bin/python` against
+  `/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda`), so the env-var
+  override **only takes effect after `fix/nlm-feeder-resurrect-2026-05-06`
+  merges to main**. Until then, hourly cron runs against the unpatched
+  base_worker and silently keeps reading Pro localhost (i.e. a 0/0/0
+  no-op). The fix is in production launchd config but inert until the
+  binary code matches.
+- Both Pro and Mini run a brew-managed Redis listening on 6379. Pro's
+  `bind` was unchanged; only Mini's was extended. Future cross-host
+  consumers MUST set `GARUDA_REDIS_HOST=100.93.236.6` explicitly — there
+  is no auto-discovery. Mini Redis stays the OSINT producer per Modo B
+  ("Mini=workhorse, Pro=consumer"); reversing that direction would
+  require the symmetric Pro Redis bind change which we did NOT do.
+- The KB `data/knowledge.db` retains 753 nlm_fed dedup entries from the
+  pre-patch Pro-stream era. Items present in Mini's stream that share a
+  URL with a Pro-fed item will be skipped on the first cycle after the
+  pivot. This is correct behavior (no double-feed to NotebookLM) but
+  visible as `skipped=N` in the JSON summary. The numbers above already
+  account for this — Tax +1 / Regulation +4 are honest gains from
+  non-overlapping URLs, not undercounts caused by dedup.
+- TCC `getcwd: cannot access parent directories: Operation not permitted`
+  errors flooding `~/logs/matagaruda-nlm-feeder-stream.error.log` are a
+  RED HERRING. They originate from `/bin/zsh -lc` reading shell startup
+  files under `/Users/nuzantara/.zshrc` etc. while launchd holds the
+  process in a sandboxed cwd; the actual python interpreter starts cleanly
+  and the feeder works (verified by the 612/612 test pass and the live
+  source_count growth). A `bash` bridge or removing `-l` from the plist
+  would silence them but does not change behavior. Out of scope here.
+
+Brainstorm artifacts: none yet (acted directly on diagnostic evidence
+visible in logs + `XINFO STREAM`). MOS records the diagnosis as discovery
+2026-05-06 22:30 WITA importance 8 + the base_worker fact at importance 7.
+
+---
+
 ### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
 
 _Discovered: 2026-05-02 during Sprint 1.B Era Post-Agentica deploy — 3 hotfix
