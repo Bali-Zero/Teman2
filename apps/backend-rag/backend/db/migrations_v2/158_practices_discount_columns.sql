@@ -50,22 +50,41 @@ END $$;
 
 -- =====================================================================
 -- 2. invoices: discount mirror column for analytics + reporting
+--
+-- The `invoices` table predates migrations_v2 (created in a legacy Python
+-- migration no longer in the ordered list). Fresh CI/test schemas may not
+-- have it; in prod it always exists. Same pattern as migration 125.
 -- =====================================================================
-
-ALTER TABLE invoices
-    ADD COLUMN IF NOT EXISTS discount_amount_idr NUMERIC(15, 2) NOT NULL DEFAULT 0;
-
-COMMENT ON COLUMN invoices.discount_amount_idr IS
-    'Discount applied at invoice generation time. amount_idr already stores the post-discount total; this column preserves the discount for reporting (sum of discounts given per period).';
 
 DO $$
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'invoices'
+    ) THEN
+        RAISE NOTICE 'Migration 158: invoices table not present; skipping invoices block (CI/fresh schema).';
+        RETURN;
+    END IF;
+
+    ALTER TABLE invoices
+        ADD COLUMN IF NOT EXISTS discount_amount_idr NUMERIC(15, 2) NOT NULL DEFAULT 0;
+
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'invoices_discount_nonneg'
     ) THEN
         ALTER TABLE invoices
             ADD CONSTRAINT invoices_discount_nonneg
             CHECK (discount_amount_idr >= 0);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'invoices'
+    ) THEN
+        EXECUTE $cmt$COMMENT ON COLUMN invoices.discount_amount_idr IS 'Discount applied at invoice generation time. amount_idr already stores the post-discount total; this column preserves the discount for reporting (sum of discounts given per period).'$cmt$;
     END IF;
 END $$;
 
@@ -77,9 +96,15 @@ CREATE INDEX IF NOT EXISTS idx_practices_discount_nonzero
     ON practices (created_at DESC)
     WHERE discount_amount IS NOT NULL AND discount_amount > 0;
 
-CREATE INDEX IF NOT EXISTS idx_invoices_discount_nonzero
-    ON invoices (generated_at DESC)
-    WHERE discount_amount_idr > 0;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'invoices'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_invoices_discount_nonzero ON invoices (generated_at DESC) WHERE discount_amount_idr > 0';
+    END IF;
+END $$;
 
 -- === ROLLBACK ===
 -- Soft rollback path: drop the new constraints + indexes + columns.
@@ -92,8 +117,16 @@ CREATE INDEX IF NOT EXISTS idx_invoices_discount_nonzero
 DROP INDEX IF EXISTS idx_invoices_discount_nonzero;
 DROP INDEX IF EXISTS idx_practices_discount_nonzero;
 
-ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_discount_nonneg;
-ALTER TABLE invoices DROP COLUMN IF EXISTS discount_amount_idr;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'invoices'
+    ) THEN
+        ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_discount_nonneg;
+        ALTER TABLE invoices DROP COLUMN IF EXISTS discount_amount_idr;
+    END IF;
+END $$;
 
 ALTER TABLE practices DROP CONSTRAINT IF EXISTS practices_discount_amount_nonneg;
 ALTER TABLE practices DROP COLUMN IF EXISTS discount_reason;

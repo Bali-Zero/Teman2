@@ -27,17 +27,17 @@ inviolabile #5).
 labels are bootstrapped, with `state = running` (KeepAlive daemons) or
 `state = not running, last exit code = 0` (idle crons between ticks):
 
-| Label | State at smoke time | Schedule | Type |
-|---|---|---|---|
-| `com.balizero.nlm-bridge` | running, daemon | KeepAlive=true RunAtLoad=true | daemon (uvicorn :18790) |
-| `com.nuzantara.cell-observatory` | running, daemon | KeepAlive=true RunAtLoad=true | daemon (collector) |
-| `com.nuzantara.cell-observatory-prune` | not running, idle | StartCalendarInterval Hour=4 Minute=0 | cron (daily 04:00) |
-| `com.nuzantara.cell-observatory-selfcheck` | last exit 1, idle | StartInterval=300 | cron (5-min poll) |
-| `com.balizero.post-publish-poller` | not running, last exit 0 | RunAtLoad=true | cron (RunAtLoad — daemon-style trigger, no recurring schedule) |
-| `com.balizero.sota.m13-checkpoint` | not running, last exit 0 | StartCalendarInterval Hour=9 Minute=0 | cron (daily 09:00) |
-| `com.balizero.sota.m13-collect` | not running | RunAtLoad=true | cron (RunAtLoad-only) |
-| `com.balizero.sota.m13-monthly` | not running | StartCalendarInterval Day=1 Hour=4 Minute=30 | cron (monthly day-1 04:30) |
-| `com.balizero.sota.m13-weekly` | not running | StartCalendarInterval Weekday=0 Hour=6 Minute=0 | cron (weekly Sunday 06:00) |
+| Label                                      | State at smoke time      | Schedule                                        | Type                                                           |
+| ------------------------------------------ | ------------------------ | ----------------------------------------------- | -------------------------------------------------------------- |
+| `com.balizero.nlm-bridge`                  | running, daemon          | KeepAlive=true RunAtLoad=true                   | daemon (uvicorn :18790)                                        |
+| `com.nuzantara.cell-observatory`           | running, daemon          | KeepAlive=true RunAtLoad=true                   | daemon (collector)                                             |
+| `com.nuzantara.cell-observatory-prune`     | not running, idle        | StartCalendarInterval Hour=4 Minute=0           | cron (daily 04:00)                                             |
+| `com.nuzantara.cell-observatory-selfcheck` | last exit 1, idle        | StartInterval=300                               | cron (5-min poll)                                              |
+| `com.balizero.post-publish-poller`         | not running, last exit 0 | RunAtLoad=true                                  | cron (RunAtLoad — daemon-style trigger, no recurring schedule) |
+| `com.balizero.sota.m13-checkpoint`         | not running, last exit 0 | StartCalendarInterval Hour=9 Minute=0           | cron (daily 09:00)                                             |
+| `com.balizero.sota.m13-collect`            | not running              | RunAtLoad=true                                  | cron (RunAtLoad-only)                                          |
+| `com.balizero.sota.m13-monthly`            | not running              | StartCalendarInterval Day=1 Hour=4 Minute=30    | cron (monthly day-1 04:30)                                     |
+| `com.balizero.sota.m13-weekly`             | not running              | StartCalendarInterval Weekday=0 Hour=6 Minute=0 | cron (weekly Sunday 06:00)                                     |
 
 All 9 plists are read-only mode 0444 / 0400 since the 2026-04-29 chmod
 hardening. None require schema or validator changes — every label maps
@@ -71,14 +71,14 @@ nothing here is on Mini.
 
 **D3 — `expected_hb_seconds`.** Apply the W1 rule (`expected_period + 1h grace`):
 
-| Schedule | period | expected_hb_seconds |
-|---|---|---|
-| KeepAlive daemon | n/a | 60–180 (per organ class — 90 for collector parity with `cell.organism`, 180 for `nlm-bridge` because uvicorn cold-start is heavier) |
-| `StartInterval=300` | 300 s | 3900 (1h grace minimum) |
-| Daily `Hour/Minute` (no Day) | 86400 s | 90000 (24h + 1h grace) — same as W1's `wr2.dossier_compiler` |
-| Weekly `Weekday + Hour/Minute` | 604800 s | 691200 (7d + 1d grace) |
-| Monthly `Day=1 + Hour + Minute` | ~2.6 Ms | 2_678_400 (31d + 1d grace) |
-| `RunAtLoad`-only (no schedule) | unscheduled | 90000 (treat as daily — produces a heartbeat-stale alert if no operator triggers it within ~25h, matching the daily-cron heuristic) |
+| Schedule                        | period      | expected_hb_seconds                                                                                                                 |
+| ------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| KeepAlive daemon                | n/a         | 60–180 (per organ class — 90 for collector parity with `cell.organism`, 180 for `nlm-bridge` because uvicorn cold-start is heavier) |
+| `StartInterval=300`             | 300 s       | 3900 (1h grace minimum)                                                                                                             |
+| Daily `Hour/Minute` (no Day)    | 86400 s     | 90000 (24h + 1h grace) — same as W1's `wr2.dossier_compiler`                                                                        |
+| Weekly `Weekday + Hour/Minute`  | 604800 s    | 691200 (7d + 1d grace)                                                                                                              |
+| Monthly `Day=1 + Hour + Minute` | ~2.6 Ms     | 2_678_400 (31d + 1d grace)                                                                                                          |
+| `RunAtLoad`-only (no schedule)  | unscheduled | 90000 (treat as daily — produces a heartbeat-stale alert if no operator triggers it within ~25h, matching the daily-cron heuristic) |
 
 **D4 — Severity.**
 
@@ -178,6 +178,7 @@ Single PR / 2 commits on `feat/symbiosis-W1.5-organi-2026-05-07`:
   in `apps/organism/tests/tools/test_validate_genome.py`
 
 Registry-only change confined to:
+
 - `apps/organism/organism/genome.yaml` (9 new entries appended after
   `pro.secrets_sync_mini`)
 - `apps/organism/tests/tools/test_validate_genome.py` (1 new test
@@ -186,6 +187,7 @@ Registry-only change confined to:
   nlm.bridge + post_publish_poller as singletons)
 
 NO modifications to:
+
 - `apps/organism/organism/tools/validate_genome.py` (no schema change)
 - Plist files
 - Existing 78 genome entries
@@ -197,142 +199,142 @@ NO modifications to:
 9 new entries appended after `pro.secrets_sync_mini` (line 1201).
 
 ```yaml
-  # === Wave 1.5 MISS CRITICI (2026-05-07) — issue #490 ===
+# === Wave 1.5 MISS CRITICI (2026-05-07) — issue #490 ===
 
-  - id: nlm.bridge
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 180
-    owner_module: apps/nlm-bridge/main.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.nlm-bridge
-    severity_on_silence: critical
-    cicatrix_refs: []
+- id: nlm.bridge
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 180
+  owner_module: apps/nlm-bridge/main.py
+  dependencies:
+    - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.nlm-bridge
+  severity_on_silence: critical
+  cicatrix_refs: []
 
-  - id: cell.observatory
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 90
-    owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/cell.observatory.json
-      timestamp_field: ts
-      status_field: status
+- id: cell.observatory
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 90
+  owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
+  dependencies:
+    - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/cell.observatory.json
+    timestamp_field: ts
+    status_field: status
 
-  - id: cell.observatory_prune
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/cell-observatory-collector/cell_observatory/prune.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory-prune
-    severity_on_silence: warning
-    cicatrix_refs: []
+- id: cell.observatory_prune
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/cell-observatory-collector/cell_observatory/prune.py
+  dependencies:
+    - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory-prune
+  severity_on_silence: warning
+  cicatrix_refs: []
 
-  - id: cell.observatory_selfcheck
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 3900
-    owner_module: apps/cell-observatory-collector/scripts/healthcheck.sh
-    dependencies:
-      - cell.observatory
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory-selfcheck
-    severity_on_silence: warning
-    cicatrix_refs: []
+- id: cell.observatory_selfcheck
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3900
+  owner_module: apps/cell-observatory-collector/scripts/healthcheck.sh
+  dependencies:
+    - cell.observatory
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory-selfcheck
+  severity_on_silence: warning
+  cicatrix_refs: []
 
-  - id: pro.post_publish_poller
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/bali-intel-scraper/scripts/post_publish_poller.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.post-publish-poller
-    severity_on_silence: error
-    cicatrix_refs: []
+- id: pro.post_publish_poller
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/bali-intel-scraper/scripts/post_publish_poller.py
+  dependencies:
+    - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.post-publish-poller
+  severity_on_silence: error
+  cicatrix_refs: []
 
-  - id: sota.m13_checkpoint
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-checkpoint
-    severity_on_silence: warning
-    cicatrix_refs: []
+- id: sota.m13_checkpoint
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py
+  dependencies:
+    - infra.postgres
+    - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-checkpoint
+  severity_on_silence: warning
+  cicatrix_refs: []
 
-  - id: sota.m13_collect
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_collect.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-collect
-    severity_on_silence: warning
-    cicatrix_refs: []
+- id: sota.m13_collect
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_collect.py
+  dependencies:
+    - infra.postgres
+    - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-collect
+  severity_on_silence: warning
+  cicatrix_refs: []
 
-  - id: sota.m13_monthly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 2678400
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_monthly.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-monthly
-    severity_on_silence: info
-    cicatrix_refs: []
+- id: sota.m13_monthly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2678400
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_monthly.py
+  dependencies:
+    - infra.postgres
+    - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-monthly
+  severity_on_silence: info
+  cicatrix_refs: []
 
-  - id: sota.m13_weekly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_weekly.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-weekly
-    severity_on_silence: warning
-    cicatrix_refs: []
+- id: sota.m13_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_weekly.py
+  dependencies:
+    - infra.postgres
+    - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-weekly
+  severity_on_silence: warning
+  cicatrix_refs: []
 ```
 
 ### 5.2 Test (single new test class added to test_validate_genome.py)
@@ -346,7 +348,7 @@ A single test class `TestW1_5MissCritici` with 4 test methods:
   bridge
 - `test_post_publish_poller_enrolled` — id, type=cron, severity=error,
   recovery label
-- `test_sota_m13_quartet_enrolled` — 4 sota.m13_* ids exist, all type=cron,
+- `test_sota_m13_quartet_enrolled` — 4 sota.m13\_\* ids exist, all type=cron,
   expected_hb_seconds matches schedule (daily / weekly / monthly), and all
   depend on `wr2.supervisor`
 
@@ -389,10 +391,10 @@ W1.5.
 
 ## 9. Build sequence (2 commits)
 
-| # | Commit | Files | Validator | Push |
-|---|---|---|---|---|
-| 1 | `docs(symbiosis): W1.5 MISS CRITICI design + plan` | this file + plan doc | — | within 30s |
-| 2 | `feat(organism): enroll Wave 1.5 MISS CRITICI (78→87)` | genome.yaml + tests + checksum | PASS | within 30s |
+| #   | Commit                                                 | Files                          | Validator | Push       |
+| --- | ------------------------------------------------------ | ------------------------------ | --------- | ---------- |
+| 1   | `docs(symbiosis): W1.5 MISS CRITICI design + plan`     | this file + plan doc           | —         | within 30s |
+| 2   | `feat(organism): enroll Wave 1.5 MISS CRITICI (78→87)` | genome.yaml + tests + checksum | PASS      | within 30s |
 
 Compound atomic `git add && git commit && git push` per W1.
 
@@ -413,17 +415,17 @@ Closes #490.
 
 ## Organi enrolled (9)
 
-| ID | Plist label | Type | Severity | Why critical |
-|---|---|---|---|---|
-| `nlm.bridge` | `com.balizero.nlm-bridge` | daemon | critical | Federation v3 A2A Agent 8 (uvicorn :18790). Async multi-doc synthesis fails silently when down. |
-| `cell.observatory` | `com.nuzantara.cell-observatory` | daemon | critical | Listens on PG channels `federation_alert` + `cell.pulse.observed`. FAD is blind without it. |
-| `cell.observatory_prune` | `com.nuzantara.cell-observatory-prune` | cron | warning | Self-maintenance (daily 04:00 prune). |
-| `cell.observatory_selfcheck` | `com.nuzantara.cell-observatory-selfcheck` | cron | warning | 5-min health probe of the observatory daemon. |
-| `pro.post_publish_poller` | `com.balizero.post-publish-poller` | cron | error | Final pipeline motor: SEO + Fireworks Flux.1 cover + git push. |
-| `sota.m13_checkpoint` | `com.balizero.sota.m13-checkpoint` | cron | warning | Lamarckian feedback distillation — daily 09:00 checkpoint. |
-| `sota.m13_collect` | `com.balizero.sota.m13-collect` | cron | warning | post_metrics_history collector (RunAtLoad-driven). |
-| `sota.m13_monthly` | `com.balizero.sota.m13-monthly` | cron | info | Monthly rollup (day-1 04:30). |
-| `sota.m13_weekly` | `com.balizero.sota.m13-weekly` | cron | warning | Weekly rollup (Sun 06:00). |
+| ID                           | Plist label                                | Type   | Severity | Why critical                                                                                    |
+| ---------------------------- | ------------------------------------------ | ------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `nlm.bridge`                 | `com.balizero.nlm-bridge`                  | daemon | critical | Federation v3 A2A Agent 8 (uvicorn :18790). Async multi-doc synthesis fails silently when down. |
+| `cell.observatory`           | `com.nuzantara.cell-observatory`           | daemon | critical | Listens on PG channels `federation_alert` + `cell.pulse.observed`. FAD is blind without it.     |
+| `cell.observatory_prune`     | `com.nuzantara.cell-observatory-prune`     | cron   | warning  | Self-maintenance (daily 04:00 prune).                                                           |
+| `cell.observatory_selfcheck` | `com.nuzantara.cell-observatory-selfcheck` | cron   | warning  | 5-min health probe of the observatory daemon.                                                   |
+| `pro.post_publish_poller`    | `com.balizero.post-publish-poller`         | cron   | error    | Final pipeline motor: SEO + Fireworks Flux.1 cover + git push.                                  |
+| `sota.m13_checkpoint`        | `com.balizero.sota.m13-checkpoint`         | cron   | warning  | Lamarckian feedback distillation — daily 09:00 checkpoint.                                      |
+| `sota.m13_collect`           | `com.balizero.sota.m13-collect`            | cron   | warning  | post_metrics_history collector (RunAtLoad-driven).                                              |
+| `sota.m13_monthly`           | `com.balizero.sota.m13-monthly`            | cron   | info     | Monthly rollup (day-1 04:30).                                                                   |
+| `sota.m13_weekly`            | `com.balizero.sota.m13-weekly`             | cron   | warning  | Weekly rollup (Sun 06:00).                                                                      |
 
 ## Verification
 

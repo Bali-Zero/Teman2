@@ -465,13 +465,18 @@ class InvoiceAutomationService:
 
             # payment_status is NOT reset here: FE ciclo is unpaid→partial→paid
             # (no 'pending' state). Keep whatever value was set before.
+            # Pass dict directly — the api pool's jsonb codec encodes once
+            # via json.dumps. Double-encoding (calling json.dumps here AND
+            # letting the codec re-encode) was the root cause of the
+            # discount_log audit trail landing as a JSONB string scalar in
+            # production (observed 2026-05-06 on practice_id=390).
             await conn.execute(
                 """
                 UPDATE practices
-                SET documents = $1::jsonb, updated_at = NOW()
+                SET documents = $1, updated_at = NOW()
                 WHERE id = $2
                 """,
-                json.dumps(documents),
+                documents,
                 practice_id,
             )
 

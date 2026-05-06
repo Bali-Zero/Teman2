@@ -35,7 +35,8 @@ import json
 import logging
 import os
 import random
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import asyncpg
 from fastapi import FastAPI
@@ -1465,8 +1466,38 @@ async def initialize_services_light(app: FastAPI) -> None:
     try:
         dsn, ssl_ctx = _clean_database_dsn(settings.database_url)
         async def _light_init_connection(conn):
-            """Set statement timeout for api process pool connections."""
+            """Set statement timeout + register jsonb codec on every connection.
+
+            The jsonb codec lets the application pass Python dicts directly to
+            jsonb-typed parameters; asyncpg auto-serialises with json.dumps and
+            Postgres parses the result as a proper JSONB object. Without this
+            codec, code that already calls json.dumps() before passing the
+            string to the parameter ends up storing it as a JSONB string
+            scalar in production (symptom seen on practices.metadata.
+            discount_log: rows landed as '"{\"discount_log\":[...]}"' instead
+            of '{"discount_log":[...]}', breaking `metadata ? 'discount_log'`
+            and any jsonb_path_* query). With the codec active the
+            application-level json.dumps() becomes redundant and the
+            existing `$N::jsonb` casts are harmless.
+
+            Aligns the api pool with the existing full-init pool
+            (`init_db_connection` ~line 459) which has always used the same
+            codec; the standalone helper in backend/app/core/database.py also
+            registers it.
+            """
             await conn.execute("SET statement_timeout = '30s'")
+            await conn.set_type_codec(
+                "jsonb",
+                encoder=json.dumps,
+                decoder=json.loads,
+                schema="pg_catalog",
+            )
+            await conn.set_type_codec(
+                "json",
+                encoder=json.dumps,
+                decoder=json.loads,
+                schema="pg_catalog",
+            )
 
         pool_kwargs: dict = {
             "dsn": dsn,

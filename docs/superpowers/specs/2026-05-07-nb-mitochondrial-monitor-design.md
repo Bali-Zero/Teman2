@@ -11,7 +11,7 @@
 
 Implement a daily cron monitor that measures **which NB produces value consumed downstream by Nuzantara**. Without this measurement, "keep/decommission" decisions for the 60+ NotebookLM notebooks are opinions; with the numbers, they become evidence-based.
 
-Value definition (Round 2 metaphor): an NB has *mitochondrial value* if its sources are queried, its insights are consumed by skills/cell layer, its citation chain appears in Zantara responses. **Value = downstream consumption**, not "size of the NB".
+Value definition (Round 2 metaphor): an NB has _mitochondrial value_ if its sources are queried, its insights are consumed by skills/cell layer, its citation chain appears in Zantara responses. **Value = downstream consumption**, not "size of the NB".
 
 ## 2. Scope
 
@@ -191,10 +191,10 @@ generated_at: 2026-05-07
 source: round2_memory + config.py NLM_NOTEBOOKS + manual curation
 
 notebooks:
-  - uuid: "d9438180-xxxx-xxxx-xxxx-xxxxxxxxxxxx"   # NB-INTEL-Property
+  - uuid: "d9438180-xxxx-xxxx-xxxx-xxxxxxxxxxxx" # NB-INTEL-Property
     name: "NB-INTEL-Property"
-    family: "INTEL"                                # INTEL | MATA-GARUDA | CORE | RESEARCH | SUBHI | META
-    lifecycle_stage: "TAC"                          # DM | TAC | SENESCENT | KILL_PENDING | APOPTOSIS_DONE | ORPHAN_REVIEW
+    family: "INTEL" # INTEL | MATA-GARUDA | CORE | RESEARCH | SUBHI | META
+    lifecycle_stage: "TAC" # DM | TAC | SENESCENT | KILL_PENDING | APOPTOSIS_DONE | ORPHAN_REVIEW
     active_routing: true
     first_audited: "2026-05-04"
     last_audited: "2026-05-07"
@@ -306,6 +306,7 @@ def can_send(uuid, condition, now=None):
 ### 7.1 Read-only on existing pipeline
 
 Hard constraint from prompt: NO modifications to existing pipeline (NLM feeder, Oracle, Qdrant). Only READ:
+
 - JSONL session files (read-only filesystem access).
 - nlm-feeder log file (read-only tail).
 - nlm CLI batch query (READ-only — `notebook_get` style, no mutation).
@@ -315,18 +316,19 @@ The single permitted exception (Oracle citation log injection in `apps/backend-r
 
 ### 7.2 Graceful degrade
 
-| Failure | Behavior |
-|---|---|
-| Single collector raises for one UUID | log WARN, set field NULL, continue other collectors and other UUIDs |
-| Single collector raises for ALL UUIDs (e.g. nlm cookie expired across the board) | log WARN, set instrumentation_status=`cookie_refresh_pending`, persist row anyway |
-| Global failure (SQLite locked, disk full) | log ERROR, exit 0, NO Telegram alert (escalation prevention) |
-| Telegram POST fails | log WARN, retry once after 5s, then drop. Alert NOT recorded in alerts_sent if delivery failed |
+| Failure                                                                          | Behavior                                                                                       |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Single collector raises for one UUID                                             | log WARN, set field NULL, continue other collectors and other UUIDs                            |
+| Single collector raises for ALL UUIDs (e.g. nlm cookie expired across the board) | log WARN, set instrumentation_status=`cookie_refresh_pending`, persist row anyway              |
+| Global failure (SQLite locked, disk full)                                        | log ERROR, exit 0, NO Telegram alert (escalation prevention)                                   |
+| Telegram POST fails                                                              | log WARN, retry once after 5s, then drop. Alert NOT recorded in alerts_sent if delivery failed |
 
 ### 7.3 First-14-days banner
 
 Every weekly report's header includes:
 
 > **Baseline period — first 14 days post-deploy. Score reliability degraded:**
+>
 > - `read_freq_7d/30d`: live (Claude Code JSONL scraper).
 > - `source_freshness_age`: best-effort (nlm cookie 5min TTL).
 > - `push_success_rate`: live (matagaruda-nlm-feeder-stream.log).
@@ -337,7 +339,7 @@ Every weekly report's header includes:
 
 Cron runs at 02:30 WITA, off-peak. Total runtime budget ~10-15s on Pro M4. All file reads are O(MB), no rsync or large I/O. SQLite writes are batched in a single transaction. No process spawns into critical pipeline.
 
-Pre-merge review prompt for Gemini 3.1 Pro: *"Did this PR introduce backpressure on a critical path? The monitor must be read-only and run during off-peak. Verify no new processes spawn into NLM pipeline, Qdrant, Postgres, or Oracle."*
+Pre-merge review prompt for Gemini 3.1 Pro: _"Did this PR introduce backpressure on a critical path? The monitor must be read-only and run during off-peak. Verify no new processes spawn into NLM pipeline, Qdrant, Postgres, or Oracle."_
 
 ## 8. Test plan
 
@@ -355,6 +357,7 @@ Coverage target: **≥80% line coverage** on `apps/mata-garuda/mata_garuda/scrip
 ### 8.2 Integration test (one end-to-end)
 
 `test_integration_e2e.py`:
+
 1. Setup tmpdir with bootstrap YAML (3 fake UUIDs), JSONL fixtures, feeder log fixture.
 2. Patch `nlm_freshness` to return mock data, `skill_derivation` and `cite_rate` to return None.
 3. Run `run.execute_once(config_dir=tmpdir)`.
@@ -433,9 +436,9 @@ FASE 5 uses `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.yaml` as 
 
 ### Alternatives considered and rejected
 
-- *MCP `nlm notebook list` at runtime*: cookie 5min TTL is too fragile for daily cron.
-- *config.py NLM_NOTEBOOKS only (6 UUIDs)*: too narrow — 8% of total — produces incomplete picture of mitochondrial value.
-- *Wait for FASE 2 merge before starting FASE 5*: blocks this PR for unknown duration; FASE 2 is independent work.
+- _MCP `nlm notebook list` at runtime_: cookie 5min TTL is too fragile for daily cron.
+- _config.py NLM_NOTEBOOKS only (6 UUIDs)_: too narrow — 8% of total — produces incomplete picture of mitochondrial value.
+- _Wait for FASE 2 merge before starting FASE 5_: blocks this PR for unknown duration; FASE 2 is independent work.
 
 ## 11. Success criteria
 

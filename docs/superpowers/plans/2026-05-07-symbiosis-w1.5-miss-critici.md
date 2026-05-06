@@ -30,7 +30,7 @@ Add `TestW1_5MissCritici` class to
   ids with correct types + state_file bridge on the daemon
 - `test_w1_5_post_publish_poller_enrolled` — checks
   `pro.post_publish_poller` exists with cron+error+launchctl recovery
-- `test_w1_5_sota_m13_quartet_enrolled` — checks all 4 sota.m13_*
+- `test_w1_5_sota_m13_quartet_enrolled` — checks all 4 sota.m13\_\*
   exist with correct expected_hb_seconds matching schedule + dependency
   on wr2.supervisor
 
