@@ -242,9 +242,10 @@ export function FunnelFeature({
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
-            quality={78}
-            // priority = above-the-fold hero (full layout) → LCP candidate
-            // tells browser to preload with fetchpriority="high"
+            quality={75}
+            // LCP element confirmed (img.pointer-events-none) — priority needed
+            // NOTE: causes a dev-only hydration warning in Turbopack 16.2.3
+            // (loading: null vs "lazy") — harmless, not present in production builds
             priority={isFull}
             className="pointer-events-none"
             style={{

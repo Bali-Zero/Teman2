@@ -64,7 +64,6 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"], // Modern formats (70% smaller)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920], // Responsive breakpoints
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // Icon/thumbnail sizes
-    qualities: [75, 78, 82], // Whitelist custom quality values used across the app
     minimumCacheTTL: 60 * 60 * 24 * 365, // Cache 1 year
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
