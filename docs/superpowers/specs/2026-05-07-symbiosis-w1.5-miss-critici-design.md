@@ -107,8 +107,13 @@ nothing here is on Mini.
 
 - `nlm.bridge`: depends on `infra.postgres` only (uvicorn HTTP service —
   it pulls from PG-backed metrics + accepts NLM client requests).
-- `cell.observatory`: depends on `infra.postgres` + `infra.redis` (matches
-  `cell.organism` parity — both subscribe to the same PG channels).
+- `cell.observatory`: depends on `infra.postgres` only. **Empirical
+  correction (Codex sandbox review 2026-05-07):** the collector at
+  `apps/cell-observatory-collector/cell_observatory/config.py` requires
+  `EVENTBUS_DATABASE_URL` (PG LISTEN), `OPENROUTER_API_KEY/MINIMAX*` (LLM
+  classifier API), and `OBSERVATORY_DB_PATH` (SQLite). NO Redis path. The
+  initial draft included `infra.redis` for parity with `cell.organism`,
+  but that misstates the blast radius — corrected.
 - `cell.observatory_prune`: depends on `infra.postgres` (DELETE old rows).
 - `cell.observatory_selfcheck`: depends on `cell.observatory` (heartbeat
   probe) and nothing else.
@@ -126,13 +131,40 @@ nothing here is on Mini.
 W1 Pro-background entries.
 
 **D7 — `bridge_source`.** Match the W1 convention only where W1 already
-declares one for sibling organi. cell.organism has a state_file bridge —
-we replicate it for `cell.observatory*` (identical pulse pattern).
-nlm-bridge exposes an HTTP `/health` endpoint on port 18790 (see
-`apps/nlm-bridge/`), so we use the `http` bridge form (matches
-`pro.organism_control_panel` exactly). The 4 sota.m13 + post-publish
-entries write rotation logs but no last-seen JSON, so no `bridge_source`
-field — same as the W1 Pro-background entries which omit it.
+declares one for sibling organi.
+
+- `cell.observatory` daemon: declare a `state_file` bridge_source pointing
+  at `~/.organism/last_seen/cell.observatory.json`, mirroring the
+  `cell.organism` pattern. **Caveat:** the collector does not currently
+  emit that file. Until a sidecar emitter ships, the Supervisor will
+  surface `dead/no_signal` for this organ until heartbeat-staleness
+  fallback kicks in. This is consistent with the W1 convention (the
+  same is true for `cell.organism` itself per the W1 plan).
+
+- `nlm.bridge` daemon: **NO `bridge_source` declared.** Empirical
+  correction (Codex sandbox review): the live endpoint is `/nlm/health`
+  (NOT `/health`) and the `HealthResponse` model returns `status`,
+  `uptime`, `request_count` only — NO `ts` field. The cell
+  `BridgeStateReader` at `apps/cell/cell/sensors/bridge_state_reader.py:203`
+  hard-fails with "http body missing timestamp field 'ts'" when the
+  expected timestamp_field is absent. Two options: (a) declare an http
+  bridge anyway and accept it will read as error until the
+  `HealthResponse` model gains a `ts` field (visible follow-up), or (b)
+  omit `bridge_source` and rely on the heartbeat-staleness fallback
+  (matches `mata_garuda.bridge_adaptive.pro` daemon pattern in W1).
+  Option (b) is chosen — adding a permanently-erroring bridge would be
+  worse signal than no bridge. Follow-up: add `ts` to nlm-bridge's
+  `HealthResponse` and re-declare the bridge in W2 sidecar work.
+
+- `cell.observatory_prune`, `cell.observatory_selfcheck`,
+  `pro.post_publish_poller`, `sota.m13_*` (4): NO `bridge_source` field —
+  same as the W1 Pro-background and matagaruda cron entries which omit
+  it. The aggregator at
+  `apps/cell/cell/sensors/genome_aggregator_sensor.py:300` will surface
+  `dead/no_signal` for these until W2 sidecar emitters write last-seen
+  JSON. Acceptable per W1 mass-pattern (56/78 W1 organi have no
+  `bridge_source`); separate W2 sidecar PR will address the broader
+  fleet.
 
 **D8 — `cicatrix_refs`.** Empty `[]` for all 9. None of these labels
 are mentioned in `.claude/rules/cicatrix-scars.md` STRUCTURAL entries.
@@ -180,10 +212,6 @@ NO modifications to:
       label: com.balizero.nlm-bridge
     severity_on_silence: critical
     cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: http://127.0.0.1:18790/health
-      timestamp_field: ts
 
   - id: cell.observatory
     runtime: pro_launchd
@@ -192,7 +220,6 @@ NO modifications to:
     owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
     dependencies:
       - infra.postgres
-      - infra.redis
     recovery_action: launchctl_kickstart
     recovery_params:
       host: pro
