@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Search,
   IdCard,
@@ -366,7 +367,7 @@ export function FunnelFeature({
             )}
 
             <div className="flex items-center gap-4 flex-wrap">
-              <a
+              <Link
                 href={FUNNEL_HREF[funnel]}
                 target={
                   FUNNEL_HREF[funnel].startsWith("http") ? "_blank" : undefined
@@ -388,7 +389,7 @@ export function FunnelFeature({
               >
                 {cfg.cta}
                 <ArrowRight size={14} strokeWidth={2} />
-              </a>
+              </Link>
 
               {/* Pricing pointer — avoids fixed-price commitment on home.
                 Full pricing lives on the dedicated service detail page.
