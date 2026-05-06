@@ -62,9 +62,44 @@ class KGQueryHandler(BaseHTTPRequestHandler):
             ip = "?"
         logger.info("%s - %s", ip, fmt % args)
 
-    # endpoints implemented in later tasks; skeleton serves nothing yet
     def do_GET(self) -> None:  # noqa: N802
-        self._send_json(404, {"error": "not_found", "detail": "endpoint not implemented yet"})
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        if path == "/health":
+            return self._handle_health()
+        self._send_json(404, {"error": "not_found", "detail": "no such endpoint"})
+
+    def _handle_health(self) -> None:
+        db_path = self.server.db_path  # type: ignore[attr-defined]
+        try:
+            conn = _ro_conn(db_path)
+        except sqlite3.Error as exc:
+            return self._send_json(500, {
+                "ok": False,
+                "kg_path": str(db_path),
+                "error": "kg_unavailable",
+                "detail": str(exc),
+            })
+        try:
+            schema_ok = True
+            counts = {"entities_count": 0, "relations_count": 0, "observations_count": 0}
+            for tbl, key in (
+                ("kg_entities", "entities_count"),
+                ("kg_relations", "relations_count"),
+                ("kg_observations", "observations_count"),
+            ):
+                try:
+                    counts[key] = conn.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+                except sqlite3.Error:
+                    schema_ok = False
+            self._send_json(200, {
+                "ok": True,
+                "kg_path": str(db_path),
+                "schema_ok": schema_ok,
+                **counts,
+            })
+        finally:
+            conn.close()
 
     # ── helpers ──────────────────────────────────────────────────
     def _send_json(self, status: int, body: dict) -> None:

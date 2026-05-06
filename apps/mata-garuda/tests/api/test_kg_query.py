@@ -141,3 +141,37 @@ def test_t10_refuses_wildcard_bind(tmp_path: Path) -> None:
         kg_query.build_server(bind="0.0.0.0", port=0, db_path=db)
     with pytest.raises(RuntimeError, match="wildcard"):
         kg_query.build_server(bind="::", port=0, db_path=db)
+
+
+def test_t1_health_ok(running_server: int) -> None:
+    """T1: /health reports counts when KG is seeded."""
+    status, body = _get(running_server, "/health")
+    assert status == 200
+    assert body["ok"] is True
+    assert body["entities_count"] == 3
+    assert body["relations_count"] == 2
+    assert body["observations_count"] == 4
+    assert body["schema_ok"] is True
+
+
+def test_t2_health_schema_missing(tmp_path: Path) -> None:
+    """T2: /health returns schema_ok=false fail-soft if a table is missing."""
+    db = tmp_path / "broken.db"
+    conn = sqlite3.connect(str(db))
+    # Only kg_entities, no relations/observations
+    conn.execute(
+        "CREATE TABLE kg_entities (id INTEGER, type TEXT, canonical_name TEXT, "
+        "aliases_json TEXT DEFAULT '[]', first_seen TEXT, last_seen TEXT, source_count INTEGER DEFAULT 1)"
+    )
+    conn.commit()
+    conn.close()
+    server, thread, port = _start_server(db)
+    try:
+        status, body = _get(port, "/health")
+        assert status == 200
+        assert body["ok"] is True  # server lives even if KG broken
+        assert body["schema_ok"] is False
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
