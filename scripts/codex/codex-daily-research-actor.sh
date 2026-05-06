@@ -101,6 +101,12 @@ set -a
 [ -f "${HOME}/.nuzantara-secrets.env" ] && source "${HOME}/.nuzantara-secrets.env"
 set +a
 
+if [ -z "${DATABASE_URL_LOCAL:-${DATABASE_URL:-}}" ]; then
+    log "DATABASE_URL_LOCAL/DATABASE_URL not set — cannot query L1 findings"
+    codex_state blocked missing_db_url "DATABASE_URL_LOCAL/DATABASE_URL not set" "" "$REPO_ROOT"
+    exit 0
+fi
+
 # ─────────────────────────────────────────────
 # Query DB for L1 findings from last 48h not yet actioned
 # ─────────────────────────────────────────────
@@ -120,9 +126,6 @@ async def main():
         return
 
     db_url = os.environ.get("DATABASE_URL_LOCAL") or os.environ.get("DATABASE_URL")
-    if not db_url:
-        # Try common Pro setup
-        db_url = "postgres://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
 
     try:
         conn = await asyncpg.connect(db_url, timeout=10)
