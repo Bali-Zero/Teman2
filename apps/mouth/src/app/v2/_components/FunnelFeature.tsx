@@ -15,6 +15,64 @@ import {
 } from "lucide-react";
 import type { Funnel } from "@balizero/core/components/ThemeProvider";
 
+// ---------------------------------------------------------------------------
+// Tracking lokal — self-contained, tidak bergantung pada file di luar /v2.
+// Mengirim event ke GA4 via gtag (no-op jika gtag belum dimuat di halaman).
+// ---------------------------------------------------------------------------
+type GtagFn = (...args: unknown[]) => void;
+
+// Maps funnel × ctaType → specific GA4 event name.
+// Each entry corresponds to one of the 8 tracked CTA surfaces in FunnelFeature.
+const FUNNEL_EVENT_MAP: Record<
+  string,
+  Record<"primary" | "pricing" | "search" | "suggestion", string>
+> = {
+  visa: {
+    primary: "visa_cta_click",
+    pricing: "visa_consult_click",
+    search: "visa_search_submit",
+    suggestion: "visa_suggestion_click",
+  },
+  kbli: {
+    primary: "kbli_cta_click",
+    pricing: "kbli_consult_click",
+    search: "kbli_search_submit",
+    suggestion: "kbli_suggestion_click",
+  },
+  tax: {
+    primary: "tax_cta_click",
+    pricing: "tax_consult_click",
+    search: "tax_search_submit",
+    suggestion: "tax_suggestion_click",
+  },
+  property: {
+    primary: "property_cta_click",
+    pricing: "property_consult_click",
+    search: "property_search_submit",
+    suggestion: "property_suggestion_click",
+  },
+};
+
+function trackFunnelCTA(
+  funnel: string,
+  ctaType: "primary" | "pricing" | "suggestion" | "search",
+  label: string,
+  destination?: string,
+): void {
+  if (typeof window === "undefined") return;
+  const gtag = (window as Window & { gtag?: GtagFn }).gtag;
+  if (typeof gtag !== "function") return;
+  const eventName =
+    FUNNEL_EVENT_MAP[funnel]?.[ctaType] ?? `${funnel}_${ctaType}_clicked`;
+  gtag("event", eventName, {
+    event_category: "FunnelFeature",
+    funnel,
+    cta_type: ctaType,
+    label,
+    ...(destination ? { destination } : {}),
+  });
+}
+
 type LayoutMode = "full" | "half";
 
 const FUNNEL_HREF: Record<Exclude<Funnel, null>, string> = {
@@ -372,6 +430,15 @@ export function FunnelFeature({
                     ? "noopener noreferrer"
                     : undefined
                 }
+                // CTA-1: Primary action — track PRIMA che il browser navighi (non blocca)
+                onClick={() =>
+                  trackFunnelCTA(
+                    funnel,
+                    "primary",
+                    cfg.cta,
+                    FUNNEL_HREF[funnel],
+                  )
+                }
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-transform hover:-translate-y-0.5"
                 style={{
                   background: "var(--accent-funnel)",
@@ -392,6 +459,15 @@ export function FunnelFeature({
                 switch. Now FUNNEL_PRICING_HREF (real pricing page). */}
               <a
                 href={FUNNEL_PRICING_HREF[funnel]}
+                // CTA-2: "See transparent pricing" — track sebelum navigasi ke halaman pricing
+                onClick={() =>
+                  trackFunnelCTA(
+                    funnel,
+                    "pricing",
+                    "See transparent pricing",
+                    FUNNEL_PRICING_HREF[funnel],
+                  )
+                }
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 transition-all hover:-translate-y-0.5"
                 style={{
                   background:
@@ -439,6 +515,12 @@ export function FunnelFeature({
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
+                    // CTA-7: Search input — track hanya saat user tekan Enter dengan query non-kosong
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && query.trim()) {
+                        trackFunnelCTA(funnel, "search", query.trim());
+                      }
+                    }}
                     placeholder={cfg.searchPlaceholder}
                     className="flex-1 bg-transparent outline-none"
                     style={{
@@ -465,7 +547,11 @@ export function FunnelFeature({
                 {cfg.searchSuggestions.slice(0, 4).map((sug) => (
                   <button
                     key={sug}
-                    onClick={() => setQuery(sug)}
+                    // CTA-3..6: Suggestion chip — track chip mana yang diklik + isi query
+                    onClick={() => {
+                      setQuery(sug);
+                      trackFunnelCTA(funnel, "suggestion", sug);
+                    }}
                     className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
                     style={{
                       background:
