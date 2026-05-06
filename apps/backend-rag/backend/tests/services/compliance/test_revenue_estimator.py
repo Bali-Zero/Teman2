@@ -1,7 +1,5 @@
 """Tests for revenue_estimator.py — IDR parsing and pricing lookup."""
 
-import pytest
-
 from backend.services.compliance.renewal_rules import RENEWAL_RULES
 from backend.services.compliance.revenue_estimator import (
     _parse_idr,
@@ -9,10 +7,16 @@ from backend.services.compliance.revenue_estimator import (
     estimate_urgent_surcharge,
 )
 
-# ── Minimal pricing fixture (mirrors bali_zero_official_prices_2025.json shape) ──
+# ── Minimal pricing fixture (mirrors bali_zero_official_prices_2026.json shape) ──
+# 2026 schema:
+#   * ``visa_extensions`` dropped — C1 Tourism Extension lives in single_entry_visas
+#   * ``urgent_services`` renamed to ``urgent_processing``
 
 SAMPLE_PRICES: dict = {
     "services": {
+        "single_entry_visas": {
+            "C1 Tourism Extension": {"price": "1.700.000 IDR"},
+        },
         "kitas_permits": {
             "Investor KITAS 2 Years (Extend)": {"price": "18.000.000 IDR"},
             "Spouse 1 Year (Extend)": {"price": "9.000.000 IDR"},
@@ -25,10 +29,7 @@ SAMPLE_PRICES: dict = {
         "kitap_permits": {
             "Investor KITAP + MERP": {"price": "55.000.000 IDR"},
         },
-        "visa_extensions": {
-            "C1 Tourism Extension": {"price": "1.700.000 IDR"},
-        },
-        "urgent_services": {
+        "urgent_processing": {
             "Urgent 1 Hari": {"price": "3.000.000 IDR"},
             "Urgent 2 Hari": {"price": "2.500.000 IDR"},
             "Urgent 3 Hari": {"price": "1.000.000 IDR"},
@@ -137,3 +138,15 @@ class TestEstimateUrgentSurcharge:
     def test_empty_urgent_services_returns_none(self) -> None:
         result = estimate_urgent_surcharge(1, {})
         assert result is None
+
+    def test_legacy_urgent_services_key_still_works(self) -> None:
+        # Defensive: transitional fixtures may still pass the legacy
+        # ``urgent_services`` key. The estimator should accept both.
+        legacy = {
+            "services": {
+                "urgent_services": {
+                    "Urgent 1 Hari": {"price": "3.000.000 IDR"},
+                }
+            }
+        }
+        assert estimate_urgent_surcharge(1, legacy) == 3_000_000

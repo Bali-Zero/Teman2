@@ -1,7 +1,7 @@
 """
 Revenue Estimator — Look up estimated renewal revenue from PricingService.
 
-All prices come from PricingService (SSOT: bali_zero_official_prices_2025.json).
+All prices come from PricingService (SSOT: bali_zero_official_prices_2026.json).
 Never hardcoded. Returns None when price is not found or not a BZ service.
 """
 
@@ -41,7 +41,7 @@ def _parse_idr(price_str: str) -> int | None:
 
 
 def estimate_renewal_revenue(
-    rule: "RenewalRule",
+    rule: RenewalRule,
     all_prices: dict,
 ) -> int | None:
     """
@@ -60,11 +60,52 @@ def estimate_renewal_revenue(
 
     services = all_prices.get("services", all_prices)
 
+    def _scan(container: dict) -> tuple[bool, str]:
+        """Search a flat ``{name: entry}`` mapping. Returns (found, price_str).
+
+        Falls back to ``tier_range[0]`` (low end) when the entry uses a
+        range instead of a single price (2026 ``tax_accounting`` rows).
+        """
+        if rule.renewal_pricing_key in container:
+            entry = container[rule.renewal_pricing_key]
+            if not isinstance(entry, dict):
+                return True, ""
+            price_str = entry.get("price", "") or ""
+            if not price_str:
+                tier_range = entry.get("tier_range")
+                if isinstance(tier_range, (list, tuple)) and tier_range:
+                    price_str = tier_range[0] or ""
+            return True, price_str
+        return False, ""
+
     for category_dict in services.values():
         if not isinstance(category_dict, dict):
             continue
-        if rule.renewal_pricing_key in category_dict:
-            price_str = category_dict[rule.renewal_pricing_key].get("price", "")
+        # 2026 ``tax_accounting`` is one level deeper.
+        nested_subblocks = [
+            v for v in category_dict.values()
+            if isinstance(v, dict)
+            and v
+            and all(
+                isinstance(item, dict) and ("price" in item or "tier_range" in item)
+                for item in v.values()
+            )
+        ]
+        if nested_subblocks:
+            for sub_block in nested_subblocks:
+                found, price_str = _scan(sub_block)
+                if found:
+                    result = _parse_idr(price_str)
+                    if result is not None:
+                        logger.debug(
+                            "Revenue for rule '%s': %d IDR (key='%s', nested)",
+                            rule.rule_id, result, rule.renewal_pricing_key,
+                        )
+                    return result
+            continue
+
+        found, price_str = _scan(category_dict)
+        if found:
             result = _parse_idr(price_str)
             if result is not None:
                 logger.debug(
@@ -103,8 +144,11 @@ def estimate_urgent_surcharge(processing_days: int, all_prices: dict) -> int | N
     Returns:
         Surcharge in IDR, or None if no urgency.
     """
-    urgent_services = all_prices.get("services", {}).get("urgent_services", {})
-    if not urgent_services:
+    services = all_prices.get("services", {})
+    # 2026 renamed ``urgent_services`` → ``urgent_processing``; accept either
+    # for transitional fixtures that still use the legacy key.
+    urgent = services.get("urgent_processing") or services.get("urgent_services") or {}
+    if not urgent:
         return None
 
     if processing_days <= 1:
@@ -114,7 +158,7 @@ def estimate_urgent_surcharge(processing_days: int, all_prices: dict) -> int | N
     else:
         key = "Urgent 3 Hari"
 
-    entry = urgent_services.get(key, {})
+    entry = urgent.get(key, {})
     return _parse_idr(entry.get("price", ""))
 
 
