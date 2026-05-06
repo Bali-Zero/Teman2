@@ -27,7 +27,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
-from backend.services.notifications.email_branding import logo_header_html
+from backend.services.notifications.email_branding import logo_header_html, team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
@@ -321,22 +321,27 @@ class InvoiceAutomationService:
     ) -> bool:
         """Send notification email to accounting (Asya) via internal email API."""
         subject = f"[TEAM] New Invoice {invoice_number} - {client_data['full_name']}"
-        body_html = (
-            f"<p>Hi Asya!</p>"
-            f"<p>A new invoice has just been generated and sent to our client.</p>"
-            f"<p><b>Client Details:</b><br>"
-            f"Name: {client_data['full_name']}<br>"
-            f"Email: {client_data.get('email', 'N/A')}<br>"
-            f"Practice ID: {practice_data['id']}</p>"
-            f"<p><b>Invoice Info:</b><br>"
-            f"Invoice Number: {invoice_number}<br>"
-            f"Amount: IDR {float(practice_data.get('quoted_price', 0)):,.0f}</p>"
-            f"<p>PDF attached.</p>"
-            f"<p><b>Next Steps:</b><br>"
-            f"1. Reach out to the client via WhatsApp for payment follow-up<br>"
-            f"2. Keep an eye on our bank account<br>"
-            f"3. Once payment comes through, update the status to ON PROCESS</p>"
-            f"<p>Warmly,<br>Zantara CRM</p>"
+        amount = float(practice_data.get("quoted_price", 0))
+        body_html = team_email_html(
+            title=f"New Invoice {invoice_number}",
+            intro=f"Hi Asya — a new invoice has been generated and sent to {client_data['full_name']}. PDF attached.",
+            meta_rows=[
+                ("Client", client_data["full_name"]),
+                ("Email", client_data.get("email") or "—"),
+                ("Practice", f"#{practice_data['id']}"),
+                ("Amount", f"IDR {amount:,.0f}"),
+            ],
+            body_html=(
+                "<b>Next steps:</b>"
+                "<ol style='margin:6px 0 4px 18px;padding:0;'>"
+                "<li>Reach out to the client via WhatsApp for payment follow-up</li>"
+                "<li>Keep an eye on our bank account</li>"
+                "<li>Once payment comes through, update the status to ON PROCESS</li>"
+                "</ol>"
+            ),
+            cta_label="Open practice in CRM",
+            cta_url=f"https://kita.balizero.com/process/{practice_data['id']}",
+            signature="Zantara CRM",
         )
 
         pdf_b64 = base64.b64encode(pdf_bytes).decode()
