@@ -275,19 +275,19 @@ This may be the end of this particular process, but it's not goodbye! Our team r
 • Any questions about living and working in Indonesia
 
 Thank You for Trusting Us:
-It's been our privilege to help you navigate this journey. Thank you for choosing Zantara Indonesia—we truly appreciate your trust in our team.
+It's been our privilege to help you navigate this journey. Thank you for choosing Bali Zero—we truly appreciate your trust in our team.
 
 We'd love to hear about your experience! If you have a moment, please let us know how we did. Your feedback helps us serve even better.
 
 Wishing you all the best in your Indonesian adventure!
 
 Warm regards,
-The Zantara Indonesia Team
+Zantara — Bali Zero Team
 
 P.S. Save our contact info for future needs—we're always here to help! 😊
 
 ---
-📧 support@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 xxx xxxx xxxx
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3107 363
 """
 
         await self._send_with_brevo_fallback(

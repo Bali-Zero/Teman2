@@ -70,7 +70,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 257 routers, 540 services, 905 test files
+- **Backend:** Python 3.11+, FastAPI, 257 routers, 541 services, 905 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -352,7 +352,7 @@ Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`) → all. Team → only `
 
 **Email language to team** (`feedback_email_language.md`): Bahasa Indonesia for all `@balizero.com` except `zero@`/`antonellosiano@`. Subhi: bahasa default, italiano OK as fallback.
 
-**Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` (alias of `damar@balizero.com`) via Brevo `/api/notifications/send-email` + `X-API-Key: zantara-secret-2024`. Never `zero@`, `notifications@`, `subhi@` for automated/transactional sends.
+**Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` (alias of `zero@balizero.com`) via Brevo `/api/notifications/send-email` + `X-API-Key: zantara-secret-2024`. Never `notifications@`, `subhi@` for automated/transactional sends.
 
 ## 10. Frontend Deploy — QA Automatico (OBBLIGATORIO)
 

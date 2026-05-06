@@ -226,7 +226,7 @@ class ZohoInvoiceService:
             },
         )
 
-        # Calculate due date (7 days from now)
+        # Calculate due date (2 days from now)
         due_date = (datetime.now(tz=timezone.utc)).strftime("%Y-%m-%d")
         due_date_obj = datetime.now(tz=timezone.utc)
         due_date = due_date_obj.strftime("%Y-%m-%d")
@@ -237,8 +237,8 @@ class ZohoInvoiceService:
             "date": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d"),
             "due_date": due_date,
             "reference_number": str(practice_data.get("id", "")),
-            "notes": "Thank you for choosing Zantara Indonesia. Payment is due within 7 days.",
-            "terms": "Payment terms: Net 7 days. Please contact us for any questions.",
+            "notes": "Thank you for choosing Bali Zero. Payment is due within 2 days.",
+            "terms": "Payment terms: Net 2 days. Please contact us for any questions.",
         }
 
         response = await self._make_api_request(
@@ -274,19 +274,19 @@ class ZohoInvoiceService:
         """
         email_data = {
             "to_mail_ids": [to_email],
-            "subject": "Invoice from Zantara Indonesia",
+            "subject": "Invoice from Bali Zero",
             "body": """Dear Client,
 
 Please find your invoice attached.
 
-Thank you for choosing Zantara Indonesia for your immigration services.
+Thank you for choosing Bali Zero for your business in Indonesia.
 
-Payment is due within 7 days from the invoice date.
+Payment is due within 2 days from the invoice date.
 
 If you have any questions, please don't hesitate to contact us.
 
 Best regards,
-Zantara Indonesia Team
+Zantara — Bali Zero Team
 """,
         }
 
