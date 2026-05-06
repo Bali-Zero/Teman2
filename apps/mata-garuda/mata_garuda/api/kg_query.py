@@ -38,8 +38,13 @@ _SAFE_NAME_RE = re.compile(r"^[^\x00/]+$")
 
 
 def _ro_conn(db_path: Path) -> sqlite3.Connection:
-    """Open a read-only connection. Safe even if writer is active (WAL)."""
-    uri = f"file:{db_path}?mode=ro"
+    """Open a read-only connection. Safe even if writer is active (WAL).
+
+    `db_path` is percent-encoded so a path that happens to contain `?` or
+    `#` is not silently truncated by SQLite's URI parser.
+    """
+    encoded = urllib.parse.quote(str(db_path), safe="/:@")
+    uri = f"file:{encoded}?mode=ro"
     conn = sqlite3.connect(uri, uri=True)
     conn.row_factory = sqlite3.Row
     return conn
@@ -86,7 +91,7 @@ class _ConfiguredServer(ThreadingHTTPServer):
 KGServer = _ConfiguredServer
 
 
-def build_server(*, bind: str, port: int, db_path: Path | None = None) -> _ConfiguredServer:
+def build_server(*, bind: str, port: int, db_path: Path | None = None) -> KGServer:
     """Construct the HTTP server. Refuse forbidden bind addresses."""
     if any(bind == p or bind.startswith(p + ":") for p in FORBIDDEN_BIND_PREFIXES):
         raise RuntimeError(f"refusing to bind on wildcard address {bind!r}")
