@@ -24,6 +24,7 @@ import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.crm.automation import ProcessAutomationService
+from backend.services.notifications.email_branding import logo_header_html
 
 logger = get_logger(__name__)
 
@@ -211,7 +212,7 @@ class PracticeStatusListener:
 
         # ── Email 1: Client — payment received ──────────────────────────
         if client_email:
-            subject = f"✅ Payment Received — Your {practice_type} is Now in Motion!"
+            subject = f"[CLIENT] ✅ Payment Received — Your {practice_type} is Now in Motion!"
             body = f"""Hi {client_name},
 
 Great news — we've received your payment! 🎉
@@ -226,13 +227,17 @@ What happens next:
 Thank you for your trust — we'll take it from here!
 
 Warmly,
-The Bali Zero Team
+Zantara — Bali Zero Team
 
 ---
-Questions? Reply to this email or reach us on WhatsApp.
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3107 363
 """
             try:
-                await self._send_via_internal_api(client_email, subject, body)
+                await self._send_via_internal_api(
+                    client_email, subject, body,
+                    cc=team_member_email if team_member_email and team_member_email != client_email else None,
+                    include_logo=True,
+                )
                 logger.info(f"M4: payment confirmation sent to client {client_email}")
             except httpx.HTTPError as exc:
                 logger.error(f"M4: failed to email client {client_email}: {exc}", exc_info=True)
@@ -332,11 +337,16 @@ Zantara CRM 🤖
         client_name = client_data["full_name"]
         client_email = client_data["email"]
         practice_type = practice_data.get("practice_type_name", "your application")
+        team_member_email = practice_data.get("assigned_to")
 
         subject, body = _milestone_content(client_name, practice_type, practice_id, status)
 
         try:
-            await self._send_via_internal_api(client_email, subject, body)
+            await self._send_via_internal_api(
+                client_email, subject, body,
+                cc=team_member_email if team_member_email and team_member_email != client_email else None,
+                include_logo=True,
+            )
             logger.info(f"M5: milestone '{status}' email sent to {client_email} (practice {practice_id})")
         except httpx.HTTPError as exc:
             logger.error(f"M5: milestone email failed for {client_email}: {exc}", exc_info=True)
@@ -353,6 +363,7 @@ Zantara CRM 🤖
         body: str,
         cc: str | None = None,
         bcc: str | None = None,
+        include_logo: bool = False,
     ) -> None:
         """
         Send email via the internal /api/notifications/send-email endpoint.
@@ -361,6 +372,8 @@ Zantara CRM 🤖
         (intra-domain @balizero.com → Zoho, external → Brevo) and supports CC/BCC.
         """
         html_body = body.replace("\n", "<br>")
+        if include_logo:
+            html_body = f"{logo_header_html()}{html_body}"
         payload: dict[str, Any] = {
             "to": to_email,
             "subject": subject,
@@ -393,7 +406,7 @@ def _milestone_content(
     portal_url = "https://my.balizero.com"
 
     if status == "submitted":
-        subject = f"📤 Update: Your {practice_type} Has Been Submitted!"
+        subject = f"[CLIENT] 📤 Update: Your {practice_type} Has Been Submitted!"
         body = f"""Hi {client_name},
 
 Exciting update — we've officially submitted your {practice_type} application to the relevant authorities! 🎉
@@ -409,11 +422,11 @@ You can check your case status anytime:
 Hang tight — we're on it!
 
 Warmly,
-The Bali Zero Team
+Zantara — Bali Zero Team
 """
 
     elif status == "approved":
-        subject = f"🎉 APPROVED! Your {practice_type} is Ready!"
+        subject = f"[CLIENT] 🎉 APPROVED! Your {practice_type} is Ready!"
         body = f"""Hi {client_name},
 
 WE DID IT! 🎊
@@ -430,11 +443,11 @@ View your case: {portal_url}
 Thank you for choosing Bali Zero. Congratulations! 🥂
 
 Warmly,
-The Bali Zero Team
+Zantara — Bali Zero Team
 """
 
     elif status == "completed":
-        subject = f"✅ Completed: Your {practice_type} Documents Are Ready"
+        subject = f"[CLIENT] ✅ Completed: Your {practice_type} Documents Are Ready"
         body = f"""Hi {client_name},
 
 Your {practice_type} process is now fully complete — your documents are ready! ✅
@@ -449,13 +462,13 @@ It's been a pleasure working with you. If you ever need anything else — visas,
 Thank you for trusting Bali Zero!
 
 Warmly,
-The Bali Zero Team
+Zantara — Bali Zero Team
 
 P.S. We'd love to hear about your experience — feel free to leave us a review! ⭐
 """
 
     else:
-        subject = f"Update on Your {practice_type} (Practice #{practice_id})"
+        subject = f"[CLIENT] Update on Your {practice_type} (Practice #{practice_id})"
         body = f"""Hi {client_name},
 
 There's been an update on your {practice_type} — status is now: {status}.
