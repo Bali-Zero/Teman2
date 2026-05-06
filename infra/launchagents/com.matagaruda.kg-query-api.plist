@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.kg-query-api</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata-garuda-kg-api.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>KG_API_BIND</key>
+        <string>100.93.236.6</string>
+        <key>KG_API_PORT</key>
+        <string>8990</string>
+        <key>MATA_GARUDA_REPO</key>
+        <string>/Users/nuzantara/Desktop/nuzantara</string>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-kg-api.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-kg-api.err</string>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+</dict>
+</plist>
