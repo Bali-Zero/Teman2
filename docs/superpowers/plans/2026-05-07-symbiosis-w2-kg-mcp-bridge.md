@@ -56,6 +56,7 @@ docs/
 ## Task 1: Doctrine commit — append §1.4 to mata-garuda CLAUDE.md
 
 **Files:**
+
 - Modify: `apps/mata-garuda/CLAUDE.md` (append after `## 1. Vincoli inviolabili` block, before `## 2.`)
 
 This commit lands FIRST. Zero pre-approved the verbatim text; we just paste it in. Zero code touched.
@@ -89,7 +90,6 @@ pubblica conoscenza operativa, mai dati OSINT". L'identità di una
 entità menzionata è conoscenza operativa, l'articolo grezzo no.
 
 Implementation reference: `docs/superpowers/specs/2026-05-07-symbiosis-w2-kg-mcp-bridge-design.md`.
-
 ```
 
 - [ ] **Step 3: Verify**
@@ -122,6 +122,7 @@ EOF
 ## Task 2: Mini-side — create `kg_query.py` skeleton + read-only DB connection
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/api/__init__.py` (empty)
 - Create: `apps/mata-garuda/mata_garuda/api/kg_query.py`
 
@@ -445,6 +446,7 @@ git commit -m "feat(mata-garuda): add kg_query HTTP API skeleton (build_server +
 ## Task 3: Implement `/health` endpoint (T1, T2)
 
 **Files:**
+
 - Modify: `apps/mata-garuda/mata_garuda/api/kg_query.py`
 - Modify: `apps/mata-garuda/tests/api/test_kg_query.py`
 
@@ -554,6 +556,7 @@ git commit -m "feat(mata-garuda): kg_query /health endpoint with fail-soft schem
 ## Task 4: Implement `/kg/search` (T3, T4, T5, T12)
 
 **Files:**
+
 - Modify: `apps/mata-garuda/mata_garuda/api/kg_query.py`
 - Modify: `apps/mata-garuda/tests/api/test_kg_query.py`
 
@@ -686,6 +689,7 @@ git commit -m "feat(mata-garuda): kg_query /kg/search + path-safety helper for /
 ## Task 5: Implement `/kg/entity/{name}` (T6, T7, T8)
 
 **Files:**
+
 - Modify: `apps/mata-garuda/mata_garuda/api/kg_query.py`
 - Modify: `apps/mata-garuda/tests/api/test_kg_query.py`
 
@@ -823,6 +827,7 @@ git commit -m "feat(mata-garuda): kg_query /kg/entity/{name}?type= with neighbor
 ## Task 6: Forbidden-fields deep-walk guarantee (T9) + concurrency (T11)
 
 **Files:**
+
 - Modify: `apps/mata-garuda/tests/api/test_kg_query.py`
 
 - [ ] **Step 1: Add T9 + T11**
@@ -896,6 +901,7 @@ git commit -m "test(mata-garuda): forbidden-fields deep-walk + concurrent-read t
 ## Task 7: Latency benchmark script
 
 **Files:**
+
 - Create: `apps/mata-garuda/scripts/bench_kg_api.py`
 
 Standalone single-file script using stdlib only. Run from Pro: `python scripts/bench_kg_api.py http://100.93.236.6:8990`.
@@ -984,6 +990,7 @@ git commit -m "feat(mata-garuda): kg_query latency benchmark script (stdlib only
 ## Task 8: Mini-side launchd plist + bridge script
 
 **Files:**
+
 - Create: `infra/launchagents/com.matagaruda.kg-query-api.plist`
 - Create: `scripts/mata-garuda-kg-api.sh`
 
@@ -1091,6 +1098,7 @@ EOF
 ## Task 9: Pro-side MCP tool — `kg_intel.py` (P1, P2, P3, P6, P8)
 
 **Files:**
+
 - Create: `apps/nuzantara-mcp/nuzantara_mcp/tools/kg_intel.py`
 - Create: `apps/nuzantara-mcp/tests/test_tools_kg_intel.py`
 
@@ -1473,6 +1481,7 @@ EOF
 ## Task 10: Wire `kg_intel` into the MCP server
 
 **Files:**
+
 - Modify: `apps/nuzantara-mcp/nuzantara_mcp/server.py`
 - Modify: `apps/nuzantara-mcp/tests/test_server_imports.py` (regression coverage)
 
@@ -1538,13 +1547,14 @@ git commit -m "feat(nuzantara-mcp): wire kg_intel into MCP server registration"
 ## Task 11: Documentation runbook + tri-LLM review excerpts
 
 **Files:**
+
 - Create: `docs/symbiosis/W2-kg-bridge-runbook.md`
 
 - [ ] **Step 1: Draft runbook**
 
 Create `docs/symbiosis/W2-kg-bridge-runbook.md`:
 
-```markdown
+````markdown
 # SYMBIOSIS W2 — KG Bridge A Operational Runbook
 
 ## Install on Mini (one-time)
@@ -1563,6 +1573,7 @@ install -m 0444 infra/launchagents/com.matagaruda.kg-query-api.plist \
 launchctl load ~/Library/LaunchAgents/com.matagaruda.kg-query-api.plist
 launchctl print gui/$(id -u)/com.matagaruda.kg-query-api | head -30
 ```
+````
 
 Verify daemon up:
 
@@ -1630,20 +1641,22 @@ the wiring commit on `apps/nuzantara-mcp/nuzantara_mcp/server.py`.
 ## Tri-LLM review
 
 (Filled in at PR-prep time via Task 12.)
-```
+
+````
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add docs/symbiosis/W2-kg-bridge-runbook.md
 git commit -m "docs(symbiosis): W2 KG-bridge operational runbook (install, verify, rollback)"
-```
+````
 
 ---
 
 ## Task 12: Deploy + benchmark + tri-LLM review (live operations)
 
 **Files (filled-in at runtime):**
+
 - Modify: `docs/symbiosis/W2-kg-bridge-runbook.md` (latency + tri-LLM sections)
 
 This task is **live operations**. It happens after Tasks 1-11 are committed and pushed and **before** opening the PR. It is the equivalent of post-deploy QA but pre-merge.
@@ -1737,9 +1750,10 @@ For each substantive concern: either fix it in a follow-up commit on the
 branch, or add a "Deferred" line in the runbook with the reason.
 
 Threshold: ≥2/3 explicit approvals (DeepSeek + NB-1 minimum, or DeepSeek
-+ one of Codex/Gemini if NB-1 unavailable).
 
-- [ ] **Step 5: Commit review excerpts + bench result**
+- one of Codex/Gemini if NB-1 unavailable).
+
+* [ ] **Step 5: Commit review excerpts + bench result**
 
 ```bash
 git add docs/symbiosis/W2-kg-bridge-runbook.md
@@ -1796,8 +1810,10 @@ future separate PR.
 ## E2E demo
 
 ```
+
 $ kg_intel_search("imigrasi", 5)
 {"query": "imigrasi", "limit": 5, "results": [{"name": "...", ...}]}
+
 ```
 
 (Replace with real captured output from Pro after deploy.)

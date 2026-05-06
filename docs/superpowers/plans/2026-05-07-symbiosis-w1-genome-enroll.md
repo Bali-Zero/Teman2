@@ -16,12 +16,12 @@
 
 ## File map
 
-| File | Action | Touched in |
-|---|---|---|
-| `apps/organism/organism/tools/validate_genome.py` | Modify (1-line `_RUNTIMES` extension) | Task 1 |
-| `apps/organism/organism/genome.yaml` | Modify (preamble + 50ish entries across 3 commits) | Tasks 1, 2, 3 |
-| `apps/organism/tests/tools/test_validate_genome.py` | Modify (add `mini_launchd` runtime test, if file exists; otherwise create) | Task 1 |
-| `.claude/rules/cicatrix-scars.md` | Modify (1 STRUCTURAL entry) | Task 4 |
+| File                                                | Action                                                                     | Touched in    |
+| --------------------------------------------------- | -------------------------------------------------------------------------- | ------------- |
+| `apps/organism/organism/tools/validate_genome.py`   | Modify (1-line `_RUNTIMES` extension)                                      | Task 1        |
+| `apps/organism/organism/genome.yaml`                | Modify (preamble + 50ish entries across 3 commits)                         | Tasks 1, 2, 3 |
+| `apps/organism/tests/tools/test_validate_genome.py` | Modify (add `mini_launchd` runtime test, if file exists; otherwise create) | Task 1        |
+| `.claude/rules/cicatrix-scars.md`                   | Modify (1 STRUCTURAL entry)                                                | Task 4        |
 
 Working directory: `/Users/nuzantara/Desktop/nuzantara/.worktrees/symbiosis-W1` (worktree on branch `feat/symbiosis-W1-genome-enroll-2026-05-07`).
 
@@ -39,6 +39,7 @@ git rev-parse --abbrev-ref HEAD
 ```
 
 Expected output:
+
 - `On branch feat/symbiosis-W1-genome-enroll-2026-05-07`
 - HEAD = `c4be7db87` (design-doc commit) or later
 - Working tree clean
@@ -92,6 +93,7 @@ Expected: 1 or 2 (current session + max one claude-max-usage-watcher cron tick).
 **Goal of this task:** add `mini_launchd` to the validator's allowed runtimes and update `genome.yaml` header to document the new runtime + `duplicates_id` convention. Final state: validator PASS on the modified genome.yaml; checksum recomputed.
 
 **Files:**
+
 - Modify: `apps/organism/organism/tools/validate_genome.py:28-37` (extend `_RUNTIMES`)
 - Modify: `apps/organism/organism/tools/validate_genome.py:71-79` (no change — checksum function stays as-is, just verify)
 - Modify: `apps/organism/tests/tools/test_validate_genome.py` (add test for `mini_launchd`; if missing, create)
@@ -361,27 +363,28 @@ Expected: push success, branch already tracked.
 **Goal of this task:** add 31 entries to `genome.yaml` (16 Pro + 15 Mini), with 12 cross-linked pairs via `duplicates_id`. Validator PASS at end. Header preamble re-applied.
 
 **Files:**
+
 - Modify: `apps/organism/organism/genome.yaml` (append 31 entries to `organs:` list)
 
 ### Step 2.1: Reference table — labels, schedules, peer mapping
 
 The 12 active-active duplicate pairs (verified via Zero's launchctl listing 2026-05-06 22:45 WITA):
 
-| Short label | Pro id | Mini id | Schedule | Type | expected_hb_seconds |
-|---|---|---|---|---|---|
-| `watcher.daily` | `mata_garuda.watcher_daily.pro` | `mata_garuda.watcher_daily.mini` | SCI Hour=6 | cron | 90000 |
-| `reg-alert.30min` | `mata_garuda.reg_alert_30min.pro` | `mata_garuda.reg_alert_30min.mini` | SI=1800 | cron | 5400 |
-| `kg-linker` | `mata_garuda.kg_linker.pro` | `mata_garuda.kg_linker.mini` | SI=3600 | cron | 7200 |
-| `wr-topic` | `mata_garuda.wr_topic.pro` | `mata_garuda.wr_topic.mini` | SCI Weekday=3 Hour=8 | cron | 691200 |
-| `wr2-bridge.hourly` | `mata_garuda.wr2_bridge_hourly.pro` | `mata_garuda.wr2_bridge_hourly.mini` | SI=3600 | cron | 7200 |
-| `bridge.adaptive` | `mata_garuda.bridge_adaptive.pro` | `mata_garuda.bridge_adaptive.mini` | SI=60 | daemon | 180 |
-| `sentinel.daily` | `mata_garuda.sentinel_daily.pro` | `mata_garuda.sentinel_daily.mini` | SCI Hour=2 | cron | 90000 |
-| `intel-bridge.daily` | `mata_garuda.intel_bridge_daily.pro` | `mata_garuda.intel_bridge_daily.mini` | SCI Hour=6 Min=30 | cron | 90000 |
-| `daily-briefing` | `mata_garuda.daily_briefing.pro` | `mata_garuda.daily_briefing.mini` | SCI Hour=7 | cron | 90000 |
-| `kita-feed.daily` | `mata_garuda.kita_feed.pro` | `mata_garuda.kita_feed.mini` | SCI Hour=5 | cron | 90000 |
-| `public-channel` | `mata_garuda.public_channel.pro` | `mata_garuda.public_channel.mini` | SCI Hour=2 Min=15 | cron | 90000 |
-| `weekly-digest` | `mata_garuda.weekly_digest.pro` | `mata_garuda.weekly_digest.mini` | SCI Weekday=0 Hour=8 | cron | 691200 |
-| `gap.consumer` | `mata_garuda.gap_consumer.pro` | `mata_garuda.gap_consumer.mini` | SI=600 | cron | 4200 |
+| Short label          | Pro id                               | Mini id                               | Schedule             | Type   | expected_hb_seconds |
+| -------------------- | ------------------------------------ | ------------------------------------- | -------------------- | ------ | ------------------- |
+| `watcher.daily`      | `mata_garuda.watcher_daily.pro`      | `mata_garuda.watcher_daily.mini`      | SCI Hour=6           | cron   | 90000               |
+| `reg-alert.30min`    | `mata_garuda.reg_alert_30min.pro`    | `mata_garuda.reg_alert_30min.mini`    | SI=1800              | cron   | 5400                |
+| `kg-linker`          | `mata_garuda.kg_linker.pro`          | `mata_garuda.kg_linker.mini`          | SI=3600              | cron   | 7200                |
+| `wr-topic`           | `mata_garuda.wr_topic.pro`           | `mata_garuda.wr_topic.mini`           | SCI Weekday=3 Hour=8 | cron   | 691200              |
+| `wr2-bridge.hourly`  | `mata_garuda.wr2_bridge_hourly.pro`  | `mata_garuda.wr2_bridge_hourly.mini`  | SI=3600              | cron   | 7200                |
+| `bridge.adaptive`    | `mata_garuda.bridge_adaptive.pro`    | `mata_garuda.bridge_adaptive.mini`    | SI=60                | daemon | 180                 |
+| `sentinel.daily`     | `mata_garuda.sentinel_daily.pro`     | `mata_garuda.sentinel_daily.mini`     | SCI Hour=2           | cron   | 90000               |
+| `intel-bridge.daily` | `mata_garuda.intel_bridge_daily.pro` | `mata_garuda.intel_bridge_daily.mini` | SCI Hour=6 Min=30    | cron   | 90000               |
+| `daily-briefing`     | `mata_garuda.daily_briefing.pro`     | `mata_garuda.daily_briefing.mini`     | SCI Hour=7           | cron   | 90000               |
+| `kita-feed.daily`    | `mata_garuda.kita_feed.pro`          | `mata_garuda.kita_feed.mini`          | SCI Hour=5           | cron   | 90000               |
+| `public-channel`     | `mata_garuda.public_channel.pro`     | `mata_garuda.public_channel.mini`     | SCI Hour=2 Min=15    | cron   | 90000               |
+| `weekly-digest`      | `mata_garuda.weekly_digest.pro`      | `mata_garuda.weekly_digest.mini`      | SCI Weekday=0 Hour=8 | cron   | 691200              |
+| `gap.consumer`       | `mata_garuda.gap_consumer.pro`       | `mata_garuda.gap_consumer.mini`       | SI=600               | cron   | 4200                |
 
 13 pairs noted, 12 stated in topology brief — discrepancy on `gap.consumer`. **Resolution at commit time:** if Mini's `launchctl list` shows `gap.consumer` (verify with `ssh mini-remote launchctl list | grep matagaruda.gap.consumer`), enroll the pair; otherwise enroll Pro-only and document as Pro-only in §5.4 of spec follow-up. Default to enrolling the pair — adding a phantom Mini entry is a smaller error than missing a real organ, and `duplicates_id` flags it for review.
 
@@ -418,40 +421,41 @@ Append the following block AFTER the last existing organ entry, BEFORE any trail
 (Single canonical example with full schema; the remaining entries follow the same template — substitute `id`, `runtime`, `recovery_params.host`, `recovery_params.label`, `duplicates_id`, schedule-derived `expected_hb_seconds`, and `owner_module`.)
 
 ```yaml
-  # === Wave 1 — mata_garuda Pro+Mini (active-active 12 dup pairs + 3 Pro-only + 2 Mini-only) ===
-  # Topology verified by Zero 2026-05-06 22:45 WITA via launchctl on both nodes.
-  # Resolution of double-firing: out of scope, see cicatrix-scars.md.
-  - id: mata_garuda.watcher_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_watcher.sh
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.watcher.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.watcher_daily.mini
-  - id: mata_garuda.watcher_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_watcher.sh
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.watcher.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.watcher_daily.pro
+# === Wave 1 — mata_garuda Pro+Mini (active-active 12 dup pairs + 3 Pro-only + 2 Mini-only) ===
+# Topology verified by Zero 2026-05-06 22:45 WITA via launchctl on both nodes.
+# Resolution of double-firing: out of scope, see cicatrix-scars.md.
+- id: mata_garuda.watcher_daily.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_watcher.sh
+  dependencies:
+    - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.watcher.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  duplicates_id: mata_garuda.watcher_daily.mini
+- id: mata_garuda.watcher_daily.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_watcher.sh
+  dependencies:
+    - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.watcher.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  duplicates_id: mata_garuda.watcher_daily.pro
 ```
 
 For each remaining organ, follow the template substituting:
+
 - `id` from §2.1 reference table
 - `runtime`: `pro_launchd` or `mini_launchd`
 - `type`: from reference table (almost all `cron`; `bridge_adaptive` is `daemon` because SI=60 + heartbeat scope)
@@ -587,29 +591,31 @@ Expected: push success.
 **Goal of this task:** add 18-21 entries to `genome.yaml`. WR2 Pro 13 (16 plist - 3 already enrolled: oracle, supervisor, newsletter) + 5-8 selected Pro background crons. Validator PASS at end. Header preamble re-applied.
 
 **Files:**
+
 - Modify: `apps/organism/organism/genome.yaml`
 
 ### Step 3.1: WR2 reference table
 
-| Short label | id | Schedule | Type | expected_hb_seconds | Notes |
-|---|---|---|---|---|---|
-| `wr2.canva-apply` | `wr2.canva_apply` | none | daemon | 600 | supervisor-driven |
-| `wr2.connector` | `wr2.connector` | SCI Hour=4 | cron | 90000 | daily |
-| `wr2.dossier-compiler` | `wr2.dossier_compiler` | SCI Hour=4 Min=30 | cron | 90000 | daily |
-| `wr2.draft-generator` | `wr2.draft_generator` | none | daemon | 600 | supervisor-driven |
-| `wr2.hardening` | `wr2.hardening` | none | daemon | 600 | supervisor-driven |
-| `wr2.image-generator` | `wr2.image_generator` | none | daemon | 600 | supervisor-driven |
-| `wr2.learner-nightly` | `wr2.learner_nightly` | SCI Hour=3 | cron | 90000 | daily nightly |
-| `wr2.measurer` | `wr2.measurer` | none | daemon | 600 | supervisor-driven |
-| `wr2.pg-proxy` | `wr2.pg_proxy` | KA=true RAL=true | daemon | 60 | true daemon, KeepAlive |
-| `wr2.sla-worker` | `wr2.sla_worker` | none | daemon | 600 | supervisor-driven |
-| `wr2.strategos` | `wr2.strategos` | SCI Weekday=0 Hour=22 | cron | 691200 | weekly |
-| `wr2.topic-selector` | `wr2.topic_selector` | SCI Hour=5 Min=10 | cron | 90000 | daily |
-| `wr2.trend-hunter` | `wr2.trend_hunter` | none | daemon | 600 | supervisor-driven |
+| Short label            | id                     | Schedule              | Type   | expected_hb_seconds | Notes                  |
+| ---------------------- | ---------------------- | --------------------- | ------ | ------------------- | ---------------------- |
+| `wr2.canva-apply`      | `wr2.canva_apply`      | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.connector`        | `wr2.connector`        | SCI Hour=4            | cron   | 90000               | daily                  |
+| `wr2.dossier-compiler` | `wr2.dossier_compiler` | SCI Hour=4 Min=30     | cron   | 90000               | daily                  |
+| `wr2.draft-generator`  | `wr2.draft_generator`  | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.hardening`        | `wr2.hardening`        | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.image-generator`  | `wr2.image_generator`  | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.learner-nightly`  | `wr2.learner_nightly`  | SCI Hour=3            | cron   | 90000               | daily nightly          |
+| `wr2.measurer`         | `wr2.measurer`         | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.pg-proxy`         | `wr2.pg_proxy`         | KA=true RAL=true      | daemon | 60                  | true daemon, KeepAlive |
+| `wr2.sla-worker`       | `wr2.sla_worker`       | none                  | daemon | 600                 | supervisor-driven      |
+| `wr2.strategos`        | `wr2.strategos`        | SCI Weekday=0 Hour=22 | cron   | 691200              | weekly                 |
+| `wr2.topic-selector`   | `wr2.topic_selector`   | SCI Hour=5 Min=10     | cron   | 90000               | daily                  |
+| `wr2.trend-hunter`     | `wr2.trend_hunter`     | none                  | daemon | 600                 | supervisor-driven      |
 
 13 entries. All `runtime: pro_launchd`, all `recovery_action: launchctl_kickstart`, all `recovery_params: {host: pro, label: com.balizero.wr2.<short>}`.
 
 Dependencies:
+
 - All depend on `wr2.supervisor` (already enrolled)
 - `wr2.pg_proxy` adds `infra.postgres`
 - `wr2.canva_apply`, `wr2.image_generator` add no infra (external API)
@@ -619,6 +625,7 @@ Dependencies:
 `owner_module`: extracted from plist `ProgramArguments`. WR2 plists use `~/.openclaw/bin/wr2/wr2-script-wrapper.sh` with the actual Python script as second arg. Use the inner Python path relative to monorepo root, e.g. `apps/war-room/scripts/wr2_draft_generator.py`. Verify the path exists in the repo before committing; if it doesn't, set `owner_module: scripts/wr2/<name>.py` and document the indirection in commit body.
 
 `severity_on_silence`:
+
 - `wr2.pg_proxy`, `wr2.supervisor` (already enrolled): critical
 - WR2 daemons supervisor-driven: warning (supervisor will detect first)
 - WR2 cron daily/weekly: warning
@@ -630,22 +637,22 @@ Per spec §5.4 selection rule: enroll only candidates that are (a) launchd-loade
 
 Empirical schedule data (verified 2026-05-07 design phase):
 
-| Candidate | id | Schedule | Type | expected_hb_seconds | Selection |
-|---|---|---|---|---|---|
-| `codex-autofix-ci` | `pro.codex_autofix_ci` | SCI Min=15 (hourly) | cron | 7200 | ENROLL |
-| `codex-coverage-improver` | `pro.codex_coverage_improver` | SCI Hour=3 | cron | 90000 | ENROLL |
-| `codex-overnight-feeder` | `pro.codex_overnight_feeder` | SCI Hour=21 Min=30 | cron | 90000 | ENROLL |
-| `codex-overnight-runner` | `pro.codex_overnight_runner` | SCI Hour=22 | cron | 90000 | ENROLL |
-| `codex-research-actor` | `pro.codex_research_actor` | SCI Hour=6 | cron | 90000 | ENROLL |
-| `cost-advisor-daily-cap` | `pro.cost_advisor_daily_cap` | SCI Hour=8 | cron | 90000 | ENROLL |
-| `cost-advisor-weekly` | `pro.cost_advisor_weekly` | SCI Weekday=1 Hour=7 | cron | 691200 | ENROLL |
-| `claude-max-usage-watcher` | `pro.claude_max_usage_watcher` | SCI present but H/M/W empty (verify) | INVESTIGATE | INVESTIGATE | INVESTIGATE |
-| `openclaw-children-watchdog` | `pro.openclaw_children_watchdog` | SI=300 | cron | 3900 | ENROLL |
-| `nb-intel-delta-watcher.hourly` | `pro.nb_intel_delta_watcher` | SI=3600 | cron | 7200 | ENROLL |
-| `sentinel-meta-watchdog` | `pro.sentinel_meta_watchdog` | SI=600 | cron | 4200 | ENROLL |
-| `federation-alert-dispatcher` | `pro.federation_alert_dispatcher` | KA=true (daemon) | daemon | 180 | ENROLL |
-| `vector-reindex-check` | `pro.vector_reindex_check` | SCI Weekday=1 Hour=9 | cron | 691200 | ENROLL |
-| `secrets-sync-mini` | `pro.secrets_sync_mini` | SCI Hour=4 Min=30 | cron | 90000 | ENROLL |
+| Candidate                       | id                                | Schedule                             | Type        | expected_hb_seconds | Selection   |
+| ------------------------------- | --------------------------------- | ------------------------------------ | ----------- | ------------------- | ----------- |
+| `codex-autofix-ci`              | `pro.codex_autofix_ci`            | SCI Min=15 (hourly)                  | cron        | 7200                | ENROLL      |
+| `codex-coverage-improver`       | `pro.codex_coverage_improver`     | SCI Hour=3                           | cron        | 90000               | ENROLL      |
+| `codex-overnight-feeder`        | `pro.codex_overnight_feeder`      | SCI Hour=21 Min=30                   | cron        | 90000               | ENROLL      |
+| `codex-overnight-runner`        | `pro.codex_overnight_runner`      | SCI Hour=22                          | cron        | 90000               | ENROLL      |
+| `codex-research-actor`          | `pro.codex_research_actor`        | SCI Hour=6                           | cron        | 90000               | ENROLL      |
+| `cost-advisor-daily-cap`        | `pro.cost_advisor_daily_cap`      | SCI Hour=8                           | cron        | 90000               | ENROLL      |
+| `cost-advisor-weekly`           | `pro.cost_advisor_weekly`         | SCI Weekday=1 Hour=7                 | cron        | 691200              | ENROLL      |
+| `claude-max-usage-watcher`      | `pro.claude_max_usage_watcher`    | SCI present but H/M/W empty (verify) | INVESTIGATE | INVESTIGATE         | INVESTIGATE |
+| `openclaw-children-watchdog`    | `pro.openclaw_children_watchdog`  | SI=300                               | cron        | 3900                | ENROLL      |
+| `nb-intel-delta-watcher.hourly` | `pro.nb_intel_delta_watcher`      | SI=3600                              | cron        | 7200                | ENROLL      |
+| `sentinel-meta-watchdog`        | `pro.sentinel_meta_watchdog`      | SI=600                               | cron        | 4200                | ENROLL      |
+| `federation-alert-dispatcher`   | `pro.federation_alert_dispatcher` | KA=true (daemon)                     | daemon      | 180                 | ENROLL      |
+| `vector-reindex-check`          | `pro.vector_reindex_check`        | SCI Weekday=1 Hour=9                 | cron        | 691200              | ENROLL      |
+| `secrets-sync-mini`             | `pro.secrets_sync_mini`           | SCI Hour=4 Min=30                    | cron        | 90000               | ENROLL      |
 
 Select 6-8 highest-signal organs to keep B2 size moderate. Recommended priority enrollment (8 entries): `codex_autofix_ci`, `codex_overnight_runner`, `cost_advisor_daily_cap`, `openclaw_children_watchdog`, `nb_intel_delta_watcher`, `sentinel_meta_watchdog`, `federation_alert_dispatcher`, `secrets_sync_mini`. Defer 6 lower-priority codex/cost runners to a later wave.
 
@@ -664,37 +671,37 @@ If a real schedule emerges (e.g. multiple StartCalendarInterval entries inside a
 Append a new section block after the matagaruda entries from Task 2:
 
 ```yaml
-  # === Wave 1 — WR2 Pro 13 (under wr2.supervisor) ===
-  - id: wr2.pg_proxy
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 60
-    owner_module: apps/war-room/scripts/wr2_pg_proxy.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.pg-proxy
-    severity_on_silence: critical
-    cicatrix_refs: []
-  # ... [12 more WR2 entries following the same template — substitute id/schedule/owner_module/dependencies/severity per §3.1 reference table]
+# === Wave 1 — WR2 Pro 13 (under wr2.supervisor) ===
+- id: wr2.pg_proxy
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 60
+  owner_module: apps/war-room/scripts/wr2_pg_proxy.py
+  dependencies:
+    - infra.postgres
+    - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.pg-proxy
+  severity_on_silence: critical
+  cicatrix_refs: []
+# ... [12 more WR2 entries following the same template — substitute id/schedule/owner_module/dependencies/severity per §3.1 reference table]
 
-  # === Wave 1 — Pro background crons (selected by §5.4 rule) ===
-  - id: pro.codex_autofix_ci
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: scripts/codex/codex_autofix_ci.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-autofix-ci
-    severity_on_silence: info
-    cicatrix_refs: []
-  # ... [7 more Pro background entries following the same template]
+# === Wave 1 — Pro background crons (selected by §5.4 rule) ===
+- id: pro.codex_autofix_ci
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/codex/codex_autofix_ci.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-autofix-ci
+  severity_on_silence: info
+  cicatrix_refs: []
+# ... [7 more Pro background entries following the same template]
 ```
 
 `owner_module` for Pro background crons: extracted from plist `Program` or `ProgramArguments`. Use the path relative to monorepo root if it lives in the repo; otherwise prefix `~/scripts/<name>.sh` indicates a user-script wrapper — document via `owner_module: scripts/<wrapper-relative-name>.sh` with a comment in commit body.
@@ -802,6 +809,7 @@ git push origin feat/symbiosis-W1-genome-enroll-2026-05-07
 **Goal of this task:** document the discovered active-active double-firing risk as a STRUCTURAL P1 cicatrix entry. Doc-only commit, no genome.yaml change. Follow the project's established TRAUMA / ANTIBODY / GOTCHA convention used in `.claude/rules/cicatrix-scars.md`.
 
 **Files:**
+
 - Modify: `.claude/rules/cicatrix-scars.md` (insert new entry under "STRUCTURAL" section)
 
 ### Step 4.1: Read existing cicatrix-scars.md structure
@@ -828,11 +836,12 @@ Insert the new entry as the FIRST STRUCTURAL entry (top of the STRUCTURAL sectio
 _Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit (Zero verified via launchctl list on both nodes via Tailscale) · Severity: P1 · Workaround: TBD (cleanup in dedicated follow-up PR)_
 
 **TRAUMA:** 12 launchd labels are loaded SIMULTANEOUSLY on Pro AND Mini, both producing the same heartbeat at the same schedule. Verified labels (Pro+Mini both):
-
 ```
+
 watcher.daily, reg-alert.30min, kg-linker, wr-topic, wr2-bridge.hourly,
 bridge.adaptive, sentinel.daily, intel-bridge.daily, daily-briefing,
 kita-feed.daily, public-channel, weekly-digest, gap.consumer
+
 ```
 
 For cron jobs (most of the list above), this means the same agent/script runs **twice** per scheduled tick — once on Pro, once on Mini. Concrete blast radius depends per-organ:
@@ -1054,11 +1063,11 @@ Expected: PR URL printed.
 
 ## Risk + rollback summary
 
-| Risk | Detection | Rollback |
-|---|---|---|
-| Validator failure on commit | pre-commit hook | `git reset --soft HEAD^` + edit + recommit |
-| YAML parse error | `python -c "import yaml; yaml.safe_load(...)"` | manual inspection of last edit, fix indentation |
-| Branch hijack | `ps aux \| grep -c "[c]laude"` >2 | recover from `.git/objects` dangling blobs (cf. STRUCTURAL scar) |
-| OSINT field leak | grep guard step in each task | drop offending line, recommit |
-| Phantom Mini-side enrollment | post-merge `ssh mini-remote launchctl list` | small follow-up commit removing entry |
-| Preamble lost after `--update-checksum` | `head -3 genome.yaml` shows `version: 1` directly | re-apply via Edit tool from spec §5.2 |
+| Risk                                    | Detection                                         | Rollback                                                         |
+| --------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| Validator failure on commit             | pre-commit hook                                   | `git reset --soft HEAD^` + edit + recommit                       |
+| YAML parse error                        | `python -c "import yaml; yaml.safe_load(...)"`    | manual inspection of last edit, fix indentation                  |
+| Branch hijack                           | `ps aux \| grep -c "[c]laude"` >2                 | recover from `.git/objects` dangling blobs (cf. STRUCTURAL scar) |
+| OSINT field leak                        | grep guard step in each task                      | drop offending line, recommit                                    |
+| Phantom Mini-side enrollment            | post-merge `ssh mini-remote launchctl list`       | small follow-up commit removing entry                            |
+| Preamble lost after `--update-checksum` | `head -3 genome.yaml` shows `version: 1` directly | re-apply via Edit tool from spec §5.2                            |
