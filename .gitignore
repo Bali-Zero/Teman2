@@ -226,6 +226,10 @@ docs/generated/
 !apps/mouth/public/**/*.gif
 !apps/mouth/public/**/*.webp
 
+# Allow pricing assets (heros + icons generated via codex $imagegen)
+!docs/pricing/assets/**/*.png
+!docs/pricing/assets/**/*.jpg
+
 coverage.json
 # Auto-generated Playwright extensions
 .playwright-mcp/
