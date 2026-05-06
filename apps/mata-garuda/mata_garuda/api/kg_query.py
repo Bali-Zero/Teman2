@@ -86,7 +86,7 @@ class KGQueryHandler(BaseHTTPRequestHandler):
         try:
             conn = _ro_conn(db_path)
         except sqlite3.Error as exc:
-            return self._send_json(500, {
+            return self._send_json(503, {
                 "ok": False,
                 "kg_path": str(db_path),
                 "error": "kg_unavailable",
@@ -122,6 +122,11 @@ class KGQueryHandler(BaseHTTPRequestHandler):
         except ValueError:
             return self._send_json(400, {"error": "bad_request", "detail": "limit must be int"})
         limit = max(1, min(SEARCH_LIMIT_HARD_CAP, limit_raw))
+        # Escape SQL LIKE wildcards in user input so q="im_grasi" looks for
+        # the literal underscore, not "any single character".
+        q_escaped = (
+            q.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
         try:
             conn = _ro_conn(self._kg_server.db_path)
         except sqlite3.Error as exc:
@@ -130,9 +135,9 @@ class KGQueryHandler(BaseHTTPRequestHandler):
             rows = conn.execute(
                 "SELECT type, canonical_name, source_count, last_seen "
                 "FROM kg_entities "
-                "WHERE LOWER(canonical_name) LIKE ? "
+                "WHERE LOWER(canonical_name) LIKE ? ESCAPE '\\' "
                 "ORDER BY source_count DESC, last_seen DESC LIMIT ?",
-                (f"%{q.lower()}%", limit),
+                (f"%{q_escaped}%", limit),
             ).fetchall()
         except sqlite3.Error as exc:
             return self._send_json(503, {"error": "kg_unavailable", "detail": str(exc)})
