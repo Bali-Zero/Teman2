@@ -598,12 +598,6 @@ class CompletedProcessService:
         """Send human, congratulatory email to client."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        docs_section = ""
-        if documents:
-            docs_section = "\n📎 Your Documents:\n"
-            for doc in documents:
-                docs_section += f"   • {doc['filename']}: {doc['file_url']}\n"
-
         subject = f"[CLIENT] 🎉 Congratulations {client_name}! Your {practice_type} is Complete"
 
         body = f"""Dear {client_name},
@@ -617,8 +611,8 @@ What This Means for You:
 ✅ All legal requirements have been fulfilled
 ✅ You can now proceed with confidence in your Indonesian journey
 
-{docs_section}
-All your important documents are safely stored in your personal Google Drive folder. You can access them anytime through the link above.
+📲 Your documents:
+Your consultant will share all the documents with you directly on WhatsApp shortly.
 
 A Few Things to Remember:
 • Keep your documents secure and make backup copies
