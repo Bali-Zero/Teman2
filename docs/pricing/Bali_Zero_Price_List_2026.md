@@ -32,15 +32,18 @@
 
 _Short-stay visas for a single entry to Indonesia._
 
-| Service                               | Description                                                                                                            | Price         |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------- |
-| **C1 Tourism**                        | Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.                             | 2.300.000 IDR |
-| **C1 Tourism — Extension (+60 days)** | Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.               | 1.700.000 IDR |
-| **C2 Business**                       | Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.   | 3.600.000 IDR |
-| **C7A&amp;B Music/Art**               | Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events.     | 4.500.000 IDR |
-| **C18 Work Trial**                    | Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit. | 5.500.000 IDR |
-| **C22A&amp;B Internship (60 Days)**   | Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.        | 4.800.000 IDR |
-| **C22A&amp;B Internship (180 Days)**  | Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.       | 5.800.000 IDR |
+| Service                               | Description                                                                                                                                  | Price         |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| **C1 Tourism**                        | Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.                                                   | 2.300.000 IDR |
+| **C1 Tourism — Extension (+60 days)** | Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.                                     | 1.700.000 IDR |
+| **C2 Business**                       | Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.                         | 3.600.000 IDR |
+| **C18 Work Trial**                    | Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit.                       | 5.500.000 IDR |
+| **C22A&amp;B Internship (60 Days)**   | Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.                              | 4.800.000 IDR |
+| **C22A&amp;B Internship (180 Days)**  | Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.                             | 5.800.000 IDR |
+| **C7A,B,C Music/Art**                 | Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. Categories C7A, C7B, C7C. | 4.500.000 IDR |
+| **C8A,B**                             | Single-entry visa for journalism and media activities (categories C8A, C8B), valid for short-term assignments in Indonesia.                  | 4.000.000 IDR |
+| **C10 Speaker Visa**                  | Single-entry speaker visa for foreign nationals delivering talks, lectures or training sessions at events in Indonesia.                      | 3.500.000 IDR |
+| **Bridging Visa**                     | Bridging visa to maintain legal stay during transition between immigration permits.                                                          | 3.500.000 IDR |
 
 ---
 
@@ -56,7 +59,9 @@ _Multi-entry visas for repeat travel._
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
 | **D1 Tourism (1 Year)**                  | Multiple-entry tourist visa valid 1 year, allowing repeated visits with a maximum stay per entry as set by immigration.                    | 6.000.000 IDR  |
 | **D1 Tourism (2 Years)**                 | Multiple-entry tourist visa valid 2 years, allowing repeated visits with a maximum stay per entry as set by immigration.                   | 8.000.000 IDR  |
-| **D1 Tourism (5 Years)**                 | Multiple-entry tourist visa valid 5 years, allowing repeated visits with a maximum stay per entry as set by immigration.                   | 14.000.000 IDR |
+| **D1 Tourism (5 Years)**                 | Multiple-entry tourist visa valid 5 years, allowing repeated visits with a maximum stay per entry as set by immigration.                   | 12.900.000 IDR |
+| **D2 Business (1 Year)**                 | Multiple-entry business visa valid 1 year for business meetings and non-employment activities.                                             | 6.500.000 IDR  |
+| **D2 Business (2 Years)**                | Multiple-entry business visa valid 2 years for business meetings and non-employment activities.                                            | 9.000.000 IDR  |
 | **D12 Business Investigation (1 Year)**  | Multiple-entry business investigation visa valid 1 year, for investors and business representatives exploring opportunities in Indonesia.  | 7.500.000 IDR  |
 | **D12 Business Investigation (2 Years)** | Multiple-entry business investigation visa valid 2 years, for investors and business representatives exploring opportunities in Indonesia. | 10.000.000 IDR |
 
@@ -98,6 +103,7 @@ _Long-stay residence permits for foreign nationals._
 | **Retirement (Altus/Onshore)**             | Retirement KITAS for foreign nationals 60+ meeting income requirements. Onshore process via Altus.                                                         | 16.000.000 IDR |
 | **Retirement (Offshore)**                  | Retirement KITAS for foreign nationals 60+ meeting income requirements. Offshore process for applicants outside Indonesia.                                 | 14.000.000 IDR |
 | **Retirement (Extend)**                    | Onshore extension of an existing Retirement KITAS.                                                                                                         | 10.000.000 IDR |
+| **Born KITAS**                             | KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.                                                         | 9.000.000 IDR  |
 
 ---
 
@@ -210,25 +216,29 @@ _Compliance and registration fees handled by Bali Zero._
 
 _Passports, identity documents and miscellaneous immigration filings._
 
-| Service                               | Description                                                                                                                                  | Price         |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| **Reset Molina**                      | Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies. _(Plus 400k urgent)_              | 1.000.000 IDR |
-| **SKCK**                              | Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.       | 2.000.000 IDR |
-| **Mutation Passport**                 | Update of passport details on existing immigration permits after a passport renewal. _(Plus 350k urgent)_                                    | 500.000 IDR   |
-| **Mutation Address**                  | Update of registered address on existing immigration permits.                                                                                | 500.000 IDR   |
-| **Born Report**                       | Birth report registration for foreign citizens born in Indonesia, required for subsequent dependent permits.                                 | 4.000.000 IDR |
-| **Electronic Passport 5 Years**       | Indonesian electronic passport (e-passport) issuance for 5-year validity.                                                                    | 2.000.000 IDR |
-| **Electronic Passport 10 Years**      | Indonesian electronic passport (e-passport) issuance for 10-year validity.                                                                   | 2.500.000 IDR |
-| **Passport 5 Years**                  | Indonesian standard passport issuance for 5-year validity.                                                                                   | 1.300.000 IDR |
-| **Passport 10 Years**                 | Indonesian standard passport issuance for 10-year validity.                                                                                  | 2.000.000 IDR |
-| **Domicilie Letter**                  | Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.                                | 800.000 IDR   |
-| **Domicilie + SKTT**                  | Bundle of domicile letter (Surat Keterangan Domisili) and temporary residence certificate (SKTT) for KITAS holders.                          | 1.600.000 IDR |
-| **SKTT**                              | Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders. | 1.500.000 IDR |
-| **Cancel RPTKA**                      | Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.                                             | 500.000 IDR   |
-| **Cancel Wajib Lapor**                | Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.                                      | 500.000 IDR   |
-| **Cancel (RPTKA, IMTA, Wajib Lapor)** | Combined cancellation of RPTKA, IMTA and Wajib Lapor records at the Ministry of Manpower.                                                    | 3.500.000 IDR |
-| **EPO (Exit Permit Only)**            | Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit. _(Plus 300k urgent)_     | 700.000 IDR   |
-| **ERP (Exit Re-entry Permit)**        | Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry. _(Plus 500k urgent)_           | 800.000 IDR   |
+| Service                                              | Description                                                                                                                                                     | Price         |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| **Reset Molina**                                     | Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies. _(Plus 400k urgent)_                                 | 1.000.000 IDR |
+| **SKCK**                                             | Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.                          | 2.000.000 IDR |
+| **Mutation Passport**                                | Update of passport details on existing immigration permits after a passport renewal. _(Plus 350k urgent)_                                                       | 500.000 IDR   |
+| **Mutation Address**                                 | Update of registered address on existing immigration permits.                                                                                                   | 500.000 IDR   |
+| **Electronic Passport 5 Years**                      | Indonesian electronic passport (e-passport) issuance for 5-year validity.                                                                                       | 2.200.000 IDR |
+| **Electronic Passport 10 Years**                     | Indonesian electronic passport (e-passport) issuance for 10-year validity.                                                                                      | 2.700.000 IDR |
+| **Passport 5 Years**                                 | Indonesian standard passport issuance for 5-year validity.                                                                                                      | 1.300.000 IDR |
+| **Passport 10 Years**                                | Indonesian standard passport issuance for 10-year validity.                                                                                                     | 2.200.000 IDR |
+| **Domicilie Letter**                                 | Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.                                                   | 1.500.000 IDR |
+| **SKTT**                                             | Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders.                    | 1.500.000 IDR |
+| **Cancel RPTKA**                                     | Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.                                                                | 1.000.000 IDR |
+| **Cancel Wajib Lapor**                               | Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.                                                         | 1.000.000 IDR |
+| **EPO (Exit Permit Only)**                           | Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit. _(Plus 300k urgent)_                        | 700.000 IDR   |
+| **ERP (Exit Re-entry Permit)**                       | Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry. _(Plus 500k urgent)_                              | 800.000 IDR   |
+| **Mutation Address 2 Kanim**                         | Update of registered address requiring inter-Kanim (immigration office) transfer.                                                                               | 1.000.000 IDR |
+| **Created Molina Express**                           | Express creation of immigration record on the Molina (immigration) database.                                                                                    | 500.000 IDR   |
+| **Lapor Lahir (Under)**                              | Birth report registration for foreign nationals born in Indonesia, filed within the standard window. _(Under 60 days (Kanim NGR) / Under 90 days (Kanim DPS).)_ | 2.000.000 IDR |
+| **Lapor Lahir (Up)**                                 | Birth report registration for foreign nationals born in Indonesia, filed after the standard window. _(Above 60 days (Kanim NGR) / Above 90 days (Kanim DPS).)_  | 4.000.000 IDR |
+| **Process IMTA &amp; RPTKA Only (12 Months)**        | Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.                                                                            | 3.500.000 IDR |
+| **Process IMTA &amp; RPTKA Only (6 Months Kebawah)** | Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.                                                                     | 6.000.000 IDR |
+| **Driving License**                                  | Indonesian driving license (SIM) issuance for foreign nationals.                                                                                                | 1.600.000 IDR |
 
 ---
 
