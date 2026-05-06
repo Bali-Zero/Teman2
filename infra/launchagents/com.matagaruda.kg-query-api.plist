@@ -4,9 +4,16 @@
 <dict>
     <key>Label</key>
     <string>com.matagaruda.kg-query-api</string>
+    <!--
+        TCC bypass: launchd-spawned /bin/{zsh,bash} cannot open files in
+        ~/Desktop, but the mata-garuda venv python (adhoc-signed) can read
+        and exec from there. We exec it directly with no shell wrapper.
+    -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata-garuda-kg-api.sh</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+        <string>-m</string>
+        <string>mata_garuda.api.kg_query</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -18,12 +25,12 @@
         <string>/Users/nuzantara</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>PYTHONPATH</key>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
         <key>KG_API_BIND</key>
         <string>100.93.236.6</string>
         <key>KG_API_PORT</key>
         <string>8990</string>
-        <key>MATA_GARUDA_REPO</key>
-        <string>/Users/nuzantara/Desktop/nuzantara</string>
     </dict>
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/mata-garuda-kg-api.log</string>
@@ -32,6 +39,6 @@
     <key>ThrottleInterval</key>
     <integer>15</integer>
     <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
 </dict>
 </plist>
