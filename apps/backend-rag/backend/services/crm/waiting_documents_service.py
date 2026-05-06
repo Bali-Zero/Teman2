@@ -20,7 +20,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
-from backend.services.notifications.email_branding import logo_header_html
+from backend.services.notifications.email_branding import logo_header_html, team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
@@ -137,41 +137,40 @@ class WaitingDocumentsService:
     ) -> None:
         """Notify team leader that documents need to be collected from the client."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
+        practice_id = practice_data["id"]
 
         subject = f"[TEAM] 📋 Documents Needed — {client_name} ({practice_type})"
 
-        body = f"""Hi there!
-
-A practice has moved to the **Document Collection** phase and needs your attention.
-
-👤 Client: {client_name}
-🔖 Service: {practice_type}
-🆔 Practice ID: {practice_data["id"]}
-
-📋 What to do:
-1. Contact the client and let them know which documents are required
-2. Set a clear deadline for document submission
-3. Upload received documents to the CRM
-4. Once all documents are received, move to "Sending Invoice"
-
-A document request email has already been sent to the client automatically.
-
-🎯 Quick Access:
-https://kita.balizero.com/process/{practice_data["id"]}
-
-Let's keep things moving!
-
-Cheers,
-Zantara CRM 🤖
-"""
+        body_html = team_email_html(
+            title=f"📋 Documents Needed — {client_name}",
+            intro="This practice has moved to the <b>Document Collection</b> phase and needs your attention. A request email has already been sent to the client automatically.",
+            meta_rows=[
+                ("Client", client_name),
+                ("Service", practice_type),
+                ("Practice ID", f"#{practice_id}"),
+            ],
+            body_html=(
+                "<b>What to do:</b>"
+                "<ol style='margin:6px 0 4px 18px;padding:0;'>"
+                "<li>Contact the client and confirm which documents are required</li>"
+                "<li>Set a clear deadline for document submission</li>"
+                "<li>Upload received documents to the CRM</li>"
+                "<li>Once all documents are received, move the practice to <i>Sending Invoice</i></li>"
+                "</ol>"
+            ),
+            cta_label="Open practice in CRM",
+            cta_url=f"https://kita.balizero.com/process/{practice_id}",
+            signature="Zantara CRM",
+        )
 
         await self._send_with_brevo_fallback(
             team_leader_email,
             subject,
-            body,
+            body_html,
             email_type="waiting_docs_team",
-            practice_id=practice_data["id"],
+            practice_id=practice_id,
             client_id=practice_data.get("client_id"),
+            prebuilt_html=True,
         )
 
     async def _send_client_documents_request(
@@ -249,6 +248,7 @@ Zantara — Bali Zero Team
         client_id: int | None = None,
         cc: str | None = None,
         include_logo: bool = False,
+        prebuilt_html: bool = False,
     ) -> None:
         """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
 
@@ -268,9 +268,12 @@ Zantara — Bali Zero Team
 
         # 1) Brevo
         try:
-            html_body = body.replace("\n", "<br>")
-            if include_logo:
-                html_body = f"{logo_header_html()}{html_body}"
+            if prebuilt_html:
+                html_body = body
+            else:
+                html_body = body.replace("\n", "<br>")
+                if include_logo:
+                    html_body = f"{logo_header_html()}{html_body}"
             payload: dict = {"to": to_email, "subject": subject, "body": html_body}
             if cc:
                 payload["cc"] = cc
