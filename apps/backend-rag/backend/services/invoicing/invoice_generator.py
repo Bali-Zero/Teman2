@@ -8,6 +8,7 @@ Template updated: 2026-03-02 — PT BAYU BALI NOL layout.
 import io
 import os
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 try:
     from reportlab.lib import colors
@@ -153,8 +154,17 @@ class InvoiceGenerator:
         practice_description: str | None,
         quoted_price: float,
         notes: str | None = None,
+        discount_amount: float = 0.0,
+        discount_reason: str | None = None,
     ) -> bytes:
-        """Generate invoice PDF as bytes."""
+        """Generate invoice PDF as bytes.
+
+        ``discount_amount`` is a fixed-IDR fee adjustment (owner decision
+        Q1=a, 2026-05-06): it is subtracted from ``quoted_price`` to produce
+        the final TOTAL DUE. When non-zero, the totals block renders an
+        explicit "Discount" line per Q2=a; the reason (if any) is shown in
+        parentheses next to the line per Q5=c.
+        """
         logger.info(f"Generating invoice for practice {practice_id}")
 
         buffer = io.BytesIO()
@@ -318,10 +328,28 @@ class InvoiceGenerator:
         elements.append(Spacer(1, 0.25 * cm))
 
         # ── TOTALS ────────────────────────────────────────────────────────────
-        totals_data = [
+        # Discount handling (owner Q1=a, Q2=a, Q5=c, 2026-05-06):
+        #   * Subtotal stays at quoted_price (pre-discount).
+        #   * Discount line shown only when amount > 0; reason in parens.
+        #   * Final TOTAL = quoted_price - discount_amount, never below 0.
+        safe_discount = max(0.0, float(discount_amount or 0))
+        if safe_discount > quoted_price:
+            safe_discount = quoted_price  # defensive — backend already validates this
+        final_total = quoted_price - safe_discount
+
+        totals_data: list[list[Any]] = [
             ["Subtotal:", f"{self.CURRENCY} {quoted_price:,.0f}"],
-            ["Tax (0%):", f"{self.CURRENCY} 0"],
         ]
+        if safe_discount > 0:
+            discount_label = "Discount"
+            if discount_reason and discount_reason.strip():
+                discount_label = f"Discount ({discount_reason.strip()})"
+            totals_data.append([
+                f"{discount_label}:",
+                f"− {self.CURRENCY} {safe_discount:,.0f}",
+            ])
+        totals_data.append(["Tax (0%):", f"{self.CURRENCY} 0"])
+
         total_row = [
             Paragraph(
                 "<b>TOTAL DUE:</b>",
@@ -335,7 +363,7 @@ class InvoiceGenerator:
                 ),
             ),
             Paragraph(
-                f"<b>{self.CURRENCY} {quoted_price:,.0f}</b>",
+                f"<b>{self.CURRENCY} {final_total:,.0f}</b>",
                 ParagraphStyle(
                     "TotalAmt",
                     parent=self.styles["Normal"],
