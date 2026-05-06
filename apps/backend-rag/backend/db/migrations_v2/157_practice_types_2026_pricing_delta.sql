@@ -293,20 +293,8 @@ ON CONFLICT (code) DO UPDATE SET
 DO $$
 DECLARE
     blocking_codes text;
-BEGIN
-    -- Codex review (2026-05-06) WARNING #2: aggregating only
-    -- practices.practice_type_code missed rows where that column is
-    -- NULL but practice_type_id still references one of the obsolete
-    -- entries. The JOIN below resolves the canonical code via the
-    -- target row's `code` column, so any practice referencing the
-    -- obsolete row through *either* FK is detected.
-    SELECT string_agg(DISTINCT pt.code, ', ' ORDER BY pt.code)
-    INTO blocking_codes
-    FROM practice_types pt
-    JOIN practices p
-      ON p.practice_type_id = pt.id
-      OR p.practice_type_code = pt.code
-    WHERE pt.code = ANY(ARRAY[
+    has_practice_type_code boolean;
+    obsolete_codes text[] := ARRAY[
         'other_acc_mutation',
         'other_acc_mutation_passport',
         'other_acc_boarding_pass',
@@ -315,7 +303,40 @@ BEGIN
         'other_cancel_rptka_imta_wl',
         'other_domicilie_sktt',
         'other_domicilie'
-    ]::text[]);
+    ]::text[];
+BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'practices'
+          AND column_name = 'practice_type_code'
+    )
+    INTO has_practice_type_code;
+
+    -- Codex review (2026-05-06) WARNING #2: aggregating only the text
+    -- practice_type_code path missed rows where practice_type_id still
+    -- references an obsolete entry. Some migration-v2 databases do not
+    -- have practices.practice_type_code, so include that FK only when
+    -- the column exists.
+    IF has_practice_type_code THEN
+        EXECUTE
+            'SELECT string_agg(DISTINCT pt.code, '', '' ORDER BY pt.code)
+             FROM practice_types pt
+             JOIN practices p
+               ON p.practice_type_id = pt.id
+               OR p.practice_type_code = pt.code
+             WHERE pt.code = ANY($1)'
+        INTO blocking_codes
+        USING obsolete_codes;
+    ELSE
+        SELECT string_agg(DISTINCT pt.code, ', ' ORDER BY pt.code)
+        INTO blocking_codes
+        FROM practice_types pt
+        JOIN practices p
+          ON p.practice_type_id = pt.id
+        WHERE pt.code = ANY(obsolete_codes);
+    END IF;
 
     IF blocking_codes IS NOT NULL THEN
         RAISE EXCEPTION

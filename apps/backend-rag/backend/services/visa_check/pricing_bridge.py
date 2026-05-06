@@ -92,25 +92,9 @@ def estimate_match_cost(
         if not isinstance(results, dict):
             continue
         services = results.get("results") or results.get("services") or results
-        # Walk each category, take the first match.
-        for category, items in services.items():
-            if category == "contact_info":
-                continue
-            if isinstance(items, list):
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    cost = _extract_cost(item)
-                    if cost is not None:
-                        name = str(item.get("name") or item.get("code") or hint)
-                        return cost, name
-            elif isinstance(items, dict):
-                for key, item in items.items():
-                    if not isinstance(item, dict):
-                        continue
-                    cost = _extract_cost(item)
-                    if cost is not None:
-                        return cost, str(key)
+        candidate = _best_pricing_candidate(services, hint)
+        if candidate is not None:
+            return candidate
 
     logger.warning(
         "pricing_bridge: no quote found for %s (hints=%s)",
@@ -118,6 +102,109 @@ def estimate_match_cost(
         hints,
     )
     return None, None
+
+
+def _normalise_match_text(raw: str) -> str:
+    """Normalize labels so punctuation changes do not hide exact matches."""
+    return re.sub(r"[^a-z0-9]+", " ", raw.lower()).strip()
+
+
+def _match_terms(raw: str) -> set[str]:
+    return set(_normalise_match_text(raw).split())
+
+
+def _best_pricing_candidate(
+    services: Any,
+    hint: str,
+) -> tuple[int, str] | None:
+    """Pick the strongest candidate from a broad PricingService result.
+
+    `PricingService.search_service` intentionally returns broad keyword
+    matches. For example, "E33G Remote Worker" can also match the C7 artist row
+    because its description mentions "cultural workers". The bridge has a
+    stricter hint from `VisaType`, so rank candidates by key/name/code before
+    falling back to description-level matches.
+    """
+    if not isinstance(services, dict):
+        return None
+
+    candidates: list[tuple[int, int, str]] = []
+    for category, items in services.items():
+        if category == "contact_info":
+            continue
+        for key, item in _iter_candidate_items(items):
+            cost = _extract_cost(item)
+            if cost is None:
+                continue
+            name = str(item.get("name") or item.get("code") or key or hint)
+            source = str(key or name)
+            score = _candidate_score(hint, source, item)
+            candidates.append((score, cost, source))
+
+    if not candidates:
+        return None
+    _score, cost, source = max(candidates, key=lambda candidate: candidate[0])
+    return cost, source
+
+
+def _iter_candidate_items(items: Any) -> list[tuple[str, dict[str, Any]]]:
+    if isinstance(items, list):
+        return [
+            (str(item.get("name") or item.get("code") or ""), item)
+            for item in items
+            if isinstance(item, dict)
+        ]
+    if not isinstance(items, dict):
+        return []
+
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for key, item in items.items():
+        if not isinstance(item, dict):
+            continue
+        if _extract_cost(item) is not None:
+            candidates.append((str(key), item))
+            continue
+        for nested_key, nested_item in item.items():
+            if isinstance(nested_item, dict):
+                candidates.append((str(nested_key), nested_item))
+    return candidates
+
+
+def _candidate_score(hint: str, source: str, item: dict[str, Any]) -> int:
+    label_text = _normalise_match_text(
+        " ".join(
+            str(value)
+            for value in (
+                source,
+                item.get("name", ""),
+                item.get("code", ""),
+            )
+        ),
+    )
+    full_text = _normalise_match_text(
+        " ".join(
+            str(value)
+            for value in (
+                label_text,
+                item.get("notes", ""),
+                item.get("description_en", ""),
+                " ".join(item.get("legacy_names", []))
+                if isinstance(item.get("legacy_names"), list)
+                else "",
+            )
+        ),
+    )
+    hint_text = _normalise_match_text(hint)
+    hint_terms = _match_terms(hint)
+    label_terms = set(label_text.split())
+    full_terms = set(full_text.split())
+
+    score = 0
+    if hint_text and hint_text in label_text:
+        score += 1000
+    score += 20 * len(hint_terms & label_terms)
+    score += len(hint_terms & full_terms)
+    return score
 
 
 def _extract_cost(item: dict[str, Any]) -> int | None:
